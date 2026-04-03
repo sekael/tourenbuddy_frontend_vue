@@ -149,15 +149,15 @@ Dependencies point inward. The domain layer has ZERO dependencies on Vue, data, 
 
 ## Key Decisions
 
-| Decision | Rationale |
-|----------|-----------|
-| Pinia over Vuex | Official Vue 3 recommendation, composition API, TypeScript-first |
-| Vue Router + unplugin-vue-router | File-based typed routes, type-safe navigation |
-| Supabase JS directly (no Axios) | Auth tokens, retries, and realtime handled natively |
-| Zod for validation/types | Runtime validation + TypeScript type inference |
-| IndexedDB for local storage | Browser-native, works offline, structured data, no bundle cost |
-| MapLibre GL JS for maps | Native vector tiles, free Swisstopo WMTS, best web perf |
-| `shallowRef` for map instance | Prevents Vue from deep-proxying the WebGL context |
-| Workbox via vite-plugin-pwa | Battle-tested service worker tooling with Vite integration |
-| @antfu/eslint-config | Strictest community config, catches real bugs |
-| Vitest over Jest | Vite-native, faster, ESM-first |
+| Decision                         | Rationale                                                        |
+| -------------------------------- | ---------------------------------------------------------------- |
+| Pinia over Vuex                  | Official Vue 3 recommendation, composition API, TypeScript-first |
+| Vue Router + unplugin-vue-router | File-based typed routes, type-safe navigation                    |
+| Supabase JS directly (no Axios)  | Auth tokens, retries, and realtime handled natively              |
+| Zod for validation/types         | Runtime validation + TypeScript type inference                   |
+| IndexedDB for local storage      | Browser-native, works offline, structured data, no bundle cost   |
+| MapLibre GL JS for maps          | Native vector tiles, free Swisstopo WMTS, best web perf          |
+| `shallowRef` for map instance    | Prevents Vue from deep-proxying the WebGL context                |
+| Workbox via vite-plugin-pwa      | Battle-tested service worker tooling with Vite integration       |
+| @antfu/eslint-config             | Strictest community config, catches real bugs                    |
+| Vitest over Jest                 | Vite-native, faster, ESM-first                                   |

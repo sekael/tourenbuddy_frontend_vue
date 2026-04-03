@@ -43,14 +43,17 @@ A Vue tour-planning app for outdoor enthusiasts. Users pin tour objectives on a 
   - `VITE_SUPABASE_URL` — Supabase project URL
   - `VITE_SUPABASE_ANON_KEY` — Supabase anonymous/public key
 - Validate environment variables at app startup using Zod:
+
   ```ts
   import { z } from 'zod'
+
   const envSchema = z.object({
     VITE_SUPABASE_URL: z.string().url(),
     VITE_SUPABASE_ANON_KEY: z.string().min(1),
   })
   export const env = envSchema.parse(import.meta.env)
   ```
+
 - Never commit `.env` files — use `.env.example` as a template with placeholder values
 - Access validated env via the parsed `env` object, never `import.meta.env` directly in feature code
 

@@ -1,0 +1,36 @@
+:root {
+  /* Spacing (4-point scale) */
+  --spacing-xxs: 4px;
+  --spacing-xs: 8px;
+  --spacing-sm: 12px;
+  --spacing-md: 16px;
+  --spacing-lg: 20px;
+  --spacing-xl: 24px;
+  --spacing-xxl: 32px;
+
+  /* Border radius */
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+
+  /* Orange color palette (Material 3 seed: #e65100) */
+  --color-primary: #e65100;
+  --color-primary-light: #ff833a;
+  --color-primary-dark: #ac1900;
+  --color-on-primary: #ffffff;
+
+  --color-surface: #fffbff;
+  --color-on-surface: #201a18;
+  --color-surface-variant: #f5dfd7;
+  --color-on-surface-variant: #53433e;
+  --color-outline: #85736e;
+  --color-outline-variant: #d8c2bb;
+
+  --color-background: #fffbff;
+  --color-on-background: #201a18;
+
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #410002;
+}
