@@ -7,12 +7,8 @@ const router = useRouter()
 <template>
   <div class="home-page">
     <div class="content">
-      <h1 class="title">
-        TouringBuddy
-      </h1>
-      <p class="subtitle">
-        Plan your outdoor tours with confidence
-      </p>
+      <h1 class="title">TouringBuddy</h1>
+      <p class="subtitle">Plan your outdoor tours with confidence</p>
       <button class="login-button" @click="router.push({ name: 'email-entry' })">
         Get Started
       </button>
@@ -41,8 +37,9 @@ const router = useRouter()
 
 .title {
   font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-medium);
   color: var(--color-primary);
+  letter-spacing: -0.02em;
 }
 
 .subtitle {
@@ -55,14 +52,17 @@ const router = useRouter()
   padding: var(--spacing-md) var(--spacing-xxl);
   background-color: var(--color-primary);
   color: var(--color-on-primary);
-  border-radius: var(--radius-lg);
+  border-radius: 12px;
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
   letter-spacing: 0.02em;
-  transition: background-color 0.2s;
+  transition:
+    background-color 0.2s,
+    transform 0.15s;
 }
 
 .login-button:hover {
   background-color: var(--color-primary-dark);
+  transform: translateY(-1px);
 }
 </style>

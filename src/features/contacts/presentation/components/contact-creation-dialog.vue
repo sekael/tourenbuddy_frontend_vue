@@ -28,11 +28,9 @@ async function handleSubmit() {
       displayName.value || null,
     )
     emit('close')
-  }
-  catch (err) {
+  } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to add contact'
-  }
-  finally {
+  } finally {
     isLoading.value = false
   }
 }
@@ -42,11 +40,9 @@ async function handleSubmit() {
   <div class="dialog-backdrop" @click.self="emit('close')">
     <div class="dialog">
       <div class="header">
-        <h2 class="title">
-          Add Contact
-        </h2>
+        <h2 class="title">Add Contact</h2>
         <button class="close-btn" @click="emit('close')">
-          ✕
+          <span class="material-symbols-outlined">close</span>
         </button>
       </div>
 
@@ -61,7 +57,7 @@ async function handleSubmit() {
             maxlength="50"
             placeholder="First name"
             required
-          >
+          />
         </div>
 
         <div class="field">
@@ -73,7 +69,7 @@ async function handleSubmit() {
             type="text"
             maxlength="50"
             placeholder="Last name (optional)"
-          >
+          />
         </div>
 
         <div class="field">
@@ -85,7 +81,7 @@ async function handleSubmit() {
             type="text"
             maxlength="50"
             placeholder="Nickname (optional)"
-          >
+          />
         </div>
 
         <p v-if="error" class="error-text">
@@ -93,9 +89,7 @@ async function handleSubmit() {
         </p>
 
         <div class="actions">
-          <button type="button" class="cancel-btn" @click="emit('close')">
-            Cancel
-          </button>
+          <button type="button" class="cancel-btn" @click="emit('close')">Cancel</button>
           <button type="submit" class="submit-btn" :disabled="isLoading">
             {{ isLoading ? 'Saving...' : 'Add Contact' }}
           </button>
@@ -109,7 +103,9 @@ async function handleSubmit() {
 .dialog-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -123,7 +119,8 @@ async function handleSubmit() {
 }
 
 .dialog {
-  background-color: var(--color-surface);
+  background-color: var(--color-background);
+  border: 1px solid var(--color-outline-variant);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   padding: var(--spacing-xl);
   width: 100%;
@@ -131,6 +128,7 @@ async function handleSubmit() {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
+  box-shadow: var(--shadow-lg);
 }
 
 @media (min-width: 600px) {
@@ -188,11 +186,11 @@ async function handleSubmit() {
 
 .input {
   padding: var(--spacing-md);
-  border: 1px solid var(--color-outline);
+  border: 1.5px solid var(--color-outline-variant);
   border-radius: var(--radius-sm);
   font-size: var(--font-size-base);
   color: var(--color-on-surface);
-  background-color: var(--color-surface);
+  background-color: var(--color-background);
   outline: none;
   transition: border-color 0.2s;
 }
@@ -214,9 +212,11 @@ async function handleSubmit() {
 
 .cancel-btn {
   padding: var(--spacing-sm) var(--spacing-lg);
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
+  border: 1px solid var(--color-outline-variant);
   color: var(--color-on-surface-variant);
   font-size: var(--font-size-base);
+  transition: background-color 0.2s;
 }
 
 .cancel-btn:hover {
@@ -227,13 +227,17 @@ async function handleSubmit() {
   padding: var(--spacing-sm) var(--spacing-lg);
   background-color: var(--color-primary);
   color: var(--color-on-primary);
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
+  transition:
+    background-color 0.2s,
+    transform 0.15s;
 }
 
 .submit-btn:hover:not(:disabled) {
   background-color: var(--color-primary-dark);
+  transform: translateY(-1px);
 }
 
 .submit-btn:disabled {

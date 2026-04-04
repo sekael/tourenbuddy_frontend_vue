@@ -13,24 +13,35 @@
   --radius-md: 16px;
   --radius-lg: 24px;
 
-  /* Orange color palette (Material 3 seed: #e65100) */
-  --color-primary: #e65100;
-  --color-primary-light: #ff833a;
-  --color-primary-dark: #ac1900;
+  /* Blueish-grey (slate) color palette */
+  --color-primary: #475569;
+  --color-primary-light: #64748b;
+  --color-primary-dark: #334155;
   --color-on-primary: #ffffff;
 
-  --color-surface: #fffbff;
-  --color-on-surface: #201a18;
-  --color-surface-variant: #f5dfd7;
-  --color-on-surface-variant: #53433e;
-  --color-outline: #85736e;
-  --color-outline-variant: #d8c2bb;
+  --color-accent: #3b82f6;
 
-  --color-background: #fffbff;
-  --color-on-background: #201a18;
+  --color-surface: #f8fafc;
+  --color-on-surface: #0f172a;
+  --color-surface-variant: #e2e8f0;
+  --color-on-surface-variant: #475569;
+  --color-outline: #94a3b8;
+  --color-outline-variant: #cbd5e1;
 
-  --color-error: #ba1a1a;
+  --color-background: #ffffff;
+  --color-on-background: #0f172a;
+
+  --color-error: #dc2626;
   --color-on-error: #ffffff;
-  --color-error-container: #ffdad6;
-  --color-on-error-container: #410002;
+  --color-error-container: #fef2f2;
+  --color-on-error-container: #7f1d1d;
+
+  /* Layered shadows */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.1);
+  --shadow-md:
+    0 2px 4px rgba(15, 23, 42, 0.06), 0 4px 8px rgba(15, 23, 42, 0.1),
+    0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-lg:
+    0 4px 6px rgba(15, 23, 42, 0.05), 0 10px 20px rgba(15, 23, 42, 0.1),
+    0 2px 4px rgba(15, 23, 42, 0.04);
 }

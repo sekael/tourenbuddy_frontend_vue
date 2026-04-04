@@ -14,8 +14,7 @@ const { contacts } = storeToRefs(contactsStore)
 const displayName = computed(() => props.tour.name ?? 'Unnamed tour')
 
 const formattedDate = computed(() => {
-  if (!props.tour.plannedDate)
-    return null
+  if (!props.tour.plannedDate) return null
   return new Intl.DateTimeFormat(undefined, {
     year: 'numeric',
     month: 'long',
@@ -23,7 +22,7 @@ const formattedDate = computed(() => {
   }).format(props.tour.plannedDate)
 })
 
-const partners = computed(() => contacts.value.filter(c => props.tour.partnerIds.includes(c.id)))
+const partners = computed(() => contacts.value.filter((c) => props.tour.partnerIds.includes(c.id)))
 
 const coordinates = computed(
   () => `${props.tour.goal.lat.toFixed(4)}°N, ${props.tour.goal.lng.toFixed(4)}°E`,
@@ -32,28 +31,30 @@ const coordinates = computed(
 
 <template>
   <div class="sheet">
+    <div class="drag-handle" />
+
     <div class="header">
       <h2 class="title">
         {{ displayName }}
       </h2>
       <button class="close-btn" @click="emit('close')">
-        ✕
+        <span class="material-symbols-outlined">close</span>
       </button>
     </div>
 
     <div class="details">
       <div v-if="formattedDate" class="detail-row">
-        <span class="detail-icon">📅</span>
+        <span class="detail-icon material-symbols-outlined">calendar_today</span>
         <span>{{ formattedDate }}</span>
       </div>
 
       <div class="detail-row">
-        <span class="detail-icon">📍</span>
+        <span class="detail-icon material-symbols-outlined">location_on</span>
         <span class="coords">{{ coordinates }}</span>
       </div>
 
       <div v-if="partners.length > 0" class="detail-row partners-row">
-        <span class="detail-icon">👥</span>
+        <span class="detail-icon material-symbols-outlined">group</span>
         <div class="partner-chips">
           <span v-for="partner in partners" :key="partner.id" class="partner-chip">
             {{ resolveContactName(partner) }}
@@ -69,10 +70,22 @@ const coordinates = computed(
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
-  padding: var(--spacing-xl);
-  background-color: var(--color-surface);
+  padding: var(--spacing-sm) var(--spacing-xl) var(--spacing-xl);
+  background-color: var(--color-background);
+  border: 1px solid var(--color-outline-variant);
+  border-bottom: none;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   min-width: 300px;
+  box-shadow: var(--shadow-lg);
+}
+
+.drag-handle {
+  width: 36px;
+  height: 4px;
+  background-color: var(--color-outline-variant);
+  border-radius: 9999px;
+  align-self: center;
+  margin-bottom: var(--spacing-xs);
 }
 
 .header {
@@ -116,7 +129,8 @@ const coordinates = computed(
 
 .detail-icon {
   flex-shrink: 0;
-  font-size: var(--font-size-lg);
+  font-size: 20px;
+  color: var(--color-outline);
 }
 
 .coords {

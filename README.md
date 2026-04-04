@@ -45,16 +45,16 @@ The app will be available at `http://localhost:5173`.
 
 ## Available Commands
 
-| Command | Description |
-|---|---|
-| `npm run dev` | Start dev server with hot reload |
-| `npm run build` | Type-check and build for production |
-| `npm run preview` | Preview the production build locally |
-| `npm run test` | Run unit tests (single pass) |
-| `npm run test:watch` | Run unit tests in watch mode |
-| `npm run type-check` | Check TypeScript types without building |
-| `npm run lint` | Lint all source files (zero warnings enforced) |
-| `npm run format` | Format all files with Prettier |
+| Command              | Description                                    |
+| -------------------- | ---------------------------------------------- |
+| `npm run dev`        | Start dev server with hot reload               |
+| `npm run build`      | Type-check and build for production            |
+| `npm run preview`    | Preview the production build locally           |
+| `npm run test`       | Run unit tests (single pass)                   |
+| `npm run test:watch` | Run unit tests in watch mode                   |
+| `npm run type-check` | Check TypeScript types without building        |
+| `npm run lint`       | Lint all source files (zero warnings enforced) |
+| `npm run format`     | Format all files with Prettier                 |
 
 ## Tech Stack
 

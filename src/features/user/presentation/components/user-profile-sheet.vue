@@ -16,12 +16,9 @@ const toursStore = useToursStore()
 
 const displayName = computed(() => {
   const p = userProfileStore.profile
-  if (!p)
-    return authStore.currentUser?.email ?? 'User'
-  if (p.firstName && p.lastName)
-    return `${p.firstName} ${p.lastName}`
-  if (p.firstName)
-    return p.firstName
+  if (!p) return authStore.currentUser?.email ?? 'User'
+  if (p.firstName && p.lastName) return `${p.firstName} ${p.lastName}`
+  if (p.firstName) return p.firstName
   return authStore.currentUser?.email ?? 'User'
 })
 
@@ -39,12 +36,12 @@ async function handleSignOut() {
 
 <template>
   <div class="sheet">
+    <div class="drag-handle" />
+
     <div class="header">
-      <h2 class="title">
-        Profile
-      </h2>
+      <h2 class="title">Profile</h2>
       <button class="close-btn" @click="emit('close')">
-        ✕
+        <span class="material-symbols-outlined">close</span>
       </button>
     </div>
 
@@ -63,6 +60,7 @@ async function handleSignOut() {
     </div>
 
     <button class="sign-out-btn" @click="handleSignOut">
+      <span class="material-symbols-outlined">logout</span>
       Sign out
     </button>
   </div>
@@ -73,10 +71,22 @@ async function handleSignOut() {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xl);
-  padding: var(--spacing-xl);
-  background-color: var(--color-surface);
+  padding: var(--spacing-sm) var(--spacing-xl) var(--spacing-xl);
+  background-color: var(--color-background);
+  border: 1px solid var(--color-outline-variant);
+  border-bottom: none;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   min-width: 300px;
+  box-shadow: var(--shadow-lg);
+}
+
+.drag-handle {
+  width: 36px;
+  height: 4px;
+  background-color: var(--color-outline-variant);
+  border-radius: 9999px;
+  align-self: center;
+  margin-bottom: var(--spacing-xs);
 }
 
 .header {
@@ -87,7 +97,7 @@ async function handleSignOut() {
 
 .title {
   font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-medium);
 }
 
 .close-btn {
@@ -98,7 +108,7 @@ async function handleSignOut() {
   align-items: center;
   justify-content: center;
   color: var(--color-on-surface-variant);
-  font-size: var(--font-size-base);
+  transition: background-color 0.15s;
 }
 
 .close-btn:hover {
@@ -121,7 +131,7 @@ async function handleSignOut() {
   align-items: center;
   justify-content: center;
   font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   flex-shrink: 0;
 }
 
@@ -141,9 +151,12 @@ async function handleSignOut() {
 }
 
 .sign-out-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
   padding: var(--spacing-md);
-  border: 1px solid var(--color-outline);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: 12px;
   color: var(--color-error);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-medium);

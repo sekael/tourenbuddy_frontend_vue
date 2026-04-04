@@ -23,7 +23,7 @@ function selectStyle(index: number) {
       title="Change map style"
       @click="isOpen = !isOpen"
     >
-      🗺
+      <span class="material-symbols-outlined">map</span>
     </button>
 
     <Transition name="menu">
@@ -35,7 +35,9 @@ function selectStyle(index: number) {
           :class="{ selected: currentStyleIndex === index }"
           @click="selectStyle(index)"
         >
-          <span class="check">{{ currentStyleIndex === index ? '✓' : '' }}</span>
+          <span class="check material-symbols-outlined">{{
+            currentStyleIndex === index ? 'check' : ''
+          }}</span>
           {{ style.label }}
         </button>
       </div>
@@ -49,30 +51,39 @@ function selectStyle(index: number) {
 }
 
 .fab {
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
-  background-color: var(--color-surface);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  background-color: rgba(248, 250, 252, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(203, 213, 225, 0.5);
+  box-shadow: var(--shadow-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
-  transition: box-shadow 0.2s;
+  color: var(--color-on-surface-variant);
+  transition:
+    box-shadow 0.2s,
+    transform 0.15s;
 }
 
 .fab:hover,
 .fab.active {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-1px);
 }
 
 .menu {
   position: absolute;
   bottom: calc(100% + var(--spacing-sm));
   right: 0;
-  background-color: var(--color-surface);
+  background-color: rgba(248, 250, 252, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--color-outline-variant);
   border-radius: var(--radius-md);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
   min-width: 160px;
 }
@@ -83,7 +94,7 @@ function selectStyle(index: number) {
   gap: var(--spacing-sm);
   width: 100%;
   padding: var(--spacing-md) var(--spacing-lg);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
   color: var(--color-on-surface);
   text-align: left;
 }
@@ -98,9 +109,9 @@ function selectStyle(index: number) {
 }
 
 .check {
-  width: 16px;
+  width: 20px;
+  font-size: 18px;
   color: var(--color-primary);
-  font-weight: var(--font-weight-bold);
 }
 
 .menu-enter-active,

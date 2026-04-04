@@ -18,8 +18,7 @@ onMounted(() => {
 })
 
 async function handleInstall() {
-  if (!deferredPrompt)
-    return
+  if (!deferredPrompt) return
   await deferredPrompt.prompt()
   const { outcome } = await deferredPrompt.userChoice
   if (outcome === 'accepted') {
@@ -37,16 +36,10 @@ function handleDismiss() {
   <Transition name="banner">
     <div v-if="isVisible" class="banner" role="banner">
       <div class="content">
-        <p class="text">
-          Install TouringBuddy for the best experience
-        </p>
+        <p class="text">Install TouringBuddy for the best experience</p>
         <div class="actions">
-          <button class="dismiss-btn" @click="handleDismiss">
-            Not now
-          </button>
-          <button class="install-btn" @click="handleInstall">
-            Install
-          </button>
+          <button class="dismiss-btn" @click="handleDismiss">Not now</button>
+          <button class="install-btn" @click="handleInstall">Install</button>
         </div>
       </div>
     </div>
@@ -60,7 +53,8 @@ function handleDismiss() {
   left: 0;
   right: 0;
   background-color: var(--color-surface);
-  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.15);
+  border-top: 1px solid var(--color-outline-variant);
+  box-shadow: var(--shadow-lg);
   z-index: 300;
   padding: var(--spacing-lg) var(--spacing-xl);
   padding-bottom: calc(var(--spacing-lg) + env(safe-area-inset-bottom));
@@ -97,13 +91,17 @@ function handleDismiss() {
   padding: var(--spacing-xs) var(--spacing-md);
   background-color: var(--color-primary);
   color: var(--color-on-primary);
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
+  transition:
+    background-color 0.2s,
+    transform 0.15s;
 }
 
 .install-btn:hover {
   background-color: var(--color-primary-dark);
+  transform: translateY(-1px);
 }
 
 .banner-enter-active,

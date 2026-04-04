@@ -2,39 +2,55 @@
 const props = defineProps<{
   title?: string
   disabled?: boolean
+  glass?: boolean
 }>()
 
 const emit = defineEmits<{ click: [] }>()
 </script>
 
 <template>
-  <button class="fab" :title="props.title" :disabled="props.disabled" @click="emit('click')">
+  <button
+    class="fab"
+    :class="{ 'fab--glass': props.glass }"
+    :title="props.title"
+    :disabled="props.disabled"
+    @click="emit('click')"
+  >
     <slot />
   </button>
 </template>
 
 <style scoped>
 .fab {
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   background-color: var(--color-surface);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
   transition:
     box-shadow 0.2s,
-    opacity 0.2s;
+    opacity 0.2s,
+    transform 0.15s;
+  color: var(--color-on-surface-variant);
 }
 
 .fab:hover:not(:disabled) {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-1px);
 }
 
 .fab:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
+}
+
+.fab--glass {
+  background-color: rgba(248, 250, 252, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(203, 213, 225, 0.5);
 }
 </style>

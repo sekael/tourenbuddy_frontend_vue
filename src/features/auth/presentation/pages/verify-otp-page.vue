@@ -26,11 +26,9 @@ async function handleVerify() {
   try {
     await authStore.verifyOtp(email, otp.value.trim())
     router.push({ name: 'map' })
-  }
-  catch (err) {
+  } catch (err) {
     error.value = err instanceof Error ? err.message : 'Invalid code. Please try again.'
-  }
-  finally {
+  } finally {
     isLoading.value = false
   }
 }
@@ -41,11 +39,9 @@ async function handleResend() {
   try {
     await authStore.sendEmailOtp(email)
     resendSuccess.value = true
-  }
-  catch {
+  } catch {
     error.value = 'Failed to resend code. Please try again.'
-  }
-  finally {
+  } finally {
     isResending.value = false
   }
 }
@@ -55,11 +51,10 @@ async function handleResend() {
   <div class="page">
     <div class="card">
       <button class="back-btn" @click="router.back()">
-        ← Back
+        <span class="material-symbols-outlined">arrow_back</span>
+        Back
       </button>
-      <h1 class="title">
-        Check your email
-      </h1>
+      <h1 class="title">Check your email</h1>
       <p class="subtitle">
         We sent a login code to <strong>{{ email }}</strong>
       </p>
@@ -76,15 +71,13 @@ async function handleResend() {
             autocomplete="one-time-code"
             maxlength="8"
             required
-          >
+          />
         </div>
 
         <p v-if="error" class="error-text">
           {{ error }}
         </p>
-        <p v-if="resendSuccess" class="success-text">
-          Code resent! Check your email.
-        </p>
+        <p v-if="resendSuccess" class="success-text">Code resent! Check your email.</p>
 
         <button type="submit" class="submit-btn" :disabled="isLoading">
           {{ isLoading ? 'Verifying...' : 'Verify Code' }}
@@ -118,14 +111,19 @@ async function handleResend() {
 
 .back-btn {
   align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
   color: var(--color-primary);
   font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
   padding: var(--spacing-xs) 0;
 }
 
 .title {
   font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: -0.01em;
 }
 
 .subtitle {
@@ -152,11 +150,11 @@ async function handleResend() {
 
 .input {
   padding: var(--spacing-md);
-  border: 1px solid var(--color-outline);
+  border: 1.5px solid var(--color-outline-variant);
   border-radius: var(--radius-sm);
   font-size: var(--font-size-base);
   color: var(--color-on-surface);
-  background-color: var(--color-surface);
+  background-color: var(--color-background);
   outline: none;
   transition: border-color 0.2s;
 }
@@ -177,7 +175,7 @@ async function handleResend() {
 }
 
 .success-text {
-  color: #2e7d32;
+  color: #15803d;
   font-size: var(--font-size-sm);
 }
 
@@ -185,14 +183,17 @@ async function handleResend() {
   padding: var(--spacing-md);
   background-color: var(--color-primary);
   color: var(--color-on-primary);
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
-  transition: background-color 0.2s;
+  transition:
+    background-color 0.2s,
+    transform 0.15s;
 }
 
 .submit-btn:hover:not(:disabled) {
   background-color: var(--color-primary-dark);
+  transform: translateY(-1px);
 }
 
 .submit-btn:disabled {

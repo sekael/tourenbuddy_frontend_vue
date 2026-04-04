@@ -12,7 +12,7 @@ const emit = defineEmits<{ dismiss: [] }>()
     <div v-if="props.visible" class="snackbar error" role="alert">
       <span class="message">{{ props.message }}</span>
       <button class="dismiss-btn" @click="emit('dismiss')">
-        ✕
+        <span class="material-symbols-outlined">close</span>
       </button>
     </div>
   </Transition>
@@ -27,11 +27,11 @@ const emit = defineEmits<{ dismiss: [] }>()
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
-  padding: var(--spacing-md) var(--spacing-lg);
+  padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--radius-sm);
   max-width: 90vw;
   z-index: 200;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-lg);
 }
 
 .error {

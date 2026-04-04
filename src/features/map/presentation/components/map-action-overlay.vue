@@ -20,11 +20,11 @@ const { isAuthenticated } = storeToRefs(authStore)
     <BaseMapPicker />
 
     <button class="fab" title="Profile" @click="emit('openProfile')">
-      👤
+      <span class="material-symbols-outlined">person</span>
     </button>
 
     <button class="fab" title="Add Contact" @click="emit('openAddContact')">
-      ➕👤
+      <span class="material-symbols-outlined">person_add</span>
     </button>
 
     <button
@@ -33,7 +33,7 @@ const { isAuthenticated } = storeToRefs(authStore)
       :title="isAuthenticated ? 'Add tour location' : 'Sign in to add tours'"
       @click="mapStore.setPickingLocation(true)"
     >
-      📍
+      <span class="material-symbols-outlined">add_location_alt</span>
     </button>
   </div>
 </template>
@@ -51,26 +51,31 @@ const { isAuthenticated } = storeToRefs(authStore)
 }
 
 .fab {
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
-  background-color: var(--color-surface);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  background-color: rgba(248, 250, 252, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(203, 213, 225, 0.5);
+  box-shadow: var(--shadow-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  color: var(--color-on-surface-variant);
   transition:
     box-shadow 0.2s,
-    opacity 0.2s;
+    opacity 0.2s,
+    transform 0.15s;
 }
 
 .fab:hover:not(:disabled) {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-1px);
 }
 
 .fab:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 </style>

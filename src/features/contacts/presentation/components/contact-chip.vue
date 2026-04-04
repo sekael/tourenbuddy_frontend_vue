@@ -17,7 +17,7 @@ const emit = defineEmits<{ toggle: [contactId: string] }>()
     type="button"
     @click="emit('toggle', props.contact.id)"
   >
-    <span v-if="props.selected" class="check-icon">✓</span>
+    <span v-if="props.selected" class="check-icon material-symbols-outlined">check</span>
     {{ resolveContactName(props.contact) }}
   </button>
 </template>
@@ -28,8 +28,8 @@ const emit = defineEmits<{ toggle: [contactId: string] }>()
   align-items: center;
   gap: var(--spacing-xs);
   padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-lg);
-  border: 1.5px solid var(--color-outline);
+  border-radius: 9999px;
+  border: 1.5px solid var(--color-outline-variant);
   background-color: transparent;
   color: var(--color-on-surface);
   font-size: var(--font-size-sm);
@@ -43,12 +43,13 @@ const emit = defineEmits<{ toggle: [contactId: string] }>()
 }
 
 .chip.selected {
-  background-color: var(--color-primary);
+  background-color: rgba(71, 85, 105, 0.1);
   border-color: var(--color-primary);
-  color: var(--color-on-primary);
+  color: var(--color-primary);
 }
 
 .check-icon {
-  font-size: var(--font-size-xs);
+  font-size: 16px;
+  line-height: 1;
 }
 </style>

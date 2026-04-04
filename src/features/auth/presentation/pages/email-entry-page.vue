@@ -24,11 +24,9 @@ async function handleSubmit() {
   try {
     await authStore.sendEmailOtp(email.value)
     router.push({ name: 'verify-otp', query: { email: email.value } })
-  }
-  catch (err) {
+  } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to send code. Please try again.'
-  }
-  finally {
+  } finally {
     isLoading.value = false
   }
 }
@@ -38,14 +36,11 @@ async function handleSubmit() {
   <div class="page">
     <div class="card">
       <button class="back-btn" @click="router.back()">
-        ← Back
+        <span class="material-symbols-outlined">arrow_back</span>
+        Back
       </button>
-      <h1 class="title">
-        Enter your email
-      </h1>
-      <p class="subtitle">
-        We'll send you a one-time login code
-      </p>
+      <h1 class="title">Enter your email</h1>
+      <p class="subtitle">We'll send you a one-time login code</p>
 
       <form class="form" @submit.prevent="handleSubmit">
         <div class="field">
@@ -58,7 +53,7 @@ async function handleSubmit() {
             placeholder="you@example.com"
             autocomplete="email"
             required
-          >
+          />
         </div>
 
         <p v-if="error" class="error-text">
@@ -93,14 +88,19 @@ async function handleSubmit() {
 
 .back-btn {
   align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
   color: var(--color-primary);
   font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
   padding: var(--spacing-xs) 0;
 }
 
 .title {
   font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: -0.01em;
 }
 
 .subtitle {
@@ -127,11 +127,11 @@ async function handleSubmit() {
 
 .input {
   padding: var(--spacing-md);
-  border: 1px solid var(--color-outline);
+  border: 1.5px solid var(--color-outline-variant);
   border-radius: var(--radius-sm);
   font-size: var(--font-size-base);
   color: var(--color-on-surface);
-  background-color: var(--color-surface);
+  background-color: var(--color-background);
   outline: none;
   transition: border-color 0.2s;
 }
@@ -149,14 +149,17 @@ async function handleSubmit() {
   padding: var(--spacing-md);
   background-color: var(--color-primary);
   color: var(--color-on-primary);
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
-  transition: background-color 0.2s;
+  transition:
+    background-color 0.2s,
+    transform 0.15s;
 }
 
 .submit-btn:hover:not(:disabled) {
   background-color: var(--color-primary-dark);
+  transform: translateY(-1px);
 }
 
 .submit-btn:disabled {
