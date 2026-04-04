@@ -8,7 +8,7 @@ export interface MapStyle {
 export const SWISSTOPO_STYLES: MapStyle[] = [
   {
     label: 'Base',
-    style: 'https://vectortiles.geo.admin.ch/styles/ch.swisstopo.leichte-basiskarte.vt/style.json',
+    style: 'https://vectortiles.geo.admin.ch/styles/ch.swisstopo.basemap.vt/style.json',
   },
   {
     label: 'Full Color',
