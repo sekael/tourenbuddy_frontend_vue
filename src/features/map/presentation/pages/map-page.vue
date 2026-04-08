@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
-import { onMounted, ref, watch } from 'vue'
+import { nextTick, onMounted, ref, watch } from 'vue'
 import ContactCreationDialog from '@/features/contacts/presentation/components/contact-creation-dialog.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import LocationPicker from '@/features/map/presentation/components/location-picker.vue'
@@ -31,6 +31,7 @@ const showTourCreationDialog = ref(false)
 const pendingLocation = ref<{ lng: number; lat: number } | null>(null)
 
 const selectedTour = ref<(typeof tours.value)[0] | null>(null)
+const sheetContainerRef = ref<HTMLElement | null>(null)
 
 onMounted(async () => {
   await Promise.all([
@@ -40,14 +41,19 @@ onMounted(async () => {
   ])
 })
 
-watch(selectedTourId, (id) => {
+watch(selectedTourId, async (id) => {
   if (id) {
     selectedTour.value = tours.value.find((t) => t.id === id) ?? null
     if (selectedTour.value) {
+      // Wait for the sheet to render so we can measure its height and offset
+      // the map camera, keeping the tour position centered above the sheet.
+      await nextTick()
+      const sheetHeight = sheetContainerRef.value?.offsetHeight ?? 0
       mapRef.value?.map?.flyTo({
         center: [selectedTour.value.goal.lng, selectedTour.value.goal.lat],
         zoom: 12,
         duration: 1000,
+        padding: { top: 0, right: 0, bottom: sheetHeight, left: 0 },
       })
     }
   } else {
@@ -99,7 +105,7 @@ async function handleTourCreated(draft: TourDraft) {
 
     <!-- Tour info sheet (slide-up when tour selected) -->
     <Transition name="sheet">
-      <div v-if="selectedTour" class="sheet-container">
+      <div v-if="selectedTour" ref="sheetContainerRef" class="sheet-container">
         <TourInfoSheet :tour="selectedTour" @close="closeTourInfo" />
       </div>
     </Transition>
