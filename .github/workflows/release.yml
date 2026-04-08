@@ -1,0 +1,40 @@
+name: Release, Build, and Push
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+      major: ${{ steps.release.outputs.major }}
+      minor: ${{ steps.release.outputs.minor }}
+      release_created: ${{ steps.release.outputs.release_created}}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          target-branch: ${{ github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  # This job only runs when the release-please PR is merged and a tag is created
+  build-and-push:
+    needs: release
+    uses: ./.github/workflows/build-web-and-push.yml
+    secrets: inherit
+    if: ${{ needs.release.outputs.release_created }}
+    with:
+      image_tag: ${{ needs.release.outputs.tag_name }}
+      version: ${{ needs.release.outputs.version }}
+      majorVersion: ${{ needs.release.outputs.major }}
+      minorVersion: ${{ needs.release.outputs.minor }}

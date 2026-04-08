@@ -12,8 +12,10 @@ export class UserProfileRepositoryImpl implements UserProfileRepository {
       .eq('id', userId)
       .maybeSingle()
 
-    if (error) throw new Error(error.message)
-    if (!data) return null
+    if (error)
+      throw new Error(error.message)
+    if (!data)
+      return null
 
     return userProfileRowSchema.parse(data)
   }
@@ -37,7 +39,8 @@ export class UserProfileRepositoryImpl implements UserProfileRepository {
       .select()
       .single()
 
-    if (error) throw new Error(error.message)
+    if (error)
+      throw new Error(error.message)
 
     return userProfileRowSchema.parse(data)
   }
