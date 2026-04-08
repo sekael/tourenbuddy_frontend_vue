@@ -38,7 +38,7 @@ function handleDismiss() {
     <div v-if="isVisible" class="banner" role="banner">
       <div class="content">
         <p class="text">
-          Install TouringBuddy for the best experience
+          Install TourenBuddy for the best experience
         </p>
         <div class="actions">
           <button class="dismiss-btn" @click="handleDismiss">

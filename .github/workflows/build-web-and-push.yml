@@ -68,10 +68,10 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=touringbuddy --branch=main
+          command: pages deploy dist --project-name=tourenbuddy --branch=main
 
       - name: Upload Production Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: touringbuddy-web-${{ inputs.image_tag }}
+          name: tourenbuddy-web-${{ inputs.image_tag }}
           path: dist

@@ -79,7 +79,7 @@ The app SHALL display a home/landing page at `/` with the app name and a button 
 
 ### Requirement: Home page layout
 
-The home page SHALL display the app title "TouringBuddy" and subtitle centered vertically with generous whitespace. The title SHALL use `--color-primary` and the "Get Started" button SHALL use primary button styling with 12px border-radius. The page background SHALL be `--color-background` with a clean, minimal aesthetic.
+The home page SHALL display the app title "TourenBuddy" and subtitle centered vertically with generous whitespace. The title SHALL use `--color-primary` and the "Get Started" button SHALL use primary button styling with 12px border-radius. The page background SHALL be `--color-background` with a clean, minimal aesthetic.
 
 #### Scenario: Home page renders with updated design
 

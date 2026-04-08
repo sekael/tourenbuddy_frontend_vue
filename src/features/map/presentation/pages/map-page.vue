@@ -6,7 +6,7 @@ import ContactCreationDialog from '@/features/contacts/presentation/components/c
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import LocationPicker from '@/features/map/presentation/components/location-picker.vue'
 import MapActionOverlay from '@/features/map/presentation/components/map-action-overlay.vue'
-import TouringbuddyMap from '@/features/map/presentation/components/touringbuddy-map.vue'
+import TourenbuddyMap from '@/features/map/presentation/components/tourenbuddy-map.vue'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import TourCreationDialog from '@/features/tours/presentation/components/tour-creation-dialog.vue'
 import TourInfoSheet from '@/features/tours/presentation/components/tour-info-sheet.vue'
@@ -22,7 +22,7 @@ const userProfileStore = useUserProfileStore()
 const { isPickingLocation, selectedTourId } = storeToRefs(mapStore)
 const { tours } = storeToRefs(toursStore)
 
-const mapRef = ref<InstanceType<typeof TouringbuddyMap> | null>(null)
+const mapRef = ref<InstanceType<typeof TourenbuddyMap> | null>(null)
 
 // Dialog visibility
 const showProfileSheet = ref(false)
@@ -85,7 +85,7 @@ async function handleTourCreated(draft: TourDraft) {
 
 <template>
   <div class="map-page">
-    <TouringbuddyMap ref="mapRef" @tour-clicked="handleTourClicked" />
+    <TourenbuddyMap ref="mapRef" @tour-clicked="handleTourClicked" />
 
     <MapActionOverlay
       @open-profile="showProfileSheet = true"

@@ -15,9 +15,9 @@ export default defineConfig({
       registerType: 'prompt',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
-        name: 'TouringBuddy',
-        short_name: 'TouringBuddy',
-        description: 'Plan your outdoor tours with TouringBuddy',
+        name: 'TourenBuddy',
+        short_name: 'TourenBuddy',
+        description: 'Plan your outdoor tours with TourenBuddy',
         theme_color: '#e65100',
         background_color: '#ffffff',
         display: 'standalone',

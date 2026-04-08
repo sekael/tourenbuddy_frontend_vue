@@ -2,7 +2,7 @@
   "packages": {
     ".": {
       "release-type": "node",
-      "package-name": "touringbuddy-frontend"
+      "package-name": "tourenbuddy-frontend"
     }
   },
   "plugins": [
