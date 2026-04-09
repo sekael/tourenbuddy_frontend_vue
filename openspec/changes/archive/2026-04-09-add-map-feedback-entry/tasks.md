@@ -34,8 +34,8 @@
 - [x] 6.2 Run `npm run format`
 - [x] 6.3 Run `npm run type-check`
 - [x] 6.4 Run `npm run test` — all tests pass
-- [ ] 6.5 Manual smoke test: open map page, click Feedback FAB, confirm sheet appears and link opens GitHub issue template in a new tab
+- [x] 6.5 Manual smoke test: open map page, click Feedback FAB, confirm sheet appears and link opens GitHub issue template in a new tab
 
 ## 7. Commit
 
-- [ ] 7.1 Atomic commit `feat(map): add feedback entry point on map screen`
+- [x] 7.1 Atomic commit `feat(map): add feedback entry point on map screen`
