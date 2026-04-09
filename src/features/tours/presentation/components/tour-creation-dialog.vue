@@ -20,8 +20,7 @@ const selectedPartnerIds = ref<Set<string>>(new Set())
 function togglePartner(contactId: string) {
   if (selectedPartnerIds.value.has(contactId)) {
     selectedPartnerIds.value.delete(contactId)
-  }
-  else {
+  } else {
     selectedPartnerIds.value.add(contactId)
   }
   // Trigger reactivity
@@ -42,9 +41,7 @@ function handleConfirm() {
   <div class="dialog-backdrop" @click.self="emit('close')">
     <div class="dialog">
       <div class="header">
-        <h2 class="title">
-          New Tour
-        </h2>
+        <h2 class="title">New Tour</h2>
         <button class="close-btn" @click="emit('close')">
           <span class="material-symbols-outlined">close</span>
         </button>
@@ -60,18 +57,16 @@ function handleConfirm() {
             type="text"
             maxlength="100"
             placeholder="Optional name"
-          >
+          />
         </div>
 
         <div class="field">
           <label class="label" for="plannedDate">Planned Date</label>
-          <input id="plannedDate" v-model="plannedDate" class="input" type="date">
+          <input id="plannedDate" v-model="plannedDate" class="input" type="date" />
         </div>
 
         <div v-if="contacts.length > 0" class="field">
-          <p class="label">
-            Tour Partners
-          </p>
+          <p class="label">Tour Partners</p>
           <div class="chips">
             <ContactChip
               v-for="contact in contacts"
@@ -84,12 +79,8 @@ function handleConfirm() {
         </div>
 
         <div class="actions">
-          <button type="button" class="cancel-btn" @click="emit('close')">
-            Cancel
-          </button>
-          <button type="submit" class="submit-btn">
-            Save Tour
-          </button>
+          <button type="button" class="cancel-btn" @click="emit('close')">Cancel</button>
+          <button type="submit" class="submit-btn">Save Tour</button>
         </div>
       </form>
     </div>

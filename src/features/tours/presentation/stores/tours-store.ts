@@ -18,29 +18,25 @@ export const useToursStore = defineStore('tours', () => {
 
   async function loadTours() {
     const userId = authStore.currentUser?.id
-    if (!userId)
-      return
+    if (!userId) return
 
     isLoading.value = true
     error.value = null
 
     try {
       tours.value = await repository.listToursForUser(userId)
-    }
-    catch (err) {
+    } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load tours'
       error.value = message
       logger.error('Failed to load tours', err)
-    }
-    finally {
+    } finally {
       isLoading.value = false
     }
   }
 
-  async function createTourFromDraft(draft: TourDraft, goal: { lng: number, lat: number }) {
+  async function createTourFromDraft(draft: TourDraft, goal: { lng: number; lat: number }) {
     const userId = authStore.currentUser?.id
-    if (!userId)
-      return
+    if (!userId) return
 
     const id = uuidv4()
     await repository.createTourWithPartners(id, draft, goal)

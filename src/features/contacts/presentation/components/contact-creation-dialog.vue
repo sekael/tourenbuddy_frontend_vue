@@ -28,11 +28,9 @@ async function handleSubmit() {
       displayName.value || null,
     )
     emit('close')
-  }
-  catch (err) {
+  } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to add contact'
-  }
-  finally {
+  } finally {
     isLoading.value = false
   }
 }
@@ -42,9 +40,7 @@ async function handleSubmit() {
   <div class="dialog-backdrop" @click.self="emit('close')">
     <div class="dialog">
       <div class="header">
-        <h2 class="title">
-          Add Contact
-        </h2>
+        <h2 class="title">Add Contact</h2>
         <button class="close-btn" @click="emit('close')">
           <span class="material-symbols-outlined">close</span>
         </button>
@@ -61,7 +57,7 @@ async function handleSubmit() {
             maxlength="50"
             placeholder="First name"
             required
-          >
+          />
         </div>
 
         <div class="field">
@@ -73,7 +69,7 @@ async function handleSubmit() {
             type="text"
             maxlength="50"
             placeholder="Last name (optional)"
-          >
+          />
         </div>
 
         <div class="field">
@@ -85,7 +81,7 @@ async function handleSubmit() {
             type="text"
             maxlength="50"
             placeholder="Nickname (optional)"
-          >
+          />
         </div>
 
         <p v-if="error" class="error-text">
@@ -93,9 +89,7 @@ async function handleSubmit() {
         </p>
 
         <div class="actions">
-          <button type="button" class="cancel-btn" @click="emit('close')">
-            Cancel
-          </button>
+          <button type="button" class="cancel-btn" @click="emit('close')">Cancel</button>
           <button type="submit" class="submit-btn" :disabled="isLoading">
             {{ isLoading ? 'Saving...' : 'Add Contact' }}
           </button>

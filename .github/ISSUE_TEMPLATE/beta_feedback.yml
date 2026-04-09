@@ -1,8 +1,8 @@
 name: User Feedback
 description: Report a bug or suggest a feature for TourenBuddy
-title: "[FEEDBACK]: "
-labels: ["user-feedback"]
-projects: ["sekael/projects/1"]
+title: '[FEEDBACK]: '
+labels: [user-feedback]
+projects: [sekael/projects/1]
 body:
   - type: markdown
     attributes:
