@@ -174,7 +174,7 @@ npm run format
 - ALWAYS run `npm run format` before committing (CI checks formatting)
 - Use `<script setup lang="ts">` for all Vue components
 - Prefer `defineProps` with type-only syntax: `defineProps<{ title: string }>()`
-- Every public API must have a JSDoc comment (`/** */`)
+- Public APIs should have a JSDoc comment (`/** */`)
 - File names: `kebab-case.vue` for components, `kebab-case.ts` for modules. Types/interfaces: `PascalCase`
 - One component per file. Keep components under 150 lines; extract sub-components
 - No `console.log()` in production code — use the logger composable
