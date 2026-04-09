@@ -7,6 +7,7 @@ import BaseMapPicker from './base-map-picker.vue'
 const emit = defineEmits<{
   openProfile: []
   openAddContact: []
+  openFeedback: []
 }>()
 
 const mapStore = useMapStore()
@@ -17,11 +18,15 @@ const { isAuthenticated } = storeToRefs(authStore)
 
 <template>
   <div v-if="!isPickingLocation" class="overlay">
-    <BaseMapPicker />
+    <button class="fab" title="Feedback" @click="emit('openFeedback')">
+      <span class="material-symbols-outlined">feedback</span>
+    </button>
 
     <button class="fab" title="Profile" @click="emit('openProfile')">
       <span class="material-symbols-outlined">person</span>
     </button>
+
+    <BaseMapPicker />
 
     <button class="fab" title="Add Contact" @click="emit('openAddContact')">
       <span class="material-symbols-outlined">person_add</span>

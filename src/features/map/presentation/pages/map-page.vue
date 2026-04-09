@@ -2,6 +2,7 @@
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
 import { nextTick, onMounted, ref, watch } from 'vue'
+import FeedbackSheet from '@/core/components/feedback-sheet.vue'
 import ContactCreationDialog from '@/features/contacts/presentation/components/contact-creation-dialog.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import LocationPicker from '@/features/map/presentation/components/location-picker.vue'
@@ -25,6 +26,7 @@ const { tours } = storeToRefs(toursStore)
 const mapRef = ref<InstanceType<typeof TourenbuddyMap> | null>(null)
 
 // Dialog visibility
+const showFeedbackSheet = ref(false)
 const showProfileSheet = ref(false)
 const showContactDialog = ref(false)
 const showTourCreationDialog = ref(false)
@@ -94,6 +96,7 @@ async function handleTourCreated(draft: TourDraft) {
     <TourenbuddyMap ref="mapRef" @tour-clicked="handleTourClicked" />
 
     <MapActionOverlay
+      @open-feedback="showFeedbackSheet = true"
       @open-profile="showProfileSheet = true"
       @open-add-contact="showContactDialog = true"
     />
@@ -109,6 +112,13 @@ async function handleTourCreated(draft: TourDraft) {
     <Transition name="sheet">
       <div v-if="selectedTour" ref="sheetContainerRef" class="sheet-container">
         <TourInfoSheet :tour="selectedTour" @close="closeTourInfo" />
+      </div>
+    </Transition>
+
+    <!-- Feedback sheet -->
+    <Transition name="sheet">
+      <div v-if="showFeedbackSheet" class="sheet-container">
+        <FeedbackSheet @close="showFeedbackSheet = false" />
       </div>
     </Transition>
 
