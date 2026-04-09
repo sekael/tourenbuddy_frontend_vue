@@ -7,12 +7,13 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  confirm: [location: { lng: number; lat: number }]
+  confirm: [location: { lng: number, lat: number }]
   cancel: []
 }>()
 
 function handleConfirm() {
-  if (!props.map) return
+  if (!props.map)
+    return
   const center = props.map.getCenter()
   emit('confirm', { lng: center.lng, lat: center.lat })
 }
@@ -23,8 +24,12 @@ function handleConfirm() {
     <Crosshair />
 
     <div class="actions">
-      <button class="cancel-btn" @click="emit('cancel')">Cancel</button>
-      <button class="confirm-btn" @click="handleConfirm">Continue</button>
+      <button class="cancel-btn" @click="emit('cancel')">
+        Cancel
+      </button>
+      <button class="confirm-btn" @click="handleConfirm">
+        Continue
+      </button>
     </div>
   </div>
 </template>

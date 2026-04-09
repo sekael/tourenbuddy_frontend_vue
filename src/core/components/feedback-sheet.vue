@@ -15,7 +15,8 @@ function openIssue() {
   const tab = window.open(FEEDBACK_GITHUB_ISSUE_URL, '_blank', 'noopener,noreferrer')
   if (tab === null) {
     show(`Could not open the GitHub page. Please email us at ${FEEDBACK_EMAIL}`)
-  } else {
+  }
+  else {
     emit('close')
   }
 }
@@ -23,12 +24,16 @@ function openIssue() {
 
 <template>
   <div class="sheet" role="dialog" aria-modal="true" aria-label="Feedback">
-    <button type="button" class="primary-btn" @click="openIssue">Open Issue on GitHub</button>
+    <button type="button" class="primary-btn" @click="openIssue">
+      Open Issue on GitHub
+    </button>
     <p class="hint">
       No GitHub account? Reach out at
       <a :href="`mailto:${FEEDBACK_EMAIL}`" class="email-link">{{ FEEDBACK_EMAIL }}</a>
     </p>
-    <button type="button" class="close-btn" @click="emit('close')">Close</button>
+    <button type="button" class="close-btn" @click="emit('close')">
+      Close
+    </button>
   </div>
 
   <ErrorSnackbar :message="snackbar.message" :visible="snackbar.visible" @dismiss="dismiss" />
