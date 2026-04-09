@@ -1,4 +1,4 @@
-# TouringBuddy Frontend (Vue)
+# TourenBuddy Frontend (Vue)
 
 A Vue 3 tour-planning app for outdoor enthusiasts. Pin tour objectives on a Swiss topographic map (Swisstopo), associate contacts as tour partners, and set planned dates.
 

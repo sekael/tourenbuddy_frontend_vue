@@ -6,7 +6,7 @@ import ContactCreationDialog from '@/features/contacts/presentation/components/c
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import LocationPicker from '@/features/map/presentation/components/location-picker.vue'
 import MapActionOverlay from '@/features/map/presentation/components/map-action-overlay.vue'
-import TouringbuddyMap from '@/features/map/presentation/components/touringbuddy-map.vue'
+import TourenbuddyMap from '@/features/map/presentation/components/tourenbuddy-map.vue'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import TourCreationDialog from '@/features/tours/presentation/components/tour-creation-dialog.vue'
 import TourInfoSheet from '@/features/tours/presentation/components/tour-info-sheet.vue'
@@ -22,13 +22,13 @@ const userProfileStore = useUserProfileStore()
 const { isPickingLocation, selectedTourId } = storeToRefs(mapStore)
 const { tours } = storeToRefs(toursStore)
 
-const mapRef = ref<InstanceType<typeof TouringbuddyMap> | null>(null)
+const mapRef = ref<InstanceType<typeof TourenbuddyMap> | null>(null)
 
 // Dialog visibility
 const showProfileSheet = ref(false)
 const showContactDialog = ref(false)
 const showTourCreationDialog = ref(false)
-const pendingLocation = ref<{ lng: number; lat: number } | null>(null)
+const pendingLocation = ref<{ lng: number, lat: number } | null>(null)
 
 const selectedTour = ref<(typeof tours.value)[0] | null>(null)
 
@@ -42,7 +42,7 @@ onMounted(async () => {
 
 watch(selectedTourId, (id) => {
   if (id) {
-    selectedTour.value = tours.value.find((t) => t.id === id) ?? null
+    selectedTour.value = tours.value.find(t => t.id === id) ?? null
     if (selectedTour.value) {
       mapRef.value?.map?.flyTo({
         center: [selectedTour.value.goal.lng, selectedTour.value.goal.lat],
@@ -50,7 +50,8 @@ watch(selectedTourId, (id) => {
         duration: 1000,
       })
     }
-  } else {
+  }
+  else {
     selectedTour.value = null
   }
 })
@@ -59,7 +60,7 @@ function handleTourClicked(tourId: string) {
   mapStore.selectTour(tourId)
 }
 
-function handleLocationConfirmed(location: { lng: number; lat: number }) {
+function handleLocationConfirmed(location: { lng: number, lat: number }) {
   pendingLocation.value = location
   mapStore.setPickingLocation(false)
   showTourCreationDialog.value = true
@@ -74,7 +75,8 @@ function closeTourInfo() {
 }
 
 async function handleTourCreated(draft: TourDraft) {
-  if (!pendingLocation.value) return
+  if (!pendingLocation.value)
+    return
   showTourCreationDialog.value = false
   await toursStore.createTourFromDraft(draft, pendingLocation.value)
   pendingLocation.value = null
@@ -83,7 +85,7 @@ async function handleTourCreated(draft: TourDraft) {
 
 <template>
   <div class="map-page">
-    <TouringbuddyMap ref="mapRef" @tour-clicked="handleTourClicked" />
+    <TourenbuddyMap ref="mapRef" @tour-clicked="handleTourClicked" />
 
     <MapActionOverlay
       @open-profile="showProfileSheet = true"

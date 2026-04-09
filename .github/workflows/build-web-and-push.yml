@@ -1,0 +1,77 @@
+name: Build and Deploy Web Application
+
+on:
+  workflow_call:
+    inputs:
+      image_tag:
+        required: true
+        type: string
+      version:
+        required: false
+        type: string
+        default: ''
+      majorVersion:
+        required: false
+        type: string
+        default: ''
+      minorVersion:
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Tag Major and Minor Versions
+        if: ${{ inputs.majorVersion != '' && inputs.minorVersion != '' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -d v${{ inputs.majorVersion }} || true
+          git tag -d v${{ inputs.majorVersion }}.${{ inputs.minorVersion }} || true
+          git push origin :v${{ inputs.majorVersion }} || true
+          git push origin :v${{ inputs.majorVersion }}.${{ inputs.minorVersion }} || true
+          git tag -a v${{ inputs.majorVersion }} -m "Release v${{ inputs.majorVersion }}"
+          git tag -a v${{ inputs.majorVersion }}.${{ inputs.minorVersion }} -m "Release v${{ inputs.majorVersion }}.${{ inputs.minorVersion }}"
+          git push origin v${{ inputs.majorVersion }}
+          git push origin v${{ inputs.majorVersion }}.${{ inputs.minorVersion }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Create Env File
+        run: |
+          echo "VITE_SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env
+          echo "VITE_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
+
+      - name: Build Web
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=tourenbuddy --branch=main
+
+      - name: Upload Production Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tourenbuddy-web-${{ inputs.image_tag }}
+          path: dist

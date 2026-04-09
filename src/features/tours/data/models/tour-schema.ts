@@ -11,7 +11,7 @@ export const tourRowSchema = z
     name: z.string().nullable(),
     partner_ids: z.array(z.string()).default([]),
   })
-  .transform((row) => ({
+  .transform(row => ({
     id: row.id,
     userId: row.user_id,
     plannedDate: row.planned_date ? new Date(row.planned_date) : null,

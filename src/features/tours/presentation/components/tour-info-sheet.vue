@@ -14,7 +14,8 @@ const { contacts } = storeToRefs(contactsStore)
 const displayName = computed(() => props.tour.name ?? 'Unnamed tour')
 
 const formattedDate = computed(() => {
-  if (!props.tour.plannedDate) return null
+  if (!props.tour.plannedDate)
+    return null
   return new Intl.DateTimeFormat(undefined, {
     year: 'numeric',
     month: 'long',
@@ -22,7 +23,7 @@ const formattedDate = computed(() => {
   }).format(props.tour.plannedDate)
 })
 
-const partners = computed(() => contacts.value.filter((c) => props.tour.partnerIds.includes(c.id)))
+const partners = computed(() => contacts.value.filter(c => props.tour.partnerIds.includes(c.id)))
 
 const coordinates = computed(
   () => `${props.tour.goal.lat.toFixed(4)}°N, ${props.tour.goal.lng.toFixed(4)}°E`,

@@ -1,0 +1,47 @@
+name: Analyze and Test Code
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+
+jobs:
+  analyze-and-test:
+    name: Static Analysis & Tests
+    runs-on: ubuntu-latest
+    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Create dummy env file
+        run: |
+          echo "VITE_SUPABASE_URL=https://placeholder.supabase.co" > .env
+          echo "VITE_SUPABASE_ANON_KEY=placeholder" >> .env
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm ci
+
+      # 1. Lint (ESLint with @antfu/eslint-config — also enforces formatting)
+      - name: Lint
+        run: npm run lint
+
+      # 2. Type check
+      - name: Type Check
+        run: npm run type-check
+
+      # 3. Run unit/component tests
+      - name: Run Tests
+        run: npm run test
