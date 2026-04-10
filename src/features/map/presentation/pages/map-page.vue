@@ -82,6 +82,15 @@ function closeTourInfo() {
   mapStore.selectTour(null)
 }
 
+// Called when the user taps the map background (outside any tour marker).
+// NOTE: Any new modal bottom sheet added to this page MUST also be closed here.
+function handleMapBackgroundClick() {
+  mapStore.selectTour(null)
+  showFeedbackSheet.value = false
+  showProfileSheet.value = false
+  showContactDialog.value = false
+}
+
 async function handleTourCreated(draft: TourDraft) {
   if (!pendingLocation.value)
     return
@@ -93,7 +102,11 @@ async function handleTourCreated(draft: TourDraft) {
 
 <template>
   <div class="map-page">
-    <TourenbuddyMap ref="mapRef" @tour-clicked="handleTourClicked" />
+    <TourenbuddyMap
+      ref="mapRef"
+      @tour-clicked="handleTourClicked"
+      @map-background-click="handleMapBackgroundClick"
+    />
 
     <MapActionOverlay
       @open-feedback="showFeedbackSheet = true"
@@ -136,8 +149,12 @@ async function handleTourCreated(draft: TourDraft) {
       </div>
     </Transition>
 
-    <!-- Contact creation dialog -->
-    <ContactCreationDialog v-if="showContactDialog" @close="showContactDialog = false" />
+    <!-- Contact creation sheet -->
+    <Transition name="sheet">
+      <div v-if="showContactDialog" class="sheet-container">
+        <ContactCreationDialog @close="showContactDialog = false" />
+      </div>
+    </Transition>
   </div>
 </template>
 

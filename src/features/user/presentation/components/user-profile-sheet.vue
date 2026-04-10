@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import BottomSheet from '@/core/components/bottom-sheet.vue'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
@@ -38,86 +39,35 @@ async function handleSignOut() {
 </script>
 
 <template>
-  <div class="sheet">
-    <div class="drag-handle" />
+  <BottomSheet title="Profile" @close="emit('close')">
+    <div class="profile-content">
+      <div class="profile-info">
+        <div class="avatar">
+          {{ displayName.charAt(0).toUpperCase() }}
+        </div>
+        <div class="info">
+          <p class="name">
+            {{ displayName }}
+          </p>
+          <p class="email">
+            {{ email }}
+          </p>
+        </div>
+      </div>
 
-    <div class="header">
-      <h2 class="title">
-        Profile
-      </h2>
-      <button class="close-btn" @click="emit('close')">
-        <span class="material-symbols-outlined">close</span>
+      <button class="sign-out-btn" @click="handleSignOut">
+        <span class="material-symbols-outlined">logout</span>
+        Sign out
       </button>
     </div>
-
-    <div class="profile-info">
-      <div class="avatar">
-        {{ displayName.charAt(0).toUpperCase() }}
-      </div>
-      <div class="info">
-        <p class="name">
-          {{ displayName }}
-        </p>
-        <p class="email">
-          {{ email }}
-        </p>
-      </div>
-    </div>
-
-    <button class="sign-out-btn" @click="handleSignOut">
-      <span class="material-symbols-outlined">logout</span>
-      Sign out
-    </button>
-  </div>
+  </BottomSheet>
 </template>
 
 <style scoped>
-.sheet {
+.profile-content {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xl);
-  padding: var(--spacing-sm) var(--spacing-xl) var(--spacing-xl);
-  background-color: var(--color-background);
-  border: 1px solid var(--color-outline-variant);
-  border-bottom: none;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  min-width: 300px;
-  box-shadow: var(--shadow-lg);
-}
-
-.drag-handle {
-  width: 36px;
-  height: 4px;
-  background-color: var(--color-outline-variant);
-  border-radius: 9999px;
-  align-self: center;
-  margin-bottom: var(--spacing-xs);
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.title {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-medium);
-}
-
-.close-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-on-surface-variant);
-  transition: background-color 0.15s;
-}
-
-.close-btn:hover {
-  background-color: var(--color-surface-variant);
 }
 
 .profile-info {

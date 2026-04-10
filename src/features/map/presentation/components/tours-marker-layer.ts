@@ -3,8 +3,9 @@ import type { Tour } from '@/features/tours/domain/entities/tour'
 import { toursToGeoJson } from '@/features/tours/domain/entities/tour'
 
 const SOURCE_ID = 'tours'
-const LAYER_ID = 'tours-circles'
-const SELECTED_LAYER_ID = 'tours-circles-selected'
+export const TOUR_LAYER_IDS = ['tours-circles', 'tours-circles-selected'] as const
+const LAYER_ID = TOUR_LAYER_IDS[0]
+const SELECTED_LAYER_ID = TOUR_LAYER_IDS[1]
 
 /**
  * Manages the MapLibre GL circle layers that represent tour markers.

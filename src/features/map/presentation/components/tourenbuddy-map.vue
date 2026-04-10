@@ -6,11 +6,12 @@ import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { SWISSTOPO_STYLES } from '@/features/map/data/swisstopo-styles'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
-import { useToursMarkerLayer } from './tours-marker-layer'
+import { TOUR_LAYER_IDS, useToursMarkerLayer } from './tours-marker-layer'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
 const emit = defineEmits<{
   tourClicked: [tourId: string]
+  mapBackgroundClick: []
 }>()
 
 const mapContainer = ref<HTMLDivElement | null>(null)
@@ -46,6 +47,17 @@ onMounted(() => {
     })
     markerLayer.setup()
     markerLayer.updateTours(tours.value, selectedTourId.value)
+
+    // Emit mapBackgroundClick when the user clicks the map outside any tour marker.
+    // MapLibre's 'click' event only fires on discrete taps, not on pan/zoom gestures.
+    mapInstance!.on('click', (e) => {
+      const hits = mapInstance!.queryRenderedFeatures(e.point, {
+        layers: [...TOUR_LAYER_IDS],
+      })
+      if (hits.length === 0) {
+        emit('mapBackgroundClick')
+      }
+    })
   })
 })
 
