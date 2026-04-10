@@ -108,6 +108,10 @@ After completing all artifacts, summarize:
 - **IMPORTANT**: `context` and `rules` are constraints for YOU, not content for the file
   - Do NOT copy `<context>`, `<rules>`, `<project_context>` blocks into the artifact
   - These guide what you write, but should never appear in the output
+- **MANDATORY for tasks.md**: The task list MUST ALWAYS include Git workflow tasks:
+  - The FIRST task group MUST be "Git Setup" with a task to create a feature branch from latest `main` (`git fetch origin && git checkout main && git pull && git checkout -b feat/<issue-number>-<description>`)
+  - The LAST task group MUST be "Finalize" with tasks for: running lint + format, prompting the user to commit with a ready-to-copy conventional commit message, and prompting the user to push and create a PR
+  - NEVER omit these — they are part of every implementation workflow
 
 **Guardrails**
 

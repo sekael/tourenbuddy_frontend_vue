@@ -150,6 +150,7 @@ What would you like to do?
 - Update task checkbox immediately after completing each task
 - Pause on errors, blockers, or unclear requirements - don't guess
 - Use contextFiles from CLI output, don't assume specific file names
+- **Git workflow is MANDATORY**: If the tasks list includes a "Git Setup" task (branch creation), it MUST be executed FIRST before any code changes. If the tasks list includes a "Finalize" task group (lint, format, commit, PR), those MUST be executed at the end. NEVER skip git workflow tasks. If the tasks file is missing git workflow tasks, add them before proceeding.
 
 **Fluid Workflow Integration**
 
