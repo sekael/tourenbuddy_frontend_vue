@@ -72,3 +72,35 @@ Input fields SHALL have a clean border style with `--color-outline-variant` bord
 
 - **WHEN** an input field receives focus
 - **THEN** the border color transitions smoothly to `--color-primary`
+
+### Requirement: Consistent modal bottom sheet contract
+
+All modal bottom sheet components in the application SHALL follow a consistent contract: they SHALL accept an `open` (or `modelValue`) boolean prop, emit a `close` event when dismissed, and support backdrop-click dismissal from their parent container.
+
+#### Scenario: Sheet accepts open prop
+
+- **WHEN** a parent renders a bottom sheet component with `:open="true"`
+- **THEN** the sheet SHALL be visible
+
+#### Scenario: Sheet emits close on dismiss
+
+- **WHEN** the user triggers a dismiss action (close button, backdrop click, or Escape key)
+- **THEN** the sheet component SHALL emit a `close` event
+- **AND** the parent SHALL be responsible for updating the controlling state
+
+#### Scenario: Sheet does not own its own visibility
+
+- **WHEN** a sheet component receives `:open="false"`
+- **THEN** the sheet SHALL not render or be hidden
+- **AND** the sheet SHALL NOT toggle its own visibility internally
+
+#### Scenario: Backdrop provided by parent
+
+- **WHEN** a sheet is open
+- **THEN** the map page (or parent container) SHALL render a full-screen transparent backdrop element behind the sheet
+- **AND** the backdrop SHALL forward click events to the sheet's close handler
+
+#### Scenario: All existing sheets conform to contract
+
+- **WHEN** `UserProfileSheet`, `ContactCreationSheet`, `FeedbackSheet`, and `TourInfoSheet` are reviewed
+- **THEN** each SHALL expose an `open`/`modelValue` prop and a `close` emit consistent with this contract
