@@ -23,6 +23,7 @@ A Vue tour-planning app for outdoor enthusiasts. Users pin tour objectives on a 
 - IMPORTANT: Before starting ANY new feature or task, ALWAYS create a new branch from latest `main`:
   `git fetch origin && git checkout main && git pull && git checkout -b feat/<issue-number>-<short-description>`
 - Branch naming: `feat/<issue-number>-<description>` or `fix/<issue-number>-<description>`, omit issue number if none is available
+- NEVER run `git commit`. ALWAYS prompt the user to commit changes and provide a ready-to-copy commit message following conventional commits.
 - Commit messages MUST FOLLOW conventional commits: `type(scope): description`
   - Types: feat, fix, refactor, test, docs, chore, style
 - Commits should be atomic — one logical change per commit
