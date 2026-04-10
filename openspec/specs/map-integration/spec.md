@@ -190,3 +190,49 @@ The map page SHALL own the visibility state of the Feedback sheet and SHALL rend
 
 - **WHEN** the `FeedbackSheet` emits its close event
 - **THEN** the map page SHALL set `showFeedbackSheet` to false and unmount the sheet
+
+### Requirement: Dismiss modal bottom sheets via map background click
+
+When a modal bottom sheet is open and the user clicks on the map background (outside the sheet), the sheet SHALL close, returning the user to the map view without performing any action.
+
+#### Scenario: Click outside closes open sheet
+
+- **WHEN** a modal bottom sheet (profile, contact creation, feedback, or tour detail) is open
+- **AND** the user clicks on the map background area outside the sheet
+- **THEN** the sheet SHALL dismiss (close)
+
+#### Scenario: Click inside sheet does not close it
+
+- **WHEN** a modal bottom sheet is open
+- **AND** the user clicks anywhere within the sheet content area
+- **THEN** the sheet SHALL remain open
+
+#### Scenario: Overlay backdrop receives click events
+
+- **WHEN** a modal bottom sheet is rendered
+- **THEN** the map page SHALL render a transparent backdrop overlay behind the sheet
+- **AND** clicks on the backdrop SHALL trigger the sheet's close action
+
+#### Scenario: Only one sheet closes at a time
+
+- **WHEN** a click on the map background occurs with exactly one sheet open
+- **THEN** only that sheet SHALL close
+- **AND** no other state changes SHALL occur
+
+#### Scenario: Escape key also closes sheet
+
+- **WHEN** a modal bottom sheet is open
+- **AND** the user presses the Escape key
+- **THEN** the sheet SHALL dismiss
+
+#### Scenario: Dismissal does not lose form data warning
+
+- **WHEN** a sheet with a form contains unsaved data
+- **AND** the user clicks outside the sheet
+- **THEN** the sheet SHALL close without additional confirmation (data loss is acceptable for MVP)
+
+#### Scenario: Sheet close emits close event
+
+- **WHEN** the map page closes a sheet in response to a backdrop click
+- **THEN** the sheet component SHALL emit its standard `close` event
+- **AND** the map page SHALL handle that event identically to an explicit close button press

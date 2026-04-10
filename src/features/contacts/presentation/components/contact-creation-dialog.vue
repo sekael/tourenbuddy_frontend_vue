@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import BottomSheet from '@/core/components/bottom-sheet.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 
 const emit = defineEmits<{ close: [] }>()
@@ -39,135 +40,62 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <div class="dialog-backdrop" @click.self="emit('close')">
-    <div class="dialog">
-      <div class="header">
-        <h2 class="title">
-          Add Contact
-        </h2>
-        <button class="close-btn" @click="emit('close')">
-          <span class="material-symbols-outlined">close</span>
-        </button>
+  <BottomSheet title="Add Contact" @close="emit('close')">
+    <form class="form" @submit.prevent="handleSubmit">
+      <div class="field">
+        <label class="label" for="firstName">First Name <span class="required">*</span></label>
+        <input
+          id="firstName"
+          v-model="firstName"
+          class="input"
+          type="text"
+          maxlength="50"
+          placeholder="First name"
+          required
+        >
       </div>
 
-      <form class="form" @submit.prevent="handleSubmit">
-        <div class="field">
-          <label class="label" for="firstName">First Name <span class="required">*</span></label>
-          <input
-            id="firstName"
-            v-model="firstName"
-            class="input"
-            type="text"
-            maxlength="50"
-            placeholder="First name"
-            required
-          >
-        </div>
+      <div class="field">
+        <label class="label" for="lastName">Last Name</label>
+        <input
+          id="lastName"
+          v-model="lastName"
+          class="input"
+          type="text"
+          maxlength="50"
+          placeholder="Last name (optional)"
+        >
+      </div>
 
-        <div class="field">
-          <label class="label" for="lastName">Last Name</label>
-          <input
-            id="lastName"
-            v-model="lastName"
-            class="input"
-            type="text"
-            maxlength="50"
-            placeholder="Last name (optional)"
-          >
-        </div>
+      <div class="field">
+        <label class="label" for="displayName">Display Name</label>
+        <input
+          id="displayName"
+          v-model="displayName"
+          class="input"
+          type="text"
+          maxlength="50"
+          placeholder="Nickname (optional)"
+        >
+      </div>
 
-        <div class="field">
-          <label class="label" for="displayName">Display Name</label>
-          <input
-            id="displayName"
-            v-model="displayName"
-            class="input"
-            type="text"
-            maxlength="50"
-            placeholder="Nickname (optional)"
-          >
-        </div>
+      <p v-if="error" class="error-text">
+        {{ error }}
+      </p>
 
-        <p v-if="error" class="error-text">
-          {{ error }}
-        </p>
-
-        <div class="actions">
-          <button type="button" class="cancel-btn" @click="emit('close')">
-            Cancel
-          </button>
-          <button type="submit" class="submit-btn" :disabled="isLoading">
-            {{ isLoading ? 'Saving...' : 'Add Contact' }}
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
+      <div class="actions">
+        <button type="button" class="cancel-btn" @click="emit('close')">
+          Cancel
+        </button>
+        <button type="submit" class="submit-btn" :disabled="isLoading">
+          {{ isLoading ? 'Saving...' : 'Add Contact' }}
+        </button>
+      </div>
+    </form>
+  </BottomSheet>
 </template>
 
 <style scoped>
-.dialog-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.35);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  z-index: 100;
-}
-
-@media (min-width: 600px) {
-  .dialog-backdrop {
-    align-items: center;
-  }
-}
-
-.dialog {
-  background-color: var(--color-background);
-  border: 1px solid var(--color-outline-variant);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  padding: var(--spacing-xl);
-  width: 100%;
-  max-width: 480px;
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-lg);
-  box-shadow: var(--shadow-lg);
-}
-
-@media (min-width: 600px) {
-  .dialog {
-    border-radius: var(--radius-lg);
-  }
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.title {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-semibold);
-}
-
-.close-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-on-surface-variant);
-}
-
-.close-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
 .form {
   display: flex;
   flex-direction: column;

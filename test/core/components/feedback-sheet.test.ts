@@ -47,4 +47,12 @@ describe('feedbackSheet', () => {
     expect(emailLink.exists()).toBe(true)
     expect(emailLink.text()).toBe(FEEDBACK_EMAIL)
   })
+
+  it('should emit close when the BottomSheet close button is clicked', async () => {
+    const wrapper = mount(FeedbackSheet)
+
+    await wrapper.find('.close-btn').trigger('click')
+
+    expect(wrapper.emitted('close')).toHaveLength(1)
+  })
 })

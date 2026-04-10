@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BottomSheet from '@/core/components/bottom-sheet.vue'
 import ErrorSnackbar from '@/core/components/error-snackbar.vue'
 import { useSnackbar } from '@/core/composables/use-snackbar'
 import { FEEDBACK_EMAIL, FEEDBACK_GITHUB_ISSUE_URL } from '@/core/constants/feedback'
@@ -23,33 +24,26 @@ function openIssue() {
 </script>
 
 <template>
-  <div class="sheet" role="dialog" aria-modal="true" aria-label="Feedback">
-    <button type="button" class="primary-btn" @click="openIssue">
-      Open Issue on GitHub
-    </button>
-    <p class="hint">
-      No GitHub account? Reach out at
-      <a :href="`mailto:${FEEDBACK_EMAIL}`" class="email-link">{{ FEEDBACK_EMAIL }}</a>
-    </p>
-    <button type="button" class="close-btn" @click="emit('close')">
-      Close
-    </button>
-  </div>
+  <BottomSheet title="Feedback" @close="emit('close')">
+    <div class="feedback-content">
+      <button type="button" class="primary-btn" @click="openIssue">
+        Open Issue on GitHub
+      </button>
+      <p class="hint">
+        No GitHub account? Reach out at
+        <a :href="`mailto:${FEEDBACK_EMAIL}`" class="email-link">{{ FEEDBACK_EMAIL }}</a>
+      </p>
+    </div>
+  </BottomSheet>
 
   <ErrorSnackbar :message="snackbar.message" :visible="snackbar.visible" @dismiss="dismiss" />
 </template>
 
 <style scoped>
-.sheet {
-  width: 100%;
-  max-width: 480px;
-  background-color: var(--color-surface);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  padding: var(--spacing-lg);
+.feedback-content {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
-  box-shadow: var(--shadow-lg);
 }
 
 .primary-btn {
@@ -77,14 +71,5 @@ function openIssue() {
 
 .email-link {
   color: var(--color-primary);
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  color: var(--color-on-surface-variant);
-  cursor: pointer;
-  padding: var(--spacing-sm);
-  align-self: center;
 }
 </style>

@@ -2,6 +2,7 @@
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
+import BottomSheet from '@/core/components/bottom-sheet.vue'
 import { resolveContactName } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 
@@ -31,18 +32,7 @@ const coordinates = computed(
 </script>
 
 <template>
-  <div class="sheet">
-    <div class="drag-handle" />
-
-    <div class="header">
-      <h2 class="title">
-        {{ displayName }}
-      </h2>
-      <button class="close-btn" @click="emit('close')">
-        <span class="material-symbols-outlined">close</span>
-      </button>
-    </div>
-
+  <BottomSheet :title="displayName" @close="emit('close')">
     <div class="details">
       <div v-if="formattedDate" class="detail-row">
         <span class="detail-icon material-symbols-outlined">calendar_today</span>
@@ -63,57 +53,10 @@ const coordinates = computed(
         </div>
       </div>
     </div>
-  </div>
+  </BottomSheet>
 </template>
 
 <style scoped>
-.sheet {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-lg);
-  padding: var(--spacing-sm) var(--spacing-xl) var(--spacing-xl);
-  background-color: var(--color-background);
-  border: 1px solid var(--color-outline-variant);
-  border-bottom: none;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  min-width: 300px;
-  box-shadow: var(--shadow-lg);
-}
-
-.drag-handle {
-  width: 36px;
-  height: 4px;
-  background-color: var(--color-outline-variant);
-  border-radius: 9999px;
-  align-self: center;
-  margin-bottom: var(--spacing-xs);
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.title {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-semibold);
-}
-
-.close-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-on-surface-variant);
-}
-
-.close-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
 .details {
   display: flex;
   flex-direction: column;
