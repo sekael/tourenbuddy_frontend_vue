@@ -67,6 +67,9 @@ A Vue tour-planning app for outdoor enthusiasts. Users pin tour objectives on a 
 - Wait for explicit user approval of the plan before implementing with `openspec-apply` skill
 - Prompt the user to archive a completed task with the `openspec-archive` skill
 - If a task seems simple but touches >3 files, still produce a brief plan
+- **Git workflow tasks are MANDATORY in every task list:**
+  - The FIRST task group MUST be "Git Setup" with a task to create a feature branch from latest `main` (using the `feat/<issue-number>-<description>` convention)
+  - The LAST task group MUST be "Finalize" with tasks for running lint/format, prompting the user to commit (with a ready-to-copy conventional commit message), and prompting the user to push and create a PR
 
 ## Project Structure
 
