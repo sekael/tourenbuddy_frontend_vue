@@ -17,7 +17,8 @@ export const useUserProfileStore = defineStore('userProfile', () => {
 
   async function loadProfile() {
     const userId = authStore.currentUser?.id
-    if (!userId) return
+    if (!userId)
+      return
 
     isLoading.value = true
     error.value = null
@@ -36,11 +37,13 @@ export const useUserProfileStore = defineStore('userProfile', () => {
       }
 
       profile.value = fetched
-    } catch (err) {
+    }
+    catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load profile'
       error.value = message
       logger.error('Failed to load user profile', err)
-    } finally {
+    }
+    finally {
       isLoading.value = false
     }
   }

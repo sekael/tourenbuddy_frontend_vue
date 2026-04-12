@@ -1,49 +1,49 @@
 # Project: TourenBuddy Frontend (Vue)
 
-A Vue tour-planning app for outdoor enthusiasts. Users pin tour objectives on a Swiss topographic map (Swisstopo), associate contacts as tour partners, and select planned dates.
+Vue tour-planning app for outdoor enthusiasts. Users pin tour objectives on Swiss topographic map (Swisstopo), associate contacts as tour partners, select planned dates.
 
 ## General Principles
 
-- Use subagents aggressively for tasks that can be delegated
-- Switch to Opus 4.6 for planning and thinking tasks, and when creating specifications, use Sonnet 4.6 for code implementation
+- Use subagents aggressively for delegatable tasks
+- Opus 4.6 for planning/thinking/specs, Sonnet 4.6 for code implementation
 - **Framework:** Vue 3 (latest stable) with TypeScript and `<script setup>` SFCs
 - **Build tool:** Vite (latest stable)
-- **Targets:** Web (primary, Cloudflare Pages), support for progressive web applications (PWA) via `vite-plugin-pwa`
-- **State management:** Pinia with composition API stores (`defineStore` with `setup` syntax)
-- **Routing:** Vue Router 4 with typed routes (`unplugin-vue-router`) and navigation guards for auth
+- **Targets:** Web (primary, Cloudflare Pages), PWA via `vite-plugin-pwa`
+- **State management:** Pinia composition API stores (`defineStore` setup syntax)
+- **Routing:** Vue Router 4 with typed routes (`unplugin-vue-router`) + auth navigation guards
 - **Backend:** Supabase (PostgreSQL + PostgREST + Auth via email/OTP) — use `@supabase/supabase-js` directly in composables/services, do NOT wrap with Axios
 - **Map:** MapLibre GL JS (`maplibre-gl`) with Swisstopo vector tiles (WMTS)
-- **Testing:** Vitest for unit/integration tests, Vue Test Utils for component tests, Playwright for E2E
-- **Linting:** ESLint with `@antfu/eslint-config` (strictest recommended config) + Prettier
-- **Logging:** Custom `useLogger` composable wrapping `consola` — no `console.log()` in production code
+- **Testing:** Vitest for unit/integration, Vue Test Utils for components, Playwright for E2E
+- **Linting:** ESLint with `@antfu/eslint-config` (strictest) + Prettier
+- **Logging:** Custom `useLogger` composable wrapping `consola` — no `console.log()` in production
 - **Validation:** Zod for runtime validation and type inference
 
 ## Git Workflow
 
-- IMPORTANT: Before starting ANY new feature or task, ALWAYS create a new branch from latest `main`:
+- IMPORTANT: Before ANY new feature or task, ALWAYS create branch from latest `main`:
   `git fetch origin && git checkout main && git pull && git checkout -b feat/<issue-number>-<short-description>`
-- Branch naming: `feat/<issue-number>-<description>` or `fix/<issue-number>-<description>`, omit issue number if none is available
-- NEVER run `git commit`. ALWAYS prompt the user to commit changes and provide a ready-to-copy commit message following conventional commits.
-- Commit messages MUST FOLLOW conventional commits: `type(scope): description`
+- Branch naming: `feat/<issue-number>-<description>` or `fix/<issue-number>-<description>`, omit issue number if none
+- NEVER run `git commit`. ALWAYS prompt user to commit + provide ready-to-copy conventional commit message
+- Commit messages MUST follow conventional commits: `type(scope): description`
   - Types: feat, fix, refactor, test, docs, chore, style
-- Commits should be atomic — one logical change per commit
-- Never commit directly to `main`
-- Versioning is automated by release-please — DO NOT MANUALLY edit version in package.json
+- Commits atomic — one logical change per commit
+- Never commit to `main`
+- Versioning automated by release-please — DO NOT MANUALLY edit version in package.json
 
 ## CI/CD Pipeline
 
-- **PR checks** (`analyze-and-test.yml`): lint check → type check → `vitest run` → Playwright (if configured)
+- **PR checks** (`analyze-and-test.yml`): lint → type check → `vitest run` → Playwright (if configured)
 - **Release** (`release.yml`): release-please auto-versions on merge to `main`
 - **Deploy** (`build-web-and-push.yml`): builds Vue app, deploys to Cloudflare Pages
-- CI creates a dummy `.env` — real env file is not committed
+- CI creates dummy `.env` — real env file not committed
 
 ## Environment Variables
 
-- All client-exposed variables MUST use the `VITE_` prefix (Vite requirement)
+- All client-exposed variables MUST use `VITE_` prefix (Vite requirement)
 - Required variables:
   - `VITE_SUPABASE_URL` — Supabase project URL
   - `VITE_SUPABASE_ANON_KEY` — Supabase anonymous/public key
-- Validate environment variables at app startup using Zod:
+- Validate env vars at app startup using Zod:
 
   ```ts
   import { z } from 'zod'
@@ -55,21 +55,21 @@ A Vue tour-planning app for outdoor enthusiasts. Users pin tour objectives on a 
   export const env = envSchema.parse(import.meta.env)
   ```
 
-- Never commit `.env` files — use `.env.example` as a template with placeholder values
-- Access validated env via the parsed `env` object, never `import.meta.env` directly in feature code
+- Never commit `.env` files — use `.env.example` with placeholder values
+- Access validated env via `env` object, never `import.meta.env` directly in feature code
 
 ## Planning & Thinking
 
 - IMPORTANT: For any new feature or non-trivial change, specification-driven development MUST ALWAYS be applied
 - Start with OpenSpec skills:
-  - **DEFAULT**: `openspec-propose` to propose a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.
-  - `openspec-explore` to enter explore mode - a thinking partner for exploring ideas, investigating problems, and clarifying requirements. Use when the user wants to think through something before or during a change.
-- Wait for explicit user approval of the plan before implementing with `openspec-apply` skill
-- Prompt the user to archive a completed task with the `openspec-archive` skill
-- If a task seems simple but touches >3 files, still produce a brief plan
-- **Git workflow tasks are MANDATORY in every task list:**
-  - The FIRST task group MUST be "Git Setup" with a task to create a feature branch from latest `main` (using the `feat/<issue-number>-<description>` convention)
-  - The LAST task group MUST be "Finalize" with tasks for running lint/format, prompting the user to commit (with a ready-to-copy conventional commit message), and prompting the user to push and create a PR
+  - **DEFAULT**: `openspec-propose` — propose change with all artifacts in one step. Use when user wants to describe what to build and get complete proposal with design, specs, tasks.
+  - `openspec-explore` — thinking partner for exploring ideas, investigating problems, clarifying requirements. Use when user wants to think through something before/during a change.
+- Wait for explicit user approval before implementing with `openspec-apply` skill
+- Prompt user to archive completed task with `openspec-archive` skill
+- Simple task touching >3 files → still produce brief plan
+- **Git workflow tasks MANDATORY in every task list:**
+  - FIRST task group MUST be "Git Setup" with branch creation from latest `main` (`feat/<issue-number>-<description>`)
+  - LAST task group MUST be "Finalize" with lint/format, prompt user to commit (ready-to-copy message), prompt user to push and create PR
 
 ## Project Structure
 
@@ -143,9 +143,9 @@ UI (Vue Component)
         → Supabase (remote) or IndexedDB (local cache)
 ```
 
-- Repositories are the single source of truth — stores never call Supabase directly
-- Zod schemas (in `data/models/`) validate and type API JSON, mapping to domain entities
-- Domain entities (in `domain/entities/`) are pure TypeScript, no framework dependencies
+- Repositories single source of truth — stores never call Supabase directly
+- Zod schemas (`data/models/`) validate + type API JSON, map to domain entities
+- Domain entities (`domain/entities/`) pure TypeScript, no framework deps
 
 ## Key Commands
 
@@ -178,61 +178,61 @@ npm run format
 - ALWAYS run `npm run format` before committing (CI checks formatting)
 - Use `<script setup lang="ts">` for all Vue components
 - Prefer `defineProps` with type-only syntax: `defineProps<{ title: string }>()`
-- Public APIs should have a JSDoc comment (`/** */`)
+- Public APIs: JSDoc comment (`/** */`)
 - File names: `kebab-case.vue` for components, `kebab-case.ts` for modules. Types/interfaces: `PascalCase`
 - One component per file. Keep components under 150 lines; extract sub-components
-- No `console.log()` in production code — use the logger composable
+- No `console.log()` in production — use logger composable
 - Handle errors with store state (`loading`, `error`, `data` refs) — never swallow exceptions
 - Use `computed()` for derived state, `watch()` / `watchEffect()` for side effects
 
 ### Pinia Patterns
 
-- Use composition API (`setup`) stores for all stores: `defineStore('name', () => { ... })`
-- Use `ref()` for reactive state, `computed()` for getters, plain functions for actions
-- Use `storeToRefs()` in components to destructure store state reactively
-- Stores live in `features/<name>/presentation/stores/`
-- Mock stores in tests using `createTestingPinia()` from `@pinia/testing`
-- Repository dependencies injected via `provide/inject` or store factory functions
+- Composition API (`setup`) stores only: `defineStore('name', () => { ... })`
+- `ref()` for reactive state, `computed()` for getters, plain functions for actions
+- `storeToRefs()` in components to destructure store state reactively
+- Stores in `features/<name>/presentation/stores/`
+- Mock stores in tests via `createTestingPinia()` from `@pinia/testing`
+- Repository deps injected via `provide/inject` or store factory functions
 
 ### Routing Patterns
 
-- All routes defined in `src/app/router/`
-- Use file-based typed routes via `unplugin-vue-router` for type-safe navigation
-- Auth redirect logic in Vue Router's `beforeEach` guard, reactive to Pinia auth store
-- Use nested routes with `<RouterView>` for persistent navigation shells
-- Modal sheets and dialogs presented imperatively from within page components, not as routes
+- All routes in `src/app/router/`
+- File-based typed routes via `unplugin-vue-router` for type-safe navigation
+- Auth redirect logic in Vue Router `beforeEach` guard, reactive to Pinia auth store
+- Nested routes with `<RouterView>` for persistent navigation shells
+- Modal sheets/dialogs presented imperatively from page components, not as routes
 
 ### PWA & Offline
 
-- Configure `vite-plugin-pwa` with `registerType: 'prompt'` to let users control updates
-- **Precache**: App shell and static assets via Workbox `generateSW`
-- **Runtime cache**: Swisstopo map tiles with `StaleWhileRevalidate` strategy for offline map access
+- Configure `vite-plugin-pwa` with `registerType: 'prompt'` — let users control updates
+- **Precache**: App shell + static assets via Workbox `generateSW`
+- **Runtime cache**: Swisstopo map tiles with `StaleWhileRevalidate` for offline map access
 - **Data**: IndexedDB for local tour/contact data; sync with Supabase when online
 - **Manifest**: Configured in `vite-plugin-pwa` options — include app name, icons, theme color, start URL
 - See `.claude/ARCHITECTURE.md` for detailed offline sync architecture
 
 ### Styling & Theming
 
-- **CSS custom properties** for theming with an orange seed color palette
-- Use platform detection (`navigator.userAgent` or `@vueuse/core` `useMediaQuery`) for platform-specific styling
-- **Design tokens** as CSS custom properties: spacing (xxs through xxl), radius (sm, md, lg)
-- Responsive design with CSS container queries and `@vueuse/core` `useBreakpoints`
+- **CSS custom properties** for theming with orange seed color palette
+- Platform detection (`navigator.userAgent` or `@vueuse/core` `useMediaQuery`) for platform-specific styling
+- **Design tokens** as CSS custom properties: spacing (xxs–xxl), radius (sm, md, lg)
+- Responsive design with CSS container queries + `@vueuse/core` `useBreakpoints`
 - Typography via CSS custom properties — use `var(--font-*)` consistently
-- Scoped styles (`<style scoped>`) by default; use CSS modules for complex component styling
+- Scoped styles (`<style scoped>`) by default; CSS modules for complex component styling
 - Prefer native CSS features (nesting, `:has()`, container queries) over preprocessors
 
 ## Testing Requirements
 
-- Minimum test types per feature: unit tests for domain/data logic, component tests for UI
-- Use Vitest built-in mocking for dependency mocking — mock abstract repository interfaces, never concrete implementations
-- Test Pinia stores using `createTestingPinia()` for component tests and direct store instantiation for unit tests
+- Min test types per feature: unit tests for domain/data logic, component tests for UI
+- Vitest built-in mocking for deps — mock abstract repository interfaces, never concrete implementations
+- Test Pinia stores via `createTestingPinia()` for component tests, direct store instantiation for unit tests
 - Test file location mirrors source: `src/features/tours/...` → `test/features/tours/...`
-- Name tests descriptively: `'should return user when credentials are valid'`
+- Descriptive test names: `'should return user when credentials are valid'`
 - Run `npm run test` after every implementation — all tests must pass
 
 ## Important Context
 
-- The app uses Supabase free tier — expect higher latency on auth operations
-- Swisstopo provides free WMTS vector tiles without API key — MapLibre GL JS handles these natively
-- Backlog tracked at: https://github.com/users/sekael/projects/1
-- This project values thoughtful, intentional development — understand code before changing it, keep PRs small and reviewable
+- App uses Supabase free tier — expect higher latency on auth operations
+- Swisstopo provides free WMTS vector tiles without API key — MapLibre GL JS handles natively
+- Backlog: https://github.com/users/sekael/projects/1
+- Project values thoughtful, intentional development — understand code before changing, keep PRs small + reviewable
