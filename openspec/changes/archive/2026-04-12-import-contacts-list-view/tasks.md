@@ -23,5 +23,5 @@
 
 - [x] 5.1 Run `npm run lint` and `npm run format` — fix any issues
 - [x] 5.2 Run `npm run test` — all tests pass
-- [ ] 5.3 Prompt user to commit with message: `feat(contacts): show import results list after contact import (#62)`
-- [ ] 5.4 Prompt user to push branch and create PR
+- [x] 5.3 Prompt user to commit with message: `feat(contacts): show import results list after contact import (#62)`
+- [x] 5.4 Prompt user to push branch and create PR
