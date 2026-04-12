@@ -9,7 +9,7 @@ export const contactRowSchema = z
     last_name: z.string().nullable(),
     display_name: z.string().nullable(),
   })
-  .transform((row) => ({
+  .transform(row => ({
     id: row.id,
     userId: row.user_id,
     firstName: row.first_name,

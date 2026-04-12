@@ -1,6 +1,5 @@
 import { createPinia } from 'pinia'
-import { watch } from 'vue'
-import { createApp } from 'vue'
+import { createApp, watch } from 'vue'
 import App from './App.vue'
 import router, { setupRouterGuards } from './app/router'
 import { useAuthStore } from './features/auth/presentation/stores/auth-store'
@@ -27,7 +26,8 @@ async function bootstrap() {
   watch(
     () => authStore.isAuthenticated,
     async (isAuth) => {
-      if (isAuth) await profileStore.loadProfile()
+      if (isAuth)
+        await profileStore.loadProfile()
       else profileStore.clear()
     },
   )

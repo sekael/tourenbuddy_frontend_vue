@@ -32,7 +32,7 @@ const showFeedbackSheet = ref(false)
 const showProfileSheet = ref(false)
 const showContactDialog = ref(false)
 const showTourCreationDialog = ref(false)
-const pendingLocation = ref<{ lng: number; lat: number } | null>(null)
+const pendingLocation = ref<{ lng: number, lat: number } | null>(null)
 
 const selectedTour = ref<(typeof tours.value)[0] | null>(null)
 const sheetContainerRef = ref<HTMLElement | null>(null)
@@ -47,7 +47,7 @@ onMounted(async () => {
 
 watch(selectedTourId, async (id) => {
   if (id) {
-    selectedTour.value = tours.value.find((t) => t.id === id) ?? null
+    selectedTour.value = tours.value.find(t => t.id === id) ?? null
     if (selectedTour.value) {
       // Wait for the sheet/drawer to render so we can offset the camera.
       // On mobile: pad bottom by sheet height so the marker stays above the sheet.
@@ -63,7 +63,8 @@ watch(selectedTourId, async (id) => {
         padding,
       })
     }
-  } else {
+  }
+  else {
     selectedTour.value = null
   }
 })
@@ -72,7 +73,7 @@ function handleTourClicked(tourId: string) {
   mapStore.selectTour(tourId)
 }
 
-function handleLocationConfirmed(location: { lng: number; lat: number }) {
+function handleLocationConfirmed(location: { lng: number, lat: number }) {
   pendingLocation.value = location
   mapStore.setPickingLocation(false)
   showTourCreationDialog.value = true
@@ -96,7 +97,8 @@ function handleMapBackgroundClick() {
 }
 
 async function handleTourCreated(draft: TourDraft) {
-  if (!pendingLocation.value) return
+  if (!pendingLocation.value)
+    return
   showTourCreationDialog.value = false
   await toursStore.createTourFromDraft(draft, pendingLocation.value)
   pendingLocation.value = null
