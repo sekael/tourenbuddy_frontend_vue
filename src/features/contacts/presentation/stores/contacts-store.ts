@@ -18,18 +18,21 @@ export const useContactsStore = defineStore('contacts', () => {
   const error = ref<string | null>(null)
 
   async function loadContacts() {
-    if (!authStore.isAuthenticated) return
+    if (!authStore.isAuthenticated)
+      return
 
     isLoading.value = true
     error.value = null
 
     try {
       contacts.value = await repository.fetchContacts()
-    } catch (err) {
+    }
+    catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load contacts'
       error.value = message
       logger.error('Failed to load contacts', err)
-    } finally {
+    }
+    finally {
       isLoading.value = false
     }
   }
@@ -41,7 +44,8 @@ export const useContactsStore = defineStore('contacts', () => {
     phoneNumber?: string | null,
   ) {
     const userId = authStore.currentUser?.id
-    if (!userId) return
+    if (!userId)
+      return
 
     const contact = await repository.createContact({
       userId,

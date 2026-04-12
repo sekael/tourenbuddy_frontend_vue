@@ -19,7 +19,8 @@ export const useUserProfileStore = defineStore('userProfile', () => {
 
   /** Unified view of profile table + auth.users data. */
   const fullProfile = computed<FullUserProfile | null>(() => {
-    if (!profile.value || !authStore.currentUser) return null
+    if (!profile.value || !authStore.currentUser)
+      return null
     return {
       id: profile.value.id,
       firstName: profile.value.firstName,
@@ -32,7 +33,8 @@ export const useUserProfileStore = defineStore('userProfile', () => {
 
   async function loadProfile() {
     const userId = authStore.currentUser?.id
-    if (!userId) return
+    if (!userId)
+      return
 
     isLoading.value = true
     error.value = null
@@ -49,18 +51,21 @@ export const useUserProfileStore = defineStore('userProfile', () => {
       }
 
       profile.value = fetched
-    } catch (err) {
+    }
+    catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load profile'
       error.value = message
       logger.error('Failed to load user profile', err)
-    } finally {
+    }
+    finally {
       isLoading.value = false
     }
   }
 
   async function updateProfile(fields: Partial<Omit<UserProfile, 'id'>>) {
     const userId = authStore.currentUser?.id
-    if (!userId || !profile.value) return
+    if (!userId || !profile.value)
+      return
 
     isLoading.value = true
     error.value = null
@@ -72,19 +77,22 @@ export const useUserProfileStore = defineStore('userProfile', () => {
         id: userId,
       })
       profile.value = updated
-    } catch (err) {
+    }
+    catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update profile'
       error.value = message
       logger.error('Failed to update user profile', err)
       throw err
-    } finally {
+    }
+    finally {
       isLoading.value = false
     }
   }
 
   async function sendPhoneVerification(phone: string) {
     const { error: updateError } = await supabase.auth.updateUser({ phone })
-    if (updateError) throw new Error(updateError.message)
+    if (updateError)
+      throw new Error(updateError.message)
   }
 
   async function verifyPhone(phone: string, token: string) {
@@ -93,7 +101,8 @@ export const useUserProfileStore = defineStore('userProfile', () => {
       token,
       type: 'phone_change',
     })
-    if (verifyError) throw new Error(verifyError.message)
+    if (verifyError)
+      throw new Error(verifyError.message)
   }
 
   const sessionSkipped = ref(false)

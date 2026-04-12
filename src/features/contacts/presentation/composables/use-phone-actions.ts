@@ -12,13 +12,15 @@ function stripToDialable(phone: string): string {
 export function usePhoneActions(phoneNumber: MaybeRef<string | null>) {
   const telLink = computed(() => {
     const phone = toValue(phoneNumber)
-    if (!phone) return null
+    if (!phone)
+      return null
     return `tel:${stripToDialable(phone)}`
   })
 
   const whatsAppLink = computed(() => {
     const phone = toValue(phoneNumber)
-    if (!phone) return null
+    if (!phone)
+      return null
     // wa.me requires digits only, no +
     const digits = phone.replace(/\D/g, '')
     return `https://wa.me/${digits}`

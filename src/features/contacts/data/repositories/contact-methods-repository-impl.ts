@@ -20,7 +20,8 @@ export class ContactMethodsRepositoryImpl implements ContactMethodsRepository {
       .select()
       .single()
 
-    if (error) throw new Error(error.message)
+    if (error)
+      throw new Error(error.message)
 
     return contactMethodRowSchema.parse(data)
   }
@@ -28,6 +29,7 @@ export class ContactMethodsRepositoryImpl implements ContactMethodsRepository {
   async removeMethod(methodId: string): Promise<void> {
     const { error } = await supabase.from('contact_methods').delete().eq('id', methodId)
 
-    if (error) throw new Error(error.message)
+    if (error)
+      throw new Error(error.message)
   }
 }

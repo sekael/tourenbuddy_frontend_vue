@@ -26,9 +26,11 @@ async function handleVerify() {
   try {
     await authStore.verifyOtp(email, otp.value.trim())
     router.push({ name: 'map' })
-  } catch (err) {
+  }
+  catch (err) {
     error.value = err instanceof Error ? err.message : 'Invalid code. Please try again.'
-  } finally {
+  }
+  finally {
     isLoading.value = false
   }
 }
@@ -39,9 +41,11 @@ async function handleResend() {
   try {
     await authStore.sendEmailOtp(email)
     resendSuccess.value = true
-  } catch {
+  }
+  catch {
     error.value = 'Failed to resend code. Please try again.'
-  } finally {
+  }
+  finally {
     isResending.value = false
   }
 }
@@ -54,7 +58,9 @@ async function handleResend() {
         <span class="material-symbols-outlined">arrow_back</span>
         Back
       </button>
-      <h1 class="title">Check your email</h1>
+      <h1 class="title">
+        Check your email
+      </h1>
       <p class="subtitle">
         We sent a login code to <strong>{{ email }}</strong>
       </p>
@@ -71,13 +77,15 @@ async function handleResend() {
             autocomplete="one-time-code"
             maxlength="8"
             required
-          />
+          >
         </div>
 
         <p v-if="error" class="error-text">
           {{ error }}
         </p>
-        <p v-if="resendSuccess" class="success-text">Code resent! Check your email.</p>
+        <p v-if="resendSuccess" class="success-text">
+          Code resent! Check your email.
+        </p>
 
         <button type="submit" class="submit-btn" :disabled="isLoading">
           {{ isLoading ? 'Verifying...' : 'Verify Code' }}

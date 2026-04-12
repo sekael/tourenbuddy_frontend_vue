@@ -10,9 +10,10 @@ export class ContactsRepositoryImpl implements ContactsRepository {
       .select('*, contact_methods(*)')
       .order('first_name', { ascending: true })
 
-    if (error) throw new Error(error.message)
+    if (error)
+      throw new Error(error.message)
 
-    return (data ?? []).map((row) => contactRowSchema.parse(row))
+    return (data ?? []).map(row => contactRowSchema.parse(row))
   }
 
   async createContact(contact: Omit<Contact, 'id' | 'contactMethods'>): Promise<Contact> {
@@ -27,7 +28,8 @@ export class ContactsRepositoryImpl implements ContactsRepository {
       .select('*, contact_methods(*)')
       .single()
 
-    if (error) throw new Error(error.message)
+    if (error)
+      throw new Error(error.message)
 
     return contactRowSchema.parse(data)
   }
