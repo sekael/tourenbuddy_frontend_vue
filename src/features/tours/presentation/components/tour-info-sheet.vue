@@ -3,6 +3,8 @@ import type { Tour } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
+import SideDrawer from '@/core/components/side-drawer.vue'
+import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { resolveContactName } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 
@@ -11,6 +13,7 @@ const emit = defineEmits<{ close: [] }>()
 
 const contactsStore = useContactsStore()
 const { contacts } = storeToRefs(contactsStore)
+const isDesktop = useIsDesktop()
 
 const displayName = computed(() => props.tour.name ?? 'Unnamed tour')
 
@@ -32,7 +35,7 @@ const coordinates = computed(
 </script>
 
 <template>
-  <BottomSheet :title="displayName" @close="emit('close')">
+  <component :is="isDesktop ? SideDrawer : BottomSheet" :title="displayName" @close="emit('close')">
     <div class="details">
       <div v-if="formattedDate" class="detail-row">
         <span class="detail-icon material-symbols-outlined">calendar_today</span>
@@ -53,7 +56,7 @@ const coordinates = computed(
         </div>
       </div>
     </div>
-  </BottomSheet>
+  </component>
 </template>
 
 <style scoped>

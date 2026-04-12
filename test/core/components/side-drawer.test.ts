@@ -1,0 +1,90 @@
+import { mount } from '@vue/test-utils'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import SideDrawer from '@/core/components/side-drawer.vue'
+
+function mockMatchMedia(matches: boolean) {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  })
+}
+
+describe('sideDrawer', () => {
+  describe('on desktop (>=600px)', () => {
+    beforeEach(() => {
+      mockMatchMedia(true)
+    })
+
+    it('should render the drawer panel with title', () => {
+      const wrapper = mount(SideDrawer, { props: { title: 'Tour Details' } })
+      expect(wrapper.find('.side-drawer').exists()).toBe(true)
+      expect(wrapper.find('h2').text()).toBe('Tour Details')
+    })
+
+    it('should render a close button', () => {
+      const wrapper = mount(SideDrawer, { props: { title: 'Test' } })
+      expect(wrapper.find('.close-btn').exists()).toBe(true)
+      expect(wrapper.find('.close-btn').attributes('aria-label')).toBe('Close')
+    })
+
+    it('should emit close when the close button is clicked', async () => {
+      const wrapper = mount(SideDrawer, { props: { title: 'Test' } })
+      await wrapper.find('.close-btn').trigger('click')
+      expect(wrapper.emitted('close')).toHaveLength(1)
+    })
+
+    it('should render slot content', () => {
+      const wrapper = mount(SideDrawer, {
+        props: { title: 'Test' },
+        slots: { default: '<p class="slot-content">Tour info here</p>' },
+      })
+      expect(wrapper.find('.slot-content').exists()).toBe(true)
+      expect(wrapper.find('.slot-content').text()).toBe('Tour info here')
+    })
+
+    it('should not render a BottomSheet on desktop', () => {
+      const wrapper = mount(SideDrawer, { props: { title: 'Test' } })
+      expect(wrapper.find('.bottom-sheet').exists()).toBe(false)
+      expect(wrapper.find('.side-drawer').exists()).toBe(true)
+    })
+
+    it('should have role="dialog" and aria-modal="true"', () => {
+      const wrapper = mount(SideDrawer, { props: { title: 'Test' } })
+      const drawer = wrapper.find('.side-drawer')
+      expect(drawer.attributes('role')).toBe('dialog')
+      expect(drawer.attributes('aria-modal')).toBe('true')
+    })
+  })
+
+  describe('on mobile (<600px)', () => {
+    beforeEach(() => {
+      mockMatchMedia(false)
+    })
+
+    it('should render a BottomSheet on mobile', () => {
+      const wrapper = mount(SideDrawer, { props: { title: 'Test' } })
+      expect(wrapper.find('.bottom-sheet').exists()).toBe(true)
+      expect(wrapper.find('.side-drawer').exists()).toBe(false)
+    })
+
+    it('should pass title to the BottomSheet on mobile', () => {
+      const wrapper = mount(SideDrawer, { props: { title: 'Mobile Tour' } })
+      expect(wrapper.find('h2').text()).toBe('Mobile Tour')
+    })
+
+    it('should emit close from the BottomSheet close button on mobile', async () => {
+      const wrapper = mount(SideDrawer, { props: { title: 'Test' } })
+      await wrapper.find('.close-btn').trigger('click')
+      expect(wrapper.emitted('close')).toHaveLength(1)
+    })
+  })
+})

@@ -3,6 +3,7 @@ import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
 import { nextTick, onMounted, ref, watch } from 'vue'
 import FeedbackSheet from '@/core/components/feedback-sheet.vue'
+import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import ContactCreationDialog from '@/features/contacts/presentation/components/contact-creation-dialog.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import LocationPicker from '@/features/map/presentation/components/location-picker.vue'
@@ -19,6 +20,7 @@ const mapStore = useMapStore()
 const toursStore = useToursStore()
 const contactsStore = useContactsStore()
 const userProfileStore = useUserProfileStore()
+const isDesktop = useIsDesktop()
 
 const { isPickingLocation, selectedTourId } = storeToRefs(mapStore)
 const { tours } = storeToRefs(toursStore)
@@ -47,15 +49,18 @@ watch(selectedTourId, async (id) => {
   if (id) {
     selectedTour.value = tours.value.find(t => t.id === id) ?? null
     if (selectedTour.value) {
-      // Wait for the sheet to render so we can measure its height and offset
-      // the map camera, keeping the tour position centered above the sheet.
+      // Wait for the sheet/drawer to render so we can offset the camera.
+      // On mobile: pad bottom by sheet height so the marker stays above the sheet.
+      // On desktop: pad right by drawer width so the marker stays in the visible map area.
       await nextTick()
-      const sheetHeight = sheetContainerRef.value?.offsetHeight ?? 0
+      const padding = isDesktop.value
+        ? { top: 0, right: 400, bottom: 0, left: 0 }
+        : { top: 0, right: 0, bottom: sheetContainerRef.value?.offsetHeight ?? 0, left: 0 }
       mapRef.value?.map?.flyTo({
         center: [selectedTour.value.goal.lng, selectedTour.value.goal.lat],
         zoom: 12,
         duration: 1000,
-        padding: { top: 0, right: 0, bottom: sheetHeight, left: 0 },
+        padding,
       })
     }
   }
@@ -121,7 +126,7 @@ async function handleTourCreated(draft: TourDraft) {
       @cancel="handleLocationCancelled"
     />
 
-    <!-- Tour info sheet (slide-up when tour selected) -->
+    <!-- Tour info sheet (mobile: slide-up, desktop: side drawer slides in from right) -->
     <Transition name="sheet">
       <div v-if="selectedTour" ref="sheetContainerRef" class="sheet-container">
         <TourInfoSheet :tour="selectedTour" @close="closeTourInfo" />
@@ -184,5 +189,20 @@ async function handleTourCreated(draft: TourDraft) {
 .sheet-enter-from,
 .sheet-leave-to {
   transform: translateY(100%);
+}
+
+/* Desktop: fade transition — no transform to avoid confining the component's
+   position:fixed backdrop or drawer to a new stacking context */
+@media (min-width: 600px) {
+  .sheet-enter-active,
+  .sheet-leave-active {
+    transition: opacity 0.2s ease;
+  }
+
+  .sheet-enter-from,
+  .sheet-leave-to {
+    transform: none;
+    opacity: 0;
+  }
 }
 </style>
