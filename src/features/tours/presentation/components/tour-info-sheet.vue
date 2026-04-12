@@ -5,7 +5,7 @@ import { computed } from 'vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
-import { resolveContactName } from '@/features/contacts/domain/entities/contact'
+import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 
 const props = defineProps<{ tour: Tour }>()
@@ -18,8 +18,7 @@ const isDesktop = useIsDesktop()
 const displayName = computed(() => props.tour.name ?? 'Unnamed tour')
 
 const formattedDate = computed(() => {
-  if (!props.tour.plannedDate)
-    return null
+  if (!props.tour.plannedDate) return null
   return new Intl.DateTimeFormat(undefined, {
     year: 'numeric',
     month: 'long',
@@ -27,7 +26,7 @@ const formattedDate = computed(() => {
   }).format(props.tour.plannedDate)
 })
 
-const partners = computed(() => contacts.value.filter(c => props.tour.partnerIds.includes(c.id)))
+const partners = computed(() => contacts.value.filter((c) => props.tour.partnerIds.includes(c.id)))
 
 const coordinates = computed(
   () => `${props.tour.goal.lat.toFixed(4)}°N, ${props.tour.goal.lng.toFixed(4)}°E`,
@@ -50,9 +49,14 @@ const coordinates = computed(
       <div v-if="partners.length > 0" class="detail-row partners-row">
         <span class="detail-icon material-symbols-outlined">group</span>
         <div class="partner-chips">
-          <span v-for="partner in partners" :key="partner.id" class="partner-chip">
-            {{ resolveContactName(partner) }}
-          </span>
+          <ContactChip
+            v-for="partner in partners"
+            :key="partner.id"
+            :contact="partner"
+            :selected="false"
+            :show-actions="true"
+            @toggle="() => {}"
+          />
         </div>
       </div>
     </div>
@@ -93,15 +97,5 @@ const coordinates = computed(
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-xs);
-}
-
-.partner-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px var(--spacing-sm);
-  border-radius: var(--radius-lg);
-  background-color: var(--color-surface-variant);
-  color: var(--color-on-surface-variant);
-  font-size: var(--font-size-sm);
 }
 </style>

@@ -3,9 +3,11 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useLogger } from '@/core/logging/use-logger'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
+import { ContactMethodsRepositoryImpl } from '@/features/contacts/data/repositories/contact-methods-repository-impl'
 import { ContactsRepositoryImpl } from '@/features/contacts/data/repositories/contacts-repository-impl'
 
 const repository = new ContactsRepositoryImpl()
+const contactMethodsRepository = new ContactMethodsRepositoryImpl()
 
 export const useContactsStore = defineStore('contacts', () => {
   const logger = useLogger('ContactsStore')
@@ -16,21 +18,18 @@ export const useContactsStore = defineStore('contacts', () => {
   const error = ref<string | null>(null)
 
   async function loadContacts() {
-    if (!authStore.isAuthenticated)
-      return
+    if (!authStore.isAuthenticated) return
 
     isLoading.value = true
     error.value = null
 
     try {
       contacts.value = await repository.fetchContacts()
-    }
-    catch (err) {
+    } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load contacts'
       error.value = message
       logger.error('Failed to load contacts', err)
-    }
-    finally {
+    } finally {
       isLoading.value = false
     }
   }
@@ -39,10 +38,10 @@ export const useContactsStore = defineStore('contacts', () => {
     firstName: string,
     lastName?: string | null,
     displayName?: string | null,
+    phoneNumber?: string | null,
   ) {
     const userId = authStore.currentUser?.id
-    if (!userId)
-      return
+    if (!userId) return
 
     const contact = await repository.createContact({
       userId,
@@ -50,6 +49,15 @@ export const useContactsStore = defineStore('contacts', () => {
       lastName: lastName?.trim() || null,
       displayName: displayName?.trim() || null,
     })
+
+    if (phoneNumber?.trim()) {
+      const method = await contactMethodsRepository.addMethod(contact.id, {
+        methodType: 'phone',
+        value: phoneNumber.trim(),
+        isPrimary: true,
+      })
+      contact.contactMethods.push(method)
+    }
 
     contacts.value = [...contacts.value, contact].sort((a, b) =>
       a.firstName.localeCompare(b.firstName),
