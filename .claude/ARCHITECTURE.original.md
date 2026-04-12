@@ -1,6 +1,6 @@
 # Architecture Overview
 
-Doc cover arch decisions + patterns **not already in CLAUDE.md**. Structure, conventions, styling, testing, data flow → see CLAUDE.md.
+This document covers architectural decisions and patterns **not already documented in CLAUDE.md**. For project structure, conventions, styling, testing, and data flow, see CLAUDE.md.
 
 ## Layered Architecture
 
@@ -22,7 +22,7 @@ Doc cover arch decisions + patterns **not already in CLAUDE.md**. Structure, con
 
 ## Dependency Rule
 
-Deps point inward. Domain layer = ZERO deps on Vue/data/presentation. Data layer deps on domain interfaces. Presentation deps on domain entities via Pinia stores.
+Dependencies point inward. The domain layer has ZERO dependencies on Vue, data, or presentation layers. The data layer depends on domain interfaces. The presentation layer depends on domain entities via Pinia stores.
 
 ## Module Communication Boundaries
 
@@ -41,9 +41,9 @@ Deps point inward. Domain layer = ZERO deps on Vue/data/presentation. Data layer
 └──────────────────────────────────────────────────────────┘
 ```
 
-- Features never import from another feature internals
-- Cross-feature comms via shared composables or Pinia store subscriptions
-- Core modules (`core/`) provide shared utils, never depend on features
+- Features never import directly from another feature's internals
+- Cross-feature communication goes through shared composables or Pinia store subscriptions
+- Core modules (`core/`) provide shared utilities but never depend on features
 
 ## Auth Architecture
 
@@ -72,10 +72,10 @@ Deps point inward. Domain layer = ZERO deps on Vue/data/presentation. Data layer
 └───────────────────────────────────────────────────┘
 ```
 
-- Supabase Auth via email/OTP. No password auth
-- `onAuthStateChange` listener init at app bootstrap, updates auth store reactively
-- Router guard reads auth store. No direct Supabase calls in guards
-- Token refresh auto via `@supabase/supabase-js`
+- Supabase Auth via email/OTP — no password-based auth
+- `onAuthStateChange` listener initializes at app bootstrap, updates auth store reactively
+- Router guard reads auth store; no direct Supabase calls in guards
+- Token refresh handled automatically by `@supabase/supabase-js`
 
 ## Map Architecture
 
@@ -101,11 +101,11 @@ Deps point inward. Domain layer = ZERO deps on Vue/data/presentation. Data layer
 └────────────────────────────────────────────────────┘
 ```
 
-- Map instance via `shallowRef`. Stop Vue deep-proxy of WebGL context
-- Tour markers = MapLibre source + layer with GeoJSON metadata for click handling
-- On unmount: call `map.remove()` to release WebGL context, prevent memory leak
-- Resize: `ResizeObserver` (or `@vueuse/core` `useResizeObserver`) on container, call `map.resize()`
-- Camera state sync bidirectional between map events and Pinia store
+- Map instance via `shallowRef` — prevents Vue from deep-proxying the WebGL context
+- Tour markers rendered as MapLibre source + layer with GeoJSON metadata for click handling
+- On component unmount: call `map.remove()` to release the WebGL context and prevent memory leaks
+- Resize handling: `ResizeObserver` (or `@vueuse/core` `useResizeObserver`) on the container, calling `map.resize()`
+- Camera state synchronized bidirectionally between map events and Pinia store
 
 ## PWA & Offline Architecture
 
@@ -131,33 +131,33 @@ Deps point inward. Domain layer = ZERO deps on Vue/data/presentation. Data layer
 └─────────────────┘    └──────────────────────────┘
 ```
 
-- **Precache**: App shell + static assets via Workbox `generateSW` or `injectManifest`
-- **Runtime cache**: Swisstopo tiles use `StaleWhileRevalidate` for offline map
-- **Data**: IndexedDB store tour/contact data local, sync with Supabase when online
-- **Sync**: Queue mutations in IndexedDB when offline. Replay on reconnect via Background Sync API or manual flush
-- **Updates**: `registerType: 'prompt'`. User controls when new service worker activates
-- **Manifest**: Config in `vite-plugin-pwa` options for installability (app name, icons, theme color, start URL)
+- **Precache**: App shell and static assets via Workbox `generateSW` or `injectManifest`
+- **Runtime cache**: Swisstopo tiles use `StaleWhileRevalidate` for offline map access
+- **Data**: IndexedDB stores tour/contact data locally; syncs with Supabase when online
+- **Sync**: Queue mutations in IndexedDB when offline; replay on reconnect via Background Sync API or manual flush
+- **Updates**: `registerType: 'prompt'` — user controls when the new service worker activates
+- **Manifest**: Configured in `vite-plugin-pwa` options for installability (app name, icons, theme color, start URL)
 
 ## Error Handling
 
 - Stores expose errors via reactive state: `loading: ref(false)`, `error: ref(null)`, `data: ref(null)`
-- Components render all three states via `v-if`
-- Custom error classes in `core/exceptions/` for domain-specific types
-- Presentation layer maps exceptions to user messages via snackbar composable
-- No exceptions cross layer boundaries unhandled. Catch in repositories, surface via store state
-- Vue global error handler (`app.config.errorHandler`) logs uncaught errors via logger composable
+- Components render all three states using `v-if` conditional rendering
+- Custom error classes in `core/exceptions/` for domain-specific error types
+- Presentation layer maps exceptions to user-facing messages via snackbar composable
+- No exceptions cross layer boundaries unhandled — catch in repositories, surface via store state
+- Vue global error handler (`app.config.errorHandler`) logs uncaught errors via the logger composable
 
 ## Key Decisions
 
-| Decision                         | Rationale                                                |
-| -------------------------------- | -------------------------------------------------------- |
-| Pinia over Vuex                  | Official Vue 3 rec, composition API, TypeScript-first    |
-| Vue Router + unplugin-vue-router | File-based typed routes, type-safe nav                   |
-| Supabase JS directly (no Axios)  | Auth tokens, retries, realtime native                    |
-| Zod for validation/types         | Runtime validation + TS type inference                   |
-| IndexedDB for local storage      | Browser-native, offline, structured data, no bundle cost |
-| MapLibre GL JS for maps          | Native vector tiles, free Swisstopo WMTS, best web perf  |
-| `shallowRef` for map instance    | Stop Vue deep-proxy of WebGL context                     |
-| Workbox via vite-plugin-pwa      | Battle-tested SW tooling, Vite integration               |
-| @antfu/eslint-config             | Strictest community config, catch real bugs              |
-| Vitest over Jest                 | Vite-native, faster, ESM-first                           |
+| Decision                         | Rationale                                                        |
+| -------------------------------- | ---------------------------------------------------------------- |
+| Pinia over Vuex                  | Official Vue 3 recommendation, composition API, TypeScript-first |
+| Vue Router + unplugin-vue-router | File-based typed routes, type-safe navigation                    |
+| Supabase JS directly (no Axios)  | Auth tokens, retries, and realtime handled natively              |
+| Zod for validation/types         | Runtime validation + TypeScript type inference                   |
+| IndexedDB for local storage      | Browser-native, works offline, structured data, no bundle cost   |
+| MapLibre GL JS for maps          | Native vector tiles, free Swisstopo WMTS, best web perf          |
+| `shallowRef` for map instance    | Prevents Vue from deep-proxying the WebGL context                |
+| Workbox via vite-plugin-pwa      | Battle-tested service worker tooling with Vite integration       |
+| @antfu/eslint-config             | Strictest community config, catches real bugs                    |
+| Vitest over Jest                 | Vite-native, faster, ESM-first                                   |

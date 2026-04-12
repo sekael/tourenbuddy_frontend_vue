@@ -34,7 +34,6 @@ export class UserProfileRepositoryImpl implements UserProfileRepository {
         id: profile.id,
         first_name: profile.firstName,
         last_name: profile.lastName,
-        date_of_birth: profile.dateOfBirth?.toISOString().split('T')[0] ?? null,
       })
       .select()
       .single()

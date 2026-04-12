@@ -4,6 +4,7 @@ declare module 'vue-router' {
   interface RouteMeta {
     requiresAuth?: boolean
     redirectIfAuth?: boolean
+    requiresCompleteProfile?: boolean
   }
 }
 
@@ -29,21 +30,52 @@ const router = createRouter({
       meta: { redirectIfAuth: true },
     },
     {
+      path: '/onboarding',
+      name: 'onboarding',
+      component: () => import('@/features/user/presentation/pages/onboarding-page.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/map',
       name: 'map',
       component: () => import('@/features/map/presentation/pages/map-page.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresCompleteProfile: true },
     },
   ],
 })
 
-export function setupRouterGuards(authStore: { isAuthenticated: boolean, isLoading: boolean }) {
+export function setupRouterGuards(
+  authStore: {
+    isAuthenticated: boolean
+    isLoading: boolean
+  },
+  profileStore: {
+    profile: { firstName: string | null, lastName: string | null } | null
+    sessionSkipped: boolean
+  },
+) {
   router.beforeEach((to) => {
     if (to.meta.requiresAuth && !authStore.isAuthenticated) {
       return { name: 'home' }
     }
+
     if (to.meta.redirectIfAuth && authStore.isAuthenticated) {
       return { name: 'map' }
+    }
+
+    if (to.name === 'onboarding' && authStore.isAuthenticated && profileStore.profile) {
+      const { firstName, lastName } = profileStore.profile
+      if (firstName !== null && lastName !== null) {
+        return { name: 'map' }
+      }
+    }
+
+    if (to.meta.requiresCompleteProfile && authStore.isAuthenticated) {
+      const profile = profileStore.profile
+      const isComplete = profile !== null && profile.firstName !== null && profile.lastName !== null
+      if (!isComplete && !profileStore.sessionSkipped) {
+        return { name: 'onboarding' }
+      }
     }
   })
 }

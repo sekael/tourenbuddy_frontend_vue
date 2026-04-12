@@ -1,8 +1,8 @@
-## ADDED Requirements
+## MODIFIED Requirements
 
 ### Requirement: User profile model with Zod validation
 
-A Zod schema SHALL define the user profile shape: `id` (string), `firstName` (string, nullable), `lastName` (string, nullable). The `dateOfBirth` field has been removed from the schema and database. The TypeScript type SHALL be inferred from the schema.
+A Zod schema SHALL define the user profile shape: `id` (string), `firstName` (string, nullable), `lastName` (string, nullable). The `dateOfBirth` field SHALL be removed from the schema and database. The TypeScript type SHALL be inferred from the schema.
 
 #### Scenario: Valid profile from Supabase
 
@@ -13,34 +13,6 @@ A Zod schema SHALL define the user profile shape: `id` (string), `firstName` (st
 
 - **WHEN** checking if a profile is complete
 - **THEN** the profile SHALL be considered complete when `firstName` and `lastName` are both non-null
-
-### Requirement: User profile repository
-
-A repository SHALL provide methods to fetch, update, and upsert user profiles from the `user_profile` Supabase table.
-
-#### Scenario: Fetch profile by user ID
-
-- **WHEN** `getUserById(userId)` is called
-- **THEN** the repository SHALL SELECT from `user_profile` where `id` matches and return the parsed profile or null
-
-#### Scenario: Upsert profile
-
-- **WHEN** `upsertProfile(profile)` is called
-- **THEN** the repository SHALL INSERT or UPDATE the `user_profile` row, validating that the current user matches the profile ID
-
-### Requirement: FullUserProfile unified domain type
-
-A `FullUserProfile` type SHALL unify data from the `user_profile` table and `auth.users` into a single domain entity for presentation layer consumption.
-
-#### Scenario: Type shape
-
-- **WHEN** a `FullUserProfile` is constructed
-- **THEN** it SHALL contain `id` (string), `firstName` (string | null), `lastName` (string | null), `email` (string), `phoneNumber` (string | null), `phoneVerified` (boolean)
-
-#### Scenario: Components use unified type
-
-- **WHEN** Vue components need user profile data
-- **THEN** they SHALL use `fullProfile` from the store, never accessing auth store directly for profile-related data
 
 ### Requirement: User profile store
 
@@ -68,7 +40,7 @@ A Pinia store (`useUserProfileStore`) SHALL manage the current user's profile da
 
 ### Requirement: User profile sheet component
 
-A profile sheet component SHALL display the current user's name, email, phone number (with verification badge), and provide edit and sign-out actions. The sheet SHALL include a drag handle indicator at the top. The close button SHALL use Material Symbols `close` icon. The sign-out button SHALL use Material Symbols `logout` icon alongside the text. The avatar circle SHALL use `--color-primary` background. The sheet SHALL use `--shadow-lg` and `--color-surface` background.
+A profile sheet component SHALL display the current user's name, email, phone number (with verification badge), and provide edit and sign-out actions.
 
 #### Scenario: Display profile info
 
@@ -95,12 +67,25 @@ A profile sheet component SHALL display the current user's name, email, phone nu
 - **WHEN** the user clicks the sign-out button
 - **THEN** the auth store's `signOut()` SHALL be called, the sheet SHALL close, and the user SHALL be redirected to the home page
 
-#### Scenario: Profile sheet displays Material Symbols
+## ADDED Requirements
 
-- **WHEN** user opens the profile sheet
-- **THEN** the close button shows a `close` icon and sign-out button shows a `logout` icon
+### Requirement: FullUserProfile unified domain type
 
-#### Scenario: Profile sheet has drag handle
+A `FullUserProfile` type SHALL unify data from the `user_profile` table and `auth.users` into a single domain entity for presentation layer consumption.
 
-- **WHEN** the profile sheet is visible
-- **THEN** a small rounded drag handle bar is visible at the top of the sheet
+#### Scenario: Type shape
+
+- **WHEN** a `FullUserProfile` is constructed
+- **THEN** it SHALL contain `id` (string), `firstName` (string | null), `lastName` (string | null), `email` (string), `phoneNumber` (string | null), `phoneVerified` (boolean)
+
+#### Scenario: Components use unified type
+
+- **WHEN** Vue components need user profile data
+- **THEN** they SHALL use `fullProfile` from the store, never accessing auth store directly for profile-related data
+
+## REMOVED Requirements
+
+### Requirement: dateOfBirth in user profile model
+
+**Reason**: Issue #14 does not include date of birth. Field was never populated via UI and is unused across the app.
+**Migration**: Drop `date_of_birth` column from `user_profile` table via Supabase SQL Editor. Remove from Zod schema, entity type, and repository.
