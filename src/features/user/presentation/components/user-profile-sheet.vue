@@ -17,12 +17,9 @@ const toursStore = useToursStore()
 
 const displayName = computed(() => {
   const p = userProfileStore.profile
-  if (!p)
-    return authStore.currentUser?.email ?? 'User'
-  if (p.firstName && p.lastName)
-    return `${p.firstName} ${p.lastName}`
-  if (p.firstName)
-    return p.firstName
+  if (!p) return authStore.currentUser?.email ?? 'User'
+  if (p.firstName && p.lastName) return `${p.firstName} ${p.lastName}`
+  if (p.firstName) return p.firstName
   return authStore.currentUser?.email ?? 'User'
 })
 

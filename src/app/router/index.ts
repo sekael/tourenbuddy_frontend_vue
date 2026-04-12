@@ -37,7 +37,7 @@ const router = createRouter({
   ],
 })
 
-export function setupRouterGuards(authStore: { isAuthenticated: boolean, isLoading: boolean }) {
+export function setupRouterGuards(authStore: { isAuthenticated: boolean; isLoading: boolean }) {
   router.beforeEach((to) => {
     if (to.meta.requiresAuth && !authStore.isAuthenticated) {
       return { name: 'home' }

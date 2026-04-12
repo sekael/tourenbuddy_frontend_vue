@@ -3,6 +3,8 @@ import type { Tour } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
+import SideDrawer from '@/core/components/side-drawer.vue'
+import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { resolveContactName } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 
@@ -11,12 +13,12 @@ const emit = defineEmits<{ close: [] }>()
 
 const contactsStore = useContactsStore()
 const { contacts } = storeToRefs(contactsStore)
+const isDesktop = useIsDesktop()
 
 const displayName = computed(() => props.tour.name ?? 'Unnamed tour')
 
 const formattedDate = computed(() => {
-  if (!props.tour.plannedDate)
-    return null
+  if (!props.tour.plannedDate) return null
   return new Intl.DateTimeFormat(undefined, {
     year: 'numeric',
     month: 'long',
@@ -24,7 +26,7 @@ const formattedDate = computed(() => {
   }).format(props.tour.plannedDate)
 })
 
-const partners = computed(() => contacts.value.filter(c => props.tour.partnerIds.includes(c.id)))
+const partners = computed(() => contacts.value.filter((c) => props.tour.partnerIds.includes(c.id)))
 
 const coordinates = computed(
   () => `${props.tour.goal.lat.toFixed(4)}°N, ${props.tour.goal.lng.toFixed(4)}°E`,
@@ -32,7 +34,7 @@ const coordinates = computed(
 </script>
 
 <template>
-  <BottomSheet :title="displayName" @close="emit('close')">
+  <component :is="isDesktop ? SideDrawer : BottomSheet" :title="displayName" @close="emit('close')">
     <div class="details">
       <div v-if="formattedDate" class="detail-row">
         <span class="detail-icon material-symbols-outlined">calendar_today</span>
@@ -53,7 +55,7 @@ const coordinates = computed(
         </div>
       </div>
     </div>
-  </BottomSheet>
+  </component>
 </template>
 
 <style scoped>
