@@ -60,5 +60,5 @@
 
 - [x] 11.1 Run `npm run lint` and `npm run format` — fix any issues
 - [x] 11.2 Run `npm run test` — all tests pass
-- [ ] 11.3 Prompt user to commit with message: `feat(contacts): add phone methods with call/WhatsApp links and device contact import (#62)`
-- [ ] 11.4 Prompt user to push branch and create PR
+- [x] 11.3 Prompt user to commit with message: `feat(contacts): add phone methods with call/WhatsApp links and device contact import (#62)`
+- [x] 11.4 Prompt user to push branch and create PR

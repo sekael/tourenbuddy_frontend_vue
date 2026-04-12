@@ -6,6 +6,13 @@ import { useContactPicker } from '@/features/contacts/presentation/composables/u
 import { useVCardImport } from '@/features/contacts/presentation/composables/use-vcard-import'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 
+interface ImportResult {
+  firstName: string
+  lastName: string | null
+  phoneNumber: string | null
+  status: 'imported' | 'skipped'
+}
+
 const emit = defineEmits<{ close: [] }>()
 
 const contactsStore = useContactsStore()
@@ -14,13 +21,17 @@ const { contacts } = storeToRefs(contactsStore)
 const { isSupported: isContactPickerSupported, pickContacts } = useContactPicker()
 const { parseVCardFile } = useVCardImport()
 
+// View state
+const viewState = ref<'form' | 'import-results'>('form')
+const importResults = ref<ImportResult[]>([])
+
+// Form fields
 const firstName = ref('')
 const lastName = ref('')
 const displayName = ref('')
 const phoneNumber = ref('')
 const error = ref<string | null>(null)
 const isLoading = ref(false)
-const importMessage = ref<string | null>(null)
 
 const fileInput = ref<HTMLInputElement | null>(null)
 
@@ -30,6 +41,16 @@ function isDuplicate(first: string, last: string | null): boolean {
       c.firstName.toLowerCase() === first.toLowerCase() &&
       (c.lastName ?? '').toLowerCase() === (last ?? '').toLowerCase(),
   )
+}
+
+function switchToForm() {
+  viewState.value = 'form'
+  importResults.value = []
+  firstName.value = ''
+  lastName.value = ''
+  displayName.value = ''
+  phoneNumber.value = ''
+  error.value = null
 }
 
 async function handleSubmit() {
@@ -56,22 +77,30 @@ async function handleSubmit() {
   }
 }
 
+async function processImportedContacts(
+  items: Array<{ firstName: string; lastName: string | null; phoneNumber: string | null }>,
+) {
+  const results: ImportResult[] = []
+
+  for (const item of items) {
+    if (isDuplicate(item.firstName, item.lastName)) {
+      results.push({ ...item, status: 'skipped' })
+      continue
+    }
+    await contactsStore.addContact(item.firstName, item.lastName, null, item.phoneNumber)
+    results.push({ ...item, status: 'imported' })
+  }
+
+  importResults.value = results
+  viewState.value = 'import-results'
+}
+
 async function handleContactPickerImport() {
   isLoading.value = true
-  importMessage.value = null
+  error.value = null
   try {
     const picked = await pickContacts()
-    let imported = 0
-    let skipped = 0
-    for (const contact of picked) {
-      if (isDuplicate(contact.firstName, contact.lastName)) {
-        skipped++
-        continue
-      }
-      await contactsStore.addContact(contact.firstName, contact.lastName, null, contact.phoneNumber)
-      imported++
-    }
-    importMessage.value = buildImportMessage(imported, skipped)
+    await processImportedContacts(picked)
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Import failed'
   } finally {
@@ -88,20 +117,10 @@ async function handleFileChange(event: Event) {
   if (!file) return
 
   isLoading.value = true
-  importMessage.value = null
+  error.value = null
   try {
     const parsed = await parseVCardFile(file)
-    let imported = 0
-    let skipped = 0
-    for (const contact of parsed) {
-      if (isDuplicate(contact.firstName, contact.lastName)) {
-        skipped++
-        continue
-      }
-      await contactsStore.addContact(contact.firstName, contact.lastName, null, contact.phoneNumber)
-      imported++
-    }
-    importMessage.value = buildImportMessage(imported, skipped)
+    await processImportedContacts(parsed)
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'File import failed'
   } finally {
@@ -109,18 +128,47 @@ async function handleFileChange(event: Event) {
     if (fileInput.value) fileInput.value.value = ''
   }
 }
-
-function buildImportMessage(imported: number, skipped: number): string {
-  const parts: string[] = []
-  if (imported > 0) parts.push(`${imported} contact${imported !== 1 ? 's' : ''} imported`)
-  if (skipped > 0) parts.push(`${skipped} skipped (already exist)`)
-  return parts.join(', ')
-}
 </script>
 
 <template>
   <BottomSheet title="Add Contact" @close="emit('close')">
-    <form class="form" @submit.prevent="handleSubmit">
+    <!-- Import results view -->
+    <div v-if="viewState === 'import-results'" class="results-view">
+      <p class="results-summary">
+        {{ importResults.filter((r) => r.status === 'imported').length }} imported
+        <template v-if="importResults.some((r) => r.status === 'skipped')">
+          · {{ importResults.filter((r) => r.status === 'skipped').length }} skipped
+        </template>
+      </p>
+
+      <ul class="results-list">
+        <li v-for="(result, i) in importResults" :key="i" class="result-item">
+          <div class="result-info">
+            <span class="result-name">
+              {{ result.firstName }}{{ result.lastName ? ` ${result.lastName}` : '' }}
+            </span>
+            <span v-if="result.phoneNumber" class="result-phone">{{ result.phoneNumber }}</span>
+          </div>
+          <span
+            class="result-badge"
+            :class="result.status === 'imported' ? 'badge-imported' : 'badge-skipped'"
+          >
+            {{ result.status === 'imported' ? 'Imported' : 'Skipped' }}
+          </span>
+        </li>
+      </ul>
+
+      <div class="results-actions">
+        <button type="button" class="add-manual-link" @click="switchToForm">
+          <span class="material-symbols-outlined">add</span>
+          Add another manually
+        </button>
+        <button type="button" class="submit-btn" @click="emit('close')">Done</button>
+      </div>
+    </div>
+
+    <!-- Form view -->
+    <form v-else class="form" @submit.prevent="handleSubmit">
       <div class="import-actions">
         <button
           type="button"
@@ -149,10 +197,6 @@ function buildImportMessage(imported: number, skipped: number): string {
           @change="handleFileChange"
         />
       </div>
-
-      <p v-if="importMessage" class="import-message">
-        {{ importMessage }}
-      </p>
 
       <div class="divider" />
 
@@ -219,6 +263,7 @@ function buildImportMessage(imported: number, skipped: number): string {
 </template>
 
 <style scoped>
+/* ── Form view ── */
 .form {
   display: flex;
   flex-direction: column;
@@ -259,12 +304,6 @@ function buildImportMessage(imported: number, skipped: number): string {
 
 .file-input-hidden {
   display: none;
-}
-
-.import-message {
-  font-size: var(--font-size-sm);
-  color: var(--color-primary);
-  font-weight: var(--font-weight-medium);
 }
 
 .divider {
@@ -347,5 +386,106 @@ function buildImportMessage(imported: number, skipped: number): string {
 .submit-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* ── Import results view ── */
+.results-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.results-summary {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-on-surface-variant);
+}
+
+.results-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.result-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface-variant);
+}
+
+.result-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.result-name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-on-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.result-phone {
+  font-size: var(--font-size-xs, 11px);
+  color: var(--color-on-surface-variant);
+}
+
+.result-badge {
+  flex-shrink: 0;
+  padding: 2px var(--spacing-sm);
+  border-radius: 9999px;
+  font-size: var(--font-size-xs, 11px);
+  font-weight: var(--font-weight-medium);
+}
+
+.badge-imported {
+  background-color: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+}
+
+.badge-skipped {
+  background-color: var(--color-surface-variant);
+  border: 1px solid var(--color-outline-variant);
+  color: var(--color-on-surface-variant);
+}
+
+.results-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+}
+
+.add-manual-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.add-manual-link:hover {
+  opacity: 0.75;
+}
+
+.add-manual-link .material-symbols-outlined {
+  font-size: 16px;
 }
 </style>
