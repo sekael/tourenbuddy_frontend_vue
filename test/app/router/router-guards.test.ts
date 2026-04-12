@@ -20,8 +20,12 @@ function makeAuthStore(isAuthenticated: boolean) {
   return { isAuthenticated, isLoading: false }
 }
 
-function makeProfileStore(firstName: string | null, lastName: string | null) {
-  return { profile: { firstName, lastName } }
+function makeProfileStore(
+  firstName: string | null,
+  lastName: string | null,
+  sessionSkipped = false,
+) {
+  return { profile: { firstName, lastName }, sessionSkipped }
 }
 
 function makeRoute(name: string, meta: Record<string, boolean> = {}) {
@@ -36,7 +40,6 @@ describe('setupRouterGuards', () => {
     mockBeforeEach.mockImplementation((guard: typeof capturedGuard) => {
       capturedGuard = guard
     })
-    localStorage.removeItem('skippedOnboarding')
   })
 
   function runGuard(
@@ -66,7 +69,7 @@ describe('setupRouterGuards', () => {
     expect(result).toEqual({ name: 'map' })
   })
 
-  it('should redirect to onboarding when profile is incomplete and not skipped', () => {
+  it('should redirect to onboarding when profile is incomplete', () => {
     const result = runGuard(
       makeRoute('map', { requiresAuth: true, requiresCompleteProfile: true }),
       makeAuthStore(true),
@@ -84,14 +87,22 @@ describe('setupRouterGuards', () => {
     expect(result).toBeUndefined()
   })
 
-  it('should allow navigation when profile is incomplete but onboarding was skipped', () => {
-    localStorage.setItem('skippedOnboarding', 'true')
+  it('should allow navigation when profile is incomplete but skipped this session', () => {
     const result = runGuard(
       makeRoute('map', { requiresAuth: true, requiresCompleteProfile: true }),
       makeAuthStore(true),
-      makeProfileStore(null, null),
+      makeProfileStore(null, null, true),
     )
     expect(result).toBeUndefined()
+  })
+
+  it('should redirect to onboarding when profile is incomplete and not skipped this session', () => {
+    const result = runGuard(
+      makeRoute('map', { requiresAuth: true, requiresCompleteProfile: true }),
+      makeAuthStore(true),
+      makeProfileStore(null, null, false),
+    )
+    expect(result).toEqual({ name: 'onboarding' })
   })
 
   it('should redirect from onboarding to map if profile is already complete', () => {

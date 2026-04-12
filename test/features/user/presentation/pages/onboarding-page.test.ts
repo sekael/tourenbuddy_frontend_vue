@@ -3,17 +3,30 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import OnboardingPage from '@/features/user/presentation/pages/onboarding-page.vue'
 
-const { mockUpdateProfile, mockSendPhoneVerification } = vi.hoisted(() => ({
-  mockUpdateProfile: vi.fn(),
-  mockSendPhoneVerification: vi.fn(),
-}))
+const { mockUpdateProfile, mockSendPhoneVerification, mockSkipOnboarding, mockLoadProfile, mockProfileStore } =
+  vi.hoisted(() => {
+    const store = {
+      _profile: null as { id: string; firstName: string | null; lastName: string | null } | null,
+      get profile() {
+        return store._profile
+      },
+      updateProfile: vi.fn(),
+      sendPhoneVerification: vi.fn(),
+      skipOnboarding: vi.fn(),
+      loadProfile: vi.fn(),
+      fullProfile: null,
+    }
+    return {
+      mockUpdateProfile: store.updateProfile,
+      mockSendPhoneVerification: store.sendPhoneVerification,
+      mockSkipOnboarding: store.skipOnboarding,
+      mockLoadProfile: store.loadProfile,
+      mockProfileStore: store,
+    }
+  })
 
 vi.mock('@/features/user/presentation/stores/user-profile-store', () => ({
-  useUserProfileStore: vi.fn().mockReturnValue({
-    updateProfile: mockUpdateProfile,
-    sendPhoneVerification: mockSendPhoneVerification,
-    fullProfile: null,
-  }),
+  useUserProfileStore: vi.fn().mockReturnValue(mockProfileStore),
 }))
 
 const mockPush = vi.fn()
@@ -29,7 +42,21 @@ describe('onboardingPage', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
-    localStorage.removeItem('skippedOnboarding')
+    mockProfileStore._profile = null
+    mockLoadProfile.mockResolvedValue(undefined)
+  })
+
+  it('should call loadProfile on mount when profile is not loaded', async () => {
+    mockProfileStore._profile = null
+    mount(OnboardingPage)
+    await vi.waitFor(() => expect(mockLoadProfile).toHaveBeenCalled())
+  })
+
+  it('should not call loadProfile on mount when profile is already loaded', async () => {
+    mockProfileStore._profile = { id: 'user-123', firstName: null, lastName: null }
+    mount(OnboardingPage)
+    await new Promise((r) => setTimeout(r, 0))
+    expect(mockLoadProfile).not.toHaveBeenCalled()
   })
 
   it('should render form fields for firstName, lastName, phoneNumber', () => {
@@ -77,10 +104,10 @@ describe('onboardingPage', () => {
     expect(wrapper.find('.phone-verification-stub').exists()).toBe(true)
   })
 
-  it('should set skippedOnboarding in localStorage and navigate to map on skip', async () => {
+  it('should call skipOnboarding and navigate to map when skip is clicked', async () => {
     const wrapper = mount(OnboardingPage)
     await wrapper.find('.skip-btn').trigger('click')
-    expect(localStorage.getItem('skippedOnboarding')).toBe('true')
+    expect(mockSkipOnboarding).toHaveBeenCalled()
     expect(mockPush).toHaveBeenCalledWith({ name: 'map' })
   })
 

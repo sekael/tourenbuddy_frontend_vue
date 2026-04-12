@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PhoneVerificationDialog from '@/features/user/presentation/components/phone-verification-dialog.vue'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
@@ -18,6 +18,12 @@ const showPhoneVerification = ref(false)
 const pendingPhone = ref('')
 
 const e164Regex = /^\+[1-9]\d{1,14}$/
+
+onMounted(async () => {
+  if (!store.profile) {
+    await store.loadProfile()
+  }
+})
 
 function validate(): boolean {
   const newErrors: typeof errors.value = {}
@@ -58,7 +64,7 @@ async function handleSubmit() {
 }
 
 function handleSkip() {
-  localStorage.setItem('skippedOnboarding', 'true')
+  store.skipOnboarding()
   router.push({ name: 'map' })
 }
 

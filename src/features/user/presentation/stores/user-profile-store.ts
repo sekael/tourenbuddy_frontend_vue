@@ -96,9 +96,16 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     if (verifyError) throw new Error(verifyError.message)
   }
 
+  const sessionSkipped = ref(false)
+
+  function skipOnboarding() {
+    sessionSkipped.value = true
+  }
+
   function clear() {
     profile.value = null
     error.value = null
+    sessionSkipped.value = false
   }
 
   return {
@@ -106,10 +113,12 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     fullProfile,
     isLoading,
     error,
+    sessionSkipped,
     loadProfile,
     updateProfile,
     sendPhoneVerification,
     verifyPhone,
+    skipOnboarding,
     clear,
   }
 })

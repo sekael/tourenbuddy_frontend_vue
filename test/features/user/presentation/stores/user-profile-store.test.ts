@@ -162,6 +162,15 @@ describe('useUserProfileStore', () => {
     })
   })
 
+  describe('skipOnboarding', () => {
+    it('should set sessionSkipped to true', () => {
+      const store = useUserProfileStore()
+      expect(store.sessionSkipped).toBe(false)
+      store.skipOnboarding()
+      expect(store.sessionSkipped).toBe(true)
+    })
+  })
+
   describe('clear', () => {
     it('should clear profile on sign out', async () => {
       const store = useUserProfileStore()
@@ -169,6 +178,13 @@ describe('useUserProfileStore', () => {
       store.clear()
 
       expect(store.profile).toBeNull()
+    })
+
+    it('should reset sessionSkipped on clear', () => {
+      const store = useUserProfileStore()
+      store.skipOnboarding()
+      store.clear()
+      expect(store.sessionSkipped).toBe(false)
     })
   })
 })

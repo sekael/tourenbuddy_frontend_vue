@@ -1,4 +1,5 @@
 import { createPinia } from 'pinia'
+import { watch } from 'vue'
 import { createApp } from 'vue'
 import App from './App.vue'
 import router, { setupRouterGuards } from './app/router'
@@ -21,6 +22,15 @@ async function bootstrap() {
   if (authStore.isAuthenticated) {
     await profileStore.loadProfile()
   }
+
+  // Reload profile when user logs in mid-session; clear on sign-out
+  watch(
+    () => authStore.isAuthenticated,
+    async (isAuth) => {
+      if (isAuth) await profileStore.loadProfile()
+      else profileStore.clear()
+    },
+  )
 
   setupRouterGuards(authStore, profileStore)
 

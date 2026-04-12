@@ -51,6 +51,7 @@ export function setupRouterGuards(
   },
   profileStore: {
     profile: { firstName: string | null; lastName: string | null } | null
+    sessionSkipped: boolean
   },
 ) {
   router.beforeEach((to) => {
@@ -71,9 +72,8 @@ export function setupRouterGuards(
 
     if (to.meta.requiresCompleteProfile && authStore.isAuthenticated) {
       const profile = profileStore.profile
-      const isComplete = profile?.firstName !== null && profile?.lastName !== null
-      const skipped = localStorage.getItem('skippedOnboarding') === 'true'
-      if (!isComplete && !skipped) {
+      const isComplete = profile !== null && profile.firstName !== null && profile.lastName !== null
+      if (!isComplete && !profileStore.sessionSkipped) {
         return { name: 'onboarding' }
       }
     }
