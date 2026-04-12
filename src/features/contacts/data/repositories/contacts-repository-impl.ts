@@ -7,7 +7,7 @@ export class ContactsRepositoryImpl implements ContactsRepository {
   async fetchContacts(): Promise<Contact[]> {
     const { data, error } = await supabase
       .from('contacts')
-      .select('*')
+      .select('*, contact_methods(*)')
       .order('first_name', { ascending: true })
 
     if (error)
@@ -16,7 +16,7 @@ export class ContactsRepositoryImpl implements ContactsRepository {
     return (data ?? []).map(row => contactRowSchema.parse(row))
   }
 
-  async createContact(contact: Omit<Contact, 'id'>): Promise<Contact> {
+  async createContact(contact: Omit<Contact, 'id' | 'contactMethods'>): Promise<Contact> {
     const { data, error } = await supabase
       .from('contacts')
       .insert({
@@ -25,7 +25,7 @@ export class ContactsRepositoryImpl implements ContactsRepository {
         last_name: contact.lastName ?? null,
         display_name: contact.displayName ?? null,
       })
-      .select()
+      .select('*, contact_methods(*)')
       .single()
 
     if (error)

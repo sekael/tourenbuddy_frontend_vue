@@ -2,12 +2,17 @@
 
 ### Requirement: Contact model with Zod validation
 
-A Zod schema SHALL define the contact shape: `id` (string), `userId` (string), `firstName` (string, required), `lastName` (string, nullable), `displayName` (string, nullable). A computed `fullName` SHALL concatenate firstName and lastName.
+A Zod schema SHALL define the contact shape: `id` (string), `userId` (string), `firstName` (string, required), `lastName` (string, nullable), `displayName` (string, nullable), `contactMethods` (array of `ContactMethod`, default empty). A computed `fullName` SHALL concatenate firstName and lastName.
 
-#### Scenario: Valid contact from Supabase
+#### Scenario: Valid contact with methods from Supabase
 
-- **WHEN** a contact row is fetched from the `contacts` table
-- **THEN** the Zod schema SHALL parse it into a typed `Contact` object
+- **WHEN** a contact row is fetched from the `contacts` table with joined `contact_methods`
+- **THEN** the Zod schema SHALL parse it into a typed `Contact` object with `contactMethods` array populated
+
+#### Scenario: Contact with no methods
+
+- **WHEN** a contact row is fetched with no related `contact_methods` rows
+- **THEN** the `contactMethods` array SHALL be empty
 
 #### Scenario: Display name resolution
 
@@ -16,31 +21,36 @@ A Zod schema SHALL define the contact shape: `id` (string), `userId` (string), `
 
 ### Requirement: Contacts repository
 
-A repository SHALL provide methods to fetch all contacts for the current user and create new contacts in the `contacts` Supabase table.
+A repository SHALL provide methods to fetch all contacts (with their contact methods) for the current user and create new contacts in the `contacts` Supabase table.
 
-#### Scenario: Fetch contacts
+#### Scenario: Fetch contacts with methods
 
 - **WHEN** `fetchContacts()` is called
-- **THEN** the repository SHALL SELECT all contacts for the current user, ordered by `first_name`
+- **THEN** the repository SHALL SELECT all contacts for the current user with joined `contact_methods(*)`, ordered by `first_name`
 
 #### Scenario: Create contact
 
 - **WHEN** `createContact(contact)` is called
-- **THEN** the repository SHALL INSERT the contact and return the created row with its generated ID
+- **THEN** the repository SHALL INSERT the contact into `contacts` and return the created row with its generated ID
 
 ### Requirement: Contacts store
 
-A Pinia store (`useContactsStore`) SHALL manage the list of contacts with reactive `contacts`, `isLoading`, and `error` state.
+A Pinia store (`useContactsStore`) SHALL manage the list of contacts (including their contact methods) with reactive `contacts`, `isLoading`, and `error` state.
 
 #### Scenario: Auto-load on authentication
 
 - **WHEN** the auth store transitions to authenticated
-- **THEN** the contacts store SHALL automatically fetch all contacts for the current user
+- **THEN** the contacts store SHALL automatically fetch all contacts with their contact methods
 
-#### Scenario: Add contact
+#### Scenario: Add contact with phone
 
-- **WHEN** `addContact(firstName, lastName?, displayName?)` is called
-- **THEN** the store SHALL trim/normalize inputs, call the repository to create the contact, add it to the local list, and re-sort by firstName
+- **WHEN** `addContact(firstName, lastName?, displayName?, phoneNumber?)` is called with a phone number
+- **THEN** the store SHALL create the contact, then add a primary phone contact method via `ContactMethodsRepository`, add the full contact (with method) to the local list, and re-sort by firstName
+
+#### Scenario: Add contact without phone
+
+- **WHEN** `addContact(firstName, lastName?, displayName?)` is called without a phone number
+- **THEN** the store SHALL create the contact with empty `contactMethods` array
 
 #### Scenario: Clear on sign-out
 
@@ -49,11 +59,41 @@ A Pinia store (`useContactsStore`) SHALL manage the list of contacts with reacti
 
 ### Requirement: Contact creation dialog
 
-A dialog component SHALL allow users to create new contacts with a first name (required), last name (optional), and display name (optional).
+A dialog component SHALL allow users to create new contacts manually or via import. The dialog SHALL have two view states: `form` (default, showing import buttons and manual entry fields) and `import-results` (showing a list of imported contacts). After a successful import, the dialog SHALL switch to the `import-results` view.
 
-#### Scenario: Valid submission
+#### Scenario: Default view shows form
 
-- **WHEN** the user fills in at least the first name and submits
+- **WHEN** the contact creation dialog opens
+- **THEN** the dialog SHALL display import buttons and manual entry fields (first name, last name, display name, phone number)
+
+#### Scenario: Switch to import results after file import
+
+- **WHEN** the user imports contacts via a .vcf file
+- **THEN** the dialog SHALL replace the form with a scrollable list of import results showing each contact's name, phone number (if present), and status (imported or skipped)
+
+#### Scenario: Switch to import results after Contact Picker import
+
+- **WHEN** the user imports contacts via the Contact Picker API
+- **THEN** the dialog SHALL replace the form with a scrollable list of import results
+
+#### Scenario: Import results show skipped contacts
+
+- **WHEN** contacts are skipped during import due to duplicates
+- **THEN** the skipped contacts SHALL appear in the results list with a visual "skipped" indicator distinguishing them from successfully imported contacts
+
+#### Scenario: Return to manual entry from import results
+
+- **WHEN** the user is viewing import results and taps "Add another manually"
+- **THEN** the dialog SHALL switch back to the form view with all fields cleared
+
+#### Scenario: Close from import results
+
+- **WHEN** the user is viewing import results and taps "Done"
+- **THEN** the dialog SHALL close
+
+#### Scenario: Valid manual submission
+
+- **WHEN** the user fills in at least the first name and submits from the form view
 - **THEN** the dialog SHALL call `contactsStore.addContact()` and close
 
 #### Scenario: Missing required field

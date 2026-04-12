@@ -12,3 +12,11 @@ export function resolveContactName(contact: Contact): string {
     return `${contact.firstName} ${contact.lastName}`
   return contact.firstName
 }
+
+/** Returns the primary phone number value for a contact, or the first phone found, or null. */
+export function getPrimaryPhone(contact: Contact): string | null {
+  const phones = contact.contactMethods.filter(m => m.methodType === 'phone')
+  if (phones.length === 0)
+    return null
+  return (phones.find(m => m.isPrimary) ?? phones[0]!).value
+}

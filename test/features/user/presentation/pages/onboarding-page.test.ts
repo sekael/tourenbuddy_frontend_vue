@@ -3,27 +3,32 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import OnboardingPage from '@/features/user/presentation/pages/onboarding-page.vue'
 
-const { mockUpdateProfile, mockSendPhoneVerification, mockSkipOnboarding, mockLoadProfile, mockProfileStore }
-  = vi.hoisted(() => {
-    const store = {
-      _profile: null as { id: string, firstName: string | null, lastName: string | null } | null,
-      get profile() {
-        return store._profile
-      },
-      updateProfile: vi.fn(),
-      sendPhoneVerification: vi.fn(),
-      skipOnboarding: vi.fn(),
-      loadProfile: vi.fn(),
-      fullProfile: null,
-    }
-    return {
-      mockUpdateProfile: store.updateProfile,
-      mockSendPhoneVerification: store.sendPhoneVerification,
-      mockSkipOnboarding: store.skipOnboarding,
-      mockLoadProfile: store.loadProfile,
-      mockProfileStore: store,
-    }
-  })
+const {
+  mockUpdateProfile,
+  mockSendPhoneVerification,
+  mockSkipOnboarding,
+  mockLoadProfile,
+  mockProfileStore,
+} = vi.hoisted(() => {
+  const store = {
+    _profile: null as { id: string, firstName: string | null, lastName: string | null } | null,
+    get profile() {
+      return store._profile
+    },
+    updateProfile: vi.fn(),
+    sendPhoneVerification: vi.fn(),
+    skipOnboarding: vi.fn(),
+    loadProfile: vi.fn(),
+    fullProfile: null,
+  }
+  return {
+    mockUpdateProfile: store.updateProfile,
+    mockSendPhoneVerification: store.sendPhoneVerification,
+    mockSkipOnboarding: store.skipOnboarding,
+    mockLoadProfile: store.loadProfile,
+    mockProfileStore: store,
+  }
+})
 
 vi.mock('@/features/user/presentation/stores/user-profile-store', () => ({
   useUserProfileStore: vi.fn().mockReturnValue(mockProfileStore),
