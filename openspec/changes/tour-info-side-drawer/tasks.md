@@ -20,5 +20,5 @@
 
 - [x] 5.1 Run `npm run lint` and `npm run format` to ensure code quality
 - [x] 5.2 Run `npm run test` to verify all tests pass
-- [ ] 5.3 Prompt user to commit with conventional commit message
-- [ ] 5.4 Prompt user to push branch and create PR
+- [x] 5.3 Prompt user to commit with conventional commit message
+- [x] 5.4 Prompt user to push branch and create PR
