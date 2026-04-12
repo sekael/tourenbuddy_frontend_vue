@@ -1,0 +1,155 @@
+import { mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import UserProfileSheet from '@/features/user/presentation/components/user-profile-sheet.vue'
+
+const { mockUpdateProfile, mockSendPhoneVerification, mockSignOut, mockFullProfile } = vi.hoisted(
+  () => ({
+    mockUpdateProfile: vi.fn(),
+    mockSendPhoneVerification: vi.fn(),
+    mockSignOut: vi.fn(),
+    mockFullProfile: {
+      value: {
+        id: 'user-123',
+        firstName: 'Max',
+        lastName: 'Mustermann',
+        email: 'max@example.com',
+        phoneNumber: null as string | null,
+        phoneVerified: false,
+      },
+    },
+  }),
+)
+
+vi.mock('@/features/user/presentation/stores/user-profile-store', () => ({
+  useUserProfileStore: vi.fn().mockReturnValue({
+    get fullProfile() {
+      return mockFullProfile.value
+    },
+    updateProfile: mockUpdateProfile,
+    sendPhoneVerification: mockSendPhoneVerification,
+    clear: vi.fn(),
+  }),
+}))
+
+vi.mock('@/features/auth/presentation/stores/auth-store', () => ({
+  useAuthStore: vi.fn().mockReturnValue({
+    currentUser: { email: 'max@example.com' },
+    signOut: mockSignOut,
+  }),
+}))
+
+vi.mock('@/features/contacts/presentation/stores/contacts-store', () => ({
+  useContactsStore: vi.fn().mockReturnValue({ clear: vi.fn() }),
+}))
+
+vi.mock('@/features/tours/presentation/stores/tours-store', () => ({
+  useToursStore: vi.fn().mockReturnValue({ clear: vi.fn() }),
+}))
+
+vi.mock('vue-router', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}))
+
+vi.mock('@/features/user/presentation/components/phone-verification-dialog.vue', () => ({
+  default: { template: '<div class="phone-verification-stub" />' },
+}))
+
+vi.mock('@/core/components/bottom-sheet.vue', () => ({
+  default: {
+    template: '<div class="bottom-sheet-stub"><slot /></div>',
+    props: ['title'],
+    emits: ['close'],
+  },
+}))
+
+describe('userProfileSheet', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    mockFullProfile.value = {
+      id: 'user-123',
+      firstName: 'Max',
+      lastName: 'Mustermann',
+      email: 'max@example.com',
+      phoneNumber: null,
+      phoneVerified: false,
+    }
+  })
+
+  it('should display user name and email in view mode', () => {
+    const wrapper = mount(UserProfileSheet)
+    expect(wrapper.text()).toContain('Max Mustermann')
+    expect(wrapper.text()).toContain('max@example.com')
+  })
+
+  it('should show "Add phone number" when no phone set', () => {
+    const wrapper = mount(UserProfileSheet)
+    expect(wrapper.text()).toContain('Add phone number')
+  })
+
+  it('should show phone number with verified badge when phone is verified', () => {
+    mockFullProfile.value = {
+      ...mockFullProfile.value,
+      phoneNumber: '+41791234567',
+      phoneVerified: true,
+    }
+    const wrapper = mount(UserProfileSheet)
+    expect(wrapper.text()).toContain('+41791234567')
+    expect(wrapper.find('.verified-icon').exists()).toBe(true)
+  })
+
+  it('should show Verify button when phone is unverified', () => {
+    mockFullProfile.value = {
+      ...mockFullProfile.value,
+      phoneNumber: '+41791234567',
+      phoneVerified: false,
+    }
+    const wrapper = mount(UserProfileSheet)
+    expect(wrapper.find('.verify-btn').exists()).toBe(true)
+  })
+
+  it('should switch to edit mode when Edit profile button is clicked', async () => {
+    const wrapper = mount(UserProfileSheet)
+    await wrapper.find('.edit-btn').trigger('click')
+    expect(wrapper.find('#edit-first-name').exists()).toBe(true)
+    expect(wrapper.find('#edit-last-name').exists()).toBe(true)
+  })
+
+  it('should populate edit form with current profile values', async () => {
+    const wrapper = mount(UserProfileSheet)
+    await wrapper.find('.edit-btn').trigger('click')
+    expect((wrapper.find('#edit-first-name').element as HTMLInputElement).value).toBe('Max')
+    expect((wrapper.find('#edit-last-name').element as HTMLInputElement).value).toBe('Mustermann')
+  })
+
+  it('should cancel edit and return to view mode', async () => {
+    const wrapper = mount(UserProfileSheet)
+    await wrapper.find('.edit-btn').trigger('click')
+    await wrapper.find('.cancel-btn').trigger('click')
+    expect(wrapper.find('.edit-btn').exists()).toBe(true)
+    expect(wrapper.find('#edit-first-name').exists()).toBe(false)
+  })
+
+  it('should call updateProfile on save with changed name fields', async () => {
+    mockUpdateProfile.mockResolvedValue(undefined)
+    const wrapper = mount(UserProfileSheet)
+    await wrapper.find('.edit-btn').trigger('click')
+    await wrapper.find('#edit-first-name').setValue('Hans')
+    await wrapper.find('form').trigger('submit')
+    await vi.waitFor(() =>
+      expect(mockUpdateProfile).toHaveBeenCalledWith({ firstName: 'Hans', lastName: 'Mustermann' }),
+    )
+  })
+
+  it('should trigger phone verification when phone is changed on save', async () => {
+    mockUpdateProfile.mockResolvedValue(undefined)
+    mockSendPhoneVerification.mockResolvedValue(undefined)
+    const wrapper = mount(UserProfileSheet)
+    await wrapper.find('.edit-btn').trigger('click')
+    await wrapper.find('#edit-phone').setValue('+41791234567')
+    await wrapper.find('form').trigger('submit')
+    await vi.waitFor(() => expect(mockSendPhoneVerification).toHaveBeenCalledWith('+41791234567'))
+    expect(wrapper.find('.phone-verification-stub').exists()).toBe(true)
+  })
+})

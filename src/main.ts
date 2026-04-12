@@ -3,6 +3,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router, { setupRouterGuards } from './app/router'
 import { useAuthStore } from './features/auth/presentation/stores/auth-store'
+import { useUserProfileStore } from './features/user/presentation/stores/user-profile-store'
 import './app/theme/global.css'
 
 async function bootstrap() {
@@ -15,7 +16,13 @@ async function bootstrap() {
   // Initialize auth store and await session check before first navigation
   const authStore = useAuthStore()
   await authStore.initialize()
-  setupRouterGuards(authStore)
+
+  const profileStore = useUserProfileStore()
+  if (authStore.isAuthenticated) {
+    await profileStore.loadProfile()
+  }
+
+  setupRouterGuards(authStore, profileStore)
 
   app.mount('#app')
 }

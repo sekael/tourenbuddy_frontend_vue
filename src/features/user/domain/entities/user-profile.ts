@@ -6,5 +6,5 @@ export type UserProfile = z.infer<typeof userProfileSchema>
 
 /** Returns true when all required profile fields are filled. */
 export function isProfileComplete(profile: UserProfile): boolean {
-  return profile.firstName !== null && profile.lastName !== null && profile.dateOfBirth !== null
+  return profile.firstName !== null && profile.lastName !== null
 }
