@@ -193,9 +193,8 @@ describe('contactsListSheet', () => {
       expect(wrapper.find('[data-testid="contact-detail"]').exists()).toBe(true)
 
       // Simulate store removing the contact (e.g. after delete completes)
-      const { useContactsStore: getStore } = await import(
-        '@/features/contacts/presentation/stores/contacts-store'
-      )
+      const { useContactsStore: getStore } =
+        await import('@/features/contacts/presentation/stores/contacts-store')
       const store = getStore()
       store.contacts = store.contacts.filter((c: { id: string }) => c.id !== '1')
       await wrapper.vm.$nextTick()

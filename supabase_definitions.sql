@@ -33,3 +33,33 @@ where
     (method_type = 'email'::contact_method_type)
     and is_primary
   );
+
+create table public.tours (
+  id uuid not null default gen_random_uuid (),
+  planned_date date null,
+  user_id uuid not null default auth.uid (),
+  goal geography not null,
+  name text null,
+  constraint tours_pkey primary key (id),
+  constraint tours_user_id_fkey foreign KEY (user_id) references user_profile (id) on update CASCADE on delete CASCADE,
+  constraint tours_name_check check ((length(name) < 100))
+) TABLESPACE pg_default;
+
+create view public.tours_view as
+select
+  id,
+  user_id,
+  planned_date,
+  name,
+  st_x (goal::geometry) as lon,
+  st_y (goal::geometry) as lat,
+  (
+    select
+      COALESCE(json_agg(tp.contact_id), '[]'::json) as "coalesce"
+    from
+      tour_partners tp
+    where
+      tp.tour_id = t.id
+  ) as partner_ids
+from
+  tours t;

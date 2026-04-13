@@ -7,15 +7,31 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  confirm: [location: { lng: number, lat: number }]
+  confirm: [location: { lng: number; lat: number }]
   cancel: []
 }>()
 
+/**
+ * Returns the geographic coordinates at the visual center of the map canvas —
+ * i.e., exactly where the crosshair SVG renders.
+ *
+ * We MUST NOT use `map.getCenter()` here: MapLibre's `getCenter()` returns the
+ * center of the *padded* viewport, and padding persists after `flyTo({ padding })`
+ * calls (e.g., when the tour info sheet is open). That would cause the saved
+ * location to be offset from where the user aimed the crosshair.
+ *
+ * `map.unproject()` converts a pixel position to geographic coordinates and is
+ * unaffected by padding state.
+ */
+function getCrosshairCoordinates(map: NonNullable<typeof props.map>) {
+  const canvas = map.getCanvas()
+  return map.unproject([canvas.clientWidth / 2, canvas.clientHeight / 2])
+}
+
 function handleConfirm() {
-  if (!props.map)
-    return
-  const center = props.map.getCenter()
-  emit('confirm', { lng: center.lng, lat: center.lat })
+  if (!props.map) return
+  const coords = getCrosshairCoordinates(props.map)
+  emit('confirm', { lng: coords.lng, lat: coords.lat })
 }
 </script>
 
@@ -24,12 +40,8 @@ function handleConfirm() {
     <Crosshair />
 
     <div class="actions">
-      <button class="cancel-btn" @click="emit('cancel')">
-        Cancel
-      </button>
-      <button class="confirm-btn" @click="handleConfirm">
-        Continue
-      </button>
+      <button class="cancel-btn" @click="emit('cancel')">Cancel</button>
+      <button class="confirm-btn" @click="handleConfirm">Continue</button>
     </div>
   </div>
 </template>
