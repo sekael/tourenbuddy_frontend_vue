@@ -14,5 +14,5 @@
 ## 4. Finalize
 
 - [x] 4.1 Run `npm run lint` and `npm run format` — zero issues
-- [ ] 4.2 Prompt user to commit with message: `fix(map): use pixel-center unproject for location capture (#63)`
-- [ ] 4.3 Prompt user to push branch and create PR
+- [x] 4.2 Prompt user to commit with message: `fix(map): use pixel-center unproject for location capture (#63)`
+- [x] 4.3 Prompt user to push branch and create PR
