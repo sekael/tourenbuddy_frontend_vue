@@ -2,10 +2,11 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import maplibregl from 'maplibre-gl'
 import { storeToRefs } from 'pinia'
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { SWISSTOPO_STYLES } from '@/features/map/data/swisstopo-styles'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
+import { useGpxTrackLayer } from './gpx-track-layer'
 import { TOUR_LAYER_IDS, useToursMarkerLayer } from './tours-marker-layer'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
@@ -27,6 +28,9 @@ const map = ref<MapLibreMap | null>(null)
 defineExpose({ map })
 
 let markerLayer: ReturnType<typeof useToursMarkerLayer> | null = null
+let gpxLayer: ReturnType<typeof useGpxTrackLayer> | null = null
+
+const selectedTour = computed(() => tours.value.find(t => t.id === selectedTourId.value) ?? null)
 
 onMounted(() => {
   if (!mapContainer.value)
@@ -48,8 +52,10 @@ onMounted(() => {
     markerLayer.setup()
     markerLayer.updateTours(tours.value, selectedTourId.value)
 
-    // Emit mapBackgroundClick when the user clicks the map outside any tour marker.
-    // MapLibre's 'click' event only fires on discrete taps, not on pan/zoom gestures.
+    gpxLayer = useGpxTrackLayer(mapInstance!)
+    gpxLayer.setup()
+    gpxLayer.updateTrack(selectedTour.value)
+
     mapInstance!.on('click', (e) => {
       const hits = mapInstance!.queryRenderedFeatures(e.point, {
         layers: [...TOUR_LAYER_IDS],
@@ -67,9 +73,10 @@ onUnmounted(() => {
   map.value = null
 })
 
-// Watch for tour/selection changes and update the layer
+// Watch for tour/selection changes and update both layers
 watch([tours, selectedTourId], ([newTours, newSelectedId]) => {
   markerLayer?.updateTours(newTours, newSelectedId)
+  gpxLayer?.updateTrack(selectedTour.value)
 })
 
 // Watch for map style changes
@@ -82,6 +89,8 @@ watch(currentStyleIndex, (index) => {
     mapInstance.once('styledata', () => {
       markerLayer?.setup()
       markerLayer?.updateTours(tours.value, selectedTourId.value)
+      gpxLayer?.setup()
+      gpxLayer?.updateTrack(selectedTour.value)
     })
   }
 })

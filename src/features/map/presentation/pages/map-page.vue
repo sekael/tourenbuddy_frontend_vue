@@ -10,6 +10,8 @@ import LocationPicker from '@/features/map/presentation/components/location-pick
 import MapActionOverlay from '@/features/map/presentation/components/map-action-overlay.vue'
 import TourenbuddyMap from '@/features/map/presentation/components/tourenbuddy-map.vue'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
+import { getElevation } from '@/features/tours/data/services/swisstopo-elevation-service'
+import { suggestTourName } from '@/features/tours/data/services/swisstopo-name-service'
 import TourCreationDialog from '@/features/tours/presentation/components/tour-creation-dialog.vue'
 import TourInfoSheet from '@/features/tours/presentation/components/tour-info-sheet.vue'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
@@ -32,7 +34,17 @@ const showFeedbackSheet = ref(false)
 const showProfileSheet = ref(false)
 const showContactDialog = ref(false)
 const showTourCreationDialog = ref(false)
+
+// Location picking state
 const pendingLocation = ref<{ lng: number, lat: number } | null>(null)
+// 'goal' = main tour objective, 'start' = start point, 'end' = end point
+const pendingPickType = ref<'goal' | 'start' | 'end'>('goal')
+
+// Pre-fill values for the creation dialog (from Swisstopo lookups & secondary picks)
+const dialogInitialElevation = ref<number | null>(null)
+const dialogInitialName = ref<string | null>(null)
+const dialogInitialStartPoint = ref<{ lng: number, lat: number } | null>(null)
+const dialogInitialEndPoint = ref<{ lng: number, lat: number } | null>(null)
 
 const selectedTour = ref<(typeof tours.value)[0] | null>(null)
 const sheetContainerRef = ref<HTMLElement | null>(null)
@@ -49,9 +61,6 @@ watch(selectedTourId, async (id) => {
   if (id) {
     selectedTour.value = tours.value.find(t => t.id === id) ?? null
     if (selectedTour.value) {
-      // Wait for the sheet/drawer to render so we can offset the camera.
-      // On mobile: pad bottom by sheet height so the marker stays above the sheet.
-      // On desktop: pad right by drawer width so the marker stays in the visible map area.
       await nextTick()
       const padding = isDesktop.value
         ? { top: 0, right: 400, bottom: 0, left: 0 }
@@ -73,22 +82,48 @@ function handleTourClicked(tourId: string) {
   mapStore.selectTour(tourId)
 }
 
-function handleLocationConfirmed(location: { lng: number, lat: number }) {
-  pendingLocation.value = location
+async function handleLocationConfirmed(location: { lng: number, lat: number }) {
   mapStore.setPickingLocation(false)
+
+  if (pendingPickType.value === 'start') {
+    dialogInitialStartPoint.value = location
+    showTourCreationDialog.value = true
+    return
+  }
+
+  if (pendingPickType.value === 'end') {
+    dialogInitialEndPoint.value = location
+    showTourCreationDialog.value = true
+    return
+  }
+
+  // Main goal pick: fire Swisstopo lookups in parallel before showing dialog
+  pendingLocation.value = location
+  const [elevation, name] = await Promise.all([getElevation(location), suggestTourName(location)])
+  dialogInitialElevation.value = elevation
+  dialogInitialName.value = name
   showTourCreationDialog.value = true
 }
 
 function handleLocationCancelled() {
   mapStore.setPickingLocation(false)
+  // Re-open dialog if we were picking a secondary point
+  if (pendingPickType.value === 'start' || pendingPickType.value === 'end') {
+    showTourCreationDialog.value = true
+  }
+  pendingPickType.value = 'goal'
+}
+
+function handlePickPoint(type: 'start' | 'end') {
+  showTourCreationDialog.value = false
+  pendingPickType.value = type
+  mapStore.setPickingLocation(true)
 }
 
 function closeTourInfo() {
   mapStore.selectTour(null)
 }
 
-// Called when the user taps the map background (outside any tour marker).
-// NOTE: Any new modal bottom sheet added to this page MUST also be closed here.
 function handleMapBackgroundClick() {
   mapStore.selectTour(null)
   showFeedbackSheet.value = false
@@ -100,8 +135,26 @@ async function handleTourCreated(draft: TourDraft) {
   if (!pendingLocation.value)
     return
   showTourCreationDialog.value = false
+
+  // Reset dialog initial values for next tour creation
+  dialogInitialElevation.value = null
+  dialogInitialName.value = null
+  dialogInitialStartPoint.value = null
+  dialogInitialEndPoint.value = null
+  pendingPickType.value = 'goal'
+
   await toursStore.createTourFromDraft(draft, pendingLocation.value)
   pendingLocation.value = null
+}
+
+function handleDialogClose() {
+  showTourCreationDialog.value = false
+  pendingLocation.value = null
+  dialogInitialElevation.value = null
+  dialogInitialName.value = null
+  dialogInitialStartPoint.value = null
+  dialogInitialEndPoint.value = null
+  pendingPickType.value = 'goal'
 }
 </script>
 
@@ -143,8 +196,13 @@ async function handleTourCreated(draft: TourDraft) {
     <!-- Tour creation dialog -->
     <TourCreationDialog
       v-if="showTourCreationDialog"
+      :initial-elevation="dialogInitialElevation"
+      :initial-name="dialogInitialName"
+      :initial-start-point="dialogInitialStartPoint"
+      :initial-end-point="dialogInitialEndPoint"
       @confirm="handleTourCreated"
-      @close="showTourCreationDialog = false"
+      @close="handleDialogClose"
+      @pick-point="handlePickPoint"
     />
 
     <!-- User profile sheet -->
