@@ -23,13 +23,13 @@ const { isAuthenticated } = storeToRefs(authStore)
     </button>
 
     <button class="fab" title="Profile" @click="emit('openProfile')">
-      <span class="material-symbols-outlined">person</span>
+      <span class="material-symbols-outlined">account_circle</span>
     </button>
 
     <BaseMapPicker />
 
     <button class="fab" title="Contacts" @click="emit('openContacts')">
-      <span class="material-symbols-outlined">contacts</span>
+      <span class="material-symbols-outlined">group</span>
     </button>
 
     <button

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { Contact } from '@/features/contacts/domain/entities/contact'
 import { storeToRefs } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
-import { getPrimaryPhone, resolveContactName } from '@/features/contacts/domain/entities/contact'
+import { resolveContactName, resolveFullName } from '@/features/contacts/domain/entities/contact'
 import { useContactPicker } from '@/features/contacts/presentation/composables/use-contact-picker'
 import { useVCardImport } from '@/features/contacts/presentation/composables/use-vcard-import'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
@@ -34,6 +34,14 @@ const liveContact = computed(() =>
     ? (contacts.value.find(c => c.id === selectedContact.value!.id) ?? null)
     : null,
 )
+
+// Navigate back to list when selected contact is deleted from the store
+watch(liveContact, (contact) => {
+  if (viewState.value === 'detail' && !contact) {
+    viewState.value = 'list'
+    selectedContact.value = null
+  }
+})
 
 // ── Add contact state ────────────────────────────────────────────────────────
 interface ImportResult {
@@ -209,12 +217,12 @@ function switchAddToForm() {
           @click="openDetail(contact)"
         >
           <div class="contact-avatar">
-            {{ contact.firstName[0]?.toUpperCase() }}
+            {{ resolveContactName(contact)[0]?.toUpperCase() }}
           </div>
           <div class="contact-info">
             <span class="contact-name">{{ resolveContactName(contact) }}</span>
-            <span v-if="getPrimaryPhone(contact)" class="contact-phone">
-              {{ getPrimaryPhone(contact) }}
+            <span v-if="contact.displayName" class="contact-subtitle">
+              {{ resolveFullName(contact) }}
             </span>
           </div>
           <span class="material-symbols-outlined row-arrow">chevron_right</span>
@@ -428,7 +436,7 @@ function switchAddToForm() {
   text-overflow: ellipsis;
 }
 
-.contact-phone {
+.contact-subtitle {
   font-size: var(--font-size-sm);
   color: var(--color-on-surface-variant);
   white-space: nowrap;

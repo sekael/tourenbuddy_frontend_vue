@@ -3,6 +3,7 @@ import type { Contact } from '@/features/contacts/domain/entities/contact'
 import type { ContactMethod } from '@/features/contacts/domain/entities/contact-method'
 import type { NewContactMethod } from '@/features/contacts/domain/repositories/contact-methods-repository'
 import { ref, watch } from 'vue'
+import { formatPhoneDisplay } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 
 const props = defineProps<{ contact: Contact }>()
@@ -39,6 +40,7 @@ async function saveName() {
       lastName: lastName.value.trim() || null,
       displayName: displayName.value.trim() || null,
     })
+    emit('back')
   }
   catch (err) {
     nameError.value = err instanceof Error ? err.message : 'Failed to save'
@@ -58,9 +60,18 @@ interface MethodEditState {
 
 const methodEdits = ref<Record<string, MethodEditState>>({})
 
+function methodDisplayValue(m: ContactMethod): string {
+  return m.methodType === 'phone' ? formatPhoneDisplay(m.value) : m.value
+}
+
 function getMethodEdit(m: ContactMethod): MethodEditState {
   if (!methodEdits.value[m.id]) {
-    methodEdits.value[m.id] = { value: m.value, label: m.label ?? '', saving: false, error: null }
+    methodEdits.value[m.id] = {
+      value: methodDisplayValue(m),
+      label: m.label ?? '',
+      saving: false,
+      error: null,
+    }
   }
   return methodEdits.value[m.id]!
 }
@@ -71,7 +82,7 @@ watch(
     for (const m of methods) {
       if (!methodEdits.value[m.id]) {
         methodEdits.value[m.id] = {
-          value: m.value,
+          value: methodDisplayValue(m),
           label: m.label ?? '',
           saving: false,
           error: null,

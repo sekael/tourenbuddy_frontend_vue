@@ -88,9 +88,42 @@ describe('contactsListSheet', () => {
       expect(rows[1]!.text()).toContain('Bob')
     })
 
-    it('should display primary phone for contacts that have one', () => {
+    it('should not display phone number in list rows', () => {
       const wrapper = mountSheet()
-      expect(wrapper.find('.contact-phone').text()).toBe('+41 79 111 22 33')
+      expect(wrapper.find('.contact-phone').exists()).toBe(false)
+    })
+
+    it('should display first+last name as subtitle when displayName is set', () => {
+      const contactsWithDisplayName = [
+        {
+          id: '1',
+          userId: 'u-1',
+          firstName: 'Anna',
+          lastName: 'Meier',
+          displayName: 'Annie',
+          contactMethods: [],
+        },
+      ]
+      const wrapper = mount(ContactsListSheet, {
+        global: {
+          plugins: [
+            createTestingPinia({
+              createSpy: vi.fn,
+              stubActions: false,
+              initialState: {
+                contacts: { contacts: contactsWithDisplayName, isLoading: false, error: null },
+              },
+            }),
+          ],
+          stubs: {
+            ContactDetailView: { template: '<div />' },
+            ContactForm: { template: '<div />' },
+          },
+        },
+      })
+      const row = wrapper.find('.contact-row')
+      expect(row.find('.contact-name').text()).toBe('Annie')
+      expect(row.find('.contact-subtitle').text()).toBe('Anna Meier')
     })
 
     it('should show empty state when no contacts', () => {
@@ -151,6 +184,24 @@ describe('contactsListSheet', () => {
       await wrapper.vm.$nextTick()
       expect(wrapper.find('.contact-row').exists()).toBe(true)
       expect(wrapper.find('[data-testid="contact-detail"]').exists()).toBe(false)
+    })
+
+    it('should return to list when selected contact is removed from the store', async () => {
+      const wrapper = mountSheet()
+      await wrapper.findAll('.contact-row')[0]!.trigger('click')
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-testid="contact-detail"]').exists()).toBe(true)
+
+      // Simulate store removing the contact (e.g. after delete completes)
+      const { useContactsStore: getStore } = await import(
+        '@/features/contacts/presentation/stores/contacts-store'
+      )
+      const store = getStore()
+      store.contacts = store.contacts.filter((c: { id: string }) => c.id !== '1')
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('[data-testid="contact-detail"]').exists()).toBe(false)
+      expect(wrapper.find('.contact-row').exists()).toBe(true)
     })
   })
 

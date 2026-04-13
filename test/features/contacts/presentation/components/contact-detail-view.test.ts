@@ -43,19 +43,22 @@ describe('contactDetailView', () => {
       expect((wrapper.find('#dv-lastName').element as HTMLInputElement).value).toBe('Meier')
     })
 
-    it('should call updateContact store action when save name is clicked', async () => {
+    it('should call updateContact store action and emit back when save name is clicked', async () => {
       const wrapper = mountDetail()
       const store = useContactsStore()
+      vi.mocked(store.updateContact).mockResolvedValue(undefined as never)
 
       const input = wrapper.find('#dv-firstName')
       await input.setValue('Annika')
       await wrapper.find('.save-btn').trigger('click')
+      await wrapper.vm.$nextTick()
 
       expect(store.updateContact).toHaveBeenCalledWith('c-1', {
         firstName: 'Annika',
         lastName: 'Meier',
         displayName: null,
       })
+      expect(wrapper.emitted('back')).toHaveLength(1)
     })
 
     it('should show validation error when first name is cleared', async () => {
