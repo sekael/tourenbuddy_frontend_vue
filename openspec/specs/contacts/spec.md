@@ -21,7 +21,7 @@ A Zod schema SHALL define the contact shape: `id` (string), `userId` (string), `
 
 ### Requirement: Contacts repository
 
-A repository SHALL provide methods to fetch all contacts (with their contact methods) for the current user and create new contacts in the `contacts` Supabase table.
+A repository SHALL provide methods to fetch all contacts (with their contact methods) for the current user, create new contacts, update existing contacts, and delete contacts in the `contacts` Supabase table.
 
 #### Scenario: Fetch contacts with methods
 
@@ -32,6 +32,33 @@ A repository SHALL provide methods to fetch all contacts (with their contact met
 
 - **WHEN** `createContact(contact)` is called
 - **THEN** the repository SHALL INSERT the contact into `contacts` and return the created row with its generated ID
+
+#### Scenario: Update contact via repository
+
+- **WHEN** `updateContact` is called with a valid contact ID and partial data (excluding `id`, `userId`, and `contactMethods`)
+- **THEN** the contact row in Supabase is updated and the full updated contact (with methods) is returned
+
+#### Scenario: Delete contact via repository
+
+- **WHEN** `deleteContact` is called with a valid contact ID
+- **THEN** the contact row and all associated `contact_methods` rows are deleted from Supabase (via database cascade)
+
+### Requirement: ContactsRepository supports update
+
+The `ContactsRepository` interface SHALL include an `updateContact(id, data)` method that accepts a contact ID and partial contact data (excluding `id`, `userId`, and `contactMethods`). The Supabase implementation SHALL perform an UPDATE query and return the updated contact with joined contact methods.
+
+### Requirement: ContactsRepository supports delete
+
+The `ContactsRepository` interface SHALL include a `deleteContact(id)` method that accepts a contact ID. The Supabase implementation SHALL perform a DELETE query. Associated contact methods SHALL be removed via database cascade.
+
+### Requirement: ContactMethodsRepository supports update
+
+The `ContactMethodsRepository` interface SHALL include an `updateMethod(id, data)` method that accepts a method ID and partial method data (excluding `id` and `contactId`). The Supabase implementation SHALL perform an UPDATE query and return the updated method.
+
+#### Scenario: Update method via repository
+
+- **WHEN** `updateMethod` is called with a valid method ID and partial data
+- **THEN** the method row in Supabase is updated and the full updated method is returned
 
 ### Requirement: Contacts store
 
@@ -52,10 +79,194 @@ A Pinia store (`useContactsStore`) SHALL manage the list of contacts (including 
 - **WHEN** `addContact(firstName, lastName?, displayName?)` is called without a phone number
 - **THEN** the store SHALL create the contact with empty `contactMethods` array
 
+#### Scenario: Store update reflects in list
+
+- **WHEN** `updateContact` action completes successfully
+- **THEN** the local contacts array is updated with the new data and re-sorted by first name
+
+#### Scenario: Store delete reflects in list
+
+- **WHEN** `deleteContact` action completes successfully
+- **THEN** the contact is removed from the local contacts array immediately
+
 #### Scenario: Clear on sign-out
 
 - **WHEN** the auth store signs out
 - **THEN** the contacts store SHALL clear its cached contacts list
+
+### Requirement: Contacts store supports update
+
+The Pinia contacts store SHALL include an `updateContact()` action that calls the repository, updates the local contacts array, and re-sorts alphabetically.
+
+### Requirement: Contacts store supports delete
+
+The Pinia contacts store SHALL include a `deleteContact()` action that calls the repository and removes the contact from the local contacts array. The contact SHALL NOT be removed from the local list until the server confirms deletion.
+
+### Requirement: Contacts list sheet accessible from map overlay
+
+The system SHALL display a contacts list sheet (BottomSheet on mobile, SideDrawer on desktop) when the user taps the "Contacts" FAB button on the map action overlay. The sheet SHALL show all contacts belonging to the authenticated user, sorted alphabetically by first name.
+
+#### Scenario: Open contacts list from map overlay
+
+- **WHEN** user taps the "Contacts" FAB button on the map action overlay
+- **THEN** a contacts list sheet opens showing all saved contacts sorted alphabetically by first name
+
+#### Scenario: Empty contacts state
+
+- **WHEN** user opens the contacts list and has no contacts
+- **THEN** the sheet displays an empty state message (e.g., "No contacts yet") and a prominent "Add contact" action
+
+#### Scenario: Close contacts list
+
+- **WHEN** user taps the close button on the contacts list sheet OR taps the map background
+- **THEN** the contacts list sheet closes and returns to the map view
+
+### Requirement: Map overlay button shows "Contacts" instead of "Add contact"
+
+The map action overlay SHALL display a "Contacts" button with the `contacts` Material Symbol icon, replacing the previous "Add contact" button with the `person_add` icon. The button SHALL emit an `openContacts` event instead of `openAddContact`.
+
+#### Scenario: Button label and icon
+
+- **WHEN** the map action overlay is visible
+- **THEN** the contacts FAB shows the `contacts` icon and has title "Contacts"
+
+### Requirement: Contact list item display
+
+Each contact in the list SHALL display the resolved contact name (using existing `resolveContactName()` logic) and the primary phone number if available. Each row SHALL be tappable to navigate to the contact detail/edit view within the sheet.
+
+#### Scenario: Contact with phone number
+
+- **WHEN** a contact has a primary phone method
+- **THEN** the list item shows the contact name and the primary phone number below it
+
+#### Scenario: Contact without contact methods
+
+- **WHEN** a contact has no contact methods (name only)
+- **THEN** the list item shows the contact name with no secondary text
+
+#### Scenario: Tap contact to open detail
+
+- **WHEN** user taps a contact row in the list
+- **THEN** the sheet navigates to the detail/edit view for that contact
+
+### Requirement: Add contact entry point from contacts list
+
+The contacts list view SHALL include an "Add contact" action that opens the contact creation flow. This preserves existing import flows (vCard file, Contact Picker API) and manual form entry.
+
+#### Scenario: Add contact from list view
+
+- **WHEN** user taps the "Add contact" action in the contacts list
+- **THEN** the sheet navigates to the contact creation view with import options and manual form
+
+#### Scenario: Return to list after adding contact
+
+- **WHEN** user completes adding a contact (manual or import)
+- **THEN** the sheet returns to the contacts list with the new contact visible in the sorted list
+
+### Requirement: Edit contact name fields
+
+The system SHALL allow editing a contact's firstName, lastName, and displayName from the contact detail view. The firstName field SHALL remain required. Changes SHALL be persisted to Supabase via the `ContactsRepository.updateContact()` method.
+
+#### Scenario: Edit first name
+
+- **WHEN** user changes the first name field and saves
+- **THEN** the contact's first name is updated in Supabase and the contacts list reflects the change
+
+#### Scenario: Edit with empty first name rejected
+
+- **WHEN** user clears the first name field and attempts to save
+- **THEN** the system shows a validation error and does not persist the change
+
+#### Scenario: Edit optional name fields
+
+- **WHEN** user edits the lastName or displayName fields (including clearing them) and saves
+- **THEN** the changes are persisted and the contacts list reflects the updated name
+
+### Requirement: Edit contact methods
+
+The contact detail view SHALL display all existing contact methods as editable rows. Each row shows the method type (phone/email), value, and an optional label. Users SHALL be able to edit the value and label of existing methods.
+
+#### Scenario: Edit phone number value
+
+- **WHEN** user changes the value of a phone contact method and saves
+- **THEN** the method is updated in Supabase via `ContactMethodsRepository.updateMethod()`
+
+#### Scenario: Edit method label
+
+- **WHEN** user changes the label of a contact method (e.g., "Mobile" → "Work") and saves
+- **THEN** the label is updated in Supabase
+
+### Requirement: Add new contact methods from edit view
+
+The contact detail view SHALL include an "Add method" action that allows adding a new phone or email method to the contact. This uses the existing `ContactMethodsRepository.addMethod()`.
+
+#### Scenario: Add phone method to existing contact
+
+- **WHEN** user taps "Add method", selects phone type, enters a number, and saves
+- **THEN** a new phone method is added to the contact and displayed in the methods list
+
+#### Scenario: Add email method to existing contact
+
+- **WHEN** user taps "Add method", selects email type, enters an email, and saves
+- **THEN** a new email method is added to the contact and displayed in the methods list
+
+### Requirement: Remove contact methods from edit view
+
+The contact detail view SHALL allow removing individual contact methods. Each method row SHALL have a remove action. This uses existing `ContactMethodsRepository.removeMethod()`.
+
+#### Scenario: Remove a contact method
+
+- **WHEN** user taps the remove action on a contact method
+- **THEN** the method is deleted from Supabase and removed from the methods list
+
+#### Scenario: Contact with no methods after removal
+
+- **WHEN** user removes the last contact method from a contact
+- **THEN** the contact remains valid with no methods (name-only contact is allowed)
+
+### Requirement: Navigate back from detail to list
+
+The contact detail/edit view SHALL include a back navigation action that returns to the contacts list. Unsaved changes SHALL be discarded on back navigation.
+
+#### Scenario: Back to list from detail
+
+- **WHEN** user taps the back button in the contact detail view
+- **THEN** the sheet returns to the contacts list view
+
+### Requirement: Delete contact from detail view
+
+The contact detail view SHALL include a "Delete" action. Deleting a contact SHALL remove the contact and all associated contact methods from Supabase. The system SHALL NOT allow accidental deletion — a confirmation step is required.
+
+#### Scenario: Delete contact with confirmation
+
+- **WHEN** user taps "Delete" on a contact in the detail view
+- **THEN** an inline confirmation prompt appears (e.g., "Are you sure? Delete / Cancel")
+- **WHEN** user confirms deletion
+- **THEN** the contact and all its methods are deleted from Supabase, the contacts list updates, and the view returns to the contacts list
+
+#### Scenario: Cancel deletion
+
+- **WHEN** user taps "Delete" and then taps "Cancel" on the confirmation prompt
+- **THEN** the contact is not deleted and the detail view remains open
+
+#### Scenario: Delete contact that is a tour partner
+
+- **WHEN** user deletes a contact that is referenced as a partner in one or more tours
+- **THEN** the contact is deleted (Supabase foreign key cascade or application-level cleanup handles partner references)
+
+### Requirement: Loading and error states for delete
+
+The delete operation SHALL show a loading indicator while in progress and display an error message if the operation fails. The contact SHALL NOT be removed from the local list until the server confirms deletion.
+
+#### Scenario: Delete loading state
+
+- **WHEN** deletion is in progress
+- **THEN** the delete button shows a loading indicator and further actions are disabled
+
+#### Scenario: Delete error handling
+
+- **WHEN** the delete operation fails (network error, server error)
+- **THEN** an error message is displayed and the contact remains in the list
 
 ### Requirement: Contact creation dialog
 

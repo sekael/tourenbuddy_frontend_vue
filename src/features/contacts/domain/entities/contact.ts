@@ -20,3 +20,22 @@ export function getPrimaryPhone(contact: Contact): string | null {
     return null
   return (phones.find(m => m.isPrimary) ?? phones[0]!).value
 }
+
+/**
+ * Returns the first+last name string for a contact (subtitle beneath the display name).
+ * Only meaningful to show when displayName is also set.
+ */
+export function resolveFullName(contact: Contact): string {
+  return contact.lastName ? `${contact.firstName} ${contact.lastName}` : contact.firstName
+}
+
+/**
+ * Normalizes a phone string to international display format.
+ * Converts trunk-prefix "00CC…" to "+CC…"; leaves "+" numbers unchanged.
+ */
+export function formatPhoneDisplay(value: string): string {
+  const trimmed = value.trim()
+  if (/^00\d/.test(trimmed))
+    return `+${trimmed.slice(2)}`
+  return trimmed
+}

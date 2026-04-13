@@ -32,4 +32,31 @@ export class ContactMethodsRepositoryImpl implements ContactMethodsRepository {
     if (error)
       throw new Error(error.message)
   }
+
+  async updateMethod(
+    id: string,
+    data: Partial<Omit<ContactMethod, 'id' | 'contactId'>>,
+  ): Promise<ContactMethod> {
+    const update: Record<string, unknown> = {}
+    if (data.methodType !== undefined)
+      update.method_type = data.methodType
+    if (data.value !== undefined)
+      update.value = data.value
+    if (data.label !== undefined)
+      update.label = data.label
+    if (data.isPrimary !== undefined)
+      update.is_primary = data.isPrimary
+
+    const { data: row, error } = await supabase
+      .from('contact_methods')
+      .update(update)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error)
+      throw new Error(error.message)
+
+    return contactMethodRowSchema.parse(row)
+  }
 }

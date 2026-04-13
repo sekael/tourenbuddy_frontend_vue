@@ -6,7 +6,7 @@ import BaseMapPicker from './base-map-picker.vue'
 
 const emit = defineEmits<{
   openProfile: []
-  openAddContact: []
+  openContacts: []
   openFeedback: []
 }>()
 
@@ -23,13 +23,13 @@ const { isAuthenticated } = storeToRefs(authStore)
     </button>
 
     <button class="fab" title="Profile" @click="emit('openProfile')">
-      <span class="material-symbols-outlined">person</span>
+      <span class="material-symbols-outlined">account_circle</span>
     </button>
 
     <BaseMapPicker />
 
-    <button class="fab" title="Add Contact" @click="emit('openAddContact')">
-      <span class="material-symbols-outlined">person_add</span>
+    <button class="fab" title="Contacts" @click="emit('openContacts')">
+      <span class="material-symbols-outlined">group</span>
     </button>
 
     <button

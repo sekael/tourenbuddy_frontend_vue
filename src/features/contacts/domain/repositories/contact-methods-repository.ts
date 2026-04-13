@@ -11,4 +11,8 @@ export interface NewContactMethod {
 export interface ContactMethodsRepository {
   addMethod: (contactId: string, method: NewContactMethod) => Promise<ContactMethod>
   removeMethod: (methodId: string) => Promise<void>
+  updateMethod: (
+    id: string,
+    data: Partial<Omit<ContactMethod, 'id' | 'contactId'>>,
+  ) => Promise<ContactMethod>
 }

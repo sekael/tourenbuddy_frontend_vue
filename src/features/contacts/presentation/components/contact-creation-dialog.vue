@@ -5,6 +5,7 @@ import BottomSheet from '@/core/components/bottom-sheet.vue'
 import { useContactPicker } from '@/features/contacts/presentation/composables/use-contact-picker'
 import { useVCardImport } from '@/features/contacts/presentation/composables/use-vcard-import'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
+import ContactForm from './contact-form.vue'
 
 interface ImportResult {
   firstName: string
@@ -25,11 +26,6 @@ const { parseVCardFile } = useVCardImport()
 const viewState = ref<'form' | 'import-results'>('form')
 const importResults = ref<ImportResult[]>([])
 
-// Form fields
-const firstName = ref('')
-const lastName = ref('')
-const displayName = ref('')
-const phoneNumber = ref('')
 const error = ref<string | null>(null)
 const isLoading = ref(false)
 
@@ -46,28 +42,22 @@ function isDuplicate(first: string, last: string | null): boolean {
 function switchToForm() {
   viewState.value = 'form'
   importResults.value = []
-  firstName.value = ''
-  lastName.value = ''
-  displayName.value = ''
-  phoneNumber.value = ''
   error.value = null
 }
 
-async function handleSubmit() {
-  error.value = null
-
-  if (!firstName.value.trim()) {
-    error.value = 'First name is required'
-    return
-  }
-
+async function handleSubmit(data: {
+  firstName: string
+  lastName: string | null
+  displayName: string | null
+  phoneNumber: string | null
+}) {
   isLoading.value = true
   try {
     await contactsStore.addContact(
-      firstName.value,
-      lastName.value || null,
-      displayName.value || null,
-      phoneNumber.value || null,
+      data.firstName,
+      data.lastName,
+      data.displayName,
+      data.phoneNumber,
     )
     emit('close')
   }
@@ -178,7 +168,7 @@ async function handleFileChange(event: Event) {
     </div>
 
     <!-- Form view -->
-    <form v-else class="form" @submit.prevent="handleSubmit">
+    <div v-else class="form-wrapper">
       <div class="import-actions">
         <button
           type="button"
@@ -210,73 +200,23 @@ async function handleFileChange(event: Event) {
 
       <div class="divider" />
 
-      <div class="field">
-        <label class="label" for="firstName">First Name <span class="required">*</span></label>
-        <input
-          id="firstName"
-          v-model="firstName"
-          class="input"
-          type="text"
-          maxlength="50"
-          placeholder="First name"
-          required
-        >
-      </div>
-
-      <div class="field">
-        <label class="label" for="lastName">Last Name</label>
-        <input
-          id="lastName"
-          v-model="lastName"
-          class="input"
-          type="text"
-          maxlength="50"
-          placeholder="Last name (optional)"
-        >
-      </div>
-
-      <div class="field">
-        <label class="label" for="displayName">Display Name</label>
-        <input
-          id="displayName"
-          v-model="displayName"
-          class="input"
-          type="text"
-          maxlength="50"
-          placeholder="Nickname (optional)"
-        >
-      </div>
-
-      <div class="field">
-        <label class="label" for="phoneNumber">Phone Number</label>
-        <input
-          id="phoneNumber"
-          v-model="phoneNumber"
-          class="input"
-          type="tel"
-          placeholder="+41 79 123 45 67 (optional)"
-        >
-      </div>
-
       <p v-if="error" class="error-text">
         {{ error }}
       </p>
 
-      <div class="actions">
-        <button type="button" class="cancel-btn" @click="emit('close')">
-          Cancel
-        </button>
-        <button type="submit" class="submit-btn" :disabled="isLoading">
-          {{ isLoading ? 'Saving...' : 'Add Contact' }}
-        </button>
-      </div>
-    </form>
+      <ContactForm
+        submit-label="Add Contact"
+        :is-loading="isLoading"
+        @submit="handleSubmit"
+        @cancel="emit('close')"
+      />
+    </div>
   </BottomSheet>
 </template>
 
 <style scoped>
 /* ── Form view ── */
-.form {
+.form-wrapper {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
@@ -323,81 +263,9 @@ async function handleFileChange(event: Event) {
   background-color: var(--color-outline-variant);
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-}
-
-.label {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
-}
-
-.required {
-  color: var(--color-error);
-}
-
-.input {
-  padding: var(--spacing-md);
-  border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-base);
-  color: var(--color-on-surface);
-  background-color: var(--color-background);
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.input:focus {
-  border-color: var(--color-primary);
-}
-
 .error-text {
   color: var(--color-error);
   font-size: var(--font-size-sm);
-}
-
-.actions {
-  display: flex;
-  gap: var(--spacing-md);
-  justify-content: flex-end;
-}
-
-.cancel-btn {
-  padding: var(--spacing-sm) var(--spacing-lg);
-  border-radius: 12px;
-  border: 1px solid var(--color-outline-variant);
-  color: var(--color-on-surface-variant);
-  font-size: var(--font-size-base);
-  transition: background-color 0.2s;
-}
-
-.cancel-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.submit-btn {
-  padding: var(--spacing-sm) var(--spacing-lg);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: 12px;
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  transition:
-    background-color 0.2s,
-    transform 0.15s;
-}
-
-.submit-btn:hover:not(:disabled) {
-  background-color: var(--color-primary-dark);
-  transform: translateY(-1px);
-}
-
-.submit-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 /* ── Import results view ── */
