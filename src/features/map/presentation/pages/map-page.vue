@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia'
 import { nextTick, onMounted, ref, watch } from 'vue'
 import FeedbackSheet from '@/core/components/feedback-sheet.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
-import ContactCreationDialog from '@/features/contacts/presentation/components/contact-creation-dialog.vue'
+import ContactsListSheet from '@/features/contacts/presentation/components/contacts-list-sheet.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import LocationPicker from '@/features/map/presentation/components/location-picker.vue'
 import MapActionOverlay from '@/features/map/presentation/components/map-action-overlay.vue'
@@ -116,7 +116,7 @@ async function handleTourCreated(draft: TourDraft) {
     <MapActionOverlay
       @open-feedback="showFeedbackSheet = true"
       @open-profile="showProfileSheet = true"
-      @open-add-contact="showContactDialog = true"
+      @open-contacts="showContactDialog = true"
     />
 
     <LocationPicker
@@ -154,10 +154,10 @@ async function handleTourCreated(draft: TourDraft) {
       </div>
     </Transition>
 
-    <!-- Contact creation sheet -->
+    <!-- Contacts list sheet -->
     <Transition name="sheet">
       <div v-if="showContactDialog" class="sheet-container">
-        <ContactCreationDialog @close="showContactDialog = false" />
+        <ContactsListSheet @close="showContactDialog = false" />
       </div>
     </Transition>
   </div>

@@ -51,7 +51,7 @@ function mountMapPage() {
         FeedbackSheet: FeedbackSheetStub,
         TourCreationDialog: { template: '<div />' },
         UserProfileSheet: UserProfileSheetStub,
-        ContactCreationDialog: { template: '<div />' },
+        ContactsListSheet: { template: '<div />' },
       },
     },
   })
