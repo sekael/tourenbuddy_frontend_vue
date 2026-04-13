@@ -31,7 +31,8 @@ export function parseVCardText(text: string): VCardContact[] {
       if (firstPart) {
         firstName = firstPart
         lastName = lastPart || null
-      } else if (lastPart) {
+      }
+      else if (lastPart) {
         // Fallback if first is empty but last is present
         const parsed = parseContactName(lastPart)
         firstName = parsed.firstName

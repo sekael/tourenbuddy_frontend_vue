@@ -6,6 +6,6 @@ export interface ToursRepository {
   createTourWithPartners: (
     id: string,
     draft: TourDraft,
-    goal: { lng: number; lat: number },
+    goal: { lng: number, lat: number },
   ) => Promise<void>
 }
