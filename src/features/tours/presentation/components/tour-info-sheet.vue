@@ -116,7 +116,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
       <!-- Start / end points -->
       <template v-if="startPointText">
         <div class="detail-row">
-          <span class="detail-icon material-symbols-outlined">trip_origin</span>
+          <span class="detail-icon material-symbols-outlined">home</span>
           <span class="coords">{{ startPointText }}</span>
         </div>
         <div class="detail-row">
@@ -157,7 +157,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
       <!-- Equipment -->
       <div v-if="tour.equipment" class="detail-row align-start">
-        <span class="detail-icon material-symbols-outlined">backpack</span>
+        <span class="detail-icon material-symbols-outlined">hardware</span>
         <p class="detail-text">
           {{ tour.equipment }}
         </p>
