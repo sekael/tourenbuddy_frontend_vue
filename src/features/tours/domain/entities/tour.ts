@@ -1,5 +1,7 @@
 import type { z } from 'zod'
+import type { Season } from '@/features/tours/data/models/season'
 import type { tourSchema } from '@/features/tours/data/models/tour-schema'
+import type { TourType } from '@/features/tours/data/models/tour-type'
 
 /** Domain entity for a tour. */
 export type Tour = z.infer<typeof tourSchema>
@@ -9,6 +11,15 @@ export interface TourDraft {
   name: string | null
   plannedDate: Date | null
   partnerIds: string[]
+  tourType: TourType | null
+  elevation: number | null
+  gpxTrack: GeoJSON.FeatureCollection | null
+  description: string | null
+  seasons: Season[] | null
+  startPoint: { lng: number, lat: number } | null
+  endPoint: { lng: number, lat: number } | null
+  equipment: string | null
+  notes: string | null
 }
 
 /** Converts a tour to a GeoJSON Feature for MapLibre rendering. */

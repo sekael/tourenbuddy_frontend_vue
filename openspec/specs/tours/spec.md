@@ -2,12 +2,17 @@
 
 ### Requirement: Tour model with Zod validation
 
-A Zod schema SHALL define the tour shape: `id` (string), `userId` (string), `plannedDate` (date, nullable), `goal` (object with `lng` and `lat` as numbers), `name` (string, nullable), `partnerIds` (array of strings).
+A Zod schema SHALL define the tour shape: `id` (string), `userId` (string), `plannedDate` (date, nullable), `goal` (object with `lng` and `lat` as numbers), `name` (string, nullable), `partnerIds` (array of strings), `tourType` (tour type enum, nullable), `elevation` (number, nullable), `gpxTrack` (GeoJSON FeatureCollection, nullable), `description` (string, nullable), `seasons` (array of season enum, nullable), `startPoint` (object with `lng` and `lat`, nullable), `endPoint` (object with `lng` and `lat`, nullable), `equipment` (string, nullable), `notes` (string, nullable).
 
 #### Scenario: Valid tour from Supabase tours_view
 
 - **WHEN** a tour row is fetched from the `tours_view`
-- **THEN** the Zod schema SHALL parse it into a typed `Tour` object, converting `lon`/`lat` columns to a `goal` object
+- **THEN** the Zod schema SHALL parse it into a typed `Tour` object, converting snake_case columns to camelCase properties, `lon`/`lat` to `goal` object, and `start_lon`/`start_lat`/`end_lon`/`end_lat` to point objects
+
+#### Scenario: Legacy tour without new fields
+
+- **WHEN** a tour row has null values for all new columns
+- **THEN** the schema SHALL parse it successfully with all new fields as null
 
 #### Scenario: Tour to GeoJSON conversion
 
@@ -16,17 +21,22 @@ A Zod schema SHALL define the tour shape: `id` (string), `userId` (string), `pla
 
 ### Requirement: Tours repository
 
-A repository SHALL provide methods to create tours and list tours for the current user.
+A repository SHALL provide methods to create tours with all fields and list tours for the current user.
 
-#### Scenario: Create tour with partners
+#### Scenario: Create tour with all fields
 
-- **WHEN** `createTour(tour, partnerIds)` is called
-- **THEN** the repository SHALL call the Supabase RPC function `create_tour_with_partners` with parameters `p_id`, `p_planned_date`, `p_name`, `p_goal` (PostGIS point), and `p_partner_ids`
+- **WHEN** `createTourWithPartners` is called with a draft containing new fields
+- **THEN** the repository SHALL pass all fields to the Supabase RPC including `p_tour_type`, `p_elevation`, `p_gpx_track`, `p_description`, `p_seasons`, `p_start_point`, `p_end_point`, `p_equipment`, `p_notes`
+
+#### Scenario: Create tour with only legacy fields
+
+- **WHEN** `createTourWithPartners` is called with new fields as null
+- **THEN** the repository SHALL pass null for all new parameters (backward compatible)
 
 #### Scenario: List tours for user
 
 - **WHEN** `listToursForUser(userId)` is called
-- **THEN** the repository SHALL SELECT from `tours_view` where `user_id` matches and return parsed Tour objects
+- **THEN** the repository SHALL SELECT from `tours_view` where `user_id` matches and return parsed Tour objects including all new fields
 
 ### Requirement: Tours store
 
@@ -39,8 +49,8 @@ A Pinia store (`useToursStore`) SHALL manage the list of tours with reactive `to
 
 #### Scenario: Create tour from draft
 
-- **WHEN** `createTourFromDraft(draft, location)` is called with a TourDraft (name, plannedDate, partnerIds) and a LatLng location
-- **THEN** the store SHALL generate a UUID, create the tour via the repository, and refresh the tours list
+- **WHEN** `createTourFromDraft(draft, location)` is called with an extended TourDraft and a LatLng location
+- **THEN** the store SHALL generate a UUID, create the tour via the repository with all fields, and refresh the tours list
 
 #### Scenario: Clear on sign-out
 
@@ -49,17 +59,22 @@ A Pinia store (`useToursStore`) SHALL manage the list of tours with reactive `to
 
 ### Requirement: Tour creation dialog
 
-A dialog component SHALL allow users to create new tours with an optional name, optional planned date (date picker), and partner selection (contact chips).
+A dialog component SHALL allow users to create new tours with a required name, optional planned date, partner selection, activity type, elevation, GPX track, description, seasons, start/end points, equipment, and notes.
 
 #### Scenario: Create tour with all fields
 
-- **WHEN** the user fills in a name, selects a date, toggles partner contacts, and submits
-- **THEN** the dialog SHALL return a TourDraft object with the selected values
+- **WHEN** the user fills in all fields and submits
+- **THEN** the dialog SHALL return a TourDraft object with all selected values
+
+#### Scenario: Tour name is required
+
+- **WHEN** the user submits without entering a tour name
+- **THEN** the dialog SHALL show a validation error and prevent submission
 
 #### Scenario: Create tour with minimal fields
 
-- **WHEN** the user submits without filling any optional fields
-- **THEN** the dialog SHALL return a TourDraft with null name, null date, and empty partner list
+- **WHEN** the user submits with only a name filled
+- **THEN** the dialog SHALL return a TourDraft with null for all optional fields
 
 #### Scenario: Location picker captures coordinates at visual crosshair center
 
@@ -73,9 +88,18 @@ A dialog component SHALL allow users to create new tours with an optional name, 
 - **AND** then enters location picking mode and confirms a location
 - **THEN** the saved coordinates SHALL correspond to the crosshair's visual position, not the padded viewport center
 
+#### Scenario: Start/end point defaulting
+
+- **WHEN** only a start point is set
+- **THEN** the effective end point SHALL equal the start point (round trip)
+- **WHEN** only an end point is set
+- **THEN** the effective start point SHALL equal the end point
+- **WHEN** neither point is set
+- **THEN** both SHALL be null
+
 ### Requirement: Tour info display
 
-A component SHALL display tour details including name, planned date, coordinates, and partner names as chips.
+A component SHALL display tour details including name, planned date, coordinates, and partner names as chips, as well as all extended fields when present.
 
 #### Scenario: Display tour with partners
 
@@ -86,6 +110,11 @@ A component SHALL display tour details including name, planned date, coordinates
 
 - **WHEN** the tour info component is shown for a tour with no partners
 - **THEN** it SHALL display the tour details without a partners section
+
+#### Scenario: Round trip detection
+
+- **WHEN** a tour has a start point but null end point, or start and end are equal coordinates
+- **THEN** the info sheet SHALL display "Round trip" for the end point row
 
 ## MODIFIED Requirements
 

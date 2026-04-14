@@ -1,4 +1,8 @@
 import { z } from 'zod'
+import { seasonSchema } from './season'
+import { tourTypeSchema } from './tour-type'
+
+const pointSchema = z.object({ lng: z.number(), lat: z.number() })
 
 /** Raw shape from Supabase `tours_view` (snake_case). */
 export const tourRowSchema = z
@@ -10,6 +14,17 @@ export const tourRowSchema = z
     lat: z.number(),
     name: z.string().nullable(),
     partner_ids: z.array(z.string()).default([]),
+    tour_type: tourTypeSchema.nullable().default(null),
+    elevation: z.number().nullable().default(null),
+    gpx_track: z.unknown().nullable().default(null),
+    description: z.string().nullable().default(null),
+    seasons: z.array(seasonSchema).nullable().default(null),
+    start_lon: z.number().nullable().default(null),
+    start_lat: z.number().nullable().default(null),
+    end_lon: z.number().nullable().default(null),
+    end_lat: z.number().nullable().default(null),
+    equipment: z.string().nullable().default(null),
+    notes: z.string().nullable().default(null),
   })
   .transform(row => ({
     id: row.id,
@@ -18,6 +33,19 @@ export const tourRowSchema = z
     goal: { lng: row.lon, lat: row.lat },
     name: row.name,
     partnerIds: row.partner_ids,
+    tourType: row.tour_type,
+    elevation: row.elevation,
+    gpxTrack: row.gpx_track as GeoJSON.FeatureCollection | null,
+    description: row.description,
+    seasons: row.seasons,
+    startPoint:
+      row.start_lon != null && row.start_lat != null
+        ? { lng: row.start_lon, lat: row.start_lat }
+        : null,
+    endPoint:
+      row.end_lon != null && row.end_lat != null ? { lng: row.end_lon, lat: row.end_lat } : null,
+    equipment: row.equipment,
+    notes: row.notes,
   }))
 
 /** Domain-level tour shape. */
@@ -25,7 +53,16 @@ export const tourSchema = z.object({
   id: z.string(),
   userId: z.string(),
   plannedDate: z.coerce.date().nullable(),
-  goal: z.object({ lng: z.number(), lat: z.number() }),
+  goal: pointSchema,
   name: z.string().nullable(),
   partnerIds: z.array(z.string()),
+  tourType: tourTypeSchema.nullable(),
+  elevation: z.number().nullable(),
+  gpxTrack: z.unknown().nullable(),
+  description: z.string().nullable(),
+  seasons: z.array(seasonSchema).nullable(),
+  startPoint: pointSchema.nullable(),
+  endPoint: pointSchema.nullable(),
+  equipment: z.string().nullable(),
+  notes: z.string().nullable(),
 })
