@@ -8,8 +8,8 @@ const TIMEOUT_MS = 5000
  * Retrieves elevation in meters at the given WGS84 coordinates using the
  * Swisstopo height REST API (EPSG:2056 / LV95).
  *
- * Returns null if the API is unavailable, times out, or the location is
- * outside Swiss territory.
+ * Returns the elevation rounded to the nearest meter, or null if the API is
+ * unavailable, times out, or the location is outside Swiss territory.
  */
 export async function getElevation(coords: { lng: number, lat: number }): Promise<number | null> {
   const { easting, northing } = wgs84ToLv95(coords.lng, coords.lat)
@@ -33,7 +33,7 @@ export async function getElevation(coords: { lng: number, lat: number }): Promis
     }
 
     const height = Number(data.height)
-    return Number.isFinite(height) ? height : null
+    return Number.isFinite(height) ? Math.round(height) : null
   }
   catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') {

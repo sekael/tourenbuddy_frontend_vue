@@ -53,7 +53,15 @@ const endPointText = computed(() => {
   return `${props.tour.endPoint.lat.toFixed(4)}°N, ${props.tour.endPoint.lng.toFixed(4)}°E`
 })
 
-const isRoundTrip = computed(() => props.tour.startPoint != null && props.tour.endPoint == null)
+const isRoundTrip = computed(() => {
+  const s = props.tour.startPoint
+  const e = props.tour.endPoint
+  if (!s)
+    return false
+  if (!e)
+    return true
+  return s.lng === e.lng && s.lat === e.lat
+})
 
 /** Auto-link URLs in plain text: returns array of segments {text, url?}. */
 function linkifyText(text: string): Array<{ text: string, url?: string }> {

@@ -3,7 +3,7 @@ import type { Season } from '@/features/tours/data/models/season'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { SEASON_LABELS, SEASON_VALUES } from '@/features/tours/data/models/season'
@@ -53,6 +53,11 @@ const notes = ref('')
 const gpxTrack = ref<GeoJSON.FeatureCollection | null>(null)
 const gpxFileName = ref<string | null>(null)
 const gpxError = ref<string | null>(null)
+const nameError = ref(false)
+
+// Resolved display values: single point defaults to the other, both null stays null.
+const effectiveStartPoint = computed(() => startPoint.value ?? endPoint.value ?? null)
+const effectiveEndPoint = computed(() => endPoint.value ?? startPoint.value ?? null)
 
 // Sync props → reactive state when parent updates values (e.g. after point pick)
 watch(
@@ -150,8 +155,14 @@ function formatPoint(point: { lng: number, lat: number }) {
 }
 
 function handleConfirm() {
+  if (!tourName.value.trim()) {
+    nameError.value = true
+    document.getElementById('tourName')?.focus()
+    return
+  }
+
   const draft: TourDraft = {
-    name: tourName.value.trim() || null,
+    name: tourName.value.trim(),
     plannedDate: plannedDate.value ? new Date(plannedDate.value) : null,
     partnerIds: Array.from(selectedPartnerIds.value),
     tourType: selectedTourType.value,
@@ -159,8 +170,8 @@ function handleConfirm() {
     gpxTrack: gpxTrack.value,
     description: description.value.trim() || null,
     seasons: selectedSeasons.value.size > 0 ? Array.from(selectedSeasons.value) : null,
-    startPoint: startPoint.value,
-    endPoint: endPoint.value,
+    startPoint: effectiveStartPoint.value,
+    endPoint: effectiveEndPoint.value,
     equipment: equipment.value.trim() || null,
     notes: notes.value.trim() || null,
   }
@@ -182,50 +193,6 @@ function handleConfirm() {
 
       <form class="form" @submit.prevent="handleConfirm">
         <div class="scroll-body">
-          <!-- SECTION: Tour Type -->
-          <div class="section">
-            <p class="section-label">
-              Activity Type
-            </p>
-            <div class="type-chips">
-              <button
-                v-for="type in TOUR_TYPE_VALUES"
-                :key="type"
-                type="button"
-                class="type-chip"
-                :class="{ selected: selectedTourType === type }"
-                @click="toggleTourType(type)"
-              >
-                <span class="material-symbols-outlined type-icon">{{ TOUR_TYPE_ICONS[type] }}</span>
-                <span class="type-label">{{ TOUR_TYPE_LABELS[type] }}</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- SECTION: Essentials -->
-          <div class="section">
-            <p class="section-label">
-              Essentials
-            </p>
-
-            <div class="field">
-              <label class="label" for="tourName">Tour Name</label>
-              <input
-                id="tourName"
-                v-model="tourName"
-                class="input"
-                type="text"
-                maxlength="100"
-                placeholder="Optional name"
-              >
-            </div>
-
-            <div class="field">
-              <label class="label" for="plannedDate">Planned Date</label>
-              <input id="plannedDate" v-model="plannedDate" class="input" type="date">
-            </div>
-          </div>
-
           <!-- SECTION: Location Details -->
           <div class="section">
             <p class="section-label">
@@ -233,11 +200,27 @@ function handleConfirm() {
             </p>
 
             <div class="field">
+              <label class="label" for="tourName">Tour Name <span class="required-mark">*</span></label>
+              <input
+                id="tourName"
+                v-model="tourName"
+                class="input"
+                :class="{ 'input--error': nameError }"
+                type="text"
+                maxlength="100"
+                placeholder="e.g. Rigi Kulm"
+                aria-required="true"
+                :aria-invalid="nameError"
+                @input="nameError = false"
+              >
+              <p v-if="nameError" class="field-error">
+                Tour name is required.
+              </p>
+            </div>
+
+            <div class="field">
               <label class="label" for="elevation">
                 Elevation (m)
-                <span v-if="elevationAutoFilled" class="auto-fill-badge">
-                  <span class="material-symbols-outlined">auto_fix_high</span> auto
-                </span>
               </label>
               <input
                 id="elevation"
@@ -257,8 +240,9 @@ function handleConfirm() {
               </p>
               <div class="point-row">
                 <span class="point-coords">{{
-                  startPoint ? formatPoint(startPoint) : 'Not set'
+                  effectiveStartPoint ? formatPoint(effectiveStartPoint) : 'Not set'
                 }}</span>
+                <span v-if="!startPoint && endPoint" class="optional-hint">same as end</span>
                 <button type="button" class="pick-btn" @click="emit('pickPoint', 'start')">
                   <span class="material-symbols-outlined">my_location</span>
                   {{ startPoint ? 'Change' : 'Pick' }}
@@ -277,10 +261,12 @@ function handleConfirm() {
             <div class="field">
               <p class="label">
                 End Point
-                <span class="optional-hint">defaults to start</span>
               </p>
               <div class="point-row">
-                <span class="point-coords">{{ endPoint ? formatPoint(endPoint) : 'Not set' }}</span>
+                <span class="point-coords">{{
+                  effectiveEndPoint ? formatPoint(effectiveEndPoint) : 'Not set'
+                }}</span>
+                <span v-if="!endPoint && startPoint" class="optional-hint">round trip</span>
                 <button type="button" class="pick-btn" @click="emit('pickPoint', 'end')">
                   <span class="material-symbols-outlined">my_location</span>
                   {{ endPoint ? 'Change' : 'Pick' }}
@@ -294,6 +280,42 @@ function handleConfirm() {
                   <span class="material-symbols-outlined">close</span>
                 </button>
               </div>
+            </div>
+          </div>
+
+          <!-- SECTION: Tour Partners -->
+          <div v-if="contacts.length > 0" class="section">
+            <p class="section-label">
+              Tour Partners
+            </p>
+            <div class="chips">
+              <ContactChip
+                v-for="contact in contacts"
+                :key="contact.id"
+                :contact="contact"
+                :selected="selectedPartnerIds.has(contact.id)"
+                @toggle="togglePartner"
+              />
+            </div>
+          </div>
+
+          <!-- SECTION: Tour Type -->
+          <div class="section">
+            <p class="section-label">
+              Activity Type
+            </p>
+            <div class="type-chips">
+              <button
+                v-for="type in TOUR_TYPE_VALUES"
+                :key="type"
+                type="button"
+                class="type-chip"
+                :class="{ selected: selectedTourType === type }"
+                @click="toggleTourType(type)"
+              >
+                <span class="material-symbols-outlined type-icon">{{ TOUR_TYPE_ICONS[type] }}</span>
+                <span class="type-label">{{ TOUR_TYPE_LABELS[type] }}</span>
+              </button>
             </div>
           </div>
 
@@ -321,6 +343,11 @@ function handleConfirm() {
             <p class="section-label">
               Details
             </p>
+
+            <div class="field">
+              <label class="label" for="plannedDate">Planned Date</label>
+              <input id="plannedDate" v-model="plannedDate" class="input" type="date">
+            </div>
 
             <div class="field">
               <label class="label" for="description">Description / Guide</label>
@@ -383,22 +410,6 @@ function handleConfirm() {
             <p v-if="gpxError" class="gpx-error">
               {{ gpxError }}
             </p>
-          </div>
-
-          <!-- SECTION: Tour Partners -->
-          <div v-if="contacts.length > 0" class="section">
-            <p class="section-label">
-              Tour Partners
-            </p>
-            <div class="chips">
-              <ContactChip
-                v-for="contact in contacts"
-                :key="contact.id"
-                :contact="contact"
-                :selected="selectedPartnerIds.has(contact.id)"
-                @toggle="togglePartner"
-              />
-            </div>
           </div>
         </div>
         <!-- end scroll-body -->
@@ -641,6 +652,24 @@ function handleConfirm() {
 
 .input:focus {
   border-color: var(--color-primary);
+}
+
+.input--error {
+  border-color: var(--color-error, #d32f2f);
+}
+
+.input--error:focus {
+  border-color: var(--color-error, #d32f2f);
+}
+
+.required-mark {
+  color: var(--color-error, #d32f2f);
+}
+
+.field-error {
+  margin-top: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  color: var(--color-error, #d32f2f);
 }
 
 .textarea {

@@ -11,13 +11,22 @@ describe('getElevation', () => {
     vi.useRealTimers()
   })
 
-  it('should return elevation in meters on success', async () => {
+  it('should return elevation rounded to nearest meter on success', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ height: 2376.7 }), { status: 200 }),
+    )
+
+    const result = await getElevation({ lng: 8.0, lat: 46.5 })
+    expect(result).toBe(2377)
+  })
+
+  it('should round down when fractional part is below 0.5', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       new Response(JSON.stringify({ height: 2376.3 }), { status: 200 }),
     )
 
     const result = await getElevation({ lng: 8.0, lat: 46.5 })
-    expect(result).toBe(2376.3)
+    expect(result).toBe(2376)
   })
 
   it('should return elevation when height is a numeric string', async () => {
