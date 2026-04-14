@@ -80,5 +80,5 @@
 - [x] 11.1 Run `npm run lint` and `npm run format` — fix any issues
 - [x] 11.2 Run `npm run type-check` — fix any type errors
 - [x] 11.3 Run `npm run test` — all tests pass
-- [ ] 11.4 Prompt user to commit with message: `feat(tours): expand tour model with type, elevation, GPX, description, seasons, start/end points, equipment, notes (#19)`
-- [ ] 11.5 Prompt user to push branch and create PR
+- [x] 11.4 Prompt user to commit with message: `feat(tours): expand tour model with type, elevation, GPX, description, seasons, start/end points, equipment, notes (#19)`
+- [x] 11.5 Prompt user to push branch and create PR
