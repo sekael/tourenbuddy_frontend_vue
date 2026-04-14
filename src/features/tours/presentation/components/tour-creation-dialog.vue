@@ -455,8 +455,7 @@ function handleConfirm() {
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-lg);
-  /* Full-screen on mobile */
-  max-height: 100dvh;
+  max-height: 85dvh;
 }
 
 @media (min-width: 600px) {
