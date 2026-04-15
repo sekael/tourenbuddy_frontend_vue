@@ -30,6 +30,7 @@ const { isPickingLocation, selectedTourId } = storeToRefs(mapStore)
 const { tours } = storeToRefs(toursStore)
 
 const mapRef = ref<InstanceType<typeof TourenbuddyMap> | null>(null)
+const mapBearing = ref(0)
 
 // Dialog visibility
 const showFeedbackSheet = ref(false)
@@ -90,6 +91,21 @@ watch(selectedTourId, async (id) => {
   if (id)
     await flyToSelectedTour()
 })
+
+watch(() => mapRef.value?.map, (m) => {
+  if (!m)
+    return
+  const update = () => {
+    mapBearing.value = m.getBearing()
+  }
+  m.on('rotate', update)
+  m.on('rotateend', update)
+  update()
+})
+
+function handleResetBearing() {
+  mapRef.value?.map?.easeTo({ bearing: 0, pitch: 0, duration: 300 })
+}
 
 function handleTourClicked(tourId: string) {
   mapStore.selectTour(tourId)
@@ -230,9 +246,11 @@ function handleDialogClose() {
     />
 
     <MapActionOverlay
+      :bearing="mapBearing"
       @open-feedback="showFeedbackSheet = true"
       @open-profile="showProfileSheet = true"
       @open-contacts="showContactDialog = true"
+      @reset-bearing="handleResetBearing"
     />
 
     <LocationPicker

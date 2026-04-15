@@ -1,14 +1,23 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
+import { computed } from 'vue'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import BaseMapPicker from './base-map-picker.vue'
+
+const props = defineProps<{
+  bearing?: number
+}>()
 
 const emit = defineEmits<{
   openProfile: []
   openContacts: []
   openFeedback: []
+  resetBearing: []
 }>()
+
+const iconRotation = computed(() => -(props.bearing ?? 0))
+const showCompass = computed(() => Math.abs(props.bearing ?? 0) > 0.5)
 
 const mapStore = useMapStore()
 const authStore = useAuthStore()
@@ -23,6 +32,18 @@ function startAddTour() {
 
 <template>
   <div v-if="!isPickingLocation" class="overlay">
+    <button
+      v-if="showCompass"
+      class="fab"
+      title="Orient map north"
+      @click="emit('resetBearing')"
+    >
+      <span
+        class="material-symbols-outlined compass-icon"
+        :style="{ transform: `rotate(${iconRotation}deg)` }"
+      >explore</span>
+    </button>
+
     <button class="fab" title="Feedback" @click="emit('openFeedback')">
       <span class="material-symbols-outlined">feedback</span>
     </button>
@@ -87,5 +108,9 @@ function startAddTour() {
 .fab:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.compass-icon {
+  transition: transform 0.15s ease-out;
 }
 </style>
