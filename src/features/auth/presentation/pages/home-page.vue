@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import bgDesktop from '@/assets/background-desktop.jpeg'
-import bgMobile from '@/assets/background-mobile.jpeg'
+import bgDesktop from '@/assets/background-desktop.webp'
+import bgMobile from '@/assets/background-mobile.webp'
 
 const router = useRouter()
 </script>

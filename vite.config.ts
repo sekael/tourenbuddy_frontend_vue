@@ -42,7 +42,7 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         runtimeCaching: [
           {
-            urlPattern: /\/assets\/background-.*\.(jpe?g|webp|png)$/i,
+            urlPattern: /\/assets\/background-.*\.webp$/i,
             handler: 'CacheFirst',
             options: {
               cacheName: 'welcome-backgrounds',
