@@ -1,9 +1,5 @@
- Summary:
-     1. Primary Request and Intent:
-        The session continued from a previous conversation implementing edit/delete tour functionality (GitHub issue #66 from sekael/tourenbuddy_frontend_flutter). The user reported multiple bugs requiring fixes:
-        - Bug 1: Goal pick in edit mode "exits edit mode" and coordinates don't update; edit/delete buttons should be at the BOTTOM of the info sheet, not top
-        - Bug 2: Changes to tours (after saving edits) only show after closing and reopening the info sheet — not immediately
-        - Bug 3 (most recent): When editing a tour and changing the goal, (a) hitting "Continue" on the LocationPicker has no effect, (b) hitting "Cancel" must return to edit view (currently it doesn't), (c) hitting "Continue" must update coordinates AND fetch automated name/elevation from Swisstopo
+Summary: 1. Primary Request and Intent:
+The session continued from a previous conversation implementing edit/delete tour functionality (GitHub issue #66 from sekael/tourenbuddy_frontend_flutter). The user reported multiple bugs requiring fixes: - Bug 1: Goal pick in edit mode "exits edit mode" and coordinates don't update; edit/delete buttons should be at the BOTTOM of the info sheet, not top - Bug 2: Changes to tours (after saving edits) only show after closing and reopening the info sheet — not immediately - Bug 3 (most recent): When editing a tour and changing the goal, (a) hitting "Continue" on the LocationPicker has no effect, (b) hitting "Cancel" must return to edit view (currently it doesn't), (c) hitting "Continue" must update coordinates AND fetch automated name/elevation from Swisstopo
 
      2. Key Technical Concepts:
         - Vue 3 `<script setup lang="ts">` SFCs with TypeScript

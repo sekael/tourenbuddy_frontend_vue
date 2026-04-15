@@ -6,7 +6,7 @@
 
 - [x] 2.1 Add SQL migration creating `update_tour_full(p_id, p_planned_date, p_name, p_goal, p_partner_ids, p_tour_type, p_elevation, p_gpx_track, p_description, p_seasons, p_start_point, p_end_point, p_equipment, p_notes)` RPC — UPDATE `tours` + DELETE/INSERT `tour_partners` in one transaction, RLS-scoped to `auth.uid()`
 - [x] 2.2 Verify existing FK `tour_partners.tour_id → tours.id` has `ON DELETE CASCADE`; add migration if missing
-- [ ] 2.3 Apply migration to the dev Supabase project and smoke-test both operations via SQL editor
+- [x] 2.3 Apply migration to the dev Supabase project and smoke-test both operations via SQL editor
 
 ## 3. Domain & Data Layer
 
