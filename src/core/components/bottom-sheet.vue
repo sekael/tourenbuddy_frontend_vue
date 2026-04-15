@@ -2,6 +2,8 @@
 const props = defineProps<{
   title?: string
   ariaLabel?: string
+  /** Collapse to just the header (drag handle + title). Content slot is not rendered. */
+  collapsed?: boolean
 }>()
 
 const emit = defineEmits<{ close: [] }>()
@@ -29,7 +31,7 @@ const titleId = 'bottom-sheet-title'
       </button>
     </div>
 
-    <div class="content">
+    <div v-if="!props.collapsed" class="content">
       <slot />
     </div>
   </div>

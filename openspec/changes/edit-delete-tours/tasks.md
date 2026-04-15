@@ -50,5 +50,5 @@
 
 - [x] 8.1 `npm run lint` and `npm run format` — zero warnings
 - [x] 8.2 `npm run type-check` and `npm run test` — all green
-- [ ] 8.3 Prompt user to commit with message: `feat(tours): add edit and delete tour from info sheet`
-- [ ] 8.4 Prompt user to push branch and open PR against `main` referencing issue #66
+- [x] 8.3 Prompt user to commit with message: `feat(tours): add edit and delete tour from info sheet`
+- [x] 8.4 Prompt user to push branch and open PR against `main` referencing issue #66

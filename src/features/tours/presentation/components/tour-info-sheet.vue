@@ -7,6 +7,7 @@ import SideDrawer from '@/core/components/side-drawer.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
+import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { SEASON_LABELS } from '@/features/tours/data/models/season'
 import { TOUR_TYPE_ICONS, TOUR_TYPE_LABELS } from '@/features/tours/data/models/tour-type'
 import TourForm from '@/features/tours/presentation/components/tour-form.vue'
@@ -18,6 +19,8 @@ const props = defineProps<{
   editPickedPoint?: {
     type: 'start' | 'end' | 'goal'
     location: { lng: number, lat: number }
+    elevation?: number | null
+    suggestedName?: string | null
   } | null
 }>()
 const emit = defineEmits<{
@@ -28,7 +31,9 @@ const emit = defineEmits<{
 
 const contactsStore = useContactsStore()
 const toursStore = useToursStore()
+const mapStore = useMapStore()
 const { contacts } = storeToRefs(contactsStore)
+const { isPickingLocation } = storeToRefs(mapStore)
 const isDesktop = useIsDesktop()
 
 // ── View/edit mode ───────────────────────────────────────────────────────────
@@ -38,11 +43,16 @@ const mode = ref<'view' | 'edit'>('view')
 const pendingGoal = ref<{ lng: number, lat: number }>({ ...props.tour.goal })
 const pendingStartPoint = ref<{ lng: number, lat: number } | null>(null)
 const pendingEndPoint = ref<{ lng: number, lat: number } | null>(null)
+// Elevation/name updated from Swisstopo after a goal re-pick in edit mode
+const pendingElevation = ref<number | null>(null)
+const pendingSuggestedName = ref<string | null>(null)
 
 function enterEditMode() {
   pendingGoal.value = { ...props.tour.goal }
   pendingStartPoint.value = null
   pendingEndPoint.value = null
+  pendingElevation.value = null
+  pendingSuggestedName.value = null
   mode.value = 'edit'
 }
 
@@ -58,6 +68,8 @@ watch(
       return
     if (pick.type === 'goal') {
       pendingGoal.value = pick.location
+      pendingElevation.value = pick.elevation ?? null
+      pendingSuggestedName.value = pick.suggestedName ?? null
     }
     else if (pick.type === 'start') {
       pendingStartPoint.value = pick.location
@@ -107,6 +119,18 @@ async function confirmDelete() {
 
 // ── Read-only computed values ────────────────────────────────────────────────
 const displayName = computed(() => props.tour.name ?? 'Unnamed tour')
+
+// On mobile, collapse the sheet to just its header while the user aims the
+// location picker so the map (and crosshair) stays visible. Sheet on desktop
+// is a side drawer that already leaves the map visible — no collapse needed.
+const sheetCollapsed = computed(
+  () => !isDesktop.value && isPickingLocation.value && mode.value === 'edit',
+)
+const sheetTitle = computed(() => {
+  if (sheetCollapsed.value)
+    return `Pick new goal — ${displayName.value}`
+  return mode.value === 'edit' ? `Edit: ${displayName.value}` : displayName.value
+})
 
 const formattedDate = computed(() => {
   if (!props.tour.plannedDate)
@@ -176,7 +200,8 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 <template>
   <component
     :is="isDesktop ? SideDrawer : BottomSheet"
-    :title="mode === 'edit' ? `Edit: ${displayName}` : displayName"
+    :title="sheetTitle"
+    :collapsed="sheetCollapsed"
     @close="emit('close')"
   >
     <!-- ── Edit mode ────────────────────────────────────────────────────── -->
@@ -189,6 +214,8 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         :allow-goal-edit="true"
         :current-goal="pendingGoal"
         :initial-draft="tour"
+        :initial-elevation="pendingElevation"
+        :initial-name="pendingSuggestedName"
         :initial-start-point="pendingStartPoint"
         :initial-end-point="pendingEndPoint"
         @submit="handleEditSubmit"

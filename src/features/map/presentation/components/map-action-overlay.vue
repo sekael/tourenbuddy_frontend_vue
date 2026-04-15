@@ -14,6 +14,11 @@ const mapStore = useMapStore()
 const authStore = useAuthStore()
 const { isPickingLocation } = storeToRefs(mapStore)
 const { isAuthenticated } = storeToRefs(authStore)
+
+function startAddTour() {
+  mapStore.selectTour(null)
+  mapStore.setPickingLocation(true)
+}
 </script>
 
 <template>
@@ -36,7 +41,7 @@ const { isAuthenticated } = storeToRefs(authStore)
       class="fab"
       :disabled="!isAuthenticated"
       :title="isAuthenticated ? 'Add tour location' : 'Sign in to add tours'"
-      @click="mapStore.setPickingLocation(true)"
+      @click="startAddTour"
     >
       <span class="material-symbols-outlined">add_location_alt</span>
     </button>

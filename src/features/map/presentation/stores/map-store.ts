@@ -8,9 +8,6 @@ export const useMapStore = defineStore('map', () => {
 
   function setPickingLocation(picking: boolean) {
     isPickingLocation.value = picking
-    if (picking) {
-      selectedTourId.value = null
-    }
   }
 
   function setStyleIndex(index: number) {
