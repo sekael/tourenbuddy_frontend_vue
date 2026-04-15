@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
@@ -27,6 +27,8 @@ const emit = defineEmits<{
   close: []
   pickPoint: [type: 'start' | 'end' | 'goal']
   pointConsumed: []
+  /** Fired when the sheet enters (true) or exits (false) edit mode. */
+  editModeChange: [editing: boolean]
 }>()
 
 const contactsStore = useContactsStore()
@@ -54,11 +56,20 @@ function enterEditMode() {
   pendingElevation.value = null
   pendingSuggestedName.value = null
   mode.value = 'edit'
+  emit('editModeChange', true)
 }
 
 function cancelEdit() {
   mode.value = 'view'
+  emit('editModeChange', false)
 }
+
+// Sheet dismissed (map background click, close button, tour deleted, etc.) while
+// edit mode is still active: notify parent so preview marker is cleaned up.
+onBeforeUnmount(() => {
+  if (mode.value === 'edit')
+    emit('editModeChange', false)
+})
 
 // Reactive handoff from map-page after a location pick in edit mode
 watch(
@@ -91,6 +102,7 @@ async function handleEditSubmit(draft: TourDraft) {
   try {
     await toursStore.updateTour(props.tour.id, draft, pendingGoal.value)
     mode.value = 'view'
+    emit('editModeChange', false)
   }
   catch (err) {
     saveError.value = err instanceof Error ? err.message : 'Failed to save'

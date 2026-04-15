@@ -71,19 +71,24 @@ onMounted(async () => {
   ])
 })
 
+async function flyToSelectedTour() {
+  if (!selectedTour.value)
+    return
+  await nextTick()
+  const padding = isDesktop.value
+    ? { top: 0, right: 400, bottom: 0, left: 0 }
+    : { top: 0, right: 0, bottom: sheetContainerRef.value?.offsetHeight ?? 0, left: 0 }
+  mapRef.value?.map?.flyTo({
+    center: [selectedTour.value.goal.lng, selectedTour.value.goal.lat],
+    zoom: 12,
+    duration: 1000,
+    padding,
+  })
+}
+
 watch(selectedTourId, async (id) => {
-  if (id && selectedTour.value) {
-    await nextTick()
-    const padding = isDesktop.value
-      ? { top: 0, right: 400, bottom: 0, left: 0 }
-      : { top: 0, right: 0, bottom: sheetContainerRef.value?.offsetHeight ?? 0, left: 0 }
-    mapRef.value?.map?.flyTo({
-      center: [selectedTour.value.goal.lng, selectedTour.value.goal.lat],
-      zoom: 12,
-      duration: 1000,
-      padding,
-    })
-  }
+  if (id)
+    await flyToSelectedTour()
 })
 
 function handleTourClicked(tourId: string) {
@@ -99,6 +104,8 @@ async function handleLocationConfirmed(location: { lng: number, lat: number }) {
     isPickingForEdit.value = false
     pendingPickType.value = 'goal'
     if (pickType === 'goal') {
+      // Show the tentative goal as an orange preview marker until edit mode closes
+      mapStore.setEditPreviewGoal(location)
       // Run Swisstopo lookups in parallel (same as creation flow)
       const [elevation, suggestedName] = await Promise.all([
         getElevation(location),
@@ -163,7 +170,16 @@ function handlePointConsumed() {
   editPickedPoint.value = null
 }
 
+async function handleEditModeChange(editing: boolean) {
+  if (!editing) {
+    // Cancel/save: drop preview and recenter on the (possibly updated) tour goal
+    mapStore.setEditPreviewGoal(null)
+    await flyToSelectedTour()
+  }
+}
+
 function closeTourInfo() {
+  mapStore.setEditPreviewGoal(null)
   mapStore.selectTour(null)
 }
 
@@ -236,6 +252,7 @@ function handleDialogClose() {
           @close="closeTourInfo"
           @pick-point="(t: 'start' | 'end' | 'goal') => handleInfoSheetPickPoint(t)"
           @point-consumed="handlePointConsumed"
+          @edit-mode-change="handleEditModeChange"
         />
       </div>
     </Transition>
