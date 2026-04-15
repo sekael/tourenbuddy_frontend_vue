@@ -47,10 +47,42 @@ export const useToursStore = defineStore('tours', () => {
     await loadTours()
   }
 
+  async function updateTour(id: string, draft: TourDraft, goal: { lng: number, lat: number }) {
+    await repository.updateTour(id, draft, goal)
+    const existing = tours.value.find(t => t.id === id)
+    if (!existing)
+      return
+    tours.value = tours.value.map(t =>
+      t.id === id
+        ? {
+            ...existing,
+            name: draft.name,
+            plannedDate: draft.plannedDate,
+            partnerIds: draft.partnerIds,
+            tourType: draft.tourType,
+            elevation: draft.elevation,
+            gpxTrack: draft.gpxTrack,
+            description: draft.description,
+            seasons: draft.seasons,
+            startPoint: draft.startPoint,
+            endPoint: draft.endPoint,
+            equipment: draft.equipment,
+            notes: draft.notes,
+            goal,
+          }
+        : t,
+    )
+  }
+
+  async function deleteTour(id: string) {
+    await repository.deleteTour(id)
+    tours.value = tours.value.filter(t => t.id !== id)
+  }
+
   function clear() {
     tours.value = []
     error.value = null
   }
 
-  return { tours, isLoading, error, loadTours, createTourFromDraft, clear }
+  return { tours, isLoading, error, loadTours, createTourFromDraft, updateTour, deleteTour, clear }
 })

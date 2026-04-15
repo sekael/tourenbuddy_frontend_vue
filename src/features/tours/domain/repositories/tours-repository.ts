@@ -8,4 +8,6 @@ export interface ToursRepository {
     draft: TourDraft,
     goal: { lng: number, lat: number },
   ) => Promise<void>
+  updateTour: (id: string, draft: TourDraft, goal: { lng: number, lat: number }) => Promise<void>
+  deleteTour: (id: string) => Promise<void>
 }

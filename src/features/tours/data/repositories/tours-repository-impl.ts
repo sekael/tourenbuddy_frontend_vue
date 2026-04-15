@@ -40,4 +40,39 @@ export class ToursRepositoryImpl implements ToursRepository {
     if (error)
       throw new Error(error.message)
   }
+
+  async updateTour(
+    id: string,
+    draft: TourDraft,
+    goal: { lng: number, lat: number },
+  ): Promise<void> {
+    const { error } = await supabase.rpc('update_tour_full', {
+      p_id: id,
+      p_planned_date: draft.plannedDate?.toISOString().split('T')[0] ?? null,
+      p_name: draft.name ?? null,
+      p_goal: `POINT(${goal.lng} ${goal.lat})`,
+      p_partner_ids: draft.partnerIds,
+      p_tour_type: draft.tourType ?? null,
+      p_elevation: draft.elevation ?? null,
+      p_gpx_track: draft.gpxTrack ?? null,
+      p_description: draft.description ?? null,
+      p_seasons: draft.seasons ?? null,
+      p_start_point: draft.startPoint
+        ? `POINT(${draft.startPoint.lng} ${draft.startPoint.lat})`
+        : null,
+      p_end_point: draft.endPoint ? `POINT(${draft.endPoint.lng} ${draft.endPoint.lat})` : null,
+      p_equipment: draft.equipment ?? null,
+      p_notes: draft.notes ?? null,
+    })
+
+    if (error)
+      throw new Error(error.message)
+  }
+
+  async deleteTour(id: string): Promise<void> {
+    const { error } = await supabase.from('tours').delete().eq('id', id)
+
+    if (error)
+      throw new Error(error.message)
+  }
 }

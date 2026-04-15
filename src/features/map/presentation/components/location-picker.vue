@@ -56,7 +56,7 @@ function handleConfirm() {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 20;
+  z-index: 200;
 }
 
 .actions {

@@ -18,6 +18,8 @@ import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import UserProfileSheet from '@/features/user/presentation/components/user-profile-sheet.vue'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
+type PickPointType = 'goal' | 'start' | 'end'
+
 const mapStore = useMapStore()
 const toursStore = useToursStore()
 const contactsStore = useContactsStore()
@@ -48,6 +50,15 @@ const dialogInitialEndPoint = ref<{ lng: number, lat: number } | null>(null)
 
 const selectedTour = ref<(typeof tours.value)[0] | null>(null)
 const sheetContainerRef = ref<HTMLElement | null>(null)
+
+// Whether the current location pick was triggered from the info sheet edit mode
+const isPickingForEdit = ref(false)
+
+// Prop-based handoff to info sheet after a location pick in edit mode
+const editPickedPoint = ref<{
+  type: 'start' | 'end' | 'goal'
+  location: { lng: number, lat: number }
+} | null>(null)
 
 onMounted(async () => {
   await Promise.all([
@@ -85,6 +96,14 @@ function handleTourClicked(tourId: string) {
 async function handleLocationConfirmed(location: { lng: number, lat: number }) {
   mapStore.setPickingLocation(false)
 
+  // Pick triggered from the info sheet edit mode — route result back via prop
+  if (isPickingForEdit.value) {
+    isPickingForEdit.value = false
+    editPickedPoint.value = { type: pendingPickType.value as PickPointType, location }
+    pendingPickType.value = 'goal'
+    return
+  }
+
   if (pendingPickType.value === 'start') {
     dialogInitialStartPoint.value = location
     showTourCreationDialog.value = true
@@ -107,7 +126,13 @@ async function handleLocationConfirmed(location: { lng: number, lat: number }) {
 
 function handleLocationCancelled() {
   mapStore.setPickingLocation(false)
-  // Re-open dialog if we were picking a secondary point
+  if (isPickingForEdit.value) {
+    // Sheet stays visible; just reset the pick context
+    isPickingForEdit.value = false
+    pendingPickType.value = 'goal'
+    return
+  }
+  // Re-open dialog if we were picking a secondary point for creation
   if (pendingPickType.value === 'start' || pendingPickType.value === 'end') {
     showTourCreationDialog.value = true
   }
@@ -118,6 +143,16 @@ function handlePickPoint(type: 'start' | 'end') {
   showTourCreationDialog.value = false
   pendingPickType.value = type
   mapStore.setPickingLocation(true)
+}
+
+function handleInfoSheetPickPoint(type: 'start' | 'end' | 'goal') {
+  isPickingForEdit.value = true
+  pendingPickType.value = type
+  mapStore.setPickingLocation(true)
+}
+
+function handlePointConsumed() {
+  editPickedPoint.value = null
 }
 
 function closeTourInfo() {
@@ -182,7 +217,13 @@ function handleDialogClose() {
     <!-- Tour info sheet (mobile: slide-up, desktop: side drawer slides in from right) -->
     <Transition name="sheet">
       <div v-if="selectedTour" ref="sheetContainerRef" class="sheet-container">
-        <TourInfoSheet :tour="selectedTour" @close="closeTourInfo" />
+        <TourInfoSheet
+          :tour="selectedTour"
+          :edit-picked-point="editPickedPoint"
+          @close="closeTourInfo"
+          @pick-point="(t: 'start' | 'end' | 'goal') => handleInfoSheetPickPoint(t)"
+          @point-consumed="handlePointConsumed"
+        />
       </div>
     </Transition>
 
@@ -200,6 +241,7 @@ function handleDialogClose() {
       :initial-name="dialogInitialName"
       :initial-start-point="dialogInitialStartPoint"
       :initial-end-point="dialogInitialEndPoint"
+      :initial-goal="pendingLocation"
       @confirm="handleTourCreated"
       @close="handleDialogClose"
       @pick-point="handlePickPoint"

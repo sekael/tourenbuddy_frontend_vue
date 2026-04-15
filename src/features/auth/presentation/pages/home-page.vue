@@ -9,8 +9,8 @@ const router = useRouter()
 <template>
   <div class="home-page">
     <picture class="background">
-      <source media="(max-width: 768px)" :srcset="bgMobile" />
-      <img :src="bgDesktop" alt="" aria-hidden="true" />
+      <source media="(max-width: 768px)" :srcset="bgMobile">
+      <img :src="bgDesktop" alt="" aria-hidden="true">
     </picture>
     <div class="overlay" aria-hidden="true" />
     <div class="content">

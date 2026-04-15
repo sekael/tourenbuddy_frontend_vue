@@ -2,15 +2,19 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
-const { mockListTours, mockCreateTour } = vi.hoisted(() => ({
+const { mockListTours, mockCreateTour, mockUpdateTour, mockDeleteTour } = vi.hoisted(() => ({
   mockListTours: vi.fn(),
   mockCreateTour: vi.fn(),
+  mockUpdateTour: vi.fn(),
+  mockDeleteTour: vi.fn(),
 }))
 
 vi.mock('@/features/tours/data/repositories/tours-repository-impl', () => ({
   ToursRepositoryImpl: vi.fn().mockImplementation(() => ({
     listToursForUser: mockListTours,
     createTourWithPartners: mockCreateTour,
+    updateTour: mockUpdateTour,
+    deleteTour: mockDeleteTour,
   })),
 }))
 
@@ -143,5 +147,90 @@ describe('useToursStore', () => {
     store.clear()
 
     expect(store.tours).toHaveLength(0)
+  })
+
+  describe('updateTour', () => {
+    it('should replace the updated tour in the local list on success', async () => {
+      mockUpdateTour.mockResolvedValue(undefined)
+
+      const store = useToursStore()
+      store.tours = [...mockTours]
+
+      const updatedDraft = {
+        name: 'Rigi Updated',
+        plannedDate: null,
+        partnerIds: [],
+        tourType: null,
+        elevation: 1800,
+        gpxTrack: null,
+        description: null,
+        seasons: null,
+        startPoint: null,
+        endPoint: null,
+        equipment: null,
+        notes: null,
+      }
+      const newGoal = { lng: 8.3, lat: 46.9 }
+
+      await store.updateTour('tour-1', updatedDraft, newGoal)
+
+      expect(store.tours).toHaveLength(1)
+      expect(store.tours[0]?.name).toBe('Rigi Updated')
+      expect(store.tours[0]?.elevation).toBe(1800)
+      expect(store.tours[0]?.goal).toEqual(newGoal)
+    })
+
+    it('should leave the list unchanged and re-throw on repository error', async () => {
+      mockUpdateTour.mockRejectedValue(new Error('RPC failed'))
+
+      const store = useToursStore()
+      store.tours = [...mockTours]
+
+      await expect(
+        store.updateTour(
+          'tour-1',
+          {
+            name: 'X',
+            plannedDate: null,
+            partnerIds: [],
+            tourType: null,
+            elevation: null,
+            gpxTrack: null,
+            description: null,
+            seasons: null,
+            startPoint: null,
+            endPoint: null,
+            equipment: null,
+            notes: null,
+          },
+          { lng: 8.2, lat: 46.8 },
+        ),
+      ).rejects.toThrow('RPC failed')
+
+      expect(store.tours[0]?.name).toBe('Rigi Tour')
+    })
+  })
+
+  describe('deleteTour', () => {
+    it('should remove the tour from the local list on success', async () => {
+      mockDeleteTour.mockResolvedValue(undefined)
+
+      const store = useToursStore()
+      store.tours = [...mockTours]
+
+      await store.deleteTour('tour-1')
+
+      expect(store.tours).toHaveLength(0)
+    })
+
+    it('should leave the list unchanged and re-throw on repository error', async () => {
+      mockDeleteTour.mockRejectedValue(new Error('Delete failed'))
+
+      const store = useToursStore()
+      store.tours = [...mockTours]
+
+      await expect(store.deleteTour('tour-1')).rejects.toThrow('Delete failed')
+      expect(store.tours).toHaveLength(1)
+    })
   })
 })
