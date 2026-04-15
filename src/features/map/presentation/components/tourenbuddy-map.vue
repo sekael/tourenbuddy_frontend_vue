@@ -21,7 +21,7 @@ let mapInstance: MapLibreMap | null = null
 const toursStore = useToursStore()
 const mapStore = useMapStore()
 const { tours } = storeToRefs(toursStore)
-const { currentStyleIndex, selectedTourId } = storeToRefs(mapStore)
+const { currentStyleIndex, selectedTourId, editPreviewGoal } = storeToRefs(mapStore)
 
 // Expose map instance for location picker
 const map = ref<MapLibreMap | null>(null)
@@ -51,6 +51,7 @@ onMounted(() => {
     })
     markerLayer.setup()
     markerLayer.updateTours(tours.value, selectedTourId.value)
+    markerLayer.updatePreview(editPreviewGoal.value)
 
     gpxLayer = useGpxTrackLayer(mapInstance!)
     gpxLayer.setup()
@@ -79,6 +80,11 @@ watch([tours, selectedTourId], ([newTours, newSelectedId]) => {
   gpxLayer?.updateTrack(selectedTour.value)
 })
 
+// Watch for edit preview goal changes and update the preview marker
+watch(editPreviewGoal, (goal) => {
+  markerLayer?.updatePreview(goal)
+})
+
 // Watch for map style changes
 watch(currentStyleIndex, (index) => {
   if (!mapInstance)
@@ -89,6 +95,7 @@ watch(currentStyleIndex, (index) => {
     mapInstance.once('styledata', () => {
       markerLayer?.setup()
       markerLayer?.updateTours(tours.value, selectedTourId.value)
+      markerLayer?.updatePreview(editPreviewGoal.value)
       gpxLayer?.setup()
       gpxLayer?.updateTrack(selectedTour.value)
     })

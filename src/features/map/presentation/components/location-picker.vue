@@ -4,6 +4,8 @@ import Crosshair from '@/core/components/crosshair.vue'
 
 const props = defineProps<{
   map: MapLibreMap | null
+  /** Pixels to offset the Cancel/Continue buttons from the bottom of the viewport. */
+  actionsBottom?: number
 }>()
 
 const emit = defineEmits<{
@@ -40,7 +42,10 @@ function handleConfirm() {
   <div class="location-picker">
     <Crosshair />
 
-    <div class="actions">
+    <div
+      class="actions"
+      :style="props.actionsBottom != null ? { bottom: `${props.actionsBottom}px` } : undefined"
+    >
       <button class="cancel-btn" @click="emit('cancel')">
         Cancel
       </button>
@@ -56,7 +61,7 @@ function handleConfirm() {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 20;
+  z-index: 200;
 }
 
 .actions {

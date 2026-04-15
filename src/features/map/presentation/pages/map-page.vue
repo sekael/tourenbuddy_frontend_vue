@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
-import { nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import FeedbackSheet from '@/core/components/feedback-sheet.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import ContactsListSheet from '@/features/contacts/presentation/components/contacts-list-sheet.vue'
@@ -17,6 +17,8 @@ import TourInfoSheet from '@/features/tours/presentation/components/tour-info-sh
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import UserProfileSheet from '@/features/user/presentation/components/user-profile-sheet.vue'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
+
+type PickPointType = 'goal' | 'start' | 'end'
 
 const mapStore = useMapStore()
 const toursStore = useToursStore()
@@ -46,8 +48,20 @@ const dialogInitialName = ref<string | null>(null)
 const dialogInitialStartPoint = ref<{ lng: number, lat: number } | null>(null)
 const dialogInitialEndPoint = ref<{ lng: number, lat: number } | null>(null)
 
-const selectedTour = ref<(typeof tours.value)[0] | null>(null)
+// Derived reactively from store so it updates immediately when tours are mutated
+const selectedTour = computed(() => tours.value.find(t => t.id === selectedTourId.value) ?? null)
 const sheetContainerRef = ref<HTMLElement | null>(null)
+
+// Whether the current location pick was triggered from the info sheet edit mode
+const isPickingForEdit = ref(false)
+
+// Prop-based handoff to info sheet after a location pick in edit mode
+const editPickedPoint = ref<{
+  type: 'start' | 'end' | 'goal'
+  location: { lng: number, lat: number }
+  elevation?: number | null
+  suggestedName?: string | null
+} | null>(null)
 
 onMounted(async () => {
   await Promise.all([
@@ -57,25 +71,24 @@ onMounted(async () => {
   ])
 })
 
+async function flyToSelectedTour() {
+  if (!selectedTour.value)
+    return
+  await nextTick()
+  const padding = isDesktop.value
+    ? { top: 0, right: 400, bottom: 0, left: 0 }
+    : { top: 0, right: 0, bottom: sheetContainerRef.value?.offsetHeight ?? 0, left: 0 }
+  mapRef.value?.map?.flyTo({
+    center: [selectedTour.value.goal.lng, selectedTour.value.goal.lat],
+    zoom: 12,
+    duration: 1000,
+    padding,
+  })
+}
+
 watch(selectedTourId, async (id) => {
-  if (id) {
-    selectedTour.value = tours.value.find(t => t.id === id) ?? null
-    if (selectedTour.value) {
-      await nextTick()
-      const padding = isDesktop.value
-        ? { top: 0, right: 400, bottom: 0, left: 0 }
-        : { top: 0, right: 0, bottom: sheetContainerRef.value?.offsetHeight ?? 0, left: 0 }
-      mapRef.value?.map?.flyTo({
-        center: [selectedTour.value.goal.lng, selectedTour.value.goal.lat],
-        zoom: 12,
-        duration: 1000,
-        padding,
-      })
-    }
-  }
-  else {
-    selectedTour.value = null
-  }
+  if (id)
+    await flyToSelectedTour()
 })
 
 function handleTourClicked(tourId: string) {
@@ -84,6 +97,27 @@ function handleTourClicked(tourId: string) {
 
 async function handleLocationConfirmed(location: { lng: number, lat: number }) {
   mapStore.setPickingLocation(false)
+
+  // Pick triggered from the info sheet edit mode — route result back via prop
+  if (isPickingForEdit.value) {
+    const pickType = pendingPickType.value as PickPointType
+    isPickingForEdit.value = false
+    pendingPickType.value = 'goal'
+    if (pickType === 'goal') {
+      // Show the tentative goal as an orange preview marker until edit mode closes
+      mapStore.setEditPreviewGoal(location)
+      // Run Swisstopo lookups in parallel (same as creation flow)
+      const [elevation, suggestedName] = await Promise.all([
+        getElevation(location),
+        suggestTourName(location),
+      ])
+      editPickedPoint.value = { type: 'goal', location, elevation, suggestedName }
+    }
+    else {
+      editPickedPoint.value = { type: pickType, location }
+    }
+    return
+  }
 
   if (pendingPickType.value === 'start') {
     dialogInitialStartPoint.value = location
@@ -107,7 +141,13 @@ async function handleLocationConfirmed(location: { lng: number, lat: number }) {
 
 function handleLocationCancelled() {
   mapStore.setPickingLocation(false)
-  // Re-open dialog if we were picking a secondary point
+  if (isPickingForEdit.value) {
+    // Sheet stays visible; just reset the pick context
+    isPickingForEdit.value = false
+    pendingPickType.value = 'goal'
+    return
+  }
+  // Re-open dialog if we were picking a secondary point for creation
   if (pendingPickType.value === 'start' || pendingPickType.value === 'end') {
     showTourCreationDialog.value = true
   }
@@ -120,11 +160,34 @@ function handlePickPoint(type: 'start' | 'end') {
   mapStore.setPickingLocation(true)
 }
 
+function handleInfoSheetPickPoint(type: 'start' | 'end' | 'goal') {
+  isPickingForEdit.value = true
+  pendingPickType.value = type
+  mapStore.setPickingLocation(true)
+}
+
+function handlePointConsumed() {
+  editPickedPoint.value = null
+}
+
+async function handleEditModeChange(editing: boolean) {
+  if (!editing) {
+    // Cancel/save: drop preview and recenter on the (possibly updated) tour goal
+    mapStore.setEditPreviewGoal(null)
+    await flyToSelectedTour()
+  }
+}
+
 function closeTourInfo() {
+  mapStore.setEditPreviewGoal(null)
   mapStore.selectTour(null)
 }
 
 function handleMapBackgroundClick() {
+  // Suppress while location picker is active — map panning passes through the
+  // pointer-events:none overlay and would otherwise deselect the current tour.
+  if (isPickingLocation.value)
+    return
   mapStore.selectTour(null)
   showFeedbackSheet.value = false
   showProfileSheet.value = false
@@ -175,6 +238,7 @@ function handleDialogClose() {
     <LocationPicker
       v-if="isPickingLocation"
       :map="mapRef?.map ?? null"
+      :actions-bottom="isPickingForEdit && !isDesktop ? 112 : undefined"
       @confirm="handleLocationConfirmed"
       @cancel="handleLocationCancelled"
     />
@@ -182,7 +246,14 @@ function handleDialogClose() {
     <!-- Tour info sheet (mobile: slide-up, desktop: side drawer slides in from right) -->
     <Transition name="sheet">
       <div v-if="selectedTour" ref="sheetContainerRef" class="sheet-container">
-        <TourInfoSheet :tour="selectedTour" @close="closeTourInfo" />
+        <TourInfoSheet
+          :tour="selectedTour"
+          :edit-picked-point="editPickedPoint"
+          @close="closeTourInfo"
+          @pick-point="(t: 'start' | 'end' | 'goal') => handleInfoSheetPickPoint(t)"
+          @point-consumed="handlePointConsumed"
+          @edit-mode-change="handleEditModeChange"
+        />
       </div>
     </Transition>
 
@@ -200,6 +271,7 @@ function handleDialogClose() {
       :initial-name="dialogInitialName"
       :initial-start-point="dialogInitialStartPoint"
       :initial-end-point="dialogInitialEndPoint"
+      :initial-goal="pendingLocation"
       @confirm="handleTourCreated"
       @close="handleDialogClose"
       @pick-point="handlePickPoint"

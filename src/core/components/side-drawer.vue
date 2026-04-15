@@ -5,6 +5,8 @@ import { useIsDesktop } from '@/core/composables/use-is-desktop'
 const props = defineProps<{
   title?: string
   ariaLabel?: string
+  /** Ignored on desktop; accepted so callers using a dynamic `:is` component can pass it uniformly. */
+  collapsed?: boolean
 }>()
 
 const emit = defineEmits<{ close: [] }>()
@@ -17,6 +19,7 @@ const isDesktop = useIsDesktop()
     v-if="!isDesktop"
     :title="props.title"
     :aria-label="props.ariaLabel"
+    :collapsed="props.collapsed"
     @close="emit('close')"
   >
     <slot />

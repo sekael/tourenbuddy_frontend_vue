@@ -20,11 +20,11 @@ describe('useMapStore', () => {
     expect(store.isPickingLocation).toBe(true)
   })
 
-  it('should clear selected tour when entering location picking mode', () => {
+  it('should preserve selected tour when entering location picking mode', () => {
     const store = useMapStore()
     store.selectTour('tour-123')
     store.setPickingLocation(true)
-    expect(store.selectedTourId).toBeNull()
+    expect(store.selectedTourId).toBe('tour-123')
   })
 
   it('should exit location picking mode', () => {
