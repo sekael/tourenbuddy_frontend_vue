@@ -1,11 +1,18 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import bgDesktop from '@/assets/background-desktop.webp'
+import bgMobile from '@/assets/background-mobile.webp'
 
 const router = useRouter()
 </script>
 
 <template>
   <div class="home-page">
+    <picture class="background">
+      <source media="(max-width: 768px)" :srcset="bgMobile" />
+      <img :src="bgDesktop" alt="" aria-hidden="true" />
+    </picture>
+    <div class="overlay" aria-hidden="true" />
     <div class="content">
       <h1 class="title">
         TourenBuddy
@@ -22,15 +29,38 @@ const router = useRouter()
 
 <style scoped>
 .home-page {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
   padding: var(--spacing-xl);
   background-color: var(--color-background);
+  overflow: hidden;
+}
+
+.background {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.background img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.6));
 }
 
 .content {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -42,14 +72,16 @@ const router = useRouter()
 .title {
   font-size: var(--font-size-3xl);
   font-weight: var(--font-weight-medium);
-  color: var(--color-primary);
+  color: #ffffff;
   letter-spacing: -0.02em;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .subtitle {
   font-size: var(--font-size-lg);
-  color: var(--color-on-surface-variant);
+  color: rgba(255, 255, 255, 0.92);
   line-height: var(--line-height-relaxed);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
 .login-button {
