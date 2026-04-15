@@ -13,7 +13,7 @@ export default defineConfig({
     vue(),
     VitePWA({
       registerType: 'prompt',
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
+      includeAssets: ['apple-touch-icon.png', 'icons/icon-192.png', 'icons/icon-512.png'],
       manifest: {
         name: 'TourenBuddy',
         short_name: 'TourenBuddy',
@@ -39,7 +39,16 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         runtimeCaching: [
+          {
+            urlPattern: /\/assets\/background-.*\.(jpe?g|webp|png)$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'welcome-backgrounds',
+              expiration: { maxEntries: 4, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
           {
             urlPattern: /^https:\/\/vectortiles\.geo\.admin\.ch\/.*/i,
             handler: 'StaleWhileRevalidate',
