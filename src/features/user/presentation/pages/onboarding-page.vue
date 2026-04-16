@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
 import { InvalidPhoneNumberError } from '@/core/exceptions'
 import PhoneVerificationDialog from '@/features/user/presentation/components/phone-verification-dialog.vue'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
@@ -11,6 +12,7 @@ const store = useUserProfileStore()
 const firstName = ref('')
 const lastName = ref('')
 const phoneNumber = ref('')
+const { formatted: phoneNumberFormatted, onInput: onPhoneNumberInput } = useAsYouTypePhone(phoneNumber)
 const errors = ref<{ firstName?: string, lastName?: string, phoneNumber?: string }>({})
 const isLoading = ref(false)
 const submitError = ref<string | null>(null)
@@ -135,12 +137,13 @@ function handleVerificationClose() {
           <label for="phoneNumber" class="label">Phone number <span class="optional">(optional)</span></label>
           <input
             id="phoneNumber"
-            v-model="phoneNumber"
+            :value="phoneNumberFormatted"
             type="tel"
             class="input"
             :class="{ 'input--error': errors.phoneNumber }"
-            placeholder="+41791234567"
+            placeholder="+41 79 012 34 56"
             autocomplete="tel"
+            @input="onPhoneNumberInput"
           >
           <p v-if="errors.phoneNumber" class="error-text">
             {{ errors.phoneNumber }}

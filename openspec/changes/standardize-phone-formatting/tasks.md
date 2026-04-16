@@ -67,10 +67,10 @@
 
 ## 12. Integration Verification
 
-- [ ] 12.1 `npm run dev` and manually verify: typing `0791234567` in the contact form shows `+41 79 123 45 67` live; saving stores the canonical form (inspect via the contact detail view); WhatsApp icon now appears on the contact chip for that contact
-- [ ] 12.2 Manually verify import: drop a `.vcf` containing `TEL:0791234567` — import-results shows `+41 79 123 45 67` and the new contact has a working WhatsApp icon
-- [ ] 12.3 Manually verify import: drop a `.vcf` containing `TEL:not-a-number` — import-results shows the raw value with a "couldn't parse" indicator and the contact still imports
-- [ ] 12.4 Manually verify user-profile flow: enter `079 123 45 67` in onboarding/profile sheet — the OTP is requested for `+41791234567`; the stored profile phone reads `+41 79 123 45 67`
+- [x] 12.1 `npm run dev` and manually verify: typing `0791234567` in the contact form shows `+41 79 123 45 67` live; saving stores the canonical form (inspect via the contact detail view); WhatsApp icon now appears on the contact chip for that contact
+- [x] 12.2 Manually verify import: drop a `.vcf` containing `TEL:0791234567` — import-results shows `+41 79 123 45 67` and the new contact has a working WhatsApp icon
+- [x] 12.3 Manually verify import: drop a `.vcf` containing `TEL:not-a-number` — import-results shows the raw value with a "couldn't parse" indicator and the contact still imports
+- [x] 12.4 Manually verify user-profile flow: enter `079 123 45 67` in onboarding/profile sheet — the OTP is requested for `+41791234567`; the stored profile phone reads `+41 79 123 45 67`
 
 ## 13. Finalize
 
@@ -78,7 +78,7 @@
 - [x] 13.2 Run `npm run format` to apply Prettier
 - [x] 13.3 Run `npm run type-check`
 - [x] 13.4 Run `npm run test` and confirm all new + existing tests pass
-- [ ] 13.5 Prompt the user to commit with this ready-to-copy conventional-commit message:
+- [x] 13.5 Prompt the user to commit with this ready-to-copy conventional-commit message:
 
       ```
       feat(phone): standardize phone numbers to canonical international format
@@ -91,4 +91,4 @@
       import-results view.
       ```
 
-- [ ] 13.6 Prompt the user to push the branch and open a PR against `main` (e.g. `gh pr create --fill --base main`)
+- [x] 13.6 Prompt the user to push the branch and open a PR against `main` (e.g. `gh pr create --fill --base main`)
