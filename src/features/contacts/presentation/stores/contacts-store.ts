@@ -20,21 +20,18 @@ export const useContactsStore = defineStore('contacts', () => {
   const error = ref<string | null>(null)
 
   async function loadContacts() {
-    if (!authStore.isAuthenticated)
-      return
+    if (!authStore.isAuthenticated) return
 
     isLoading.value = true
     error.value = null
 
     try {
       contacts.value = await repository.fetchContacts()
-    }
-    catch (err) {
+    } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load contacts'
       error.value = message
       logger.error('Failed to load contacts', err)
-    }
-    finally {
+    } finally {
       isLoading.value = false
     }
   }
@@ -46,8 +43,7 @@ export const useContactsStore = defineStore('contacts', () => {
     phoneNumber?: string | null,
   ) {
     const userId = authStore.currentUser?.id
-    if (!userId)
-      return
+    if (!userId) return
 
     const contact = await repository.createContact({
       userId,
@@ -76,13 +72,13 @@ export const useContactsStore = defineStore('contacts', () => {
   ) {
     const updated = await repository.updateContact(id, data)
     contacts.value = contacts.value
-      .map(c => (c.id === id ? updated : c))
+      .map((c) => (c.id === id ? updated : c))
       .sort((a, b) => a.firstName.localeCompare(b.firstName))
   }
 
   async function deleteContact(id: string) {
     await repository.deleteContact(id)
-    contacts.value = contacts.value.filter(c => c.id !== id)
+    contacts.value = contacts.value.filter((c) => c.id !== id)
   }
 
   async function addMethodToContact(
@@ -90,7 +86,7 @@ export const useContactsStore = defineStore('contacts', () => {
     method: NewContactMethod,
   ): Promise<ContactMethod> {
     const newMethod = await contactMethodsRepository.addMethod(contactId, method)
-    contacts.value = contacts.value.map(c =>
+    contacts.value = contacts.value.map((c) =>
       c.id === contactId ? { ...c, contactMethods: [...c.contactMethods, newMethod] } : c,
     )
     return newMethod
@@ -102,18 +98,18 @@ export const useContactsStore = defineStore('contacts', () => {
     data: Partial<Omit<ContactMethod, 'id' | 'contactId'>>,
   ) {
     const updated = await contactMethodsRepository.updateMethod(methodId, data)
-    contacts.value = contacts.value.map(c =>
+    contacts.value = contacts.value.map((c) =>
       c.id === contactId
-        ? { ...c, contactMethods: c.contactMethods.map(m => (m.id === methodId ? updated : m)) }
+        ? { ...c, contactMethods: c.contactMethods.map((m) => (m.id === methodId ? updated : m)) }
         : c,
     )
   }
 
   async function removeMethodFromContact(contactId: string, methodId: string) {
     await contactMethodsRepository.removeMethod(methodId)
-    contacts.value = contacts.value.map(c =>
+    contacts.value = contacts.value.map((c) =>
       c.id === contactId
-        ? { ...c, contactMethods: c.contactMethods.filter(m => m.id !== methodId) }
+        ? { ...c, contactMethods: c.contactMethods.filter((m) => m.id !== methodId) }
         : c,
     )
   }

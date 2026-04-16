@@ -4,7 +4,7 @@ Vue tour-planning app for outdoor enthusiasts. Users pin tour objectives on Swis
 
 ## General Principles
 
-- Use subagents aggressively for delegatable tasks
+- Use subagents aggressively for delegatable tasks, use Haiku model for non-complex subagent tasks
 - Opus 4.6 for planning/thinking/specs, Sonnet 4.6 for code implementation
 - **Framework:** Vue 3 (latest stable) with TypeScript and `<script setup>` SFCs
 - **Build tool:** Vite (latest stable)
