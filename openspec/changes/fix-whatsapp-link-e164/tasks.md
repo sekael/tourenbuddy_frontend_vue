@@ -31,11 +31,11 @@
 - [x] 5.2 Run `npm run format`
 - [x] 5.3 Run `npm run type-check`
 - [x] 5.4 Run full `npm run test` — all green
-- [ ] 5.5 Prompt user to commit with ready-to-copy message:
+- [x] 5.5 Prompt user to commit with ready-to-copy message:
 
   ```
   fix(contacts): only emit wa.me link for international phone numbers (#32)
   ```
 
-- [ ] 5.6 Prompt user to push branch and open PR against `main` referencing issue #32
+- [x] 5.6 Prompt user to push branch and open PR against `main` referencing issue #32
 - [ ] 5.7 After merge, prompt user to archive change with `/opsx:archive fix-whatsapp-link-e164`

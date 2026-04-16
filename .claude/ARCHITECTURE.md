@@ -161,3 +161,17 @@ Deps point inward. Domain layer = ZERO deps on Vue/data/presentation. Data layer
 | Workbox via vite-plugin-pwa      | Battle-tested SW tooling, Vite integration               |
 | @antfu/eslint-config             | Strictest community config, catch real bugs              |
 | Vitest over Jest                 | Vite-native, faster, ESM-first                           |
+
+## Data Flow
+
+```
+UI (Vue Component)
+  → store (Pinia composition store)
+    → Repository (abstract interface from domain/)
+      → Service (Supabase client / IndexedDB)
+        → Supabase (remote) or IndexedDB (local cache)
+```
+
+- Repositories single source of truth — stores never call Supabase directly
+- Zod schemas (`data/models/`) validate + type API JSON, map to domain entities
+- Domain entities (`domain/entities/`) pure TypeScript, no framework deps
