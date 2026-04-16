@@ -22,7 +22,7 @@ describe('locationPicker', () => {
     expect(map.unproject).toHaveBeenCalledWith([400, 300])
     expect(map.getCenter).not.toHaveBeenCalled()
 
-    const emitted = wrapper.emitted('confirm') as [{ lng: number, lat: number }][]
+    const emitted = wrapper.emitted('confirm') as [{ lng: number; lat: number }][]
     expect(emitted).toHaveLength(1)
     expect(emitted[0]![0]).toEqual({ lng: 400, lat: 300 })
   })
@@ -38,7 +38,7 @@ describe('locationPicker', () => {
 
     await wrapper.find('.confirm-btn').trigger('click')
 
-    const emitted = wrapper.emitted('confirm') as [{ lng: number, lat: number }][]
+    const emitted = wrapper.emitted('confirm') as [{ lng: number; lat: number }][]
     expect(emitted[0]![0]).toEqual({ lng: 8.2, lat: 46.8 })
     expect(map.getCenter).not.toHaveBeenCalled()
   })
