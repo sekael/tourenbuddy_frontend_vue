@@ -1,5 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { InvalidPhoneNumberError } from '@/core/exceptions'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 
 const {
@@ -188,7 +189,7 @@ describe('useContactsStore', () => {
       await store.loadContacts()
       await store.updateContact('1', { firstName: 'Zara' })
 
-      const idx = store.contacts.findIndex(c => c.id === '1')
+      const idx = store.contacts.findIndex((c) => c.id === '1')
       expect(store.contacts[idx]!.firstName).toBe('Zara')
       // Bob comes before Zara alphabetically
       expect(store.contacts[0]!.firstName).toBe('Bob')
@@ -272,6 +273,113 @@ describe('useContactsStore', () => {
 
       await store.removeMethodFromContact('2', 'method-1')
       expect(store.contacts[0]!.contactMethods).toHaveLength(0)
+    })
+  })
+
+  describe('phone normalization', () => {
+    it('normalizes Swiss national phone on addContact', async () => {
+      mockFetchContacts.mockResolvedValue([])
+      mockCreateContact.mockResolvedValue({
+        id: '5',
+        userId: 'user-123',
+        firstName: 'Frank',
+        lastName: null,
+        displayName: null,
+        contactMethods: [],
+      })
+      mockAddMethod.mockResolvedValue({
+        id: 'method-x',
+        contactId: '5',
+        methodType: 'phone',
+        value: '+41 79 999 11 22',
+        label: null,
+        isPrimary: true,
+      })
+
+      const store = useContactsStore()
+      await store.loadContacts()
+      await store.addContact('Frank', null, null, '0799991122')
+
+      expect(mockAddMethod).toHaveBeenCalledWith(
+        '5',
+        expect.objectContaining({
+          value: '+41 79 999 11 22',
+        }),
+      )
+    })
+
+    it('rejects unparseable phone on addContact with InvalidPhoneNumberError', async () => {
+      mockFetchContacts.mockResolvedValue([])
+
+      const store = useContactsStore()
+      await store.loadContacts()
+
+      await expect(store.addContact('Frank', null, null, 'not-a-number')).rejects.toBeInstanceOf(
+        InvalidPhoneNumberError,
+      )
+      // contact should NOT have been created
+      expect(mockCreateContact).not.toHaveBeenCalled()
+    })
+
+    it('accepts empty phone as null on addContact', async () => {
+      mockFetchContacts.mockResolvedValue([])
+      mockCreateContact.mockResolvedValue({
+        id: '6',
+        userId: 'user-123',
+        firstName: 'Grace',
+        lastName: null,
+        displayName: null,
+        contactMethods: [],
+      })
+
+      const store = useContactsStore()
+      await store.loadContacts()
+      await store.addContact('Grace', null, null, '')
+
+      expect(mockAddMethod).not.toHaveBeenCalled()
+    })
+
+    it('normalizes phone on addMethodToContact', async () => {
+      mockFetchContacts.mockResolvedValue([{ ...mockContacts[0]!, contactMethods: [] }])
+      mockAddMethod.mockResolvedValue({
+        id: 'method-y',
+        contactId: '1',
+        methodType: 'phone' as const,
+        value: '+41 79 123 45 67',
+        label: null,
+        isPrimary: true,
+      })
+
+      const store = useContactsStore()
+      await store.loadContacts()
+      await store.addMethodToContact('1', {
+        methodType: 'phone',
+        value: '0791234567',
+        isPrimary: true,
+      })
+
+      expect(mockAddMethod).toHaveBeenCalledWith(
+        '1',
+        expect.objectContaining({
+          value: '+41 79 123 45 67',
+        }),
+      )
+    })
+
+    it('normalizes phone on updateMethodOnContact', async () => {
+      mockFetchContacts.mockResolvedValue([mockContacts[1]!])
+      mockUpdateMethod.mockResolvedValue({ ...mockPhoneMethod, value: '+41 79 123 45 67' })
+
+      const store = useContactsStore()
+      await store.loadContacts()
+      await store.updateMethodOnContact('2', 'method-1', { value: '0791234567' })
+
+      expect(mockUpdateMethod).toHaveBeenCalledWith(
+        'method-1',
+        expect.objectContaining({
+          value: '+41 79 123 45 67',
+        }),
+      )
     })
   })
 })

@@ -47,12 +47,12 @@ describe('parseVCardText', () => {
     })
   })
 
-  it('should parse multiple vCard blocks', () => {
+  it('should parse multiple vCard blocks and normalize phone numbers', () => {
     const result = parseVCardText(multiVCard)
     expect(result).toHaveLength(2)
     expect(result[0]!.firstName).toBe('Anna')
     expect(result[0]!.lastName).toBe('Bauer')
-    expect(result[0]!.phoneNumber).toBe('079 111 22 33')
+    expect(result[0]!.phoneNumber).toBe('+41 79 111 22 33')
     expect(result[1]!.firstName).toBe('Bob')
     expect(result[1]!.lastName).toBeNull()
     expect(result[1]!.phoneNumber).toBeNull()
@@ -87,5 +87,34 @@ END:VCARD`
     const result = parseVCardText(vcard)
     expect(result[0]!.firstName).toBe('Also')
     expect(result[0]!.lastName).toBe('Correct')
+  })
+
+  it('normalizes Swiss national phone number', () => {
+    const vcard = `BEGIN:VCARD
+VERSION:3.0
+FN:Test
+TEL:0791234567
+END:VCARD`
+    const result = parseVCardText(vcard)
+    expect(result[0]!.phoneNumber).toBe('+41 79 123 45 67')
+  })
+
+  it('retains unparseable phone number as-is', () => {
+    const vcard = `BEGIN:VCARD
+VERSION:3.0
+FN:Test
+TEL:ext. 1234
+END:VCARD`
+    const result = parseVCardText(vcard)
+    expect(result[0]!.phoneNumber).toBe('ext. 1234')
+  })
+
+  it('leaves phoneNumber null when no TEL field', () => {
+    const vcard = `BEGIN:VCARD
+VERSION:3.0
+FN:Test
+END:VCARD`
+    const result = parseVCardText(vcard)
+    expect(result[0]!.phoneNumber).toBeNull()
   })
 })

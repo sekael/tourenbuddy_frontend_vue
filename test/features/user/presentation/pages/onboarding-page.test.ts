@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { InvalidPhoneNumberError } from '@/core/exceptions'
 import OnboardingPage from '@/features/user/presentation/pages/onboarding-page.vue'
 
 const {
@@ -11,7 +12,7 @@ const {
   mockProfileStore,
 } = vi.hoisted(() => {
   const store = {
-    _profile: null as { id: string, firstName: string | null, lastName: string | null } | null,
+    _profile: null as { id: string; firstName: string | null; lastName: string | null } | null,
     get profile() {
       return store._profile
     },
@@ -60,7 +61,7 @@ describe('onboardingPage', () => {
   it('should not call loadProfile on mount when profile is already loaded', async () => {
     mockProfileStore._profile = { id: 'user-123', firstName: null, lastName: null }
     mount(OnboardingPage)
-    await new Promise(r => setTimeout(r, 0))
+    await new Promise((r) => setTimeout(r, 0))
     expect(mockLoadProfile).not.toHaveBeenCalled()
   })
 
@@ -78,13 +79,17 @@ describe('onboardingPage', () => {
     expect(wrapper.text()).toContain('Last name is required')
   })
 
-  it('should show validation error for invalid phone format', async () => {
+  it('should show error for completely unparseable phone format', async () => {
+    mockUpdateProfile.mockResolvedValue(undefined)
+    mockSendPhoneVerification.mockRejectedValue(new InvalidPhoneNumberError())
     const wrapper = mount(OnboardingPage)
     await wrapper.find('#firstName').setValue('Max')
     await wrapper.find('#lastName').setValue('Doe')
-    await wrapper.find('#phoneNumber').setValue('0791234567')
+    await wrapper.find('#phoneNumber').setValue('not-a-number')
     await wrapper.find('form').trigger('submit')
-    expect(wrapper.text()).toContain('international format')
+    await wrapper.vm.$nextTick()
+    // InvalidPhoneNumberError message is surfaced via errors.phoneNumber
+    expect(wrapper.text()).toContain('Phone number could not be recognized')
   })
 
   it('should call updateProfile and navigate to map on valid submit without phone', async () => {

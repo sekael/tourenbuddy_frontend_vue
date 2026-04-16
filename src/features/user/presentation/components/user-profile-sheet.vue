@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
+import { InvalidPhoneNumberError } from '@/core/exceptions'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
@@ -26,18 +27,13 @@ const isSaving = ref(false)
 const showPhoneVerification = ref(false)
 const pendingPhone = ref('')
 
-const e164Regex = /^\+[1-9]\d{1,14}$/
-
 const full = computed(() => userProfileStore.fullProfile)
 
 const displayName = computed(() => {
   const p = full.value
-  if (!p)
-    return authStore.currentUser?.email ?? 'User'
-  if (p.firstName && p.lastName)
-    return `${p.firstName} ${p.lastName}`
-  if (p.firstName)
-    return p.firstName
+  if (!p) return authStore.currentUser?.email ?? 'User'
+  if (p.firstName && p.lastName) return `${p.firstName} ${p.lastName}`
+  if (p.firstName) return p.firstName
   return p.email ?? 'User'
 })
 
@@ -63,11 +59,6 @@ async function handleSave() {
     return
   }
 
-  if (editPhone.value && !e164Regex.test(editPhone.value.trim())) {
-    editError.value = 'Enter phone in international format (e.g. +41791234567)'
-    return
-  }
-
   isSaving.value = true
   try {
     await userProfileStore.updateProfile({
@@ -83,15 +74,15 @@ async function handleSave() {
       pendingPhone.value = phone
       isEditing.value = false
       showPhoneVerification.value = true
-    }
-    else {
+    } else {
       isEditing.value = false
     }
-  }
-  catch (err) {
-    editError.value = err instanceof Error ? err.message : 'Failed to save profile'
-  }
-  finally {
+  } catch (err) {
+    editError.value =
+      err instanceof InvalidPhoneNumberError || err instanceof Error
+        ? (err as Error).message
+        : 'Failed to save profile'
+  } finally {
     isSaving.value = false
   }
 }
@@ -145,10 +136,9 @@ async function handleSignOut() {
               v-if="full.phoneVerified"
               class="material-symbols-outlined verified-icon"
               title="Verified"
-            >verified</span>
-            <button v-else class="verify-btn" @click="startEdit">
-              Verify
-            </button>
+              >verified</span
+            >
+            <button v-else class="verify-btn" @click="startEdit">Verify</button>
           </template>
           <button v-else class="add-phone-btn" @click="handleAddPhone">
             <span class="material-symbols-outlined">add</span>
@@ -179,7 +169,7 @@ async function handleSignOut() {
               type="text"
               class="input"
               autocomplete="given-name"
-            >
+            />
           </div>
 
           <div class="field">
@@ -190,11 +180,13 @@ async function handleSignOut() {
               type="text"
               class="input"
               autocomplete="family-name"
-            >
+            />
           </div>
 
           <div class="field">
-            <label for="edit-phone" class="label">Phone number <span class="optional">(optional)</span></label>
+            <label for="edit-phone" class="label"
+              >Phone number <span class="optional">(optional)</span></label
+            >
             <input
               id="edit-phone"
               v-model="editPhone"
@@ -202,7 +194,7 @@ async function handleSignOut() {
               class="input"
               placeholder="+41791234567"
               autocomplete="tel"
-            >
+            />
           </div>
 
           <p v-if="editError" class="error-text">
@@ -210,9 +202,7 @@ async function handleSignOut() {
           </p>
 
           <div class="edit-actions">
-            <button type="button" class="cancel-btn" @click="cancelEdit">
-              Cancel
-            </button>
+            <button type="button" class="cancel-btn" @click="cancelEdit">Cancel</button>
             <button type="submit" class="save-btn" :disabled="isSaving">
               {{ isSaving ? 'Saving...' : 'Save' }}
             </button>

@@ -3,10 +3,20 @@ import type { ContactMethod } from '@/features/contacts/domain/entities/contact-
 import type { NewContactMethod } from '@/features/contacts/domain/repositories/contact-methods-repository'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { InvalidPhoneNumberError } from '@/core/exceptions'
 import { useLogger } from '@/core/logging/use-logger'
+import { normalizePhone } from '@/core/utils/phone-normalize'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { ContactMethodsRepositoryImpl } from '@/features/contacts/data/repositories/contact-methods-repository-impl'
 import { ContactsRepositoryImpl } from '@/features/contacts/data/repositories/contacts-repository-impl'
+
+function normalizePhoneForStore(value: string | null | undefined): string | null {
+  const trimmed = (value ?? '').trim()
+  if (!trimmed) return null
+  const result = normalizePhone(trimmed)
+  if (!result.ok) throw new InvalidPhoneNumberError()
+  return result.value
+}
 
 const repository = new ContactsRepositoryImpl()
 const contactMethodsRepository = new ContactMethodsRepositoryImpl()
@@ -20,21 +30,18 @@ export const useContactsStore = defineStore('contacts', () => {
   const error = ref<string | null>(null)
 
   async function loadContacts() {
-    if (!authStore.isAuthenticated)
-      return
+    if (!authStore.isAuthenticated) return
 
     isLoading.value = true
     error.value = null
 
     try {
       contacts.value = await repository.fetchContacts()
-    }
-    catch (err) {
+    } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load contacts'
       error.value = message
       logger.error('Failed to load contacts', err)
-    }
-    finally {
+    } finally {
       isLoading.value = false
     }
   }
@@ -46,8 +53,10 @@ export const useContactsStore = defineStore('contacts', () => {
     phoneNumber?: string | null,
   ) {
     const userId = authStore.currentUser?.id
-    if (!userId)
-      return
+    if (!userId) return
+
+    // Normalize phone before any DB write to avoid creating a contact without its phone method
+    const normalizedPhone = normalizePhoneForStore(phoneNumber)
 
     const contact = await repository.createContact({
       userId,
@@ -55,11 +64,10 @@ export const useContactsStore = defineStore('contacts', () => {
       lastName: lastName?.trim() || null,
       displayName: displayName?.trim() || null,
     })
-
-    if (phoneNumber?.trim()) {
+    if (normalizedPhone) {
       const method = await contactMethodsRepository.addMethod(contact.id, {
         methodType: 'phone',
-        value: phoneNumber.trim(),
+        value: normalizedPhone,
         isPrimary: true,
       })
       contact.contactMethods.push(method)
@@ -76,21 +84,25 @@ export const useContactsStore = defineStore('contacts', () => {
   ) {
     const updated = await repository.updateContact(id, data)
     contacts.value = contacts.value
-      .map(c => (c.id === id ? updated : c))
+      .map((c) => (c.id === id ? updated : c))
       .sort((a, b) => a.firstName.localeCompare(b.firstName))
   }
 
   async function deleteContact(id: string) {
     await repository.deleteContact(id)
-    contacts.value = contacts.value.filter(c => c.id !== id)
+    contacts.value = contacts.value.filter((c) => c.id !== id)
   }
 
   async function addMethodToContact(
     contactId: string,
     method: NewContactMethod,
   ): Promise<ContactMethod> {
-    const newMethod = await contactMethodsRepository.addMethod(contactId, method)
-    contacts.value = contacts.value.map(c =>
+    const normalizedMethod: NewContactMethod =
+      method.methodType === 'phone'
+        ? { ...method, value: normalizePhoneForStore(method.value) ?? method.value }
+        : method
+    const newMethod = await contactMethodsRepository.addMethod(contactId, normalizedMethod)
+    contacts.value = contacts.value.map((c) =>
       c.id === contactId ? { ...c, contactMethods: [...c.contactMethods, newMethod] } : c,
     )
     return newMethod
@@ -101,19 +113,26 @@ export const useContactsStore = defineStore('contacts', () => {
     methodId: string,
     data: Partial<Omit<ContactMethod, 'id' | 'contactId'>>,
   ) {
-    const updated = await contactMethodsRepository.updateMethod(methodId, data)
-    contacts.value = contacts.value.map(c =>
+    const contact = contacts.value.find((c) => c.id === contactId)
+    const existingMethod = contact?.contactMethods.find((m) => m.id === methodId)
+    const isPhoneMethod = existingMethod?.methodType === 'phone' || data.methodType === 'phone'
+    const normalizedData =
+      isPhoneMethod && data.value !== undefined
+        ? { ...data, value: normalizePhoneForStore(data.value) ?? data.value }
+        : data
+    const updated = await contactMethodsRepository.updateMethod(methodId, normalizedData)
+    contacts.value = contacts.value.map((c) =>
       c.id === contactId
-        ? { ...c, contactMethods: c.contactMethods.map(m => (m.id === methodId ? updated : m)) }
+        ? { ...c, contactMethods: c.contactMethods.map((m) => (m.id === methodId ? updated : m)) }
         : c,
     )
   }
 
   async function removeMethodFromContact(contactId: string, methodId: string) {
     await contactMethodsRepository.removeMethod(methodId)
-    contacts.value = contacts.value.map(c =>
+    contacts.value = contacts.value.map((c) =>
       c.id === contactId
-        ? { ...c, contactMethods: c.contactMethods.filter(m => m.id !== methodId) }
+        ? { ...c, contactMethods: c.contactMethods.filter((m) => m.id !== methodId) }
         : c,
     )
   }

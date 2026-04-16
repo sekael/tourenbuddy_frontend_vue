@@ -19,6 +19,7 @@
     "@types/uuid": "^10.0.0",
     "@vueuse/core": "^12.8.0",
     "consola": "^3.4.0",
+    "libphonenumber-js": "^1.12.41",
     "maplibre-gl": "^5.4.0",
     "pinia": "^3.0.0",
     "uuid": "^13.0.0",

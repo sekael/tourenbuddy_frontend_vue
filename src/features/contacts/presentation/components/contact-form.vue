@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
 
 interface Props {
   initialFirstName?: string
@@ -35,23 +36,24 @@ const firstName = ref(props.initialFirstName)
 const lastName = ref(props.initialLastName)
 const displayName = ref(props.initialDisplayName)
 const phoneNumber = ref(props.initialPhoneNumber)
+const { formatted: phoneFormatted, onInput: onPhoneInput } = useAsYouTypePhone(phoneNumber)
 const error = ref<string | null>(null)
 
 watch(
   () => props.initialFirstName,
-  v => (firstName.value = v ?? ''),
+  (v) => (firstName.value = v ?? ''),
 )
 watch(
   () => props.initialLastName,
-  v => (lastName.value = v ?? ''),
+  (v) => (lastName.value = v ?? ''),
 )
 watch(
   () => props.initialDisplayName,
-  v => (displayName.value = v ?? ''),
+  (v) => (displayName.value = v ?? ''),
 )
 watch(
   () => props.initialPhoneNumber,
-  v => (phoneNumber.value = v ?? ''),
+  (v) => (phoneNumber.value = v ?? ''),
 )
 
 function handleSubmit() {
@@ -83,7 +85,7 @@ function handleSubmit() {
         maxlength="50"
         placeholder="First name"
         required
-      >
+      />
     </div>
 
     <div class="field">
@@ -95,7 +97,7 @@ function handleSubmit() {
         type="text"
         maxlength="50"
         placeholder="Last name (optional)"
-      >
+      />
     </div>
 
     <div class="field">
@@ -107,18 +109,19 @@ function handleSubmit() {
         type="text"
         maxlength="50"
         placeholder="Nickname (optional)"
-      >
+      />
     </div>
 
     <div class="field">
       <label class="label" for="cf-phoneNumber">Phone Number</label>
       <input
         id="cf-phoneNumber"
-        v-model="phoneNumber"
+        :value="phoneFormatted"
         class="input"
         type="tel"
-        placeholder="+41 79 123 45 67 (optional)"
-      >
+        placeholder="+41 79 012 34 56 (optional)"
+        @input="onPhoneInput"
+      />
     </div>
 
     <p v-if="error" class="error-text">
@@ -126,9 +129,7 @@ function handleSubmit() {
     </p>
 
     <div class="actions">
-      <button type="button" class="cancel-btn" @click="emit('cancel')">
-        Cancel
-      </button>
+      <button type="button" class="cancel-btn" @click="emit('cancel')">Cancel</button>
       <button type="submit" class="submit-btn" :disabled="isLoading">
         {{ isLoading ? 'Saving...' : submitLabel }}
       </button>

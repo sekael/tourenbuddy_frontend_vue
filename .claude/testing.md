@@ -6,4 +6,3 @@
 - Test file location mirrors source: `src/features/tours/...` → `test/features/tours/...`
 - Descriptive test names: `'should return user when credentials are valid'`
 - Run `npm run test` after every implementation — all tests must pass
-
