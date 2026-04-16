@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
 
 interface Props {
   initialFirstName?: string
@@ -35,6 +36,7 @@ const firstName = ref(props.initialFirstName)
 const lastName = ref(props.initialLastName)
 const displayName = ref(props.initialDisplayName)
 const phoneNumber = ref(props.initialPhoneNumber)
+const { formatted: phoneFormatted, onInput: onPhoneInput } = useAsYouTypePhone(phoneNumber)
 const error = ref<string | null>(null)
 
 watch(
@@ -114,10 +116,11 @@ function handleSubmit() {
       <label class="label" for="cf-phoneNumber">Phone Number</label>
       <input
         id="cf-phoneNumber"
-        v-model="phoneNumber"
+        :value="phoneFormatted"
         class="input"
         type="tel"
-        placeholder="+41 79 123 45 67 (optional)"
+        placeholder="+41 79 012 34 56 (optional)"
+        @input="onPhoneInput"
       >
     </div>
 

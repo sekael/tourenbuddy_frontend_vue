@@ -2,7 +2,8 @@
 import type { Contact } from '@/features/contacts/domain/entities/contact'
 import type { ContactMethod } from '@/features/contacts/domain/entities/contact-method'
 import type { NewContactMethod } from '@/features/contacts/domain/repositories/contact-methods-repository'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
 import { formatPhoneDisplay } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 
@@ -59,6 +60,23 @@ interface MethodEditState {
 }
 
 const methodEdits = ref<Record<string, MethodEditState>>({})
+
+// Per-method phone formatter cache. Each phone-method edit row gets its own AsYouType instance.
+const phoneFormatterCache = new Map<string, ReturnType<typeof useAsYouTypePhone>>()
+
+function getPhoneFormatter(method: ContactMethod) {
+  if (!phoneFormatterCache.has(method.id)) {
+    const phoneRef = computed({
+      get: () => methodEdits.value[method.id]?.value ?? '',
+      set: (v: string) => {
+        if (methodEdits.value[method.id])
+          methodEdits.value[method.id]!.value = v
+      },
+    })
+    phoneFormatterCache.set(method.id, useAsYouTypePhone(phoneRef))
+  }
+  return phoneFormatterCache.get(method.id)!
+}
 
 function methodDisplayValue(m: ContactMethod): string {
   return m.methodType === 'phone' ? formatPhoneDisplay(m.value) : m.value
@@ -120,6 +138,8 @@ async function removeMethod(methodId: string) {
 const showAddMethod = ref(false)
 const newMethodType = ref<'phone' | 'email'>('phone')
 const newMethodValue = ref('')
+const { formatted: newMethodPhoneFormatted, onInput: onNewMethodPhoneInput }
+  = useAsYouTypePhone(newMethodValue)
 const newMethodLabel = ref('')
 const isAddingMethod = ref(false)
 const addMethodError = ref<string | null>(null)
@@ -255,9 +275,18 @@ async function confirmDelete() {
         </div>
         <div class="method-fields">
           <input
+            v-if="method.methodType === 'phone'"
+            :value="getPhoneFormatter(method).formatted.value"
+            class="input input-sm"
+            type="tel"
+            placeholder="+41 79 012 34 56"
+            @input="getPhoneFormatter(method).onInput"
+          >
+          <input
+            v-else
             v-model="getMethodEdit(method).value"
             class="input input-sm"
-            :type="method.methodType === 'phone' ? 'tel' : 'email'"
+            type="email"
             placeholder="Value"
           >
           <input
@@ -308,10 +337,19 @@ async function confirmDelete() {
           </button>
         </div>
         <input
+          v-if="newMethodType === 'phone'"
+          :value="newMethodPhoneFormatted"
+          class="input"
+          type="tel"
+          placeholder="+41 79 012 34 56"
+          @input="onNewMethodPhoneInput"
+        >
+        <input
+          v-else
           v-model="newMethodValue"
           class="input"
-          :type="newMethodType === 'phone' ? 'tel' : 'email'"
-          :placeholder="newMethodType === 'phone' ? '+41 79 123 45 67' : 'email@example.com'"
+          type="email"
+          placeholder="email@example.com"
         >
         <input
           v-model="newMethodLabel"

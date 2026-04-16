@@ -2,6 +2,7 @@
 import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
+import { normalizePhone } from '@/core/utils/phone-normalize'
 import { useContactPicker } from '@/features/contacts/presentation/composables/use-contact-picker'
 import { useVCardImport } from '@/features/contacts/presentation/composables/use-vcard-import'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
@@ -12,9 +13,17 @@ interface ImportResult {
   lastName: string | null
   phoneNumber: string | null
   status: 'imported' | 'skipped'
+  phoneCanonical: boolean
 }
 
 const emit = defineEmits<{ close: [] }>()
+
+function isCanonicalPhone(phone: string | null): boolean {
+  if (!phone)
+    return true
+  const result = normalizePhone(phone)
+  return result.ok && result.value === phone
+}
 
 const contactsStore = useContactsStore()
 const { contacts } = storeToRefs(contactsStore)
@@ -76,11 +85,19 @@ async function processImportedContacts(
 
   for (const item of items) {
     if (isDuplicate(item.firstName, item.lastName)) {
-      results.push({ ...item, status: 'skipped' })
+      results.push({
+        ...item,
+        status: 'skipped',
+        phoneCanonical: isCanonicalPhone(item.phoneNumber),
+      })
       continue
     }
     await contactsStore.addContact(item.firstName, item.lastName, null, item.phoneNumber)
-    results.push({ ...item, status: 'imported' })
+    results.push({
+      ...item,
+      status: 'imported',
+      phoneCanonical: isCanonicalPhone(item.phoneNumber),
+    })
   }
 
   importResults.value = results
@@ -145,7 +162,14 @@ async function handleFileChange(event: Event) {
             <span class="result-name">
               {{ result.firstName }}{{ result.lastName ? ` ${result.lastName}` : '' }}
             </span>
-            <span v-if="result.phoneNumber" class="result-phone">{{ result.phoneNumber }}</span>
+            <span v-if="result.phoneNumber" class="result-phone">
+              {{ result.phoneNumber }}
+              <span
+                v-if="!result.phoneCanonical"
+                class="result-phone-warning"
+                title="Phone number format couldn't be recognized — edit the contact to fix it"
+              >⚠</span>
+            </span>
           </div>
           <span
             class="result-badge"
@@ -319,6 +343,14 @@ async function handleFileChange(event: Event) {
 .result-phone {
   font-size: var(--font-size-xs, 11px);
   color: var(--color-on-surface-variant);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.result-phone-warning {
+  color: var(--color-error);
+  font-size: var(--font-size-xs, 11px);
 }
 
 .result-badge {

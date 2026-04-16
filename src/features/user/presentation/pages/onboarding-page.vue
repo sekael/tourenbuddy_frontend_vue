@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
+import { InvalidPhoneNumberError } from '@/core/exceptions'
 import PhoneVerificationDialog from '@/features/user/presentation/components/phone-verification-dialog.vue'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
@@ -10,14 +12,13 @@ const store = useUserProfileStore()
 const firstName = ref('')
 const lastName = ref('')
 const phoneNumber = ref('')
+const { formatted: phoneNumberFormatted, onInput: onPhoneNumberInput } = useAsYouTypePhone(phoneNumber)
 const errors = ref<{ firstName?: string, lastName?: string, phoneNumber?: string }>({})
 const isLoading = ref(false)
 const submitError = ref<string | null>(null)
 
 const showPhoneVerification = ref(false)
 const pendingPhone = ref('')
-
-const e164Regex = /^\+[1-9]\d{1,14}$/
 
 onMounted(async () => {
   if (!store.profile) {
@@ -31,8 +32,6 @@ function validate(): boolean {
     newErrors.firstName = 'First name is required'
   if (!lastName.value.trim())
     newErrors.lastName = 'Last name is required'
-  if (phoneNumber.value && !e164Regex.test(phoneNumber.value.trim()))
-    newErrors.phoneNumber = 'Enter phone number in international format (e.g. +41791234567)'
   errors.value = newErrors
   return Object.keys(newErrors).length === 0
 }
@@ -61,8 +60,13 @@ async function handleSubmit() {
     }
   }
   catch (err) {
-    submitError.value
-      = err instanceof Error ? err.message : 'Something went wrong. Please try again.'
+    if (err instanceof InvalidPhoneNumberError) {
+      errors.value = { ...errors.value, phoneNumber: err.message }
+    }
+    else {
+      submitError.value
+        = err instanceof Error ? err.message : 'Something went wrong. Please try again.'
+    }
   }
   finally {
     isLoading.value = false
@@ -133,12 +137,13 @@ function handleVerificationClose() {
           <label for="phoneNumber" class="label">Phone number <span class="optional">(optional)</span></label>
           <input
             id="phoneNumber"
-            v-model="phoneNumber"
+            :value="phoneNumberFormatted"
             type="tel"
             class="input"
             :class="{ 'input--error': errors.phoneNumber }"
-            placeholder="+41791234567"
+            placeholder="+41 79 012 34 56"
             autocomplete="tel"
+            @input="onPhoneNumberInput"
           >
           <p v-if="errors.phoneNumber" class="error-text">
             {{ errors.phoneNumber }}

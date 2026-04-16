@@ -1,10 +1,15 @@
 <script setup lang="ts">
-import { onUnmounted, ref } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
+import { normalizePhone } from '@/core/utils/phone-normalize'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
 const props = defineProps<{ phone: string }>()
-const emit = defineEmits<{ verified: [], close: [] }>()
 
+const emit = defineEmits<{ verified: [], close: [] }>()
+const displayPhone = computed(() => {
+  const result = normalizePhone(props.phone)
+  return result.ok ? result.value : props.phone
+})
 const store = useUserProfileStore()
 
 const otp = ref('')
@@ -97,7 +102,7 @@ async function handleResend() {
           Verify your phone
         </h2>
         <p class="subtitle">
-          We sent a code to <strong>{{ phone }}</strong>
+          We sent a code to <strong>{{ displayPhone }}</strong>
         </p>
 
         <form class="form" @submit.prevent="handleVerify">

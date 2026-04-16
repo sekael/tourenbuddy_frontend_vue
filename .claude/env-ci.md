@@ -25,4 +25,3 @@
 
 - Never commit `.env` files — use `.env.example` with placeholder values
 - Access validated env via `env` object, never `import.meta.env` directly in feature code
-

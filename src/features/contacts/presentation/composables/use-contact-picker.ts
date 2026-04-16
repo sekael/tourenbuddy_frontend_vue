@@ -1,4 +1,5 @@
 import type { ParsedName } from '@/features/contacts/core/utils/parse-contact-name'
+import { normalizePhone } from '@/core/utils/phone-normalize'
 import { parseContactName } from '@/features/contacts/core/utils/parse-contact-name'
 
 export interface PickedContact extends ParsedName {
@@ -20,7 +21,12 @@ export function useContactPicker() {
       return (contacts as Array<{ name: string[], tel: string[] }>).map((entry) => {
         const fullName = entry.name[0] ?? ''
         const parsed = parseContactName(fullName)
-        const phoneNumber = entry.tel[0]?.trim() || null
+        const rawPhone = entry.tel[0]?.trim() || null
+        let phoneNumber: string | null = null
+        if (rawPhone) {
+          const normalized = normalizePhone(rawPhone)
+          phoneNumber = normalized.ok ? normalized.value : rawPhone
+        }
         return { ...parsed, phoneNumber }
       })
     }

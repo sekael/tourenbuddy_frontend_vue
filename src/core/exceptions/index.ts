@@ -21,3 +21,13 @@ export class NoUserProfileException extends Error {
     this.name = 'NoUserProfileException'
   }
 }
+
+/** Thrown when a phone number string cannot be parsed to a valid international format. */
+export class InvalidPhoneNumberError extends Error {
+  constructor(
+    message = 'Invalid phone number. Use international format (+41 79 012 34 56) or Swiss national format (079 012 34 56).',
+  ) {
+    super(message)
+    this.name = 'InvalidPhoneNumberError'
+  }
+}

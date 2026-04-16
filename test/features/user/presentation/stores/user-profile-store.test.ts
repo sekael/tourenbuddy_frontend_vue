@@ -1,5 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { InvalidPhoneNumberError } from '@/core/exceptions'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
 const { mockGetUserById, mockUpsertProfile } = vi.hoisted(() => ({
@@ -31,11 +32,16 @@ vi.mock('@/features/auth/presentation/stores/auth-store', () => ({
   }),
 }))
 
+const { mockUpdateUser, mockVerifyOtp } = vi.hoisted(() => ({
+  mockUpdateUser: vi.fn().mockResolvedValue({ error: null }),
+  mockVerifyOtp: vi.fn().mockResolvedValue({ error: null }),
+}))
+
 vi.mock('@/core/utils/supabase', () => ({
   supabase: {
     auth: {
-      updateUser: vi.fn().mockResolvedValue({ error: null }),
-      verifyOtp: vi.fn().mockResolvedValue({ error: null }),
+      updateUser: mockUpdateUser,
+      verifyOtp: mockVerifyOtp,
     },
   },
 }))
@@ -185,6 +191,34 @@ describe('useUserProfileStore', () => {
       store.skipOnboarding()
       store.clear()
       expect(store.sessionSkipped).toBe(false)
+    })
+  })
+
+  describe('phone normalization', () => {
+    it('sends E.164 to Supabase Auth for Swiss national number', async () => {
+      const store = useUserProfileStore()
+      await store.sendPhoneVerification('0791234567')
+      expect(mockUpdateUser).toHaveBeenCalledWith({ phone: '+41791234567' })
+    })
+
+    it('sends E.164 to Supabase Auth for canonical international number', async () => {
+      const store = useUserProfileStore()
+      await store.sendPhoneVerification('+41 79 123 45 67')
+      expect(mockUpdateUser).toHaveBeenCalledWith({ phone: '+41791234567' })
+    })
+
+    it('throws InvalidPhoneNumberError for unparseable phone', async () => {
+      const store = useUserProfileStore()
+      await expect(store.sendPhoneVerification('not-a-number')).rejects.toBeInstanceOf(
+        InvalidPhoneNumberError,
+      )
+      expect(mockUpdateUser).not.toHaveBeenCalled()
+    })
+
+    it('verifyPhone sends E.164 to Supabase Auth', async () => {
+      const store = useUserProfileStore()
+      await store.verifyPhone('+41 79 123 45 67', '123456')
+      expect(mockVerifyOtp).toHaveBeenCalledWith(expect.objectContaining({ phone: '+41791234567' }))
     })
   })
 })

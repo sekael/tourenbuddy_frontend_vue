@@ -1,5 +1,6 @@
 import type { z } from 'zod'
 import type { contactSchema } from '@/features/contacts/data/models/contact-schema'
+import { normalizePhone } from '@/core/utils/phone-normalize'
 
 /** Domain entity for a contact (tour partner). */
 export type Contact = z.infer<typeof contactSchema>
@@ -30,12 +31,10 @@ export function resolveFullName(contact: Contact): string {
 }
 
 /**
- * Normalizes a phone string to international display format.
- * Converts trunk-prefix "00CC…" to "+CC…"; leaves "+" numbers unchanged.
+ * Returns the canonical international display form for a phone number.
+ * Uses libphonenumber-js with default region CH; falls back to trimmed original when unparseable.
  */
 export function formatPhoneDisplay(value: string): string {
-  const trimmed = value.trim()
-  if (/^00\d/.test(trimmed))
-    return `+${trimmed.slice(2)}`
-  return trimmed
+  const result = normalizePhone(value)
+  return result.ok ? result.value : value.trim()
 }

@@ -2,6 +2,9 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
+import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
+import { InvalidPhoneNumberError } from '@/core/exceptions'
+import { normalizePhone } from '@/core/utils/phone-normalize'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
@@ -20,15 +23,22 @@ const isEditing = ref(false)
 const editFirstName = ref('')
 const editLastName = ref('')
 const editPhone = ref('')
+const { formatted: editPhoneFormatted, onInput: onEditPhoneInput } = useAsYouTypePhone(editPhone)
 const editError = ref<string | null>(null)
 const isSaving = ref(false)
 
 const showPhoneVerification = ref(false)
 const pendingPhone = ref('')
 
-const e164Regex = /^\+[1-9]\d{1,14}$/
-
 const full = computed(() => userProfileStore.fullProfile)
+
+const displayPhoneNumber = computed(() => {
+  const phone = full.value?.phoneNumber
+  if (!phone)
+    return null
+  const result = normalizePhone(phone)
+  return result.ok ? result.value : phone
+})
 
 const displayName = computed(() => {
   const p = full.value
@@ -63,11 +73,6 @@ async function handleSave() {
     return
   }
 
-  if (editPhone.value && !e164Regex.test(editPhone.value.trim())) {
-    editError.value = 'Enter phone in international format (e.g. +41791234567)'
-    return
-  }
-
   isSaving.value = true
   try {
     await userProfileStore.updateProfile({
@@ -89,7 +94,10 @@ async function handleSave() {
     }
   }
   catch (err) {
-    editError.value = err instanceof Error ? err.message : 'Failed to save profile'
+    editError.value
+      = err instanceof InvalidPhoneNumberError || err instanceof Error
+        ? (err as Error).message
+        : 'Failed to save profile'
   }
   finally {
     isSaving.value = false
@@ -140,7 +148,7 @@ async function handleSignOut() {
         <div class="phone-row">
           <template v-if="full?.phoneNumber">
             <span class="material-symbols-outlined phone-icon">phone</span>
-            <span class="phone-number">{{ full.phoneNumber }}</span>
+            <span class="phone-number">{{ displayPhoneNumber }}</span>
             <span
               v-if="full.phoneVerified"
               class="material-symbols-outlined verified-icon"
@@ -197,11 +205,12 @@ async function handleSignOut() {
             <label for="edit-phone" class="label">Phone number <span class="optional">(optional)</span></label>
             <input
               id="edit-phone"
-              v-model="editPhone"
+              :value="editPhoneFormatted"
               type="tel"
               class="input"
-              placeholder="+41791234567"
+              placeholder="+41 79 012 34 56"
               autocomplete="tel"
+              @input="onEditPhoneInput"
             >
           </div>
 

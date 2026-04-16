@@ -1,4 +1,5 @@
 import type { ParsedName } from '@/features/contacts/core/utils/parse-contact-name'
+import { normalizePhone } from '@/core/utils/phone-normalize'
 import { parseContactName } from '@/features/contacts/core/utils/parse-contact-name'
 
 export interface VCardContact extends ParsedName {
@@ -46,9 +47,14 @@ export function parseVCardText(text: string): VCardContact[] {
       lastName = parsed.lastName
     }
 
-    // Extract phone: first TEL field value
+    // Extract phone: first TEL field value, normalize to canonical international form
     const telMatch = content.match(/^TEL(?:;[^:]*)?:([^\r\n]*)/im)
-    const phoneNumber = telMatch?.[1]?.trim() || null
+    const rawPhone = telMatch?.[1]?.trim() || null
+    let phoneNumber: string | null = null
+    if (rawPhone) {
+      const normalized = normalizePhone(rawPhone)
+      phoneNumber = normalized.ok ? normalized.value : rawPhone
+    }
 
     return { firstName: firstName || 'Unknown', lastName, phoneNumber }
   })

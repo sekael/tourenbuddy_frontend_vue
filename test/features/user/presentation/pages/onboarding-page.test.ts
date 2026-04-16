@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { InvalidPhoneNumberError } from '@/core/exceptions'
 import OnboardingPage from '@/features/user/presentation/pages/onboarding-page.vue'
 
 const {
@@ -78,13 +79,17 @@ describe('onboardingPage', () => {
     expect(wrapper.text()).toContain('Last name is required')
   })
 
-  it('should show validation error for invalid phone format', async () => {
+  it('should show error for completely unparseable phone format', async () => {
+    mockUpdateProfile.mockResolvedValue(undefined)
+    mockSendPhoneVerification.mockRejectedValue(new InvalidPhoneNumberError())
     const wrapper = mount(OnboardingPage)
     await wrapper.find('#firstName').setValue('Max')
     await wrapper.find('#lastName').setValue('Doe')
-    await wrapper.find('#phoneNumber').setValue('0791234567')
+    await wrapper.find('#phoneNumber').setValue('not-a-number')
     await wrapper.find('form').trigger('submit')
-    expect(wrapper.text()).toContain('international format')
+    await wrapper.vm.$nextTick()
+    // InvalidPhoneNumberError message is surfaced via errors.phoneNumber
+    expect(wrapper.text()).toContain('Invalid phone number')
   })
 
   it('should call updateProfile and navigate to map on valid submit without phone', async () => {
