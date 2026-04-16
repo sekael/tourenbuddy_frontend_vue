@@ -89,7 +89,7 @@ describe('onboardingPage', () => {
     await wrapper.find('form').trigger('submit')
     await wrapper.vm.$nextTick()
     // InvalidPhoneNumberError message is surfaced via errors.phoneNumber
-    expect(wrapper.text()).toContain('Phone number could not be recognized')
+    expect(wrapper.text()).toContain('Invalid phone number')
   })
 
   it('should call updateProfile and navigate to map on valid submit without phone', async () => {

@@ -5,16 +5,23 @@ import { computed, nextTick } from 'vue'
 
 const DEFAULT_COUNTRY: CountryCode = 'CH'
 
-function countDigits(s: string): number {
-  return (s.match(/\d/g) ?? []).length
+/** Count digits and the leading '+' sign (significant phone chars for caret tracking). */
+function countSignificantChars(s: string): number {
+  let count = 0
+  for (const ch of s) {
+    if (/\d/.test(ch) || ch === '+')
+      count++
+  }
+  return count
 }
 
-function findCursorAfterNthDigit(s: string, n: number): number {
+function findCursorAfterNthSignificantChar(s: string, n: number): number {
   if (n <= 0)
     return 0
   let count = 0
   for (let i = 0; i < s.length; i++) {
-    if (/\d/.test(s[i]!)) {
+    const ch = s[i]!
+    if (/\d/.test(ch) || ch === '+') {
       count++
       if (count === n)
         return i + 1
@@ -54,7 +61,7 @@ export function useAsYouTypePhone(
     const newValue = input.value
     const cursorBefore = input.selectionStart ?? newValue.length
 
-    const digitsBeforeCursor = countDigits(newValue.slice(0, cursorBefore))
+    const sigCharsBeforeCursor = countSignificantChars(newValue.slice(0, cursorBefore))
 
     // Update rawRef — triggers reactive recompute of `formatted`
     rawRef.value = newValue
@@ -62,7 +69,7 @@ export function useAsYouTypePhone(
     nextTick(() => {
       // After Vue updates the DOM via :value="formatted", restore caret position
       const currentFormatted = input.value
-      const newCursor = findCursorAfterNthDigit(currentFormatted, digitsBeforeCursor)
+      const newCursor = findCursorAfterNthSignificantChar(currentFormatted, sigCharsBeforeCursor)
       input.setSelectionRange(newCursor, newCursor)
     })
   }
