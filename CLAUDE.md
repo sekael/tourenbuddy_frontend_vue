@@ -24,7 +24,7 @@ Vue 3 tour-planning app. Users pin tour objectives on Swiss topo map (Swisstopo)
 - Wait for explicit user approval before implementing with `openspec-apply` skill
 - Prompt user to archive completed task with `openspec-archive` skill
 - Simple task touching >3 files → still produce brief plan
- 
+
 ## Key Commands
 
 ```bash

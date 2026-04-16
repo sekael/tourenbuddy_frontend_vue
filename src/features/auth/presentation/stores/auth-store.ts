@@ -26,17 +26,20 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function sendEmailOtp(email: string) {
     const { error } = await supabase.auth.signInWithOtp({ email })
-    if (error) throw error
+    if (error)
+      throw error
   }
 
   async function verifyOtp(email: string, token: string) {
     const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
-    if (error) throw error
+    if (error)
+      throw error
   }
 
   async function signOut() {
     const { error } = await supabase.auth.signOut()
-    if (error) throw error
+    if (error)
+      throw error
     currentUser.value = null
   }
 

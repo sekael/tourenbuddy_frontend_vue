@@ -11,7 +11,7 @@ const store = useUserProfileStore()
 const firstName = ref('')
 const lastName = ref('')
 const phoneNumber = ref('')
-const errors = ref<{ firstName?: string; lastName?: string; phoneNumber?: string }>({})
+const errors = ref<{ firstName?: string, lastName?: string, phoneNumber?: string }>({})
 const isLoading = ref(false)
 const submitError = ref<string | null>(null)
 
@@ -26,14 +26,17 @@ onMounted(async () => {
 
 function validate(): boolean {
   const newErrors: typeof errors.value = {}
-  if (!firstName.value.trim()) newErrors.firstName = 'First name is required'
-  if (!lastName.value.trim()) newErrors.lastName = 'Last name is required'
+  if (!firstName.value.trim())
+    newErrors.firstName = 'First name is required'
+  if (!lastName.value.trim())
+    newErrors.lastName = 'Last name is required'
   errors.value = newErrors
   return Object.keys(newErrors).length === 0
 }
 
 async function handleSubmit() {
-  if (!validate()) return
+  if (!validate())
+    return
 
   isLoading.value = true
   submitError.value = null
@@ -49,17 +52,21 @@ async function handleSubmit() {
       await store.sendPhoneVerification(phone)
       pendingPhone.value = phone
       showPhoneVerification.value = true
-    } else {
+    }
+    else {
       router.push({ name: 'map' })
     }
-  } catch (err) {
+  }
+  catch (err) {
     if (err instanceof InvalidPhoneNumberError) {
       errors.value = { ...errors.value, phoneNumber: err.message }
-    } else {
-      submitError.value =
-        err instanceof Error ? err.message : 'Something went wrong. Please try again.'
     }
-  } finally {
+    else {
+      submitError.value
+        = err instanceof Error ? err.message : 'Something went wrong. Please try again.'
+    }
+  }
+  finally {
     isLoading.value = false
   }
 }
@@ -83,7 +90,9 @@ function handleVerificationClose() {
 <template>
   <div class="page">
     <div class="card">
-      <h1 class="title">Set up your profile</h1>
+      <h1 class="title">
+        Set up your profile
+      </h1>
       <p class="subtitle">
         A complete profile helps your tour partners recognize and contact you. You can always update
         this later.
@@ -100,7 +109,7 @@ function handleVerificationClose() {
             :class="{ 'input--error': errors.firstName }"
             placeholder="Max"
             autocomplete="given-name"
-          />
+          >
           <p v-if="errors.firstName" class="error-text">
             {{ errors.firstName }}
           </p>
@@ -116,16 +125,14 @@ function handleVerificationClose() {
             :class="{ 'input--error': errors.lastName }"
             placeholder="Mustermann"
             autocomplete="family-name"
-          />
+          >
           <p v-if="errors.lastName" class="error-text">
             {{ errors.lastName }}
           </p>
         </div>
 
         <div class="field">
-          <label for="phoneNumber" class="label"
-            >Phone number <span class="optional">(optional)</span></label
-          >
+          <label for="phoneNumber" class="label">Phone number <span class="optional">(optional)</span></label>
           <input
             id="phoneNumber"
             v-model="phoneNumber"
@@ -134,7 +141,7 @@ function handleVerificationClose() {
             :class="{ 'input--error': errors.phoneNumber }"
             placeholder="+41791234567"
             autocomplete="tel"
-          />
+          >
           <p v-if="errors.phoneNumber" class="error-text">
             {{ errors.phoneNumber }}
           </p>
@@ -149,7 +156,9 @@ function handleVerificationClose() {
         </button>
       </form>
 
-      <button class="skip-btn" @click="handleSkip">Skip for now</button>
+      <button class="skip-btn" @click="handleSkip">
+        Skip for now
+      </button>
     </div>
 
     <PhoneVerificationDialog

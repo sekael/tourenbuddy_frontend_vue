@@ -10,12 +10,14 @@ function countDigits(s: string): number {
 }
 
 function findCursorAfterNthDigit(s: string, n: number): number {
-  if (n <= 0) return 0
+  if (n <= 0)
+    return 0
   let count = 0
   for (let i = 0; i < s.length; i++) {
     if (/\d/.test(s[i]!)) {
       count++
-      if (count === n) return i + 1
+      if (count === n)
+        return i + 1
     }
   }
   return s.length
@@ -42,7 +44,8 @@ export function useAsYouTypePhone(
   defaultCountry: CountryCode = DEFAULT_COUNTRY,
 ) {
   const formatted = computed(() => {
-    if (!rawRef.value) return ''
+    if (!rawRef.value)
+      return ''
     return new AsYouType(defaultCountry).input(rawRef.value)
   })
 
