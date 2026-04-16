@@ -95,7 +95,7 @@ describe('userProfileSheet', () => {
       phoneVerified: true,
     }
     const wrapper = mount(UserProfileSheet)
-    expect(wrapper.text()).toContain('+41791234567')
+    expect(wrapper.text()).toContain('+41 79 123 45 67')
     expect(wrapper.find('.verified-icon').exists()).toBe(true)
   })
 
