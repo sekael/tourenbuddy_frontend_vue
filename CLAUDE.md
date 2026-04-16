@@ -2,11 +2,6 @@
 
 Vue 3 tour-planning app. Users pin tour objectives on Swiss topo map (Swisstopo), associate contacts, select planned dates.
 
-## General Principles
-
-- Use subagents aggressively for delegatable tasks, use Haiku model for non-complex subagent tasks
-- Opus 4.6 for planning/thinking/specs, Sonnet 4.6 for code implementation
-
 ## Stack
 
 - **Framework:** Vue 3 (latest stable) with TypeScript and `<script setup>` SFCs
@@ -25,15 +20,11 @@ Vue 3 tour-planning app. Users pin tour objectives on Swiss topo map (Swisstopo)
 
 - IMPORTANT: For any new feature or non-trivial change, specification-driven development MUST ALWAYS be applied
 - Start with OpenSpec skills:
-  - **DEFAULT**: `openspec-propose` — propose change with all artifacts in one step. Use when user wants to describe what to build and get complete proposal with design, specs, tasks.
-  - `openspec-explore` — thinking partner for exploring ideas, investigating problems, clarifying requirements. Use when user wants to think through something before/during a change.
+- **DEFAULT**: `openspec-propose` — propose change with all artifacts in one step. Use when user wants to describe what to build and get complete proposal with design, specs, tasks.
 - Wait for explicit user approval before implementing with `openspec-apply` skill
 - Prompt user to archive completed task with `openspec-archive` skill
 - Simple task touching >3 files → still produce brief plan
-- **Git workflow tasks MANDATORY in every task list:**
-  - FIRST task group MUST be "Git Setup" with branch creation from latest `main` (`feat/<issue-number>-<description>`)
-  - LAST task group MUST be "Finalize" with lint/format, prompt user to commit (ready-to-copy message), prompt user to push and create PR
-
+ 
 ## Key Commands
 
 ```bash
