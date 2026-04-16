@@ -13,8 +13,24 @@ describe('usePhoneActions', () => {
     expect(telLink.value).toBe('tel:0791234567')
   })
 
-  it('should generate WhatsApp link with digits only (no +)', () => {
+  it('should generate WhatsApp link with digits only (no +) for E.164-plus format', () => {
     const { whatsAppLink } = usePhoneActions('+41 79 123 45 67')
+    expect(whatsAppLink.value).toBe('https://wa.me/41791234567')
+  })
+
+  it('should generate WhatsApp link from 00-prefixed international format', () => {
+    const { whatsAppLink } = usePhoneActions('0041 79 123 45 67')
+    expect(whatsAppLink.value).toBe('https://wa.me/41791234567')
+  })
+
+  it('should return null whatsAppLink for local number without country code', () => {
+    const { telLink, whatsAppLink } = usePhoneActions('079 123 45 67')
+    expect(whatsAppLink.value).toBeNull()
+    expect(telLink.value).toBe('tel:0791234567')
+  })
+
+  it('should treat leading whitespace before + as international', () => {
+    const { whatsAppLink } = usePhoneActions(' +41 79 123 45 67')
     expect(whatsAppLink.value).toBe('https://wa.me/41791234567')
   })
 

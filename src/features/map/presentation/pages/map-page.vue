@@ -92,16 +92,19 @@ watch(selectedTourId, async (id) => {
     await flyToSelectedTour()
 })
 
-watch(() => mapRef.value?.map, (m) => {
-  if (!m)
-    return
-  const update = () => {
-    mapBearing.value = m.getBearing()
-  }
-  m.on('rotate', update)
-  m.on('rotateend', update)
-  update()
-})
+watch(
+  () => mapRef.value?.map,
+  (m) => {
+    if (!m)
+      return
+    const update = () => {
+      mapBearing.value = m.getBearing()
+    }
+    m.on('rotate', update)
+    m.on('rotateend', update)
+    update()
+  },
+)
 
 function handleResetBearing() {
   mapRef.value?.map?.easeTo({ bearing: 0, pitch: 0, duration: 300 })

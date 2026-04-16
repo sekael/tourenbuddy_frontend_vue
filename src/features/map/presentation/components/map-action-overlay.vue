@@ -32,12 +32,7 @@ function startAddTour() {
 
 <template>
   <div v-if="!isPickingLocation" class="overlay">
-    <button
-      v-if="showCompass"
-      class="fab"
-      title="Orient map north"
-      @click="emit('resetBearing')"
-    >
+    <button v-if="showCompass" class="fab" title="Orient map north" @click="emit('resetBearing')">
       <span
         class="material-symbols-outlined compass-icon"
         :style="{ transform: `rotate(${iconRotation}deg)` }"
