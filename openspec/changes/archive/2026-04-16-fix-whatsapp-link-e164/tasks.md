@@ -38,4 +38,4 @@
   ```
 
 - [x] 5.6 Prompt user to push branch and open PR against `main` referencing issue #32
-- [ ] 5.7 After merge, prompt user to archive change with `/opsx:archive fix-whatsapp-link-e164`
+- [x] 5.7 After merge, prompt user to archive change with `/opsx:archive fix-whatsapp-link-e164`

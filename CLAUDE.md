@@ -35,6 +35,7 @@ Vue 3 tour-planning app. Users pin tour objectives on Swiss topo map (Swisstopo)
   - LAST task group MUST be "Finalize" with lint/format, prompt user to commit (ready-to-copy message), prompt user to push and create PR
 
 ## Key Commands
+
 ```bash
 npm run dev          # dev server
 npm run test         # all tests
@@ -44,11 +45,12 @@ npm run type-check
 ```
 
 ## Key Docs (reference when relevant)
-- Architecture & data flow:    @.claude/architecture.md
-- Git & planning workflow:     @.claude/workflow.md
-- Code style & conventions:    @.claude/conventions.md
-- Environment & CI/CD:         @.claude/env-ci.md
-- Project structure:           @.claude/structure.md
+
+- Architecture & data flow: @.claude/architecture.md
+- Git & planning workflow: @.claude/workflow.md
+- Code style & conventions: @.claude/conventions.md
+- Environment & CI/CD: @.claude/env-ci.md
+- Project structure: @.claude/structure.md
 
 ## Important Context
 
