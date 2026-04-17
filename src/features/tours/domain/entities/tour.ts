@@ -16,10 +16,11 @@ export interface TourDraft {
   gpxTrack: GeoJSON.FeatureCollection | null
   description: string | null
   seasons: Season[] | null
-  startPoint: { lng: number, lat: number } | null
-  endPoint: { lng: number, lat: number } | null
+  startPoint: { lng: number; lat: number } | null
+  endPoint: { lng: number; lat: number } | null
   equipment: string | null
   notes: string | null
+  completed?: boolean
 }
 
 /** Converts a tour to a GeoJSON Feature for MapLibre rendering. */
@@ -34,6 +35,7 @@ export function tourToGeoJsonFeature(tour: Tour): GeoJSON.Feature<GeoJSON.Point>
     properties: {
       id: tour.id,
       tourType: tour.tourType ?? null,
+      completed: tour.completed,
     },
   }
 }

@@ -69,9 +69,10 @@ const mockTour = {
   endPoint: null,
   equipment: null,
   notes: null,
+  completed: false,
 }
 
-function mountSheet(tourOverrides = {}) {
+function mountSheet(tourOverrides = {}, authUserId = 'user-1') {
   return mount(TourInfoSheet, {
     props: { tour: { ...mockTour, ...tourOverrides } },
     global: {
@@ -81,6 +82,7 @@ function mountSheet(tourOverrides = {}) {
           initialState: {
             contacts: { contacts: [] },
             tours: { tours: [mockTour] },
+            auth: { currentUser: { id: authUserId }, isAuthenticated: true },
           },
         }),
       ],
@@ -166,6 +168,54 @@ describe('tourInfoSheet', () => {
 
       expect(wrapper.find('[data-testid="tour-form"]').exists()).toBe(true)
       expect(wrapper.find('.save-error').text()).toBe('RPC failed')
+    })
+  })
+
+  // ── Completion toggle ──────────────────────────────────────────────────────
+
+  describe('completion toggle', () => {
+    it('should show completion toggle for tour owner', async () => {
+      const wrapper = mountSheet()
+      expect(wrapper.find('.completion-toggle').exists()).toBe(true)
+    })
+
+    it('should not show completion toggle for non-owner', async () => {
+      const wrapper = mountSheet({}, 'other-user')
+      expect(wrapper.find('.completion-toggle').exists()).toBe(false)
+    })
+
+    it('should call setCompleted with true when not completed', async () => {
+      const wrapper = mountSheet({ completed: false })
+      const { useToursStore } = await import('@/features/tours/presentation/stores/tours-store')
+      const store = useToursStore()
+
+      await wrapper.find('.completion-toggle').trigger('click')
+      await wrapper.vm.$nextTick()
+
+      expect(store.setCompleted).toHaveBeenCalledWith('tour-1', true)
+    })
+
+    it('should call setCompleted with false when already completed', async () => {
+      const wrapper = mountSheet({ completed: true })
+      const { useToursStore } = await import('@/features/tours/presentation/stores/tours-store')
+      const store = useToursStore()
+
+      await wrapper.find('.completion-toggle').trigger('click')
+      await wrapper.vm.$nextTick()
+
+      expect(store.setCompleted).toHaveBeenCalledWith('tour-1', false)
+    })
+
+    it('should show check_circle icon when completed', () => {
+      const wrapper = mountSheet({ completed: true })
+      const icon = wrapper.find('.completion-toggle .material-symbols-outlined')
+      expect(icon.text()).toBe('check_circle')
+    })
+
+    it('should show radio_button_unchecked icon when not completed', () => {
+      const wrapper = mountSheet({ completed: false })
+      const icon = wrapper.find('.completion-toggle .material-symbols-outlined')
+      expect(icon.text()).toBe('radio_button_unchecked')
     })
   })
 

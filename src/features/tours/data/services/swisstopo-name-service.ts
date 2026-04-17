@@ -10,19 +10,18 @@ const TIMEOUT_MS = 5000
  */
 const OBJEKTART_PRIORITY: Record<string, number> = {
   'Alpiner Gipfel': 0,
-  'Gipfel': 1,
-  'Pass': 2,
-  'Gletscher': 3,
-  'Gebäude': 4,
-  'Gebiet': 5,
-  'Tal': 6,
-  'Gondelbahn': 7,
+  Gipfel: 1,
+  Pass: 2,
+  Gletscher: 3,
+  Gebäude: 4,
+  Gebiet: 5,
+  Tal: 6,
+  Gondelbahn: 7,
   'Flurname swisstopo': 8,
 }
 
 function getObjektartPriority(objektart: string | undefined): number {
-  if (!objektart)
-    return 99
+  if (!objektart) return 99
   return OBJEKTART_PRIORITY[objektart] ?? 99
 }
 
@@ -120,8 +119,8 @@ export async function suggestTourName(coords: {
     // Sort by Objektart priority, pick the best-matching feature
     const sorted = [...results].sort(
       (a, b) =>
-        getObjektartPriority(a.attributes?.objektart)
-        - getObjektartPriority(b.attributes?.objektart),
+        getObjektartPriority(a.attributes?.objektart) -
+        getObjektartPriority(b.attributes?.objektart),
     )
 
     const best = sorted[0]!
@@ -130,27 +129,22 @@ export async function suggestTourName(coords: {
       objektart: best.attributes?.objektart,
     })
 
-    if (!best.attributes)
-      return null
+    if (!best.attributes) return null
 
     // Prefer plain `name` field; fall back to `label` with HTML stripped
     const name = best.attributes.name?.trim()
-    if (name)
-      return name
+    if (name) return name
 
     const label = best.attributes.label?.replace(/<[^>]*>/g, '').trim()
     return label || null
-  }
-  catch (err) {
+  } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') {
       logger.warn('Swisstopo identify API timed out')
-    }
-    else {
+    } else {
       logger.error('Swisstopo identify API error', err)
     }
     return null
-  }
-  finally {
+  } finally {
     clearTimeout(timeoutId)
   }
 }

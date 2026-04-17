@@ -30,11 +30,10 @@ defineExpose({ map })
 let markerLayer: ReturnType<typeof useToursMarkerLayer> | null = null
 let gpxLayer: ReturnType<typeof useGpxTrackLayer> | null = null
 
-const selectedTour = computed(() => tours.value.find(t => t.id === selectedTourId.value) ?? null)
+const selectedTour = computed(() => tours.value.find((t) => t.id === selectedTourId.value) ?? null)
 
 onMounted(() => {
-  if (!mapContainer.value)
-    return
+  if (!mapContainer.value) return
 
   mapInstance = new maplibregl.Map({
     container: mapContainer.value,
@@ -45,11 +44,11 @@ onMounted(() => {
 
   map.value = mapInstance
 
-  mapInstance.on('load', () => {
+  mapInstance.on('load', async () => {
     markerLayer = useToursMarkerLayer(mapInstance!, (tourId) => {
       emit('tourClicked', tourId)
     })
-    markerLayer.setup()
+    await markerLayer.setup()
     markerLayer.updateTours(tours.value, selectedTourId.value)
     markerLayer.updatePreview(editPreviewGoal.value, selectedTour.value?.tourType ?? null)
 
@@ -87,13 +86,12 @@ watch(editPreviewGoal, (goal) => {
 
 // Watch for map style changes
 watch(currentStyleIndex, (index) => {
-  if (!mapInstance)
-    return
+  if (!mapInstance) return
   const style = SWISSTOPO_STYLES[index]
   if (style) {
     mapInstance.setStyle(style.style)
-    mapInstance.once('style.load', () => {
-      markerLayer?.setup()
+    mapInstance.once('style.load', async () => {
+      await markerLayer?.setup()
       markerLayer?.updateTours(tours.value, selectedTourId.value)
       markerLayer?.updatePreview(editPreviewGoal.value, selectedTour.value?.tourType ?? null)
       gpxLayer?.setup()
