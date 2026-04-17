@@ -41,8 +41,12 @@ async function handleSubmit() {
         <span class="material-symbols-outlined">arrow_back</span>
         Back
       </button>
-      <h1 class="title">Enter your email</h1>
-      <p class="subtitle">We'll send you a one-time login code</p>
+      <h1 class="title">
+        Enter your email
+      </h1>
+      <p class="subtitle">
+        We'll send you a one-time login code
+      </p>
 
       <form class="form" @submit.prevent="handleSubmit">
         <div class="field">
@@ -55,7 +59,7 @@ async function handleSubmit() {
             placeholder="you@example.com"
             autocomplete="email"
             required
-          />
+          >
         </div>
 
         <p v-if="error" class="error-text">

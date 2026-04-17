@@ -93,7 +93,9 @@ function handleVerificationClose() {
 <template>
   <div class="page">
     <div class="card">
-      <h1 class="title">Set up your profile</h1>
+      <h1 class="title">
+        Set up your profile
+      </h1>
       <p class="subtitle">
         A complete profile helps your tour partners recognize and contact you. You can always update
         this later.
@@ -110,7 +112,7 @@ function handleVerificationClose() {
             :class="{ 'input--error': errors.firstName }"
             placeholder="Max"
             autocomplete="given-name"
-          />
+          >
           <p v-if="errors.firstName" class="error-text">
             {{ errors.firstName }}
           </p>
@@ -126,16 +128,14 @@ function handleVerificationClose() {
             :class="{ 'input--error': errors.lastName }"
             placeholder="Mustermann"
             autocomplete="family-name"
-          />
+          >
           <p v-if="errors.lastName" class="error-text">
             {{ errors.lastName }}
           </p>
         </div>
 
         <div class="field">
-          <label for="phoneNumber" class="label"
-          >Phone number <span class="optional">(optional)</span></label
-          >
+          <label for="phoneNumber" class="label">Phone number <span class="optional">(optional)</span></label>
           <input
             id="phoneNumber"
             :value="phoneNumberFormatted"
@@ -145,7 +145,7 @@ function handleVerificationClose() {
             placeholder="+41 79 012 34 56"
             autocomplete="tel"
             @input="onPhoneNumberInput"
-          />
+          >
           <p v-if="errors.phoneNumber" class="error-text">
             {{ errors.phoneNumber }}
           </p>
@@ -160,7 +160,9 @@ function handleVerificationClose() {
         </button>
       </form>
 
-      <button class="skip-btn" @click="handleSkip">Skip for now</button>
+      <button class="skip-btn" @click="handleSkip">
+        Skip for now
+      </button>
     </div>
 
     <PhoneVerificationDialog

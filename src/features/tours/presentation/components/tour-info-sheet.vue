@@ -299,8 +299,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
                 target="_blank"
                 rel="noopener noreferrer"
                 class="description-link"
-              >{{ segment.text }}</a
-              >
+              >{{ segment.text }}</a>
               <template v-else>
                 {{ segment.text }}
               </template>
@@ -356,7 +355,9 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           <template v-if="deleteState === 'confirm'">
             <div class="delete-confirm-row">
               <span class="delete-confirm-text">Delete this tour?</span>
-              <button type="button" class="cancel-btn" @click="deleteState = 'idle'">Cancel</button>
+              <button type="button" class="cancel-btn" @click="deleteState = 'idle'">
+                Cancel
+              </button>
               <button type="button" class="delete-confirm-btn" @click="confirmDelete">
                 Delete
               </button>

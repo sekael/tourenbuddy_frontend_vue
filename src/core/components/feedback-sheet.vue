@@ -26,7 +26,9 @@ function openIssue() {
 <template>
   <BottomSheet title="Feedback" @close="emit('close')">
     <div class="feedback-content">
-      <button type="button" class="primary-btn" @click="openIssue">Open Issue on GitHub</button>
+      <button type="button" class="primary-btn" @click="openIssue">
+        Open Issue on GitHub
+      </button>
       <p class="hint">
         No GitHub account? Reach out at
         <a :href="`mailto:${FEEDBACK_EMAIL}`" class="email-link">{{ FEEDBACK_EMAIL }}</a>

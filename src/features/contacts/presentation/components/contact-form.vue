@@ -85,7 +85,7 @@ function handleSubmit() {
         maxlength="50"
         placeholder="First name"
         required
-      />
+      >
     </div>
 
     <div class="field">
@@ -97,7 +97,7 @@ function handleSubmit() {
         type="text"
         maxlength="50"
         placeholder="Last name (optional)"
-      />
+      >
     </div>
 
     <div class="field">
@@ -109,7 +109,7 @@ function handleSubmit() {
         type="text"
         maxlength="50"
         placeholder="Nickname (optional)"
-      />
+      >
     </div>
 
     <div class="field">
@@ -121,7 +121,7 @@ function handleSubmit() {
         type="tel"
         placeholder="+41 79 012 34 56 (optional)"
         @input="onPhoneInput"
-      />
+      >
     </div>
 
     <p v-if="error" class="error-text">
@@ -129,7 +129,9 @@ function handleSubmit() {
     </p>
 
     <div class="actions">
-      <button type="button" class="cancel-btn" @click="emit('cancel')">Cancel</button>
+      <button type="button" class="cancel-btn" @click="emit('cancel')">
+        Cancel
+      </button>
       <button type="submit" class="submit-btn" :disabled="isLoading">
         {{ isLoading ? 'Saving...' : submitLabel }}
       </button>

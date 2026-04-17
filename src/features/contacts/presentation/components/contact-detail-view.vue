@@ -213,7 +213,9 @@ async function confirmDelete() {
 
     <!-- Name fields -->
     <section class="section">
-      <h3 class="section-label">Name</h3>
+      <h3 class="section-label">
+        Name
+      </h3>
       <div class="field">
         <label class="label" for="dv-firstName">First Name <span class="required">*</span></label>
         <input
@@ -223,7 +225,7 @@ async function confirmDelete() {
           type="text"
           maxlength="50"
           placeholder="First name"
-        />
+        >
       </div>
       <div class="field">
         <label class="label" for="dv-lastName">Last Name</label>
@@ -234,7 +236,7 @@ async function confirmDelete() {
           type="text"
           maxlength="50"
           placeholder="Last name (optional)"
-        />
+        >
       </div>
       <div class="field">
         <label class="label" for="dv-displayName">Display Name</label>
@@ -245,7 +247,7 @@ async function confirmDelete() {
           type="text"
           maxlength="50"
           placeholder="Nickname (optional)"
-        />
+        >
       </div>
       <p v-if="nameError" class="error-text">
         {{ nameError }}
@@ -257,7 +259,9 @@ async function confirmDelete() {
 
     <!-- Contact methods -->
     <section class="section">
-      <h3 class="section-label">Contact methods</h3>
+      <h3 class="section-label">
+        Contact methods
+      </h3>
 
       <div v-if="contact.contactMethods.length === 0" class="empty-methods">
         No contact methods yet.
@@ -277,20 +281,20 @@ async function confirmDelete() {
             type="tel"
             placeholder="+41 79 012 34 56"
             @input="getPhoneFormatter(method).onInput"
-          />
+          >
           <input
             v-else
             v-model="getMethodEdit(method).value"
             class="input input-sm"
             type="email"
             placeholder="Value"
-          />
+          >
           <input
             v-model="getMethodEdit(method).label"
             class="input input-sm"
             type="text"
             placeholder="Label (optional)"
-          />
+          >
           <p v-if="getMethodEdit(method).error" class="error-text">
             {{ getMethodEdit(method).error }}
           </p>
@@ -339,25 +343,27 @@ async function confirmDelete() {
           type="tel"
           placeholder="+41 79 012 34 56"
           @input="onNewMethodPhoneInput"
-        />
+        >
         <input
           v-else
           v-model="newMethodValue"
           class="input"
           type="email"
           placeholder="email@example.com"
-        />
+        >
         <input
           v-model="newMethodLabel"
           class="input"
           type="text"
           placeholder="Label (optional, e.g. Mobile)"
-        />
+        >
         <p v-if="addMethodError" class="error-text">
           {{ addMethodError }}
         </p>
         <div class="add-method-actions">
-          <button type="button" class="cancel-btn" @click="cancelAddMethod">Cancel</button>
+          <button type="button" class="cancel-btn" @click="cancelAddMethod">
+            Cancel
+          </button>
           <button
             type="button"
             class="save-btn"
@@ -382,10 +388,16 @@ async function confirmDelete() {
       </p>
 
       <template v-if="deleteState === 'confirm'">
-        <p class="delete-confirm-text">Delete this contact?</p>
+        <p class="delete-confirm-text">
+          Delete this contact?
+        </p>
         <div class="delete-actions">
-          <button type="button" class="cancel-btn" @click="deleteState = 'idle'">Cancel</button>
-          <button type="button" class="delete-confirm-btn" @click="confirmDelete">Delete</button>
+          <button type="button" class="cancel-btn" @click="deleteState = 'idle'">
+            Cancel
+          </button>
+          <button type="button" class="delete-confirm-btn" @click="confirmDelete">
+            Delete
+          </button>
         </div>
       </template>
 

@@ -36,7 +36,9 @@ function handlePickPoint(type: 'start' | 'end' | 'goal') {
   <div class="dialog-backdrop" @click.self="emit('close')">
     <div class="dialog">
       <div class="header">
-        <h2 class="title">New Tour</h2>
+        <h2 class="title">
+          New Tour
+        </h2>
         <button class="close-btn" aria-label="Close" @click="emit('close')">
           <span class="material-symbols-outlined">close</span>
         </button>

@@ -168,8 +168,7 @@ async function handleFileChange(event: Event) {
                 v-if="!result.phoneCanonical"
                 class="result-phone-warning"
                 title="Phone number format couldn't be recognized — edit the contact to fix it"
-              >⚠</span
-              >
+              >⚠</span>
             </span>
           </div>
           <span
@@ -186,7 +185,9 @@ async function handleFileChange(event: Event) {
           <span class="material-symbols-outlined">add</span>
           Add another manually
         </button>
-        <button type="button" class="submit-btn" @click="emit('close')">Done</button>
+        <button type="button" class="submit-btn" @click="emit('close')">
+          Done
+        </button>
       </div>
     </div>
 
@@ -218,7 +219,7 @@ async function handleFileChange(event: Event) {
           accept=".vcf,.vcard"
           class="file-input-hidden"
           @change="handleFileChange"
-        />
+        >
       </div>
 
       <div class="divider" />

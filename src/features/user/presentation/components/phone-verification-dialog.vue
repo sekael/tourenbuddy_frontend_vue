@@ -91,12 +91,16 @@ async function handleResend() {
       <template v-if="isVerified">
         <div class="verified-state">
           <span class="verified-icon material-symbols-outlined">check_circle</span>
-          <p class="verified-text">Phone verified!</p>
+          <p class="verified-text">
+            Phone verified!
+          </p>
         </div>
       </template>
 
       <template v-else>
-        <h2 class="title">Verify your phone</h2>
+        <h2 class="title">
+          Verify your phone
+        </h2>
         <p class="subtitle">
           We sent a code to <strong>{{ displayPhone }}</strong>
         </p>
@@ -113,13 +117,15 @@ async function handleResend() {
               autocomplete="one-time-code"
               inputmode="numeric"
               maxlength="6"
-            />
+            >
           </div>
 
           <p v-if="error" class="error-text">
             {{ error }}
           </p>
-          <p v-if="resendSuccess" class="success-text">Code resent!</p>
+          <p v-if="resendSuccess" class="success-text">
+            Code resent!
+          </p>
 
           <button type="submit" class="submit-btn" :disabled="isVerifying">
             {{ isVerifying ? 'Verifying...' : 'Verify' }}

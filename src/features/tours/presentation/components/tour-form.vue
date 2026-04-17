@@ -205,12 +205,12 @@ function handleSubmit() {
     <div class="scroll-body">
       <!-- SECTION: Location Details -->
       <div class="section">
-        <p class="section-label">Location</p>
+        <p class="section-label">
+          Location
+        </p>
 
         <div class="field">
-          <label class="label" for="tf-tourName"
-          >Tour Name <span class="required-mark">*</span></label
-          >
+          <label class="label" for="tf-tourName">Tour Name <span class="required-mark">*</span></label>
           <input
             id="tf-tourName"
             v-model="tourName"
@@ -222,13 +222,17 @@ function handleSubmit() {
             aria-required="true"
             :aria-invalid="nameError"
             @input="nameError = false"
-          />
-          <p v-if="nameError" class="field-error">Tour name is required.</p>
+          >
+          <p v-if="nameError" class="field-error">
+            Tour name is required.
+          </p>
         </div>
 
         <!-- Goal (read-only display, with optional change button) -->
         <div v-if="currentGoal" class="field">
-          <p class="label">Goal</p>
+          <p class="label">
+            Goal
+          </p>
           <div class="point-row">
             <span class="point-coords">{{ formatPoint(currentGoal) }}</span>
             <button
@@ -254,11 +258,13 @@ function handleSubmit() {
             max="9000"
             placeholder="Elevation in meters"
             @input="elevationAutoFilled = false"
-          />
+          >
         </div>
 
         <div class="field">
-          <p class="label">Start Point</p>
+          <p class="label">
+            Start Point
+          </p>
           <div class="point-row">
             <span class="point-coords">{{
               effectiveStartPoint ? formatPoint(effectiveStartPoint) : 'Not set'
@@ -280,7 +286,9 @@ function handleSubmit() {
         </div>
 
         <div class="field">
-          <p class="label">End Point</p>
+          <p class="label">
+            End Point
+          </p>
           <div class="point-row">
             <span class="point-coords">{{
               effectiveEndPoint ? formatPoint(effectiveEndPoint) : 'Not set'
@@ -299,7 +307,9 @@ function handleSubmit() {
 
       <!-- SECTION: Tour Partners -->
       <div v-if="contacts.length > 0" class="section">
-        <p class="section-label">Tour Partners</p>
+        <p class="section-label">
+          Tour Partners
+        </p>
         <div class="chips">
           <ContactChip
             v-for="contact in contacts"
@@ -313,7 +323,9 @@ function handleSubmit() {
 
       <!-- SECTION: Tour Type -->
       <div class="section">
-        <p class="section-label">Activity Type</p>
+        <p class="section-label">
+          Activity Type
+        </p>
         <div class="type-chips">
           <button
             v-for="type in TOUR_TYPE_VALUES"
@@ -331,7 +343,9 @@ function handleSubmit() {
 
       <!-- SECTION: Season -->
       <div class="section">
-        <p class="section-label">Season</p>
+        <p class="section-label">
+          Season
+        </p>
         <div class="season-chips">
           <button
             v-for="season in SEASON_VALUES"
@@ -348,11 +362,13 @@ function handleSubmit() {
 
       <!-- SECTION: Details -->
       <div class="section">
-        <p class="section-label">Details</p>
+        <p class="section-label">
+          Details
+        </p>
 
         <div class="field">
           <label class="label" for="tf-plannedDate">Planned Date</label>
-          <input id="tf-plannedDate" v-model="plannedDate" class="input" type="date" />
+          <input id="tf-plannedDate" v-model="plannedDate" class="input" type="date">
         </div>
 
         <div class="field">
@@ -391,7 +407,9 @@ function handleSubmit() {
 
       <!-- SECTION: GPX Track -->
       <div class="section">
-        <p class="section-label">GPX Track</p>
+        <p class="section-label">
+          GPX Track
+        </p>
         <div class="gpx-row">
           <label class="pick-btn gpx-upload-btn">
             <span class="material-symbols-outlined">upload_file</span>
@@ -401,7 +419,7 @@ function handleSubmit() {
               accept=".gpx,application/gpx+xml"
               class="hidden-input"
               @change="handleGpxUpload"
-            />
+            >
           </label>
           <span v-if="gpxFileName" class="gpx-filename">
             <span class="material-symbols-outlined gpx-ok-icon">check_circle</span>
@@ -419,7 +437,9 @@ function handleSubmit() {
     <!-- end scroll-body -->
 
     <div class="actions">
-      <button type="button" class="cancel-btn" @click="emit('cancel')">Cancel</button>
+      <button type="button" class="cancel-btn" @click="emit('cancel')">
+        Cancel
+      </button>
       <button type="submit" class="submit-btn">
         {{ submitLabel }}
       </button>

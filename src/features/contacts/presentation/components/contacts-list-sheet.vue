@@ -195,12 +195,18 @@ function switchAddToForm() {
         Add contact
       </button>
 
-      <div v-if="isLoading" class="loading-text">Loading…</div>
+      <div v-if="isLoading" class="loading-text">
+        Loading…
+      </div>
 
       <div v-else-if="contacts.length === 0" class="empty-state">
         <span class="material-symbols-outlined empty-icon">group</span>
-        <p class="empty-text">No contacts yet.</p>
-        <p class="empty-sub">Add contacts to use them as tour partners.</p>
+        <p class="empty-text">
+          No contacts yet.
+        </p>
+        <p class="empty-sub">
+          Add contacts to use them as tour partners.
+        </p>
       </div>
 
       <ul v-else class="contacts-list">
@@ -246,9 +252,7 @@ function switchAddToForm() {
         <ul class="results-list">
           <li v-for="(result, i) in importResults" :key="i" class="result-item">
             <div class="result-info">
-              <span class="result-name"
-              >{{ result.firstName }}{{ result.lastName ? ` ${result.lastName}` : '' }}</span
-              >
+              <span class="result-name">{{ result.firstName }}{{ result.lastName ? ` ${result.lastName}` : '' }}</span>
               <span v-if="result.phoneNumber" class="result-phone">{{ result.phoneNumber }}</span>
             </div>
             <span
@@ -264,7 +268,9 @@ function switchAddToForm() {
             <span class="material-symbols-outlined">add</span>
             Add another manually
           </button>
-          <button type="button" class="done-btn" @click="backToList">Done</button>
+          <button type="button" class="done-btn" @click="backToList">
+            Done
+          </button>
         </div>
       </div>
 
@@ -296,7 +302,7 @@ function switchAddToForm() {
             accept=".vcf,.vcard"
             class="file-input-hidden"
             @change="handleFileChange"
-          />
+          >
         </div>
 
         <div class="divider" />
