@@ -19,7 +19,7 @@ import UserProfileSheet from '@/features/user/presentation/components/user-profi
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
 type PickPointType = 'goal' | 'start' | 'end'
-type OverlayName = 'feedback' | 'profile' | 'contacts' | 'tour'
+type OverlayName = 'feedback' | 'profile' | 'contacts' | 'tour' | 'tour-creation'
 
 const mapStore = useMapStore()
 const toursStore = useToursStore()
@@ -40,23 +40,21 @@ const activeOverlay = ref<OverlayName | null>(null)
 const showFeedbackSheet = computed(() => activeOverlay.value === 'feedback')
 const showProfileSheet = computed(() => activeOverlay.value === 'profile')
 const showContactDialog = computed(() => activeOverlay.value === 'contacts')
-
-// Tour creation dialog is independent from the overlay system (it's a separate creation flow)
-const showTourCreationDialog = ref(false)
+const showTourCreationDialog = computed(() => activeOverlay.value === 'tour-creation')
 
 // Location picking state
-const pendingLocation = ref<{ lng: number, lat: number } | null>(null)
+const pendingLocation = ref<{ lng: number; lat: number } | null>(null)
 // 'goal' = main tour objective, 'start' = start point, 'end' = end point
 const pendingPickType = ref<'goal' | 'start' | 'end'>('goal')
 
 // Pre-fill values for the creation dialog (from Swisstopo lookups & secondary picks)
 const dialogInitialElevation = ref<number | null>(null)
 const dialogInitialName = ref<string | null>(null)
-const dialogInitialStartPoint = ref<{ lng: number, lat: number } | null>(null)
-const dialogInitialEndPoint = ref<{ lng: number, lat: number } | null>(null)
+const dialogInitialStartPoint = ref<{ lng: number; lat: number } | null>(null)
+const dialogInitialEndPoint = ref<{ lng: number; lat: number } | null>(null)
 
 // Derived reactively from store so it updates immediately when tours are mutated
-const selectedTour = computed(() => tours.value.find(t => t.id === selectedTourId.value) ?? null)
+const selectedTour = computed(() => tours.value.find((t) => t.id === selectedTourId.value) ?? null)
 const sheetContainerRef = ref<HTMLElement | null>(null)
 
 // Whether the current location pick was triggered from the info sheet edit mode
@@ -65,27 +63,41 @@ const isPickingForEdit = ref(false)
 // Prop-based handoff to info sheet after a location pick in edit mode
 const editPickedPoint = ref<{
   type: 'start' | 'end' | 'goal'
-  location: { lng: number, lat: number }
+  location: { lng: number; lat: number }
   elevation?: number | null
   suggestedName?: string | null
 } | null>(null)
 
+function resetTourCreationState() {
+  pendingLocation.value = null
+  dialogInitialElevation.value = null
+  dialogInitialName.value = null
+  dialogInitialStartPoint.value = null
+  dialogInitialEndPoint.value = null
+  pendingPickType.value = 'goal'
+}
+
 /** Opens an overlay, closing any previously open overlay first. */
 function openOverlay(name: OverlayName) {
-  if (activeOverlay.value === name)
-    return
+  if (activeOverlay.value === name) return
   if (activeOverlay.value === 'tour' && name !== 'tour') {
     mapStore.selectTour(null)
     mapStore.setEditPreviewGoal(null)
   }
+  if (activeOverlay.value === 'tour-creation' && name !== 'tour-creation') {
+    resetTourCreationState()
+  }
   activeOverlay.value = name
 }
 
-/** Closes the currently open overlay, cleaning up tour state if needed. */
+/** Closes the currently open overlay, cleaning up state if needed. */
 function closeOverlay() {
   if (activeOverlay.value === 'tour') {
     mapStore.selectTour(null)
     mapStore.setEditPreviewGoal(null)
+  }
+  if (activeOverlay.value === 'tour-creation') {
+    resetTourCreationState()
   }
   activeOverlay.value = null
 }
@@ -94,8 +106,7 @@ function closeOverlay() {
 watch(selectedTourId, (id) => {
   if (id) {
     activeOverlay.value = 'tour'
-  }
-  else if (activeOverlay.value === 'tour') {
+  } else if (activeOverlay.value === 'tour') {
     activeOverlay.value = null
   }
 })
@@ -109,8 +120,7 @@ onMounted(async () => {
 })
 
 async function flyToSelectedTour() {
-  if (!selectedTour.value)
-    return
+  if (!selectedTour.value) return
   await nextTick()
   const padding = isDesktop.value
     ? { top: 0, right: 400, bottom: 0, left: 0 }
@@ -124,15 +134,13 @@ async function flyToSelectedTour() {
 }
 
 watch(selectedTourId, async (id) => {
-  if (id)
-    await flyToSelectedTour()
+  if (id) await flyToSelectedTour()
 })
 
 watch(
   () => mapRef.value?.map,
   (m) => {
-    if (!m)
-      return
+    if (!m) return
     const update = () => {
       mapBearing.value = m.getBearing()
     }
@@ -151,7 +159,7 @@ function handleTourClicked(tourId: string) {
   openOverlay('tour')
 }
 
-async function handleLocationConfirmed(location: { lng: number, lat: number }) {
+async function handleLocationConfirmed(location: { lng: number; lat: number }) {
   mapStore.setPickingLocation(false)
 
   // Pick triggered from the info sheet edit mode — route result back via prop
@@ -168,8 +176,7 @@ async function handleLocationConfirmed(location: { lng: number, lat: number }) {
         suggestTourName(location),
       ])
       editPickedPoint.value = { type: 'goal', location, elevation, suggestedName }
-    }
-    else {
+    } else {
       editPickedPoint.value = { type: pickType, location }
     }
     return
@@ -177,13 +184,13 @@ async function handleLocationConfirmed(location: { lng: number, lat: number }) {
 
   if (pendingPickType.value === 'start') {
     dialogInitialStartPoint.value = location
-    showTourCreationDialog.value = true
+    openOverlay('tour-creation')
     return
   }
 
   if (pendingPickType.value === 'end') {
     dialogInitialEndPoint.value = location
-    showTourCreationDialog.value = true
+    openOverlay('tour-creation')
     return
   }
 
@@ -192,7 +199,7 @@ async function handleLocationConfirmed(location: { lng: number, lat: number }) {
   const [elevation, name] = await Promise.all([getElevation(location), suggestTourName(location)])
   dialogInitialElevation.value = elevation
   dialogInitialName.value = name
-  showTourCreationDialog.value = true
+  openOverlay('tour-creation')
 }
 
 function handleLocationCancelled() {
@@ -205,13 +212,14 @@ function handleLocationCancelled() {
   }
   // Re-open dialog if we were picking a secondary point for creation
   if (pendingPickType.value === 'start' || pendingPickType.value === 'end') {
-    showTourCreationDialog.value = true
+    openOverlay('tour-creation')
   }
   pendingPickType.value = 'goal'
 }
 
 function handlePickPoint(type: 'start' | 'end') {
-  showTourCreationDialog.value = false
+  // Hide dialog while picking but don't reset creation state
+  activeOverlay.value = null
   pendingPickType.value = type
   mapStore.setPickingLocation(true)
 }
@@ -237,38 +245,22 @@ async function handleEditModeChange(editing: boolean) {
 function handleMapBackgroundClick() {
   // Suppress while location picker is active — map panning passes through the
   // pointer-events:none overlay and would otherwise deselect the current tour.
-  if (isPickingLocation.value)
-    return
+  if (isPickingLocation.value) return
   closeOverlay()
 }
 
 async function handleTourCreated(draft: TourDraft) {
-  if (!pendingLocation.value)
-    return
-  showTourCreationDialog.value = false
-
-  // Reset dialog initial values for next tour creation
-  dialogInitialElevation.value = null
-  dialogInitialName.value = null
-  dialogInitialStartPoint.value = null
-  dialogInitialEndPoint.value = null
-  pendingPickType.value = 'goal'
-
+  if (!pendingLocation.value) return
+  // Capture goal before closeOverlay resets state
   const goal = pendingLocation.value
-  pendingLocation.value = null
+  closeOverlay()
+
   const newId = await toursStore.createTourFromDraft(draft, goal)
-  if (newId)
-    mapStore.selectTour(newId)
+  if (newId) mapStore.selectTour(newId)
 }
 
 function handleDialogClose() {
-  showTourCreationDialog.value = false
-  pendingLocation.value = null
-  dialogInitialElevation.value = null
-  dialogInitialName.value = null
-  dialogInitialStartPoint.value = null
-  dialogInitialEndPoint.value = null
-  pendingPickType.value = 'goal'
+  closeOverlay()
 }
 </script>
 
@@ -296,8 +288,10 @@ function handleDialogClose() {
       @cancel="handleLocationCancelled"
     />
 
-    <!-- Overlays: only one visible at a time; mode="out-in" ensures the active sheet
-         leaves before the incoming sheet enters, preventing visual stacking -->
+    <!-- Overlays: only one visible at a time; mode="out-in" ensures the active overlay
+         leaves before the incoming one enters, preventing visual stacking.
+         On desktop, the container uses display:contents so fixed-position dialogs
+         position themselves independently and animate via their own CSS. -->
     <Transition name="sheet" mode="out-in">
       <div
         v-if="selectedTour && activeOverlay === 'tour'"
@@ -323,20 +317,19 @@ function handleDialogClose() {
       <div v-else-if="showContactDialog" key="contacts" class="sheet-container">
         <ContactsListSheet @close="closeOverlay" />
       </div>
+      <div v-else-if="showTourCreationDialog" key="tour-creation" class="sheet-container">
+        <TourCreationDialog
+          :initial-elevation="dialogInitialElevation"
+          :initial-name="dialogInitialName"
+          :initial-start-point="dialogInitialStartPoint"
+          :initial-end-point="dialogInitialEndPoint"
+          :initial-goal="pendingLocation"
+          @confirm="handleTourCreated"
+          @close="handleDialogClose"
+          @pick-point="handlePickPoint"
+        />
+      </div>
     </Transition>
-
-    <!-- Tour creation dialog (independent creation flow, not part of the overlay system) -->
-    <TourCreationDialog
-      v-if="showTourCreationDialog"
-      :initial-elevation="dialogInitialElevation"
-      :initial-name="dialogInitialName"
-      :initial-start-point="dialogInitialStartPoint"
-      :initial-end-point="dialogInitialEndPoint"
-      :initial-goal="pendingLocation"
-      @confirm="handleTourCreated"
-      @close="handleDialogClose"
-      @pick-point="handlePickPoint"
-    />
   </div>
 </template>
 
@@ -361,6 +354,14 @@ function handleDialogClose() {
   pointer-events: none;
 }
 
+/* On desktop, make the container a layout no-op so fixed-position dialogs and
+   drawers position themselves relative to the viewport independently */
+@media (min-width: 600px) {
+  .sheet-container {
+    display: contents;
+  }
+}
+
 .sheet-enter-active,
 .sheet-leave-active {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -369,5 +370,18 @@ function handleDialogClose() {
 .sheet-enter-from,
 .sheet-leave-to {
   transform: translateY(100%);
+}
+
+/* On desktop, disable container transitions — each overlay animates itself */
+@media (min-width: 600px) {
+  .sheet-enter-active,
+  .sheet-leave-active {
+    transition: none;
+  }
+
+  .sheet-enter-from,
+  .sheet-leave-to {
+    transform: none;
+  }
 }
 </style>

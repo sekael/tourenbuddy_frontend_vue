@@ -2,12 +2,11 @@
 
 ## [0.4.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.3.0...tourenbuddy-frontend-v0.4.0) (2026-04-17)
 
-
 ### Features
 
-* Auto-open info sheet after saving new tour ([#46](https://github.com/sekael/tourenbuddy_frontend_vue/issues/46)) ([3a5e635](https://github.com/sekael/tourenbuddy_frontend_vue/commit/3a5e6357140ccb88ba0c15646a1806507366b0ec))
-* Tour completion toggle ([#47](https://github.com/sekael/tourenbuddy_frontend_vue/issues/47)) ([9bb5ea0](https://github.com/sekael/tourenbuddy_frontend_vue/commit/9bb5ea00327898054b97f776a75664c560d0f393))
-* Tour type marker colors ([#44](https://github.com/sekael/tourenbuddy_frontend_vue/issues/44)) ([ba66017](https://github.com/sekael/tourenbuddy_frontend_vue/commit/ba66017005885ca250066389fe22a800d2c82c4d))
+- Auto-open info sheet after saving new tour ([#46](https://github.com/sekael/tourenbuddy_frontend_vue/issues/46)) ([3a5e635](https://github.com/sekael/tourenbuddy_frontend_vue/commit/3a5e6357140ccb88ba0c15646a1806507366b0ec))
+- Tour completion toggle ([#47](https://github.com/sekael/tourenbuddy_frontend_vue/issues/47)) ([9bb5ea0](https://github.com/sekael/tourenbuddy_frontend_vue/commit/9bb5ea00327898054b97f776a75664c560d0f393))
+- Tour type marker colors ([#44](https://github.com/sekael/tourenbuddy_frontend_vue/issues/44)) ([ba66017](https://github.com/sekael/tourenbuddy_frontend_vue/commit/ba66017005885ca250066389fe22a800d2c82c4d))
 
 ## [0.3.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.2.0...tourenbuddy-frontend-v0.3.0) (2026-04-17)
 

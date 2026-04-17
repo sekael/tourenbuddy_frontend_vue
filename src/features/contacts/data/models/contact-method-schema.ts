@@ -13,7 +13,7 @@ export const contactMethodRowSchema = z
     label: z.string().nullable(),
     is_primary: z.boolean(),
   })
-  .transform(row => ({
+  .transform((row) => ({
     id: row.id,
     contactId: row.contact_id,
     methodType: row.method_type,
