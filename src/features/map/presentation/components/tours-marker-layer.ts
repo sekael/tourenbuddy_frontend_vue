@@ -1,5 +1,7 @@
-import type { Map as MapLibreMap } from 'maplibre-gl'
+import type { ExpressionSpecification, Map as MapLibreMap } from 'maplibre-gl'
+import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Tour } from '@/features/tours/domain/entities/tour'
+import { TOUR_TYPE_COLORS, TOUR_TYPE_PREVIEW_COLORS } from '@/features/tours/data/models/tour-type'
 import { toursToGeoJson } from '@/features/tours/domain/entities/tour'
 
 const SOURCE_ID = 'tours'
@@ -8,6 +10,17 @@ export const TOUR_LAYER_IDS = ['tours-circles', 'tours-circles-selected'] as con
 const LAYER_ID = TOUR_LAYER_IDS[0]
 const SELECTED_LAYER_ID = TOUR_LAYER_IDS[1]
 const PREVIEW_LAYER_ID = 'tours-preview-circle'
+
+function buildMatchExpr(
+  colors: Record<TourType, string>,
+  fallback: string,
+): ExpressionSpecification {
+  const pairs = Object.entries(colors).flatMap(([type, color]) => [type, color])
+  return ['match', ['coalesce', ['get', 'tourType'], 'unknown'], ...pairs, fallback]
+}
+
+const COLOR_EXPR = buildMatchExpr(TOUR_TYPE_COLORS, '#78716C')
+const PREVIEW_COLOR_EXPR = buildMatchExpr(TOUR_TYPE_PREVIEW_COLORS, '#A8A29E')
 
 /**
  * Manages the MapLibre GL circle layers that represent tour markers.
@@ -32,7 +45,7 @@ export function useToursMarkerLayer(map: MapLibreMap, onTourClick: (tourId: stri
       filter: ['!=', ['get', 'id'], ''],
       paint: {
         'circle-radius': 14,
-        'circle-color': '#e65100',
+        'circle-color': COLOR_EXPR,
         'circle-opacity': 0.85,
       },
     })
@@ -45,21 +58,21 @@ export function useToursMarkerLayer(map: MapLibreMap, onTourClick: (tourId: stri
       filter: ['==', ['get', 'id'], ''],
       paint: {
         'circle-radius': 18,
-        'circle-color': '#e65100',
+        'circle-color': COLOR_EXPR,
         'circle-opacity': 1,
         'circle-stroke-width': 3,
         'circle-stroke-color': '#ffffff',
       },
     })
 
-    // Orange preview marker shown at a tentative goal location during edit mode
+    // Preview marker shown at a tentative goal location during edit mode
     map.addLayer({
       id: PREVIEW_LAYER_ID,
       type: 'circle',
       source: PREVIEW_SOURCE_ID,
       paint: {
         'circle-radius': 16,
-        'circle-color': '#ff9800',
+        'circle-color': PREVIEW_COLOR_EXPR,
         'circle-opacity': 0.9,
         'circle-stroke-width': 3,
         'circle-stroke-color': '#ffffff',
@@ -94,7 +107,7 @@ export function useToursMarkerLayer(map: MapLibreMap, onTourClick: (tourId: stri
     map.setFilter(SELECTED_LAYER_ID, ['==', ['get', 'id'], selectedTourId ?? ''])
   }
 
-  function updatePreview(goal: { lng: number, lat: number } | null) {
+  function updatePreview(goal: { lng: number, lat: number } | null, tourType: TourType | null) {
     const source = map.getSource(PREVIEW_SOURCE_ID)
     if (!source || source.type !== 'geojson')
       return
@@ -106,7 +119,7 @@ export function useToursMarkerLayer(map: MapLibreMap, onTourClick: (tourId: stri
             {
               type: 'Feature',
               geometry: { type: 'Point', coordinates: [goal.lng, goal.lat] },
-              properties: {},
+              properties: { tourType: tourType ?? null },
             },
           ]
         : [],

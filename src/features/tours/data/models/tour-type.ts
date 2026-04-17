@@ -45,3 +45,31 @@ export const TOUR_TYPE_ICONS: Record<TourType, string> = {
   'mountain-biking': 'directions_bike',
   'trailrunning': 'sprint',
 }
+
+export const TOUR_TYPE_COLORS: Record<TourType, string> = {
+  'skiing': '#1565C0',
+  'snowboarding': '#1565C0',
+  'skitour': '#1565C0',
+  'splitboarding': '#1565C0',
+  'ski-mountaineering': '#1565C0',
+  'paragliding': '#D97706',
+  'hiking': '#DC2626',
+  'mountaineering': '#DC2626',
+  'climbing': '#DC2626',
+  'mountain-biking': '#DC2626',
+  'trailrunning': '#DC2626',
+}
+
+export const TOUR_TYPE_PREVIEW_COLORS: Record<TourType, string> = {
+  'skiing': '#60A5FA',
+  'snowboarding': '#60A5FA',
+  'skitour': '#60A5FA',
+  'splitboarding': '#60A5FA',
+  'ski-mountaineering': '#60A5FA',
+  'paragliding': '#FCD34D',
+  'hiking': '#FCA5A5',
+  'mountaineering': '#FCA5A5',
+  'climbing': '#FCA5A5',
+  'mountain-biking': '#FCA5A5',
+  'trailrunning': '#FCA5A5',
+}

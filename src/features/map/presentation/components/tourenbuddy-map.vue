@@ -51,7 +51,7 @@ onMounted(() => {
     })
     markerLayer.setup()
     markerLayer.updateTours(tours.value, selectedTourId.value)
-    markerLayer.updatePreview(editPreviewGoal.value)
+    markerLayer.updatePreview(editPreviewGoal.value, selectedTour.value?.tourType ?? null)
 
     gpxLayer = useGpxTrackLayer(mapInstance!)
     gpxLayer.setup()
@@ -82,7 +82,7 @@ watch([tours, selectedTourId], ([newTours, newSelectedId]) => {
 
 // Watch for edit preview goal changes and update the preview marker
 watch(editPreviewGoal, (goal) => {
-  markerLayer?.updatePreview(goal)
+  markerLayer?.updatePreview(goal, selectedTour.value?.tourType ?? null)
 })
 
 // Watch for map style changes
@@ -92,10 +92,10 @@ watch(currentStyleIndex, (index) => {
   const style = SWISSTOPO_STYLES[index]
   if (style) {
     mapInstance.setStyle(style.style)
-    mapInstance.once('styledata', () => {
+    mapInstance.once('style.load', () => {
       markerLayer?.setup()
       markerLayer?.updateTours(tours.value, selectedTourId.value)
-      markerLayer?.updatePreview(editPreviewGoal.value)
+      markerLayer?.updatePreview(editPreviewGoal.value, selectedTour.value?.tourType ?? null)
       gpxLayer?.setup()
       gpxLayer?.updateTrack(selectedTour.value)
     })

@@ -33,6 +33,7 @@ export function tourToGeoJsonFeature(tour: Tour): GeoJSON.Feature<GeoJSON.Point>
     },
     properties: {
       id: tour.id,
+      tourType: tour.tourType ?? null,
     },
   }
 }

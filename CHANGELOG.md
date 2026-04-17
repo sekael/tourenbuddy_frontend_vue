@@ -2,20 +2,18 @@
 
 ## [0.3.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.2.0...tourenbuddy-frontend-v0.3.0) (2026-04-17)
 
-
 ### Features
 
-* Add icon and background ([#36](https://github.com/sekael/tourenbuddy_frontend_vue/issues/36)) ([466df39](https://github.com/sekael/tourenbuddy_frontend_vue/commit/466df393cee92c0fd304cf222f9023645793b534))
-* Allow users to edit and delete tours ([#37](https://github.com/sekael/tourenbuddy_frontend_vue/issues/37)) ([7ef8516](https://github.com/sekael/tourenbuddy_frontend_vue/commit/7ef8516b76f994c2379342e6c02061d4c8bcbc0b))
-* Button to reset bearing to North ([#38](https://github.com/sekael/tourenbuddy_frontend_vue/issues/38)) ([dbdf6ca](https://github.com/sekael/tourenbuddy_frontend_vue/commit/dbdf6ca517450ad8308de2eae5c608faf5fb72bf))
-* Standardize phone numbers to canonical international format ([#40](https://github.com/sekael/tourenbuddy_frontend_vue/issues/40)) ([682c4e2](https://github.com/sekael/tourenbuddy_frontend_vue/commit/682c4e27bbdfdd64e695be9d14df35a4eeaa6186))
-
+- Add icon and background ([#36](https://github.com/sekael/tourenbuddy_frontend_vue/issues/36)) ([466df39](https://github.com/sekael/tourenbuddy_frontend_vue/commit/466df393cee92c0fd304cf222f9023645793b534))
+- Allow users to edit and delete tours ([#37](https://github.com/sekael/tourenbuddy_frontend_vue/issues/37)) ([7ef8516](https://github.com/sekael/tourenbuddy_frontend_vue/commit/7ef8516b76f994c2379342e6c02061d4c8bcbc0b))
+- Button to reset bearing to North ([#38](https://github.com/sekael/tourenbuddy_frontend_vue/issues/38)) ([dbdf6ca](https://github.com/sekael/tourenbuddy_frontend_vue/commit/dbdf6ca517450ad8308de2eae5c608faf5fb72bf))
+- Standardize phone numbers to canonical international format ([#40](https://github.com/sekael/tourenbuddy_frontend_vue/issues/40)) ([682c4e2](https://github.com/sekael/tourenbuddy_frontend_vue/commit/682c4e27bbdfdd64e695be9d14df35a4eeaa6186))
 
 ### Bug Fixes
 
-* **ci:** Pin wrangler to v4 in deploy action ([#30](https://github.com/sekael/tourenbuddy_frontend_vue/issues/30)) ([d1e230f](https://github.com/sekael/tourenbuddy_frontend_vue/commit/d1e230f4b3ae3b42995770bcd4815c3146801db8))
-* Overlapping bottom sheets ([#42](https://github.com/sekael/tourenbuddy_frontend_vue/issues/42)) ([98ea27e](https://github.com/sekael/tourenbuddy_frontend_vue/commit/98ea27ee69d23492d0dfb5e3e15dd39188195c37))
-* Whatsapp link and phone number formatting ([#39](https://github.com/sekael/tourenbuddy_frontend_vue/issues/39)) ([aec6b69](https://github.com/sekael/tourenbuddy_frontend_vue/commit/aec6b694a2a2fbd8f91b2dea690293f44ac65544))
+- **ci:** Pin wrangler to v4 in deploy action ([#30](https://github.com/sekael/tourenbuddy_frontend_vue/issues/30)) ([d1e230f](https://github.com/sekael/tourenbuddy_frontend_vue/commit/d1e230f4b3ae3b42995770bcd4815c3146801db8))
+- Overlapping bottom sheets ([#42](https://github.com/sekael/tourenbuddy_frontend_vue/issues/42)) ([98ea27e](https://github.com/sekael/tourenbuddy_frontend_vue/commit/98ea27ee69d23492d0dfb5e3e15dd39188195c37))
+- Whatsapp link and phone number formatting ([#39](https://github.com/sekael/tourenbuddy_frontend_vue/issues/39)) ([aec6b69](https://github.com/sekael/tourenbuddy_frontend_vue/commit/aec6b694a2a2fbd8f91b2dea690293f44ac65544))
 
 ## [0.2.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.1.0...tourenbuddy-frontend-v0.2.0) (2026-04-14)
 
