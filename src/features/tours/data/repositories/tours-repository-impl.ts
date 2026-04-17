@@ -69,6 +69,12 @@ export class ToursRepositoryImpl implements ToursRepository {
       throw new Error(error.message)
   }
 
+  async patchCompleted(id: string, completed: boolean): Promise<void> {
+    const { error } = await supabase.from('tours').update({ completed }).eq('id', id)
+    if (error)
+      throw new Error(error.message)
+  }
+
   async deleteTour(id: string): Promise<void> {
     const { error } = await supabase.from('tours').delete().eq('id', id)
 

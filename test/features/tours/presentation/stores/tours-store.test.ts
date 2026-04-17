@@ -2,11 +2,22 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
-const { mockListTours, mockCreateTour, mockUpdateTour, mockDeleteTour } = vi.hoisted(() => ({
+const {
+  mockListTours,
+  mockCreateTour,
+  mockUpdateTour,
+  mockPatchCompleted,
+  mockDeleteTour,
+  mockDebug,
+  mockError,
+} = vi.hoisted(() => ({
   mockListTours: vi.fn(),
   mockCreateTour: vi.fn(),
   mockUpdateTour: vi.fn(),
+  mockPatchCompleted: vi.fn(),
   mockDeleteTour: vi.fn(),
+  mockDebug: vi.fn(),
+  mockError: vi.fn(),
 }))
 
 vi.mock('@/features/tours/data/repositories/tours-repository-impl', () => ({
@@ -14,8 +25,18 @@ vi.mock('@/features/tours/data/repositories/tours-repository-impl', () => ({
     listToursForUser: mockListTours,
     createTourWithPartners: mockCreateTour,
     updateTour: mockUpdateTour,
+    patchCompleted: mockPatchCompleted,
     deleteTour: mockDeleteTour,
   })),
+}))
+
+vi.mock('@/core/logging/use-logger', () => ({
+  useLogger: vi.fn().mockReturnValue({
+    debug: mockDebug,
+    error: mockError,
+    info: vi.fn(),
+    warn: vi.fn(),
+  }),
 }))
 
 vi.mock('@/features/auth/presentation/stores/auth-store', () => ({
@@ -46,6 +67,7 @@ const mockTours = [
     endPoint: null,
     equipment: null,
     notes: null,
+    completed: false,
   },
 ]
 
@@ -239,6 +261,64 @@ describe('useToursStore', () => {
       ).rejects.toThrow('RPC failed')
 
       expect(store.tours[0]?.name).toBe('Rigi Tour')
+    })
+  })
+
+  describe('setCompleted', () => {
+    it('should optimistically update completed to true and call repository', async () => {
+      mockPatchCompleted.mockResolvedValue(undefined)
+
+      const store = useToursStore()
+      store.tours = [...mockTours]
+
+      await store.setCompleted('tour-1', true)
+
+      expect(store.tours[0]?.completed).toBe(true)
+      expect(mockPatchCompleted).toHaveBeenCalledWith('tour-1', true)
+    })
+
+    it('should optimistically update completed to false', async () => {
+      mockPatchCompleted.mockResolvedValue(undefined)
+
+      const store = useToursStore()
+      store.tours = [{ ...mockTours[0]!, completed: true }]
+
+      await store.setCompleted('tour-1', false)
+
+      expect(store.tours[0]?.completed).toBe(false)
+      expect(mockPatchCompleted).toHaveBeenCalledWith('tour-1', false)
+    })
+
+    it('should roll back and set error on repository failure', async () => {
+      mockPatchCompleted.mockRejectedValue(new Error('patch failed'))
+
+      const store = useToursStore()
+      store.tours = [...mockTours]
+
+      await store.setCompleted('tour-1', true)
+
+      expect(store.tours[0]?.completed).toBe(false)
+      expect(store.error).toBe('patch failed')
+    })
+
+    it('should emit a debug log on toggle', async () => {
+      mockPatchCompleted.mockResolvedValue(undefined)
+
+      const store = useToursStore()
+      store.tours = [...mockTours]
+
+      await store.setCompleted('tour-1', true)
+
+      expect(mockDebug).toHaveBeenCalledWith('setCompleted', { tourId: 'tour-1', completed: true })
+    })
+
+    it('should do nothing when tourId not found', async () => {
+      const store = useToursStore()
+      store.tours = [...mockTours]
+
+      await store.setCompleted('nonexistent', true)
+
+      expect(mockPatchCompleted).not.toHaveBeenCalled()
     })
   })
 

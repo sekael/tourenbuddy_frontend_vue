@@ -25,6 +25,7 @@ export const tourRowSchema = z
     end_lat: z.number().nullable().default(null),
     equipment: z.string().nullable().default(null),
     notes: z.string().nullable().default(null),
+    completed: z.boolean().default(false),
   })
   .transform(row => ({
     id: row.id,
@@ -46,6 +47,7 @@ export const tourRowSchema = z
       row.end_lon != null && row.end_lat != null ? { lng: row.end_lon, lat: row.end_lat } : null,
     equipment: row.equipment,
     notes: row.notes,
+    completed: row.completed,
   }))
 
 /** Domain-level tour shape. */
@@ -65,4 +67,5 @@ export const tourSchema = z.object({
   endPoint: pointSchema.nullable(),
   equipment: z.string().nullable(),
   notes: z.string().nullable(),
+  completed: z.boolean(),
 })

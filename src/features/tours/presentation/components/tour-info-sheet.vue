@@ -5,6 +5,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
+import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
@@ -34,9 +35,13 @@ const emit = defineEmits<{
 const contactsStore = useContactsStore()
 const toursStore = useToursStore()
 const mapStore = useMapStore()
+const authStore = useAuthStore()
 const { contacts } = storeToRefs(contactsStore)
 const { isPickingLocation } = storeToRefs(mapStore)
+const { currentUser } = storeToRefs(authStore)
 const isDesktop = useIsDesktop()
+
+const isOwner = computed(() => !!currentUser.value && currentUser.value.id === props.tour.userId)
 
 // ── View/edit mode ───────────────────────────────────────────────────────────
 const mode = ref<'view' | 'edit'>('view')
@@ -110,6 +115,11 @@ async function handleEditSubmit(draft: TourDraft) {
   finally {
     isSaving.value = false
   }
+}
+
+// ── Completion toggle ────────────────────────────────────────────────────────
+async function toggleCompleted() {
+  await toursStore.setCompleted(props.tour.id, !props.tour.completed)
 }
 
 // ── Delete ───────────────────────────────────────────────────────────────────
@@ -239,6 +249,20 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
     <!-- ── View mode ───────────────────────────────────────────────────── -->
     <template v-else>
       <div class="details">
+        <!-- Completion toggle (owner only) -->
+        <button
+          v-if="isOwner"
+          type="button"
+          class="completion-toggle action-btn"
+          :class="{ 'completion-toggle--done': tour.completed }"
+          :aria-pressed="tour.completed"
+          @click="toggleCompleted"
+        >
+          <span v-if="tour.completed" class="material-symbols-outlined">check_circle</span>
+          <span v-else class="material-symbols-outlined">radio_button_unchecked</span>
+          {{ tour.completed ? 'Completed' : 'Complete Tour' }}
+        </button>
+
         <!-- Tour type -->
         <div v-if="tour.tourType" class="detail-row">
           <span class="detail-icon material-symbols-outlined">{{
@@ -344,35 +368,43 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           </div>
         </div>
 
-        <!-- Edit / delete actions -->
+        <!-- Actions -->
         <div class="view-actions">
-          <button type="button" class="action-btn" @click="enterEditMode">
-            <span class="material-symbols-outlined">edit</span>
-            Edit
-          </button>
+          <!-- Edit / delete -->
+          <div class="edit-delete-row">
+            <button
+              v-if="deleteState === 'idle'"
+              type="button"
+              class="action-btn"
+              data-testid="edit-btn"
+              @click="enterEditMode"
+            >
+              <span class="material-symbols-outlined">edit</span>
+              Edit
+            </button>
 
-          <!-- Delete -->
-          <template v-if="deleteState === 'confirm'">
-            <div class="delete-confirm-row">
-              <span class="delete-confirm-text">Delete this tour?</span>
-              <button type="button" class="cancel-btn" @click="deleteState = 'idle'">
-                Cancel
-              </button>
-              <button type="button" class="delete-confirm-btn" @click="confirmDelete">
-                Delete
-              </button>
-            </div>
-          </template>
-          <button
-            v-else
-            type="button"
-            class="action-btn action-btn--danger"
-            :disabled="deleteState === 'loading'"
-            @click="deleteState = 'confirm'"
-          >
-            <span class="material-symbols-outlined">delete</span>
-            {{ deleteState === 'loading' ? 'Deleting…' : 'Delete' }}
-          </button>
+            <template v-if="deleteState === 'confirm'">
+              <div class="delete-confirm-row">
+                <span class="delete-confirm-text">Delete this tour?</span>
+                <button type="button" class="cancel-btn" @click="deleteState = 'idle'">
+                  Cancel
+                </button>
+                <button type="button" class="delete-confirm-btn" @click="confirmDelete">
+                  Delete
+                </button>
+              </div>
+            </template>
+            <button
+              v-else
+              type="button"
+              class="action-btn action-btn--danger"
+              :disabled="deleteState === 'loading'"
+              @click="deleteState = 'confirm'"
+            >
+              <span class="material-symbols-outlined">delete</span>
+              {{ deleteState === 'loading' ? 'Deleting…' : 'Delete' }}
+            </button>
+          </div>
         </div>
 
         <p v-if="deleteError" class="delete-error">
@@ -393,11 +425,18 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
 .view-actions {
   display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--spacing-sm);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--color-outline-variant);
+}
+
+.edit-delete-row {
+  display: flex;
   align-items: center;
   gap: var(--spacing-sm);
   flex-wrap: wrap;
-  padding-bottom: var(--spacing-md);
-  border-bottom: 1px solid var(--color-outline-variant);
 }
 
 .action-btn {
@@ -480,6 +519,15 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 .delete-error {
   font-size: var(--font-size-sm);
   color: var(--color-error);
+}
+
+.completion-toggle--done {
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.completion-toggle--done:hover {
+  background-color: transparent;
 }
 
 .detail-row {

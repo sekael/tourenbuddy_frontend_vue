@@ -9,7 +9,9 @@ const PREVIEW_SOURCE_ID = 'tours-preview'
 export const TOUR_LAYER_IDS = ['tours-circles', 'tours-circles-selected'] as const
 const LAYER_ID = TOUR_LAYER_IDS[0]
 const SELECTED_LAYER_ID = TOUR_LAYER_IDS[1]
+const CHECK_LAYER_ID = 'tours-completed-check'
 const PREVIEW_LAYER_ID = 'tours-preview-circle'
+const CHECK_ICON_ID = 'tour-check-icon'
 
 function buildMatchExpr(
   colors: Record<TourType, string>,
@@ -22,11 +24,54 @@ function buildMatchExpr(
 const COLOR_EXPR = buildMatchExpr(TOUR_TYPE_COLORS, '#78716C')
 const PREVIEW_COLOR_EXPR = buildMatchExpr(TOUR_TYPE_PREVIEW_COLORS, '#A8A29E')
 
+/** Loads a check SVG as a MapLibre icon image via addImage. Resolves true on success. */
+async function loadCheckIcon(map: MapLibreMap): Promise<boolean> {
+  // Image persists across style reloads — skip if already registered.
+  if (map.hasImage(CHECK_ICON_ID))
+    return true
+
+  const size = 28
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 28 28">
+      <polyline
+        points="5,14 11,21 23,8"
+        stroke="white"
+        stroke-width="3.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"
+      />
+    </svg>
+  `.trim()
+
+  const blob = new Blob([svg], { type: 'image/svg+xml' })
+  const url = URL.createObjectURL(blob)
+
+  return new Promise((resolve) => {
+    const img = new Image(size, size)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      try {
+        map.addImage(CHECK_ICON_ID, img, { sdf: false })
+        resolve(true)
+      }
+      catch {
+        resolve(false)
+      }
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve(false)
+    }
+    img.src = url
+  })
+}
+
 /**
  * Manages the MapLibre GL circle layers that represent tour markers.
  */
 export function useToursMarkerLayer(map: MapLibreMap, onTourClick: (tourId: string) => void) {
-  function setup() {
+  async function setup() {
     map.addSource(SOURCE_ID, {
       type: 'geojson',
       data: { type: 'FeatureCollection', features: [] },
@@ -78,6 +123,23 @@ export function useToursMarkerLayer(map: MapLibreMap, onTourClick: (tourId: stri
         'circle-stroke-color': '#ffffff',
       },
     })
+
+    // Completed-tour check glyph layer — shown above circle layers
+    const iconLoaded = await loadCheckIcon(map)
+    if (iconLoaded) {
+      map.addLayer({
+        id: CHECK_LAYER_ID,
+        type: 'symbol',
+        source: SOURCE_ID,
+        filter: ['==', ['get', 'completed'], true],
+        layout: {
+          'icon-image': CHECK_ICON_ID,
+          'icon-size': 0.65,
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+        },
+      })
+    }
 
     map.on('click', LAYER_ID, (e) => {
       const feature = e.features?.[0]

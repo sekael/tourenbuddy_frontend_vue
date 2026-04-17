@@ -78,6 +78,25 @@ export const useToursStore = defineStore('tours', () => {
     )
   }
 
+  async function setCompleted(tourId: string, completed: boolean) {
+    const tour = tours.value.find(t => t.id === tourId)
+    if (!tour)
+      return
+
+    const previous = tour.completed
+    tours.value = tours.value.map(t => (t.id === tourId ? { ...t, completed } : t))
+    logger.debug('setCompleted', { tourId, completed })
+
+    try {
+      await repository.patchCompleted(tourId, completed)
+    }
+    catch (err) {
+      tours.value = tours.value.map(t => (t.id === tourId ? { ...t, completed: previous } : t))
+      error.value = err instanceof Error ? err.message : 'Failed to update tour'
+      logger.error('setCompleted failed, rolled back', err)
+    }
+  }
+
   async function deleteTour(id: string) {
     await repository.deleteTour(id)
     tours.value = tours.value.filter(t => t.id !== id)
@@ -88,5 +107,15 @@ export const useToursStore = defineStore('tours', () => {
     error.value = null
   }
 
-  return { tours, isLoading, error, loadTours, createTourFromDraft, updateTour, deleteTour, clear }
+  return {
+    tours,
+    isLoading,
+    error,
+    loadTours,
+    createTourFromDraft,
+    updateTour,
+    setCompleted,
+    deleteTour,
+    clear,
+  }
 })
