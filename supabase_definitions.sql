@@ -53,6 +53,18 @@ select
   name,
   st_x (goal::geometry) as lon,
   st_y (goal::geometry) as lat,
+  tour_type,
+  elevation,
+  gpx_track,
+  description,
+  seasons,
+  st_x (start_point::geometry) as start_lon,
+  st_y (start_point::geometry) as start_lat,
+  st_x (end_point::geometry) as end_lon,
+  st_y (end_point::geometry) as end_lat,
+  equipment,
+  notes,
+  completed,
   (
     select
       COALESCE(json_agg(tp.contact_id), '[]'::json) as "coalesce"

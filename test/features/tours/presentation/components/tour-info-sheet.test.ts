@@ -109,9 +109,7 @@ describe('tourInfoSheet', () => {
 
       expect(wrapper.find('[data-testid="tour-form"]').exists()).toBe(false)
 
-      await wrapper
-        .find('button[aria-label="edit"], button.action-btn:first-child')
-        .trigger('click')
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
 
       expect(wrapper.find('[data-testid="tour-form"]').exists()).toBe(true)
     })
@@ -120,8 +118,7 @@ describe('tourInfoSheet', () => {
       const wrapper = mountSheet()
 
       // Enter edit mode
-      const editBtn = wrapper.findAll('.action-btn')[0]
-      await editBtn?.trigger('click')
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
 
       expect(wrapper.find('[data-testid="tour-form"]').exists()).toBe(true)
 
@@ -138,8 +135,7 @@ describe('tourInfoSheet', () => {
       vi.mocked(store.updateTour).mockResolvedValue(undefined)
 
       // Enter edit
-      const editBtn = wrapper.findAll('.action-btn')[0]
-      await editBtn?.trigger('click')
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
 
       // Submit via stub
       await wrapper.find('[data-testid="stub-submit"]').trigger('click')
@@ -160,8 +156,7 @@ describe('tourInfoSheet', () => {
       const store = useToursStore()
       vi.mocked(store.updateTour).mockRejectedValue(new Error('RPC failed'))
 
-      const editBtn = wrapper.findAll('.action-btn')[0]
-      await editBtn?.trigger('click')
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
 
       await wrapper.find('[data-testid="stub-submit"]').trigger('click')
       await wrapper.vm.$nextTick()

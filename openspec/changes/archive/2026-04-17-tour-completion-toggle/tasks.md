@@ -59,6 +59,6 @@
 
 - [x] 9.1 Run `npm run lint` and `npm run format` — zero warnings
 - [x] 9.2 Run `npm run type-check` and `npm run test` — all pass
-- [ ] 9.3 Prompt user to commit with conventional message: `feat(tours): add completion toggle with map marker distinction (#17)`
-- [ ] 9.4 Prompt user to push branch and open PR against `main` referencing issue #17
-- [ ] 9.5 After merge, prompt user to archive this change via the `openspec-archive` skill
+- [x] 9.3 Prompt user to commit with conventional message: `feat(tours): add completion toggle with map marker distinction (#17)`
+- [x] 9.4 Prompt user to push branch and open PR against `main` referencing issue #17
+- [x] 9.5 After merge, prompt user to archive this change via the `openspec-archive` skill
