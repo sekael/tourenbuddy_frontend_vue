@@ -29,6 +29,11 @@ const UserProfileSheetStub = {
   template: '<div data-testid="profile-sheet" />',
   emits: ['close'],
 }
+const ContactsListSheetStub = {
+  name: 'ContactsListSheet',
+  template: '<div data-testid="contacts-sheet" />',
+  emits: ['close'],
+}
 
 const STUB_TOUR = {
   id: 'tour-1',
@@ -51,7 +56,7 @@ function mountMapPage() {
         FeedbackSheet: FeedbackSheetStub,
         TourCreationDialog: { template: '<div />' },
         UserProfileSheet: UserProfileSheetStub,
-        ContactsListSheet: { template: '<div />' },
+        ContactsListSheet: ContactsListSheetStub,
       },
     },
   })
@@ -68,9 +73,9 @@ describe('mapPage', () => {
       const mapStore = useMapStore()
       const toursStore = useToursStore()
 
-      // Pre-populate so the sheet is shown (direct state mutation — actions are stubbed)
       toursStore.$patch({ tours: [STUB_TOUR] })
       mapStore.$patch({ selectedTourId: STUB_TOUR.id })
+      wrapper.vm.activeOverlay = 'tour'
       await wrapper.vm.$nextTick()
       expect(wrapper.find('[data-testid="tour-info-sheet"]').exists()).toBe(true)
 
@@ -83,7 +88,7 @@ describe('mapPage', () => {
     it('should close the feedback sheet on map-background-click', async () => {
       const wrapper = mountMapPage()
 
-      wrapper.vm.showFeedbackSheet = true
+      wrapper.vm.activeOverlay = 'feedback'
       await wrapper.vm.$nextTick()
       expect(wrapper.find('[data-testid="feedback-sheet"]').exists()).toBe(true)
 
@@ -96,7 +101,7 @@ describe('mapPage', () => {
     it('should close the user profile sheet on map-background-click', async () => {
       const wrapper = mountMapPage()
 
-      wrapper.vm.showProfileSheet = true
+      wrapper.vm.activeOverlay = 'profile'
       await wrapper.vm.$nextTick()
       expect(wrapper.find('[data-testid="profile-sheet"]').exists()).toBe(true)
 
@@ -106,20 +111,18 @@ describe('mapPage', () => {
       expect(wrapper.find('[data-testid="profile-sheet"]').exists()).toBe(false)
     })
 
-    it('should close all open sheets at once on map-background-click', async () => {
+    it('should close the active overlay on map-background-click', async () => {
       const wrapper = mountMapPage()
       const mapStore = useMapStore()
 
-      wrapper.vm.showFeedbackSheet = true
-      wrapper.vm.showProfileSheet = true
+      wrapper.vm.activeOverlay = 'feedback'
       await wrapper.vm.$nextTick()
 
       await wrapper.findComponent({ name: 'TourenbuddyMap' }).vm.$emit('mapBackgroundClick')
       await wrapper.vm.$nextTick()
 
-      expect(mapStore.selectTour).toHaveBeenCalledWith(null)
+      expect(mapStore.selectTour).not.toHaveBeenCalledWith(null)
       expect(wrapper.find('[data-testid="feedback-sheet"]').exists()).toBe(false)
-      expect(wrapper.find('[data-testid="profile-sheet"]').exists()).toBe(false)
     })
   })
 
@@ -133,6 +136,25 @@ describe('mapPage', () => {
 
       expect(mapStore.selectTour).toHaveBeenCalledWith('tour-b')
     })
+
+    it('should close the feedback sheet when a tour marker is clicked', async () => {
+      const wrapper = mountMapPage()
+      const toursStore = useToursStore()
+      const mapStore = useMapStore()
+
+      wrapper.vm.activeOverlay = 'feedback'
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-testid="feedback-sheet"]').exists()).toBe(true)
+
+      toursStore.$patch({ tours: [STUB_TOUR] })
+      await wrapper.findComponent({ name: 'TourenbuddyMap' }).vm.$emit('tourClicked', STUB_TOUR.id)
+      // Simulate store update (stubbed action doesn't mutate state)
+      mapStore.$patch({ selectedTourId: STUB_TOUR.id })
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('[data-testid="feedback-sheet"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="tour-info-sheet"]').exists()).toBe(true)
+    })
   })
 
   describe('dedicated close button', () => {
@@ -143,6 +165,7 @@ describe('mapPage', () => {
 
       toursStore.$patch({ tours: [STUB_TOUR] })
       mapStore.$patch({ selectedTourId: STUB_TOUR.id })
+      wrapper.vm.activeOverlay = 'tour'
       await wrapper.vm.$nextTick()
       expect(wrapper.find('[data-testid="tour-info-sheet"]').exists()).toBe(true)
 
@@ -155,7 +178,7 @@ describe('mapPage', () => {
     it('should close the feedback sheet when it emits close', async () => {
       const wrapper = mountMapPage()
 
-      wrapper.vm.showFeedbackSheet = true
+      wrapper.vm.activeOverlay = 'feedback'
       await wrapper.vm.$nextTick()
 
       await wrapper.findComponent({ name: 'FeedbackSheet' }).vm.$emit('close')
@@ -167,13 +190,79 @@ describe('mapPage', () => {
     it('should close the user profile sheet when it emits close', async () => {
       const wrapper = mountMapPage()
 
-      wrapper.vm.showProfileSheet = true
+      wrapper.vm.activeOverlay = 'profile'
       await wrapper.vm.$nextTick()
 
       await wrapper.findComponent({ name: 'UserProfileSheet' }).vm.$emit('close')
       await wrapper.vm.$nextTick()
 
       expect(wrapper.find('[data-testid="profile-sheet"]').exists()).toBe(false)
+    })
+  })
+
+  describe('single active overlay enforcement', () => {
+    it('should close contacts sheet when feedback sheet is opened', async () => {
+      const wrapper = mountMapPage()
+
+      wrapper.vm.activeOverlay = 'contacts'
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-testid="contacts-sheet"]').exists()).toBe(true)
+
+      wrapper.vm.activeOverlay = 'feedback'
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('[data-testid="contacts-sheet"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="feedback-sheet"]').exists()).toBe(true)
+    })
+
+    it('should close feedback sheet when contacts sheet is opened', async () => {
+      const wrapper = mountMapPage()
+
+      wrapper.vm.activeOverlay = 'feedback'
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-testid="feedback-sheet"]').exists()).toBe(true)
+
+      wrapper.vm.activeOverlay = 'contacts'
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('[data-testid="feedback-sheet"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="contacts-sheet"]').exists()).toBe(true)
+    })
+
+    it('should clear tour selection when feedback sheet is opened while a tour is selected', async () => {
+      const wrapper = mountMapPage()
+      const mapStore = useMapStore()
+      const toursStore = useToursStore()
+
+      toursStore.$patch({ tours: [STUB_TOUR] })
+      mapStore.$patch({ selectedTourId: STUB_TOUR.id })
+      wrapper.vm.activeOverlay = 'tour'
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-testid="tour-info-sheet"]').exists()).toBe(true)
+
+      // openOverlay('feedback') triggers closeOverlay() path for 'tour'
+      wrapper.vm.openOverlay('feedback')
+      await wrapper.vm.$nextTick()
+
+      expect(mapStore.selectTour).toHaveBeenCalledWith(null)
+      expect(wrapper.find('[data-testid="tour-info-sheet"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="feedback-sheet"]').exists()).toBe(true)
+    })
+
+    it('should not show more than one sheet at a time', async () => {
+      const wrapper = mountMapPage()
+
+      wrapper.vm.activeOverlay = 'feedback'
+      await wrapper.vm.$nextTick()
+
+      const visibleSheets = [
+        wrapper.find('[data-testid="feedback-sheet"]').exists(),
+        wrapper.find('[data-testid="profile-sheet"]').exists(),
+        wrapper.find('[data-testid="contacts-sheet"]').exists(),
+        wrapper.find('[data-testid="tour-info-sheet"]').exists(),
+      ].filter(Boolean)
+
+      expect(visibleSheets).toHaveLength(1)
     })
   })
 })

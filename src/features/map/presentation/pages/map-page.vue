@@ -19,6 +19,7 @@ import UserProfileSheet from '@/features/user/presentation/components/user-profi
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
 type PickPointType = 'goal' | 'start' | 'end'
+type OverlayName = 'feedback' | 'profile' | 'contacts' | 'tour'
 
 const mapStore = useMapStore()
 const toursStore = useToursStore()
@@ -32,10 +33,15 @@ const { tours } = storeToRefs(toursStore)
 const mapRef = ref<InstanceType<typeof TourenbuddyMap> | null>(null)
 const mapBearing = ref(0)
 
-// Dialog visibility
-const showFeedbackSheet = ref(false)
-const showProfileSheet = ref(false)
-const showContactDialog = ref(false)
+// Single source of truth for which overlay is open (at most one at a time)
+const activeOverlay = ref<OverlayName | null>(null)
+
+// Computed visibility flags for template readability
+const showFeedbackSheet = computed(() => activeOverlay.value === 'feedback')
+const showProfileSheet = computed(() => activeOverlay.value === 'profile')
+const showContactDialog = computed(() => activeOverlay.value === 'contacts')
+
+// Tour creation dialog is independent from the overlay system (it's a separate creation flow)
 const showTourCreationDialog = ref(false)
 
 // Location picking state
@@ -63,6 +69,36 @@ const editPickedPoint = ref<{
   elevation?: number | null
   suggestedName?: string | null
 } | null>(null)
+
+/** Opens an overlay, closing any previously open overlay first. */
+function openOverlay(name: OverlayName) {
+  if (activeOverlay.value === name)
+    return
+  if (activeOverlay.value === 'tour' && name !== 'tour') {
+    mapStore.selectTour(null)
+    mapStore.setEditPreviewGoal(null)
+  }
+  activeOverlay.value = name
+}
+
+/** Closes the currently open overlay, cleaning up tour state if needed. */
+function closeOverlay() {
+  if (activeOverlay.value === 'tour') {
+    mapStore.selectTour(null)
+    mapStore.setEditPreviewGoal(null)
+  }
+  activeOverlay.value = null
+}
+
+// Keep activeOverlay in sync when selectedTourId is mutated externally
+watch(selectedTourId, (id) => {
+  if (id) {
+    activeOverlay.value = 'tour'
+  }
+  else if (activeOverlay.value === 'tour') {
+    activeOverlay.value = null
+  }
+})
 
 onMounted(async () => {
   await Promise.all([
@@ -112,6 +148,7 @@ function handleResetBearing() {
 
 function handleTourClicked(tourId: string) {
   mapStore.selectTour(tourId)
+  openOverlay('tour')
 }
 
 async function handleLocationConfirmed(location: { lng: number, lat: number }) {
@@ -197,20 +234,12 @@ async function handleEditModeChange(editing: boolean) {
   }
 }
 
-function closeTourInfo() {
-  mapStore.setEditPreviewGoal(null)
-  mapStore.selectTour(null)
-}
-
 function handleMapBackgroundClick() {
   // Suppress while location picker is active — map panning passes through the
   // pointer-events:none overlay and would otherwise deselect the current tour.
   if (isPickingLocation.value)
     return
-  mapStore.selectTour(null)
-  showFeedbackSheet.value = false
-  showProfileSheet.value = false
-  showContactDialog.value = false
+  closeOverlay()
 }
 
 async function handleTourCreated(draft: TourDraft) {
@@ -250,9 +279,9 @@ function handleDialogClose() {
 
     <MapActionOverlay
       :bearing="mapBearing"
-      @open-feedback="showFeedbackSheet = true"
-      @open-profile="showProfileSheet = true"
-      @open-contacts="showContactDialog = true"
+      @open-feedback="openOverlay('feedback')"
+      @open-profile="openOverlay('profile')"
+      @open-contacts="openOverlay('contacts')"
       @reset-bearing="handleResetBearing"
     />
 
@@ -264,28 +293,36 @@ function handleDialogClose() {
       @cancel="handleLocationCancelled"
     />
 
-    <!-- Tour info sheet (mobile: slide-up, desktop: side drawer slides in from right) -->
-    <Transition name="sheet">
-      <div v-if="selectedTour" ref="sheetContainerRef" class="sheet-container">
+    <!-- Overlays: only one visible at a time; mode="out-in" ensures the active sheet
+         leaves before the incoming sheet enters, preventing visual stacking -->
+    <Transition name="sheet" mode="out-in">
+      <div
+        v-if="selectedTour && activeOverlay === 'tour'"
+        key="tour"
+        ref="sheetContainerRef"
+        class="sheet-container"
+      >
         <TourInfoSheet
           :tour="selectedTour"
           :edit-picked-point="editPickedPoint"
-          @close="closeTourInfo"
+          @close="closeOverlay"
           @pick-point="(t: 'start' | 'end' | 'goal') => handleInfoSheetPickPoint(t)"
           @point-consumed="handlePointConsumed"
           @edit-mode-change="handleEditModeChange"
         />
       </div>
-    </Transition>
-
-    <!-- Feedback sheet -->
-    <Transition name="sheet">
-      <div v-if="showFeedbackSheet" class="sheet-container">
-        <FeedbackSheet @close="showFeedbackSheet = false" />
+      <div v-else-if="showFeedbackSheet" key="feedback" class="sheet-container">
+        <FeedbackSheet @close="closeOverlay" />
+      </div>
+      <div v-else-if="showProfileSheet" key="profile" class="sheet-container">
+        <UserProfileSheet @close="closeOverlay" />
+      </div>
+      <div v-else-if="showContactDialog" key="contacts" class="sheet-container">
+        <ContactsListSheet @close="closeOverlay" />
       </div>
     </Transition>
 
-    <!-- Tour creation dialog -->
+    <!-- Tour creation dialog (independent creation flow, not part of the overlay system) -->
     <TourCreationDialog
       v-if="showTourCreationDialog"
       :initial-elevation="dialogInitialElevation"
@@ -297,20 +334,6 @@ function handleDialogClose() {
       @close="handleDialogClose"
       @pick-point="handlePickPoint"
     />
-
-    <!-- User profile sheet -->
-    <Transition name="sheet">
-      <div v-if="showProfileSheet" class="sheet-container">
-        <UserProfileSheet @close="showProfileSheet = false" />
-      </div>
-    </Transition>
-
-    <!-- Contacts list sheet -->
-    <Transition name="sheet">
-      <div v-if="showContactDialog" class="sheet-container">
-        <ContactsListSheet @close="showContactDialog = false" />
-      </div>
-    </Transition>
   </div>
 </template>
 
@@ -330,6 +353,9 @@ function handleDialogClose() {
   z-index: 50;
   display: flex;
   justify-content: center;
+  /* Allow clicks to pass through transparent areas around the sheet so FABs
+     remain interactive even when an overlay is open */
+  pointer-events: none;
 }
 
 .sheet-enter-active,
@@ -340,20 +366,5 @@ function handleDialogClose() {
 .sheet-enter-from,
 .sheet-leave-to {
   transform: translateY(100%);
-}
-
-/* Desktop: fade transition — no transform to avoid confining the component's
-   position:fixed backdrop or drawer to a new stacking context */
-@media (min-width: 600px) {
-  .sheet-enter-active,
-  .sheet-leave-active {
-    transition: opacity 0.2s ease;
-  }
-
-  .sheet-enter-from,
-  .sheet-leave-to {
-    transform: none;
-    opacity: 0;
-  }
 }
 </style>
