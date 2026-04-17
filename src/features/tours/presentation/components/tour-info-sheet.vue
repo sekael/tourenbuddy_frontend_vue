@@ -249,6 +249,20 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
     <!-- ── View mode ───────────────────────────────────────────────────── -->
     <template v-else>
       <div class="details">
+        <!-- Completion toggle (owner only) -->
+        <button
+          v-if="isOwner"
+          type="button"
+          class="completion-toggle action-btn"
+          :class="{ 'completion-toggle--done': tour.completed }"
+          :aria-pressed="tour.completed"
+          @click="toggleCompleted"
+        >
+          <span v-if="tour.completed" class="material-symbols-outlined">check_circle</span>
+          <span v-else class="material-symbols-outlined">radio_button_unchecked</span>
+          {{ tour.completed ? 'Completed' : 'Complete Tour' }}
+        </button>
+
         <!-- Tour type -->
         <div v-if="tour.tourType" class="detail-row">
           <span class="detail-icon material-symbols-outlined">{{
@@ -356,20 +370,6 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
         <!-- Actions -->
         <div class="view-actions">
-          <!-- Completion toggle (owner only) — sits above edit/delete row -->
-          <button
-            v-if="isOwner"
-            type="button"
-            class="completion-toggle action-btn"
-            :class="{ 'completion-toggle--done': tour.completed }"
-            :aria-pressed="tour.completed"
-            @click="toggleCompleted"
-          >
-            <span v-if="tour.completed" class="material-symbols-outlined">check_circle</span>
-            <span v-else class="material-symbols-outlined">radio_button_unchecked</span>
-            {{ tour.completed ? 'Completed' : 'Complete Tour' }}
-          </button>
-
           <!-- Edit / delete -->
           <div class="edit-delete-row">
             <button
