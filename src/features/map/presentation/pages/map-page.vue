@@ -367,19 +367,4 @@ function handleDialogClose() {
 .sheet-leave-to {
   transform: translateY(100%);
 }
-
-/* Desktop: fade transition — no transform to avoid confining the component's
-   position:fixed backdrop or drawer to a new stacking context */
-@media (min-width: 600px) {
-  .sheet-enter-active,
-  .sheet-leave-active {
-    transition: opacity 0.2s ease;
-  }
-
-  .sheet-enter-from,
-  .sheet-leave-to {
-    transform: none;
-    opacity: 0;
-  }
-}
 </style>
