@@ -8,7 +8,7 @@ import { formatPhoneDisplay } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 
 const props = defineProps<{ contact: Contact }>()
-const emit = defineEmits<{ back: []; deleted: [] }>()
+const emit = defineEmits<{ back: [], deleted: [] }>()
 
 const store = useContactsStore()
 
@@ -42,9 +42,11 @@ async function saveName() {
       displayName: displayName.value.trim() || null,
     })
     emit('back')
-  } catch (err) {
+  }
+  catch (err) {
     nameError.value = err instanceof Error ? err.message : 'Failed to save'
-  } finally {
+  }
+  finally {
     isSavingName.value = false
   }
 }
@@ -67,7 +69,8 @@ function getPhoneFormatter(method: ContactMethod) {
     const phoneRef = computed({
       get: () => methodEdits.value[method.id]?.value ?? '',
       set: (v: string) => {
-        if (methodEdits.value[method.id]) methodEdits.value[method.id]!.value = v
+        if (methodEdits.value[method.id])
+          methodEdits.value[method.id]!.value = v
       },
     })
     phoneFormatterCache.set(method.id, useAsYouTypePhone(phoneRef))
@@ -117,9 +120,11 @@ async function saveMethod(method: ContactMethod) {
       value: edit.value.trim(),
       label: edit.label.trim() || null,
     })
-  } catch (err) {
+  }
+  catch (err) {
     edit.error = err instanceof Error ? err.message : 'Failed to save'
-  } finally {
+  }
+  finally {
     edit.saving = false
   }
 }
@@ -133,8 +138,8 @@ async function removeMethod(methodId: string) {
 const showAddMethod = ref(false)
 const newMethodType = ref<'phone' | 'email'>('phone')
 const newMethodValue = ref('')
-const { formatted: newMethodPhoneFormatted, onInput: onNewMethodPhoneInput } =
-  useAsYouTypePhone(newMethodValue)
+const { formatted: newMethodPhoneFormatted, onInput: onNewMethodPhoneInput }
+  = useAsYouTypePhone(newMethodValue)
 const newMethodLabel = ref('')
 const isAddingMethod = ref(false)
 const addMethodError = ref<string | null>(null)
@@ -164,14 +169,16 @@ async function confirmAddMethod() {
       value: newMethodValue.value.trim(),
       label: newMethodLabel.value.trim() || null,
       isPrimary:
-        props.contact.contactMethods.filter((m) => m.methodType === newMethodType.value).length ===
-        0,
+        props.contact.contactMethods.filter(m => m.methodType === newMethodType.value).length
+        === 0,
     }
     await store.addMethodToContact(props.contact.id, method)
     showAddMethod.value = false
-  } catch (err) {
+  }
+  catch (err) {
     addMethodError.value = err instanceof Error ? err.message : 'Failed to add'
-  } finally {
+  }
+  finally {
     isAddingMethod.value = false
   }
 }
@@ -186,7 +193,8 @@ async function confirmDelete() {
   try {
     await store.deleteContact(props.contact.id)
     emit('deleted')
-  } catch (err) {
+  }
+  catch (err) {
     deleteError.value = err instanceof Error ? err.message : 'Failed to delete'
     deleteState.value = 'idle'
   }

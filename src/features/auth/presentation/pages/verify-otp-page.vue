@@ -26,9 +26,11 @@ async function handleVerify() {
   try {
     await authStore.verifyOtp(email, otp.value.trim())
     router.push({ name: 'map' })
-  } catch (err) {
+  }
+  catch (err) {
     error.value = err instanceof Error ? err.message : 'Invalid code. Please try again.'
-  } finally {
+  }
+  finally {
     isLoading.value = false
   }
 }
@@ -39,9 +41,11 @@ async function handleResend() {
   try {
     await authStore.sendEmailOtp(email)
     resendSuccess.value = true
-  } catch {
+  }
+  catch {
     error.value = 'Failed to resend code. Please try again.'
-  } finally {
+  }
+  finally {
     isResending.value = false
   }
 }

@@ -34,16 +34,20 @@ const full = computed(() => userProfileStore.fullProfile)
 
 const displayPhoneNumber = computed(() => {
   const phone = full.value?.phoneNumber
-  if (!phone) return null
+  if (!phone)
+    return null
   const result = normalizePhone(phone)
   return result.ok ? result.value : phone
 })
 
 const displayName = computed(() => {
   const p = full.value
-  if (!p) return authStore.currentUser?.email ?? 'User'
-  if (p.firstName && p.lastName) return `${p.firstName} ${p.lastName}`
-  if (p.firstName) return p.firstName
+  if (!p)
+    return authStore.currentUser?.email ?? 'User'
+  if (p.firstName && p.lastName)
+    return `${p.firstName} ${p.lastName}`
+  if (p.firstName)
+    return p.firstName
   return p.email ?? 'User'
 })
 
@@ -84,15 +88,18 @@ async function handleSave() {
       pendingPhone.value = phone
       isEditing.value = false
       showPhoneVerification.value = true
-    } else {
+    }
+    else {
       isEditing.value = false
     }
-  } catch (err) {
-    editError.value =
-      err instanceof InvalidPhoneNumberError || err instanceof Error
+  }
+  catch (err) {
+    editError.value
+      = err instanceof InvalidPhoneNumberError || err instanceof Error
         ? (err as Error).message
         : 'Failed to save profile'
-  } finally {
+  }
+  finally {
     isSaving.value = false
   }
 }
@@ -146,7 +153,7 @@ async function handleSignOut() {
               v-if="full.phoneVerified"
               class="material-symbols-outlined verified-icon"
               title="Verified"
-              >verified</span
+            >verified</span
             >
             <button v-else class="verify-btn" @click="startEdit">Verify</button>
           </template>
@@ -195,7 +202,7 @@ async function handleSignOut() {
 
           <div class="field">
             <label for="edit-phone" class="label"
-              >Phone number <span class="optional">(optional)</span></label
+            >Phone number <span class="optional">(optional)</span></label
             >
             <input
               id="edit-phone"

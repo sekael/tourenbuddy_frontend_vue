@@ -24,7 +24,7 @@ const props = defineProps<{
   /** When true the goal row shows a "Change" button that emits pickPoint: 'goal'. */
   allowGoalEdit?: boolean
   /** Current goal coordinates, controlled by the parent. */
-  currentGoal?: { lng: number; lat: number } | null
+  currentGoal?: { lng: number, lat: number } | null
   /** Seeds all editable fields (edit mode). */
   initialDraft?: TourDraft | null
   /** Prop-updates from parent after elevation lookup (create mode). */
@@ -32,9 +32,9 @@ const props = defineProps<{
   /** Prop-updates from parent after name suggestion (create mode). */
   initialName?: string | null
   /** Prop-updates from parent after start-point pick. */
-  initialStartPoint?: { lng: number; lat: number } | null
+  initialStartPoint?: { lng: number, lat: number } | null
   /** Prop-updates from parent after end-point pick. */
-  initialEndPoint?: { lng: number; lat: number } | null
+  initialEndPoint?: { lng: number, lat: number } | null
 }>()
 
 const emit = defineEmits<{
@@ -63,10 +63,10 @@ const elevation = ref<string>(
 const elevationAutoFilled = ref(props.initialElevation != null)
 const description = ref(props.initialDraft?.description ?? '')
 const selectedSeasons = ref<Set<Season>>(new Set(props.initialDraft?.seasons ?? []))
-const startPoint = ref<{ lng: number; lat: number } | null>(
+const startPoint = ref<{ lng: number, lat: number } | null>(
   props.initialDraft?.startPoint ?? props.initialStartPoint ?? null,
 )
-const endPoint = ref<{ lng: number; lat: number } | null>(
+const endPoint = ref<{ lng: number, lat: number } | null>(
   props.initialDraft?.endPoint ?? props.initialEndPoint ?? null,
 )
 const equipment = ref(props.initialDraft?.equipment ?? '')
@@ -93,19 +93,22 @@ watch(
 watch(
   () => props.initialName,
   (val) => {
-    if (val) tourName.value = val
+    if (val)
+      tourName.value = val
   },
 )
 watch(
   () => props.initialStartPoint,
   (val) => {
-    if (val) startPoint.value = val
+    if (val)
+      startPoint.value = val
   },
 )
 watch(
   () => props.initialEndPoint,
   (val) => {
-    if (val) endPoint.value = val
+    if (val)
+      endPoint.value = val
   },
 )
 
@@ -113,7 +116,8 @@ watch(
 function togglePartner(contactId: string) {
   if (selectedPartnerIds.value.has(contactId)) {
     selectedPartnerIds.value.delete(contactId)
-  } else {
+  }
+  else {
     selectedPartnerIds.value.add(contactId)
   }
   selectedPartnerIds.value = new Set(selectedPartnerIds.value)
@@ -126,7 +130,8 @@ function toggleTourType(type: TourType) {
 function toggleSeason(season: Season) {
   if (selectedSeasons.value.has(season)) {
     selectedSeasons.value.delete(season)
-  } else {
+  }
+  else {
     selectedSeasons.value.add(season)
   }
   selectedSeasons.value = new Set(selectedSeasons.value)
@@ -135,19 +140,23 @@ function toggleSeason(season: Season) {
 async function handleGpxUpload(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
-  if (!file) return
+  if (!file)
+    return
 
   gpxError.value = null
 
   try {
     gpxTrack.value = await parseGpxFile(file)
     gpxFileName.value = file.name
-  } catch (err) {
+  }
+  catch (err) {
     if (err instanceof GpxFileTooLargeError) {
       gpxError.value = 'File too large (max 2 MB)'
-    } else if (err instanceof GpxParseError) {
+    }
+    else if (err instanceof GpxParseError) {
       gpxError.value = 'Invalid GPX file'
-    } else {
+    }
+    else {
       gpxError.value = 'Failed to read file'
     }
     gpxTrack.value = null
@@ -162,7 +171,7 @@ function removeGpx() {
   gpxError.value = null
 }
 
-function formatPoint(point: { lng: number; lat: number }) {
+function formatPoint(point: { lng: number, lat: number }) {
   return `${point.lat.toFixed(4)}°N, ${point.lng.toFixed(4)}°E`
 }
 
@@ -200,7 +209,7 @@ function handleSubmit() {
 
         <div class="field">
           <label class="label" for="tf-tourName"
-            >Tour Name <span class="required-mark">*</span></label
+          >Tour Name <span class="required-mark">*</span></label
           >
           <input
             id="tf-tourName"

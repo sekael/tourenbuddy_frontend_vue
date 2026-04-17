@@ -16,7 +16,8 @@ function openIssue() {
   const tab = window.open(FEEDBACK_GITHUB_ISSUE_URL, '_blank', 'noopener,noreferrer')
   if (tab === null) {
     show(`Could not open the GitHub page. Please email us at ${FEEDBACK_EMAIL}`)
-  } else {
+  }
+  else {
     emit('close')
   }
 }

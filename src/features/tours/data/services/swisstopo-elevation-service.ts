@@ -11,7 +11,7 @@ const TIMEOUT_MS = 5000
  * Returns the elevation rounded to the nearest meter, or null if the API is
  * unavailable, times out, or the location is outside Swiss territory.
  */
-export async function getElevation(coords: { lng: number; lat: number }): Promise<number | null> {
+export async function getElevation(coords: { lng: number, lat: number }): Promise<number | null> {
   const { easting, northing } = wgs84ToLv95(coords.lng, coords.lat)
   const url = `https://api3.geo.admin.ch/rest/services/height?easting=${easting.toFixed(2)}&northing=${northing.toFixed(2)}&sr=2056`
 
@@ -34,14 +34,17 @@ export async function getElevation(coords: { lng: number; lat: number }): Promis
 
     const height = Number(data.height)
     return Number.isFinite(height) ? Math.round(height) : null
-  } catch (err) {
+  }
+  catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') {
       logger.warn('Swisstopo elevation API timed out')
-    } else {
+    }
+    else {
       logger.error('Swisstopo elevation API error', err)
     }
     return null
-  } finally {
+  }
+  finally {
     clearTimeout(timeoutId)
   }
 }

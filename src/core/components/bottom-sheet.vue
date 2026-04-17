@@ -50,6 +50,9 @@ const titleId = 'bottom-sheet-title'
   border-bottom: none;
   box-shadow: var(--shadow-lg);
   padding: var(--spacing-sm) var(--spacing-xl) 0;
+  /* Restore pointer events — parent sheet-container sets pointer-events: none
+     to allow FAB clicks through transparent areas */
+  pointer-events: auto;
 }
 
 .drag-handle {

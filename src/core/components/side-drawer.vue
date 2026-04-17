@@ -62,6 +62,8 @@ const isDesktop = useIsDesktop()
   border-left: 1px solid var(--color-outline-variant);
   box-shadow: var(--shadow-lg);
   animation: slide-in-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Restore pointer events — parent sheet-container sets pointer-events: none */
+  pointer-events: auto;
 }
 
 @keyframes slide-in-right {

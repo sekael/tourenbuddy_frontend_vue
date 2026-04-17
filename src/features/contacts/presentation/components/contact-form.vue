@@ -41,19 +41,19 @@ const error = ref<string | null>(null)
 
 watch(
   () => props.initialFirstName,
-  (v) => (firstName.value = v ?? ''),
+  v => (firstName.value = v ?? ''),
 )
 watch(
   () => props.initialLastName,
-  (v) => (lastName.value = v ?? ''),
+  v => (lastName.value = v ?? ''),
 )
 watch(
   () => props.initialDisplayName,
-  (v) => (displayName.value = v ?? ''),
+  v => (displayName.value = v ?? ''),
 )
 watch(
   () => props.initialPhoneNumber,
-  (v) => (phoneNumber.value = v ?? ''),
+  v => (phoneNumber.value = v ?? ''),
 )
 
 function handleSubmit() {

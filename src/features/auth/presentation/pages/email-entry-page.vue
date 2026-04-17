@@ -24,9 +24,11 @@ async function handleSubmit() {
   try {
     await authStore.sendEmailOtp(email.value)
     router.push({ name: 'verify-otp', query: { email: email.value } })
-  } catch (err) {
+  }
+  catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to send code. Please try again.'
-  } finally {
+  }
+  finally {
     isLoading.value = false
   }
 }
