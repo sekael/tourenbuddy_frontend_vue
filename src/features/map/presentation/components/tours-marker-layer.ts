@@ -97,8 +97,7 @@ export function useToursMarkerLayer(map: MapLibreMap, onTourClick: (tourId: stri
 
   function updateTours(tours: Tour[], selectedTourId: string | null) {
     const source = map.getSource(SOURCE_ID)
-    if (!source || source.type !== 'geojson')
-      return
+    if (!source || source.type !== 'geojson') return
 
     source.setData(toursToGeoJson(tours))
 
@@ -107,10 +106,9 @@ export function useToursMarkerLayer(map: MapLibreMap, onTourClick: (tourId: stri
     map.setFilter(SELECTED_LAYER_ID, ['==', ['get', 'id'], selectedTourId ?? ''])
   }
 
-  function updatePreview(goal: { lng: number, lat: number } | null, tourType: TourType | null) {
+  function updatePreview(goal: { lng: number; lat: number } | null, tourType: TourType | null) {
     const source = map.getSource(PREVIEW_SOURCE_ID)
-    if (!source || source.type !== 'geojson')
-      return
+    if (!source || source.type !== 'geojson') return
 
     source.setData({
       type: 'FeatureCollection',

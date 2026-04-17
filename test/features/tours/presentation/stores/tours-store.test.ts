@@ -65,12 +65,12 @@ describe('useToursStore', () => {
     expect(store.isLoading).toBe(false)
   })
 
-  it('should create tour with minimal draft and reload', async () => {
+  it('should create tour with minimal draft, reload, and return new id', async () => {
     mockCreateTour.mockResolvedValue(undefined)
     mockListTours.mockResolvedValue(mockTours)
 
     const store = useToursStore()
-    await store.createTourFromDraft(
+    const result = await store.createTourFromDraft(
       {
         name: 'Test',
         plannedDate: null,
@@ -88,12 +88,43 @@ describe('useToursStore', () => {
       { lng: 8.2, lat: 46.8 },
     )
 
+    expect(result).toBe('mock-uuid-123')
     expect(mockCreateTour).toHaveBeenCalledWith(
       'mock-uuid-123',
       expect.objectContaining({ name: 'Test' }),
       { lng: 8.2, lat: 46.8 },
     )
     expect(mockListTours).toHaveBeenCalledTimes(1)
+  })
+
+  it('should return null from createTourFromDraft when unauthenticated', async () => {
+    const { useAuthStore } = await import('@/features/auth/presentation/stores/auth-store')
+    vi.mocked(useAuthStore).mockReturnValueOnce({
+      currentUser: null,
+      isAuthenticated: false,
+    } as never)
+
+    const store = useToursStore()
+    const result = await store.createTourFromDraft(
+      {
+        name: 'Test',
+        plannedDate: null,
+        partnerIds: [],
+        tourType: null,
+        elevation: null,
+        gpxTrack: null,
+        description: null,
+        seasons: null,
+        startPoint: null,
+        endPoint: null,
+        equipment: null,
+        notes: null,
+      },
+      { lng: 8.2, lat: 46.8 },
+    )
+
+    expect(result).toBeNull()
+    expect(mockCreateTour).not.toHaveBeenCalled()
   })
 
   it('should create tour with all extended fields', async () => {
