@@ -37,14 +37,18 @@ export const useToursStore = defineStore('tours', () => {
     }
   }
 
-  async function createTourFromDraft(draft: TourDraft, goal: { lng: number, lat: number }) {
+  async function createTourFromDraft(
+    draft: TourDraft,
+    goal: { lng: number, lat: number },
+  ): Promise<string | null> {
     const userId = authStore.currentUser?.id
     if (!userId)
-      return
+      return null
 
     const id = uuidv4()
     await repository.createTourWithPartners(id, draft, goal)
     await loadTours()
+    return id
   }
 
   async function updateTour(id: string, draft: TourDraft, goal: { lng: number, lat: number }) {

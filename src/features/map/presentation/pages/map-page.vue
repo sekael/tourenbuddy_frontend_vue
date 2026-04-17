@@ -254,8 +254,11 @@ async function handleTourCreated(draft: TourDraft) {
   dialogInitialEndPoint.value = null
   pendingPickType.value = 'goal'
 
-  await toursStore.createTourFromDraft(draft, pendingLocation.value)
+  const goal = pendingLocation.value
   pendingLocation.value = null
+  const newId = await toursStore.createTourFromDraft(draft, goal)
+  if (newId)
+    mapStore.selectTour(newId)
 }
 
 function handleDialogClose() {
