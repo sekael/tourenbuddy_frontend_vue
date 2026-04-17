@@ -26,7 +26,7 @@ export const tourRowSchema = z
     equipment: z.string().nullable().default(null),
     notes: z.string().nullable().default(null),
   })
-  .transform(row => ({
+  .transform((row) => ({
     id: row.id,
     userId: row.user_id,
     plannedDate: row.planned_date ? new Date(row.planned_date) : null,
