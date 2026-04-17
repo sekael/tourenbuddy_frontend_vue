@@ -16,7 +16,8 @@ function openIssue() {
   const tab = window.open(FEEDBACK_GITHUB_ISSUE_URL, '_blank', 'noopener,noreferrer')
   if (tab === null) {
     show(`Could not open the GitHub page. Please email us at ${FEEDBACK_EMAIL}`)
-  } else {
+  }
+  else {
     emit('close')
   }
 }
@@ -25,7 +26,9 @@ function openIssue() {
 <template>
   <BottomSheet title="Feedback" @close="emit('close')">
     <div class="feedback-content">
-      <button type="button" class="primary-btn" @click="openIssue">Open Issue on GitHub</button>
+      <button type="button" class="primary-btn" @click="openIssue">
+        Open Issue on GitHub
+      </button>
       <p class="hint">
         No GitHub account? Reach out at
         <a :href="`mailto:${FEEDBACK_EMAIL}`" class="email-link">{{ FEEDBACK_EMAIL }}</a>

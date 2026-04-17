@@ -16,13 +16,15 @@ function stripToDialable(phone: string): string {
 export function usePhoneActions(phoneNumber: MaybeRef<string | null>) {
   const telLink = computed(() => {
     const phone = toValue(phoneNumber)
-    if (!phone) return null
+    if (!phone)
+      return null
     return `tel:${stripToDialable(phone)}`
   })
 
   const whatsAppLink = computed(() => {
     const phone = toValue(phoneNumber)
-    if (!phone) return null
+    if (!phone)
+      return null
     const trimmed = phone.trimStart()
     // wa.me requires full E.164 digits only — only emit when country code is unambiguous
     if (trimmed.startsWith('+')) {

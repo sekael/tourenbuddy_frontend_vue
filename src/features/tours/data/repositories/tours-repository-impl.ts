@@ -7,15 +7,16 @@ export class ToursRepositoryImpl implements ToursRepository {
   async listToursForUser(userId: string): Promise<Tour[]> {
     const { data, error } = await supabase.from('tours_view').select('*').eq('user_id', userId)
 
-    if (error) throw new Error(error.message)
+    if (error)
+      throw new Error(error.message)
 
-    return (data ?? []).map((row) => tourRowSchema.parse(row))
+    return (data ?? []).map(row => tourRowSchema.parse(row))
   }
 
   async createTourWithPartners(
     id: string,
     draft: TourDraft,
-    goal: { lng: number; lat: number },
+    goal: { lng: number, lat: number },
   ): Promise<void> {
     const { error } = await supabase.rpc('create_tour_full', {
       p_id: id,
@@ -36,13 +37,14 @@ export class ToursRepositoryImpl implements ToursRepository {
       p_notes: draft.notes ?? null,
     })
 
-    if (error) throw new Error(error.message)
+    if (error)
+      throw new Error(error.message)
   }
 
   async updateTour(
     id: string,
     draft: TourDraft,
-    goal: { lng: number; lat: number },
+    goal: { lng: number, lat: number },
   ): Promise<void> {
     const { error } = await supabase.rpc('update_tour_full', {
       p_id: id,
@@ -63,12 +65,14 @@ export class ToursRepositoryImpl implements ToursRepository {
       p_notes: draft.notes ?? null,
     })
 
-    if (error) throw new Error(error.message)
+    if (error)
+      throw new Error(error.message)
   }
 
   async deleteTour(id: string): Promise<void> {
     const { error } = await supabase.from('tours').delete().eq('id', id)
 
-    if (error) throw new Error(error.message)
+    if (error)
+      throw new Error(error.message)
   }
 }
