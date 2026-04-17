@@ -18,7 +18,8 @@ onMounted(() => {
 })
 
 async function handleInstall() {
-  if (!deferredPrompt) return
+  if (!deferredPrompt)
+    return
   await deferredPrompt.prompt()
   const { outcome } = await deferredPrompt.userChoice
   if (outcome === 'accepted') {
@@ -36,10 +37,16 @@ function handleDismiss() {
   <Transition name="banner">
     <div v-if="isVisible" class="banner" role="banner">
       <div class="content">
-        <p class="text">Install TourenBuddy for the best experience</p>
+        <p class="text">
+          Install TourenBuddy for the best experience
+        </p>
         <div class="actions">
-          <button class="dismiss-btn" @click="handleDismiss">Not now</button>
-          <button class="install-btn" @click="handleInstall">Install</button>
+          <button class="dismiss-btn" @click="handleDismiss">
+            Not now
+          </button>
+          <button class="install-btn" @click="handleInstall">
+            Install
+          </button>
         </div>
       </div>
     </div>
