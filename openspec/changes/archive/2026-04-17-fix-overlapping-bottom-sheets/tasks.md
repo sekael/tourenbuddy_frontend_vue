@@ -29,5 +29,5 @@
 - [x] 5.1 Run `npm run lint` and fix any warnings (zero warnings required)
 - [x] 5.2 Run `npm run format`
 - [x] 5.3 Run `npm run type-check`
-- [ ] 5.4 Prompt the user to commit with a ready-to-copy conventional commit message: `fix(map): enforce single open bottom sheet at a time (#35)`
-- [ ] 5.5 Prompt the user to push the branch and open a PR linking issue #35
+- [x] 5.4 Prompt the user to commit with a ready-to-copy conventional commit message: `fix(map): enforce single open bottom sheet at a time (#35)`
+- [x] 5.5 Prompt the user to push the branch and open a PR linking issue #35
