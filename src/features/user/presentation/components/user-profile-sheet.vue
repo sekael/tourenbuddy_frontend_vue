@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import BottomSheet from '@/core/components/bottom-sheet.vue'
+import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
 import { InvalidPhoneNumberError } from '@/core/exceptions'
 import { normalizePhone } from '@/core/utils/phone-normalize'
@@ -127,7 +127,7 @@ async function handleSignOut() {
 </script>
 
 <template>
-  <BottomSheet title="Profile" @close="emit('close')">
+  <AdaptiveOverlay title="Profile" @close="emit('close')">
     <div class="profile-content">
       <!-- View mode -->
       <template v-if="!isEditing">
@@ -229,7 +229,7 @@ async function handleSignOut() {
         </form>
       </template>
     </div>
-  </BottomSheet>
+  </AdaptiveOverlay>
 
   <PhoneVerificationDialog
     v-if="showPhoneVerification"

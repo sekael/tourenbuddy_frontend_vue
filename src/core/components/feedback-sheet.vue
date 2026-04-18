@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import BottomSheet from '@/core/components/bottom-sheet.vue'
+import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import ErrorSnackbar from '@/core/components/error-snackbar.vue'
 import { useSnackbar } from '@/core/composables/use-snackbar'
 import { FEEDBACK_EMAIL, FEEDBACK_GITHUB_ISSUE_URL } from '@/core/constants/feedback'
@@ -24,7 +24,7 @@ function openIssue() {
 </script>
 
 <template>
-  <BottomSheet title="Feedback" @close="emit('close')">
+  <AdaptiveOverlay title="Feedback" @close="emit('close')">
     <div class="feedback-content">
       <button type="button" class="primary-btn" @click="openIssue">
         Open Issue on GitHub
@@ -34,7 +34,7 @@ function openIssue() {
         <a :href="`mailto:${FEEDBACK_EMAIL}`" class="email-link">{{ FEEDBACK_EMAIL }}</a>
       </p>
     </div>
-  </BottomSheet>
+  </AdaptiveOverlay>
 
   <ErrorSnackbar :message="snackbar.message" :visible="snackbar.visible" @dismiss="dismiss" />
 </template>

@@ -458,10 +458,21 @@ function handleSubmit() {
 .scroll-body {
   flex: 1;
   overflow-y: auto;
-  padding: 0 var(--spacing-xl) var(--spacing-md);
+  padding: 0 var(--spacing-xs) var(--spacing-md);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xl);
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-outline-variant) transparent;
+}
+
+.scroll-body::-webkit-scrollbar {
+  width: 5px;
+}
+
+.scroll-body::-webkit-scrollbar-thumb {
+  background-color: var(--color-outline-variant);
+  border-radius: 9999px;
 }
 
 /* Sections */
@@ -726,7 +737,7 @@ function handleSubmit() {
   display: flex;
   gap: var(--spacing-md);
   justify-content: flex-end;
-  padding: var(--spacing-md) var(--spacing-xl) var(--spacing-xl);
+  padding: var(--spacing-md) 0 var(--spacing-xl);
   border-top: 1px solid var(--color-outline-variant);
   flex-shrink: 0;
 }

@@ -35,6 +35,13 @@ const ContactsListSheetStub = {
   emits: ['close'],
 }
 
+const TourCreationDialogStub = {
+  name: 'TourCreationDialog',
+  template: '<div data-testid="tour-creation-dialog" />',
+  props: ['initialElevation', 'initialName', 'initialStartPoint', 'initialEndPoint', 'initialGoal'],
+  emits: ['confirm', 'close', 'pick-point'],
+}
+
 const STUB_TOUR = {
   id: 'tour-1',
   name: 'Test Tour',
@@ -54,7 +61,7 @@ function mountMapPage() {
         LocationPicker: { template: '<div />' },
         TourInfoSheet: TourInfoSheetStub,
         FeedbackSheet: FeedbackSheetStub,
-        TourCreationDialog: { template: '<div />' },
+        TourCreationDialog: TourCreationDialogStub,
         UserProfileSheet: UserProfileSheetStub,
         ContactsListSheet: ContactsListSheetStub,
       },
@@ -263,6 +270,64 @@ describe('mapPage', () => {
       ].filter(Boolean)
 
       expect(visibleSheets).toHaveLength(1)
+    })
+  })
+
+  describe('tour-creation overlay', () => {
+    it('should show tour-creation dialog when tour-creation overlay is active', async () => {
+      const wrapper = mountMapPage()
+
+      wrapper.vm.activeOverlay = 'tour-creation'
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('[data-testid="tour-creation-dialog"]').exists()).toBe(true)
+    })
+
+    it('should close feedback when tour-creation overlay is opened', async () => {
+      const wrapper = mountMapPage()
+
+      wrapper.vm.activeOverlay = 'feedback'
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-testid="feedback-sheet"]').exists()).toBe(true)
+
+      wrapper.vm.openOverlay('tour-creation')
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('[data-testid="feedback-sheet"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="tour-creation-dialog"]').exists()).toBe(true)
+    })
+
+    it('should deselect tour when tour-creation overlay is opened while tour is active', async () => {
+      const wrapper = mountMapPage()
+      const mapStore = useMapStore()
+      const toursStore = useToursStore()
+
+      toursStore.$patch({ tours: [STUB_TOUR] })
+      mapStore.$patch({ selectedTourId: STUB_TOUR.id })
+      wrapper.vm.activeOverlay = 'tour'
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-testid="tour-info-sheet"]').exists()).toBe(true)
+
+      wrapper.vm.openOverlay('tour-creation')
+      await wrapper.vm.$nextTick()
+
+      expect(mapStore.selectTour).toHaveBeenCalledWith(null)
+      expect(wrapper.find('[data-testid="tour-info-sheet"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="tour-creation-dialog"]').exists()).toBe(true)
+    })
+
+    it('should close tour-creation when feedback overlay is opened', async () => {
+      const wrapper = mountMapPage()
+
+      wrapper.vm.activeOverlay = 'tour-creation'
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-testid="tour-creation-dialog"]').exists()).toBe(true)
+
+      wrapper.vm.openOverlay('feedback')
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('[data-testid="tour-creation-dialog"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="feedback-sheet"]').exists()).toBe(true)
     })
   })
 })

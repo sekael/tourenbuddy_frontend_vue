@@ -2,7 +2,7 @@
 import type { Contact } from '@/features/contacts/domain/entities/contact'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
-import BottomSheet from '@/core/components/bottom-sheet.vue'
+import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import { resolveContactName, resolveFullName } from '@/features/contacts/domain/entities/contact'
 import { useContactPicker } from '@/features/contacts/presentation/composables/use-contact-picker'
 import { useVCardImport } from '@/features/contacts/presentation/composables/use-vcard-import'
@@ -187,7 +187,7 @@ function switchAddToForm() {
 </script>
 
 <template>
-  <BottomSheet :title="sheetTitle ?? undefined" @close="handleClose">
+  <AdaptiveOverlay :title="sheetTitle ?? undefined" @close="handleClose">
     <!-- List view -->
     <div v-if="viewState === 'list'" class="list-view">
       <button type="button" class="add-contact-btn" @click="openAdd">
@@ -319,7 +319,7 @@ function switchAddToForm() {
         />
       </div>
     </div>
-  </BottomSheet>
+  </AdaptiveOverlay>
 </template>
 
 <style scoped>
