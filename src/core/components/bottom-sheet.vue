@@ -34,6 +34,10 @@ const titleId = 'bottom-sheet-title'
     <div v-if="!props.collapsed" class="content">
       <slot />
     </div>
+
+    <div v-if="$slots.footer && !props.collapsed" class="footer">
+      <slot name="footer" />
+    </div>
   </div>
 </template>
 
@@ -41,7 +45,7 @@ const titleId = 'bottom-sheet-title'
 .bottom-sheet {
   width: 100%;
   max-width: var(--bottom-sheet-max-width, 480px);
-  max-height: min(85vh, 720px);
+  max-height: 60vh;
   display: flex;
   flex-direction: column;
   background-color: var(--color-background);
@@ -99,7 +103,15 @@ const titleId = 'bottom-sheet-title'
 }
 
 .content {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding-bottom: var(--spacing-xl);
+  padding-bottom: var(--spacing-md);
+}
+
+.footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--color-outline-variant);
+  padding: var(--spacing-sm) 0 var(--spacing-xl);
 }
 </style>

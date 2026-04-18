@@ -4,7 +4,9 @@ import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { CompletionFilter } from '@/features/tours/presentation/composables/use-tour-filters'
 import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
-import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
+import BottomSheet from '@/core/components/bottom-sheet.vue'
+import SideDrawer from '@/core/components/side-drawer.vue'
+import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { useTourFilters } from '@/features/tours/presentation/composables/use-tour-filters'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
@@ -17,6 +19,7 @@ const toursStore = useToursStore()
 const mapStore = useMapStore()
 const { tours, isLoading } = storeToRefs(toursStore)
 
+const isDesktop = useIsDesktop()
 const { searchQuery, filters, filteredTours, activeFilterCount, clearAll } = useTourFilters()
 const filtersExpanded = ref(false)
 
@@ -27,7 +30,7 @@ function handleRowClick(tourId: string) {
 </script>
 
 <template>
-  <AdaptiveOverlay title="Tours" @close="emit('close')">
+  <component :is="isDesktop ? SideDrawer : BottomSheet" title="Tours" @close="emit('close')">
     <div class="list-view">
       <div class="search-row">
         <span class="material-symbols-outlined search-icon">search</span>
@@ -36,7 +39,7 @@ function handleRowClick(tourId: string) {
           type="search"
           class="search-input"
           placeholder="Search tours…"
-        />
+        >
       </div>
 
       <button class="filters-trigger" type="button" @click="filtersExpanded = !filtersExpanded">
@@ -58,18 +61,28 @@ function handleRowClick(tourId: string) {
         @update:completion="(v: CompletionFilter) => (filters.completion = v)"
       />
 
-      <div v-if="isLoading && tours.length === 0" class="loading-text">Loading…</div>
+      <div v-if="isLoading && tours.length === 0" class="loading-text">
+        Loading…
+      </div>
 
       <div v-else-if="tours.length === 0" class="empty-state">
         <span class="material-symbols-outlined empty-icon">location_on</span>
-        <p class="empty-text">No tours yet.</p>
-        <p class="empty-sub">Create one from the map.</p>
+        <p class="empty-text">
+          No tours yet.
+        </p>
+        <p class="empty-sub">
+          Create one from the map.
+        </p>
       </div>
 
       <div v-else-if="filteredTours.length === 0" class="empty-state">
         <span class="material-symbols-outlined empty-icon">search_off</span>
-        <p class="empty-text">No tours match your filters.</p>
-        <button class="clear-filters-btn" type="button" @click="clearAll">Clear filters</button>
+        <p class="empty-text">
+          No tours match your filters.
+        </p>
+        <button class="clear-filters-btn" type="button" @click="clearAll">
+          Clear filters
+        </button>
       </div>
 
       <ul v-else class="tours-list">
@@ -81,7 +94,7 @@ function handleRowClick(tourId: string) {
         />
       </ul>
     </div>
-  </AdaptiveOverlay>
+  </component>
 </template>
 
 <style scoped>

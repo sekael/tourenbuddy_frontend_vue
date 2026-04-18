@@ -30,11 +30,11 @@
 - [x] 5.1 Run `npm run test` and ensure every new + existing test passes
 - [x] 5.2 Run `npm run type-check`
 - [x] 5.3 Run `npm run lint` and `npm run format`
-- [ ] 5.4 Manual smoke test in `npm run dev`: open FAB, search, apply each filter, clear filters, select a tour and confirm `TourInfoSheet` opens and the map flies to the goal
+- [x] 5.4 Manual smoke test in `npm run dev`: open FAB, search, apply each filter, clear filters, select a tour and confirm `TourInfoSheet` opens and the map flies to the goal
 
 ## 6. Finalize
 
-- [ ] 6.1 Prompt the user to review the diff, stage, and commit with this conventional-commit message:
+- [x] 6.1 Prompt the user to review the diff, stage, and commit with this conventional-commit message:
 
   ```
   feat(tours): searchable, filterable tours list view
@@ -48,5 +48,5 @@
   Closes sekael/tourenbuddy_frontend_flutter#67
   ```
 
-- [ ] 6.2 Prompt the user to push the branch and open a PR against `main` with the issue link in the description
-- [ ] 6.3 After merge, prompt the user to run the `openspec-archive-change` skill to archive this change
+- [x] 6.2 Prompt the user to push the branch and open a PR against `main` with the issue link in the description
+- [x] 6.3 After merge, prompt the user to run the `openspec-archive-change` skill to archive this change

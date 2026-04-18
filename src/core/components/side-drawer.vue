@@ -45,6 +45,9 @@ const isDesktop = useIsDesktop()
     <div class="drawer-content">
       <slot />
     </div>
+    <div v-if="$slots.footer" class="drawer-footer">
+      <slot name="footer" />
+    </div>
   </div>
 </template>
 
@@ -113,5 +116,12 @@ const isDesktop = useIsDesktop()
   overflow-y: auto;
   padding: var(--spacing-lg) var(--spacing-xl);
   flex: 1;
+  min-height: 0;
+}
+
+.drawer-footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--color-outline-variant);
+  padding: var(--spacing-sm) var(--spacing-xl) var(--spacing-xl);
 }
 </style>

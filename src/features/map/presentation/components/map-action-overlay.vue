@@ -37,8 +37,7 @@ function startAddTour() {
       <span
         class="material-symbols-outlined compass-icon"
         :style="{ transform: `rotate(${iconRotation}deg)` }"
-        >explore</span
-      >
+      >explore</span>
     </button>
 
     <button class="fab" title="Feedback" @click="emit('openFeedback')">

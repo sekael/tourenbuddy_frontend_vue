@@ -6,13 +6,13 @@ import TourInfoSheet from '@/features/tours/presentation/components/tour-info-sh
 // Stub heavy child components
 const BottomSheetStub = {
   name: 'BottomSheet',
-  template: '<div><slot /><slot name="default" /></div>',
+  template: '<div><slot /><slot name="default" /><slot name="footer" /></div>',
   props: ['title'],
   emits: ['close'],
 }
 const SideDrawerStub = {
   name: 'SideDrawer',
-  template: '<div><slot /><slot name="default" /></div>',
+  template: '<div><slot /><slot name="default" /><slot name="footer" /></div>',
   props: ['title'],
   emits: ['close'],
 }

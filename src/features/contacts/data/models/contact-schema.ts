@@ -11,7 +11,7 @@ export const contactRowSchema = z
     display_name: z.string().nullable(),
     contact_methods: z.array(contactMethodRowSchema).default([]),
   })
-  .transform((row) => ({
+  .transform(row => ({
     id: row.id,
     userId: row.user_id,
     firstName: row.first_name,

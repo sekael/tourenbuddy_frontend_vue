@@ -14,11 +14,12 @@ const displayName = computed(() => props.tour.name ?? 'Unnamed tour')
 const initial = computed(() => props.tour.name?.[0]?.toUpperCase() ?? '?')
 
 const partnerSubtitle = computed(() => {
-  if (!props.tour.partnerIds.length) return null
+  if (!props.tour.partnerIds.length)
+    return null
   return (
     props.tour.partnerIds
       .map((id) => {
-        const contact = contactsStore.contacts.find((c) => c.id === id)
+        const contact = contactsStore.contacts.find(c => c.id === id)
         return contact ? resolveContactName(contact) : null
       })
       .filter(Boolean)

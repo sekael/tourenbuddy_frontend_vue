@@ -38,8 +38,10 @@ export async function parseGpxFile(file: File): Promise<GeoJSON.FeatureCollectio
     if (parserError) {
       throw new GpxParseError('Invalid XML in GPX file')
     }
-  } catch (err) {
-    if (err instanceof GpxParseError) throw err
+  }
+  catch (err) {
+    if (err instanceof GpxParseError)
+      throw err
     throw new GpxParseError('Failed to parse GPX file')
   }
 
