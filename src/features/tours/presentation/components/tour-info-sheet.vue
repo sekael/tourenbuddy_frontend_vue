@@ -23,9 +23,12 @@ const props = defineProps<{
     elevation?: number | null
     suggestedName?: string | null
   } | null
+  /** Desktop only: show a back button pointing to the tours list. */
+  showBack?: boolean
 }>()
 const emit = defineEmits<{
   close: []
+  back: []
   pickPoint: [type: 'start' | 'end' | 'goal']
   pointConsumed: []
   /** Fired when the sheet enters (true) or exits (false) edit mode. */
@@ -224,7 +227,9 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
     :is="isDesktop ? SideDrawer : BottomSheet"
     :title="sheetTitle"
     :collapsed="sheetCollapsed"
+    :back-label="props.showBack ? 'Tours' : undefined"
     @close="emit('close')"
+    @back="emit('back')"
   >
     <!-- ── Edit mode ────────────────────────────────────────────────────── -->
     <template v-if="mode === 'edit'">

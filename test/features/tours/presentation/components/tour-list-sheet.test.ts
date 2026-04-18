@@ -1,7 +1,6 @@
 import { createTestingPinia } from '@pinia/testing'
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import TourListSheet from '@/features/tours/presentation/components/tour-list-sheet.vue'
 
 const mockTours = [
@@ -130,17 +129,11 @@ describe('tourListSheet', () => {
   })
 
   describe('row click', () => {
-    it('should call mapStore.selectTour with tour id when row clicked', async () => {
-      const wrapper = mountSheet()
-      const mapStore = useMapStore()
-      await wrapper.findAll('.tour-row')[0]!.trigger('click')
-      expect(mapStore.selectTour).toHaveBeenCalledWith('t-1')
-    })
-
-    it('should emit close when row clicked', async () => {
+    it('should emit selectTour with tour id when row clicked', async () => {
       const wrapper = mountSheet()
       await wrapper.findAll('.tour-row')[0]!.trigger('click')
-      expect(wrapper.emitted('close')).toHaveLength(1)
+      expect(wrapper.emitted('selectTour')).toHaveLength(1)
+      expect(wrapper.emitted('selectTour')![0]).toEqual(['t-1'])
     })
   })
 

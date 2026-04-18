@@ -7,16 +7,14 @@ import { ref } from 'vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
-import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { useTourFilters } from '@/features/tours/presentation/composables/use-tour-filters'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import TourFiltersPanel from './tour-filters-panel.vue'
 import TourListRow from './tour-list-row.vue'
 
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: [], selectTour: [id: string] }>()
 
 const toursStore = useToursStore()
-const mapStore = useMapStore()
 const { tours, isLoading } = storeToRefs(toursStore)
 
 const isDesktop = useIsDesktop()
@@ -24,8 +22,7 @@ const { searchQuery, filters, filteredTours, activeFilterCount, clearAll } = use
 const filtersExpanded = ref(false)
 
 function handleRowClick(tourId: string) {
-  mapStore.selectTour(tourId)
-  emit('close')
+  emit('selectTour', tourId)
 }
 </script>
 

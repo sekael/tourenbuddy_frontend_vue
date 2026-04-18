@@ -62,6 +62,9 @@ const sheetContainerRef = ref<HTMLElement | null>(null)
 // Whether the current location pick was triggered from the info sheet edit mode
 const isPickingForEdit = ref(false)
 
+// Whether the tour info sheet was opened by selecting a row from the tours list
+const tourOpenedFromList = ref(false)
+
 // Prop-based handoff to info sheet after a location pick in edit mode
 const editPickedPoint = ref<{
   type: 'start' | 'end' | 'goal'
@@ -86,6 +89,7 @@ function openOverlay(name: OverlayName) {
   if (activeOverlay.value === 'tour' && name !== 'tour') {
     mapStore.selectTour(null)
     mapStore.setEditPreviewGoal(null)
+    tourOpenedFromList.value = false
   }
   if (activeOverlay.value === 'tour-creation' && name !== 'tour-creation') {
     resetTourCreationState()
@@ -98,11 +102,25 @@ function closeOverlay() {
   if (activeOverlay.value === 'tour') {
     mapStore.selectTour(null)
     mapStore.setEditPreviewGoal(null)
+    tourOpenedFromList.value = false
   }
   if (activeOverlay.value === 'tour-creation') {
     resetTourCreationState()
   }
   activeOverlay.value = null
+}
+
+function handleTourSelectedFromList(tourId: string) {
+  tourOpenedFromList.value = true
+  mapStore.selectTour(tourId)
+  openOverlay('tour')
+}
+
+function handleTourInfoBack() {
+  tourOpenedFromList.value = false
+  mapStore.selectTour(null)
+  mapStore.setEditPreviewGoal(null)
+  activeOverlay.value = 'tours'
 }
 
 // Keep activeOverlay in sync when selectedTourId is mutated externally
@@ -314,7 +332,9 @@ function handleDialogClose() {
         <TourInfoSheet
           :tour="selectedTour"
           :edit-picked-point="editPickedPoint"
+          :show-back="tourOpenedFromList && isDesktop"
           @close="closeOverlay"
+          @back="handleTourInfoBack"
           @pick-point="(t: 'start' | 'end' | 'goal') => handleInfoSheetPickPoint(t)"
           @point-consumed="handlePointConsumed"
           @edit-mode-change="handleEditModeChange"
@@ -330,7 +350,7 @@ function handleDialogClose() {
         <ContactsListSheet @close="closeOverlay" />
       </div>
       <div v-else-if="showToursList" key="tours" class="sheet-container">
-        <TourListSheet @close="closeOverlay" />
+        <TourListSheet @close="closeOverlay" @select-tour="handleTourSelectedFromList" />
       </div>
       <div v-else-if="showTourCreationDialog" key="tour-creation" class="sheet-container">
         <TourCreationDialog

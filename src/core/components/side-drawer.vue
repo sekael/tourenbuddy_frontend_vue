@@ -7,9 +7,11 @@ const props = defineProps<{
   ariaLabel?: string
   /** Ignored on desktop; accepted so callers using a dynamic `:is` component can pass it uniformly. */
   collapsed?: boolean
+  /** When set, shows a back button with this label in the drawer header. */
+  backLabel?: string
 }>()
 
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: [], back: [] }>()
 
 const isDesktop = useIsDesktop()
 </script>
@@ -34,6 +36,15 @@ const isDesktop = useIsDesktop()
     :aria-label="props.title ?? props.ariaLabel ?? 'Side drawer'"
   >
     <div class="drawer-header">
+      <button
+        v-if="props.backLabel"
+        type="button"
+        class="back-btn"
+        :aria-label="`Back to ${props.backLabel}`"
+        @click="emit('back')"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+      </button>
       <h2 v-if="props.title" class="drawer-title">
         {{ props.title }}
       </h2>
@@ -81,15 +92,32 @@ const isDesktop = useIsDesktop()
 .drawer-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   flex-shrink: 0;
+  gap: var(--spacing-sm);
   padding: var(--spacing-lg) var(--spacing-xl) var(--spacing-md);
   border-bottom: 1px solid var(--color-outline-variant);
+}
+
+.back-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-on-surface-variant);
+  flex-shrink: 0;
+  transition: background-color 0.15s;
+}
+
+.back-btn:hover {
+  background-color: var(--color-surface-variant);
 }
 
 .drawer-title {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
+  flex: 1;
 }
 
 .title-spacer {
