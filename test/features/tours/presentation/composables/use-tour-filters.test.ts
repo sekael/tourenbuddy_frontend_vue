@@ -35,6 +35,9 @@ describe('useTourFilters', () => {
   beforeEach(() => {
     pinia = createTestingPinia({ createSpy: () => () => {} })
     setActivePinia(pinia)
+    // Reset module-level filter state between tests
+    const { clearAll } = useTourFilters()
+    clearAll()
   })
 
   function setup(

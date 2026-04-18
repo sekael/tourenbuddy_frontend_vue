@@ -16,19 +16,19 @@ export interface TourFilters {
   completion: CompletionFilter
 }
 
+// Module-level state persists across TourListSheet mount/unmount cycles
+const searchQuery = ref('')
+const filters = reactive<TourFilters>({
+  partnerIds: new Set(),
+  tourTypes: new Set(),
+  seasons: new Set(),
+  dateRange: { from: null, to: null },
+  completion: 'all',
+})
+
 export function useTourFilters() {
   const toursStore = useToursStore()
   const contactsStore = useContactsStore()
-
-  const searchQuery = ref('')
-
-  const filters = reactive<TourFilters>({
-    partnerIds: new Set(),
-    tourTypes: new Set(),
-    seasons: new Set(),
-    dateRange: { from: null, to: null },
-    completion: 'all',
-  })
 
   function resolvePartnerNames(tour: Tour): string[] {
     return tour.partnerIds.map((id) => {
