@@ -227,7 +227,8 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
     :is="isDesktop ? SideDrawer : BottomSheet"
     :title="sheetTitle"
     :collapsed="sheetCollapsed"
-    :back-label="props.showBack ? 'Tours' : undefined"
+    :back-label="props.showBack && isDesktop ? 'Tours' : undefined"
+    :show-back="props.showBack && !isDesktop ? true : undefined"
     @close="emit('close')"
     @back="emit('back')"
   >

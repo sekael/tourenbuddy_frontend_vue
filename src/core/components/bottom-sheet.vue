@@ -4,9 +4,11 @@ const props = defineProps<{
   ariaLabel?: string
   /** Collapse to just the header (drag handle + title). Content slot is not rendered. */
   collapsed?: boolean
+  /** When set, shows a back arrow button in the header. */
+  showBack?: boolean
 }>()
 
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: [], back: [] }>()
 
 const titleId = 'bottom-sheet-title'
 </script>
@@ -22,6 +24,15 @@ const titleId = 'bottom-sheet-title'
     <div class="drag-handle" aria-hidden="true" />
 
     <div class="header">
+      <button
+        v-if="props.showBack"
+        type="button"
+        class="back-btn"
+        aria-label="Back"
+        @click="emit('back')"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+      </button>
       <h2 v-if="props.title" :id="titleId" class="title">
         {{ props.title }}
       </h2>
@@ -72,14 +83,31 @@ const titleId = 'bottom-sheet-title'
 .header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   flex-shrink: 0;
+  gap: var(--spacing-sm);
   padding-bottom: var(--spacing-md);
+}
+
+.back-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-on-surface-variant);
+  flex-shrink: 0;
+  transition: background-color 0.15s;
+}
+
+.back-btn:hover {
+  background-color: var(--color-surface-variant);
 }
 
 .title {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
+  flex: 1;
 }
 
 .title-spacer {

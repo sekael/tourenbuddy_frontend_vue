@@ -332,7 +332,7 @@ function handleDialogClose() {
         <TourInfoSheet
           :tour="selectedTour"
           :edit-picked-point="editPickedPoint"
-          :show-back="tourOpenedFromList && isDesktop"
+          :show-back="tourOpenedFromList"
           @close="closeOverlay"
           @back="handleTourInfoBack"
           @pick-point="(t: 'start' | 'end' | 'goal') => handleInfoSheetPickPoint(t)"
