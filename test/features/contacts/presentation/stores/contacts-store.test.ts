@@ -189,7 +189,7 @@ describe('useContactsStore', () => {
       await store.loadContacts()
       await store.updateContact('1', { firstName: 'Zara' })
 
-      const idx = store.contacts.findIndex(c => c.id === '1')
+      const idx = store.contacts.findIndex((c) => c.id === '1')
       expect(store.contacts[idx]!.firstName).toBe('Zara')
       // Bob comes before Zara alphabetically
       expect(store.contacts[0]!.firstName).toBe('Bob')
