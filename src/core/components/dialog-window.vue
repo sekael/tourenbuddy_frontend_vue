@@ -59,6 +59,7 @@ const titleId = 'dialog-window-title'
   box-shadow: var(--shadow-lg);
   animation: dialog-enter 0.2s cubic-bezier(0.4, 0, 0.2, 1) both;
   pointer-events: auto;
+  overflow: hidden;
 }
 
 @keyframes dialog-enter {
@@ -107,8 +108,22 @@ const titleId = 'dialog-window-title'
 }
 
 .dialog-content {
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
   padding: var(--spacing-lg) var(--spacing-xl) var(--spacing-xl);
   flex: 1;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-outline-variant) transparent;
+}
+
+.dialog-content::-webkit-scrollbar {
+  width: 5px;
+}
+
+.dialog-content::-webkit-scrollbar-thumb {
+  background-color: var(--color-outline-variant);
+  border-radius: 9999px;
 }
 </style>
