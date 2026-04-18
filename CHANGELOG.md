@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.4.0...tourenbuddy-frontend-v0.4.1) (2026-04-18)
+
+
+### Bug Fixes
+
+* Desktop dialog windows for overlays  ([#48](https://github.com/sekael/tourenbuddy_frontend_vue/issues/48)) ([1f345b5](https://github.com/sekael/tourenbuddy_frontend_vue/commit/1f345b58b3de086a6d7bd5539aa9bbdde3c4998d))
+
 ## [0.4.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.3.0...tourenbuddy-frontend-v0.4.0) (2026-04-17)
 
 ### Features
