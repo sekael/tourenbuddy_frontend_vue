@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
 import { InvalidPhoneNumberError } from '@/core/exceptions'
-import { normalizePhone } from '@/core/utils/phone-normalize'
+import { formatPhoneForDisplay } from '@/core/utils/phone-normalize'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
@@ -34,20 +34,15 @@ const full = computed(() => userProfileStore.fullProfile)
 
 const displayPhoneNumber = computed(() => {
   const phone = full.value?.phoneNumber
-  if (!phone)
-    return null
-  const result = normalizePhone(phone)
-  return result.ok ? result.value : phone
+  if (!phone) return null
+  return formatPhoneForDisplay(phone) || phone
 })
 
 const displayName = computed(() => {
   const p = full.value
-  if (!p)
-    return authStore.currentUser?.email ?? 'User'
-  if (p.firstName && p.lastName)
-    return `${p.firstName} ${p.lastName}`
-  if (p.firstName)
-    return p.firstName
+  if (!p) return authStore.currentUser?.email ?? 'User'
+  if (p.firstName && p.lastName) return `${p.firstName} ${p.lastName}`
+  if (p.firstName) return p.firstName
   return p.email ?? 'User'
 })
 
@@ -88,18 +83,15 @@ async function handleSave() {
       pendingPhone.value = phone
       isEditing.value = false
       showPhoneVerification.value = true
-    }
-    else {
+    } else {
       isEditing.value = false
     }
-  }
-  catch (err) {
-    editError.value
-      = err instanceof InvalidPhoneNumberError || err instanceof Error
+  } catch (err) {
+    editError.value =
+      err instanceof InvalidPhoneNumberError || err instanceof Error
         ? (err as Error).message
         : 'Failed to save profile'
-  }
-  finally {
+  } finally {
     isSaving.value = false
   }
 }
@@ -153,10 +145,9 @@ async function handleSignOut() {
               v-if="full.phoneVerified"
               class="material-symbols-outlined verified-icon"
               title="Verified"
-            >verified</span>
-            <button v-else class="verify-btn" @click="startEdit">
-              Verify
-            </button>
+              >verified</span
+            >
+            <button v-else class="verify-btn" @click="startEdit">Verify</button>
           </template>
           <button v-else class="add-phone-btn" @click="handleAddPhone">
             <span class="material-symbols-outlined">add</span>
@@ -187,7 +178,7 @@ async function handleSignOut() {
               type="text"
               class="input"
               autocomplete="given-name"
-            >
+            />
           </div>
 
           <div class="field">
@@ -198,11 +189,13 @@ async function handleSignOut() {
               type="text"
               class="input"
               autocomplete="family-name"
-            >
+            />
           </div>
 
           <div class="field">
-            <label for="edit-phone" class="label">Phone number <span class="optional">(optional)</span></label>
+            <label for="edit-phone" class="label"
+              >Phone number <span class="optional">(optional)</span></label
+            >
             <input
               id="edit-phone"
               :value="editPhoneFormatted"
@@ -211,7 +204,7 @@ async function handleSignOut() {
               placeholder="+41 79 012 34 56"
               autocomplete="tel"
               @input="onEditPhoneInput"
-            >
+            />
           </div>
 
           <p v-if="editError" class="error-text">
@@ -219,9 +212,7 @@ async function handleSignOut() {
           </p>
 
           <div class="edit-actions">
-            <button type="button" class="cancel-btn" @click="cancelEdit">
-              Cancel
-            </button>
+            <button type="button" class="cancel-btn" @click="cancelEdit">Cancel</button>
             <button type="submit" class="save-btn" :disabled="isSaving">
               {{ isSaving ? 'Saving...' : 'Save' }}
             </button>

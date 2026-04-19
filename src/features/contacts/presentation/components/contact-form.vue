@@ -2,12 +2,14 @@
 import type { PhoneEntry } from '@/features/contacts/presentation/stores/contacts-store'
 import { computed, ref, watch } from 'vue'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
+import { normalizePhone } from '@/core/utils/phone-normalize'
 
 interface PhoneRow {
   id: string
   value: string
   label: string
   isPrimary: boolean
+  error: string | null
 }
 
 interface Props {
@@ -42,18 +44,19 @@ const firstName = ref(props.initialFirstName)
 const lastName = ref(props.initialLastName)
 const displayName = ref(props.initialDisplayName)
 
-const phoneRows = ref<PhoneRow[]>([{ id: crypto.randomUUID(), value: '', label: '', isPrimary: true }])
+const phoneRows = ref<PhoneRow[]>([
+  { id: crypto.randomUUID(), value: '', label: '', isPrimary: true, error: null },
+])
 const phoneFormatterCache = new Map<string, ReturnType<typeof useAsYouTypePhone>>()
 const error = ref<string | null>(null)
 
 function getPhoneFormatter(rowId: string) {
   if (!phoneFormatterCache.has(rowId)) {
     const phoneRef = computed({
-      get: () => phoneRows.value.find(r => r.id === rowId)?.value ?? '',
+      get: () => phoneRows.value.find((r) => r.id === rowId)?.value ?? '',
       set: (v: string) => {
-        const row = phoneRows.value.find(r => r.id === rowId)
-        if (row)
-          row.value = v
+        const row = phoneRows.value.find((r) => r.id === rowId)
+        if (row) row.value = v
       },
     })
     phoneFormatterCache.set(rowId, useAsYouTypePhone(phoneRef))
@@ -63,26 +66,31 @@ function getPhoneFormatter(rowId: string) {
 
 watch(
   () => props.initialFirstName,
-  v => (firstName.value = v ?? ''),
+  (v) => (firstName.value = v ?? ''),
 )
 watch(
   () => props.initialLastName,
-  v => (lastName.value = v ?? ''),
+  (v) => (lastName.value = v ?? ''),
 )
 watch(
   () => props.initialDisplayName,
-  v => (displayName.value = v ?? ''),
+  (v) => (displayName.value = v ?? ''),
 )
 
 function addPhoneRow() {
-  phoneRows.value.push({ id: crypto.randomUUID(), value: '', label: '', isPrimary: false })
+  phoneRows.value.push({
+    id: crypto.randomUUID(),
+    value: '',
+    label: '',
+    isPrimary: false,
+    error: null,
+  })
 }
 
 function removePhoneRow(index: number) {
   const row = phoneRows.value[index]
   const wasPrimary = row?.isPrimary
-  if (row)
-    phoneFormatterCache.delete(row.id)
+  if (row) phoneFormatterCache.delete(row.id)
   phoneRows.value.splice(index, 1)
   if (wasPrimary && phoneRows.value.length > 0) {
     phoneRows.value[0]!.isPrimary = true
@@ -103,20 +111,36 @@ function handleSubmit() {
     return
   }
 
-  const nonEmpty = phoneRows.value.filter(r => r.value.trim())
+  const nonEmpty = phoneRows.value.filter((r) => r.value.trim())
+
+  let hasPhoneError = false
+  for (const row of nonEmpty) {
+    const result = normalizePhone(row.value.trim())
+    if (!result.ok) {
+      row.error = 'Invalid phone number'
+      hasPhoneError = true
+    } else {
+      row.error = null
+    }
+  }
+  if (hasPhoneError) return
+
   if (nonEmpty.length > 1) {
-    const primaryCount = nonEmpty.filter(r => r.isPrimary).length
+    const primaryCount = nonEmpty.filter((r) => r.isPrimary).length
     if (primaryCount !== 1) {
       error.value = 'Select one primary phone when multiple phones are entered'
       return
     }
   }
 
-  const phones: PhoneEntry[] = nonEmpty.map(row => ({
-    value: row.value.trim(),
-    label: row.label.trim() || null,
-    isPrimary: nonEmpty.length === 1 ? true : row.isPrimary,
-  }))
+  const phones: PhoneEntry[] = nonEmpty.map((row) => {
+    const result = normalizePhone(row.value.trim())
+    return {
+      value: result.ok ? result.e164 : row.value.trim(),
+      label: row.label.trim() || null,
+      isPrimary: nonEmpty.length === 1 ? true : row.isPrimary,
+    }
+  })
 
   emit('submit', {
     firstName: firstName.value.trim(),
@@ -139,7 +163,7 @@ function handleSubmit() {
         maxlength="50"
         placeholder="First name"
         required
-      >
+      />
     </div>
 
     <div class="field">
@@ -151,7 +175,7 @@ function handleSubmit() {
         type="text"
         maxlength="50"
         placeholder="Last name (optional)"
-      >
+      />
     </div>
 
     <div class="field">
@@ -163,7 +187,7 @@ function handleSubmit() {
         type="text"
         maxlength="50"
         placeholder="Nickname (optional)"
-      >
+      />
     </div>
 
     <div class="phones-section">
@@ -185,16 +209,20 @@ function handleSubmit() {
           <input
             :value="getPhoneFormatter(row.id).formatted.value"
             class="input"
+            :class="{ 'input--error': row.error }"
             type="tel"
             placeholder="+41 79 012 34 56 (optional)"
             @input="getPhoneFormatter(row.id).onInput"
-          >
+          />
+          <p v-if="row.error" class="error-text">
+            {{ row.error }}
+          </p>
           <input
             v-model="row.label"
             class="input input-sm"
             type="text"
             placeholder="Label (e.g. Mobile)"
-          >
+          />
         </div>
         <button
           v-if="phoneRows.length > 1"
@@ -218,9 +246,7 @@ function handleSubmit() {
     </p>
 
     <div class="actions">
-      <button type="button" class="cancel-btn" @click="emit('cancel')">
-        Cancel
-      </button>
+      <button type="button" class="cancel-btn" @click="emit('cancel')">Cancel</button>
       <button type="submit" class="submit-btn" :disabled="isLoading">
         {{ isLoading ? 'Saving...' : submitLabel }}
       </button>
@@ -264,6 +290,10 @@ function handleSubmit() {
 
 .input:focus {
   border-color: var(--color-primary);
+}
+
+.input--error {
+  border-color: var(--color-error);
 }
 
 .input-sm {

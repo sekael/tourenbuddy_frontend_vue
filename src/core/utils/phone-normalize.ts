@@ -3,12 +3,12 @@ import { parsePhoneNumberFromString } from 'libphonenumber-js/min'
 
 const DEFAULT_REGION: CountryCode = 'CH'
 
-export type PhoneNormalizeResult = { ok: true, value: string } | { ok: false, raw: string }
+export type PhoneNormalizeResult = { ok: true; e164: string } | { ok: false; raw: string }
 
 /**
  * Parses a phone number string against the given default region (default: CH).
  *
- * Returns `{ ok: true, value }` with the canonical international form (e.g. "+41 79 012 34 56")
+ * Returns `{ ok: true, e164 }` with the canonical E.164 form (e.g. "+41791234567")
  * or `{ ok: false, raw }` when the input cannot be parsed or is empty.
  */
 export function normalizePhone(
@@ -16,31 +16,25 @@ export function normalizePhone(
   defaultCountry: CountryCode = DEFAULT_REGION,
 ): PhoneNormalizeResult {
   const trimmed = (input ?? '').trim()
-  if (!trimmed)
-    return { ok: false, raw: '' }
+  if (!trimmed) return { ok: false, raw: '' }
 
   const parsed = parsePhoneNumberFromString(trimmed, defaultCountry)
-  if (!parsed || !parsed.isValid())
-    return { ok: false, raw: trimmed }
+  if (!parsed || !parsed.isValid()) return { ok: false, raw: trimmed }
 
-  return { ok: true, value: parsed.formatInternational() }
+  return { ok: true, e164: parsed.format('E.164') }
 }
 
 /**
- * Returns the E.164 form (e.g. "+41791234567") for transport layers requiring it (Supabase Auth).
- * Returns null when the input cannot be parsed.
+ * Formats an E.164 phone number for human-readable display (e.g. "+41 79 123 45 67").
+ * Returns the input as-is if it cannot be parsed.
  */
-export function toE164(
+export function formatPhoneForDisplay(
   input: string | null | undefined,
   defaultCountry: CountryCode = DEFAULT_REGION,
-): string | null {
-  const trimmed = (input ?? '').trim()
-  if (!trimmed)
-    return null
-
+): string {
+  if (!input) return ''
+  const trimmed = input.trim()
   const parsed = parsePhoneNumberFromString(trimmed, defaultCountry)
-  if (!parsed || !parsed.isValid())
-    return null
-
-  return parsed.format('E.164')
+  if (!parsed || !parsed.isValid()) return trimmed
+  return parsed.formatInternational()
 }

@@ -1,38 +1,30 @@
 import type { MaybeRef } from 'vue'
 import { computed, toValue } from 'vue'
 
-function stripToDialable(phone: string): string {
-  // Keep leading + and all digits
-  const hasPlus = phone.trimStart().startsWith('+')
-  const digits = phone.replace(/\D/g, '')
-  return hasPlus ? `+${digits}` : digits
-}
+const E164_REGEX = /^\+[1-9]\d{1,14}$/
 
 /**
- * Returns reactive tel: and wa.me links for a phone number. Both null when no phone.
- * `whatsAppLink` is null unless the input is in international form (starts with `+` or `00`),
- * because wa.me requires full E.164 digits without a leading zero.
+ * Returns reactive tel: and wa.me links for a phone number.
+ * Both null when no phone is given.
+ * When the input is E.164 (^\+[1-9]\d{1,14}$), both links are produced.
+ * Legacy non-E.164 inputs (isValid=false rows) get only a tel: link; whatsAppLink is null.
  */
 export function usePhoneActions(phoneNumber: MaybeRef<string | null>) {
   const telLink = computed(() => {
     const phone = toValue(phoneNumber)
-    if (!phone)
-      return null
-    return `tel:${stripToDialable(phone)}`
+    if (!phone) return null
+    const trimmed = phone.trim()
+    const hasPlus = trimmed.startsWith('+')
+    const digits = trimmed.replace(/\D/g, '')
+    return `tel:${hasPlus ? `+${digits}` : digits}`
   })
 
   const whatsAppLink = computed(() => {
     const phone = toValue(phoneNumber)
-    if (!phone)
-      return null
-    const trimmed = phone.trimStart()
-    // wa.me requires full E.164 digits only — only emit when country code is unambiguous
-    if (trimmed.startsWith('+')) {
-      const digits = trimmed.slice(1).replace(/\D/g, '')
-      return `https://wa.me/${digits}`
-    }
-    if (trimmed.startsWith('00')) {
-      const digits = trimmed.slice(2).replace(/\D/g, '')
+    if (!phone) return null
+    const trimmed = phone.trim()
+    if (E164_REGEX.test(trimmed)) {
+      const digits = trimmed.slice(1)
       return `https://wa.me/${digits}`
     }
     return null

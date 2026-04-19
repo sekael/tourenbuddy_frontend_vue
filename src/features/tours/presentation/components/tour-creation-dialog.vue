@@ -9,11 +9,11 @@ defineProps<{
   /** Pre-filled name suggestion from Swisstopo. */
   initialName?: string | null
   /** Pre-filled start point from secondary location pick. */
-  initialStartPoint?: { lng: number, lat: number } | null
+  initialStartPoint?: { lng: number; lat: number } | null
   /** Pre-filled end point from secondary location pick. */
-  initialEndPoint?: { lng: number, lat: number } | null
+  initialEndPoint?: { lng: number; lat: number } | null
   /** The goal location picked before the dialog opened (required for display). */
-  initialGoal?: { lng: number, lat: number } | null
+  initialGoal?: { lng: number; lat: number } | null
 }>()
 
 const emit = defineEmits<{

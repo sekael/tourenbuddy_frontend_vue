@@ -10,6 +10,7 @@ export interface PickedPhone {
 
 export interface PickedContact extends ParsedName {
   phones: PickedPhone[]
+  rawPhoneNumbers: string[]
 }
 
 /** Returns whether the Contact Picker API is available (Android Chrome/Edge). */
@@ -18,28 +19,30 @@ export const isContactPickerSupported = 'contacts' in navigator && 'ContactsMana
 /** Composable for importing contacts via the native Contact Picker API. */
 export function useContactPicker() {
   async function pickContacts(): Promise<PickedContact[]> {
-    if (!isContactPickerSupported)
-      return []
+    if (!isContactPickerSupported) return []
 
     try {
       // @ts-expect-error Contact Picker API not in TypeScript DOM lib yet
       const contacts = await navigator.contacts.select(['name', 'tel'], { multiple: true })
-      return (contacts as Array<{ name: string[], tel: string[] }>).map((entry) => {
+      return (contacts as Array<{ name: string[]; tel: string[] }>).map((entry) => {
         const fullName = entry.name[0] ?? ''
         const parsed = parseContactName(fullName)
-        const phones: PickedPhone[] = (entry.tel ?? []).map((raw, i) => {
+        const phones: PickedPhone[] = []
+        const rawPhoneNumbers: string[] = []
+        let firstValid = true
+        for (const raw of entry.tel ?? []) {
           const trimmed = raw.trim()
           const normalized = normalizePhone(trimmed)
-          return {
-            value: normalized.ok ? normalized.value : trimmed || raw,
-            label: null,
-            isPrimary: i === 0,
+          if (normalized.ok) {
+            phones.push({ value: normalized.e164, label: null, isPrimary: firstValid })
+            firstValid = false
+          } else if (trimmed) {
+            rawPhoneNumbers.push(trimmed)
           }
-        })
-        return { ...parsed, phones }
+        }
+        return { ...parsed, phones, rawPhoneNumbers }
       })
-    }
-    catch {
+    } catch {
       return []
     }
   }
