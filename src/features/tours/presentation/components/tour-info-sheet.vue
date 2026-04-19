@@ -23,9 +23,12 @@ const props = defineProps<{
     elevation?: number | null
     suggestedName?: string | null
   } | null
+  /** Desktop only: show a back button pointing to the tours list. */
+  showBack?: boolean
 }>()
 const emit = defineEmits<{
   close: []
+  back: []
   pickPoint: [type: 'start' | 'end' | 'goal']
   pointConsumed: []
   /** Fired when the sheet enters (true) or exits (false) edit mode. */
@@ -224,7 +227,10 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
     :is="isDesktop ? SideDrawer : BottomSheet"
     :title="sheetTitle"
     :collapsed="sheetCollapsed"
+    :back-label="props.showBack && isDesktop ? 'Tours' : undefined"
+    :show-back="props.showBack && !isDesktop ? true : undefined"
     @close="emit('close')"
+    @back="emit('back')"
   >
     <!-- ── Edit mode ────────────────────────────────────────────────────── -->
     <template v-if="mode === 'edit'">
@@ -367,46 +373,45 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
             />
           </div>
         </div>
+      </div>
+    </template>
 
-        <!-- Actions -->
-        <div class="view-actions">
-          <!-- Edit / delete -->
-          <div class="edit-delete-row">
-            <button
-              v-if="deleteState === 'idle'"
-              type="button"
-              class="action-btn"
-              data-testid="edit-btn"
-              @click="enterEditMode"
-            >
-              <span class="material-symbols-outlined">edit</span>
-              Edit
-            </button>
+    <template v-if="mode === 'view' && isOwner" #footer>
+      <div class="view-actions">
+        <div class="edit-delete-row">
+          <button
+            v-if="deleteState === 'idle'"
+            type="button"
+            class="action-btn"
+            data-testid="edit-btn"
+            @click="enterEditMode"
+          >
+            <span class="material-symbols-outlined">edit</span>
+            Edit
+          </button>
 
-            <template v-if="deleteState === 'confirm'">
-              <div class="delete-confirm-row">
-                <span class="delete-confirm-text">Delete this tour?</span>
-                <button type="button" class="cancel-btn" @click="deleteState = 'idle'">
-                  Cancel
-                </button>
-                <button type="button" class="delete-confirm-btn" @click="confirmDelete">
-                  Delete
-                </button>
-              </div>
-            </template>
-            <button
-              v-else
-              type="button"
-              class="action-btn action-btn--danger"
-              :disabled="deleteState === 'loading'"
-              @click="deleteState = 'confirm'"
-            >
-              <span class="material-symbols-outlined">delete</span>
-              {{ deleteState === 'loading' ? 'Deleting…' : 'Delete' }}
-            </button>
-          </div>
+          <template v-if="deleteState === 'confirm'">
+            <div class="delete-confirm-row">
+              <span class="delete-confirm-text">Delete this tour?</span>
+              <button type="button" class="cancel-btn" @click="deleteState = 'idle'">
+                Cancel
+              </button>
+              <button type="button" class="delete-confirm-btn" @click="confirmDelete">
+                Delete
+              </button>
+            </div>
+          </template>
+          <button
+            v-else
+            type="button"
+            class="action-btn action-btn--danger"
+            :disabled="deleteState === 'loading'"
+            @click="deleteState = 'confirm'"
+          >
+            <span class="material-symbols-outlined">delete</span>
+            {{ deleteState === 'loading' ? 'Deleting…' : 'Delete' }}
+          </button>
         </div>
-
         <p v-if="deleteError" class="delete-error">
           {{ deleteError }}
         </p>
@@ -428,8 +433,6 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   flex-direction: column;
   align-items: flex-end;
   gap: var(--spacing-sm);
-  padding-bottom: var(--spacing-md);
-  border-bottom: 1px solid var(--color-outline-variant);
 }
 
 .edit-delete-row {

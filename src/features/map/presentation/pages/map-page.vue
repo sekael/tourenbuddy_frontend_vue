@@ -14,12 +14,13 @@ import { getElevation } from '@/features/tours/data/services/swisstopo-elevation
 import { suggestTourName } from '@/features/tours/data/services/swisstopo-name-service'
 import TourCreationDialog from '@/features/tours/presentation/components/tour-creation-dialog.vue'
 import TourInfoSheet from '@/features/tours/presentation/components/tour-info-sheet.vue'
+import TourListSheet from '@/features/tours/presentation/components/tour-list-sheet.vue'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import UserProfileSheet from '@/features/user/presentation/components/user-profile-sheet.vue'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
 type PickPointType = 'goal' | 'start' | 'end'
-type OverlayName = 'feedback' | 'profile' | 'contacts' | 'tour' | 'tour-creation'
+type OverlayName = 'feedback' | 'profile' | 'contacts' | 'tours' | 'tour' | 'tour-creation'
 
 const mapStore = useMapStore()
 const toursStore = useToursStore()
@@ -40,6 +41,7 @@ const activeOverlay = ref<OverlayName | null>(null)
 const showFeedbackSheet = computed(() => activeOverlay.value === 'feedback')
 const showProfileSheet = computed(() => activeOverlay.value === 'profile')
 const showContactDialog = computed(() => activeOverlay.value === 'contacts')
+const showToursList = computed(() => activeOverlay.value === 'tours')
 const showTourCreationDialog = computed(() => activeOverlay.value === 'tour-creation')
 
 // Location picking state
@@ -59,6 +61,12 @@ const sheetContainerRef = ref<HTMLElement | null>(null)
 
 // Whether the current location pick was triggered from the info sheet edit mode
 const isPickingForEdit = ref(false)
+
+// Set when flyToSelectedTour is called before sheetContainerRef has mounted
+const pendingFlyTo = ref(false)
+
+// Whether the tour info sheet was opened by selecting a row from the tours list
+const tourOpenedFromList = ref(false)
 
 // Prop-based handoff to info sheet after a location pick in edit mode
 const editPickedPoint = ref<{
@@ -84,6 +92,7 @@ function openOverlay(name: OverlayName) {
   if (activeOverlay.value === 'tour' && name !== 'tour') {
     mapStore.selectTour(null)
     mapStore.setEditPreviewGoal(null)
+    tourOpenedFromList.value = false
   }
   if (activeOverlay.value === 'tour-creation' && name !== 'tour-creation') {
     resetTourCreationState()
@@ -96,11 +105,25 @@ function closeOverlay() {
   if (activeOverlay.value === 'tour') {
     mapStore.selectTour(null)
     mapStore.setEditPreviewGoal(null)
+    tourOpenedFromList.value = false
   }
   if (activeOverlay.value === 'tour-creation') {
     resetTourCreationState()
   }
   activeOverlay.value = null
+}
+
+function handleTourSelectedFromList(tourId: string) {
+  tourOpenedFromList.value = true
+  mapStore.selectTour(tourId)
+  openOverlay('tour')
+}
+
+function handleTourInfoBack() {
+  tourOpenedFromList.value = false
+  mapStore.selectTour(null)
+  mapStore.setEditPreviewGoal(null)
+  activeOverlay.value = 'tours'
 }
 
 // Keep activeOverlay in sync when selectedTourId is mutated externally
@@ -125,6 +148,13 @@ async function flyToSelectedTour() {
   if (!selectedTour.value)
     return
   await nextTick()
+  // On mobile the sheet is inside a Transition mode="out-in" container — if the previous
+  // overlay is still leaving, sheetContainerRef won't be mounted yet. Defer until it is.
+  if (!isDesktop.value && !sheetContainerRef.value) {
+    pendingFlyTo.value = true
+    return
+  }
+  pendingFlyTo.value = false
   const padding = isDesktop.value
     ? { top: 0, right: 400, bottom: 0, left: 0 }
     : { top: 0, right: 0, bottom: sheetContainerRef.value?.offsetHeight ?? 0, left: 0 }
@@ -135,6 +165,11 @@ async function flyToSelectedTour() {
     padding,
   })
 }
+
+watch(sheetContainerRef, async (el) => {
+  if (el && pendingFlyTo.value)
+    await flyToSelectedTour()
+})
 
 watch(selectedTourId, async (id) => {
   if (id)
@@ -286,6 +321,7 @@ function handleDialogClose() {
       @open-feedback="openOverlay('feedback')"
       @open-profile="openOverlay('profile')"
       @open-contacts="openOverlay('contacts')"
+      @open-tours="openOverlay('tours')"
       @reset-bearing="handleResetBearing"
     />
 
@@ -311,7 +347,9 @@ function handleDialogClose() {
         <TourInfoSheet
           :tour="selectedTour"
           :edit-picked-point="editPickedPoint"
+          :show-back="tourOpenedFromList"
           @close="closeOverlay"
+          @back="handleTourInfoBack"
           @pick-point="(t: 'start' | 'end' | 'goal') => handleInfoSheetPickPoint(t)"
           @point-consumed="handlePointConsumed"
           @edit-mode-change="handleEditModeChange"
@@ -325,6 +363,9 @@ function handleDialogClose() {
       </div>
       <div v-else-if="showContactDialog" key="contacts" class="sheet-container">
         <ContactsListSheet @close="closeOverlay" />
+      </div>
+      <div v-else-if="showToursList" key="tours" class="sheet-container">
+        <TourListSheet @close="closeOverlay" @select-tour="handleTourSelectedFromList" />
       </div>
       <div v-else-if="showTourCreationDialog" key="tour-creation" class="sheet-container">
         <TourCreationDialog

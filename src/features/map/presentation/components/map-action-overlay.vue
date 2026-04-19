@@ -12,6 +12,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   openProfile: []
   openContacts: []
+  openTours: []
   openFeedback: []
   resetBearing: []
 }>()
@@ -51,6 +52,10 @@ function startAddTour() {
 
     <button class="fab" title="Contacts" @click="emit('openContacts')">
       <span class="material-symbols-outlined">group</span>
+    </button>
+
+    <button class="fab" title="Tours" @click="emit('openTours')">
+      <span class="material-symbols-outlined">location_on</span>
     </button>
 
     <button
