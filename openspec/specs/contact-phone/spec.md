@@ -1,47 +1,39 @@
-## ADDED Requirements
+## MODIFIED Requirements
 
 ### Requirement: Phone action links
 
-A `usePhoneActions` composable SHALL generate click-to-call and WhatsApp deep links from a phone number string. WhatsApp links are only produced when the input phone is in international form (starts with `+` or `00`), otherwise `whatsAppLink` SHALL be `null` so callers can hide the button.
+A `usePhoneActions` composable SHALL generate click-to-call and WhatsApp deep links from a phone number string. Because all persisted phone values are E.164 (see `phone-formatting`), `usePhoneActions` SHALL produce both a `tel:` link and a `https://wa.me/<digits>` link whenever the input is non-null. When the input is `null`, both links SHALL be `null`. Legacy non-E.164 inputs (which may still appear for `isValid=false` rows) SHALL fall back to: `tel:` link with non-digits stripped (preserving leading `+` if present), `whatsAppLink = null`.
 
-#### Scenario: Generate tel link
+#### Scenario: Generate tel and WhatsApp links from E.164 input
 
-- **WHEN** `usePhoneActions` is called with a phone number containing non-digit characters (e.g., `+41 79 123 45 67`)
-- **THEN** `telLink` SHALL return a `tel:` URI with only digits and leading `+` preserved (e.g., `tel:+41791234567`)
+- **WHEN** `usePhoneActions` is called with `'+41791234567'`
+- **THEN** `telLink` SHALL be `'tel:+41791234567'`
+- **AND** `whatsAppLink` SHALL be `'https://wa.me/41791234567'`
 
-#### Scenario: Generate WhatsApp link from E.164-plus format
+#### Scenario: Legacy non-E.164 input falls back
 
-- **WHEN** `usePhoneActions` is called with a phone number starting with `+` (e.g., `+41 79 123 45 67`)
-- **THEN** `whatsAppLink` SHALL return `https://wa.me/<digits>` where `<digits>` are the digits after the `+`, with no leading zero (e.g., `https://wa.me/41791234567`)
-
-#### Scenario: Generate WhatsApp link from 00-prefixed format
-
-- **WHEN** `usePhoneActions` is called with a phone number starting with `00` (international exit prefix, e.g., `0041 79 123 45 67`)
-- **THEN** `whatsAppLink` SHALL return `https://wa.me/<digits>` where `<digits>` are the digits after the leading `00` (e.g., `https://wa.me/41791234567`)
-
-#### Scenario: WhatsApp link omitted when country code missing
-
-- **WHEN** `usePhoneActions` is called with a phone number that does not start with `+` or `00` (e.g., `079 123 45 67`)
-- **THEN** `whatsAppLink` SHALL return `null`
-- **AND** `telLink` SHALL still return a valid `tel:` URI (e.g., `tel:0791234567`)
+- **WHEN** `usePhoneActions` is called with a non-E.164 legacy value such as `'079 123 45 67'`
+- **THEN** `telLink` SHALL be `'tel:0791234567'`
+- **AND** `whatsAppLink` SHALL be `null`
 
 #### Scenario: No phone number
 
 - **WHEN** `usePhoneActions` is called with `null`
-- **THEN** both `telLink` and `whatsAppLink` SHALL return `null`
+- **THEN** both `telLink` and `whatsAppLink` SHALL be `null`
 
 ### Requirement: Phone number display on contact chip
 
-When a contact has a primary phone method, the contact chip in tour info contexts SHALL display phone action icons (call + WhatsApp) that open the respective links. The WhatsApp icon SHALL be hidden when `whatsAppLink` is `null`.
+When a contact has a primary phone method, the contact chip in tour info contexts SHALL display phone action icons (call + WhatsApp) that open the respective links. The displayed phone number SHALL be formatted via `formatPhoneForDisplay`. The WhatsApp icon SHALL be hidden when `whatsAppLink` is `null` (only legacy `isValid=false` rows).
 
-#### Scenario: Contact chip with phone shows action icons
+#### Scenario: Contact chip with E.164 phone shows both action icons
 
-- **WHEN** a contact chip renders for a contact with a primary phone contact method in international format in a read-only context (e.g., tour info sheet)
+- **WHEN** a contact chip renders for a contact with a primary phone method (E.164) in a read-only context
 - **THEN** the chip SHALL display tappable call and WhatsApp icons next to the contact name
+- **AND** the displayed phone string SHALL be in spaced international form
 
-#### Scenario: Contact chip with local phone hides WhatsApp icon
+#### Scenario: Contact chip with legacy invalid phone hides WhatsApp icon
 
-- **WHEN** a contact chip renders for a contact whose primary phone lacks a country code (e.g., `079 123 45 67`)
+- **WHEN** a contact chip renders for a contact whose primary phone method has `isValid = false`
 - **THEN** the chip SHALL display the call icon
 - **AND** the WhatsApp icon SHALL NOT be displayed
 
