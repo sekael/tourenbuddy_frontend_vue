@@ -59,4 +59,16 @@ export class ContactMethodsRepositoryImpl implements ContactMethodsRepository {
 
     return contactMethodRowSchema.parse(row)
   }
+
+  async setPrimaryPhone(contactId: string, methodId: string): Promise<ContactMethod[]> {
+    const { data, error } = await supabase.rpc('set_primary_phone', {
+      p_contact_id: contactId,
+      p_method_id: methodId,
+    })
+
+    if (error)
+      throw new Error(error.message)
+
+    return (data as unknown[]).map(row => contactMethodRowSchema.parse(row))
+  }
 }

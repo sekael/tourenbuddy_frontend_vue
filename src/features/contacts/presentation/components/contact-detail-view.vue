@@ -4,6 +4,7 @@ import type { ContactMethod } from '@/features/contacts/domain/entities/contact-
 import type { NewContactMethod } from '@/features/contacts/domain/repositories/contact-methods-repository'
 import { computed, ref, watch } from 'vue'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
+import { orderedPhoneMethods } from '@/features/contacts/core/utils/order-phone-methods'
 import { formatPhoneDisplay } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 
@@ -11,6 +12,9 @@ const props = defineProps<{ contact: Contact }>()
 const emit = defineEmits<{ back: [], deleted: [] }>()
 
 const store = useContactsStore()
+
+const orderedPhones = computed(() => orderedPhoneMethods(props.contact))
+const setPrimaryError = ref<string | null>(null)
 
 // ── Name edit state ──────────────────────────────────────────────────────────
 const firstName = ref(props.contact.firstName)
@@ -120,6 +124,9 @@ async function saveMethod(method: ContactMethod) {
       value: edit.value.trim(),
       label: edit.label.trim() || null,
     })
+    const updated = props.contact.contactMethods.find(m => m.id === method.id)
+    if (updated)
+      edit.value = methodDisplayValue(updated)
   }
   catch (err) {
     edit.error = err instanceof Error ? err.message : 'Failed to save'
@@ -132,6 +139,19 @@ async function saveMethod(method: ContactMethod) {
 async function removeMethod(methodId: string) {
   await store.removeMethodFromContact(props.contact.id, methodId)
   delete methodEdits.value[methodId]
+  phoneFormatterCache.delete(methodId)
+}
+
+async function setPrimaryPhone(method: ContactMethod) {
+  if (method.isPrimary)
+    return
+  setPrimaryError.value = null
+  try {
+    await store.setPrimaryPhoneOnContact(props.contact.id, method.id)
+  }
+  catch (err) {
+    setPrimaryError.value = err instanceof Error ? err.message : 'Failed to update primary phone'
+  }
 }
 
 // ── Add method ───────────────────────────────────────────────────────────────
@@ -267,15 +287,26 @@ async function confirmDelete() {
         No contact methods yet.
       </div>
 
-      <div v-for="method in contact.contactMethods" :key="method.id" class="method-row">
+      <p v-if="setPrimaryError" class="error-text">
+        {{ setPrimaryError }}
+      </p>
+
+      <!-- Phone methods: ordered primary-first with star selector -->
+      <div v-for="method in orderedPhones" :key="method.id" class="method-row">
+        <button
+          type="button"
+          class="primary-star"
+          :class="{ 'primary-star--selected': method.isPrimary }"
+          :title="method.isPrimary ? 'Primary phone' : 'Set as primary'"
+          @click="setPrimaryPhone(method)"
+        >
+          <span class="material-symbols-outlined">star</span>
+        </button>
         <div class="method-type-badge">
-          <span class="material-symbols-outlined">{{
-            method.methodType === 'phone' ? 'phone' : 'mail'
-          }}</span>
+          <span class="material-symbols-outlined">phone</span>
         </div>
         <div class="method-fields">
           <input
-            v-if="method.methodType === 'phone'"
             :value="getPhoneFormatter(method).formatted.value"
             class="input input-sm"
             type="tel"
@@ -283,7 +314,41 @@ async function confirmDelete() {
             @input="getPhoneFormatter(method).onInput"
           >
           <input
-            v-else
+            v-model="getMethodEdit(method).label"
+            class="input input-sm"
+            type="text"
+            placeholder="Label (optional)"
+          >
+          <p v-if="getMethodEdit(method).error" class="error-text">
+            {{ getMethodEdit(method).error }}
+          </p>
+        </div>
+        <div class="method-actions">
+          <button
+            type="button"
+            class="icon-btn"
+            :disabled="getMethodEdit(method).saving"
+            @click="saveMethod(method)"
+          >
+            <span class="material-symbols-outlined">check</span>
+          </button>
+          <button type="button" class="icon-btn icon-btn--danger" @click="removeMethod(method.id)">
+            <span class="material-symbols-outlined">delete</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Non-phone methods (email etc.) -->
+      <div
+        v-for="method in contact.contactMethods.filter((m) => m.methodType !== 'phone')"
+        :key="method.id"
+        class="method-row"
+      >
+        <div class="method-type-badge">
+          <span class="material-symbols-outlined">mail</span>
+        </div>
+        <div class="method-fields">
+          <input
             v-model="getMethodEdit(method).value"
             class="input input-sm"
             type="email"
@@ -534,6 +599,36 @@ async function confirmDelete() {
   display: flex;
   align-items: flex-start;
   gap: var(--spacing-sm);
+}
+
+.primary-star {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-outline-variant);
+  flex-shrink: 0;
+  margin-top: 4px;
+  transition: color 0.15s;
+}
+
+.primary-star .material-symbols-outlined {
+  font-size: 18px;
+  font-variation-settings: 'FILL' 0;
+}
+
+.primary-star--selected {
+  color: var(--color-primary);
+}
+
+.primary-star--selected .material-symbols-outlined {
+  font-variation-settings: 'FILL' 1;
+}
+
+.primary-star:hover {
+  color: var(--color-primary);
 }
 
 .method-type-badge {

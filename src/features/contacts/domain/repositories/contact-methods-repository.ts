@@ -15,4 +15,5 @@ export interface ContactMethodsRepository {
     id: string,
     data: Partial<Omit<ContactMethod, 'id' | 'contactId'>>,
   ) => Promise<ContactMethod>
+  setPrimaryPhone: (contactId: string, methodId: string) => Promise<ContactMethod[]>
 }

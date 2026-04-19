@@ -90,6 +90,77 @@ describe('contactDetailView', () => {
       await wrapper.find('.icon-btn--danger').trigger('click')
       expect(store.removeMethodFromContact).toHaveBeenCalledWith('c-1', 'm-1')
     })
+
+    it('should show primary star button for phone methods', () => {
+      const wrapper = mountDetail()
+      expect(wrapper.find('.primary-star').exists()).toBe(true)
+    })
+
+    it('should call setPrimaryPhoneOnContact when non-primary star is clicked', async () => {
+      const contactWithTwoPhones = {
+        ...mockContact,
+        contactMethods: [
+          {
+            id: 'm-1',
+            contactId: 'c-1',
+            methodType: 'phone' as const,
+            value: '+41 79 111 22 33',
+            label: null,
+            isPrimary: true,
+          },
+          {
+            id: 'm-2',
+            contactId: 'c-1',
+            methodType: 'phone' as const,
+            value: '+41 44 222 33 44',
+            label: null,
+            isPrimary: false,
+          },
+        ],
+      }
+      const wrapper = mountDetail(contactWithTwoPhones)
+      const store = useContactsStore()
+      vi.mocked(store.setPrimaryPhoneOnContact).mockResolvedValue(undefined as never)
+
+      const stars = wrapper.findAll('.primary-star')
+      await stars[1]!.trigger('click')
+
+      expect(store.setPrimaryPhoneOnContact).toHaveBeenCalledWith('c-1', 'm-2')
+    })
+
+    it('should show error when setPrimaryPhoneOnContact fails', async () => {
+      const contactWithTwoPhones = {
+        ...mockContact,
+        contactMethods: [
+          {
+            id: 'm-1',
+            contactId: 'c-1',
+            methodType: 'phone' as const,
+            value: '+41 79 111 22 33',
+            label: null,
+            isPrimary: true,
+          },
+          {
+            id: 'm-2',
+            contactId: 'c-1',
+            methodType: 'phone' as const,
+            value: '+41 44 222 33 44',
+            label: null,
+            isPrimary: false,
+          },
+        ],
+      }
+      const wrapper = mountDetail(contactWithTwoPhones)
+      const store = useContactsStore()
+      vi.mocked(store.setPrimaryPhoneOnContact).mockRejectedValue(new Error('RPC failed'))
+
+      const stars = wrapper.findAll('.primary-star')
+      await stars[1]!.trigger('click')
+      await wrapper.vm.$nextTick()
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('.error-text').exists()).toBe(true)
+    })
   })
 
   describe('add method', () => {

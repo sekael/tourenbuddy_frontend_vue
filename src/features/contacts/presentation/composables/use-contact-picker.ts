@@ -2,8 +2,14 @@ import type { ParsedName } from '@/features/contacts/core/utils/parse-contact-na
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import { parseContactName } from '@/features/contacts/core/utils/parse-contact-name'
 
+export interface PickedPhone {
+  value: string
+  label: null
+  isPrimary: boolean
+}
+
 export interface PickedContact extends ParsedName {
-  phoneNumber: string | null
+  phones: PickedPhone[]
 }
 
 /** Returns whether the Contact Picker API is available (Android Chrome/Edge). */
@@ -21,13 +27,16 @@ export function useContactPicker() {
       return (contacts as Array<{ name: string[], tel: string[] }>).map((entry) => {
         const fullName = entry.name[0] ?? ''
         const parsed = parseContactName(fullName)
-        const rawPhone = entry.tel[0]?.trim() || null
-        let phoneNumber: string | null = null
-        if (rawPhone) {
-          const normalized = normalizePhone(rawPhone)
-          phoneNumber = normalized.ok ? normalized.value : rawPhone
-        }
-        return { ...parsed, phoneNumber }
+        const phones: PickedPhone[] = (entry.tel ?? []).map((raw, i) => {
+          const trimmed = raw.trim()
+          const normalized = normalizePhone(trimmed)
+          return {
+            value: normalized.ok ? normalized.value : trimmed || raw,
+            label: null,
+            isPrimary: i === 0,
+          }
+        })
+        return { ...parsed, phones }
       })
     }
     catch {

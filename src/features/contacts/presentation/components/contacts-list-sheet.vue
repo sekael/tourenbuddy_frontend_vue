@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import type { Contact } from '@/features/contacts/domain/entities/contact'
+import type { PhoneEntry } from '@/features/contacts/presentation/stores/contacts-store'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
-import { resolveContactName, resolveFullName } from '@/features/contacts/domain/entities/contact'
+import {
+  getPrimaryPhone,
+  resolveContactName,
+  resolveFullName,
+} from '@/features/contacts/domain/entities/contact'
 import { useContactPicker } from '@/features/contacts/presentation/composables/use-contact-picker'
 import { useVCardImport } from '@/features/contacts/presentation/composables/use-vcard-import'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
@@ -47,7 +52,8 @@ watch(liveContact, (contact) => {
 interface ImportResult {
   firstName: string
   lastName: string | null
-  phoneNumber: string | null
+  primaryPhone: string | null
+  extraPhoneCount: number
   status: 'imported' | 'skipped'
 }
 
@@ -103,17 +109,12 @@ async function handleAddSubmit(data: {
   firstName: string
   lastName: string | null
   displayName: string | null
-  phoneNumber: string | null
+  phones: PhoneEntry[]
 }) {
   isAddLoading.value = true
   addError.value = null
   try {
-    await contactsStore.addContact(
-      data.firstName,
-      data.lastName,
-      data.displayName,
-      data.phoneNumber,
-    )
+    await contactsStore.addContact(data.firstName, data.lastName, data.displayName, data.phones)
     backToList()
   }
   catch (err) {
@@ -125,16 +126,30 @@ async function handleAddSubmit(data: {
 }
 
 async function processImportedContacts(
-  items: Array<{ firstName: string, lastName: string | null, phoneNumber: string | null }>,
+  items: Array<{ firstName: string, lastName: string | null, phones: PhoneEntry[] }>,
 ) {
   const results: ImportResult[] = []
   for (const item of items) {
+    const primaryPhone
+      = item.phones.find(p => p.isPrimary)?.value ?? item.phones[0]?.value ?? null
     if (isDuplicate(item.firstName, item.lastName)) {
-      results.push({ ...item, status: 'skipped' })
+      results.push({
+        firstName: item.firstName,
+        lastName: item.lastName,
+        primaryPhone,
+        extraPhoneCount: Math.max(0, item.phones.length - 1),
+        status: 'skipped',
+      })
       continue
     }
-    await contactsStore.addContact(item.firstName, item.lastName, null, item.phoneNumber)
-    results.push({ ...item, status: 'imported' })
+    await contactsStore.addContact(item.firstName, item.lastName, null, item.phones, 'import')
+    results.push({
+      firstName: item.firstName,
+      lastName: item.lastName,
+      primaryPhone,
+      extraPhoneCount: Math.max(0, item.phones.length - 1),
+      status: 'imported',
+    })
   }
   importResults.value = results
   addViewState.value = 'import-results'
@@ -224,6 +239,12 @@ function switchAddToForm() {
             <span v-if="contact.displayName" class="contact-subtitle">
               {{ resolveFullName(contact) }}
             </span>
+            <span
+              v-else-if="getPrimaryPhone(contact)"
+              class="contact-subtitle"
+            >
+              {{ getPrimaryPhone(contact) }}
+            </span>
           </div>
           <span class="material-symbols-outlined row-arrow">chevron_right</span>
         </li>
@@ -253,7 +274,11 @@ function switchAddToForm() {
           <li v-for="(result, i) in importResults" :key="i" class="result-item">
             <div class="result-info">
               <span class="result-name">{{ result.firstName }}{{ result.lastName ? ` ${result.lastName}` : '' }}</span>
-              <span v-if="result.phoneNumber" class="result-phone">{{ result.phoneNumber }}</span>
+              <span v-if="result.primaryPhone" class="result-phone">
+                <span class="material-symbols-outlined star-icon-sm">star</span>
+                {{ result.primaryPhone }}
+                <span v-if="result.extraPhoneCount > 0" class="extra-phones">+{{ result.extraPhoneCount }} more</span>
+              </span>
             </div>
             <span
               class="result-badge"
@@ -559,6 +584,19 @@ function switchAddToForm() {
 .result-phone {
   font-size: var(--font-size-xs, 11px);
   color: var(--color-on-surface-variant);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.star-icon-sm {
+  font-size: 12px;
+  color: var(--color-primary);
+  font-variation-settings: 'FILL' 1;
+}
+
+.extra-phones {
+  opacity: 0.7;
 }
 
 .result-badge {
