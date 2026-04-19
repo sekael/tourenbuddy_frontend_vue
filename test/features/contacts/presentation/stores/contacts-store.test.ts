@@ -51,18 +51,20 @@ const mockPhoneMethod = {
   id: 'method-1',
   contactId: '1',
   methodType: 'phone' as const,
-  value: '+41 79 123 45 67',
+  value: '+41791234567',
   label: null,
   isPrimary: true,
+  isValid: true,
 }
 
 const mockPhoneMethod2 = {
   id: 'method-2',
   contactId: '1',
   methodType: 'phone' as const,
-  value: '+41 44 222 33 44',
+  value: '+41442223344',
   label: 'Home',
   isPrimary: false,
+  isValid: true,
 }
 
 const mockContacts = [
@@ -146,19 +148,20 @@ describe('useContactsStore', () => {
       id: 'method-2',
       contactId: '3',
       methodType: 'phone',
-      value: '+41 79 999 00 11',
+      value: '+41799990011',
       label: null,
       isPrimary: true,
+      isValid: true,
     })
     mockFetchContacts.mockResolvedValue([])
 
     const store = useContactsStore()
     await store.loadContacts()
-    await store.addContact('Dave', null, null, [{ value: '+41 79 999 00 11', isPrimary: true }])
+    await store.addContact('Dave', null, null, [{ value: '+41799990011', isPrimary: true }])
 
     expect(mockAddMethod).toHaveBeenCalledWith('3', {
       methodType: 'phone',
-      value: '+41 79 999 00 11',
+      value: '+41799990011',
       label: null,
       isPrimary: true,
     })
@@ -199,17 +202,19 @@ describe('useContactsStore', () => {
         id: 'm1',
         contactId: '5',
         methodType: 'phone',
-        value: '+41 79 123 45 67',
+        value: '+41791234567',
         label: null,
         isPrimary: true,
+        isValid: true,
       })
       .mockResolvedValueOnce({
         id: 'm2',
         contactId: '5',
         methodType: 'phone',
-        value: '+41 44 222 33 44',
+        value: '+41442223344',
         label: 'Home',
         isPrimary: false,
+        isValid: true,
       })
 
     const store = useContactsStore()
@@ -321,9 +326,10 @@ describe('useContactsStore', () => {
         id: 'method-new',
         contactId: '1',
         methodType: 'phone' as const,
-        value: '+41 79 000 00 00',
+        value: '+41790000000',
         label: null,
         isPrimary: true,
+        isValid: true,
       }
       mockAddMethod.mockResolvedValue(newMethod)
 
@@ -331,7 +337,7 @@ describe('useContactsStore', () => {
       await store.loadContacts()
       await store.addMethodToContact('1', {
         methodType: 'phone',
-        value: '+41 79 000 00 00',
+        value: '+41790000000',
         isPrimary: false,
       })
 
@@ -429,9 +435,10 @@ describe('useContactsStore', () => {
         id: 'method-x',
         contactId: '5',
         methodType: 'phone',
-        value: '+41 79 999 11 22',
+        value: '+41799991122',
         label: null,
         isPrimary: true,
+        isValid: true,
       })
 
       const store = useContactsStore()
@@ -440,7 +447,7 @@ describe('useContactsStore', () => {
 
       expect(mockAddMethod).toHaveBeenCalledWith(
         '5',
-        expect.objectContaining({ value: '+41 79 999 11 22' }),
+        expect.objectContaining({ value: '+41799991122' }),
       )
     })
 
@@ -450,9 +457,10 @@ describe('useContactsStore', () => {
         id: 'method-y',
         contactId: '1',
         methodType: 'phone' as const,
-        value: '+41 79 123 45 67',
+        value: '+41791234567',
         label: null,
         isPrimary: true,
+        isValid: true,
       })
 
       const store = useContactsStore()
@@ -465,13 +473,13 @@ describe('useContactsStore', () => {
 
       expect(mockAddMethod).toHaveBeenCalledWith(
         '1',
-        expect.objectContaining({ value: '+41 79 123 45 67' }),
+        expect.objectContaining({ value: '+41791234567' }),
       )
     })
 
     it('normalizes phone on updateMethodOnContact', async () => {
       mockFetchContacts.mockResolvedValue([mockContacts[1]!])
-      mockUpdateMethod.mockResolvedValue({ ...mockPhoneMethod, value: '+41 79 123 45 67' })
+      mockUpdateMethod.mockResolvedValue({ ...mockPhoneMethod, value: '+41791234567' })
 
       const store = useContactsStore()
       await store.loadContacts()
@@ -479,7 +487,7 @@ describe('useContactsStore', () => {
 
       expect(mockUpdateMethod).toHaveBeenCalledWith(
         'method-1',
-        expect.objectContaining({ value: '+41 79 123 45 67' }),
+        expect.objectContaining({ value: '+41791234567' }),
       )
     })
   })

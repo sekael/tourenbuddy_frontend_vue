@@ -44,18 +44,19 @@ describe('parseVCardText', () => {
     expect(result[0]!.lastName).toBe('Muster')
     expect(result[0]!.phones).toHaveLength(1)
     expect(result[0]!.phones[0]).toEqual({
-      value: '+41 79 123 45 67',
+      value: '+41791234567',
       label: 'Mobile',
       isPrimary: true,
     })
+    expect(result[0]!.rawPhoneNumbers).toHaveLength(0)
   })
 
-  it('should parse multiple vCard blocks and normalize phone numbers', () => {
+  it('should parse multiple vCard blocks and normalize phone numbers to E.164', () => {
     const result = parseVCardText(multiVCard)
     expect(result).toHaveLength(2)
     expect(result[0]!.firstName).toBe('Anna')
     expect(result[0]!.lastName).toBe('Bauer')
-    expect(result[0]!.phones[0]!.value).toBe('+41 79 111 22 33')
+    expect(result[0]!.phones[0]!.value).toBe('+41791112233')
     expect(result[0]!.phones[0]!.isPrimary).toBe(true)
     expect(result[1]!.firstName).toBe('Bob')
     expect(result[1]!.phones).toHaveLength(0)
@@ -64,6 +65,7 @@ describe('parseVCardText', () => {
   it('should return empty phones array when no TEL field', () => {
     const result = parseVCardText(noPhoneVCard)
     expect(result[0]!.phones).toHaveLength(0)
+    expect(result[0]!.rawPhoneNumbers).toHaveLength(0)
   })
 
   it('should use FN field when N field absent', () => {
@@ -74,7 +76,7 @@ describe('parseVCardText', () => {
 
   it('should parse TEL field with type parameters and derive label', () => {
     const result = parseVCardText(telWithTypeVCard)
-    expect(result[0]!.phones[0]!.value).toBe('+41 44 555 66 77')
+    expect(result[0]!.phones[0]!.value).toBe('+41445556677')
     expect(result[0]!.phones[0]!.label).toBe('Work')
   })
 
@@ -93,34 +95,38 @@ END:VCARD`
     expect(result[0]!.lastName).toBe('Correct')
   })
 
-  it('normalizes Swiss national phone number', () => {
+  it('normalizes Swiss national phone number to E.164', () => {
     const vcard = `BEGIN:VCARD
 VERSION:3.0
 FN:Test
 TEL:0791234567
 END:VCARD`
     const result = parseVCardText(vcard)
-    expect(result[0]!.phones[0]!.value).toBe('+41 79 123 45 67')
+    expect(result[0]!.phones[0]!.value).toBe('+41791234567')
   })
 
-  it('throws when phone number cannot be parsed', () => {
+  it('handles unparseable phone gracefully — skips it and adds to rawPhoneNumbers', () => {
     const vcard = `BEGIN:VCARD
 VERSION:3.0
 FN:Test
 TEL:ext. 1234
 END:VCARD`
-    expect(() => parseVCardText(vcard)).toThrow(
-      'Phone number "ext. 1234" is not in a valid format (international or Swiss national format)',
-    )
+    const result = parseVCardText(vcard)
+    expect(result[0]!.phones).toHaveLength(0)
+    expect(result[0]!.rawPhoneNumbers).toEqual(['ext. 1234'])
   })
 
-  it('throws with the invalid number in the message', () => {
+  it('handles contact with mix of parseable and unparseable phones', () => {
     const vcard = `BEGIN:VCARD
 VERSION:3.0
-FN:Test
+FN:Mix
+TEL;TYPE=CELL:+41 79 123 45 67
 TEL:not-a-number
 END:VCARD`
-    expect(() => parseVCardText(vcard)).toThrowError(/not-a-number/)
+    const result = parseVCardText(vcard)
+    expect(result[0]!.phones).toHaveLength(1)
+    expect(result[0]!.phones[0]!.value).toBe('+41791234567')
+    expect(result[0]!.rawPhoneNumbers).toEqual(['not-a-number'])
   })
 
   it('extracts multiple phones with correct labels', () => {
@@ -133,12 +139,12 @@ END:VCARD`
     const result = parseVCardText(vcard)
     expect(result[0]!.phones).toHaveLength(2)
     expect(result[0]!.phones[0]).toEqual({
-      value: '+41 79 123 45 67',
+      value: '+41791234567',
       label: 'Mobile',
       isPrimary: true,
     })
     expect(result[0]!.phones[1]).toEqual({
-      value: '+41 44 222 33 44',
+      value: '+41442223344',
       label: 'Home',
       isPrimary: false,
     })
@@ -234,7 +240,7 @@ TEL;type=iPhone;type=CELL;type=VOICE:+41 79 123 45 67
 END:VCARD`
     const result = parseVCardText(vcard)
     const primary = result[0]!.phones.find(p => p.isPrimary)
-    expect(primary?.value).toBe('+41 79 123 45 67')
+    expect(primary?.value).toBe('+41791234567')
     expect(primary?.label).toBe('Mobile')
   })
 
@@ -247,6 +253,6 @@ TEL;type=iPhone;type=VOICE:+41 79 123 45 67
 END:VCARD`
     const result = parseVCardText(vcard)
     const primary = result[0]!.phones.find(p => p.isPrimary)
-    expect(primary?.value).toBe('+41 79 123 45 67')
+    expect(primary?.value).toBe('+41791234567')
   })
 })

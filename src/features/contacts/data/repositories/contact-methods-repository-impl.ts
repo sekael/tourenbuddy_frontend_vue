@@ -3,17 +3,27 @@ import type {
   ContactMethodsRepository,
   NewContactMethod,
 } from '@/features/contacts/domain/repositories/contact-methods-repository'
+import { normalizePhone } from '@/core/utils/phone-normalize'
 import { supabase } from '@/core/utils/supabase'
 import { contactMethodRowSchema } from '@/features/contacts/data/models/contact-method-schema'
 
+function resolvePhoneValue(raw: string): string {
+  const result = normalizePhone(raw)
+  if (!result.ok)
+    throw new Error(`Invalid phone number: "${raw}"`)
+  return result.e164
+}
+
 export class ContactMethodsRepositoryImpl implements ContactMethodsRepository {
   async addMethod(contactId: string, method: NewContactMethod): Promise<ContactMethod> {
+    const value = method.methodType === 'phone' ? resolvePhoneValue(method.value) : method.value
+
     const { data, error } = await supabase
       .from('contact_methods')
       .insert({
         contact_id: contactId,
         method_type: method.methodType,
-        value: method.value,
+        value,
         label: method.label ?? null,
         is_primary: method.isPrimary ?? false,
       })
@@ -40,8 +50,9 @@ export class ContactMethodsRepositoryImpl implements ContactMethodsRepository {
     const update: Record<string, unknown> = {}
     if (data.methodType !== undefined)
       update.method_type = data.methodType
-    if (data.value !== undefined)
-      update.value = data.value
+    if (data.value !== undefined) {
+      update.value = data.methodType === 'phone' ? resolvePhoneValue(data.value) : data.value
+    }
     if (data.label !== undefined)
       update.label = data.label
     if (data.isPrimary !== undefined)

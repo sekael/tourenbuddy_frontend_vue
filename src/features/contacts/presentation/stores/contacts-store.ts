@@ -20,7 +20,7 @@ function normalizePhoneValue(value: string): string {
   if (!trimmed)
     return trimmed
   const result = normalizePhone(trimmed)
-  return result.ok ? result.value : trimmed
+  return result.ok ? result.e164 : trimmed
 }
 
 const PHONE_LABEL_PRIORITY: Record<string, number> = { Mobile: 1, Home: 2, Work: 3 }
@@ -30,7 +30,10 @@ function resolvePrimaryByLabel(phones: PhoneEntry[]): PhoneEntry[] {
   let bestPriority = Number.MAX_SAFE_INTEGER
   for (let i = 0; i < phones.length; i++) {
     const label = phones[i]!.label ?? null
-    const priority = label !== null ? (PHONE_LABEL_PRIORITY[label] ?? Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER
+    const priority
+      = label !== null
+        ? (PHONE_LABEL_PRIORITY[label] ?? Number.MAX_SAFE_INTEGER)
+        : Number.MAX_SAFE_INTEGER
     if (priority < bestPriority) {
       bestPriority = priority
       bestIdx = i

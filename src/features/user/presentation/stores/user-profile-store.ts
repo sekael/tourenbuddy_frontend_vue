@@ -4,7 +4,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { InvalidPhoneNumberError } from '@/core/exceptions'
 import { useLogger } from '@/core/logging/use-logger'
-import { normalizePhone, toE164 } from '@/core/utils/phone-normalize'
+import { normalizePhone } from '@/core/utils/phone-normalize'
 import { supabase } from '@/core/utils/supabase'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { UserProfileRepositoryImpl } from '@/features/user/data/repositories/user-profile-repository-impl'
@@ -95,16 +95,14 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     const normalizeResult = normalizePhone(phone)
     if (!normalizeResult.ok)
       throw new InvalidPhoneNumberError()
-    const e164 = toE164(normalizeResult.value)
-    if (!e164)
-      throw new InvalidPhoneNumberError()
-    const { error: updateError } = await supabase.auth.updateUser({ phone: e164 })
+    const { error: updateError } = await supabase.auth.updateUser({ phone: normalizeResult.e164 })
     if (updateError)
       throw new Error(updateError.message)
   }
 
   async function verifyPhone(phone: string, token: string) {
-    const e164 = toE164(phone) ?? phone
+    const result = normalizePhone(phone)
+    const e164 = result.ok ? result.e164 : phone
     const { error: verifyError } = await supabase.auth.verifyOtp({
       phone: e164,
       token,

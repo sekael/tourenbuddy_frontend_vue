@@ -5,6 +5,7 @@ import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import {
+  formatPhoneDisplay,
   getPrimaryPhone,
   resolveContactName,
   resolveFullName,
@@ -54,6 +55,7 @@ interface ImportResult {
   lastName: string | null
   primaryPhone: string | null
   extraPhoneCount: number
+  rawPhoneNumbers: string[]
   status: 'imported' | 'skipped'
 }
 
@@ -126,18 +128,25 @@ async function handleAddSubmit(data: {
 }
 
 async function processImportedContacts(
-  items: Array<{ firstName: string, lastName: string | null, phones: PhoneEntry[] }>,
+  items: Array<{
+    firstName: string
+    lastName: string | null
+    phones: PhoneEntry[]
+    rawPhoneNumbers?: string[]
+  }>,
 ) {
   const results: ImportResult[] = []
   for (const item of items) {
     const primaryPhone
       = item.phones.find(p => p.isPrimary)?.value ?? item.phones[0]?.value ?? null
+    const rawPhoneNumbers = item.rawPhoneNumbers ?? []
     if (isDuplicate(item.firstName, item.lastName)) {
       results.push({
         firstName: item.firstName,
         lastName: item.lastName,
         primaryPhone,
         extraPhoneCount: Math.max(0, item.phones.length - 1),
+        rawPhoneNumbers,
         status: 'skipped',
       })
       continue
@@ -148,6 +157,7 @@ async function processImportedContacts(
       lastName: item.lastName,
       primaryPhone,
       extraPhoneCount: Math.max(0, item.phones.length - 1),
+      rawPhoneNumbers,
       status: 'imported',
     })
   }
@@ -239,11 +249,8 @@ function switchAddToForm() {
             <span v-if="contact.displayName" class="contact-subtitle">
               {{ resolveFullName(contact) }}
             </span>
-            <span
-              v-else-if="getPrimaryPhone(contact)"
-              class="contact-subtitle"
-            >
-              {{ getPrimaryPhone(contact) }}
+            <span v-else-if="getPrimaryPhone(contact)" class="contact-subtitle">
+              {{ formatPhoneDisplay(getPrimaryPhone(contact)!) }}
             </span>
           </div>
           <span class="material-symbols-outlined row-arrow">chevron_right</span>
@@ -276,8 +283,20 @@ function switchAddToForm() {
               <span class="result-name">{{ result.firstName }}{{ result.lastName ? ` ${result.lastName}` : '' }}</span>
               <span v-if="result.primaryPhone" class="result-phone">
                 <span class="material-symbols-outlined star-icon-sm">star</span>
-                {{ result.primaryPhone }}
+                {{ formatPhoneDisplay(result.primaryPhone) }}
                 <span v-if="result.extraPhoneCount > 0" class="extra-phones">+{{ result.extraPhoneCount }} more</span>
+              </span>
+              <span
+                v-if="result.rawPhoneNumbers.length > 0"
+                class="result-phone result-phone-warning"
+                :title="`Couldn't parse: ${result.rawPhoneNumbers.join(', ')}`"
+              >
+                ⚠ Couldn't add invalid phone number: {{ result.rawPhoneNumbers[0]
+                }}{{
+                  result.rawPhoneNumbers.length > 1
+                    ? ` +${result.rawPhoneNumbers.length - 1} more`
+                    : ''
+                }}
               </span>
             </div>
             <span
@@ -587,6 +606,10 @@ function switchAddToForm() {
   display: flex;
   align-items: center;
   gap: 3px;
+}
+
+.result-phone-warning {
+  color: var(--color-error);
 }
 
 .star-icon-sm {

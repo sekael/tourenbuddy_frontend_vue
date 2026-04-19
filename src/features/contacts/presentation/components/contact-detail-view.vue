@@ -4,6 +4,7 @@ import type { ContactMethod } from '@/features/contacts/domain/entities/contact-
 import type { NewContactMethod } from '@/features/contacts/domain/repositories/contact-methods-repository'
 import { computed, ref, watch } from 'vue'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
+import { normalizePhone } from '@/core/utils/phone-normalize'
 import { orderedPhoneMethods } from '@/features/contacts/core/utils/order-phone-methods'
 import { formatPhoneDisplay } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
@@ -118,6 +119,18 @@ watch(
 async function saveMethod(method: ContactMethod) {
   const edit = getMethodEdit(method)
   edit.error = null
+
+  if (method.methodType === 'phone') {
+    const rawValue = edit.value.trim()
+    if (rawValue) {
+      const result = normalizePhone(rawValue)
+      if (!result.ok) {
+        edit.error = 'Invalid phone number'
+        return
+      }
+    }
+  }
+
   edit.saving = true
   try {
     await store.updateMethodOnContact(props.contact.id, method.id, {
@@ -181,6 +194,13 @@ async function confirmAddMethod() {
   if (!newMethodValue.value.trim()) {
     addMethodError.value = 'Value is required'
     return
+  }
+  if (newMethodType.value === 'phone') {
+    const result = normalizePhone(newMethodValue.value.trim())
+    if (!result.ok) {
+      addMethodError.value = 'Invalid phone number'
+      return
+    }
   }
   isAddingMethod.value = true
   try {
@@ -306,9 +326,14 @@ async function confirmDelete() {
           <span class="material-symbols-outlined">phone</span>
         </div>
         <div class="method-fields">
+          <p v-if="!method.isValid" class="invalid-phone-hint">
+            <span class="material-symbols-outlined warn-icon">warning</span>
+            Invalid number — enter a valid phone to fix
+          </p>
           <input
             :value="getPhoneFormatter(method).formatted.value"
             class="input input-sm"
+            :class="{ 'input--warning': !method.isValid }"
             type="tel"
             placeholder="+41 79 012 34 56"
             @input="getPhoneFormatter(method).onInput"
@@ -567,6 +592,22 @@ async function confirmDelete() {
 .input-sm {
   font-size: var(--font-size-sm);
   padding: var(--spacing-xs) var(--spacing-sm);
+}
+
+.input--warning {
+  border-color: var(--color-warning, #f59e0b);
+}
+
+.invalid-phone-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-xs, 11px);
+  color: var(--color-warning, #f59e0b);
+}
+
+.warn-icon {
+  font-size: 14px;
 }
 
 .error-text {

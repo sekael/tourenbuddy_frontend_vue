@@ -1,83 +1,127 @@
 ## ADDED Requirements
 
-### Requirement: Contact model with Zod validation
+### Requirement: Primary phone highlighted with star icon
 
-A Zod schema SHALL define the contact shape: `id` (string), `userId` (string), `firstName` (string, required), `lastName` (string, nullable), `displayName` (string, nullable), `contactMethods` (array of `ContactMethod`, default empty). A computed `fullName` SHALL concatenate firstName and lastName.
+Any UI element that renders one or more phone methods of a contact (contacts list row subtitle, contact detail phone rows, contact chip, import-results row) SHALL highlight the primary phone with a filled Material Symbols `star` icon adjacent to the phone value. Non-primary phones SHALL NOT display the star icon. In form controls where the user picks the primary, the primary selector SHALL use a `star` glyph (filled when selected, outlined when not) so the picker matches the read-only highlight.
 
-#### Scenario: Valid contact with methods from Supabase
+#### Scenario: Primary phone shows filled star
 
-- **WHEN** a contact row is fetched from the `contacts` table with joined `contact_methods`
-- **THEN** the Zod schema SHALL parse it into a typed `Contact` object with `contactMethods` array populated
+- **WHEN** a phone method with `isPrimary: true` is rendered in any surface
+- **THEN** a filled `star` Material Symbols icon SHALL appear adjacent to the phone value
 
-#### Scenario: Contact with no methods
+#### Scenario: Non-primary phone has no star
 
-- **WHEN** a contact row is fetched with no related `contact_methods` rows
-- **THEN** the `contactMethods` array SHALL be empty
+- **WHEN** a phone method with `isPrimary: false` is rendered
+- **THEN** no star icon SHALL appear on that row
 
-#### Scenario: Display name resolution
+#### Scenario: Primary selector uses star icon
 
-- **WHEN** rendering a contact's name
-- **THEN** the display SHALL prefer `displayName`, then fall back to `fullName` (firstName + lastName), then `firstName` alone
+- **WHEN** the contact form or contact detail view renders the primary-selection control on a phone row
+- **THEN** the control SHALL display a `star` icon — filled when that row is the selected primary, outlined when it is not
 
-### Requirement: Contacts repository
+### Requirement: Phone methods rendered primary-first
 
-A repository SHALL provide methods to fetch all contacts (with their contact methods) for the current user, create new contacts, update existing contacts, and delete contacts in the `contacts` Supabase table.
+Anywhere the app renders a contact's phone methods — contact list subtitle, contact chip, contact detail view, import-results row — the primary phone SHALL be shown first. A shared helper `orderedPhoneMethods(contact)` SHALL return phone methods with the primary first and the remaining in insertion order.
 
-#### Scenario: Fetch contacts with methods
+#### Scenario: Detail view lists primary phone first
 
-- **WHEN** `fetchContacts()` is called
-- **THEN** the repository SHALL SELECT all contacts for the current user with joined `contact_methods(*)`, ordered by `first_name`
+- **WHEN** a contact with three phone methods is opened in the detail view
+- **THEN** the phone method with `isPrimary: true` SHALL render at the top of the phones list
 
-#### Scenario: Create contact
+#### Scenario: List subtitle uses primary phone
 
-- **WHEN** `createContact(contact)` is called
-- **THEN** the repository SHALL INSERT the contact into `contacts` and return the created row with its generated ID
+- **WHEN** the contacts list renders a row for a contact with multiple phones
+- **THEN** the subtitle SHALL show the primary phone's value
 
-#### Scenario: Update contact via repository
+### Requirement: Manual contact form supports multiple phones
 
-- **WHEN** `updateContact` is called with a valid contact ID and partial data (excluding `id`, `userId`, and `contactMethods`)
-- **THEN** the contact row in Supabase is updated and the full updated contact (with methods) is returned
+The contact creation form SHALL render a dynamic list of phone rows (value + optional label + primary radio). Users SHALL be able to add and remove phone rows. When more than one phone row has a non-empty value, exactly one row SHALL be selected as primary before the form can be submitted. When only one phone row has a non-empty value, that row SHALL be treated as primary implicitly.
 
-#### Scenario: Delete contact via repository
+#### Scenario: Add a second phone row
 
-- **WHEN** `deleteContact` is called with a valid contact ID
-- **THEN** the contact row and all associated `contact_methods` rows are deleted from Supabase (via database cascade)
+- **WHEN** the user taps "Add phone" in the contact creation form
+- **THEN** a new empty phone row SHALL appear with a primary radio unselected
 
-### Requirement: ContactsRepository supports update
+#### Scenario: Submit with two phones and no primary selected
 
-The `ContactsRepository` interface SHALL include an `updateContact(id, data)` method that accepts a contact ID and partial contact data (excluding `id`, `userId`, and `contactMethods`). The Supabase implementation SHALL perform an UPDATE query and return the updated contact with joined contact methods.
+- **WHEN** the user submits the form with two non-empty phone rows and no primary radio selected
+- **THEN** the form SHALL display a validation error and SHALL NOT submit
 
-### Requirement: ContactsRepository supports delete
+#### Scenario: Submit with two phones and a primary selected
 
-The `ContactsRepository` interface SHALL include a `deleteContact(id)` method that accepts a contact ID. The Supabase implementation SHALL perform a DELETE query. Associated contact methods SHALL be removed via database cascade.
+- **WHEN** the user submits the form with two non-empty phone rows and one marked primary
+- **THEN** `contactsStore.addContact` SHALL be called with both phones and the selected one flagged `isPrimary: true`
 
-### Requirement: ContactMethodsRepository supports update
+#### Scenario: Submit with a single phone row
 
-The `ContactMethodsRepository` interface SHALL include an `updateMethod(id, data)` method that accepts a method ID and partial method data (excluding `id` and `contactId`). The Supabase implementation SHALL perform an UPDATE query and return the updated method.
+- **WHEN** the user submits the form with only one non-empty phone row
+- **THEN** that phone SHALL be submitted with `isPrimary: true` regardless of the primary radio state
 
-#### Scenario: Update method via repository
+#### Scenario: Remove a phone row
 
-- **WHEN** `updateMethod` is called with a valid method ID and partial data
-- **THEN** the method row in Supabase is updated and the full updated method is returned
+- **WHEN** the user taps the remove action on a phone row in the form
+- **THEN** the row SHALL be removed; if the removed row was the selected primary and other rows remain, the primary radio SHALL reset to the first remaining row
+
+### Requirement: Contact detail view primary phone selection
+
+The contact detail view SHALL render every phone method with a primary radio. Selecting a non-primary phone as primary SHALL call `setPrimaryPhone` so the store updates the invariant and the view re-renders with the new primary first.
+
+#### Scenario: Toggle primary between two existing phones — success
+
+- **WHEN** the contact has two phone methods and the user selects the currently non-primary phone's primary star control
+- **THEN** the store SHALL call `setPrimaryPhone(contactId, newPrimaryId)` and, after the repository call succeeds, the selected phone SHALL have `isPrimary: true` while the other has `isPrimary: false`
+
+#### Scenario: Toggle primary fails — previous primary retained
+
+- **WHEN** the user selects a non-primary phone as primary and the `setPrimaryPhone` repository call rejects
+- **THEN** the previously primary phone SHALL remain primary in the store and in the DB
+- **AND** the UI SHALL surface an error (e.g. snackbar) and restore the star highlight to the previous primary row
+
+#### Scenario: Add a new phone — default not primary when primary exists
+
+- **WHEN** the user adds a phone method to a contact that already has a primary phone
+- **THEN** the new phone SHALL be inserted with `isPrimary: false` and the existing primary SHALL remain
+
+#### Scenario: Add the first phone — auto primary
+
+- **WHEN** the user adds a phone method to a contact with zero existing phones
+- **THEN** the new phone SHALL be inserted with `isPrimary: true`
+
+#### Scenario: Remove the current primary phone
+
+- **WHEN** the user removes the phone method currently marked primary and other phone methods remain
+- **THEN** the store SHALL mark the next remaining phone (by insertion order) as primary via `setPrimaryPhone`
+
+## MODIFIED Requirements
 
 ### Requirement: Contacts store
 
-A Pinia store (`useContactsStore`) SHALL manage the list of contacts (including their contact methods) with reactive `contacts`, `isLoading`, and `error` state.
+A Pinia store (`useContactsStore`) SHALL manage the list of contacts (including their contact methods) with reactive `contacts`, `isLoading`, and `error` state. The `addContact` action SHALL accept multiple phone entries and enforce the single-primary invariant on write.
 
 #### Scenario: Auto-load on authentication
 
 - **WHEN** the auth store transitions to authenticated
 - **THEN** the contacts store SHALL automatically fetch all contacts with their contact methods
 
-#### Scenario: Add contact with phone
+#### Scenario: Add contact with multiple phones
 
-- **WHEN** `addContact(firstName, lastName?, displayName?, phoneNumber?)` is called with a phone number
-- **THEN** the store SHALL create the contact, then add a primary phone contact method via `ContactMethodsRepository`, add the full contact (with method) to the local list, and re-sort by firstName
+- **WHEN** `addContact(firstName, lastName?, displayName?, phones?)` is called with `phones = [{ value: v1, isPrimary: true }, { value: v2, isPrimary: false }]`
+- **THEN** the store SHALL create the contact, then insert both phone contact methods — the first with `is_primary = true`, the second with `is_primary = false` — add the full contact with ordered methods to the local list, and re-sort by firstName
+
+#### Scenario: Add contact with one phone
+
+- **WHEN** `addContact` is called with `phones = [{ value, isPrimary: true }]`
+- **THEN** the store SHALL create the contact and a single phone method with `isPrimary: true`
 
 #### Scenario: Add contact without phone
 
-- **WHEN** `addContact(firstName, lastName?, displayName?)` is called without a phone number
+- **WHEN** `addContact` is called with no `phones` or with an empty array
 - **THEN** the store SHALL create the contact with empty `contactMethods` array
+
+#### Scenario: Add contact with multiple phones but none primary
+
+- **WHEN** `addContact` is called with two or more phones and none is marked `isPrimary: true`
+- **THEN** the store SHALL throw a validation error and SHALL NOT create the contact
 
 #### Scenario: Store update reflects in list
 
@@ -94,50 +138,19 @@ A Pinia store (`useContactsStore`) SHALL manage the list of contacts (including 
 - **WHEN** the auth store signs out
 - **THEN** the contacts store SHALL clear its cached contacts list
 
-### Requirement: Contacts store supports update
-
-The Pinia contacts store SHALL include an `updateContact()` action that calls the repository, updates the local contacts array, and re-sorts alphabetically.
-
-### Requirement: Contacts store supports delete
-
-The Pinia contacts store SHALL include a `deleteContact()` action that calls the repository and removes the contact from the local contacts array. The contact SHALL NOT be removed from the local list until the server confirms deletion.
-
-### Requirement: Contacts list sheet accessible from map overlay
-
-The system SHALL display a contacts list sheet (BottomSheet on mobile, SideDrawer on desktop) when the user taps the "Contacts" FAB button on the map action overlay. The sheet SHALL show all contacts belonging to the authenticated user, sorted alphabetically by first name.
-
-#### Scenario: Open contacts list from map overlay
-
-- **WHEN** user taps the "Contacts" FAB button on the map action overlay
-- **THEN** a contacts list sheet opens showing all saved contacts sorted alphabetically by first name
-
-#### Scenario: Empty contacts state
-
-- **WHEN** user opens the contacts list and has no contacts
-- **THEN** the sheet displays an empty state message (e.g., "No contacts yet") and a prominent "Add contact" action
-
-#### Scenario: Close contacts list
-
-- **WHEN** user taps the close button on the contacts list sheet OR taps the map background
-- **THEN** the contacts list sheet closes and returns to the map view
-
-### Requirement: Map overlay button shows "Contacts" instead of "Add contact"
-
-The map action overlay SHALL display a "Contacts" button with the `contacts` Material Symbol icon, replacing the previous "Add contact" button with the `person_add` icon. The button SHALL emit an `openContacts` event instead of `openAddContact`.
-
-#### Scenario: Button label and icon
-
-- **WHEN** the map action overlay is visible
-- **THEN** the contacts FAB shows the `contacts` icon and has title "Contacts"
-
 ### Requirement: Contact list item display
 
 Each contact in the list SHALL display the resolved contact name (using existing `resolveContactName()` logic) and the primary phone number if available. Each row SHALL be tappable to navigate to the contact detail/edit view within the sheet.
 
-#### Scenario: Contact with phone number
+#### Scenario: Contact with one phone number
 
-- **WHEN** a contact has a primary phone method
-- **THEN** the list item shows the contact name and the primary phone number below it
+- **WHEN** a contact has exactly one phone method
+- **THEN** the list item shows the contact name and that phone number below it
+
+#### Scenario: Contact with multiple phones
+
+- **WHEN** a contact has multiple phone methods
+- **THEN** the list item subtitle SHALL show the phone method marked `isPrimary: true`
 
 #### Scenario: Contact without contact methods
 
@@ -148,205 +161,3 @@ Each contact in the list SHALL display the resolved contact name (using existing
 
 - **WHEN** user taps a contact row in the list
 - **THEN** the sheet navigates to the detail/edit view for that contact
-
-### Requirement: Add contact entry point from contacts list
-
-The contacts list view SHALL include an "Add contact" action that opens the contact creation flow. This preserves existing import flows (vCard file, Contact Picker API) and manual form entry.
-
-#### Scenario: Add contact from list view
-
-- **WHEN** user taps the "Add contact" action in the contacts list
-- **THEN** the sheet navigates to the contact creation view with import options and manual form
-
-#### Scenario: Return to list after adding contact
-
-- **WHEN** user completes adding a contact (manual or import)
-- **THEN** the sheet returns to the contacts list with the new contact visible in the sorted list
-
-### Requirement: Edit contact name fields
-
-The system SHALL allow editing a contact's firstName, lastName, and displayName from the contact detail view. The firstName field SHALL remain required. Changes SHALL be persisted to Supabase via the `ContactsRepository.updateContact()` method.
-
-#### Scenario: Edit first name
-
-- **WHEN** user changes the first name field and saves
-- **THEN** the contact's first name is updated in Supabase and the contacts list reflects the change
-
-#### Scenario: Edit with empty first name rejected
-
-- **WHEN** user clears the first name field and attempts to save
-- **THEN** the system shows a validation error and does not persist the change
-
-#### Scenario: Edit optional name fields
-
-- **WHEN** user edits the lastName or displayName fields (including clearing them) and saves
-- **THEN** the changes are persisted and the contacts list reflects the updated name
-
-### Requirement: Edit contact methods
-
-The contact detail view SHALL display all existing contact methods as editable rows. Each row shows the method type (phone/email), value, and an optional label. Users SHALL be able to edit the value and label of existing methods.
-
-#### Scenario: Edit phone number value
-
-- **WHEN** user changes the value of a phone contact method and saves
-- **THEN** the method is updated in Supabase via `ContactMethodsRepository.updateMethod()`
-
-#### Scenario: Edit method label
-
-- **WHEN** user changes the label of a contact method (e.g., "Mobile" → "Work") and saves
-- **THEN** the label is updated in Supabase
-
-### Requirement: Add new contact methods from edit view
-
-The contact detail view SHALL include an "Add method" action that allows adding a new phone or email method to the contact. This uses the existing `ContactMethodsRepository.addMethod()`.
-
-#### Scenario: Add phone method to existing contact
-
-- **WHEN** user taps "Add method", selects phone type, enters a number, and saves
-- **THEN** a new phone method is added to the contact and displayed in the methods list
-
-#### Scenario: Add email method to existing contact
-
-- **WHEN** user taps "Add method", selects email type, enters an email, and saves
-- **THEN** a new email method is added to the contact and displayed in the methods list
-
-### Requirement: Remove contact methods from edit view
-
-The contact detail view SHALL allow removing individual contact methods. Each method row SHALL have a remove action. This uses existing `ContactMethodsRepository.removeMethod()`.
-
-#### Scenario: Remove a contact method
-
-- **WHEN** user taps the remove action on a contact method
-- **THEN** the method is deleted from Supabase and removed from the methods list
-
-#### Scenario: Contact with no methods after removal
-
-- **WHEN** user removes the last contact method from a contact
-- **THEN** the contact remains valid with no methods (name-only contact is allowed)
-
-### Requirement: Navigate back from detail to list
-
-The contact detail/edit view SHALL include a back navigation action that returns to the contacts list. Unsaved changes SHALL be discarded on back navigation.
-
-#### Scenario: Back to list from detail
-
-- **WHEN** user taps the back button in the contact detail view
-- **THEN** the sheet returns to the contacts list view
-
-### Requirement: Delete contact from detail view
-
-The contact detail view SHALL include a "Delete" action. Deleting a contact SHALL remove the contact and all associated contact methods from Supabase. The system SHALL NOT allow accidental deletion — a confirmation step is required.
-
-#### Scenario: Delete contact with confirmation
-
-- **WHEN** user taps "Delete" on a contact in the detail view
-- **THEN** an inline confirmation prompt appears (e.g., "Are you sure? Delete / Cancel")
-- **WHEN** user confirms deletion
-- **THEN** the contact and all its methods are deleted from Supabase, the contacts list updates, and the view returns to the contacts list
-
-#### Scenario: Cancel deletion
-
-- **WHEN** user taps "Delete" and then taps "Cancel" on the confirmation prompt
-- **THEN** the contact is not deleted and the detail view remains open
-
-#### Scenario: Delete contact that is a tour partner
-
-- **WHEN** user deletes a contact that is referenced as a partner in one or more tours
-- **THEN** the contact is deleted (Supabase foreign key cascade or application-level cleanup handles partner references)
-
-### Requirement: Loading and error states for delete
-
-The delete operation SHALL show a loading indicator while in progress and display an error message if the operation fails. The contact SHALL NOT be removed from the local list until the server confirms deletion.
-
-#### Scenario: Delete loading state
-
-- **WHEN** deletion is in progress
-- **THEN** the delete button shows a loading indicator and further actions are disabled
-
-#### Scenario: Delete error handling
-
-- **WHEN** the delete operation fails (network error, server error)
-- **THEN** an error message is displayed and the contact remains in the list
-
-### Requirement: Contact creation dialog
-
-A dialog component SHALL allow users to create new contacts manually or via import. The dialog SHALL have two view states: `form` (default, showing import buttons and manual entry fields) and `import-results` (showing a list of imported contacts). After a successful import, the dialog SHALL switch to the `import-results` view.
-
-#### Scenario: Default view shows form
-
-- **WHEN** the contact creation dialog opens
-- **THEN** the dialog SHALL display import buttons and manual entry fields (first name, last name, display name, phone number)
-
-#### Scenario: Switch to import results after file import
-
-- **WHEN** the user imports contacts via a .vcf file
-- **THEN** the dialog SHALL replace the form with a scrollable list of import results showing each contact's name, phone number (if present), and status (imported or skipped)
-
-#### Scenario: Switch to import results after Contact Picker import
-
-- **WHEN** the user imports contacts via the Contact Picker API
-- **THEN** the dialog SHALL replace the form with a scrollable list of import results
-
-#### Scenario: Import results show skipped contacts
-
-- **WHEN** contacts are skipped during import due to duplicates
-- **THEN** the skipped contacts SHALL appear in the results list with a visual "skipped" indicator distinguishing them from successfully imported contacts
-
-#### Scenario: Return to manual entry from import results
-
-- **WHEN** the user is viewing import results and taps "Add another manually"
-- **THEN** the dialog SHALL switch back to the form view with all fields cleared
-
-#### Scenario: Close from import results
-
-- **WHEN** the user is viewing import results and taps "Done"
-- **THEN** the dialog SHALL close
-
-#### Scenario: Valid manual submission
-
-- **WHEN** the user fills in at least the first name and submits from the form view
-- **THEN** the dialog SHALL call `contactsStore.addContact()` and close
-
-#### Scenario: Missing required field
-
-- **WHEN** the user submits without a first name
-- **THEN** the form SHALL display a validation error
-
-### Requirement: Contact chip component
-
-A reusable `ContactChip` component SHALL display a contact's name and support toggle selection for use in tour partner selection.
-
-#### Scenario: Display contact name
-
-- **WHEN** a ContactChip is rendered
-- **THEN** it SHALL show the contact's resolved display name (displayName → fullName → firstName)
-
-#### Scenario: Toggle selection
-
-- **WHEN** a user clicks a ContactChip
-- **THEN** it SHALL toggle between selected and unselected states, emitting the change to the parent
-
-## MODIFIED Requirements
-
-### Requirement: Contact chip design
-
-The contact chip SHALL have a pill shape (border-radius: 9999px). When unselected, it SHALL have a transparent background with `--color-outline-variant` border. When selected, it SHALL have a subtle `--color-primary` tint background (10-15% opacity) with `--color-primary` border and `--color-primary` text, and display a Material Symbols `check` icon. Hover state SHALL use `--color-surface-variant` background.
-
-#### Scenario: Selected chip uses tint instead of solid fill
-
-- **WHEN** a contact chip is in selected state
-- **THEN** it displays with a subtle primary-tinted background rather than a solid primary fill
-
-#### Scenario: Chip uses Material Symbols checkmark
-
-- **WHEN** a contact chip is selected
-- **THEN** a Material Symbols `check` icon is displayed instead of a Unicode checkmark
-
-### Requirement: Contact creation dialog styling
-
-The contact creation dialog SHALL use the same modern dialog styling as tour creation: `--color-surface` background, `--shadow-lg`, 16px border-radius, `--color-outline-variant` border. The close/cancel button SHALL use Material Symbols `close` icon. Input fields SHALL use updated input styling.
-
-#### Scenario: Contact creation dialog renders with modern design
-
-- **WHEN** user opens the contact creation dialog
-- **THEN** the dialog displays with updated color tokens, shadows, and input styles

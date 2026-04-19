@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
 import { InvalidPhoneNumberError } from '@/core/exceptions'
-import { normalizePhone } from '@/core/utils/phone-normalize'
+import { formatPhoneForDisplay } from '@/core/utils/phone-normalize'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
@@ -36,8 +36,7 @@ const displayPhoneNumber = computed(() => {
   const phone = full.value?.phoneNumber
   if (!phone)
     return null
-  const result = normalizePhone(phone)
-  return result.ok ? result.value : phone
+  return formatPhoneForDisplay(phone) || phone
 })
 
 const displayName = computed(() => {
