@@ -287,7 +287,7 @@ describe('useContactsStore', () => {
       await store.loadContacts()
       await store.updateContact('1', { firstName: 'Zara' })
 
-      const idx = store.contacts.findIndex((c) => c.id === '1')
+      const idx = store.contacts.findIndex(c => c.id === '1')
       expect(store.contacts[idx]!.firstName).toBe('Zara')
       expect(store.contacts[0]!.firstName).toBe('Bob')
     })
@@ -360,8 +360,8 @@ describe('useContactsStore', () => {
       await store.setPrimaryPhoneOnContact('1', 'method-2')
 
       expect(mockSetPrimaryPhone).toHaveBeenCalledWith('1', 'method-2')
-      const phones = store.contacts[0]!.contactMethods.filter((m) => m.methodType === 'phone')
-      const newPrimary = phones.find((m) => m.id === 'method-2')
+      const phones = store.contacts[0]!.contactMethods.filter(m => m.methodType === 'phone')
+      const newPrimary = phones.find(m => m.id === 'method-2')
       expect(newPrimary?.isPrimary).toBe(true)
     })
 
@@ -374,9 +374,9 @@ describe('useContactsStore', () => {
       await store.loadContacts()
 
       await expect(store.setPrimaryPhoneOnContact('1', 'method-2')).rejects.toThrow()
-      const phones = store.contacts[0]!.contactMethods.filter((m) => m.methodType === 'phone')
-      expect(phones.find((m) => m.id === 'method-1')?.isPrimary).toBe(true)
-      expect(phones.find((m) => m.id === 'method-2')?.isPrimary).toBe(false)
+      const phones = store.contacts[0]!.contactMethods.filter(m => m.methodType === 'phone')
+      expect(phones.find(m => m.id === 'method-1')?.isPrimary).toBe(true)
+      expect(phones.find(m => m.id === 'method-2')?.isPrimary).toBe(false)
     })
   })
 
