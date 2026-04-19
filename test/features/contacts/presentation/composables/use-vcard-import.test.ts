@@ -214,4 +214,29 @@ END:VCARD`
     const result = parseVCardText(vcard)
     expect(result[0]!.phones[0]!.isPrimary).toBe(true)
   })
+
+  it('iOS TYPE=iPhone treated as CELL wins over WORK', () => {
+    const vcard = `BEGIN:VCARD
+VERSION:3.0
+FN:iOS User
+TEL;type=WORK;type=VOICE:+41 44 555 66 77
+TEL;type=iPhone;type=CELL;type=VOICE:+41 79 123 45 67
+END:VCARD`
+    const result = parseVCardText(vcard)
+    const primary = result[0]!.phones.find(p => p.isPrimary)
+    expect(primary?.value).toBe('+41 79 123 45 67')
+    expect(primary?.label).toBe('Mobile')
+  })
+
+  it('iOS TYPE=iPhone only (no CELL) treated as mobile, wins over WORK', () => {
+    const vcard = `BEGIN:VCARD
+VERSION:3.0
+FN:iOS User2
+TEL;type=WORK;type=VOICE:+41 44 555 66 77
+TEL;type=iPhone;type=VOICE:+41 79 123 45 67
+END:VCARD`
+    const result = parseVCardText(vcard)
+    const primary = result[0]!.phones.find(p => p.isPrimary)
+    expect(primary?.value).toBe('+41 79 123 45 67')
+  })
 })

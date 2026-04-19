@@ -23,6 +23,22 @@ function normalizePhoneValue(value: string): string {
   return result.ok ? result.value : trimmed
 }
 
+const PHONE_LABEL_PRIORITY: Record<string, number> = { Mobile: 1, Home: 2, Work: 3 }
+
+function resolvePrimaryByLabel(phones: PhoneEntry[]): PhoneEntry[] {
+  let bestIdx = 0
+  let bestPriority = Number.MAX_SAFE_INTEGER
+  for (let i = 0; i < phones.length; i++) {
+    const label = phones[i]!.label ?? null
+    const priority = label !== null ? (PHONE_LABEL_PRIORITY[label] ?? Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER
+    if (priority < bestPriority) {
+      bestPriority = priority
+      bestIdx = i
+    }
+  }
+  return phones.map((p, i) => ({ ...p, isPrimary: i === bestIdx }))
+}
+
 const repository = new ContactsRepositoryImpl()
 const contactMethodsRepository = new ContactMethodsRepositoryImpl()
 
@@ -59,17 +75,23 @@ export const useContactsStore = defineStore('contacts', () => {
     lastName?: string | null,
     displayName?: string | null,
     phones?: PhoneEntry[],
+    source: 'manual' | 'import' = 'manual',
   ) {
     const userId = authStore.currentUser?.id
     if (!userId)
       return
 
-    const phoneList = phones ?? []
+    let phoneList = phones ?? []
 
     if (phoneList.length > 1) {
-      const primaryCount = phoneList.filter(p => p.isPrimary).length
-      if (primaryCount !== 1)
-        throw new Error('Exactly one phone must be marked as primary when adding multiple phones')
+      if (source === 'import') {
+        phoneList = resolvePrimaryByLabel(phoneList)
+      }
+      else {
+        const primaryCount = phoneList.filter(p => p.isPrimary).length
+        if (primaryCount !== 1)
+          throw new Error('Exactly one phone must be marked as primary when adding multiple phones')
+      }
     }
 
     const contact = await repository.createContact({
@@ -79,16 +101,36 @@ export const useContactsStore = defineStore('contacts', () => {
       displayName: displayName?.trim() || null,
     })
 
-    for (const phone of phoneList) {
-      const normalized = normalizePhoneValue(phone.value)
-      if (!normalized)
-        continue
-      const isPrimary = phoneList.length === 1 ? true : phone.isPrimary
+    const preparedPhones = phoneList
+      .map((phone) => {
+        const normalized = normalizePhoneValue(phone.value)
+        if (!normalized)
+          return null
+        return {
+          value: normalized,
+          label: phone.label ?? null,
+          isPrimary: phone.isPrimary,
+        }
+      })
+      .filter((p): p is { value: string, label: string | null, isPrimary: boolean } => p !== null)
+
+    if (preparedPhones.length === 1)
+      preparedPhones[0]!.isPrimary = true
+
+    // Insert primary first so any DB-side "first phone becomes primary" rule
+    // aligns with the caller-selected primary. Preserve original order otherwise.
+    const primaryIdx = preparedPhones.findIndex(p => p.isPrimary)
+    const orderedPhones
+      = primaryIdx > 0
+        ? [preparedPhones[primaryIdx]!, ...preparedPhones.filter((_, i) => i !== primaryIdx)]
+        : preparedPhones
+
+    for (const phone of orderedPhones) {
       const method = await contactMethodsRepository.addMethod(contact.id, {
         methodType: 'phone',
-        value: normalized,
-        label: phone.label ?? null,
-        isPrimary,
+        value: phone.value,
+        label: phone.label,
+        isPrimary: phone.isPrimary,
       })
       contact.contactMethods.push(method)
     }

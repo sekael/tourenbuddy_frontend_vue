@@ -4,7 +4,6 @@ import type { PhoneEntry } from '@/features/contacts/presentation/stores/contact
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
-import { orderedPhoneMethods } from '@/features/contacts/core/utils/order-phone-methods'
 import {
   getPrimaryPhone,
   resolveContactName,
@@ -143,7 +142,7 @@ async function processImportedContacts(
       })
       continue
     }
-    await contactsStore.addContact(item.firstName, item.lastName, null, item.phones)
+    await contactsStore.addContact(item.firstName, item.lastName, null, item.phones, 'import')
     results.push({
       firstName: item.firstName,
       lastName: item.lastName,
@@ -242,12 +241,8 @@ function switchAddToForm() {
             </span>
             <span
               v-else-if="getPrimaryPhone(contact)"
-              class="contact-subtitle contact-subtitle--phone"
+              class="contact-subtitle"
             >
-              <span
-                v-if="orderedPhoneMethods(contact).length > 1"
-                class="material-symbols-outlined star-icon-sm"
-              >star</span>
               {{ getPrimaryPhone(contact) }}
             </span>
           </div>
@@ -472,12 +467,6 @@ function switchAddToForm() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.contact-subtitle--phone {
-  display: flex;
-  align-items: center;
-  gap: 2px;
 }
 
 .row-arrow {

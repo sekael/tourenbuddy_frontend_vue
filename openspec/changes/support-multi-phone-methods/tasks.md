@@ -80,5 +80,5 @@
 
 - [x] 11.1 Run `npm run lint` and `npm run format`; fix any reported issues
 - [x] 11.2 Run `npm run type-check` and `npm run test`; fix failures
-- [ ] 11.3 Prompt user to commit with message: `feat(contacts): support multiple phone methods per contact with enforced primary`
-- [ ] 11.4 Prompt user to push branch and open PR referencing #41
+- [x] 11.3 Prompt user to commit with message: `feat(contacts): support multiple phone methods per contact with enforced primary`
+- [x] 11.4 Prompt user to push branch and open PR referencing #41

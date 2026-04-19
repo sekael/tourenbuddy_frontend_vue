@@ -13,11 +13,15 @@ export interface VCardContact extends ParsedName {
 }
 
 function parseTelTypes(params: string): string[] {
-  const types: string[] = []
+  const seen = new Set<string>()
   for (const match of params.matchAll(/TYPE=([^;:\r\n]+)/gi)) {
-    for (const t of match[1]!.split(',')) types.push(t.trim().toUpperCase())
+    for (const t of match[1]!.split(',')) {
+      const upper = t.trim().toUpperCase()
+      // iOS exports TYPE=iPhone (without TYPE=CELL) — treat as CELL
+      seen.add(upper === 'IPHONE' ? 'CELL' : upper)
+    }
   }
-  return types
+  return [...seen]
 }
 
 function deriveTelLabel(types: string[]): string | null {
