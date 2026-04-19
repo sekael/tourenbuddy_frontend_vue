@@ -22,7 +22,7 @@
 - [x] 4.2 Contact detail view phone-method edit row: apply `useAsYouTypePhone` to the input; same validation on save; show inline error; persist `e164`.
 - [x] 4.3 Add-method form (new phone method on existing contact): apply `useAsYouTypePhone`; same validate-on-save flow.
 - [x] 4.4 Surface `isValid===false` rows on detail view with warning indicator + raw value (per `contacts` spec).
-- [ ] 4.5 Update component tests for all manual entry forms (live format applied + validation gate).
+- [x] 4.5 Update component tests for all manual entry forms (live format applied + validation gate).
 
 ## 5. Import path enforcement
 
