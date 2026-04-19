@@ -21,7 +21,8 @@ interface ImportResult {
 const emit = defineEmits<{ close: [] }>()
 
 function isCanonicalPhone(phone: string | null): boolean {
-  if (!phone) return true
+  if (!phone)
+    return true
   const result = normalizePhone(phone)
   return result.ok && result.value === phone
 }
@@ -43,9 +44,9 @@ const fileInput = ref<HTMLInputElement | null>(null)
 
 function isDuplicate(first: string, last: string | null): boolean {
   return contacts.value.some(
-    (c) =>
-      c.firstName.toLowerCase() === first.toLowerCase() &&
-      (c.lastName ?? '').toLowerCase() === (last ?? '').toLowerCase(),
+    c =>
+      c.firstName.toLowerCase() === first.toLowerCase()
+      && (c.lastName ?? '').toLowerCase() === (last ?? '').toLowerCase(),
   )
 }
 
@@ -65,21 +66,23 @@ async function handleSubmit(data: {
   try {
     await contactsStore.addContact(data.firstName, data.lastName, data.displayName, data.phones)
     emit('close')
-  } catch (err) {
+  }
+  catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to add contact'
-  } finally {
+  }
+  finally {
     isLoading.value = false
   }
 }
 
 async function processImportedContacts(
-  items: Array<{ firstName: string; lastName: string | null; phones: PhoneEntry[] }>,
+  items: Array<{ firstName: string, lastName: string | null, phones: PhoneEntry[] }>,
 ) {
   const results: ImportResult[] = []
 
   for (const item of items) {
-    const primaryPhone =
-      item.phones.find((p) => p.isPrimary)?.value ?? item.phones[0]?.value ?? null
+    const primaryPhone
+      = item.phones.find(p => p.isPrimary)?.value ?? item.phones[0]?.value ?? null
     if (isDuplicate(item.firstName, item.lastName)) {
       results.push({
         firstName: item.firstName,
@@ -112,9 +115,11 @@ async function handleContactPickerImport() {
   try {
     const picked = await pickContacts()
     await processImportedContacts(picked)
-  } catch (err) {
+  }
+  catch (err) {
     error.value = err instanceof Error ? err.message : 'Import failed'
-  } finally {
+  }
+  finally {
     isLoading.value = false
   }
 }
@@ -125,18 +130,22 @@ function handleFileImportClick() {
 
 async function handleFileChange(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0]
-  if (!file) return
+  if (!file)
+    return
 
   isLoading.value = true
   error.value = null
   try {
     const parsed = await parseVCardFile(file)
     await processImportedContacts(parsed)
-  } catch (err) {
+  }
+  catch (err) {
     error.value = err instanceof Error ? err.message : 'File import failed'
-  } finally {
+  }
+  finally {
     isLoading.value = false
-    if (fileInput.value) fileInput.value.value = ''
+    if (fileInput.value)
+      fileInput.value.value = ''
   }
 }
 </script>
@@ -165,8 +174,7 @@ async function handleFileChange(event: Event) {
                 v-if="!result.phoneCanonical"
                 class="result-phone-warning"
                 title="Phone number format couldn't be recognized — edit the contact to fix it"
-                >⚠</span
-              >
+              >⚠</span>
               <span v-if="result.extraPhoneCount > 0" class="extra-phones">
                 +{{ result.extraPhoneCount }} more
               </span>
@@ -186,7 +194,9 @@ async function handleFileChange(event: Event) {
           <span class="material-symbols-outlined">add</span>
           Add another manually
         </button>
-        <button type="button" class="submit-btn" @click="emit('close')">Done</button>
+        <button type="button" class="submit-btn" @click="emit('close')">
+          Done
+        </button>
       </div>
     </div>
 
@@ -218,7 +228,7 @@ async function handleFileChange(event: Event) {
           accept=".vcf,.vcard"
           class="file-input-hidden"
           @change="handleFileChange"
-        />
+        >
       </div>
 
       <div class="divider" />

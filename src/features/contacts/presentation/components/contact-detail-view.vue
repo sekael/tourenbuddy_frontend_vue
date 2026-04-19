@@ -9,7 +9,7 @@ import { formatPhoneDisplay } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 
 const props = defineProps<{ contact: Contact }>()
-const emit = defineEmits<{ back: []; deleted: [] }>()
+const emit = defineEmits<{ back: [], deleted: [] }>()
 
 const store = useContactsStore()
 
@@ -46,9 +46,11 @@ async function saveName() {
       displayName: displayName.value.trim() || null,
     })
     emit('back')
-  } catch (err) {
+  }
+  catch (err) {
     nameError.value = err instanceof Error ? err.message : 'Failed to save'
-  } finally {
+  }
+  finally {
     isSavingName.value = false
   }
 }
@@ -71,7 +73,8 @@ function getPhoneFormatter(method: ContactMethod) {
     const phoneRef = computed({
       get: () => methodEdits.value[method.id]?.value ?? '',
       set: (v: string) => {
-        if (methodEdits.value[method.id]) methodEdits.value[method.id]!.value = v
+        if (methodEdits.value[method.id])
+          methodEdits.value[method.id]!.value = v
       },
     })
     phoneFormatterCache.set(method.id, useAsYouTypePhone(phoneRef))
@@ -121,9 +124,11 @@ async function saveMethod(method: ContactMethod) {
       value: edit.value.trim(),
       label: edit.label.trim() || null,
     })
-  } catch (err) {
+  }
+  catch (err) {
     edit.error = err instanceof Error ? err.message : 'Failed to save'
-  } finally {
+  }
+  finally {
     edit.saving = false
   }
 }
@@ -135,11 +140,13 @@ async function removeMethod(methodId: string) {
 }
 
 async function setPrimaryPhone(method: ContactMethod) {
-  if (method.isPrimary) return
+  if (method.isPrimary)
+    return
   setPrimaryError.value = null
   try {
     await store.setPrimaryPhoneOnContact(props.contact.id, method.id)
-  } catch (err) {
+  }
+  catch (err) {
     setPrimaryError.value = err instanceof Error ? err.message : 'Failed to update primary phone'
   }
 }
@@ -148,8 +155,8 @@ async function setPrimaryPhone(method: ContactMethod) {
 const showAddMethod = ref(false)
 const newMethodType = ref<'phone' | 'email'>('phone')
 const newMethodValue = ref('')
-const { formatted: newMethodPhoneFormatted, onInput: onNewMethodPhoneInput } =
-  useAsYouTypePhone(newMethodValue)
+const { formatted: newMethodPhoneFormatted, onInput: onNewMethodPhoneInput }
+  = useAsYouTypePhone(newMethodValue)
 const newMethodLabel = ref('')
 const isAddingMethod = ref(false)
 const addMethodError = ref<string | null>(null)
@@ -179,14 +186,16 @@ async function confirmAddMethod() {
       value: newMethodValue.value.trim(),
       label: newMethodLabel.value.trim() || null,
       isPrimary:
-        props.contact.contactMethods.filter((m) => m.methodType === newMethodType.value).length ===
-        0,
+        props.contact.contactMethods.filter(m => m.methodType === newMethodType.value).length
+        === 0,
     }
     await store.addMethodToContact(props.contact.id, method)
     showAddMethod.value = false
-  } catch (err) {
+  }
+  catch (err) {
     addMethodError.value = err instanceof Error ? err.message : 'Failed to add'
-  } finally {
+  }
+  finally {
     isAddingMethod.value = false
   }
 }
@@ -201,7 +210,8 @@ async function confirmDelete() {
   try {
     await store.deleteContact(props.contact.id)
     emit('deleted')
-  } catch (err) {
+  }
+  catch (err) {
     deleteError.value = err instanceof Error ? err.message : 'Failed to delete'
     deleteState.value = 'idle'
   }
@@ -220,7 +230,9 @@ async function confirmDelete() {
 
     <!-- Name fields -->
     <section class="section">
-      <h3 class="section-label">Name</h3>
+      <h3 class="section-label">
+        Name
+      </h3>
       <div class="field">
         <label class="label" for="dv-firstName">First Name <span class="required">*</span></label>
         <input
@@ -230,7 +242,7 @@ async function confirmDelete() {
           type="text"
           maxlength="50"
           placeholder="First name"
-        />
+        >
       </div>
       <div class="field">
         <label class="label" for="dv-lastName">Last Name</label>
@@ -241,7 +253,7 @@ async function confirmDelete() {
           type="text"
           maxlength="50"
           placeholder="Last name (optional)"
-        />
+        >
       </div>
       <div class="field">
         <label class="label" for="dv-displayName">Display Name</label>
@@ -252,7 +264,7 @@ async function confirmDelete() {
           type="text"
           maxlength="50"
           placeholder="Nickname (optional)"
-        />
+        >
       </div>
       <p v-if="nameError" class="error-text">
         {{ nameError }}
@@ -264,7 +276,9 @@ async function confirmDelete() {
 
     <!-- Contact methods -->
     <section class="section">
-      <h3 class="section-label">Contact methods</h3>
+      <h3 class="section-label">
+        Contact methods
+      </h3>
 
       <div v-if="contact.contactMethods.length === 0" class="empty-methods">
         No contact methods yet.
@@ -295,13 +309,13 @@ async function confirmDelete() {
             type="tel"
             placeholder="+41 79 012 34 56"
             @input="getPhoneFormatter(method).onInput"
-          />
+          >
           <input
             v-model="getMethodEdit(method).label"
             class="input input-sm"
             type="text"
             placeholder="Label (optional)"
-          />
+          >
           <p v-if="getMethodEdit(method).error" class="error-text">
             {{ getMethodEdit(method).error }}
           </p>
@@ -336,13 +350,13 @@ async function confirmDelete() {
             class="input input-sm"
             type="email"
             placeholder="Value"
-          />
+          >
           <input
             v-model="getMethodEdit(method).label"
             class="input input-sm"
             type="text"
             placeholder="Label (optional)"
-          />
+          >
           <p v-if="getMethodEdit(method).error" class="error-text">
             {{ getMethodEdit(method).error }}
           </p>
@@ -391,25 +405,27 @@ async function confirmDelete() {
           type="tel"
           placeholder="+41 79 012 34 56"
           @input="onNewMethodPhoneInput"
-        />
+        >
         <input
           v-else
           v-model="newMethodValue"
           class="input"
           type="email"
           placeholder="email@example.com"
-        />
+        >
         <input
           v-model="newMethodLabel"
           class="input"
           type="text"
           placeholder="Label (optional, e.g. Mobile)"
-        />
+        >
         <p v-if="addMethodError" class="error-text">
           {{ addMethodError }}
         </p>
         <div class="add-method-actions">
-          <button type="button" class="cancel-btn" @click="cancelAddMethod">Cancel</button>
+          <button type="button" class="cancel-btn" @click="cancelAddMethod">
+            Cancel
+          </button>
           <button
             type="button"
             class="save-btn"
@@ -434,10 +450,16 @@ async function confirmDelete() {
       </p>
 
       <template v-if="deleteState === 'confirm'">
-        <p class="delete-confirm-text">Delete this contact?</p>
+        <p class="delete-confirm-text">
+          Delete this contact?
+        </p>
         <div class="delete-actions">
-          <button type="button" class="cancel-btn" @click="deleteState = 'idle'">Cancel</button>
-          <button type="button" class="delete-confirm-btn" @click="confirmDelete">Delete</button>
+          <button type="button" class="cancel-btn" @click="deleteState = 'idle'">
+            Cancel
+          </button>
+          <button type="button" class="delete-confirm-btn" @click="confirmDelete">
+            Delete
+          </button>
         </div>
       </template>
 

@@ -56,15 +56,15 @@ ensureFormatter(0)
 
 watch(
   () => props.initialFirstName,
-  (v) => (firstName.value = v ?? ''),
+  v => (firstName.value = v ?? ''),
 )
 watch(
   () => props.initialLastName,
-  (v) => (lastName.value = v ?? ''),
+  v => (lastName.value = v ?? ''),
 )
 watch(
   () => props.initialDisplayName,
-  (v) => (displayName.value = v ?? ''),
+  v => (displayName.value = v ?? ''),
 )
 
 function addPhoneRow() {
@@ -102,16 +102,16 @@ function handleSubmit() {
     return
   }
 
-  const nonEmpty = phoneRows.value.filter((r) => r.value.trim())
+  const nonEmpty = phoneRows.value.filter(r => r.value.trim())
   if (nonEmpty.length > 1) {
-    const primaryCount = nonEmpty.filter((r) => r.isPrimary).length
+    const primaryCount = nonEmpty.filter(r => r.isPrimary).length
     if (primaryCount !== 1) {
       error.value = 'Select one primary phone when multiple phones are entered'
       return
     }
   }
 
-  const phones: PhoneEntry[] = nonEmpty.map((row) => ({
+  const phones: PhoneEntry[] = nonEmpty.map(row => ({
     value: row.value.trim(),
     label: row.label.trim() || null,
     isPrimary: nonEmpty.length === 1 ? true : row.isPrimary,
@@ -138,7 +138,7 @@ function handleSubmit() {
         maxlength="50"
         placeholder="First name"
         required
-      />
+      >
     </div>
 
     <div class="field">
@@ -150,7 +150,7 @@ function handleSubmit() {
         type="text"
         maxlength="50"
         placeholder="Last name (optional)"
-      />
+      >
     </div>
 
     <div class="field">
@@ -162,7 +162,7 @@ function handleSubmit() {
         type="text"
         maxlength="50"
         placeholder="Nickname (optional)"
-      />
+      >
     </div>
 
     <div class="phones-section">
@@ -187,13 +187,13 @@ function handleSubmit() {
             type="tel"
             placeholder="+41 79 012 34 56 (optional)"
             @input="handlePhoneInput(i, $event)"
-          />
+          >
           <input
             v-model="row.label"
             class="input input-sm"
             type="text"
             placeholder="Label (e.g. Mobile)"
-          />
+          >
         </div>
         <button
           v-if="phoneRows.length > 1"
@@ -217,7 +217,9 @@ function handleSubmit() {
     </p>
 
     <div class="actions">
-      <button type="button" class="cancel-btn" @click="emit('cancel')">Cancel</button>
+      <button type="button" class="cancel-btn" @click="emit('cancel')">
+        Cancel
+      </button>
       <button type="submit" class="submit-btn" :disabled="isLoading">
         {{ isLoading ? 'Saving...' : submitLabel }}
       </button>
