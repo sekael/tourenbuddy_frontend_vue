@@ -62,6 +62,9 @@ const sheetContainerRef = ref<HTMLElement | null>(null)
 // Whether the current location pick was triggered from the info sheet edit mode
 const isPickingForEdit = ref(false)
 
+// Set when flyToSelectedTour is called before sheetContainerRef has mounted
+const pendingFlyTo = ref(false)
+
 // Whether the tour info sheet was opened by selecting a row from the tours list
 const tourOpenedFromList = ref(false)
 
@@ -145,6 +148,13 @@ async function flyToSelectedTour() {
   if (!selectedTour.value)
     return
   await nextTick()
+  // On mobile the sheet is inside a Transition mode="out-in" container — if the previous
+  // overlay is still leaving, sheetContainerRef won't be mounted yet. Defer until it is.
+  if (!isDesktop.value && !sheetContainerRef.value) {
+    pendingFlyTo.value = true
+    return
+  }
+  pendingFlyTo.value = false
   const padding = isDesktop.value
     ? { top: 0, right: 400, bottom: 0, left: 0 }
     : { top: 0, right: 0, bottom: sheetContainerRef.value?.offsetHeight ?? 0, left: 0 }
@@ -155,6 +165,11 @@ async function flyToSelectedTour() {
     padding,
   })
 }
+
+watch(sheetContainerRef, async (el) => {
+  if (el && pendingFlyTo.value)
+    await flyToSelectedTour()
+})
 
 watch(selectedTourId, async (id) => {
   if (id)
