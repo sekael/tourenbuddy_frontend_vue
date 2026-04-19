@@ -3,7 +3,7 @@ import { parsePhoneNumberFromString } from 'libphonenumber-js/min'
 
 const DEFAULT_REGION: CountryCode = 'CH'
 
-export type PhoneNormalizeResult = { ok: true, value: string } | { ok: false, raw: string }
+export type PhoneNormalizeResult = { ok: true; value: string } | { ok: false; raw: string }
 
 /**
  * Parses a phone number string against the given default region (default: CH).
@@ -16,12 +16,10 @@ export function normalizePhone(
   defaultCountry: CountryCode = DEFAULT_REGION,
 ): PhoneNormalizeResult {
   const trimmed = (input ?? '').trim()
-  if (!trimmed)
-    return { ok: false, raw: '' }
+  if (!trimmed) return { ok: false, raw: '' }
 
   const parsed = parsePhoneNumberFromString(trimmed, defaultCountry)
-  if (!parsed || !parsed.isValid())
-    return { ok: false, raw: trimmed }
+  if (!parsed || !parsed.isValid()) return { ok: false, raw: trimmed }
 
   return { ok: true, value: parsed.formatInternational() }
 }
@@ -35,12 +33,10 @@ export function toE164(
   defaultCountry: CountryCode = DEFAULT_REGION,
 ): string | null {
   const trimmed = (input ?? '').trim()
-  if (!trimmed)
-    return null
+  if (!trimmed) return null
 
   const parsed = parsePhoneNumberFromString(trimmed, defaultCountry)
-  if (!parsed || !parsed.isValid())
-    return null
+  if (!parsed || !parsed.isValid()) return null
 
   return parsed.format('E.164')
 }

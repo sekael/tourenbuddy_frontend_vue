@@ -1,5 +1,44 @@
 import { describe, expect, it } from 'vitest'
-import { formatPhoneDisplay } from '@/features/contacts/domain/entities/contact'
+import { formatPhoneDisplay, getPrimaryPhone } from '@/features/contacts/domain/entities/contact'
+
+function makeContact(methods: Array<{ id: string; value: string; isPrimary: boolean }>) {
+  return {
+    id: 'c1',
+    userId: 'u1',
+    firstName: 'Test',
+    lastName: null,
+    displayName: null,
+    contactMethods: methods.map((m) => ({
+      ...m,
+      contactId: 'c1',
+      methodType: 'phone' as const,
+      label: null,
+    })),
+  }
+}
+
+describe('getPrimaryPhone', () => {
+  it('returns primary phone when explicitly marked', () => {
+    const contact = makeContact([
+      { id: 'm1', value: '+41 79 111 11 11', isPrimary: false },
+      { id: 'm2', value: '+41 79 222 22 22', isPrimary: true },
+    ])
+    expect(getPrimaryPhone(contact)).toBe('+41 79 222 22 22')
+  })
+
+  it('falls back to first phone when none marked primary (legacy)', () => {
+    const contact = makeContact([
+      { id: 'm1', value: '+41 79 111 11 11', isPrimary: false },
+      { id: 'm2', value: '+41 79 222 22 22', isPrimary: false },
+    ])
+    expect(getPrimaryPhone(contact)).toBe('+41 79 111 11 11')
+  })
+
+  it('returns null when no phones', () => {
+    const contact = makeContact([])
+    expect(getPrimaryPhone(contact)).toBeNull()
+  })
+})
 
 describe('formatPhoneDisplay', () => {
   it('normalizes legacy 00-prefix to canonical international form', () => {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { PhoneEntry } from '@/features/contacts/presentation/stores/contacts-store'
 import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
@@ -11,7 +12,8 @@ import ContactForm from './contact-form.vue'
 interface ImportResult {
   firstName: string
   lastName: string | null
-  phoneNumber: string | null
+  primaryPhone: string | null
+  extraPhoneCount: number
   status: 'imported' | 'skipped'
   phoneCanonical: boolean
 }
@@ -19,8 +21,7 @@ interface ImportResult {
 const emit = defineEmits<{ close: [] }>()
 
 function isCanonicalPhone(phone: string | null): boolean {
-  if (!phone)
-    return true
+  if (!phone) return true
   const result = normalizePhone(phone)
   return result.ok && result.value === phone
 }
@@ -42,9 +43,9 @@ const fileInput = ref<HTMLInputElement | null>(null)
 
 function isDuplicate(first: string, last: string | null): boolean {
   return contacts.value.some(
-    c =>
-      c.firstName.toLowerCase() === first.toLowerCase()
-      && (c.lastName ?? '').toLowerCase() === (last ?? '').toLowerCase(),
+    (c) =>
+      c.firstName.toLowerCase() === first.toLowerCase() &&
+      (c.lastName ?? '').toLowerCase() === (last ?? '').toLowerCase(),
   )
 }
 
@@ -58,45 +59,46 @@ async function handleSubmit(data: {
   firstName: string
   lastName: string | null
   displayName: string | null
-  phoneNumber: string | null
+  phones: PhoneEntry[]
 }) {
   isLoading.value = true
   try {
-    await contactsStore.addContact(
-      data.firstName,
-      data.lastName,
-      data.displayName,
-      data.phoneNumber,
-    )
+    await contactsStore.addContact(data.firstName, data.lastName, data.displayName, data.phones)
     emit('close')
-  }
-  catch (err) {
+  } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to add contact'
-  }
-  finally {
+  } finally {
     isLoading.value = false
   }
 }
 
 async function processImportedContacts(
-  items: Array<{ firstName: string, lastName: string | null, phoneNumber: string | null }>,
+  items: Array<{ firstName: string; lastName: string | null; phones: PhoneEntry[] }>,
 ) {
   const results: ImportResult[] = []
 
   for (const item of items) {
+    const primaryPhone =
+      item.phones.find((p) => p.isPrimary)?.value ?? item.phones[0]?.value ?? null
     if (isDuplicate(item.firstName, item.lastName)) {
       results.push({
-        ...item,
+        firstName: item.firstName,
+        lastName: item.lastName,
+        primaryPhone,
+        extraPhoneCount: Math.max(0, item.phones.length - 1),
         status: 'skipped',
-        phoneCanonical: isCanonicalPhone(item.phoneNumber),
+        phoneCanonical: isCanonicalPhone(primaryPhone),
       })
       continue
     }
-    await contactsStore.addContact(item.firstName, item.lastName, null, item.phoneNumber)
+    await contactsStore.addContact(item.firstName, item.lastName, null, item.phones)
     results.push({
-      ...item,
+      firstName: item.firstName,
+      lastName: item.lastName,
+      primaryPhone,
+      extraPhoneCount: Math.max(0, item.phones.length - 1),
       status: 'imported',
-      phoneCanonical: isCanonicalPhone(item.phoneNumber),
+      phoneCanonical: isCanonicalPhone(primaryPhone),
     })
   }
 
@@ -110,11 +112,9 @@ async function handleContactPickerImport() {
   try {
     const picked = await pickContacts()
     await processImportedContacts(picked)
-  }
-  catch (err) {
+  } catch (err) {
     error.value = err instanceof Error ? err.message : 'Import failed'
-  }
-  finally {
+  } finally {
     isLoading.value = false
   }
 }
@@ -125,22 +125,18 @@ function handleFileImportClick() {
 
 async function handleFileChange(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0]
-  if (!file)
-    return
+  if (!file) return
 
   isLoading.value = true
   error.value = null
   try {
     const parsed = await parseVCardFile(file)
     await processImportedContacts(parsed)
-  }
-  catch (err) {
+  } catch (err) {
     error.value = err instanceof Error ? err.message : 'File import failed'
-  }
-  finally {
+  } finally {
     isLoading.value = false
-    if (fileInput.value)
-      fileInput.value.value = ''
+    if (fileInput.value) fileInput.value.value = ''
   }
 }
 </script>
@@ -162,13 +158,18 @@ async function handleFileChange(event: Event) {
             <span class="result-name">
               {{ result.firstName }}{{ result.lastName ? ` ${result.lastName}` : '' }}
             </span>
-            <span v-if="result.phoneNumber" class="result-phone">
-              {{ result.phoneNumber }}
+            <span v-if="result.primaryPhone" class="result-phone">
+              <span class="material-symbols-outlined star-icon">star</span>
+              {{ result.primaryPhone }}
               <span
                 v-if="!result.phoneCanonical"
                 class="result-phone-warning"
                 title="Phone number format couldn't be recognized — edit the contact to fix it"
-              >⚠</span>
+                >⚠</span
+              >
+              <span v-if="result.extraPhoneCount > 0" class="extra-phones">
+                +{{ result.extraPhoneCount }} more
+              </span>
             </span>
           </div>
           <span
@@ -185,9 +186,7 @@ async function handleFileChange(event: Event) {
           <span class="material-symbols-outlined">add</span>
           Add another manually
         </button>
-        <button type="button" class="submit-btn" @click="emit('close')">
-          Done
-        </button>
+        <button type="button" class="submit-btn" @click="emit('close')">Done</button>
       </div>
     </div>
 
@@ -219,7 +218,7 @@ async function handleFileChange(event: Event) {
           accept=".vcf,.vcard"
           class="file-input-hidden"
           @change="handleFileChange"
-        >
+        />
       </div>
 
       <div class="divider" />
@@ -348,9 +347,21 @@ async function handleFileChange(event: Event) {
   gap: 4px;
 }
 
+.star-icon {
+  font-size: 12px;
+  color: var(--color-primary);
+  font-variation-settings: 'FILL' 1;
+}
+
 .result-phone-warning {
   color: var(--color-error);
   font-size: var(--font-size-xs, 11px);
+}
+
+.extra-phones {
+  font-size: var(--font-size-xs, 11px);
+  color: var(--color-on-surface-variant);
+  opacity: 0.7;
 }
 
 .result-badge {

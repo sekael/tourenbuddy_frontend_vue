@@ -20,8 +20,7 @@ export class ContactMethodsRepositoryImpl implements ContactMethodsRepository {
       .select()
       .single()
 
-    if (error)
-      throw new Error(error.message)
+    if (error) throw new Error(error.message)
 
     return contactMethodRowSchema.parse(data)
   }
@@ -29,8 +28,7 @@ export class ContactMethodsRepositoryImpl implements ContactMethodsRepository {
   async removeMethod(methodId: string): Promise<void> {
     const { error } = await supabase.from('contact_methods').delete().eq('id', methodId)
 
-    if (error)
-      throw new Error(error.message)
+    if (error) throw new Error(error.message)
   }
 
   async updateMethod(
@@ -38,14 +36,10 @@ export class ContactMethodsRepositoryImpl implements ContactMethodsRepository {
     data: Partial<Omit<ContactMethod, 'id' | 'contactId'>>,
   ): Promise<ContactMethod> {
     const update: Record<string, unknown> = {}
-    if (data.methodType !== undefined)
-      update.method_type = data.methodType
-    if (data.value !== undefined)
-      update.value = data.value
-    if (data.label !== undefined)
-      update.label = data.label
-    if (data.isPrimary !== undefined)
-      update.is_primary = data.isPrimary
+    if (data.methodType !== undefined) update.method_type = data.methodType
+    if (data.value !== undefined) update.value = data.value
+    if (data.label !== undefined) update.label = data.label
+    if (data.isPrimary !== undefined) update.is_primary = data.isPrimary
 
     const { data: row, error } = await supabase
       .from('contact_methods')
@@ -54,9 +48,19 @@ export class ContactMethodsRepositoryImpl implements ContactMethodsRepository {
       .select()
       .single()
 
-    if (error)
-      throw new Error(error.message)
+    if (error) throw new Error(error.message)
 
     return contactMethodRowSchema.parse(row)
+  }
+
+  async setPrimaryPhone(contactId: string, methodId: string): Promise<ContactMethod[]> {
+    const { data, error } = await supabase.rpc('set_primary_phone', {
+      p_contact_id: contactId,
+      p_method_id: methodId,
+    })
+
+    if (error) throw new Error(error.message)
+
+    return (data as unknown[]).map((row) => contactMethodRowSchema.parse(row))
   }
 }

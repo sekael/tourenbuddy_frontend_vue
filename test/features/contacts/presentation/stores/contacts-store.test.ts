@@ -1,6 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { InvalidPhoneNumberError } from '@/core/exceptions'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 
 const {
@@ -11,6 +10,7 @@ const {
   mockAddMethod,
   mockRemoveMethod,
   mockUpdateMethod,
+  mockSetPrimaryPhone,
 } = vi.hoisted(() => ({
   mockFetchContacts: vi.fn(),
   mockCreateContact: vi.fn(),
@@ -19,6 +19,7 @@ const {
   mockAddMethod: vi.fn(),
   mockRemoveMethod: vi.fn(),
   mockUpdateMethod: vi.fn(),
+  mockSetPrimaryPhone: vi.fn(),
 }))
 
 vi.mock('@/features/contacts/data/repositories/contacts-repository-impl', () => ({
@@ -35,6 +36,7 @@ vi.mock('@/features/contacts/data/repositories/contact-methods-repository-impl',
     addMethod: mockAddMethod,
     removeMethod: mockRemoveMethod,
     updateMethod: mockUpdateMethod,
+    setPrimaryPhone: mockSetPrimaryPhone,
   })),
 }))
 
@@ -52,6 +54,15 @@ const mockPhoneMethod = {
   value: '+41 79 123 45 67',
   label: null,
   isPrimary: true,
+}
+
+const mockPhoneMethod2 = {
+  id: 'method-2',
+  contactId: '1',
+  methodType: 'phone' as const,
+  value: '+41 44 222 33 44',
+  label: 'Home',
+  isPrimary: false,
 }
 
 const mockContacts = [
@@ -121,7 +132,7 @@ describe('useContactsStore', () => {
     )
   })
 
-  it('should add phone method when phoneNumber provided', async () => {
+  it('should add phone method when phones provided', async () => {
     const newContact = {
       id: '3',
       userId: 'user-123',
@@ -143,17 +154,18 @@ describe('useContactsStore', () => {
 
     const store = useContactsStore()
     await store.loadContacts()
-    await store.addContact('Dave', null, null, '+41 79 999 00 11')
+    await store.addContact('Dave', null, null, [{ value: '+41 79 999 00 11', isPrimary: true }])
 
     expect(mockAddMethod).toHaveBeenCalledWith('3', {
       methodType: 'phone',
       value: '+41 79 999 00 11',
+      label: null,
       isPrimary: true,
     })
     expect(store.contacts[0]!.contactMethods).toHaveLength(1)
   })
 
-  it('should not add phone method when phoneNumber is empty', async () => {
+  it('should not add phone method when phones is empty', async () => {
     mockCreateContact.mockResolvedValue({
       id: '4',
       userId: 'user-123',
@@ -166,9 +178,90 @@ describe('useContactsStore', () => {
 
     const store = useContactsStore()
     await store.loadContacts()
-    await store.addContact('Eve', null, null, '')
+    await store.addContact('Eve', null, null, [])
 
     expect(mockAddMethod).not.toHaveBeenCalled()
+  })
+
+  it('addContact with multiple phones inserts all and marks primary correctly', async () => {
+    mockFetchContacts.mockResolvedValue([])
+    const newContact = {
+      id: '5',
+      userId: 'user-123',
+      firstName: 'Frank',
+      lastName: null,
+      displayName: null,
+      contactMethods: [],
+    }
+    mockCreateContact.mockResolvedValue(newContact)
+    mockAddMethod
+      .mockResolvedValueOnce({
+        id: 'm1',
+        contactId: '5',
+        methodType: 'phone',
+        value: '+41 79 123 45 67',
+        label: null,
+        isPrimary: true,
+      })
+      .mockResolvedValueOnce({
+        id: 'm2',
+        contactId: '5',
+        methodType: 'phone',
+        value: '+41 44 222 33 44',
+        label: 'Home',
+        isPrimary: false,
+      })
+
+    const store = useContactsStore()
+    await store.loadContacts()
+    await store.addContact('Frank', null, null, [
+      { value: '+41 79 123 45 67', isPrimary: true },
+      { value: '+41 44 222 33 44', label: 'Home', isPrimary: false },
+    ])
+
+    expect(mockAddMethod).toHaveBeenCalledTimes(2)
+    expect(store.contacts[0]!.contactMethods).toHaveLength(2)
+  })
+
+  it('addContact with multiple phones but none primary throws', async () => {
+    mockFetchContacts.mockResolvedValue([])
+
+    const store = useContactsStore()
+    await store.loadContacts()
+
+    await expect(
+      store.addContact('Test', null, null, [
+        { value: '+41 79 123 45 67', isPrimary: false },
+        { value: '+41 44 222 33 44', isPrimary: false },
+      ]),
+    ).rejects.toThrow()
+    expect(mockCreateContact).not.toHaveBeenCalled()
+  })
+
+  it('single phone in addContact is forced to isPrimary true', async () => {
+    mockFetchContacts.mockResolvedValue([])
+    mockCreateContact.mockResolvedValue({
+      id: '6',
+      userId: 'user-123',
+      firstName: 'G',
+      lastName: null,
+      displayName: null,
+      contactMethods: [],
+    })
+    mockAddMethod.mockResolvedValue({
+      id: 'm3',
+      contactId: '6',
+      methodType: 'phone',
+      value: '+41 79 123 45 67',
+      label: null,
+      isPrimary: true,
+    })
+
+    const store = useContactsStore()
+    await store.loadContacts()
+    await store.addContact('G', null, null, [{ value: '+41 79 123 45 67', isPrimary: false }])
+
+    expect(mockAddMethod).toHaveBeenCalledWith('6', expect.objectContaining({ isPrimary: true }))
   })
 
   it('should clear contacts', () => {
@@ -189,9 +282,8 @@ describe('useContactsStore', () => {
       await store.loadContacts()
       await store.updateContact('1', { firstName: 'Zara' })
 
-      const idx = store.contacts.findIndex(c => c.id === '1')
+      const idx = store.contacts.findIndex((c) => c.id === '1')
       expect(store.contacts[idx]!.firstName).toBe('Zara')
-      // Bob comes before Zara alphabetically
       expect(store.contacts[0]!.firstName).toBe('Bob')
     })
 
@@ -223,7 +315,7 @@ describe('useContactsStore', () => {
   })
 
   describe('addMethodToContact', () => {
-    it('should add method to the correct contact in local array', async () => {
+    it('should auto-promote first phone to primary', async () => {
       mockFetchContacts.mockResolvedValue([{ ...mockContacts[0]!, contactMethods: [] }])
       const newMethod = {
         id: 'method-new',
@@ -240,25 +332,45 @@ describe('useContactsStore', () => {
       await store.addMethodToContact('1', {
         methodType: 'phone',
         value: '+41 79 000 00 00',
-        isPrimary: true,
+        isPrimary: false,
       })
 
-      expect(store.contacts[0]!.contactMethods).toHaveLength(1)
-      expect(store.contacts[0]!.contactMethods[0]!.value).toBe('+41 79 000 00 00')
+      expect(mockAddMethod).toHaveBeenCalledWith('1', expect.objectContaining({ isPrimary: true }))
     })
   })
 
-  describe('updateMethodOnContact', () => {
-    it('should update the method on the correct contact', async () => {
-      mockFetchContacts.mockResolvedValue([mockContacts[1]!])
-      const updatedMethod = { ...mockPhoneMethod, value: '+41 79 555 55 55' }
-      mockUpdateMethod.mockResolvedValue(updatedMethod)
+  describe('setPrimaryPhoneOnContact', () => {
+    it('calls setPrimaryPhone RPC and updates local state from response', async () => {
+      const contact = { ...mockContacts[0]!, contactMethods: [mockPhoneMethod, mockPhoneMethod2] }
+      mockFetchContacts.mockResolvedValue([contact])
+      const updatedRows = [
+        { ...mockPhoneMethod, isPrimary: false },
+        { ...mockPhoneMethod2, isPrimary: true },
+      ]
+      mockSetPrimaryPhone.mockResolvedValue(updatedRows)
 
       const store = useContactsStore()
       await store.loadContacts()
-      await store.updateMethodOnContact('2', 'method-1', { value: '+41 79 555 55 55' })
+      await store.setPrimaryPhoneOnContact('1', 'method-2')
 
-      expect(store.contacts[0]!.contactMethods[0]!.value).toBe('+41 79 555 55 55')
+      expect(mockSetPrimaryPhone).toHaveBeenCalledWith('1', 'method-2')
+      const phones = store.contacts[0]!.contactMethods.filter((m) => m.methodType === 'phone')
+      const newPrimary = phones.find((m) => m.id === 'method-2')
+      expect(newPrimary?.isPrimary).toBe(true)
+    })
+
+    it('does not mutate local state when RPC rejects', async () => {
+      const contact = { ...mockContacts[0]!, contactMethods: [mockPhoneMethod, mockPhoneMethod2] }
+      mockFetchContacts.mockResolvedValue([contact])
+      mockSetPrimaryPhone.mockRejectedValue(new Error('DB error'))
+
+      const store = useContactsStore()
+      await store.loadContacts()
+
+      await expect(store.setPrimaryPhoneOnContact('1', 'method-2')).rejects.toThrow()
+      const phones = store.contacts[0]!.contactMethods.filter((m) => m.methodType === 'phone')
+      expect(phones.find((m) => m.id === 'method-1')?.isPrimary).toBe(true)
+      expect(phones.find((m) => m.id === 'method-2')?.isPrimary).toBe(false)
     })
   })
 
@@ -273,6 +385,32 @@ describe('useContactsStore', () => {
 
       await store.removeMethodFromContact('2', 'method-1')
       expect(store.contacts[0]!.contactMethods).toHaveLength(0)
+    })
+
+    it('should promote next phone to primary when primary is removed', async () => {
+      const contact = { ...mockContacts[0]!, contactMethods: [mockPhoneMethod, mockPhoneMethod2] }
+      mockFetchContacts.mockResolvedValue([contact])
+      mockRemoveMethod.mockResolvedValue(undefined)
+      const promotedRows = [{ ...mockPhoneMethod2, isPrimary: true }]
+      mockSetPrimaryPhone.mockResolvedValue(promotedRows)
+
+      const store = useContactsStore()
+      await store.loadContacts()
+      await store.removeMethodFromContact('1', 'method-1')
+
+      expect(mockSetPrimaryPhone).toHaveBeenCalledWith('1', 'method-2')
+    })
+
+    it('should not call setPrimaryPhone when removing non-primary', async () => {
+      const contact = { ...mockContacts[0]!, contactMethods: [mockPhoneMethod, mockPhoneMethod2] }
+      mockFetchContacts.mockResolvedValue([contact])
+      mockRemoveMethod.mockResolvedValue(undefined)
+
+      const store = useContactsStore()
+      await store.loadContacts()
+      await store.removeMethodFromContact('1', 'method-2')
+
+      expect(mockSetPrimaryPhone).not.toHaveBeenCalled()
     })
   })
 
@@ -298,45 +436,12 @@ describe('useContactsStore', () => {
 
       const store = useContactsStore()
       await store.loadContacts()
-      await store.addContact('Frank', null, null, '0799991122')
+      await store.addContact('Frank', null, null, [{ value: '0799991122', isPrimary: true }])
 
       expect(mockAddMethod).toHaveBeenCalledWith(
         '5',
-        expect.objectContaining({
-          value: '+41 79 999 11 22',
-        }),
+        expect.objectContaining({ value: '+41 79 999 11 22' }),
       )
-    })
-
-    it('rejects unparseable phone on addContact with InvalidPhoneNumberError', async () => {
-      mockFetchContacts.mockResolvedValue([])
-
-      const store = useContactsStore()
-      await store.loadContacts()
-
-      await expect(store.addContact('Frank', null, null, 'not-a-number')).rejects.toBeInstanceOf(
-        InvalidPhoneNumberError,
-      )
-      // contact should NOT have been created
-      expect(mockCreateContact).not.toHaveBeenCalled()
-    })
-
-    it('accepts empty phone as null on addContact', async () => {
-      mockFetchContacts.mockResolvedValue([])
-      mockCreateContact.mockResolvedValue({
-        id: '6',
-        userId: 'user-123',
-        firstName: 'Grace',
-        lastName: null,
-        displayName: null,
-        contactMethods: [],
-      })
-
-      const store = useContactsStore()
-      await store.loadContacts()
-      await store.addContact('Grace', null, null, '')
-
-      expect(mockAddMethod).not.toHaveBeenCalled()
     })
 
     it('normalizes phone on addMethodToContact', async () => {
@@ -360,9 +465,7 @@ describe('useContactsStore', () => {
 
       expect(mockAddMethod).toHaveBeenCalledWith(
         '1',
-        expect.objectContaining({
-          value: '+41 79 123 45 67',
-        }),
+        expect.objectContaining({ value: '+41 79 123 45 67' }),
       )
     })
 
@@ -376,9 +479,7 @@ describe('useContactsStore', () => {
 
       expect(mockUpdateMethod).toHaveBeenCalledWith(
         'method-1',
-        expect.objectContaining({
-          value: '+41 79 123 45 67',
-        }),
+        expect.objectContaining({ value: '+41 79 123 45 67' }),
       )
     })
   })

@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import type { Contact } from '@/features/contacts/domain/entities/contact'
+import type { PhoneEntry } from '@/features/contacts/presentation/stores/contacts-store'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
-import { resolveContactName, resolveFullName } from '@/features/contacts/domain/entities/contact'
+import { orderedPhoneMethods } from '@/features/contacts/core/utils/order-phone-methods'
+import {
+  getPrimaryPhone,
+  resolveContactName,
+  resolveFullName,
+} from '@/features/contacts/domain/entities/contact'
 import { useContactPicker } from '@/features/contacts/presentation/composables/use-contact-picker'
 import { useVCardImport } from '@/features/contacts/presentation/composables/use-vcard-import'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
@@ -21,17 +27,15 @@ const viewState = ref<ViewState>('list')
 const selectedContact = ref<Contact | null>(null)
 
 const sheetTitle = computed(() => {
-  if (viewState.value === 'add')
-    return 'Add Contact'
-  if (viewState.value === 'detail')
-    return null
+  if (viewState.value === 'add') return 'Add Contact'
+  if (viewState.value === 'detail') return null
   return 'Contacts'
 })
 
 // Keep selectedContact in sync after store edits
 const liveContact = computed(() =>
   selectedContact.value
-    ? (contacts.value.find(c => c.id === selectedContact.value!.id) ?? null)
+    ? (contacts.value.find((c) => c.id === selectedContact.value!.id) ?? null)
     : null,
 )
 
@@ -47,7 +51,8 @@ watch(liveContact, (contact) => {
 interface ImportResult {
   firstName: string
   lastName: string | null
-  phoneNumber: string | null
+  primaryPhone: string | null
+  extraPhoneCount: number
   status: 'imported' | 'skipped'
 }
 
@@ -93,9 +98,9 @@ function handleClose() {
 
 function isDuplicate(first: string, last: string | null): boolean {
   return contacts.value.some(
-    c =>
-      c.firstName.toLowerCase() === first.toLowerCase()
-      && (c.lastName ?? '').toLowerCase() === (last ?? '').toLowerCase(),
+    (c) =>
+      c.firstName.toLowerCase() === first.toLowerCase() &&
+      (c.lastName ?? '').toLowerCase() === (last ?? '').toLowerCase(),
   )
 }
 
@@ -103,38 +108,45 @@ async function handleAddSubmit(data: {
   firstName: string
   lastName: string | null
   displayName: string | null
-  phoneNumber: string | null
+  phones: PhoneEntry[]
 }) {
   isAddLoading.value = true
   addError.value = null
   try {
-    await contactsStore.addContact(
-      data.firstName,
-      data.lastName,
-      data.displayName,
-      data.phoneNumber,
-    )
+    await contactsStore.addContact(data.firstName, data.lastName, data.displayName, data.phones)
     backToList()
-  }
-  catch (err) {
+  } catch (err) {
     addError.value = err instanceof Error ? err.message : 'Failed to add contact'
-  }
-  finally {
+  } finally {
     isAddLoading.value = false
   }
 }
 
 async function processImportedContacts(
-  items: Array<{ firstName: string, lastName: string | null, phoneNumber: string | null }>,
+  items: Array<{ firstName: string; lastName: string | null; phones: PhoneEntry[] }>,
 ) {
   const results: ImportResult[] = []
   for (const item of items) {
+    const primaryPhone =
+      item.phones.find((p) => p.isPrimary)?.value ?? item.phones[0]?.value ?? null
     if (isDuplicate(item.firstName, item.lastName)) {
-      results.push({ ...item, status: 'skipped' })
+      results.push({
+        firstName: item.firstName,
+        lastName: item.lastName,
+        primaryPhone,
+        extraPhoneCount: Math.max(0, item.phones.length - 1),
+        status: 'skipped',
+      })
       continue
     }
-    await contactsStore.addContact(item.firstName, item.lastName, null, item.phoneNumber)
-    results.push({ ...item, status: 'imported' })
+    await contactsStore.addContact(item.firstName, item.lastName, null, item.phones)
+    results.push({
+      firstName: item.firstName,
+      lastName: item.lastName,
+      primaryPhone,
+      extraPhoneCount: Math.max(0, item.phones.length - 1),
+      status: 'imported',
+    })
   }
   importResults.value = results
   addViewState.value = 'import-results'
@@ -146,11 +158,9 @@ async function handleContactPickerImport() {
   try {
     const picked = await pickContacts()
     await processImportedContacts(picked)
-  }
-  catch (err) {
+  } catch (err) {
     addError.value = err instanceof Error ? err.message : 'Import failed'
-  }
-  finally {
+  } finally {
     isAddLoading.value = false
   }
 }
@@ -161,21 +171,17 @@ function handleFileImportClick() {
 
 async function handleFileChange(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0]
-  if (!file)
-    return
+  if (!file) return
   isAddLoading.value = true
   addError.value = null
   try {
     const parsed = await parseVCardFile(file)
     await processImportedContacts(parsed)
-  }
-  catch (err) {
+  } catch (err) {
     addError.value = err instanceof Error ? err.message : 'File import failed'
-  }
-  finally {
+  } finally {
     isAddLoading.value = false
-    if (fileInput.value)
-      fileInput.value.value = ''
+    if (fileInput.value) fileInput.value.value = ''
   }
 }
 
@@ -195,18 +201,12 @@ function switchAddToForm() {
         Add contact
       </button>
 
-      <div v-if="isLoading" class="loading-text">
-        Loading…
-      </div>
+      <div v-if="isLoading" class="loading-text">Loading…</div>
 
       <div v-else-if="contacts.length === 0" class="empty-state">
         <span class="material-symbols-outlined empty-icon">group</span>
-        <p class="empty-text">
-          No contacts yet.
-        </p>
-        <p class="empty-sub">
-          Add contacts to use them as tour partners.
-        </p>
+        <p class="empty-text">No contacts yet.</p>
+        <p class="empty-sub">Add contacts to use them as tour partners.</p>
       </div>
 
       <ul v-else class="contacts-list">
@@ -223,6 +223,17 @@ function switchAddToForm() {
             <span class="contact-name">{{ resolveContactName(contact) }}</span>
             <span v-if="contact.displayName" class="contact-subtitle">
               {{ resolveFullName(contact) }}
+            </span>
+            <span
+              v-else-if="getPrimaryPhone(contact)"
+              class="contact-subtitle contact-subtitle--phone"
+            >
+              <span
+                v-if="orderedPhoneMethods(contact).length > 1"
+                class="material-symbols-outlined star-icon-sm"
+                >star</span
+              >
+              {{ getPrimaryPhone(contact) }}
             </span>
           </div>
           <span class="material-symbols-outlined row-arrow">chevron_right</span>
@@ -252,8 +263,16 @@ function switchAddToForm() {
         <ul class="results-list">
           <li v-for="(result, i) in importResults" :key="i" class="result-item">
             <div class="result-info">
-              <span class="result-name">{{ result.firstName }}{{ result.lastName ? ` ${result.lastName}` : '' }}</span>
-              <span v-if="result.phoneNumber" class="result-phone">{{ result.phoneNumber }}</span>
+              <span class="result-name"
+                >{{ result.firstName }}{{ result.lastName ? ` ${result.lastName}` : '' }}</span
+              >
+              <span v-if="result.primaryPhone" class="result-phone">
+                <span class="material-symbols-outlined star-icon-sm">star</span>
+                {{ result.primaryPhone }}
+                <span v-if="result.extraPhoneCount > 0" class="extra-phones"
+                  >+{{ result.extraPhoneCount }} more</span
+                >
+              </span>
             </div>
             <span
               class="result-badge"
@@ -268,9 +287,7 @@ function switchAddToForm() {
             <span class="material-symbols-outlined">add</span>
             Add another manually
           </button>
-          <button type="button" class="done-btn" @click="backToList">
-            Done
-          </button>
+          <button type="button" class="done-btn" @click="backToList">Done</button>
         </div>
       </div>
 
@@ -302,7 +319,7 @@ function switchAddToForm() {
             accept=".vcf,.vcard"
             class="file-input-hidden"
             @change="handleFileChange"
-          >
+          />
         </div>
 
         <div class="divider" />
@@ -444,6 +461,12 @@ function switchAddToForm() {
   text-overflow: ellipsis;
 }
 
+.contact-subtitle--phone {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
 .row-arrow {
   font-size: 20px;
   color: var(--color-outline-variant);
@@ -559,6 +582,19 @@ function switchAddToForm() {
 .result-phone {
   font-size: var(--font-size-xs, 11px);
   color: var(--color-on-surface-variant);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.star-icon-sm {
+  font-size: 12px;
+  color: var(--color-primary);
+  font-variation-settings: 'FILL' 1;
+}
+
+.extra-phones {
+  opacity: 0.7;
 }
 
 .result-badge {
