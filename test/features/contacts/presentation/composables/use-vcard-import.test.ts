@@ -103,14 +103,24 @@ END:VCARD`
     expect(result[0]!.phones[0]!.value).toBe('+41 79 123 45 67')
   })
 
-  it('retains unparseable phone number as-is', () => {
+  it('throws when phone number cannot be parsed', () => {
     const vcard = `BEGIN:VCARD
 VERSION:3.0
 FN:Test
 TEL:ext. 1234
 END:VCARD`
-    const result = parseVCardText(vcard)
-    expect(result[0]!.phones[0]!.value).toBe('ext. 1234')
+    expect(() => parseVCardText(vcard)).toThrow(
+      'Phone number "ext. 1234" is not in a valid format (international or Swiss national format)',
+    )
+  })
+
+  it('throws with the invalid number in the message', () => {
+    const vcard = `BEGIN:VCARD
+VERSION:3.0
+FN:Test
+TEL:not-a-number
+END:VCARD`
+    expect(() => parseVCardText(vcard)).toThrowError(/not-a-number/)
   })
 
   it('extracts multiple phones with correct labels', () => {

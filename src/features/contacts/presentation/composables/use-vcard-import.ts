@@ -161,9 +161,13 @@ export function parseVCardText(text: string): VCardContact[] {
 
     const phones: VCardPhone[] = rawPhones.map((p, i) => {
       const normalized = normalizePhone(p.rawValue)
-      const value = normalized.ok ? normalized.value : p.rawValue
+      if (!normalized.ok) {
+        throw new Error(
+          `Phone number "${p.rawValue}" is not in a valid format (international or Swiss national format)`,
+        )
+      }
       return {
-        value,
+        value: normalized.value,
         label: deriveTelLabel(p.types),
         isPrimary: i === primaryIndex,
       }
