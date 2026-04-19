@@ -124,6 +124,9 @@ async function saveMethod(method: ContactMethod) {
       value: edit.value.trim(),
       label: edit.label.trim() || null,
     })
+    const updated = props.contact.contactMethods.find(m => m.id === method.id)
+    if (updated)
+      edit.value = methodDisplayValue(updated)
   }
   catch (err) {
     edit.error = err instanceof Error ? err.message : 'Failed to save'

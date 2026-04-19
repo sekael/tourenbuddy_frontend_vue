@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { PhoneEntry } from '@/features/contacts/presentation/stores/contacts-store'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
 
 interface PhoneRow {
+  id: string
   value: string
   label: string
   isPrimary: boolean
@@ -41,18 +42,24 @@ const firstName = ref(props.initialFirstName)
 const lastName = ref(props.initialLastName)
 const displayName = ref(props.initialDisplayName)
 
-const phoneRows = ref<PhoneRow[]>([{ value: '', label: '', isPrimary: true }])
-const phoneFormatters = ref<ReturnType<typeof useAsYouTypePhone>[]>([])
+const phoneRows = ref<PhoneRow[]>([{ id: crypto.randomUUID(), value: '', label: '', isPrimary: true }])
+const phoneFormatterCache = new Map<string, ReturnType<typeof useAsYouTypePhone>>()
 const error = ref<string | null>(null)
 
-function ensureFormatter(index: number) {
-  while (phoneFormatters.value.length <= index) {
-    const rowRef = ref(phoneRows.value[phoneFormatters.value.length]?.value ?? '')
-    phoneFormatters.value.push(useAsYouTypePhone(rowRef))
+function getPhoneFormatter(rowId: string) {
+  if (!phoneFormatterCache.has(rowId)) {
+    const phoneRef = computed({
+      get: () => phoneRows.value.find(r => r.id === rowId)?.value ?? '',
+      set: (v: string) => {
+        const row = phoneRows.value.find(r => r.id === rowId)
+        if (row)
+          row.value = v
+      },
+    })
+    phoneFormatterCache.set(rowId, useAsYouTypePhone(phoneRef))
   }
+  return phoneFormatterCache.get(rowId)!
 }
-
-ensureFormatter(0)
 
 watch(
   () => props.initialFirstName,
@@ -68,15 +75,15 @@ watch(
 )
 
 function addPhoneRow() {
-  phoneRows.value.push({ value: '', label: '', isPrimary: false })
-  const rowRef = ref('')
-  phoneFormatters.value.push(useAsYouTypePhone(rowRef))
+  phoneRows.value.push({ id: crypto.randomUUID(), value: '', label: '', isPrimary: false })
 }
 
 function removePhoneRow(index: number) {
-  const wasPrimary = phoneRows.value[index]?.isPrimary
+  const row = phoneRows.value[index]
+  const wasPrimary = row?.isPrimary
+  if (row)
+    phoneFormatterCache.delete(row.id)
   phoneRows.value.splice(index, 1)
-  phoneFormatters.value.splice(index, 1)
   if (wasPrimary && phoneRows.value.length > 0) {
     phoneRows.value[0]!.isPrimary = true
   }
@@ -86,12 +93,6 @@ function selectPrimary(index: number) {
   phoneRows.value.forEach((row, i) => {
     row.isPrimary = i === index
   })
-}
-
-function handlePhoneInput(index: number, event: Event) {
-  const input = event.target as HTMLInputElement
-  phoneFormatters.value[index]?.onInput(event)
-  phoneRows.value[index]!.value = phoneFormatters.value[index]?.formatted.value ?? input.value
 }
 
 function handleSubmit() {
@@ -182,11 +183,11 @@ function handleSubmit() {
         </button>
         <div class="phone-inputs">
           <input
-            :value="phoneFormatters[i]?.formatted.value ?? row.value"
+            :value="getPhoneFormatter(row.id).formatted.value"
             class="input"
             type="tel"
             placeholder="+41 79 012 34 56 (optional)"
-            @input="handlePhoneInput(i, $event)"
+            @input="getPhoneFormatter(row.id).onInput"
           >
           <input
             v-model="row.label"
