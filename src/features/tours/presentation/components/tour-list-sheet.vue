@@ -12,7 +12,7 @@ import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import TourFiltersPanel from './tour-filters-panel.vue'
 import TourListRow from './tour-list-row.vue'
 
-const emit = defineEmits<{ close: []; selectTour: [id: string] }>()
+const emit = defineEmits<{ close: [], selectTour: [id: string] }>()
 
 const toursStore = useToursStore()
 const { tours, isLoading } = storeToRefs(toursStore)
@@ -36,7 +36,7 @@ function handleRowClick(tourId: string) {
           type="search"
           class="search-input"
           placeholder="Search tours…"
-        />
+        >
       </div>
 
       <button class="filters-trigger" type="button" @click="filtersExpanded = !filtersExpanded">
@@ -58,18 +58,28 @@ function handleRowClick(tourId: string) {
         @update:completion="(v: CompletionFilter) => (filters.completion = v)"
       />
 
-      <div v-if="isLoading && tours.length === 0" class="loading-text">Loading…</div>
+      <div v-if="isLoading && tours.length === 0" class="loading-text">
+        Loading…
+      </div>
 
       <div v-else-if="tours.length === 0" class="empty-state">
         <span class="material-symbols-outlined empty-icon">location_on</span>
-        <p class="empty-text">No tours yet.</p>
-        <p class="empty-sub">Create one from the map.</p>
+        <p class="empty-text">
+          No tours yet.
+        </p>
+        <p class="empty-sub">
+          Create one from the map.
+        </p>
       </div>
 
       <div v-else-if="filteredTours.length === 0" class="empty-state">
         <span class="material-symbols-outlined empty-icon">search_off</span>
-        <p class="empty-text">No tours match your filters.</p>
-        <button class="clear-filters-btn" type="button" @click="clearAll">Clear filters</button>
+        <p class="empty-text">
+          No tours match your filters.
+        </p>
+        <button class="clear-filters-btn" type="button" @click="clearAll">
+          Clear filters
+        </button>
       </div>
 
       <ul v-else class="tours-list">

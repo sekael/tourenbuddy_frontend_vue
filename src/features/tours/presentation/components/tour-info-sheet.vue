@@ -19,7 +19,7 @@ const props = defineProps<{
   /** Set by map-page after a location pick triggered from this sheet. Reset to null via pointConsumed. */
   editPickedPoint?: {
     type: 'start' | 'end' | 'goal'
-    location: { lng: number; lat: number }
+    location: { lng: number, lat: number }
     elevation?: number | null
     suggestedName?: string | null
   } | null
@@ -50,9 +50,9 @@ const isOwner = computed(() => !!currentUser.value && currentUser.value.id === p
 const mode = ref<'view' | 'edit'>('view')
 
 // Pending goal/points during edit — updated reactively via editPickedPoint prop
-const pendingGoal = ref<{ lng: number; lat: number }>({ ...props.tour.goal })
-const pendingStartPoint = ref<{ lng: number; lat: number } | null>(null)
-const pendingEndPoint = ref<{ lng: number; lat: number } | null>(null)
+const pendingGoal = ref<{ lng: number, lat: number }>({ ...props.tour.goal })
+const pendingStartPoint = ref<{ lng: number, lat: number } | null>(null)
+const pendingEndPoint = ref<{ lng: number, lat: number } | null>(null)
 // Elevation/name updated from Swisstopo after a goal re-pick in edit mode
 const pendingElevation = ref<number | null>(null)
 const pendingSuggestedName = ref<string | null>(null)
@@ -75,21 +75,25 @@ function cancelEdit() {
 // Sheet dismissed (map background click, close button, tour deleted, etc.) while
 // edit mode is still active: notify parent so preview marker is cleaned up.
 onBeforeUnmount(() => {
-  if (mode.value === 'edit') emit('editModeChange', false)
+  if (mode.value === 'edit')
+    emit('editModeChange', false)
 })
 
 // Reactive handoff from map-page after a location pick in edit mode
 watch(
   () => props.editPickedPoint,
   (pick) => {
-    if (!pick) return
+    if (!pick)
+      return
     if (pick.type === 'goal') {
       pendingGoal.value = pick.location
       pendingElevation.value = pick.elevation ?? null
       pendingSuggestedName.value = pick.suggestedName ?? null
-    } else if (pick.type === 'start') {
+    }
+    else if (pick.type === 'start') {
       pendingStartPoint.value = pick.location
-    } else {
+    }
+    else {
       pendingEndPoint.value = pick.location
     }
     emit('pointConsumed')
@@ -107,9 +111,11 @@ async function handleEditSubmit(draft: TourDraft) {
     await toursStore.updateTour(props.tour.id, draft, pendingGoal.value)
     mode.value = 'view'
     emit('editModeChange', false)
-  } catch (err) {
+  }
+  catch (err) {
     saveError.value = err instanceof Error ? err.message : 'Failed to save'
-  } finally {
+  }
+  finally {
     isSaving.value = false
   }
 }
@@ -129,7 +135,8 @@ async function confirmDelete() {
   try {
     await toursStore.deleteTour(props.tour.id)
     emit('close')
-  } catch (err) {
+  }
+  catch (err) {
     deleteError.value = err instanceof Error ? err.message : 'Failed to delete'
     deleteState.value = 'idle'
   }
@@ -145,12 +152,14 @@ const sheetCollapsed = computed(
   () => !isDesktop.value && isPickingLocation.value && mode.value === 'edit',
 )
 const sheetTitle = computed(() => {
-  if (sheetCollapsed.value) return `Pick new goal — ${displayName.value}`
+  if (sheetCollapsed.value)
+    return `Pick new goal — ${displayName.value}`
   return mode.value === 'edit' ? `Edit: ${displayName.value}` : displayName.value
 })
 
 const formattedDate = computed(() => {
-  if (!props.tour.plannedDate) return null
+  if (!props.tour.plannedDate)
+    return null
   return new Intl.DateTimeFormat(undefined, {
     year: 'numeric',
     month: 'long',
@@ -158,39 +167,44 @@ const formattedDate = computed(() => {
   }).format(props.tour.plannedDate)
 })
 
-const partners = computed(() => contacts.value.filter((c) => props.tour.partnerIds.includes(c.id)))
+const partners = computed(() => contacts.value.filter(c => props.tour.partnerIds.includes(c.id)))
 
 const coordinates = computed(
   () => `${props.tour.goal.lat.toFixed(4)}°N, ${props.tour.goal.lng.toFixed(4)}°E`,
 )
 
 const formattedElevation = computed(() => {
-  if (props.tour.elevation == null) return null
+  if (props.tour.elevation == null)
+    return null
   return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(props.tour.elevation)} m`
 })
 
 const startPointText = computed(() => {
-  if (!props.tour.startPoint) return null
+  if (!props.tour.startPoint)
+    return null
   return `${props.tour.startPoint.lat.toFixed(4)}°N, ${props.tour.startPoint.lng.toFixed(4)}°E`
 })
 
 const endPointText = computed(() => {
-  if (!props.tour.endPoint) return null
+  if (!props.tour.endPoint)
+    return null
   return `${props.tour.endPoint.lat.toFixed(4)}°N, ${props.tour.endPoint.lng.toFixed(4)}°E`
 })
 
 const isRoundTrip = computed(() => {
   const s = props.tour.startPoint
   const e = props.tour.endPoint
-  if (!s) return false
-  if (!e) return true
+  if (!s)
+    return false
+  if (!e)
+    return true
   return s.lng === e.lng && s.lat === e.lat
 })
 
 /** Auto-link URLs in plain text: returns array of segments {text, url?}. */
-function linkifyText(text: string): Array<{ text: string; url?: string }> {
+function linkifyText(text: string): Array<{ text: string, url?: string }> {
   const urlPattern = /https?:\/\/[^\s<>[\]{}|\\^`"]+/g
-  const segments: Array<{ text: string; url?: string }> = []
+  const segments: Array<{ text: string, url?: string }> = []
   let lastIndex = 0
   for (let match = urlPattern.exec(text); match !== null; match = urlPattern.exec(text)) {
     if (match.index > lastIndex) {
@@ -315,8 +329,7 @@ function linkifyText(text: string): Array<{ text: string; url?: string }> {
                 target="_blank"
                 rel="noopener noreferrer"
                 class="description-link"
-                >{{ segment.text }}</a
-              >
+              >{{ segment.text }}</a>
               <template v-else>
                 {{ segment.text }}
               </template>
@@ -380,7 +393,9 @@ function linkifyText(text: string): Array<{ text: string; url?: string }> {
           <template v-if="deleteState === 'confirm'">
             <div class="delete-confirm-row">
               <span class="delete-confirm-text">Delete this tour?</span>
-              <button type="button" class="cancel-btn" @click="deleteState = 'idle'">Cancel</button>
+              <button type="button" class="cancel-btn" @click="deleteState = 'idle'">
+                Cancel
+              </button>
               <button type="button" class="delete-confirm-btn" @click="confirmDelete">
                 Delete
               </button>

@@ -8,7 +8,7 @@ const props = defineProps<{
   showBack?: boolean
 }>()
 
-const emit = defineEmits<{ close: []; back: [] }>()
+const emit = defineEmits<{ close: [], back: [] }>()
 
 const titleId = 'bottom-sheet-title'
 </script>
