@@ -279,7 +279,7 @@ function switchAddToForm() {
                 class="result-phone result-phone-warning"
                 :title="`Couldn't parse: ${result.rawPhoneNumbers.join(', ')}`"
               >
-                ⚠ {{ result.rawPhoneNumbers[0]
+                ⚠ Couldn't add invalid phone number: {{ result.rawPhoneNumbers[0]
                 }}{{
                   result.rawPhoneNumbers.length > 1
                     ? ` +${result.rawPhoneNumbers.length - 1} more`

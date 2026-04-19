@@ -42,16 +42,16 @@
 
 - [x] 7.1 Write `scripts/migrate-phones-to-e164.ts`: read all `contact_methods` rows where `method_type='phone'`; for each, run `normalizePhone`; if `ok`, UPDATE `value=e164`; else UPDATE `is_valid=false`. Log counts (updated / flagged / unchanged).
 - [x] 7.2 Add npm script entry `migrate:phones-e164`.
-- [ ] 7.3 Run against staging; verify counts; then run against production.
+- [x] 7.3 Run against staging; verify counts; then run against production.
 
 ## 8. Verify across paths
 
-- [ ] 8.1 Manual QA: add via form (valid + invalid), edit via detail (valid + invalid + repair flagged), import vCard (mix of valid/invalid/missing), import via Contact Picker (Android Chrome).
-- [ ] 8.2 Confirm contact chip phone actions work (call + WhatsApp) for newly added contacts.
+- [x] 8.1 Manual QA: add via form (valid + invalid), edit via detail (valid + invalid + repair flagged), import vCard (mix of valid/invalid/missing), import via Contact Picker (Android Chrome).
+- [x] 8.2 Confirm contact chip phone actions work (call + WhatsApp) for newly added contacts.
 
 ## 9. Finalize
 
 - [x] 9.1 Run `npm run lint` and `npm run format`; fix any issues.
 - [x] 9.2 Run `npm run type-check` and `npm run test`; ensure all green.
-- [ ] 9.3 Prompt user to commit with conventional commit message (e.g. `feat(contacts): enforce universal phone validation and E.164 normalization`).
-- [ ] 9.4 Prompt user to push branch and open PR against `main`.
+- [x] 9.3 Prompt user to commit with conventional commit message (e.g. `feat(contacts): enforce universal phone validation and E.164 normalization`).
+- [x] 9.4 Prompt user to push branch and open PR against `main`.
