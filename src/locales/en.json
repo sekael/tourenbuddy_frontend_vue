@@ -38,7 +38,7 @@
       "title": "Enter your email",
       "subtitle": "We'll send you a one-time login code",
       "emailLabel": "Email address",
-      "emailPlaceholder": "you@example.com",
+      "emailPlaceholder": "you{'@'}example.com",
       "invalidEmail": "Please enter a valid email address",
       "sendCodeBtn": "Send Code",
       "sendError": "Failed to send code. Please try again."
@@ -173,7 +173,7 @@
       "addMethodBtn": "Add method",
       "phoneTypeBtn": "Phone",
       "emailTypeBtn": "Email",
-      "emailPlaceholder": "email@example.com",
+      "emailPlaceholder": "email{'@'}example.com",
       "labelExamplePlaceholder": "Label (optional, e.g. Mobile)",
       "addingBtn": "Adding...",
       "addBtn": "Add",

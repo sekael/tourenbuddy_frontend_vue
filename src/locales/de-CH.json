@@ -38,7 +38,7 @@
       "title": "E-Mail-Adresse eingeben",
       "subtitle": "Wir senden Ihnen einen Einmal-Anmeldecode",
       "emailLabel": "E-Mail-Adresse",
-      "emailPlaceholder": "sie@beispiel.ch",
+      "emailPlaceholder": "sie{'@'}beispiel.ch",
       "invalidEmail": "Bitte geben Sie eine gültige E-Mail-Adresse ein",
       "sendCodeBtn": "Code senden",
       "sendError": "Code konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
@@ -173,7 +173,7 @@
       "addMethodBtn": "Methode hinzufügen",
       "phoneTypeBtn": "Telefon",
       "emailTypeBtn": "E-Mail",
-      "emailPlaceholder": "email@beispiel.ch",
+      "emailPlaceholder": "email{'@'}beispiel.ch",
       "labelExamplePlaceholder": "Bezeichnung (optional, z. B. Mobil)",
       "addingBtn": "Wird hinzugefügt...",
       "addBtn": "Hinzufügen",
