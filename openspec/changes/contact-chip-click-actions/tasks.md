@@ -45,11 +45,11 @@
 
 - [x] 8.1 Remove the now-dead inline-icon styles from `contact-chip.vue` and associated CSS.
 - [x] 8.2 Sanity-check other callers of `<ContactChip>` (repo-wide grep) for `show-actions` usage and remove.
-- [ ] 8.3 Manual QA on desktop + iOS Safari + Chrome Android: single/multi partner, edit navigation, group SMS with excluded contact.
+- [x] 8.3 Manual QA on desktop + iOS Safari + Chrome Android: single/multi partner, edit navigation, group SMS with excluded contact.
 
 ## 9. Finalize
 
 - [x] 9.1 Run `npm run lint` and `npm run format`; fix any findings.
 - [x] 9.2 Run `npm run type-check` and `npm run test`; all must pass.
-- [ ] 9.3 Prompt user to commit with conventional message: `feat: contact chip click actions and group SMS (#50)` — body referencing issue #50 and summarizing inline-icon removal + group SMS row.
-- [ ] 9.4 Prompt user to push branch and open PR against `main`.
+- [x] 9.3 Prompt user to commit with conventional message: `feat: contact chip click actions and group SMS (#50)` — body referencing issue #50 and summarizing inline-icon removal + group SMS row.
+- [x] 9.4 Prompt user to push branch and open PR against `main`.

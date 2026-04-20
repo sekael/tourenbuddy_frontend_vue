@@ -109,7 +109,7 @@ onUnmounted(() => {
     </div>
 
     <!-- Mobile: bottom sheet -->
-    <div v-else class="sheet-container">
+    <div v-else class="sheet-container" @click.self="emit('close')">
       <BottomSheet :title="contactName" @close="emit('close')">
         <div class="sheet-body">
           <template v-if="actions.length > 0">
@@ -118,7 +118,6 @@ onUnmounted(() => {
               <div class="method-actions">
                 <a :href="action.call" class="menu-action-btn sheet-action-btn" title="Call">
                   <span class="material-symbols-outlined">call</span>
-                  Call
                 </a>
                 <a
                   :href="action.whatsApp"
@@ -128,7 +127,6 @@ onUnmounted(() => {
                   rel="noopener noreferrer"
                 >
                   <span class="material-symbols-outlined">chat</span>
-                  WhatsApp
                 </a>
               </div>
             </div>
@@ -229,7 +227,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-xs) var(--spacing-lg);
   gap: var(--spacing-sm);
 }
 
@@ -251,8 +249,8 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   color: var(--color-on-surface-variant);
   transition:
@@ -266,32 +264,28 @@ onUnmounted(() => {
 }
 
 .menu-action-btn .material-symbols-outlined {
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .sheet-action-btn {
-  width: auto;
-  height: auto;
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-md);
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-md);
   border: 1.5px solid var(--color-outline-variant);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  min-height: 44px;
 }
 
 .menu-divider {
   height: 1px;
   background-color: var(--color-outline-variant);
-  margin: var(--spacing-xs) 0;
+  margin: 4px 0;
 }
 
 .edit-row {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-xs) var(--spacing-lg);
+  min-height: 36px;
   color: var(--color-on-surface-variant);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
@@ -310,7 +304,6 @@ onUnmounted(() => {
 
 .sheet-edit-row {
   min-height: 44px;
-  padding: var(--spacing-md);
 }
 
 /* ── Mobile sheet container ── */
