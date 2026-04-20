@@ -2,11 +2,16 @@
 import type { PhoneEntry } from '@/features/contacts/presentation/stores/contacts-store'
 import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import { useContactPicker } from '@/features/contacts/presentation/composables/use-contact-picker'
 import { useVCardImport } from '@/features/contacts/presentation/composables/use-vcard-import'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import ContactForm from './contact-form.vue'
+
+const emit = defineEmits<{ close: [] }>()
+
+const { t } = useI18n({ useScope: 'global' })
 
 interface ImportResult {
   firstName: string
@@ -16,8 +21,6 @@ interface ImportResult {
   rawPhoneNumbers: string[]
   status: 'imported' | 'skipped'
 }
-
-const emit = defineEmits<{ close: [] }>()
 
 const contactsStore = useContactsStore()
 const { contacts } = storeToRefs(contactsStore)
@@ -60,7 +63,7 @@ async function handleSubmit(data: {
     emit('close')
   }
   catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to add contact'
+    error.value = err instanceof Error ? err.message : t('contacts.addDialog.addError')
   }
   finally {
     isLoading.value = false
@@ -115,7 +118,7 @@ async function handleContactPickerImport() {
     await processImportedContacts(picked)
   }
   catch (err) {
-    error.value = err instanceof Error ? err.message : 'Import failed'
+    error.value = err instanceof Error ? err.message : t('contacts.addDialog.importError')
   }
   finally {
     isLoading.value = false
@@ -138,7 +141,7 @@ async function handleFileChange(event: Event) {
     await processImportedContacts(parsed)
   }
   catch (err) {
-    error.value = err instanceof Error ? err.message : 'File import failed'
+    error.value = err instanceof Error ? err.message : t('contacts.addDialog.fileImportError')
   }
   finally {
     isLoading.value = false
@@ -149,7 +152,7 @@ async function handleFileChange(event: Event) {
 </script>
 
 <template>
-  <BottomSheet title="Add Contact" @close="emit('close')">
+  <BottomSheet :title="t('contacts.addDialog.title')" @close="emit('close')">
     <!-- Import results view -->
     <div v-if="viewState === 'import-results'" class="results-view">
       <p class="results-summary">
@@ -189,7 +192,11 @@ async function handleFileChange(event: Event) {
             class="result-badge"
             :class="result.status === 'imported' ? 'badge-imported' : 'badge-skipped'"
           >
-            {{ result.status === 'imported' ? 'Imported' : 'Skipped' }}
+            {{
+              result.status === 'imported'
+                ? t('contacts.addDialog.importedBadge')
+                : t('contacts.addDialog.skippedBadge')
+            }}
           </span>
         </li>
       </ul>
@@ -197,10 +204,10 @@ async function handleFileChange(event: Event) {
       <div class="results-actions">
         <button type="button" class="add-manual-link" @click="switchToForm">
           <span class="material-symbols-outlined">add</span>
-          Add another manually
+          {{ t('contacts.addDialog.addManuallyBtn') }}
         </button>
         <button type="button" class="submit-btn" @click="emit('close')">
-          Done
+          {{ t('contacts.addDialog.doneBtn') }}
         </button>
       </div>
     </div>
@@ -215,7 +222,7 @@ async function handleFileChange(event: Event) {
           @click="handleFileImportClick"
         >
           <span class="material-symbols-outlined">upload_file</span>
-          Import from file
+          {{ t('contacts.addDialog.importFileBtn') }}
         </button>
         <button
           v-if="isContactPickerSupported"
@@ -225,7 +232,7 @@ async function handleFileChange(event: Event) {
           @click="handleContactPickerImport"
         >
           <span class="material-symbols-outlined">contacts</span>
-          Import from contacts
+          {{ t('contacts.addDialog.importContactsBtn') }}
         </button>
         <input
           ref="fileInput"
@@ -243,7 +250,7 @@ async function handleFileChange(event: Event) {
       </p>
 
       <ContactForm
-        submit-label="Add Contact"
+        :submit-label="t('contacts.addDialog.title')"
         :is-loading="isLoading"
         @submit="handleSubmit"
         @cancel="emit('close')"

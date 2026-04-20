@@ -66,7 +66,7 @@ describe('contactDetailView', () => {
       await wrapper.find('#dv-firstName').setValue('')
       await wrapper.find('.save-btn').trigger('click')
 
-      expect(wrapper.find('.error-text').text()).toBe('First name is required')
+      expect(wrapper.find('.error-text').text()).toBe('contacts.detailView.firstNameRequired')
     })
   })
 
@@ -174,7 +174,7 @@ describe('contactDetailView', () => {
       const wrapper = mountDetail()
       await wrapper.find('.add-method-btn').trigger('click')
       await wrapper.find('.add-method-form .save-btn').trigger('click')
-      expect(wrapper.find('.error-text').text()).toBe('Value is required')
+      expect(wrapper.find('.error-text').text()).toBe('contacts.detailView.valueRequired')
     })
 
     it('should hide add method form when cancel clicked', async () => {

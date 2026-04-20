@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n({ useScope: 'global' })
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -38,14 +41,14 @@ function handleDismiss() {
     <div v-if="isVisible" class="banner" role="banner">
       <div class="content">
         <p class="text">
-          Install TourenBuddy for the best experience
+          {{ t('core.pwa.banner.message') }}
         </p>
         <div class="actions">
           <button class="dismiss-btn" @click="handleDismiss">
-            Not now
+            {{ t('core.pwa.banner.dismiss') }}
           </button>
           <button class="install-btn" @click="handleInstall">
-            Install
+            {{ t('core.pwa.banner.install') }}
           </button>
         </div>
       </div>

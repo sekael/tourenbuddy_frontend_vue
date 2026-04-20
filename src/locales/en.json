@@ -1,0 +1,301 @@
+{
+  "validation": {
+    "required": "This field is required",
+    "invalidType": "Invalid value",
+    "tooSmall": "Value is too small",
+    "tooBig": "Value is too large",
+    "invalidString": "Invalid format",
+    "invalidEnum": "Invalid option",
+    "invalid": "Invalid value"
+  },
+  "core": {
+    "pwa": {
+      "banner": {
+        "message": "Install TourenBuddy for the best experience",
+        "dismiss": "Not now",
+        "install": "Install"
+      }
+    },
+    "feedback": {
+      "sheet": {
+        "title": "Feedback",
+        "openIssue": "Open Issue on GitHub",
+        "noGitHub": "No GitHub account? Reach out at",
+        "errorOpening": "Could not open the GitHub page. Please email us at {email}"
+      }
+    },
+    "drawer": {
+      "close": "Close",
+      "back": "Back"
+    }
+  },
+  "auth": {
+    "home": {
+      "subtitle": "Plan your outdoor tours with confidence",
+      "getStartedBtn": "Get Started"
+    },
+    "emailEntry": {
+      "title": "Enter your email",
+      "subtitle": "We'll send you a one-time login code",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "you@example.com",
+      "invalidEmail": "Please enter a valid email address",
+      "sendCodeBtn": "Send Code",
+      "sendError": "Failed to send code. Please try again."
+    },
+    "verifyOtp": {
+      "title": "Check your email",
+      "subtitlePrefix": "We sent a login code to",
+      "otpLabel": "One-time code",
+      "otpPlaceholder": "Enter code",
+      "incompleteCode": "Please enter the full code",
+      "invalidCode": "Invalid code. Please try again.",
+      "resendSuccess": "Code resent! Check your email.",
+      "verifyCodeBtn": "Verify Code",
+      "resendError": "Failed to resend code. Please try again.",
+      "resendCodeBtn": "Resend code"
+    },
+    "shared": {
+      "sendingBtn": "Sending...",
+      "verifyingBtn": "Verifying...",
+      "backBtn": "Back"
+    }
+  },
+  "user": {
+    "onboarding": {
+      "title": "Set up your profile",
+      "subtitle": "A complete profile helps your tour partners recognize and contact you. You can always update this later.",
+      "firstNameRequired": "First name is required",
+      "lastNameRequired": "Last name is required",
+      "continueBtn": "Continue",
+      "skipBtn": "Skip for now"
+    },
+    "profile": {
+      "title": "Profile",
+      "verifiedTooltip": "Verified",
+      "verifyBtn": "Verify",
+      "addPhoneBtn": "Add phone number",
+      "editBtn": "Edit profile",
+      "signOutBtn": "Sign out",
+      "nameRequired": "First and last name are required",
+      "saveFailed": "Failed to save profile",
+      "languageLabel": "Language"
+    },
+    "phoneVerification": {
+      "title": "Verify your phone",
+      "subtitlePrefix": "We sent a code to",
+      "codeLabel": "Verification code",
+      "codePlaceholder": "000000",
+      "incompleteCode": "Please enter the full 6-digit code",
+      "invalidCode": "Invalid code. Please try again.",
+      "resendSuccess": "Code resent!",
+      "verifyingBtn": "Verifying...",
+      "verifyBtn": "Verify",
+      "resendError": "Failed to resend code.",
+      "resendCountdown": "Resend in",
+      "sendingBtn": "Sending...",
+      "resendBtn": "Resend code",
+      "verifiedMsg": "Phone verified!"
+    },
+    "shared": {
+      "firstNameLabel": "First name",
+      "firstNamePlaceholder": "Max",
+      "lastNameLabel": "Last name",
+      "lastNamePlaceholder": "Mustermann",
+      "phoneLabel": "Phone number",
+      "phonePlaceholder": "+41 79 012 34 56",
+      "optional": "(optional)",
+      "required": "*",
+      "savingBtn": "Saving...",
+      "cancelBtn": "Cancel",
+      "saveBtn": "Save"
+    }
+  },
+  "contacts": {
+    "list": {
+      "title": "Contacts",
+      "addBtn": "Add contact",
+      "loading": "Loading\u2026",
+      "emptyTitle": "No contacts yet.",
+      "emptySubtitle": "Add contacts to use them as tour partners.",
+      "noMatchesTitle": "No contacts match your search.",
+      "clearFiltersBtn": "Clear filters",
+      "searchPlaceholder": "Search contacts\u2026",
+      "invalidPhoneWarning": "Couldn't add invalid phone number:"
+    },
+    "form": {
+      "firstNameLabel": "First Name",
+      "firstNamePlaceholder": "First name",
+      "firstNameRequired": "First name is required",
+      "lastNameLabel": "Last Name",
+      "lastNamePlaceholder": "Last name (optional)",
+      "displayNameLabel": "Display Name",
+      "displayNamePlaceholder": "Nickname (optional)",
+      "phonesLabel": "Phone Numbers",
+      "primaryPhoneTooltip": "Primary phone",
+      "setAsPrimaryTooltip": "Set as primary",
+      "phonePlaceholder": "+41 79 012 34 56 (optional)",
+      "invalidPhone": "Invalid phone number",
+      "labelPlaceholder": "Label (e.g. Mobile)",
+      "removePhoneTooltip": "Remove phone",
+      "addPhoneBtn": "Add phone",
+      "primaryPhoneRequired": "Select one primary phone when multiple phones are entered"
+    },
+    "addDialog": {
+      "title": "Add Contact",
+      "importedBadge": "imported",
+      "skippedBadge": "skipped",
+      "importedLabel": "Imported",
+      "skippedLabel": "Skipped",
+      "addManuallyBtn": "Add another manually",
+      "doneBtn": "Done",
+      "importFileBtn": "Import from file",
+      "importContactsBtn": "Import from contacts",
+      "importError": "Import failed",
+      "fileImportError": "File import failed",
+      "addError": "Failed to add contact"
+    },
+    "detailView": {
+      "title": "Edit Contact",
+      "nameSection": "Name",
+      "savingBtn": "Saving...",
+      "saveNameBtn": "Save name",
+      "methodsSection": "Contact methods",
+      "noMethods": "No contact methods yet.",
+      "primaryPhoneTooltip": "Primary phone",
+      "setAsPrimaryTooltip": "Set as primary",
+      "invalidPhoneHint": "Invalid number \u2014 enter a valid phone to fix",
+      "phonePlaceholder": "+41 79 012 34 56",
+      "labelPlaceholder": "Label (optional)",
+      "invalidPhone": "Invalid phone number",
+      "valueRequired": "Value is required",
+      "addError": "Failed to add",
+      "addMethodBtn": "Add method",
+      "phoneTypeBtn": "Phone",
+      "emailTypeBtn": "Email",
+      "emailPlaceholder": "email@example.com",
+      "labelExamplePlaceholder": "Label (optional, e.g. Mobile)",
+      "addingBtn": "Adding...",
+      "addBtn": "Add",
+      "deleteConfirm": "Delete this contact?",
+      "deleteBtn": "Delete contact",
+      "deletingBtn": "Deleting..."
+    },
+    "actionMenu": {
+      "noMethods": "No contact method available. Edit contact to add one.",
+      "editBtn": "Edit contact"
+    },
+    "groupSms": {
+      "title": "Send SMS to all partners",
+      "willReceiveLabel": "Will receive SMS",
+      "cannotReceiveLabel": "Cannot receive SMS",
+      "noRecipients": "No partners have a valid phone number for SMS.",
+      "cancelBtn": "Cancel",
+      "sendBtn": "Send SMS"
+    },
+    "shared": {
+      "savingBtn": "Saving...",
+      "cancelBtn": "Cancel"
+    }
+  },
+  "tours": {
+    "list": {
+      "title": "Tours",
+      "searchPlaceholder": "Search tours\u2026",
+      "filtersBtn": "Filters",
+      "loading": "Loading\u2026",
+      "emptyTitle": "No tours yet.",
+      "emptySubtitle": "Create one from the map.",
+      "noMatchesTitle": "No tours match your filters.",
+      "clearFiltersBtn": "Clear filters"
+    },
+    "form": {
+      "nameLabel": "Tour Name",
+      "namePlaceholder": "e.g. Rigi Kulm",
+      "nameRequired": "Tour name is required.",
+      "goalLabel": "Goal",
+      "changeGoalBtn": "Change",
+      "elevationLabel": "Elevation (m)",
+      "elevationPlaceholder": "Elevation in meters",
+      "startPointLabel": "Start Point",
+      "endPointLabel": "End Point",
+      "pointNotSet": "Not set",
+      "sameAsEnd": "same as end",
+      "pickBtn": "Pick",
+      "roundTrip": "round trip",
+      "partnersLabel": "Tour Partners",
+      "activityLabel": "Activity Type",
+      "seasonLabel": "Season",
+      "gpxTooLarge": "File too large (max 2 MB)",
+      "gpxInvalid": "Invalid GPX file",
+      "gpxReadError": "Failed to read file"
+    },
+    "creation": {
+      "title": "New Tour",
+      "saveBtn": "Save Tour"
+    },
+    "infoSheet": {
+      "editTitlePrefix": "Edit:",
+      "pickGoalPrefix": "Pick new goal \u2014",
+      "unnamedTour": "Unnamed tour",
+      "completedBtn": "Completed",
+      "completeTourBtn": "Complete Tour",
+      "roundTrip": "Round trip",
+      "gpxTrackAvailable": "Track available",
+      "messageAll": "Message all",
+      "editBtn": "Edit",
+      "deleteConfirmText": "Delete this tour?",
+      "cancelBtn": "Cancel",
+      "deleteBtn": "Delete",
+      "deletingBtn": "Deleting\u2026",
+      "saveFailed": "Failed to save",
+      "deleteFailed": "Failed to delete",
+      "backToTours": "Tours",
+      "saveLabel": "Save"
+    },
+    "filters": {
+      "partnerLabel": "Partner",
+      "activityLabel": "Activity type",
+      "completionAll": "All",
+      "completionOpen": "Open",
+      "completionDone": "Done",
+      "dateFromLabel": "From",
+      "dateToLabel": "To"
+    },
+    "type": {
+      "skiing": "Skiing",
+      "snowboarding": "Snowboarding",
+      "skitour": "Ski Tour",
+      "splitboarding": "Splitboarding",
+      "skiMountaineering": "Ski Mountaineering",
+      "paragliding": "Paragliding",
+      "hiking": "Hiking",
+      "mountaineering": "Mountaineering",
+      "climbing": "Climbing",
+      "mountainBiking": "Mountain Biking",
+      "trailrunning": "Trail Running"
+    },
+    "season": {
+      "winter": "Winter",
+      "spring": "Spring",
+      "summer": "Summer",
+      "autumn": "Autumn"
+    }
+  },
+  "map": {
+    "overlay": {
+      "compassTooltip": "Orient map north",
+      "feedbackTooltip": "Feedback",
+      "profileTooltip": "Profile",
+      "contactsTooltip": "Contacts",
+      "toursTooltip": "Tours",
+      "addTourTooltip": "Add tour location",
+      "signInToAddToursTooltip": "Sign in to add tours"
+    }
+  },
+  "i18n": {
+    "languageLabel": "Language",
+    "en": "English",
+    "de-CH": "Deutsch"
+  }
+}

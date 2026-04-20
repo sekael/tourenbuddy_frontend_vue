@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
 const props = defineProps<{ phone: string }>()
 
 const emit = defineEmits<{ verified: [], close: [] }>()
+const { t } = useI18n({ useScope: 'global' })
 const displayPhone = computed(() => {
   const result = normalizePhone(props.phone)
   return result.ok ? result.value : props.phone
@@ -43,7 +45,7 @@ async function handleVerify() {
   error.value = null
 
   if (otp.value.length < 6) {
-    error.value = 'Please enter the full 6-digit code'
+    error.value = t('user.phoneVerification.incompleteCode')
     return
   }
 
@@ -54,7 +56,7 @@ async function handleVerify() {
     setTimeout(() => emit('verified'), 1200)
   }
   catch (err) {
-    error.value = err instanceof Error ? err.message : 'Invalid code. Please try again.'
+    error.value = err instanceof Error ? err.message : t('user.phoneVerification.invalidCode')
   }
   finally {
     isVerifying.value = false
@@ -73,7 +75,7 @@ async function handleResend() {
     startCooldown()
   }
   catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to resend code.'
+    error.value = err instanceof Error ? err.message : t('user.phoneVerification.resendError')
   }
   finally {
     isResending.value = false
@@ -92,28 +94,28 @@ async function handleResend() {
         <div class="verified-state">
           <span class="verified-icon material-symbols-outlined">check_circle</span>
           <p class="verified-text">
-            Phone verified!
+            {{ t('user.phoneVerification.verifiedMsg') }}
           </p>
         </div>
       </template>
 
       <template v-else>
         <h2 class="title">
-          Verify your phone
+          {{ t('user.phoneVerification.title') }}
         </h2>
         <p class="subtitle">
-          We sent a code to <strong>{{ displayPhone }}</strong>
+          {{ t('user.phoneVerification.subtitlePrefix') }} <strong>{{ displayPhone }}</strong>
         </p>
 
         <form class="form" @submit.prevent="handleVerify">
           <div class="field">
-            <label for="phone-otp" class="label">Verification code</label>
+            <label for="phone-otp" class="label">{{ t('user.phoneVerification.codeLabel') }}</label>
             <input
               id="phone-otp"
               v-model="otp"
               type="text"
               class="input otp-input"
-              placeholder="000000"
+              :placeholder="t('user.phoneVerification.codePlaceholder')"
               autocomplete="one-time-code"
               inputmode="numeric"
               maxlength="6"
@@ -124,11 +126,15 @@ async function handleResend() {
             {{ error }}
           </p>
           <p v-if="resendSuccess" class="success-text">
-            Code resent!
+            {{ t('user.phoneVerification.resendSuccess') }}
           </p>
 
           <button type="submit" class="submit-btn" :disabled="isVerifying">
-            {{ isVerifying ? 'Verifying...' : 'Verify' }}
+            {{
+              isVerifying
+                ? t('user.phoneVerification.verifyingBtn')
+                : t('user.phoneVerification.verifyBtn')
+            }}
           </button>
         </form>
 
@@ -139,10 +145,10 @@ async function handleResend() {
         >
           {{
             resendCooldown > 0
-              ? `Resend in ${resendCooldown}s`
+              ? `${t('user.phoneVerification.resendCountdown')} ${resendCooldown}s`
               : isResending
-                ? 'Sending...'
-                : 'Resend code'
+                ? t('user.phoneVerification.sendingBtn')
+                : t('user.phoneVerification.resendBtn')
           }}
         </button>
       </template>

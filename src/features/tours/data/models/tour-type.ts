@@ -18,6 +18,20 @@ export const tourTypeSchema = z.enum(TOUR_TYPE_VALUES)
 
 export type TourType = z.infer<typeof tourTypeSchema>
 
+export const TOUR_TYPE_I18N_KEYS: Record<TourType, string> = {
+  'skiing': 'skiing',
+  'snowboarding': 'snowboarding',
+  'skitour': 'skitour',
+  'splitboarding': 'splitboarding',
+  'ski-mountaineering': 'skiMountaineering',
+  'paragliding': 'paragliding',
+  'hiking': 'hiking',
+  'mountaineering': 'mountaineering',
+  'climbing': 'climbing',
+  'mountain-biking': 'mountainBiking',
+  'trailrunning': 'trailrunning',
+}
+
 export const TOUR_TYPE_LABELS: Record<TourType, string> = {
   'skiing': 'Skiing',
   'snowboarding': 'Snowboarding',

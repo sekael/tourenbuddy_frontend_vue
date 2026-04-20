@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import BaseMapPicker from './base-map-picker.vue'
@@ -16,6 +17,8 @@ const emit = defineEmits<{
   openFeedback: []
   resetBearing: []
 }>()
+
+const { t } = useI18n({ useScope: 'global' })
 
 const iconRotation = computed(() => -(props.bearing ?? 0))
 const showCompass = computed(() => Math.abs(props.bearing ?? 0) > 0.5)
@@ -33,35 +36,42 @@ function startAddTour() {
 
 <template>
   <div v-if="!isPickingLocation" class="overlay">
-    <button v-if="showCompass" class="fab" title="Orient map north" @click="emit('resetBearing')">
+    <button
+      v-if="showCompass"
+      class="fab"
+      :title="t('map.overlay.compassTooltip')"
+      @click="emit('resetBearing')"
+    >
       <span
         class="material-symbols-outlined compass-icon"
         :style="{ transform: `rotate(${iconRotation}deg)` }"
       >explore</span>
     </button>
 
-    <button class="fab" title="Feedback" @click="emit('openFeedback')">
+    <button class="fab" :title="t('map.overlay.feedbackTooltip')" @click="emit('openFeedback')">
       <span class="material-symbols-outlined">feedback</span>
     </button>
 
-    <button class="fab" title="Profile" @click="emit('openProfile')">
+    <button class="fab" :title="t('map.overlay.profileTooltip')" @click="emit('openProfile')">
       <span class="material-symbols-outlined">account_circle</span>
     </button>
 
     <BaseMapPicker />
 
-    <button class="fab" title="Contacts" @click="emit('openContacts')">
+    <button class="fab" :title="t('map.overlay.contactsTooltip')" @click="emit('openContacts')">
       <span class="material-symbols-outlined">group</span>
     </button>
 
-    <button class="fab" title="Tours" @click="emit('openTours')">
+    <button class="fab" :title="t('map.overlay.toursTooltip')" @click="emit('openTours')">
       <span class="material-symbols-outlined">location_on</span>
     </button>
 
     <button
       class="fab"
       :disabled="!isAuthenticated"
-      :title="isAuthenticated ? 'Add tour location' : 'Sign in to add tours'"
+      :title="
+        isAuthenticated ? t('map.overlay.addTourTooltip') : t('map.overlay.signInToAddToursTooltip')
+      "
       @click="startAddTour"
     >
       <span class="material-symbols-outlined">add_location_alt</span>

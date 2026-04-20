@@ -4,12 +4,13 @@ import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
-import { SEASON_LABELS, SEASON_VALUES } from '@/features/tours/data/models/season'
+import { SEASON_VALUES } from '@/features/tours/data/models/season'
 import {
+  TOUR_TYPE_I18N_KEYS,
   TOUR_TYPE_ICONS,
-  TOUR_TYPE_LABELS,
   TOUR_TYPE_VALUES,
 } from '@/features/tours/data/models/tour-type'
 import {
@@ -42,6 +43,8 @@ const emit = defineEmits<{
   cancel: []
   pickPoint: [type: 'start' | 'end' | 'goal']
 }>()
+
+const { t } = useI18n({ useScope: 'global' })
 
 const contactsStore = useContactsStore()
 const { contacts } = storeToRefs(contactsStore)
@@ -151,13 +154,13 @@ async function handleGpxUpload(event: Event) {
   }
   catch (err) {
     if (err instanceof GpxFileTooLargeError) {
-      gpxError.value = 'File too large (max 2 MB)'
+      gpxError.value = t('tours.form.gpxTooLarge')
     }
     else if (err instanceof GpxParseError) {
-      gpxError.value = 'Invalid GPX file'
+      gpxError.value = t('tours.form.gpxInvalid')
     }
     else {
-      gpxError.value = 'Failed to read file'
+      gpxError.value = t('tours.form.gpxReadError')
     }
     gpxTrack.value = null
     gpxFileName.value = null
@@ -210,7 +213,7 @@ function handleSubmit() {
         </p>
 
         <div class="field">
-          <label class="label" for="tf-tourName">Tour Name <span class="required-mark">*</span></label>
+          <label class="label" for="tf-tourName">{{ t('tours.form.nameLabel') }} <span class="required-mark">*</span></label>
           <input
             id="tf-tourName"
             v-model="tourName"
@@ -218,20 +221,20 @@ function handleSubmit() {
             :class="{ 'input--error': nameError }"
             type="text"
             maxlength="100"
-            placeholder="e.g. Rigi Kulm"
+            :placeholder="t('tours.form.namePlaceholder')"
             aria-required="true"
             :aria-invalid="nameError"
             @input="nameError = false"
           >
           <p v-if="nameError" class="field-error">
-            Tour name is required.
+            {{ t('tours.form.nameRequired') }}
           </p>
         </div>
 
         <!-- Goal (read-only display, with optional change button) -->
         <div v-if="currentGoal" class="field">
           <p class="label">
-            Goal
+            {{ t('tours.form.goalLabel') }}
           </p>
           <div class="point-row">
             <span class="point-coords">{{ formatPoint(currentGoal) }}</span>
@@ -242,13 +245,13 @@ function handleSubmit() {
               @click="emit('pickPoint', 'goal')"
             >
               <span class="material-symbols-outlined">my_location</span>
-              Change
+              {{ t('tours.form.changeGoalBtn') }}
             </button>
           </div>
         </div>
 
         <div class="field">
-          <label class="label" for="tf-elevation"> Elevation (m) </label>
+          <label class="label" for="tf-elevation">{{ t('tours.form.elevationLabel') }}</label>
           <input
             id="tf-elevation"
             v-model="elevation"
@@ -256,23 +259,25 @@ function handleSubmit() {
             type="number"
             min="0"
             max="9000"
-            placeholder="Elevation in meters"
+            :placeholder="t('tours.form.elevationPlaceholder')"
             @input="elevationAutoFilled = false"
           >
         </div>
 
         <div class="field">
           <p class="label">
-            Start Point
+            {{ t('tours.form.startPointLabel') }}
           </p>
           <div class="point-row">
             <span class="point-coords">{{
-              effectiveStartPoint ? formatPoint(effectiveStartPoint) : 'Not set'
+              effectiveStartPoint ? formatPoint(effectiveStartPoint) : t('tours.form.pointNotSet')
             }}</span>
-            <span v-if="!startPoint && endPoint" class="optional-hint">same as end</span>
+            <span v-if="!startPoint && endPoint" class="optional-hint">{{
+              t('tours.form.sameAsEnd')
+            }}</span>
             <button type="button" class="pick-btn" @click="emit('pickPoint', 'start')">
               <span class="material-symbols-outlined">my_location</span>
-              {{ startPoint ? 'Change' : 'Pick' }}
+              {{ startPoint ? t('tours.form.changeGoalBtn') : t('tours.form.pickBtn') }}
             </button>
             <button
               v-if="startPoint"
@@ -287,16 +292,18 @@ function handleSubmit() {
 
         <div class="field">
           <p class="label">
-            End Point
+            {{ t('tours.form.endPointLabel') }}
           </p>
           <div class="point-row">
             <span class="point-coords">{{
-              effectiveEndPoint ? formatPoint(effectiveEndPoint) : 'Not set'
+              effectiveEndPoint ? formatPoint(effectiveEndPoint) : t('tours.form.pointNotSet')
             }}</span>
-            <span v-if="!endPoint && startPoint" class="optional-hint">round trip</span>
+            <span v-if="!endPoint && startPoint" class="optional-hint">{{
+              t('tours.form.roundTrip')
+            }}</span>
             <button type="button" class="pick-btn" @click="emit('pickPoint', 'end')">
               <span class="material-symbols-outlined">my_location</span>
-              {{ endPoint ? 'Change' : 'Pick' }}
+              {{ endPoint ? t('tours.form.changeGoalBtn') : t('tours.form.pickBtn') }}
             </button>
             <button v-if="endPoint" type="button" class="remove-point-btn" @click="endPoint = null">
               <span class="material-symbols-outlined">close</span>
@@ -308,7 +315,7 @@ function handleSubmit() {
       <!-- SECTION: Tour Partners -->
       <div v-if="contacts.length > 0" class="section">
         <p class="section-label">
-          Tour Partners
+          {{ t('tours.form.partnersLabel') }}
         </p>
         <div class="chips">
           <ContactChip
@@ -324,7 +331,7 @@ function handleSubmit() {
       <!-- SECTION: Tour Type -->
       <div class="section">
         <p class="section-label">
-          Activity Type
+          {{ t('tours.form.activityLabel') }}
         </p>
         <div class="type-chips">
           <button
@@ -336,7 +343,9 @@ function handleSubmit() {
             @click="toggleTourType(type)"
           >
             <span class="material-symbols-outlined type-icon">{{ TOUR_TYPE_ICONS[type] }}</span>
-            <span class="type-label">{{ TOUR_TYPE_LABELS[type] }}</span>
+            <span class="type-label">{{
+              t(`tours.type.${TOUR_TYPE_I18N_KEYS[type]}` as any)
+            }}</span>
           </button>
         </div>
       </div>
@@ -344,7 +353,7 @@ function handleSubmit() {
       <!-- SECTION: Season -->
       <div class="section">
         <p class="section-label">
-          Season
+          {{ t('tours.form.seasonLabel') }}
         </p>
         <div class="season-chips">
           <button
@@ -355,7 +364,7 @@ function handleSubmit() {
             :class="{ selected: selectedSeasons.has(season) }"
             @click="toggleSeason(season)"
           >
-            {{ SEASON_LABELS[season] }}
+            {{ t(`tours.season.${season}` as any) }}
           </button>
         </div>
       </div>
@@ -438,7 +447,7 @@ function handleSubmit() {
 
     <div class="actions">
       <button type="button" class="cancel-btn" @click="emit('cancel')">
-        Cancel
+        {{ t('tours.form.cancelBtn') }}
       </button>
       <button type="submit" class="submit-btn">
         {{ submitLabel }}

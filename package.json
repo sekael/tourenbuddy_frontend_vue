@@ -12,9 +12,11 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "migrate:phones-e164": "tsx scripts/migrate-phones-to-e164.ts"
+    "migrate:phones-e164": "tsx scripts/migrate-phones-to-e164.ts",
+    "check:locales": "tsx scripts/check-locale-parity.ts"
   },
   "dependencies": {
+    "@intlify/unplugin-vue-i18n": "^11.0.7",
     "@supabase/supabase-js": "^2.49.0",
     "@tmcw/togeojson": "^7.1.2",
     "@types/uuid": "^10.0.0",
@@ -26,6 +28,7 @@
     "uuid": "^13.0.0",
     "vee-validate": "^4.15.0",
     "vue": "^3.5.0",
+    "vue-i18n": "^11.3.2",
     "vue-router": "^4.5.0",
     "zod": "^3.24.0"
   },

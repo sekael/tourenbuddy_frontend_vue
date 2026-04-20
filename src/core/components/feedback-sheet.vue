@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import ErrorSnackbar from '@/core/components/error-snackbar.vue'
 import { useSnackbar } from '@/core/composables/use-snackbar'
@@ -7,6 +8,7 @@ import { useLogger } from '@/core/logging/use-logger'
 
 const emit = defineEmits<{ close: [] }>()
 
+const { t } = useI18n({ useScope: 'global' })
 const logger = useLogger('feedback-sheet')
 const { snackbar, show, dismiss } = useSnackbar()
 
@@ -15,7 +17,7 @@ function openIssue() {
   logger.info('Opening GitHub issue URL', FEEDBACK_GITHUB_ISSUE_URL)
   const tab = window.open(FEEDBACK_GITHUB_ISSUE_URL, '_blank', 'noopener,noreferrer')
   if (tab === null) {
-    show(`Could not open the GitHub page. Please email us at ${FEEDBACK_EMAIL}`)
+    show(t('core.feedback.sheet.errorOpening', { email: FEEDBACK_EMAIL }))
   }
   else {
     emit('close')
@@ -24,13 +26,13 @@ function openIssue() {
 </script>
 
 <template>
-  <AdaptiveOverlay title="Feedback" @close="emit('close')">
+  <AdaptiveOverlay :title="t('core.feedback.sheet.title')" @close="emit('close')">
     <div class="feedback-content">
       <button type="button" class="primary-btn" @click="openIssue">
-        Open Issue on GitHub
+        {{ t('core.feedback.sheet.openIssue') }}
       </button>
       <p class="hint">
-        No GitHub account? Reach out at
+        {{ t('core.feedback.sheet.noGitHub') }}
         <a :href="`mailto:${FEEDBACK_EMAIL}`" class="email-link">{{ FEEDBACK_EMAIL }}</a>
       </p>
     </div>

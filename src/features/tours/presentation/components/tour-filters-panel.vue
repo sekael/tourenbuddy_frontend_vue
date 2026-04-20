@@ -6,10 +6,11 @@ import type {
   TourFilters,
 } from '@/features/tours/presentation/composables/use-tour-filters'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 import { resolveContactName } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
-import { SEASON_LABELS, SEASON_VALUES } from '@/features/tours/data/models/season'
-import { TOUR_TYPE_LABELS, TOUR_TYPE_VALUES } from '@/features/tours/data/models/tour-type'
+import { SEASON_VALUES } from '@/features/tours/data/models/season'
+import { TOUR_TYPE_I18N_KEYS, TOUR_TYPE_VALUES } from '@/features/tours/data/models/tour-type'
 
 const props = defineProps<{ filters: TourFilters }>()
 const emit = defineEmits<{
@@ -20,6 +21,8 @@ const emit = defineEmits<{
   'update:dateRangeTo': [Date | null]
   'update:completion': [CompletionFilter]
 }>()
+
+const { t } = useI18n({ useScope: 'global' })
 
 const contactsStore = useContactsStore()
 const { contacts } = storeToRefs(contactsStore)
@@ -48,10 +51,10 @@ function toggleSeason(season: Season) {
   emit('update:seasons', next)
 }
 
-const COMPLETION_OPTIONS: { value: CompletionFilter, label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'open', label: 'Open' },
-  { value: 'done', label: 'Done' },
+const completionOptions = [
+  { value: 'all' as const, key: 'completionAll' },
+  { value: 'open' as const, key: 'completionOpen' },
+  { value: 'done' as const, key: 'completionDone' },
 ]
 </script>
 
@@ -59,7 +62,7 @@ const COMPLETION_OPTIONS: { value: CompletionFilter, label: string }[] = [
   <div class="filters-panel">
     <div v-if="contacts.length" class="filter-group">
       <p class="filter-label">
-        Partner
+        {{ t('tours.filters.partnerLabel') }}
       </p>
       <div class="chip-row">
         <button
@@ -77,7 +80,7 @@ const COMPLETION_OPTIONS: { value: CompletionFilter, label: string }[] = [
 
     <div class="filter-group">
       <p class="filter-label">
-        Activity type
+        {{ t('tours.filters.activityLabel') }}
       </p>
       <div class="chip-row">
         <button
@@ -88,14 +91,14 @@ const COMPLETION_OPTIONS: { value: CompletionFilter, label: string }[] = [
           type="button"
           @click="toggleTourType(type)"
         >
-          {{ TOUR_TYPE_LABELS[type] }}
+          {{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[type]}` as any) }}
         </button>
       </div>
     </div>
 
     <div class="filter-group">
       <p class="filter-label">
-        Season
+        {{ t('tours.filters.seasonLabel') }}
       </p>
       <div class="chip-row">
         <button
@@ -106,18 +109,18 @@ const COMPLETION_OPTIONS: { value: CompletionFilter, label: string }[] = [
           type="button"
           @click="toggleSeason(season)"
         >
-          {{ SEASON_LABELS[season] }}
+          {{ t(`tours.season.${season}` as any) }}
         </button>
       </div>
     </div>
 
     <div class="filter-group">
       <p class="filter-label">
-        Planned date
+        {{ t('tours.filters.plannedDateLabel') }}
       </p>
       <div class="date-row">
         <label class="date-field">
-          <span class="date-label-text">From</span>
+          <span class="date-label-text">{{ t('tours.filters.dateFromLabel') }}</span>
           <input
             type="date"
             class="date-input"
@@ -134,7 +137,7 @@ const COMPLETION_OPTIONS: { value: CompletionFilter, label: string }[] = [
           >
         </label>
         <label class="date-field">
-          <span class="date-label-text">To</span>
+          <span class="date-label-text">{{ t('tours.filters.dateToLabel') }}</span>
           <input
             type="date"
             class="date-input"
@@ -155,18 +158,18 @@ const COMPLETION_OPTIONS: { value: CompletionFilter, label: string }[] = [
 
     <div class="filter-group">
       <p class="filter-label">
-        Status
+        {{ t('tours.filters.statusLabel') }}
       </p>
       <div class="segmented">
         <button
-          v-for="opt in COMPLETION_OPTIONS"
+          v-for="opt in completionOptions"
           :key="opt.value"
           class="segment"
           :class="{ active: filters.completion === opt.value }"
           type="button"
           @click="emit('update:completion', opt.value)"
         >
-          {{ opt.label }}
+          {{ t(`tours.filters.${opt.key}` as any) }}
         </button>
       </div>
     </div>

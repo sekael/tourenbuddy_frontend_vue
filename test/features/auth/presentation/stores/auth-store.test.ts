@@ -79,4 +79,12 @@ describe('useAuthStore', () => {
     const store = useAuthStore()
     await expect(store.sendEmailOtp('test@example.com')).rejects.toThrow('rate limited')
   })
+
+  it('should not clear tb.locale from localStorage on sign out', async () => {
+    localStorage.setItem('tb.locale', 'de-CH')
+    const store = useAuthStore()
+    await store.signOut()
+    expect(localStorage.getItem('tb.locale')).toBe('de-CH')
+    localStorage.removeItem('tb.locale')
+  })
 })

@@ -33,11 +33,9 @@ describe('feedbackSheet', () => {
     await wrapper.find('.primary-btn').trigger('click')
 
     expect(wrapper.emitted('close')).toBeUndefined()
-    expect(wrapper.text()).toContain(FEEDBACK_EMAIL)
-    // Snackbar message contains the email fallback hint
     const snackbarEl = wrapper.find('[role="alert"]')
     expect(snackbarEl.exists()).toBe(true)
-    expect(snackbarEl.text()).toContain(FEEDBACK_EMAIL)
+    expect(snackbarEl.text()).toContain('core.feedback.sheet.errorOpening')
   })
 
   it('should render the email link using FEEDBACK_EMAIL from the constants module', () => {

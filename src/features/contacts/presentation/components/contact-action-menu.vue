@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Contact } from '@/features/contacts/domain/entities/contact'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { buildContactActions } from '@/features/contacts/core/utils/contact-actions'
@@ -15,6 +16,8 @@ const emit = defineEmits<{
   close: []
   editContact: [contactId: string]
 }>()
+
+const { t } = useI18n({ useScope: 'global' })
 
 const isDesktop = useIsDesktop()
 const actions = computed(() => buildContactActions(props.contact))
@@ -95,7 +98,7 @@ onUnmounted(() => {
             <div class="menu-divider" />
           </template>
           <p v-else class="no-methods-hint">
-            No contact method available. Edit contact to add one.
+            {{ t('contacts.actionMenu.noMethods') }}
           </p>
 
           <button
@@ -105,7 +108,7 @@ onUnmounted(() => {
             @click="emit('editContact', props.contact.id)"
           >
             <span class="material-symbols-outlined edit-icon">edit</span>
-            Edit contact
+            {{ t('contacts.actionMenu.editBtn') }}
           </button>
         </div>
       </div>
@@ -136,7 +139,7 @@ onUnmounted(() => {
             <div class="menu-divider" />
           </template>
           <p v-else class="no-methods-hint">
-            No contact method available. Edit contact to add one.
+            {{ t('contacts.actionMenu.noMethods') }}
           </p>
 
           <button
@@ -145,7 +148,7 @@ onUnmounted(() => {
             @click="emit('editContact', props.contact.id)"
           >
             <span class="material-symbols-outlined edit-icon">edit</span>
-            Edit contact
+            {{ t('contacts.actionMenu.editBtn') }}
           </button>
         </div>
       </BottomSheet>

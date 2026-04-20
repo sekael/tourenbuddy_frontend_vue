@@ -2,6 +2,7 @@
 import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
@@ -11,8 +12,7 @@ import ContactChip from '@/features/contacts/presentation/components/contact-chi
 import GroupSmsConfirmDialog from '@/features/contacts/presentation/components/group-sms-confirm-dialog.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
-import { SEASON_LABELS } from '@/features/tours/data/models/season'
-import { TOUR_TYPE_ICONS, TOUR_TYPE_LABELS } from '@/features/tours/data/models/tour-type'
+import { TOUR_TYPE_I18N_KEYS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
 import TourForm from '@/features/tours/presentation/components/tour-form.vue'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
@@ -38,6 +38,8 @@ const emit = defineEmits<{
   /** Fired when the user requests to edit a contact from the action menu. */
   editContact: [contactId: string]
 }>()
+
+const { t, locale } = useI18n({ useScope: 'global' })
 
 const contactsStore = useContactsStore()
 const toursStore = useToursStore()
@@ -117,7 +119,7 @@ async function handleEditSubmit(draft: TourDraft) {
     emit('editModeChange', false)
   }
   catch (err) {
-    saveError.value = err instanceof Error ? err.message : 'Failed to save'
+    saveError.value = err instanceof Error ? err.message : t('tours.infoSheet.saveFailed')
   }
   finally {
     isSaving.value = false
@@ -141,13 +143,13 @@ async function confirmDelete() {
     emit('close')
   }
   catch (err) {
-    deleteError.value = err instanceof Error ? err.message : 'Failed to delete'
+    deleteError.value = err instanceof Error ? err.message : t('tours.infoSheet.deleteFailed')
     deleteState.value = 'idle'
   }
 }
 
 // ── Read-only computed values ────────────────────────────────────────────────
-const displayName = computed(() => props.tour.name ?? 'Unnamed tour')
+const displayName = computed(() => props.tour.name ?? t('tours.infoSheet.unnamedTour'))
 
 // On mobile, collapse the sheet to just its header while the user aims the
 // location picker so the map (and crosshair) stays visible. Sheet on desktop
@@ -157,14 +159,16 @@ const sheetCollapsed = computed(
 )
 const sheetTitle = computed(() => {
   if (sheetCollapsed.value)
-    return `Pick new goal — ${displayName.value}`
-  return mode.value === 'edit' ? `Edit: ${displayName.value}` : displayName.value
+    return `${t('tours.infoSheet.pickGoalPrefix')} — ${displayName.value}`
+  return mode.value === 'edit'
+    ? `${t('tours.infoSheet.editTitlePrefix')}: ${displayName.value}`
+    : displayName.value
 })
 
 const formattedDate = computed(() => {
   if (!props.tour.plannedDate)
     return null
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(locale.value, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -208,7 +212,7 @@ const coordinates = computed(
 const formattedElevation = computed(() => {
   if (props.tour.elevation == null)
     return null
-  return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(props.tour.elevation)} m`
+  return `${new Intl.NumberFormat(locale.value, { maximumFractionDigits: 0 }).format(props.tour.elevation)} m`
 })
 
 const startPointText = computed(() => {
@@ -259,7 +263,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
     :is="isDesktop ? SideDrawer : BottomSheet"
     :title="sheetTitle"
     :collapsed="sheetCollapsed"
-    :back-label="props.showBack && isDesktop ? 'Tours' : undefined"
+    :back-label="props.showBack && isDesktop ? t('tours.infoSheet.backToTours') : undefined"
     :show-back="props.showBack && !isDesktop ? true : undefined"
     @close="emit('close')"
     @back="emit('back')"
@@ -270,7 +274,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         {{ saveError }}
       </p>
       <TourForm
-        submit-label="Save"
+        :submit-label="t('tours.infoSheet.saveLabel')"
         :allow-goal-edit="true"
         :current-goal="pendingGoal"
         :initial-draft="tour"
@@ -298,7 +302,11 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         >
           <span v-if="tour.completed" class="material-symbols-outlined">check_circle</span>
           <span v-else class="material-symbols-outlined">radio_button_unchecked</span>
-          {{ tour.completed ? 'Completed' : 'Complete Tour' }}
+          {{
+            tour.completed
+              ? t('tours.infoSheet.completedBtn')
+              : t('tours.infoSheet.completeTourBtn')
+          }}
         </button>
 
         <!-- Tour type -->
@@ -306,7 +314,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           <span class="detail-icon material-symbols-outlined">{{
             TOUR_TYPE_ICONS[tour.tourType]
           }}</span>
-          <span>{{ TOUR_TYPE_LABELS[tour.tourType] }}</span>
+          <span>{{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[tour.tourType]}` as any) }}</span>
         </div>
 
         <!-- Planned date -->
@@ -335,7 +343,9 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           </div>
           <div class="detail-row">
             <span class="detail-icon material-symbols-outlined">flag</span>
-            <span v-if="isRoundTrip" class="round-trip-hint">Round trip</span>
+            <span v-if="isRoundTrip" class="round-trip-hint">{{
+              t('tours.infoSheet.roundTrip')
+            }}</span>
             <span v-else class="coords">{{ endPointText }}</span>
           </div>
         </template>
@@ -345,7 +355,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           <span class="detail-icon material-symbols-outlined">wb_sunny</span>
           <div class="season-tags">
             <span v-for="season in tour.seasons" :key="season" class="season-tag">
-              {{ SEASON_LABELS[season] }}
+              {{ t(`tours.season.${season}` as any) }}
             </span>
           </div>
         </div>
@@ -388,7 +398,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         <!-- GPX track indicator -->
         <div v-if="tour.gpxTrack" class="detail-row">
           <span class="detail-icon material-symbols-outlined">route</span>
-          <span class="gpx-label">Track available</span>
+          <span class="gpx-label">{{ t('tours.infoSheet.gpxTrackAvailable') }}</span>
         </div>
 
         <!-- Partners -->
@@ -410,11 +420,11 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
               type="button"
               class="group-sms-btn"
               data-testid="group-sms-btn"
-              title="Message all"
+              :title="t('tours.infoSheet.messageAll')"
               @click="showGroupSmsDialog = true"
             >
               <span class="material-symbols-outlined">sms</span>
-              Message all
+              {{ t('tours.infoSheet.messageAll') }}
             </button>
           </div>
         </div>
@@ -449,17 +459,17 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
             @click="enterEditMode"
           >
             <span class="material-symbols-outlined">edit</span>
-            Edit
+            {{ t('tours.infoSheet.editBtn') }}
           </button>
 
           <template v-if="deleteState === 'confirm'">
             <div class="delete-confirm-row">
-              <span class="delete-confirm-text">Delete this tour?</span>
+              <span class="delete-confirm-text">{{ t('tours.infoSheet.deleteConfirmText') }}</span>
               <button type="button" class="cancel-btn" @click="deleteState = 'idle'">
-                Cancel
+                {{ t('tours.infoSheet.cancelBtn') }}
               </button>
               <button type="button" class="delete-confirm-btn" @click="confirmDelete">
-                Delete
+                {{ t('tours.infoSheet.deleteBtn') }}
               </button>
             </div>
           </template>
@@ -471,7 +481,11 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
             @click="deleteState = 'confirm'"
           >
             <span class="material-symbols-outlined">delete</span>
-            {{ deleteState === 'loading' ? 'Deleting…' : 'Delete' }}
+            {{
+              deleteState === 'loading'
+                ? t('tours.infoSheet.deletingBtn')
+                : t('tours.infoSheet.deleteBtn')
+            }}
           </button>
         </div>
         <p v-if="deleteError" class="delete-error">

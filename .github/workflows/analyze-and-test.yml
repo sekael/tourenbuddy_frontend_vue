@@ -38,6 +38,10 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # 1b. Locale parity check
+      - name: Check Locale Parity
+        run: npm run check:locales
+
       # 2. Type check
       - name: Type Check
         run: npm run type-check

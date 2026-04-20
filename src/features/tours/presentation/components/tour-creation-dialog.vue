@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
+import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import TourForm from '@/features/tours/presentation/components/tour-form.vue'
 
@@ -22,6 +23,8 @@ const emit = defineEmits<{
   pickPoint: [type: 'start' | 'end']
 }>()
 
+const { t } = useI18n({ useScope: 'global' })
+
 function handleSubmit(draft: TourDraft) {
   emit('confirm', draft)
 }
@@ -34,9 +37,9 @@ function handlePickPoint(type: 'start' | 'end' | 'goal') {
 </script>
 
 <template>
-  <AdaptiveOverlay title="New Tour" @close="emit('close')">
+  <AdaptiveOverlay :title="t('tours.creation.title')" @close="emit('close')">
     <TourForm
-      submit-label="Save Tour"
+      :submit-label="t('tours.creation.saveBtn')"
       :allow-goal-edit="false"
       :current-goal="initialGoal ?? null"
       :initial-elevation="initialElevation"

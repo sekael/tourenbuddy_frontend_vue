@@ -2,6 +2,8 @@ import { createPinia } from 'pinia'
 import { createApp, watch } from 'vue'
 import App from './App.vue'
 import router, { setupRouterGuards } from './app/router'
+import { i18n, setupI18nLocaleWatcher } from './core/i18n'
+import { installZodErrorMap } from './core/i18n/zod-error-map'
 import { useAuthStore } from './features/auth/presentation/stores/auth-store'
 import { useUserProfileStore } from './features/user/presentation/stores/user-profile-store'
 import './app/theme/global.css'
@@ -10,6 +12,9 @@ async function bootstrap() {
   const app = createApp(App)
   const pinia = createPinia()
 
+  app.use(i18n)
+  installZodErrorMap()
+  setupI18nLocaleWatcher()
   app.use(pinia)
   app.use(router)
 

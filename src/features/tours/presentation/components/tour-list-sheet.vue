@@ -4,6 +4,7 @@ import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { CompletionFilter } from '@/features/tours/presentation/composables/use-tour-filters'
 import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
@@ -13,6 +14,8 @@ import TourFiltersPanel from './tour-filters-panel.vue'
 import TourListRow from './tour-list-row.vue'
 
 const emit = defineEmits<{ close: [], selectTour: [id: string] }>()
+
+const { t } = useI18n({ useScope: 'global' })
 
 const toursStore = useToursStore()
 const { tours, isLoading } = storeToRefs(toursStore)
@@ -27,7 +30,11 @@ function handleRowClick(tourId: string) {
 </script>
 
 <template>
-  <component :is="isDesktop ? SideDrawer : BottomSheet" title="Tours" @close="emit('close')">
+  <component
+    :is="isDesktop ? SideDrawer : BottomSheet"
+    :title="t('tours.list.title')"
+    @close="emit('close')"
+  >
     <div class="list-view">
       <div class="search-row">
         <span class="material-symbols-outlined search-icon">search</span>
@@ -35,7 +42,7 @@ function handleRowClick(tourId: string) {
           v-model="searchQuery"
           type="search"
           class="search-input"
-          placeholder="Search tours…"
+          :placeholder="t('tours.list.searchPlaceholder')"
         >
       </div>
 
@@ -43,7 +50,7 @@ function handleRowClick(tourId: string) {
         <span class="material-symbols-outlined trigger-icon">
           {{ filtersExpanded ? 'expand_less' : 'tune' }}
         </span>
-        Filters
+        {{ t('tours.list.filtersBtn') }}
         <span v-if="activeFilterCount > 0" class="filter-badge">{{ activeFilterCount }}</span>
       </button>
 
@@ -59,26 +66,26 @@ function handleRowClick(tourId: string) {
       />
 
       <div v-if="isLoading && tours.length === 0" class="loading-text">
-        Loading…
+        {{ t('tours.list.loading') }}
       </div>
 
       <div v-else-if="tours.length === 0" class="empty-state">
         <span class="material-symbols-outlined empty-icon">location_on</span>
         <p class="empty-text">
-          No tours yet.
+          {{ t('tours.list.emptyTitle') }}
         </p>
         <p class="empty-sub">
-          Create one from the map.
+          {{ t('tours.list.emptySubtitle') }}
         </p>
       </div>
 
       <div v-else-if="filteredTours.length === 0" class="empty-state">
         <span class="material-symbols-outlined empty-icon">search_off</span>
         <p class="empty-text">
-          No tours match your filters.
+          {{ t('tours.list.noMatchesTitle') }}
         </p>
         <button class="clear-filters-btn" type="button" @click="clearAll">
-          Clear filters
+          {{ t('tours.list.clearFiltersBtn') }}
         </button>
       </div>
 

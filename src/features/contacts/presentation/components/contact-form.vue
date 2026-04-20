@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { PhoneEntry } from '@/features/contacts/presentation/stores/contacts-store'
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 
@@ -31,7 +32,7 @@ const props = withDefaults(defineProps<Props>(), {
   initialFirstName: '',
   initialLastName: '',
   initialDisplayName: '',
-  submitLabel: 'Save',
+  submitLabel: '',
   isLoading: false,
 })
 
@@ -39,6 +40,8 @@ const emit = defineEmits<{
   submit: [data: FormData]
   cancel: []
 }>()
+
+const { t } = useI18n({ useScope: 'global' })
 
 const firstName = ref(props.initialFirstName)
 const lastName = ref(props.initialLastName)
@@ -109,7 +112,7 @@ function handleSubmit() {
   error.value = null
 
   if (!firstName.value.trim()) {
-    error.value = 'First name is required'
+    error.value = t('contacts.form.firstNameRequired')
     return
   }
 
@@ -119,7 +122,7 @@ function handleSubmit() {
   for (const row of nonEmpty) {
     const result = normalizePhone(row.value.trim())
     if (!result.ok) {
-      row.error = 'Invalid phone number'
+      row.error = t('contacts.form.invalidPhone')
       hasPhoneError = true
     }
     else {
@@ -132,7 +135,7 @@ function handleSubmit() {
   if (nonEmpty.length > 1) {
     const primaryCount = nonEmpty.filter(r => r.isPrimary).length
     if (primaryCount !== 1) {
-      error.value = 'Select one primary phone when multiple phones are entered'
+      error.value = t('contacts.form.primaryPhoneRequired')
       return
     }
   }
@@ -158,45 +161,45 @@ function handleSubmit() {
 <template>
   <form class="form" @submit.prevent="handleSubmit">
     <div class="field">
-      <label class="label" for="cf-firstName">First Name <span class="required">*</span></label>
+      <label class="label" for="cf-firstName">{{ t('contacts.form.firstNameLabel') }} <span class="required">*</span></label>
       <input
         id="cf-firstName"
         v-model="firstName"
         class="input"
         type="text"
         maxlength="50"
-        placeholder="First name"
+        :placeholder="t('contacts.form.firstNamePlaceholder')"
         required
       >
     </div>
 
     <div class="field">
-      <label class="label" for="cf-lastName">Last Name</label>
+      <label class="label" for="cf-lastName">{{ t('contacts.form.lastNameLabel') }}</label>
       <input
         id="cf-lastName"
         v-model="lastName"
         class="input"
         type="text"
         maxlength="50"
-        placeholder="Last name (optional)"
+        :placeholder="t('contacts.form.lastNamePlaceholder')"
       >
     </div>
 
     <div class="field">
-      <label class="label" for="cf-displayName">Display Name</label>
+      <label class="label" for="cf-displayName">{{ t('contacts.form.displayNameLabel') }}</label>
       <input
         id="cf-displayName"
         v-model="displayName"
         class="input"
         type="text"
         maxlength="50"
-        placeholder="Nickname (optional)"
+        :placeholder="t('contacts.form.displayNamePlaceholder')"
       >
     </div>
 
     <div class="phones-section">
       <div class="phones-header">
-        <span class="label">Phone Numbers</span>
+        <span class="label">{{ t('contacts.form.phonesLabel') }}</span>
       </div>
 
       <div v-for="(row, i) in phoneRows" :key="i" class="phone-row">
@@ -204,7 +207,11 @@ function handleSubmit() {
           type="button"
           class="primary-star"
           :class="{ 'primary-star--selected': row.isPrimary }"
-          :title="row.isPrimary ? 'Primary phone' : 'Set as primary'"
+          :title="
+            row.isPrimary
+              ? t('contacts.form.primaryPhoneTooltip')
+              : t('contacts.form.setAsPrimaryTooltip')
+          "
           @click="selectPrimary(i)"
         >
           <span class="material-symbols-outlined">star</span>
@@ -215,7 +222,7 @@ function handleSubmit() {
             class="input"
             :class="{ 'input--error': row.error }"
             type="tel"
-            placeholder="+41 79 012 34 56 (optional)"
+            :placeholder="t('contacts.form.phonePlaceholder')"
             @input="getPhoneFormatter(row.id).onInput"
           >
           <p v-if="row.error" class="error-text">
@@ -225,14 +232,14 @@ function handleSubmit() {
             v-model="row.label"
             class="input input-sm"
             type="text"
-            placeholder="Label (e.g. Mobile)"
+            :placeholder="t('contacts.form.labelPlaceholder')"
           >
         </div>
         <button
           v-if="phoneRows.length > 1"
           type="button"
           class="remove-phone-btn"
-          title="Remove phone"
+          :title="t('contacts.form.removePhoneTooltip')"
           @click="removePhoneRow(i)"
         >
           <span class="material-symbols-outlined">remove_circle_outline</span>
@@ -241,7 +248,7 @@ function handleSubmit() {
 
       <button type="button" class="add-phone-btn" @click="addPhoneRow">
         <span class="material-symbols-outlined">add</span>
-        Add phone
+        {{ t('contacts.form.addPhoneBtn') }}
       </button>
     </div>
 
@@ -251,10 +258,10 @@ function handleSubmit() {
 
     <div class="actions">
       <button type="button" class="cancel-btn" @click="emit('cancel')">
-        Cancel
+        {{ t('contacts.shared.cancelBtn') }}
       </button>
       <button type="submit" class="submit-btn" :disabled="isLoading">
-        {{ isLoading ? 'Saving...' : submitLabel }}
+        {{ isLoading ? t('contacts.shared.savingBtn') : submitLabel || t('user.shared.saveBtn') }}
       </button>
     </div>
   </form>

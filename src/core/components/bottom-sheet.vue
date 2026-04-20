@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
 const props = defineProps<{
   title?: string
   ariaLabel?: string
@@ -10,6 +12,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{ close: [], back: [] }>()
 
+const { t } = useI18n({ useScope: 'global' })
+
 const titleId = 'bottom-sheet-title'
 </script>
 
@@ -19,7 +23,7 @@ const titleId = 'bottom-sheet-title'
     role="dialog"
     aria-modal="true"
     :aria-labelledby="props.title ? titleId : undefined"
-    :aria-label="!props.title ? (props.ariaLabel ?? 'Bottom sheet') : undefined"
+    :aria-label="!props.title ? (props.ariaLabel ?? t('core.drawer.back')) : undefined"
   >
     <div class="drag-handle" aria-hidden="true" />
 
@@ -28,7 +32,7 @@ const titleId = 'bottom-sheet-title'
         v-if="props.showBack"
         type="button"
         class="back-btn"
-        aria-label="Back"
+        :aria-label="t('core.drawer.back')"
         @click="emit('back')"
       >
         <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
@@ -37,7 +41,12 @@ const titleId = 'bottom-sheet-title'
         {{ props.title }}
       </h2>
       <div v-else class="title-spacer" />
-      <button type="button" class="close-btn" aria-label="Close" @click="emit('close')">
+      <button
+        type="button"
+        class="close-btn"
+        :aria-label="t('core.drawer.close')"
+        @click="emit('close')"
+      >
         <span class="material-symbols-outlined" aria-hidden="true">close</span>
       </button>
     </div>

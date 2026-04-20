@@ -3,6 +3,7 @@ import type { Contact } from '@/features/contacts/domain/entities/contact'
 import type { ContactMethod } from '@/features/contacts/domain/entities/contact-method'
 import type { NewContactMethod } from '@/features/contacts/domain/repositories/contact-methods-repository'
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import { orderedPhoneMethods } from '@/features/contacts/core/utils/order-phone-methods'
@@ -10,7 +11,10 @@ import { formatPhoneDisplay } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 
 const props = defineProps<{ contact: Contact }>()
+
 const emit = defineEmits<{ back: [], deleted: [] }>()
+
+const { t } = useI18n({ useScope: 'global' })
 
 const store = useContactsStore()
 
@@ -36,7 +40,7 @@ watch(
 async function saveName() {
   nameError.value = null
   if (!firstName.value.trim()) {
-    nameError.value = 'First name is required'
+    nameError.value = t('contacts.detailView.firstNameRequired')
     return
   }
   isSavingName.value = true
@@ -125,7 +129,7 @@ async function saveMethod(method: ContactMethod) {
     if (rawValue) {
       const result = normalizePhone(rawValue)
       if (!result.ok) {
-        edit.error = 'Invalid phone number'
+        edit.error = t('contacts.detailView.invalidPhone')
         return
       }
     }
@@ -192,13 +196,13 @@ function cancelAddMethod() {
 async function confirmAddMethod() {
   addMethodError.value = null
   if (!newMethodValue.value.trim()) {
-    addMethodError.value = 'Value is required'
+    addMethodError.value = t('contacts.detailView.valueRequired')
     return
   }
   if (newMethodType.value === 'phone') {
     const result = normalizePhone(newMethodValue.value.trim())
     if (!result.ok) {
-      addMethodError.value = 'Invalid phone number'
+      addMethodError.value = t('contacts.detailView.invalidPhone')
       return
     }
   }
@@ -216,7 +220,7 @@ async function confirmAddMethod() {
     showAddMethod.value = false
   }
   catch (err) {
-    addMethodError.value = err instanceof Error ? err.message : 'Failed to add'
+    addMethodError.value = err instanceof Error ? err.message : t('contacts.detailView.addError')
   }
   finally {
     isAddingMethod.value = false
@@ -248,13 +252,13 @@ async function confirmDelete() {
       <button type="button" class="back-btn" @click="emit('back')">
         <span class="material-symbols-outlined">arrow_back</span>
       </button>
-      <span class="detail-title">Edit Contact</span>
+      <span class="detail-title">{{ t('contacts.detailView.title') }}</span>
     </div>
 
     <!-- Name fields -->
     <section class="section">
       <h3 class="section-label">
-        Name
+        {{ t('contacts.detailView.nameSection') }}
       </h3>
       <div class="field">
         <label class="label" for="dv-firstName">First Name <span class="required">*</span></label>
@@ -293,18 +297,20 @@ async function confirmDelete() {
         {{ nameError }}
       </p>
       <button type="button" class="save-btn" :disabled="isSavingName" @click="saveName">
-        {{ isSavingName ? 'Saving...' : 'Save name' }}
+        {{
+          isSavingName ? t('contacts.detailView.savingBtn') : t('contacts.detailView.saveNameBtn')
+        }}
       </button>
     </section>
 
     <!-- Contact methods -->
     <section class="section">
       <h3 class="section-label">
-        Contact methods
+        {{ t('contacts.detailView.methodsSection') }}
       </h3>
 
       <div v-if="contact.contactMethods.length === 0" class="empty-methods">
-        No contact methods yet.
+        {{ t('contacts.detailView.noMethods') }}
       </div>
 
       <p v-if="setPrimaryError" class="error-text">
@@ -317,7 +323,11 @@ async function confirmDelete() {
           type="button"
           class="primary-star"
           :class="{ 'primary-star--selected': method.isPrimary }"
-          :title="method.isPrimary ? 'Primary phone' : 'Set as primary'"
+          :title="
+            method.isPrimary
+              ? t('contacts.detailView.primaryPhoneTooltip')
+              : t('contacts.detailView.setAsPrimaryTooltip')
+          "
           @click="setPrimaryPhone(method)"
         >
           <span class="material-symbols-outlined">star</span>
@@ -328,21 +338,21 @@ async function confirmDelete() {
         <div class="method-fields">
           <p v-if="!method.isValid" class="invalid-phone-hint">
             <span class="material-symbols-outlined warn-icon">warning</span>
-            Invalid number — enter a valid phone to fix
+            {{ t('contacts.detailView.invalidPhoneHint') }}
           </p>
           <input
             :value="getPhoneFormatter(method).formatted.value"
             class="input input-sm"
             :class="{ 'input--warning': !method.isValid }"
             type="tel"
-            placeholder="+41 79 012 34 56"
+            :placeholder="t('contacts.detailView.phonePlaceholder')"
             @input="getPhoneFormatter(method).onInput"
           >
           <input
             v-model="getMethodEdit(method).label"
             class="input input-sm"
             type="text"
-            placeholder="Label (optional)"
+            :placeholder="t('contacts.detailView.labelPlaceholder')"
           >
           <p v-if="getMethodEdit(method).error" class="error-text">
             {{ getMethodEdit(method).error }}
@@ -377,13 +387,13 @@ async function confirmDelete() {
             v-model="getMethodEdit(method).value"
             class="input input-sm"
             type="email"
-            placeholder="Value"
+            :placeholder="t('contacts.detailView.emailPlaceholder')"
           >
           <input
             v-model="getMethodEdit(method).label"
             class="input input-sm"
             type="text"
-            placeholder="Label (optional)"
+            :placeholder="t('contacts.detailView.labelPlaceholder')"
           >
           <p v-if="getMethodEdit(method).error" class="error-text">
             {{ getMethodEdit(method).error }}
@@ -414,7 +424,7 @@ async function confirmDelete() {
             @click="newMethodType = 'phone'"
           >
             <span class="material-symbols-outlined">phone</span>
-            Phone
+            {{ t('contacts.detailView.phoneTypeBtn') }}
           </button>
           <button
             type="button"
@@ -423,7 +433,7 @@ async function confirmDelete() {
             @click="newMethodType = 'email'"
           >
             <span class="material-symbols-outlined">mail</span>
-            Email
+            {{ t('contacts.detailView.emailTypeBtn') }}
           </button>
         </div>
         <input
@@ -431,7 +441,7 @@ async function confirmDelete() {
           :value="newMethodPhoneFormatted"
           class="input"
           type="tel"
-          placeholder="+41 79 012 34 56"
+          :placeholder="t('contacts.detailView.phonePlaceholder')"
           @input="onNewMethodPhoneInput"
         >
         <input
@@ -439,20 +449,20 @@ async function confirmDelete() {
           v-model="newMethodValue"
           class="input"
           type="email"
-          placeholder="email@example.com"
+          :placeholder="t('contacts.detailView.emailPlaceholder')"
         >
         <input
           v-model="newMethodLabel"
           class="input"
           type="text"
-          placeholder="Label (optional, e.g. Mobile)"
+          :placeholder="t('contacts.detailView.labelExamplePlaceholder')"
         >
         <p v-if="addMethodError" class="error-text">
           {{ addMethodError }}
         </p>
         <div class="add-method-actions">
           <button type="button" class="cancel-btn" @click="cancelAddMethod">
-            Cancel
+            {{ t('global.cancelBtn') }}
           </button>
           <button
             type="button"
@@ -460,14 +470,16 @@ async function confirmDelete() {
             :disabled="isAddingMethod"
             @click="confirmAddMethod"
           >
-            {{ isAddingMethod ? 'Adding...' : 'Add' }}
+            {{
+              isAddingMethod ? t('contacts.detailView.addingBtn') : t('contacts.detailView.addBtn')
+            }}
           </button>
         </div>
       </div>
 
       <button v-else type="button" class="add-method-btn" @click="openAddMethod">
         <span class="material-symbols-outlined">add</span>
-        Add method
+        {{ t('contacts.detailView.addMethodBtn') }}
       </button>
     </section>
 
@@ -479,14 +491,14 @@ async function confirmDelete() {
 
       <template v-if="deleteState === 'confirm'">
         <p class="delete-confirm-text">
-          Delete this contact?
+          {{ t('contacts.detailView.deleteConfirm') }}
         </p>
         <div class="delete-actions">
           <button type="button" class="cancel-btn" @click="deleteState = 'idle'">
-            Cancel
+            {{ t('global.cancelBtn') }}
           </button>
           <button type="button" class="delete-confirm-btn" @click="confirmDelete">
-            Delete
+            {{ t('contacts.detailView.deleteBtn') }}
           </button>
         </div>
       </template>
@@ -499,7 +511,11 @@ async function confirmDelete() {
         @click="deleteState = 'confirm'"
       >
         <span class="material-symbols-outlined">person_remove</span>
-        {{ deleteState === 'loading' ? 'Deleting...' : 'Delete contact' }}
+        {{
+          deleteState === 'loading'
+            ? t('contacts.detailView.deletingBtn')
+            : t('contacts.detailView.deleteBtn')
+        }}
       </button>
     </section>
   </div>

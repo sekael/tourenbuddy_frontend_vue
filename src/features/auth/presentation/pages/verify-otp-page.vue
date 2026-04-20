@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const { t } = useI18n({ useScope: 'global' })
 
 const email = (route.query.email as string) ?? ''
 const otp = ref('')
@@ -18,7 +20,7 @@ async function handleVerify() {
   error.value = null
 
   if (otp.value.length < 6) {
-    error.value = 'Please enter the full code'
+    error.value = t('auth.verifyOtp.incompleteCode')
     return
   }
 
@@ -28,7 +30,7 @@ async function handleVerify() {
     router.push({ name: 'map' })
   }
   catch (err) {
-    error.value = err instanceof Error ? err.message : 'Invalid code. Please try again.'
+    error.value = err instanceof Error ? err.message : t('auth.verifyOtp.invalidCode')
   }
   finally {
     isLoading.value = false
@@ -43,7 +45,7 @@ async function handleResend() {
     resendSuccess.value = true
   }
   catch {
-    error.value = 'Failed to resend code. Please try again.'
+    error.value = t('auth.verifyOtp.resendError')
   }
   finally {
     isResending.value = false
@@ -56,24 +58,24 @@ async function handleResend() {
     <div class="card">
       <button class="back-btn" @click="router.back()">
         <span class="material-symbols-outlined">arrow_back</span>
-        Back
+        {{ t('auth.shared.backBtn') }}
       </button>
       <h1 class="title">
-        Check your email
+        {{ t('auth.verifyOtp.title') }}
       </h1>
       <p class="subtitle">
-        We sent a login code to <strong>{{ email }}</strong>
+        {{ t('auth.verifyOtp.subtitlePrefix') }} <strong>{{ email }}</strong>
       </p>
 
       <form class="form" @submit.prevent="handleVerify">
         <div class="field">
-          <label for="otp" class="label">One-time code</label>
+          <label for="otp" class="label">{{ t('auth.verifyOtp.otpLabel') }}</label>
           <input
             id="otp"
             v-model="otp"
             type="text"
             class="input otp-input"
-            placeholder="Enter code"
+            :placeholder="t('auth.verifyOtp.otpPlaceholder')"
             autocomplete="one-time-code"
             maxlength="8"
             required
@@ -84,16 +86,16 @@ async function handleResend() {
           {{ error }}
         </p>
         <p v-if="resendSuccess" class="success-text">
-          Code resent! Check your email.
+          {{ t('auth.verifyOtp.resendSuccess') }}
         </p>
 
         <button type="submit" class="submit-btn" :disabled="isLoading">
-          {{ isLoading ? 'Verifying...' : 'Verify Code' }}
+          {{ isLoading ? t('auth.shared.verifyingBtn') : t('auth.verifyOtp.verifyCodeBtn') }}
         </button>
       </form>
 
       <button class="resend-btn" :disabled="isResending" @click="handleResend">
-        {{ isResending ? 'Sending...' : 'Resend code' }}
+        {{ isResending ? t('auth.shared.sendingBtn') : t('auth.verifyOtp.resendCodeBtn') }}
       </button>
     </div>
   </div>

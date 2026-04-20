@@ -105,7 +105,7 @@ describe('tourListSheet', () => {
     it('should show empty state when tours array is empty and not loading', () => {
       const wrapper = mountSheet({ tours: [] })
       expect(wrapper.find('.empty-state').exists()).toBe(true)
-      expect(wrapper.find('.empty-state').text()).toContain('No tours yet')
+      expect(wrapper.find('.empty-state').text()).toContain('tours.list.emptyTitle')
     })
   })
 
@@ -115,7 +115,7 @@ describe('tourListSheet', () => {
       await wrapper.find('.search-input').setValue('xyznotfound')
       await wrapper.vm.$nextTick()
       expect(wrapper.find('.empty-state').exists()).toBe(true)
-      expect(wrapper.find('.empty-state').text()).toContain('No tours match')
+      expect(wrapper.find('.empty-state').text()).toContain('tours.list.noMatchesTitle')
     })
 
     it('should clear filters and show list when "Clear filters" clicked', async () => {
