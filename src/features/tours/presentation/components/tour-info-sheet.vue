@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { Contact } from '@/features/contacts/domain/entities/contact'
 import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
@@ -6,7 +7,9 @@ import BottomSheet from '@/core/components/bottom-sheet.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
+import ContactActionMenu from '@/features/contacts/presentation/components/contact-action-menu.vue'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
+import GroupSmsConfirmDialog from '@/features/contacts/presentation/components/group-sms-confirm-dialog.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { SEASON_LABELS } from '@/features/tours/data/models/season'
@@ -33,6 +36,8 @@ const emit = defineEmits<{
   pointConsumed: []
   /** Fired when the sheet enters (true) or exits (false) edit mode. */
   editModeChange: [editing: boolean]
+  /** Fired when the user requests to edit a contact from the action menu. */
+  editContact: [contactId: string]
 }>()
 
 const contactsStore = useContactsStore()
@@ -168,6 +173,30 @@ const formattedDate = computed(() => {
 })
 
 const partners = computed(() => contacts.value.filter(c => props.tour.partnerIds.includes(c.id)))
+
+// ── Contact action menu ──────────────────────────────────────────────────────
+const activeMenuContact = ref<Contact | null>(null)
+const activeChipRect = ref<DOMRect | null>(null)
+const showGroupSmsDialog = ref(false)
+
+function openContactMenu(contactId: string, rect: DOMRect) {
+  const contact = partners.value.find(c => c.id === contactId) ?? null
+  activeMenuContact.value = contact
+  activeChipRect.value = rect
+}
+
+function closeContactMenu() {
+  activeMenuContact.value = null
+  activeChipRect.value = null
+}
+
+function handleEditContact(contactId: string) {
+  closeContactMenu()
+  if (!isDesktop.value) {
+    emit('close')
+  }
+  emit('editContact', contactId)
+}
 
 const coordinates = computed(
   () => `${props.tour.goal.lat.toFixed(4)}°N, ${props.tour.goal.lng.toFixed(4)}°E`,
@@ -362,17 +391,47 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         <!-- Partners -->
         <div v-if="partners.length > 0" class="detail-row align-start">
           <span class="detail-icon material-symbols-outlined">group</span>
-          <div class="partner-chips">
-            <ContactChip
-              v-for="partner in partners"
-              :key="partner.id"
-              :contact="partner"
-              :selected="false"
-              :show-actions="true"
-              @toggle="() => {}"
-            />
+          <div class="partner-chips-section">
+            <div class="partner-chips">
+              <ContactChip
+                v-for="partner in partners"
+                :key="partner.id"
+                :contact="partner"
+                :selected="false"
+                mode="action"
+                @open="openContactMenu"
+              />
+            </div>
+            <button
+              v-if="partners.length > 1"
+              type="button"
+              class="group-sms-btn"
+              data-testid="group-sms-btn"
+              title="Message all"
+              @click="showGroupSmsDialog = true"
+            >
+              <span class="material-symbols-outlined">sms</span>
+              Message all
+            </button>
           </div>
         </div>
+
+        <!-- Contact action menu -->
+        <ContactActionMenu
+          v-if="activeMenuContact"
+          :contact="activeMenuContact"
+          :anchor-rect="activeChipRect"
+          @close="closeContactMenu"
+          @edit-contact="handleEditContact"
+        />
+
+        <!-- Group SMS dialog -->
+        <GroupSmsConfirmDialog
+          v-if="showGroupSmsDialog"
+          :partners="partners"
+          @confirm="showGroupSmsDialog = false"
+          @cancel="showGroupSmsDialog = false"
+        />
       </div>
     </template>
 
@@ -603,10 +662,38 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   font-weight: var(--font-weight-medium);
 }
 
+.partner-chips-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
 .partner-chips {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-xs);
+}
+
+.group-sms-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-outline-variant);
+  color: var(--color-on-surface-variant);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  align-self: flex-start;
+  transition: background-color 0.15s;
+}
+
+.group-sms-btn:hover {
+  background-color: var(--color-surface-variant);
+}
+
+.group-sms-btn .material-symbols-outlined {
+  font-size: 18px;
 }
 
 /* ── Edit mode ──────────────────────────────────────────────────────────────── */

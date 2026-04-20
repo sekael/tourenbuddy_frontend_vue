@@ -50,7 +50,15 @@ const TourFormStub = {
 const ContactChipStub = {
   name: 'ContactChip',
   template: '<div />',
-  props: ['contact', 'selected', 'showActions'],
+  props: ['contact', 'selected', 'mode'],
+  emits: ['open', 'toggle'],
+}
+
+const ContactActionMenuStub = {
+  name: 'ContactActionMenu',
+  template: '<div data-testid="contact-action-menu" />',
+  props: ['contact', 'anchorRect'],
+  emits: ['close', 'editContact'],
 }
 
 const mockTour = {
@@ -72,7 +80,7 @@ const mockTour = {
   completed: false,
 }
 
-function mountSheet(tourOverrides = {}, authUserId = 'user-1') {
+function mountSheet(tourOverrides = {}, authUserId = 'user-1', initialContacts: unknown[] = []) {
   return mount(TourInfoSheet, {
     props: { tour: { ...mockTour, ...tourOverrides } },
     global: {
@@ -80,7 +88,7 @@ function mountSheet(tourOverrides = {}, authUserId = 'user-1') {
         createTestingPinia({
           createSpy: vi.fn,
           initialState: {
-            contacts: { contacts: [] },
+            contacts: { contacts: initialContacts },
             tours: { tours: [mockTour] },
             auth: { currentUser: { id: authUserId }, isAuthenticated: true },
           },
@@ -91,6 +99,7 @@ function mountSheet(tourOverrides = {}, authUserId = 'user-1') {
         SideDrawer: SideDrawerStub,
         TourForm: TourFormStub,
         ContactChip: ContactChipStub,
+        ContactActionMenu: ContactActionMenuStub,
       },
     },
   })
@@ -264,6 +273,45 @@ describe('tourInfoSheet', () => {
 
       expect(wrapper.emitted('close')).toBeFalsy()
       expect(wrapper.find('.delete-error').text()).toBe('Delete failed')
+    })
+  })
+
+  // ── Partners section ───────────────────────────────────────────────────────
+
+  const mockContact = {
+    id: 'contact-1',
+    userId: 'user-1',
+    firstName: 'Anna',
+    lastName: null,
+    displayName: null,
+    contactMethods: [],
+  }
+
+  describe('partners section', () => {
+    it('renders chips in action mode', () => {
+      const wrapper = mountSheet({ partnerIds: ['contact-1'] }, 'user-1', [mockContact])
+      const chip = wrapper.findComponent(ContactChipStub)
+      expect(chip.exists()).toBe(true)
+      expect(chip.props('mode')).toBe('action')
+    })
+
+    it('does not show group-sms-btn for single partner', () => {
+      const wrapper = mountSheet({ partnerIds: ['contact-1'] }, 'user-1', [mockContact])
+      expect(wrapper.find('[data-testid="group-sms-btn"]').exists()).toBe(false)
+    })
+
+    it('shows group-sms-btn for multiple partners', () => {
+      const contact2 = { ...mockContact, id: 'contact-2' }
+      const wrapper = mountSheet({ partnerIds: ['contact-1', 'contact-2'] }, 'user-1', [
+        mockContact,
+        contact2,
+      ])
+      expect(wrapper.find('[data-testid="group-sms-btn"]').exists()).toBe(true)
+    })
+
+    it('does not render ContactActionMenu when no chip is active', () => {
+      const wrapper = mountSheet({ partnerIds: ['contact-1'] }, 'user-1', [mockContact])
+      expect(wrapper.find('[data-testid="contact-action-menu"]').exists()).toBe(false)
     })
   })
 })

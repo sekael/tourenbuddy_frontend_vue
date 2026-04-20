@@ -68,6 +68,9 @@ const pendingFlyTo = ref(false)
 // Whether the tour info sheet was opened by selecting a row from the tours list
 const tourOpenedFromList = ref(false)
 
+// Contact id to auto-open in the contacts sheet (from tour chip edit-contact action)
+const editContactId = ref<string | null>(null)
+
 // Prop-based handoff to info sheet after a location pick in edit mode
 const editPickedPoint = ref<{
   type: 'start' | 'end' | 'goal'
@@ -124,6 +127,16 @@ function handleTourInfoBack() {
   mapStore.selectTour(null)
   mapStore.setEditPreviewGoal(null)
   activeOverlay.value = 'tours'
+}
+
+function handleEditContact(contactId: string) {
+  editContactId.value = contactId
+  openOverlay('contacts')
+}
+
+function handleContactsClose() {
+  editContactId.value = null
+  closeOverlay()
 }
 
 // Keep activeOverlay in sync when selectedTourId is mutated externally
@@ -353,6 +366,7 @@ function handleDialogClose() {
           @pick-point="(t: 'start' | 'end' | 'goal') => handleInfoSheetPickPoint(t)"
           @point-consumed="handlePointConsumed"
           @edit-mode-change="handleEditModeChange"
+          @edit-contact="handleEditContact"
         />
       </div>
       <div v-else-if="showFeedbackSheet" key="feedback" class="sheet-container">
@@ -362,7 +376,7 @@ function handleDialogClose() {
         <UserProfileSheet @close="closeOverlay" />
       </div>
       <div v-else-if="showContactDialog" key="contacts" class="sheet-container">
-        <ContactsListSheet @close="closeOverlay" />
+        <ContactsListSheet :initial-contact-id="editContactId" @close="handleContactsClose" />
       </div>
       <div v-else-if="showToursList" key="tours" class="sheet-container">
         <TourListSheet @close="closeOverlay" @select-tour="handleTourSelectedFromList" />
