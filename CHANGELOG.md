@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.5.0...tourenbuddy-frontend-v0.5.1) (2026-04-20)
+
+
+### Bug Fixes
+
+* Scrub deleted contact ids from cached partnerIds ([#56](https://github.com/sekael/tourenbuddy_frontend_vue/issues/56)) ([#63](https://github.com/sekael/tourenbuddy_frontend_vue/issues/63)) ([8bd505f](https://github.com/sekael/tourenbuddy_frontend_vue/commit/8bd505fc63afd1fab1e8b03fb5c324ac8958cf49))
+
 ## [0.5.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.4.1...tourenbuddy-frontend-v0.5.0) (2026-04-20)
 
 
