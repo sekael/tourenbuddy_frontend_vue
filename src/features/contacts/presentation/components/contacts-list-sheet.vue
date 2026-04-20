@@ -16,15 +16,35 @@ import { useContactsStore } from '@/features/contacts/presentation/stores/contac
 import ContactDetailView from './contact-detail-view.vue'
 import ContactForm from './contact-form.vue'
 
-type ViewState = 'list' | 'detail' | 'add'
+const props = defineProps<{
+  /** When provided, auto-opens detail view for the given contact id. */
+  initialContactId?: string | null
+}>()
 
 const emit = defineEmits<{ close: [] }>()
+
+type ViewState = 'list' | 'detail' | 'add'
 
 const contactsStore = useContactsStore()
 const { contacts, isLoading } = storeToRefs(contactsStore)
 
 const viewState = ref<ViewState>('list')
 const selectedContact = ref<Contact | null>(null)
+
+// Auto-open detail view when initialContactId is provided
+watch(
+  [() => props.initialContactId, contacts],
+  ([id]) => {
+    if (id && viewState.value === 'list') {
+      const target = contacts.value.find(c => c.id === id)
+      if (target) {
+        selectedContact.value = target
+        viewState.value = 'detail'
+      }
+    }
+  },
+  { immediate: true },
+)
 
 const sheetTitle = computed(() => {
   if (viewState.value === 'add')
