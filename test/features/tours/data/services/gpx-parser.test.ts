@@ -55,7 +55,7 @@ describe('parseGpxFile', () => {
     const file = makeFile(MINIMAL_GPX)
     const result = await parseGpxFile(file)
 
-    const lineFeature = result.features.find((f) => f.geometry?.type === 'LineString')
+    const lineFeature = result.features.find(f => f.geometry?.type === 'LineString')
     expect(lineFeature).toBeDefined()
   })
 })

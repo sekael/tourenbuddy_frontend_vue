@@ -40,7 +40,7 @@ function makeContact(
     firstName: 'Anna',
     lastName: null,
     displayName: null,
-    contactMethods: methods.map((m) => ({
+    contactMethods: methods.map(m => ({
       id: m.id,
       contactId: 'c1',
       methodType: 'phone' as const,

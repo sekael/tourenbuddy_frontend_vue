@@ -17,12 +17,13 @@ const result = computed(() => buildGroupSmsRecipients(props.partners))
 const canSend = computed(() => result.value.included.length > 0)
 
 function handleSend() {
-  if (!canSend.value) return
-  const uri = `sms:${result.value.included.map((r) => r.e164).join(',')}`
+  if (!canSend.value)
+    return
+  const uri = `sms:${result.value.included.map(r => r.e164).join(',')}`
   window.location.href = uri
   emit(
     'confirm',
-    result.value.included.map((r) => r.e164),
+    result.value.included.map(r => r.e164),
   )
 }
 </script>
@@ -31,7 +32,9 @@ function handleSend() {
   <div class="dialog-backdrop" @click.self="emit('cancel')">
     <div class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="group-sms-title">
       <div class="dialog-header">
-        <h2 id="group-sms-title" class="dialog-title">Send SMS to all partners</h2>
+        <h2 id="group-sms-title" class="dialog-title">
+          Send SMS to all partners
+        </h2>
         <button type="button" class="close-btn" aria-label="Close" @click="emit('cancel')">
           <span class="material-symbols-outlined">close</span>
         </button>
@@ -39,7 +42,9 @@ function handleSend() {
 
       <div class="dialog-body">
         <div v-if="result.included.length > 0" class="recipient-section">
-          <p class="section-label">Will receive SMS</p>
+          <p class="section-label">
+            Will receive SMS
+          </p>
           <ul class="recipient-list">
             <li v-for="item in result.included" :key="item.contact.id" class="recipient-row">
               <span class="material-symbols-outlined recipient-icon ok-icon">check_circle</span>
@@ -50,7 +55,9 @@ function handleSend() {
         </div>
 
         <div v-if="result.excluded.length > 0" class="recipient-section">
-          <p class="section-label excluded-label">Cannot receive SMS</p>
+          <p class="section-label excluded-label">
+            Cannot receive SMS
+          </p>
           <ul class="recipient-list">
             <li v-for="item in result.excluded" :key="item.contact.id" class="recipient-row">
               <span class="material-symbols-outlined recipient-icon excluded-icon">cancel</span>
@@ -66,7 +73,9 @@ function handleSend() {
       </div>
 
       <div class="dialog-footer">
-        <button type="button" class="cancel-btn" @click="emit('cancel')">Cancel</button>
+        <button type="button" class="cancel-btn" @click="emit('cancel')">
+          Cancel
+        </button>
         <button
           type="button"
           class="send-btn"

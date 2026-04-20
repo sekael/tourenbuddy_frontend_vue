@@ -20,7 +20,7 @@ function makeContact(
     firstName: 'Test',
     lastName: null,
     displayName: null,
-    contactMethods: methods.map((m) => ({
+    contactMethods: methods.map(m => ({
       id: m.id,
       contactId: id,
       methodType: 'phone' as const,
@@ -140,7 +140,7 @@ describe('buildGroupSmsRecipients', () => {
     const p1 = makeContact('c1', [{ id: 'm1', value: '+41791111111', isPrimary: true }])
     const p2 = makeContact('c2', [{ id: 'm2', value: '+41792222222', isPrimary: true }])
     const result = buildGroupSmsRecipients([p1, p2])
-    const uri = `sms:${result.included.map((r) => r.e164).join(',')}`
+    const uri = `sms:${result.included.map(r => r.e164).join(',')}`
     expect(uri).toBe('sms:+41791111111,+41792222222')
   })
 })

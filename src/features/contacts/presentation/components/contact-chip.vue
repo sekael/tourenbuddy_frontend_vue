@@ -22,7 +22,8 @@ function handleClick(event: MouseEvent) {
   if (props.mode === 'action') {
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
     emit('open', props.contact.id, rect)
-  } else {
+  }
+  else {
     emit('toggle', props.contact.id)
   }
 }
@@ -38,8 +39,7 @@ function handleClick(event: MouseEvent) {
     <span
       v-if="props.selected && props.mode === 'select'"
       class="check-icon material-symbols-outlined"
-      >check</span
-    >
+    >check</span>
     {{ resolveContactName(props.contact) }}
   </button>
 </template>
