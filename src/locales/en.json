@@ -228,14 +228,15 @@
       "seasonLabel": "Season",
       "gpxTooLarge": "File too large (max 2 MB)",
       "gpxInvalid": "Invalid GPX file",
-      "gpxReadError": "Failed to read file"
+      "gpxReadError": "Failed to read file",
+      "cancelBtn": "Cancel"
     },
     "creation": {
       "title": "New Tour",
       "saveBtn": "Save Tour"
     },
     "infoSheet": {
-      "editTitlePrefix": "Edit:",
+      "editTitlePrefix": "Edit",
       "pickGoalPrefix": "Pick new goal \u2014",
       "unnamedTour": "Unnamed tour",
       "completedBtn": "Completed",
@@ -260,7 +261,10 @@
       "completionOpen": "Open",
       "completionDone": "Done",
       "dateFromLabel": "From",
-      "dateToLabel": "To"
+      "dateToLabel": "To",
+      "seasonLabel": "Season",
+      "plannedDateLabel": "Planned date",
+      "statusLabel": "Status"
     },
     "type": {
       "skiing": "Skiing",

@@ -228,14 +228,15 @@
       "seasonLabel": "Saison",
       "gpxTooLarge": "Datei zu gross (max. 2 MB)",
       "gpxInvalid": "Ungültige GPX-Datei",
-      "gpxReadError": "Datei konnte nicht gelesen werden"
+      "gpxReadError": "Datei konnte nicht gelesen werden",
+      "cancelBtn": "Abbrechen"
     },
     "creation": {
       "title": "Neue Tour",
       "saveBtn": "Tour speichern"
     },
     "infoSheet": {
-      "editTitlePrefix": "Bearbeiten:",
+      "editTitlePrefix": "Bearbeiten",
       "pickGoalPrefix": "Neues Ziel wählen \u2014",
       "unnamedTour": "Unbenannte Tour",
       "completedBtn": "Abgeschlossen",
@@ -260,7 +261,10 @@
       "completionOpen": "Offen",
       "completionDone": "Erledigt",
       "dateFromLabel": "Von",
-      "dateToLabel": "Bis"
+      "dateToLabel": "Bis",
+      "seasonLabel": "Saison",
+      "plannedDateLabel": "Geplantes Datum",
+      "statusLabel": "Status"
     },
     "type": {
       "skiing": "Skifahren",
