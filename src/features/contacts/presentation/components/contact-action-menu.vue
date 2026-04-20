@@ -94,6 +94,9 @@ onUnmounted(() => {
             </div>
             <div class="menu-divider" />
           </template>
+          <p v-else class="no-methods-hint">
+            No contact method available. Edit contact to add one.
+          </p>
 
           <button
             type="button"
@@ -132,6 +135,9 @@ onUnmounted(() => {
             </div>
             <div class="menu-divider" />
           </template>
+          <p v-else class="no-methods-hint">
+            No contact method available. Edit contact to add one.
+          </p>
 
           <button
             type="button"
@@ -274,6 +280,14 @@ onUnmounted(() => {
   border: 1.5px solid var(--color-outline-variant);
 }
 
+.no-methods-hint {
+  padding: var(--spacing-xs) var(--spacing-lg);
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
+  opacity: 0.7;
+  font-style: italic;
+}
+
 .menu-divider {
   height: 1px;
   background-color: var(--color-outline-variant);
@@ -284,7 +298,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  padding: var(--spacing-xs) var(--spacing-lg);
+  padding: var(--spacing-xs) var(--spacing-md) var(--spacing-md);
   min-height: 36px;
   color: var(--color-on-surface-variant);
   font-size: var(--font-size-sm);
