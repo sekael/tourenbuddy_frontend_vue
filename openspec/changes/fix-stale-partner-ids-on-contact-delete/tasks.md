@@ -24,10 +24,10 @@
 
 - [x] 4.1 Run `npm run test` — all tests pass.
 - [x] 4.2 Run `npm run type-check` — no errors.
-- [ ] 4.3 Manual reproduction per issue #56: add contact → assign to tour → delete contact → edit & save same tour; verify `update_tour_full` payload no longer contains the deleted UUID and the save succeeds.
+- [x] 4.3 Manual reproduction per issue #56: add contact → assign to tour → delete contact → edit & save same tour; verify `update_tour_full` payload no longer contains the deleted UUID and the save succeeds.
 
 ## 5. Finalize
 
 - [x] 5.1 Run `npm run lint` and `npm run format` — zero warnings.
-- [ ] 5.2 Prompt the user to commit with this conventional commit message: `fix(tours): scrub deleted contact ids from cached partnerIds (#56)`.
-- [ ] 5.3 Prompt the user to push the branch and open a PR against `main` referencing issue #56.
+- [x] 5.2 Prompt the user to commit with this conventional commit message: `fix(tours): scrub deleted contact ids from cached partnerIds (#56)`.
+- [x] 5.3 Prompt the user to push the branch and open a PR against `main` referencing issue #56.
