@@ -11,7 +11,7 @@ const props = defineProps<{
   backLabel?: string
 }>()
 
-const emit = defineEmits<{ close: [], back: [] }>()
+const emit = defineEmits<{ close: []; back: [] }>()
 
 const isDesktop = useIsDesktop()
 </script>

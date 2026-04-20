@@ -30,11 +30,10 @@ defineExpose({ map })
 let markerLayer: ReturnType<typeof useToursMarkerLayer> | null = null
 let gpxLayer: ReturnType<typeof useGpxTrackLayer> | null = null
 
-const selectedTour = computed(() => tours.value.find(t => t.id === selectedTourId.value) ?? null)
+const selectedTour = computed(() => tours.value.find((t) => t.id === selectedTourId.value) ?? null)
 
 onMounted(() => {
-  if (!mapContainer.value)
-    return
+  if (!mapContainer.value) return
 
   mapInstance = new maplibregl.Map({
     container: mapContainer.value,
@@ -87,8 +86,7 @@ watch(editPreviewGoal, (goal) => {
 
 // Watch for map style changes
 watch(currentStyleIndex, (index) => {
-  if (!mapInstance)
-    return
+  if (!mapInstance) return
   const style = SWISSTOPO_STYLES[index]
   if (style) {
     mapInstance.setStyle(style.style)

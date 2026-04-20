@@ -1,6 +1,8 @@
 import { createTestingPinia } from '@pinia/testing'
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
+import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import TourInfoSheet from '@/features/tours/presentation/components/tour-info-sheet.vue'
 
 // Stub heavy child components
@@ -312,6 +314,77 @@ describe('tourInfoSheet', () => {
     it('does not render ContactActionMenu when no chip is active', () => {
       const wrapper = mountSheet({ partnerIds: ['contact-1'] }, 'user-1', [mockContact])
       expect(wrapper.find('[data-testid="contact-action-menu"]').exists()).toBe(false)
+    })
+
+    it('should update partner chip contact prop when contact is renamed via contacts store', async () => {
+      const wrapper = mountSheet({ partnerIds: ['contact-1'] }, 'user-1', [mockContact])
+      const contactsStore = useContactsStore()
+
+      contactsStore.contacts = [{ ...mockContact, firstName: 'Updated' }]
+      await nextTick()
+
+      const chip = wrapper.findComponent(ContactChipStub)
+      expect((chip.props('contact') as typeof mockContact).firstName).toBe('Updated')
+    })
+
+    it('should reflect updated primary phone in action menu when setPrimaryPhoneOnContact is called', async () => {
+      const contactWithPhone = {
+        ...mockContact,
+        contactMethods: [
+          {
+            id: 'method-1',
+            contactId: 'contact-1',
+            methodType: 'phone' as const,
+            value: '+41791111111',
+            label: null,
+            isPrimary: true,
+          },
+          {
+            id: 'method-2',
+            contactId: 'contact-1',
+            methodType: 'phone' as const,
+            value: '+41792222222',
+            label: null,
+            isPrimary: false,
+          },
+        ],
+      }
+      const wrapper = mountSheet({ partnerIds: ['contact-1'] }, 'user-1', [contactWithPhone])
+      const contactsStore = useContactsStore()
+
+      const chip = wrapper.findComponent(ContactChipStub)
+      chip.vm.$emit('open', 'contact-1', new DOMRect(0, 0, 100, 50))
+      await nextTick()
+
+      expect(wrapper.find('[data-testid="contact-action-menu"]').exists()).toBe(true)
+
+      const updatedContact = {
+        ...contactWithPhone,
+        contactMethods: [
+          {
+            id: 'method-1',
+            contactId: 'contact-1',
+            methodType: 'phone' as const,
+            value: '+41791111111',
+            label: null,
+            isPrimary: false,
+          },
+          {
+            id: 'method-2',
+            contactId: 'contact-1',
+            methodType: 'phone' as const,
+            value: '+41792222222',
+            label: null,
+            isPrimary: true,
+          },
+        ],
+      }
+      contactsStore.contacts = [updatedContact]
+      await nextTick()
+
+      const menu = wrapper.findComponent(ContactActionMenuStub)
+      const menuContact = menu.props('contact') as typeof updatedContact
+      expect(menuContact.contactMethods.find((m) => m.isPrimary)?.id).toBe('method-2')
     })
   })
 })

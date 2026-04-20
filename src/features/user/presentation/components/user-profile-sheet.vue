@@ -34,19 +34,15 @@ const full = computed(() => userProfileStore.fullProfile)
 
 const displayPhoneNumber = computed(() => {
   const phone = full.value?.phoneNumber
-  if (!phone)
-    return null
+  if (!phone) return null
   return formatPhoneForDisplay(phone) || phone
 })
 
 const displayName = computed(() => {
   const p = full.value
-  if (!p)
-    return authStore.currentUser?.email ?? 'User'
-  if (p.firstName && p.lastName)
-    return `${p.firstName} ${p.lastName}`
-  if (p.firstName)
-    return p.firstName
+  if (!p) return authStore.currentUser?.email ?? 'User'
+  if (p.firstName && p.lastName) return `${p.firstName} ${p.lastName}`
+  if (p.firstName) return p.firstName
   return p.email ?? 'User'
 })
 
@@ -87,18 +83,15 @@ async function handleSave() {
       pendingPhone.value = phone
       isEditing.value = false
       showPhoneVerification.value = true
-    }
-    else {
+    } else {
       isEditing.value = false
     }
-  }
-  catch (err) {
-    editError.value
-      = err instanceof InvalidPhoneNumberError || err instanceof Error
+  } catch (err) {
+    editError.value =
+      err instanceof InvalidPhoneNumberError || err instanceof Error
         ? (err as Error).message
         : 'Failed to save profile'
-  }
-  finally {
+  } finally {
     isSaving.value = false
   }
 }
@@ -152,10 +145,9 @@ async function handleSignOut() {
               v-if="full.phoneVerified"
               class="material-symbols-outlined verified-icon"
               title="Verified"
-            >verified</span>
-            <button v-else class="verify-btn" @click="startEdit">
-              Verify
-            </button>
+              >verified</span
+            >
+            <button v-else class="verify-btn" @click="startEdit">Verify</button>
           </template>
           <button v-else class="add-phone-btn" @click="handleAddPhone">
             <span class="material-symbols-outlined">add</span>
@@ -186,7 +178,7 @@ async function handleSignOut() {
               type="text"
               class="input"
               autocomplete="given-name"
-            >
+            />
           </div>
 
           <div class="field">
@@ -197,11 +189,13 @@ async function handleSignOut() {
               type="text"
               class="input"
               autocomplete="family-name"
-            >
+            />
           </div>
 
           <div class="field">
-            <label for="edit-phone" class="label">Phone number <span class="optional">(optional)</span></label>
+            <label for="edit-phone" class="label"
+              >Phone number <span class="optional">(optional)</span></label
+            >
             <input
               id="edit-phone"
               :value="editPhoneFormatted"
@@ -210,7 +204,7 @@ async function handleSignOut() {
               placeholder="+41 79 012 34 56"
               autocomplete="tel"
               @input="onEditPhoneInput"
-            >
+            />
           </div>
 
           <p v-if="editError" class="error-text">
@@ -218,9 +212,7 @@ async function handleSignOut() {
           </p>
 
           <div class="edit-actions">
-            <button type="button" class="cancel-btn" @click="cancelEdit">
-              Cancel
-            </button>
+            <button type="button" class="cancel-btn" @click="cancelEdit">Cancel</button>
             <button type="submit" class="save-btn" :disabled="isSaving">
               {{ isSaving ? 'Saving...' : 'Save' }}
             </button>

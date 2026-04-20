@@ -26,29 +26,26 @@ const { contacts } = storeToRefs(contactsStore)
 
 function togglePartner(id: string) {
   const next = new Set(props.filters.partnerIds)
-  if (next.has(id))
-    next.delete(id)
+  if (next.has(id)) next.delete(id)
   else next.add(id)
   emit('update:partnerIds', next)
 }
 
 function toggleTourType(type: TourType) {
   const next = new Set(props.filters.tourTypes)
-  if (next.has(type))
-    next.delete(type)
+  if (next.has(type)) next.delete(type)
   else next.add(type)
   emit('update:tourTypes', next)
 }
 
 function toggleSeason(season: Season) {
   const next = new Set(props.filters.seasons)
-  if (next.has(season))
-    next.delete(season)
+  if (next.has(season)) next.delete(season)
   else next.add(season)
   emit('update:seasons', next)
 }
 
-const COMPLETION_OPTIONS: { value: CompletionFilter, label: string }[] = [
+const COMPLETION_OPTIONS: { value: CompletionFilter; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'open', label: 'Open' },
   { value: 'done', label: 'Done' },
@@ -58,9 +55,7 @@ const COMPLETION_OPTIONS: { value: CompletionFilter, label: string }[] = [
 <template>
   <div class="filters-panel">
     <div v-if="contacts.length" class="filter-group">
-      <p class="filter-label">
-        Partner
-      </p>
+      <p class="filter-label">Partner</p>
       <div class="chip-row">
         <button
           v-for="contact in contacts"
@@ -76,9 +71,7 @@ const COMPLETION_OPTIONS: { value: CompletionFilter, label: string }[] = [
     </div>
 
     <div class="filter-group">
-      <p class="filter-label">
-        Activity type
-      </p>
+      <p class="filter-label">Activity type</p>
       <div class="chip-row">
         <button
           v-for="type in TOUR_TYPE_VALUES"
@@ -94,9 +87,7 @@ const COMPLETION_OPTIONS: { value: CompletionFilter, label: string }[] = [
     </div>
 
     <div class="filter-group">
-      <p class="filter-label">
-        Season
-      </p>
+      <p class="filter-label">Season</p>
       <div class="chip-row">
         <button
           v-for="season in SEASON_VALUES"
@@ -112,9 +103,7 @@ const COMPLETION_OPTIONS: { value: CompletionFilter, label: string }[] = [
     </div>
 
     <div class="filter-group">
-      <p class="filter-label">
-        Planned date
-      </p>
+      <p class="filter-label">Planned date</p>
       <div class="date-row">
         <label class="date-field">
           <span class="date-label-text">From</span>
@@ -131,7 +120,7 @@ const COMPLETION_OPTIONS: { value: CompletionFilter, label: string }[] = [
                     : null,
                 )
             "
-          >
+          />
         </label>
         <label class="date-field">
           <span class="date-label-text">To</span>
@@ -148,15 +137,13 @@ const COMPLETION_OPTIONS: { value: CompletionFilter, label: string }[] = [
                     : null,
                 )
             "
-          >
+          />
         </label>
       </div>
     </div>
 
     <div class="filter-group">
-      <p class="filter-label">
-        Status
-      </p>
+      <p class="filter-label">Status</p>
       <div class="segmented">
         <button
           v-for="opt in COMPLETION_OPTIONS"
