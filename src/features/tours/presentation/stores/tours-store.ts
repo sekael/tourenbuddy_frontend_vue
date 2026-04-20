@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { ref } from 'vue'
 import { useLogger } from '@/core/logging/use-logger'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
+import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { ToursRepositoryImpl } from '@/features/tours/data/repositories/tours-repository-impl'
 
 const repository = new ToursRepositoryImpl()
@@ -11,10 +12,26 @@ const repository = new ToursRepositoryImpl()
 export const useToursStore = defineStore('tours', () => {
   const logger = useLogger('ToursStore')
   const authStore = useAuthStore()
+  const contactsStore = useContactsStore()
 
   const tours = ref<Tour[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+
+  contactsStore.$onAction(({ name, args, after }) => {
+    if (name !== 'deleteContact')
+      return
+    after(() => {
+      const deletedId = args[0] as string
+      if (!tours.value.some(t => t.partnerIds.includes(deletedId)))
+        return
+      tours.value = tours.value.map(t =>
+        t.partnerIds.includes(deletedId)
+          ? { ...t, partnerIds: t.partnerIds.filter(id => id !== deletedId) }
+          : t,
+      )
+    })
+  })
 
   async function loadTours() {
     const userId = authStore.currentUser?.id

@@ -1,5 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
 const {
@@ -8,6 +9,7 @@ const {
   mockUpdateTour,
   mockPatchCompleted,
   mockDeleteTour,
+  mockDeleteContact,
   mockDebug,
   mockError,
 } = vi.hoisted(() => ({
@@ -16,6 +18,7 @@ const {
   mockUpdateTour: vi.fn(),
   mockPatchCompleted: vi.fn(),
   mockDeleteTour: vi.fn(),
+  mockDeleteContact: vi.fn(),
   mockDebug: vi.fn(),
   mockError: vi.fn(),
 }))
@@ -28,6 +31,28 @@ vi.mock('@/features/tours/data/repositories/tours-repository-impl', () => ({
     patchCompleted: mockPatchCompleted,
     deleteTour: mockDeleteTour,
   })),
+}))
+
+vi.mock('@/features/contacts/data/repositories/contacts-repository-impl', () => ({
+  ContactsRepositoryImpl: vi.fn().mockImplementation(() => ({
+    fetchContacts: vi.fn().mockResolvedValue([]),
+    createContact: vi.fn(),
+    updateContact: vi.fn(),
+    deleteContact: mockDeleteContact,
+  })),
+}))
+
+vi.mock('@/features/contacts/data/repositories/contact-methods-repository-impl', () => ({
+  ContactMethodsRepositoryImpl: vi.fn().mockImplementation(() => ({
+    addMethod: vi.fn(),
+    updateMethod: vi.fn(),
+    removeMethod: vi.fn(),
+    setPrimaryPhone: vi.fn(),
+  })),
+}))
+
+vi.mock('@/core/utils/phone-normalize', () => ({
+  normalizePhone: vi.fn().mockReturnValue({ ok: false }),
 }))
 
 vi.mock('@/core/logging/use-logger', () => ({
@@ -342,6 +367,103 @@ describe('useToursStore', () => {
 
       await expect(store.deleteTour('tour-1')).rejects.toThrow('Delete failed')
       expect(store.tours).toHaveLength(1)
+    })
+  })
+
+  describe('partnerIds reconciliation on contact deletion', () => {
+    const tourWithPartner = {
+      id: 'tour-a',
+      userId: 'user-123',
+      plannedDate: null,
+      goal: { lng: 8.2, lat: 46.8 },
+      name: 'Alpine Tour',
+      partnerIds: ['contact-deleted', 'contact-kept'],
+      tourType: null,
+      elevation: 1200,
+      gpxTrack: null,
+      description: 'A great tour',
+      seasons: null,
+      startPoint: null,
+      endPoint: null,
+      equipment: null,
+      notes: null,
+      completed: false,
+    }
+
+    const tourWithoutPartner = {
+      id: 'tour-b',
+      userId: 'user-123',
+      plannedDate: null,
+      goal: { lng: 7.1, lat: 46.5 },
+      name: 'Valley Tour',
+      partnerIds: ['contact-kept'],
+      tourType: null,
+      elevation: null,
+      gpxTrack: null,
+      description: null,
+      seasons: null,
+      startPoint: null,
+      endPoint: null,
+      equipment: null,
+      notes: null,
+      completed: false,
+    }
+
+    it('should remove deleted contact id from all affected cached tours', async () => {
+      mockDeleteContact.mockResolvedValue(undefined)
+
+      const toursStore = useToursStore()
+      const contactsStore = useContactsStore()
+      toursStore.tours = [tourWithPartner, tourWithoutPartner]
+
+      await contactsStore.deleteContact('contact-deleted')
+
+      expect(toursStore.tours[0]!.partnerIds).not.toContain('contact-deleted')
+      expect(toursStore.tours[0]!.partnerIds).toContain('contact-kept')
+      expect(toursStore.tours[1]!.partnerIds).toEqual(['contact-kept'])
+    })
+
+    it('should leave tours.value unchanged when deleteContact rejects', async () => {
+      mockDeleteContact.mockRejectedValue(new Error('FK violation'))
+
+      const toursStore = useToursStore()
+      const contactsStore = useContactsStore()
+      toursStore.tours = [tourWithPartner]
+      const originalRef = toursStore.tours
+
+      await expect(contactsStore.deleteContact('contact-deleted')).rejects.toThrow('FK violation')
+
+      expect(toursStore.tours).toBe(originalRef)
+      expect(toursStore.tours[0]!.partnerIds).toContain('contact-deleted')
+    })
+
+    it('should not mutate tours.value when deleted contact is not referenced', async () => {
+      mockDeleteContact.mockResolvedValue(undefined)
+
+      const toursStore = useToursStore()
+      const contactsStore = useContactsStore()
+      toursStore.tours = [tourWithoutPartner]
+      const originalRef = toursStore.tours
+
+      await contactsStore.deleteContact('contact-unreferenced')
+
+      expect(toursStore.tours).toBe(originalRef)
+    })
+
+    it('should preserve all other tour fields after reconciliation', async () => {
+      mockDeleteContact.mockResolvedValue(undefined)
+
+      const toursStore = useToursStore()
+      const contactsStore = useContactsStore()
+      toursStore.tours = [tourWithPartner]
+
+      await contactsStore.deleteContact('contact-deleted')
+
+      const updated = toursStore.tours[0]!
+      expect(updated.name).toBe('Alpine Tour')
+      expect(updated.elevation).toBe(1200)
+      expect(updated.description).toBe('A great tour')
+      expect(updated.id).toBe('tour-a')
     })
   })
 })

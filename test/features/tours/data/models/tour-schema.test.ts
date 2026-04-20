@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { tourRowSchema } from '@/features/tours/data/models/tour-schema'
+import { tourRowSchema, tourSchema } from '@/features/tours/data/models/tour-schema'
 
 const baseRow = {
   id: 'tour-1',
@@ -10,6 +10,20 @@ const baseRow = {
   name: 'Test Tour',
   partner_ids: [],
 }
+
+describe('tourSchema invariant: no partner snapshots', () => {
+  it('should contain partnerIds but no partner name or phone fields', () => {
+    const shape = tourSchema.shape
+    expect(shape).toHaveProperty('partnerIds')
+    expect(shape).not.toHaveProperty('partnerNames')
+    expect(shape).not.toHaveProperty('partnerPhones')
+    expect(shape).not.toHaveProperty('partners')
+    expect(shape).not.toHaveProperty('partnerFirstNames')
+    expect(shape).not.toHaveProperty('partnerLastNames')
+    expect(shape).not.toHaveProperty('partnerDisplayNames')
+    expect(shape).not.toHaveProperty('partnerContactMethods')
+  })
+})
 
 describe('tourRowSchema completed field', () => {
   it('should default completed to false when field is absent', () => {

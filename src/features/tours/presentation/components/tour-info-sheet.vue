@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { Contact } from '@/features/contacts/domain/entities/contact'
 import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
@@ -175,18 +174,22 @@ const formattedDate = computed(() => {
 const partners = computed(() => contacts.value.filter(c => props.tour.partnerIds.includes(c.id)))
 
 // ── Contact action menu ──────────────────────────────────────────────────────
-const activeMenuContact = ref<Contact | null>(null)
+const activeMenuContactId = ref<string | null>(null)
+const activeMenuContact = computed(() =>
+  activeMenuContactId.value
+    ? (partners.value.find(c => c.id === activeMenuContactId.value) ?? null)
+    : null,
+)
 const activeChipRect = ref<DOMRect | null>(null)
 const showGroupSmsDialog = ref(false)
 
 function openContactMenu(contactId: string, rect: DOMRect) {
-  const contact = partners.value.find(c => c.id === contactId) ?? null
-  activeMenuContact.value = contact
+  activeMenuContactId.value = contactId
   activeChipRect.value = rect
 }
 
 function closeContactMenu() {
-  activeMenuContact.value = null
+  activeMenuContactId.value = null
   activeChipRect.value = null
 }
 
