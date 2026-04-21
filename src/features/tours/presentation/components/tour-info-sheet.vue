@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
+import { useLogger } from '@/core/logging/use-logger'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import ContactActionMenu from '@/features/contacts/presentation/components/contact-action-menu.vue'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
@@ -49,6 +50,9 @@ const { contacts } = storeToRefs(contactsStore)
 const { isPickingLocation } = storeToRefs(mapStore)
 const { currentUser } = storeToRefs(authStore)
 const isDesktop = useIsDesktop()
+const log = useLogger('tour-info-sheet')
+
+const isPicking = computed(() => isPickingLocation.value)
 
 const isOwner = computed(() => !!currentUser.value && currentUser.value.id === props.tour.userId)
 
@@ -111,6 +115,10 @@ const saveError = ref<string | null>(null)
 const isSaving = ref(false)
 
 async function handleEditSubmit(draft: TourDraft) {
+  if (mapStore.isPickingLocation) {
+    log.debug('Ignoring edit submit while location picker is active')
+    return
+  }
   saveError.value = null
   isSaving.value = true
   try {
@@ -151,15 +159,15 @@ async function confirmDelete() {
 // ── Read-only computed values ────────────────────────────────────────────────
 const displayName = computed(() => props.tour.name ?? t('tours.infoSheet.unnamedTour'))
 
-// On mobile, collapse the sheet to just its header while the user aims the
-// location picker so the map (and crosshair) stays visible. Sheet on desktop
-// is a side drawer that already leaves the map visible — no collapse needed.
-const sheetCollapsed = computed(
-  () => !isDesktop.value && isPickingLocation.value && mode.value === 'edit',
-)
+// While the location picker is active and we're in edit mode, collapse the
+// sheet/drawer to a header-only surface so the map (and crosshair) stay
+// visible and the form can't be submitted with stale state. Applies to both
+// desktop (side drawer → compact top-right header) and mobile (bottom sheet
+// → title-only bar).
+const sheetCollapsed = computed(() => isPicking.value && mode.value === 'edit')
 const sheetTitle = computed(() => {
   if (sheetCollapsed.value)
-    return `${t('tours.infoSheet.pickGoalPrefix')} — ${displayName.value}`
+    return t('tours.infoSheet.editTitle', { name: displayName.value })
   return mode.value === 'edit'
     ? `${t('tours.infoSheet.editTitlePrefix')}: ${displayName.value}`
     : displayName.value
@@ -282,6 +290,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         :initial-name="pendingSuggestedName"
         :initial-start-point="pendingStartPoint"
         :initial-end-point="pendingEndPoint"
+        :disabled="isPicking"
         @submit="handleEditSubmit"
         @cancel="cancelEdit"
         @pick-point="emit('pickPoint', $event)"

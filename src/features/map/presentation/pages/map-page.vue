@@ -272,8 +272,8 @@ function handleLocationCancelled() {
 }
 
 function handlePickPoint(type: 'start' | 'end') {
-  // Hide dialog while picking but don't reset creation state
-  activeOverlay.value = null
+  // Keep creation dialog mounted so TourForm state is preserved; it collapses
+  // itself based on isPickingLocation.
   pendingPickType.value = type
   mapStore.setPickingLocation(true)
 }
