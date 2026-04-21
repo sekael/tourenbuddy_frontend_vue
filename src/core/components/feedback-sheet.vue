@@ -18,7 +18,8 @@ function openIssue() {
   const tab = window.open(FEEDBACK_GITHUB_ISSUE_URL, '_blank', 'noopener,noreferrer')
   if (tab === null) {
     show(t('core.feedback.sheet.errorOpening', { email: FEEDBACK_EMAIL }))
-  } else {
+  }
+  else {
     emit('close')
   }
 }

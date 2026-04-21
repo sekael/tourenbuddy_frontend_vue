@@ -3,8 +3,6 @@ import type { Map as MapLibreMap } from 'maplibre-gl'
 import { useI18n } from 'vue-i18n'
 import Crosshair from '@/core/components/crosshair.vue'
 
-const { t } = useI18n({ useScope: 'global' })
-
 const props = defineProps<{
   map: MapLibreMap | null
   /** Pixels to offset the Cancel/Continue buttons from the bottom of the viewport. */
@@ -12,9 +10,11 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  confirm: [location: { lng: number; lat: number }]
+  confirm: [location: { lng: number, lat: number }]
   cancel: []
 }>()
+
+const { t } = useI18n({ useScope: 'global' })
 
 /**
  * Returns the geographic coordinates at the visual center of the map canvas —
@@ -34,7 +34,8 @@ function getCrosshairCoordinates(map: NonNullable<typeof props.map>) {
 }
 
 function handleConfirm() {
-  if (!props.map) return
+  if (!props.map)
+    return
   const coords = getCrosshairCoordinates(props.map)
   emit('confirm', { lng: coords.lng, lat: coords.lat })
 }
@@ -48,8 +49,12 @@ function handleConfirm() {
       class="actions"
       :style="props.actionsBottom != null ? { bottom: `${props.actionsBottom}px` } : undefined"
     >
-      <button class="cancel-btn" @click="emit('cancel')">{{ t('tours.picker.cancelBtn') }}</button>
-      <button class="confirm-btn" @click="handleConfirm">{{ t('tours.picker.confirmBtn') }}</button>
+      <button class="cancel-btn" @click="emit('cancel')">
+        {{ t('tours.picker.cancelBtn') }}
+      </button>
+      <button class="confirm-btn" @click="handleConfirm">
+        {{ t('tours.picker.confirmBtn') }}
+      </button>
     </div>
   </div>
 </template>

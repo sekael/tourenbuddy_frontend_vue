@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { formatPhoneDisplay, getPrimaryPhone } from '@/features/contacts/domain/entities/contact'
 
-function makeContact(methods: Array<{ id: string; value: string; isPrimary: boolean }>) {
+function makeContact(methods: Array<{ id: string, value: string, isPrimary: boolean }>) {
   return {
     id: 'c1',
     userId: 'u1',
     firstName: 'Test',
     lastName: null,
     displayName: null,
-    contactMethods: methods.map((m) => ({
+    contactMethods: methods.map(m => ({
       ...m,
       contactId: 'c1',
       methodType: 'phone' as const,

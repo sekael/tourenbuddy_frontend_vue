@@ -8,4 +8,4 @@ export const SUPPORTED_LOCALES: SupportedLocale[] = [
   { code: 'de-CH', label: 'Deutsch' },
 ]
 
-export const SUPPORTED_LOCALE_CODES = SUPPORTED_LOCALES.map((l) => l.code)
+export const SUPPORTED_LOCALE_CODES = SUPPORTED_LOCALES.map(l => l.code)

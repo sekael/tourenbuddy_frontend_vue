@@ -56,10 +56,11 @@ const error = ref<string | null>(null)
 function getPhoneFormatter(rowId: string) {
   if (!phoneFormatterCache.has(rowId)) {
     const phoneRef = computed({
-      get: () => phoneRows.value.find((r) => r.id === rowId)?.value ?? '',
+      get: () => phoneRows.value.find(r => r.id === rowId)?.value ?? '',
       set: (v: string) => {
-        const row = phoneRows.value.find((r) => r.id === rowId)
-        if (row) row.value = v
+        const row = phoneRows.value.find(r => r.id === rowId)
+        if (row)
+          row.value = v
       },
     })
     phoneFormatterCache.set(rowId, useAsYouTypePhone(phoneRef))
@@ -69,15 +70,15 @@ function getPhoneFormatter(rowId: string) {
 
 watch(
   () => props.initialFirstName,
-  (v) => (firstName.value = v ?? ''),
+  v => (firstName.value = v ?? ''),
 )
 watch(
   () => props.initialLastName,
-  (v) => (lastName.value = v ?? ''),
+  v => (lastName.value = v ?? ''),
 )
 watch(
   () => props.initialDisplayName,
-  (v) => (displayName.value = v ?? ''),
+  v => (displayName.value = v ?? ''),
 )
 
 function addPhoneRow() {
@@ -93,7 +94,8 @@ function addPhoneRow() {
 function removePhoneRow(index: number) {
   const row = phoneRows.value[index]
   const wasPrimary = row?.isPrimary
-  if (row) phoneFormatterCache.delete(row.id)
+  if (row)
+    phoneFormatterCache.delete(row.id)
   phoneRows.value.splice(index, 1)
   if (wasPrimary && phoneRows.value.length > 0) {
     phoneRows.value[0]!.isPrimary = true
@@ -114,7 +116,7 @@ function handleSubmit() {
     return
   }
 
-  const nonEmpty = phoneRows.value.filter((r) => r.value.trim())
+  const nonEmpty = phoneRows.value.filter(r => r.value.trim())
 
   let hasPhoneError = false
   for (const row of nonEmpty) {
@@ -122,14 +124,16 @@ function handleSubmit() {
     if (!result.ok) {
       row.error = t('contacts.form.invalidPhone')
       hasPhoneError = true
-    } else {
+    }
+    else {
       row.error = null
     }
   }
-  if (hasPhoneError) return
+  if (hasPhoneError)
+    return
 
   if (nonEmpty.length > 1) {
-    const primaryCount = nonEmpty.filter((r) => r.isPrimary).length
+    const primaryCount = nonEmpty.filter(r => r.isPrimary).length
     if (primaryCount !== 1) {
       error.value = t('contacts.form.primaryPhoneRequired')
       return
@@ -157,9 +161,7 @@ function handleSubmit() {
 <template>
   <form class="form" @submit.prevent="handleSubmit">
     <div class="field">
-      <label class="label" for="cf-firstName"
-        >{{ t('contacts.form.firstNameLabel') }} <span class="required">*</span></label
-      >
+      <label class="label" for="cf-firstName">{{ t('contacts.form.firstNameLabel') }} <span class="required">*</span></label>
       <input
         id="cf-firstName"
         v-model="firstName"
@@ -168,7 +170,7 @@ function handleSubmit() {
         maxlength="50"
         :placeholder="t('contacts.form.firstNamePlaceholder')"
         required
-      />
+      >
     </div>
 
     <div class="field">
@@ -180,7 +182,7 @@ function handleSubmit() {
         type="text"
         maxlength="50"
         :placeholder="t('contacts.form.lastNamePlaceholder')"
-      />
+      >
     </div>
 
     <div class="field">
@@ -192,7 +194,7 @@ function handleSubmit() {
         type="text"
         maxlength="50"
         :placeholder="t('contacts.form.displayNamePlaceholder')"
-      />
+      >
     </div>
 
     <div class="phones-section">
@@ -222,7 +224,7 @@ function handleSubmit() {
             type="tel"
             :placeholder="t('contacts.form.phonePlaceholder')"
             @input="getPhoneFormatter(row.id).onInput"
-          />
+          >
           <p v-if="row.error" class="error-text">
             {{ row.error }}
           </p>
@@ -231,7 +233,7 @@ function handleSubmit() {
             class="input input-sm"
             type="text"
             :placeholder="t('contacts.form.labelPlaceholder')"
-          />
+          >
         </div>
         <button
           v-if="phoneRows.length > 1"

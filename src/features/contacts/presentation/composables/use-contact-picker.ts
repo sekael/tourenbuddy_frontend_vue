@@ -19,12 +19,13 @@ export const isContactPickerSupported = 'contacts' in navigator && 'ContactsMana
 /** Composable for importing contacts via the native Contact Picker API. */
 export function useContactPicker() {
   async function pickContacts(): Promise<PickedContact[]> {
-    if (!isContactPickerSupported) return []
+    if (!isContactPickerSupported)
+      return []
 
     try {
       // @ts-expect-error Contact Picker API not in TypeScript DOM lib yet
       const contacts = await navigator.contacts.select(['name', 'tel'], { multiple: true })
-      return (contacts as Array<{ name: string[]; tel: string[] }>).map((entry) => {
+      return (contacts as Array<{ name: string[], tel: string[] }>).map((entry) => {
         const fullName = entry.name[0] ?? ''
         const parsed = parseContactName(fullName)
         const phones: PickedPhone[] = []
@@ -36,13 +37,15 @@ export function useContactPicker() {
           if (normalized.ok) {
             phones.push({ value: normalized.e164, label: null, isPrimary: firstValid })
             firstValid = false
-          } else if (trimmed) {
+          }
+          else if (trimmed) {
             rawPhoneNumbers.push(trimmed)
           }
         }
         return { ...parsed, phones, rawPhoneNumbers }
       })
-    } catch {
+    }
+    catch {
       return []
     }
   }
