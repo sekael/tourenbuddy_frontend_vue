@@ -33,7 +33,7 @@ describe('sideDrawer', () => {
     it('should render a close button', () => {
       const wrapper = mount(SideDrawer, { props: { title: 'Test' } })
       expect(wrapper.find('.close-btn').exists()).toBe(true)
-      expect(wrapper.find('.close-btn').attributes('aria-label')).toBe('Close')
+      expect(wrapper.find('.close-btn').attributes('aria-label')).toBe('core.drawer.close')
     })
 
     it('should emit close when the close button is clicked', async () => {

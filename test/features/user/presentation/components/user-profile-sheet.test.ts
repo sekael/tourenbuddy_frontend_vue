@@ -21,6 +21,11 @@ const { mockUpdateProfile, mockSendPhoneVerification, mockSignOut, mockFullProfi
   }),
 )
 
+const { mockSetLocale, mockLocale } = vi.hoisted(() => ({
+  mockSetLocale: vi.fn(),
+  mockLocale: { value: 'en' },
+}))
+
 vi.mock('@/features/user/presentation/stores/user-profile-store', () => ({
   useUserProfileStore: vi.fn().mockReturnValue({
     get fullProfile() {
@@ -47,8 +52,21 @@ vi.mock('@/features/tours/presentation/stores/tours-store', () => ({
   useToursStore: vi.fn().mockReturnValue({ clear: vi.fn() }),
 }))
 
+vi.mock('@/features/i18n/presentation/stores/use-locale-store', () => ({
+  useLocaleStore: vi.fn().mockReturnValue({
+    get locale() {
+      return mockLocale.value
+    },
+    setLocale: mockSetLocale,
+  }),
+}))
+
 vi.mock('vue-router', () => ({
   useRouter: () => ({ push: vi.fn() }),
+}))
+
+vi.mock('vue-i18n', () => ({
+  useI18n: () => ({ t: (key: string) => key }),
 }))
 
 vi.mock('@/features/user/presentation/components/phone-verification-dialog.vue', () => ({
@@ -63,10 +81,19 @@ vi.mock('@/core/components/bottom-sheet.vue', () => ({
   },
 }))
 
+vi.mock('@/core/components/adaptive-overlay.vue', () => ({
+  default: {
+    template: '<div class="adaptive-overlay-stub"><slot /></div>',
+    props: ['title'],
+    emits: ['close'],
+  },
+}))
+
 describe('userProfileSheet', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    mockLocale.value = 'en'
     mockFullProfile.value = {
       id: 'user-123',
       firstName: 'Max',
@@ -83,9 +110,9 @@ describe('userProfileSheet', () => {
     expect(wrapper.text()).toContain('max@example.com')
   })
 
-  it('should show "Add phone number" when no phone set', () => {
+  it('should show add phone button when no phone set', () => {
     const wrapper = mount(UserProfileSheet)
-    expect(wrapper.text()).toContain('Add phone number')
+    expect(wrapper.find('.add-phone-btn').exists()).toBe(true)
   })
 
   it('should show phone number with verified badge when phone is verified', () => {
@@ -151,5 +178,30 @@ describe('userProfileSheet', () => {
     await wrapper.find('form').trigger('submit')
     await vi.waitFor(() => expect(mockSendPhoneVerification).toHaveBeenCalledWith('+41791234567'))
     expect(wrapper.find('.phone-verification-stub').exists()).toBe(true)
+  })
+
+  describe('language selector', () => {
+    it('should render a language option button for each supported locale', () => {
+      const wrapper = mount(UserProfileSheet)
+      const buttons = wrapper.findAll('.language-option')
+      expect(buttons.length).toBeGreaterThanOrEqual(2)
+    })
+
+    it('should mark current locale button as active', () => {
+      mockLocale.value = 'en'
+      const wrapper = mount(UserProfileSheet)
+      const activeBtn = wrapper.find('.language-option--active')
+      expect(activeBtn.exists()).toBe(true)
+      expect(activeBtn.text()).toContain('English')
+    })
+
+    it('should call setLocale when a language button is clicked', async () => {
+      const wrapper = mount(UserProfileSheet)
+      const buttons = wrapper.findAll('.language-option')
+      const deBtn = buttons.find(b => b.text().includes('Deutsch'))
+      expect(deBtn).toBeDefined()
+      await deBtn!.trigger('click')
+      expect(mockSetLocale).toHaveBeenCalledWith('de-CH')
+    })
   })
 })

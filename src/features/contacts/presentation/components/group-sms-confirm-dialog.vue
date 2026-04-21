@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Contact } from '@/features/contacts/domain/entities/contact'
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { buildGroupSmsRecipients } from '@/features/contacts/core/utils/contact-actions'
 import { resolveContactName } from '@/features/contacts/domain/entities/contact'
 
@@ -12,6 +13,8 @@ const emit = defineEmits<{
   confirm: [recipients: string[]]
   cancel: []
 }>()
+
+const { t } = useI18n({ useScope: 'global' })
 
 const result = computed(() => buildGroupSmsRecipients(props.partners))
 const canSend = computed(() => result.value.included.length > 0)
@@ -33,7 +36,7 @@ function handleSend() {
     <div class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="group-sms-title">
       <div class="dialog-header">
         <h2 id="group-sms-title" class="dialog-title">
-          Send SMS to all partners
+          {{ t('contacts.groupSms.title') }}
         </h2>
         <button type="button" class="close-btn" aria-label="Close" @click="emit('cancel')">
           <span class="material-symbols-outlined">close</span>
@@ -43,7 +46,7 @@ function handleSend() {
       <div class="dialog-body">
         <div v-if="result.included.length > 0" class="recipient-section">
           <p class="section-label">
-            Will receive SMS
+            {{ t('contacts.groupSms.willReceiveLabel') }}
           </p>
           <ul class="recipient-list">
             <li v-for="item in result.included" :key="item.contact.id" class="recipient-row">
@@ -56,7 +59,7 @@ function handleSend() {
 
         <div v-if="result.excluded.length > 0" class="recipient-section">
           <p class="section-label excluded-label">
-            Cannot receive SMS
+            {{ t('contacts.groupSms.cannotReceiveLabel') }}
           </p>
           <ul class="recipient-list">
             <li v-for="item in result.excluded" :key="item.contact.id" class="recipient-row">
@@ -68,13 +71,13 @@ function handleSend() {
         </div>
 
         <p v-if="!canSend" class="no-recipients-msg">
-          No partners have a valid phone number for SMS.
+          {{ t('contacts.groupSms.noRecipients') }}
         </p>
       </div>
 
       <div class="dialog-footer">
         <button type="button" class="cancel-btn" @click="emit('cancel')">
-          Cancel
+          {{ t('contacts.groupSms.cancelBtn') }}
         </button>
         <button
           type="button"
@@ -84,7 +87,7 @@ function handleSend() {
           @click="handleSend"
         >
           <span class="material-symbols-outlined">sms</span>
-          Send SMS
+          {{ t('contacts.groupSms.sendBtn') }}
         </button>
       </div>
     </div>

@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { t } = useI18n({ useScope: 'global' })
 
 const email = ref('')
 const error = ref<string | null>(null)
@@ -16,7 +18,7 @@ async function handleSubmit() {
   error.value = null
 
   if (!emailRegex.test(email.value)) {
-    error.value = 'Please enter a valid email address'
+    error.value = t('auth.emailEntry.invalidEmail')
     return
   }
 
@@ -26,7 +28,7 @@ async function handleSubmit() {
     router.push({ name: 'verify-otp', query: { email: email.value } })
   }
   catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to send code. Please try again.'
+    error.value = err instanceof Error ? err.message : t('auth.emailEntry.sendError')
   }
   finally {
     isLoading.value = false
@@ -39,24 +41,24 @@ async function handleSubmit() {
     <div class="card">
       <button class="back-btn" @click="router.back()">
         <span class="material-symbols-outlined">arrow_back</span>
-        Back
+        {{ t('auth.shared.backBtn') }}
       </button>
       <h1 class="title">
-        Enter your email
+        {{ t('auth.emailEntry.title') }}
       </h1>
       <p class="subtitle">
-        We'll send you a one-time login code
+        {{ t('auth.emailEntry.subtitle') }}
       </p>
 
       <form class="form" @submit.prevent="handleSubmit">
         <div class="field">
-          <label for="email" class="label">Email address</label>
+          <label for="email" class="label">{{ t('auth.emailEntry.emailLabel') }}</label>
           <input
             id="email"
             v-model="email"
             type="email"
             class="input"
-            placeholder="you@example.com"
+            :placeholder="t('auth.emailEntry.emailPlaceholder')"
             autocomplete="email"
             required
           >
@@ -67,7 +69,7 @@ async function handleSubmit() {
         </p>
 
         <button type="submit" class="submit-btn" :disabled="isLoading">
-          {{ isLoading ? 'Sending...' : 'Send Code' }}
+          {{ isLoading ? t('auth.shared.sendingBtn') : t('auth.emailEntry.sendCodeBtn') }}
         </button>
       </form>
     </div>

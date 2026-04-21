@@ -1,4 +1,5 @@
 import { fileURLToPath, URL } from 'node:url'
+import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite'
 import vue from '@vitejs/plugin-vue'
 import VueRouter from 'unplugin-vue-router/vite'
 import { defineConfig } from 'vite'
@@ -11,6 +12,12 @@ export default defineConfig({
       dts: 'src/typed-router.d.ts',
     }),
     vue(),
+    VueI18nPlugin({
+      include: [fileURLToPath(new URL('./src/locales/**', import.meta.url))],
+      compositionOnly: true,
+      strictMessage: true,
+      escapeHtml: true,
+    }),
     VitePWA({
       registerType: 'prompt',
       includeAssets: ['apple-touch-icon.png', 'icons/icon-192.png', 'icons/icon-512.png'],

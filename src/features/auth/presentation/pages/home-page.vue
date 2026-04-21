@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import bgDesktop from '@/assets/background-desktop.webp'
 import bgMobile from '@/assets/background-mobile.webp'
 
 const router = useRouter()
+const { t } = useI18n({ useScope: 'global' })
 </script>
 
 <template>
@@ -18,10 +20,10 @@ const router = useRouter()
         TourenBuddy
       </h1>
       <p class="subtitle">
-        Plan your outdoor tours with confidence
+        {{ t('auth.home.subtitle') }}
       </p>
       <button class="login-button" @click="router.push({ name: 'email-entry' })">
-        Get Started
+        {{ t('auth.home.getStartedBtn') }}
       </button>
     </div>
   </div>

@@ -1,17 +1,17 @@
 /** Available Swisstopo base map styles for MapLibre. */
 export interface MapStyle {
-  label: string
+  labelKey: string
   /** MapLibre style URL or JSON path */
   style: string
 }
 
 export const SWISSTOPO_STYLES: MapStyle[] = [
   {
-    label: 'Base',
+    labelKey: 'map.styles.base',
     style: 'https://vectortiles.geo.admin.ch/styles/ch.swisstopo.basemap.vt/style.json',
   },
   {
-    label: 'Full Color',
+    labelKey: 'map.styles.classic',
     style: '/swisstopo_wmts_style.json',
   },
 ]

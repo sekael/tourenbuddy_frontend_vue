@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { SWISSTOPO_STYLES } from '@/features/map/data/swisstopo-styles'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 
+const { t } = useI18n()
 const mapStore = useMapStore()
 const { currentStyleIndex } = storeToRefs(mapStore)
 
@@ -20,7 +22,7 @@ function selectStyle(index: number) {
     <button
       class="fab"
       :class="{ active: isOpen }"
-      title="Change map style"
+      :title="t('map.styles.pickerTooltip')"
       @click="isOpen = !isOpen"
     >
       <span class="material-symbols-outlined">map</span>
@@ -38,7 +40,7 @@ function selectStyle(index: number) {
           <span class="check material-symbols-outlined">{{
             currentStyleIndex === index ? 'check' : ''
           }}</span>
-          {{ style.label }}
+          {{ t(style.labelKey) }}
         </button>
       </div>
     </Transition>

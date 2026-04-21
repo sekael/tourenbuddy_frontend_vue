@@ -49,8 +49,8 @@ describe('bottomSheet', () => {
     expect(sheet.attributes('aria-labelledby')).toBeUndefined()
   })
 
-  it('should have the close button labeled "Close"', () => {
+  it('should have the close button with an aria-label', () => {
     const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
-    expect(wrapper.find('.close-btn').attributes('aria-label')).toBe('Close')
+    expect(wrapper.find('.close-btn').attributes('aria-label')).toBe('core.drawer.close')
   })
 })

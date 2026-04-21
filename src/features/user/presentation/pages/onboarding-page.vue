@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
 import { InvalidPhoneNumberError } from '@/core/exceptions'
@@ -8,6 +9,7 @@ import { useUserProfileStore } from '@/features/user/presentation/stores/user-pr
 
 const router = useRouter()
 const store = useUserProfileStore()
+const { t } = useI18n({ useScope: 'global' })
 
 const firstName = ref('')
 const lastName = ref('')
@@ -30,9 +32,9 @@ onMounted(async () => {
 function validate(): boolean {
   const newErrors: typeof errors.value = {}
   if (!firstName.value.trim())
-    newErrors.firstName = 'First name is required'
+    newErrors.firstName = t('user.onboarding.firstNameRequired')
   if (!lastName.value.trim())
-    newErrors.lastName = 'Last name is required'
+    newErrors.lastName = t('user.onboarding.lastNameRequired')
   errors.value = newErrors
   return Object.keys(newErrors).length === 0
 }
@@ -94,23 +96,23 @@ function handleVerificationClose() {
   <div class="page">
     <div class="card">
       <h1 class="title">
-        Set up your profile
+        {{ t('user.onboarding.title') }}
       </h1>
       <p class="subtitle">
-        A complete profile helps your tour partners recognize and contact you. You can always update
-        this later.
+        {{ t('user.onboarding.subtitle') }}
       </p>
 
       <form class="form" @submit.prevent="handleSubmit">
         <div class="field">
-          <label for="firstName" class="label">First name <span class="required">*</span></label>
+          <label for="firstName" class="label">{{ t('user.shared.firstNameLabel') }}
+            <span class="required">{{ t('user.shared.required') }}</span></label>
           <input
             id="firstName"
             v-model="firstName"
             type="text"
             class="input"
             :class="{ 'input--error': errors.firstName }"
-            placeholder="Max"
+            :placeholder="t('user.shared.firstNamePlaceholder')"
             autocomplete="given-name"
           >
           <p v-if="errors.firstName" class="error-text">
@@ -119,14 +121,15 @@ function handleVerificationClose() {
         </div>
 
         <div class="field">
-          <label for="lastName" class="label">Last name <span class="required">*</span></label>
+          <label for="lastName" class="label">{{ t('user.shared.lastNameLabel') }}
+            <span class="required">{{ t('user.shared.required') }}</span></label>
           <input
             id="lastName"
             v-model="lastName"
             type="text"
             class="input"
             :class="{ 'input--error': errors.lastName }"
-            placeholder="Mustermann"
+            :placeholder="t('user.shared.lastNamePlaceholder')"
             autocomplete="family-name"
           >
           <p v-if="errors.lastName" class="error-text">
@@ -135,14 +138,15 @@ function handleVerificationClose() {
         </div>
 
         <div class="field">
-          <label for="phoneNumber" class="label">Phone number <span class="optional">(optional)</span></label>
+          <label for="phoneNumber" class="label">{{ t('user.shared.phoneLabel') }}
+            <span class="optional">{{ t('user.shared.optional') }}</span></label>
           <input
             id="phoneNumber"
             :value="phoneNumberFormatted"
             type="tel"
             class="input"
             :class="{ 'input--error': errors.phoneNumber }"
-            placeholder="+41 79 012 34 56"
+            :placeholder="t('user.shared.phonePlaceholder')"
             autocomplete="tel"
             @input="onPhoneNumberInput"
           >
@@ -156,12 +160,12 @@ function handleVerificationClose() {
         </p>
 
         <button type="submit" class="submit-btn" :disabled="isLoading">
-          {{ isLoading ? 'Saving...' : 'Continue' }}
+          {{ isLoading ? t('user.shared.savingBtn') : t('user.onboarding.continueBtn') }}
         </button>
       </form>
 
       <button class="skip-btn" @click="handleSkip">
-        Skip for now
+        {{ t('user.onboarding.skipBtn') }}
       </button>
     </div>
 

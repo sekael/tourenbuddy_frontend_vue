@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
 import { InvalidPhoneNumberError } from '@/core/exceptions'
+import { SUPPORTED_LOCALES } from '@/core/i18n/supported'
 import { formatPhoneForDisplay } from '@/core/utils/phone-normalize'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
+import { useLocaleStore } from '@/features/i18n/presentation/stores/use-locale-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 import PhoneVerificationDialog from './phone-verification-dialog.vue'
@@ -14,10 +17,12 @@ import PhoneVerificationDialog from './phone-verification-dialog.vue'
 const emit = defineEmits<{ close: [] }>()
 
 const router = useRouter()
+const { t } = useI18n({ useScope: 'global' })
 const authStore = useAuthStore()
 const userProfileStore = useUserProfileStore()
 const contactsStore = useContactsStore()
 const toursStore = useToursStore()
+const localeStore = useLocaleStore()
 
 const isEditing = ref(false)
 const editFirstName = ref('')
@@ -68,7 +73,7 @@ async function handleSave() {
   editError.value = null
 
   if (!editFirstName.value.trim() || !editLastName.value.trim()) {
-    editError.value = 'First and last name are required'
+    editError.value = t('user.profile.nameRequired')
     return
   }
 
@@ -96,7 +101,7 @@ async function handleSave() {
     editError.value
       = err instanceof InvalidPhoneNumberError || err instanceof Error
         ? (err as Error).message
-        : 'Failed to save profile'
+        : t('user.profile.saveFailed')
   }
   finally {
     isSaving.value = false
@@ -126,7 +131,7 @@ async function handleSignOut() {
 </script>
 
 <template>
-  <AdaptiveOverlay title="Profile" @close="emit('close')">
+  <AdaptiveOverlay :title="t('user.profile.title')" @close="emit('close')">
     <div class="profile-content">
       <!-- View mode -->
       <template v-if="!isEditing">
@@ -151,26 +156,43 @@ async function handleSignOut() {
             <span
               v-if="full.phoneVerified"
               class="material-symbols-outlined verified-icon"
-              title="Verified"
+              :title="t('user.profile.verifiedTooltip')"
             >verified</span>
             <button v-else class="verify-btn" @click="startEdit">
-              Verify
+              {{ t('user.profile.verifyBtn') }}
             </button>
           </template>
           <button v-else class="add-phone-btn" @click="handleAddPhone">
             <span class="material-symbols-outlined">add</span>
-            Add phone number
+            {{ t('user.profile.addPhoneBtn') }}
           </button>
+        </div>
+
+        <!-- Language selector -->
+        <div class="language-row">
+          <label class="label">{{ t('user.profile.languageLabel') }}</label>
+          <div class="language-options">
+            <button
+              v-for="loc in SUPPORTED_LOCALES"
+              :key="loc.code"
+              type="button"
+              class="language-option"
+              :class="{ 'language-option--active': localeStore.locale === loc.code }"
+              @click="localeStore.setLocale(loc.code)"
+            >
+              {{ loc.label }}
+            </button>
+          </div>
         </div>
 
         <div class="actions">
           <button class="edit-btn" @click="startEdit">
             <span class="material-symbols-outlined">edit</span>
-            Edit profile
+            {{ t('user.profile.editBtn') }}
           </button>
           <button class="sign-out-btn" @click="handleSignOut">
             <span class="material-symbols-outlined">logout</span>
-            Sign out
+            {{ t('user.profile.signOutBtn') }}
           </button>
         </div>
       </template>
@@ -179,7 +201,7 @@ async function handleSignOut() {
       <template v-else>
         <form class="edit-form" @submit.prevent="handleSave">
           <div class="field">
-            <label for="edit-first-name" class="label">First name</label>
+            <label for="edit-first-name" class="label">{{ t('user.shared.firstNameLabel') }}</label>
             <input
               id="edit-first-name"
               v-model="editFirstName"
@@ -190,7 +212,7 @@ async function handleSignOut() {
           </div>
 
           <div class="field">
-            <label for="edit-last-name" class="label">Last name</label>
+            <label for="edit-last-name" class="label">{{ t('user.shared.lastNameLabel') }}</label>
             <input
               id="edit-last-name"
               v-model="editLastName"
@@ -201,13 +223,14 @@ async function handleSignOut() {
           </div>
 
           <div class="field">
-            <label for="edit-phone" class="label">Phone number <span class="optional">(optional)</span></label>
+            <label for="edit-phone" class="label">{{ t('user.shared.phoneLabel') }}
+              <span class="optional">{{ t('user.shared.optional') }}</span></label>
             <input
               id="edit-phone"
               :value="editPhoneFormatted"
               type="tel"
               class="input"
-              placeholder="+41 79 012 34 56"
+              :placeholder="t('user.shared.phonePlaceholder')"
               autocomplete="tel"
               @input="onEditPhoneInput"
             >
@@ -219,10 +242,10 @@ async function handleSignOut() {
 
           <div class="edit-actions">
             <button type="button" class="cancel-btn" @click="cancelEdit">
-              Cancel
+              {{ t('user.shared.cancelBtn') }}
             </button>
             <button type="submit" class="save-btn" :disabled="isSaving">
-              {{ isSaving ? 'Saving...' : 'Save' }}
+              {{ isSaving ? t('user.shared.savingBtn') : t('user.shared.saveBtn') }}
             </button>
           </div>
         </form>
@@ -323,6 +346,40 @@ async function handleSignOut() {
 
 .add-phone-btn:hover {
   color: var(--color-primary);
+}
+
+.language-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.language-options {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex-wrap: wrap;
+}
+
+.language-option {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: 1.5px solid var(--color-outline-variant);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
+  transition:
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.language-option:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.language-option--active {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
 }
 
 .actions {

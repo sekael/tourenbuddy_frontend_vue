@@ -1,0 +1,325 @@
+{
+  "validation": {
+    "required": "Dieses Feld ist erforderlich",
+    "invalidType": "Ungültiger Wert",
+    "tooSmall": "Wert ist zu klein",
+    "tooBig": "Wert ist zu gross",
+    "invalidString": "Ungültiges Format",
+    "invalidEnum": "Ungültige Option",
+    "invalid": "Ungültiger Wert"
+  },
+  "core": {
+    "pwa": {
+      "banner": {
+        "message": "Installieren Sie TourenBuddy für die beste Erfahrung",
+        "dismiss": "Nicht jetzt",
+        "install": "Installieren"
+      }
+    },
+    "feedback": {
+      "sheet": {
+        "title": "Feedback",
+        "openIssue": "Issue auf GitHub eröffnen",
+        "noGitHub": "Kein GitHub-Konto? Schreiben Sie uns an",
+        "errorOpening": "GitHub-Seite konnte nicht geöffnet werden. Bitte senden Sie uns eine E-Mail an {email}"
+      }
+    },
+    "drawer": {
+      "close": "Schliessen",
+      "back": "Zurück"
+    }
+  },
+  "auth": {
+    "home": {
+      "subtitle": "Planen Sie Ihre Outdoor-Touren mit Sicherheit",
+      "getStartedBtn": "Loslegen"
+    },
+    "emailEntry": {
+      "title": "E-Mail-Adresse eingeben",
+      "subtitle": "Wir senden Ihnen einen Einmal-Anmeldecode",
+      "emailLabel": "E-Mail-Adresse",
+      "emailPlaceholder": "sie{'@'}beispiel.ch",
+      "invalidEmail": "Bitte geben Sie eine gültige E-Mail-Adresse ein",
+      "sendCodeBtn": "Code senden",
+      "sendError": "Code konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
+    },
+    "verifyOtp": {
+      "title": "Prüfen Sie Ihre E-Mails",
+      "subtitlePrefix": "Wir haben einen Anmeldecode gesendet an",
+      "otpLabel": "Einmal-Code",
+      "otpPlaceholder": "Code eingeben",
+      "incompleteCode": "Bitte geben Sie den vollständigen Code ein",
+      "invalidCode": "Ungültiger Code. Bitte versuchen Sie es erneut.",
+      "resendSuccess": "Code erneut gesendet! Prüfen Sie Ihre E-Mails.",
+      "verifyCodeBtn": "Code bestätigen",
+      "resendError": "Code konnte nicht erneut gesendet werden. Bitte versuchen Sie es erneut.",
+      "resendCodeBtn": "Code erneut senden"
+    },
+    "shared": {
+      "sendingBtn": "Wird gesendet...",
+      "verifyingBtn": "Wird überprüft...",
+      "backBtn": "Zurück"
+    }
+  },
+  "user": {
+    "onboarding": {
+      "title": "Profil einrichten",
+      "subtitle": "Ein vollständiges Profil hilft Ihren Tourpartnern, Sie zu erkennen und zu kontaktieren. Sie können dies jederzeit aktualisieren.",
+      "firstNameRequired": "Vorname ist erforderlich",
+      "lastNameRequired": "Nachname ist erforderlich",
+      "continueBtn": "Weiter",
+      "skipBtn": "Vorerst überspringen"
+    },
+    "profile": {
+      "title": "Profil",
+      "verifiedTooltip": "Verifiziert",
+      "verifyBtn": "Verifizieren",
+      "addPhoneBtn": "Telefonnummer hinzufügen",
+      "editBtn": "Profil bearbeiten",
+      "signOutBtn": "Abmelden",
+      "nameRequired": "Vor- und Nachname sind erforderlich",
+      "saveFailed": "Profil konnte nicht gespeichert werden",
+      "languageLabel": "Sprache"
+    },
+    "phoneVerification": {
+      "title": "Telefon verifizieren",
+      "subtitlePrefix": "Wir haben einen Code gesendet an",
+      "codeLabel": "Bestätigungscode",
+      "codePlaceholder": "000000",
+      "incompleteCode": "Bitte geben Sie den vollständigen 6-stelligen Code ein",
+      "invalidCode": "Ungültiger Code. Bitte versuchen Sie es erneut.",
+      "resendSuccess": "Code erneut gesendet!",
+      "verifyingBtn": "Wird überprüft...",
+      "verifyBtn": "Verifizieren",
+      "resendError": "Code konnte nicht erneut gesendet werden.",
+      "resendCountdown": "Erneut senden in",
+      "sendingBtn": "Wird gesendet...",
+      "resendBtn": "Code erneut senden",
+      "verifiedMsg": "Telefon verifiziert!"
+    },
+    "shared": {
+      "firstNameLabel": "Vorname",
+      "firstNamePlaceholder": "Max",
+      "lastNameLabel": "Nachname",
+      "lastNamePlaceholder": "Mustermann",
+      "phoneLabel": "Telefonnummer",
+      "phonePlaceholder": "+41 79 012 34 56",
+      "optional": "(optional)",
+      "required": "*",
+      "savingBtn": "Wird gespeichert...",
+      "cancelBtn": "Abbrechen",
+      "saveBtn": "Speichern"
+    }
+  },
+  "contacts": {
+    "list": {
+      "title": "Kontakte",
+      "addBtn": "Kontakt hinzufügen",
+      "loading": "Wird geladen\u2026",
+      "emptyTitle": "Noch keine Kontakte.",
+      "emptySubtitle": "Fügen Sie Kontakte hinzu, um sie als Tourpartner zu verwenden.",
+      "noMatchesTitle": "Keine Kontakte gefunden.",
+      "clearFiltersBtn": "Filter zurücksetzen",
+      "searchPlaceholder": "Kontakte suchen\u2026",
+      "invalidPhoneWarning": "Ungültige Telefonnummer konnte nicht hinzugefügt werden"
+    },
+    "form": {
+      "firstNameLabel": "Vorname",
+      "firstNamePlaceholder": "Vorname",
+      "firstNameRequired": "Vorname ist erforderlich",
+      "lastNameLabel": "Nachname",
+      "lastNamePlaceholder": "Nachname (optional)",
+      "displayNameLabel": "Anzeigename",
+      "displayNamePlaceholder": "Spitzname (optional)",
+      "phonesLabel": "Telefonnummern",
+      "primaryPhoneTooltip": "Haupttelefon",
+      "setAsPrimaryTooltip": "Als Haupttelefon festlegen",
+      "phonePlaceholder": "+41 79 012 34 56 (optional)",
+      "invalidPhone": "Ungültige Telefonnummer",
+      "labelPlaceholder": "Bezeichnung (z. B. Mobil)",
+      "removePhoneTooltip": "Telefon entfernen",
+      "addPhoneBtn": "Telefon hinzufügen",
+      "primaryPhoneRequired": "Wählen Sie ein Haupttelefon aus, wenn mehrere Telefonnummern eingetragen sind"
+    },
+    "addDialog": {
+      "title": "Kontakt hinzufügen",
+      "importedBadge": "importiert",
+      "skippedBadge": "übersprungen",
+      "importedLabel": "Importiert",
+      "skippedLabel": "Übersprungen",
+      "addManuallyBtn": "Weiteren manuell hinzufügen",
+      "doneBtn": "Fertig",
+      "importFileBtn": "Aus Datei importieren",
+      "importContactsBtn": "Aus Kontakten importieren",
+      "importError": "Import fehlgeschlagen",
+      "fileImportError": "Dateiimport fehlgeschlagen",
+      "addError": "Kontakt konnte nicht hinzugefügt werden"
+    },
+    "detailView": {
+      "title": "Kontakt bearbeiten",
+      "nameSection": "Name",
+      "savingBtn": "Wird gespeichert...",
+      "saveNameBtn": "Name speichern",
+      "methodsSection": "Kontaktmethoden",
+      "noMethods": "Noch keine Kontaktmethoden.",
+      "primaryPhoneTooltip": "Haupttelefon",
+      "setAsPrimaryTooltip": "Als Haupttelefon festlegen",
+      "invalidPhoneHint": "Ungültige Nummer \u2014 geben Sie eine gültige Nummer ein",
+      "phonePlaceholder": "+41 79 012 34 56",
+      "labelPlaceholder": "Bezeichnung (optional)",
+      "invalidPhone": "Ungültige Telefonnummer",
+      "valueRequired": "Wert ist erforderlich",
+      "firstNameRequired": "Vorname ist erforderlich",
+      "addError": "Fehler beim Hinzufügen",
+      "addMethodBtn": "Methode hinzufügen",
+      "phoneTypeBtn": "Telefon",
+      "emailTypeBtn": "E-Mail",
+      "emailPlaceholder": "email{'@'}beispiel.ch",
+      "labelExamplePlaceholder": "Bezeichnung (optional, z. B. Mobil)",
+      "addingBtn": "Wird hinzugefügt...",
+      "addBtn": "Hinzufügen",
+      "deleteConfirm": "Kontakt löschen?",
+      "deleteBtn": "Kontakt löschen",
+      "deletingBtn": "Wird gelöscht..."
+    },
+    "actionMenu": {
+      "noMethods": "Keine Kontaktmethode verfügbar. Bearbeiten Sie den Kontakt, um eine hinzuzufügen.",
+      "editBtn": "Kontakt bearbeiten"
+    },
+    "groupSms": {
+      "title": "SMS an alle Partner senden",
+      "willReceiveLabel": "Erhält SMS",
+      "cannotReceiveLabel": "Kann keine SMS empfangen",
+      "noRecipients": "Kein Partner hat eine gültige Telefonnummer für SMS.",
+      "cancelBtn": "Abbrechen",
+      "sendBtn": "SMS senden"
+    },
+    "shared": {
+      "savingBtn": "Wird gespeichert...",
+      "cancelBtn": "Abbrechen"
+    }
+  },
+  "tours": {
+    "list": {
+      "title": "Touren",
+      "searchPlaceholder": "Touren suchen\u2026",
+      "filtersBtn": "Filter",
+      "loading": "Wird geladen\u2026",
+      "emptyTitle": "Noch keine Touren.",
+      "emptySubtitle": "Erstellen Sie eine auf der Karte.",
+      "noMatchesTitle": "Keine Touren gefunden.",
+      "clearFiltersBtn": "Filter zurücksetzen"
+    },
+    "form": {
+      "nameLabel": "Tourname",
+      "namePlaceholder": "z. B. Rigi Kulm",
+      "nameRequired": "Tourname ist erforderlich.",
+      "goalLabel": "Ziel",
+      "changeGoalBtn": "Ändern",
+      "elevationLabel": "Höhe (m)",
+      "elevationPlaceholder": "Höhe in Metern",
+      "startPointLabel": "Startpunkt",
+      "endPointLabel": "Endpunkt",
+      "pointNotSet": "Nicht gesetzt",
+      "sameAsEnd": "gleich wie Ende",
+      "pickBtn": "Wählen",
+      "roundTrip": "Rundtour",
+      "partnersLabel": "Tourenpartner",
+      "activityLabel": "Aktivitätstyp",
+      "seasonLabel": "Saison",
+      "gpxTooLarge": "Datei zu gross (max. 2 MB)",
+      "gpxInvalid": "Ungültige GPX-Datei",
+      "gpxReadError": "Datei konnte nicht gelesen werden",
+      "cancelBtn": "Abbrechen",
+      "locationSectionLabel": "Ort",
+      "detailSectionLabel": "Details",
+      "gpxSectionLabel": "GPS Track",
+      "plannedDateLabel": "Geplantes Datum",
+      "descriptionLabel": "Beschreibung",
+      "descriptionPlaceholder": "Routenbeschreibung, Links, Notizen...",
+      "equipmentLabel": "Material",
+      "equipmentPlaceholder": "Materialliste...",
+      "notesLabel": "Notizen",
+      "notesPlaceholder": "Andere Informationen..."
+    },
+    "creation": {
+      "title": "Neue Tour",
+      "saveBtn": "Tour speichern"
+    },
+    "infoSheet": {
+      "editTitlePrefix": "Bearbeiten",
+      "pickGoalPrefix": "Neues Ziel wählen",
+      "unnamedTour": "Unbenannte Tour",
+      "completedBtn": "Abgeschlossen",
+      "completeTourBtn": "Tour abschliessen",
+      "roundTrip": "Rundtour",
+      "gpxTrackAvailable": "Track verfügbar",
+      "messageAll": "Alle anschreiben",
+      "editBtn": "Bearbeiten",
+      "deleteConfirmText": "Diese Tour löschen?",
+      "cancelBtn": "Abbrechen",
+      "deleteBtn": "Löschen",
+      "deletingBtn": "Wird gelöscht\u2026",
+      "saveFailed": "Speichern fehlgeschlagen",
+      "deleteFailed": "Löschen fehlgeschlagen",
+      "backToTours": "Touren",
+      "saveLabel": "Speichern"
+    },
+    "filters": {
+      "partnerLabel": "Partner",
+      "activityLabel": "Aktivitätstyp",
+      "completionAll": "Alle",
+      "completionOpen": "Offen",
+      "completionDone": "Erledigt",
+      "dateFromLabel": "Von",
+      "dateToLabel": "Bis",
+      "seasonLabel": "Saison",
+      "plannedDateLabel": "Geplantes Datum",
+      "statusLabel": "Status"
+    },
+    "type": {
+      "skiing": "Skifahren",
+      "snowboarding": "Snowboarden",
+      "skitour": "Skitour",
+      "splitboarding": "Splitboarden",
+      "skiMountaineering": "Skibergsteigen",
+      "paragliding": "Gleitschirm",
+      "hiking": "Wandern",
+      "mountaineering": "Bergsteigen",
+      "climbing": "Klettern",
+      "mountainBiking": "Mountainbiken",
+      "trailrunning": "Trailrunning"
+    },
+    "season": {
+      "winter": "Winter",
+      "spring": "Frühling",
+      "summer": "Sommer",
+      "autumn": "Herbst"
+    },
+    "picker": {
+      "cancelBtn": "Abbrechen",
+      "confirmBtn": "Bestätigen"
+    }
+  },
+  "map": {
+    "overlay": {
+      "compassTooltip": "Karte nach Norden ausrichten",
+      "feedbackTooltip": "Feedback",
+      "profileTooltip": "Profil",
+      "contactsTooltip": "Kontakte",
+      "toursTooltip": "Touren",
+      "addTourTooltip": "Tourstandort hinzufügen",
+      "signInToAddToursTooltip": "Anmelden, um Touren hinzuzufügen"
+    },
+    "styles": {
+      "pickerTooltip": "Kartenstil ändern",
+      "base": "Basiskarte",
+      "classic": "Klassisch"
+    }
+  },
+  "i18n": {
+    "languageLabel": "Sprache",
+    "en": "English",
+    "de-CH": "Deutsch"
+  }
+}

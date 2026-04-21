@@ -3,6 +3,7 @@ import type { Contact } from '@/features/contacts/domain/entities/contact'
 import type { PhoneEntry } from '@/features/contacts/presentation/stores/contacts-store'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import {
   formatPhoneDisplay,
@@ -22,6 +23,8 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{ close: [] }>()
+
+const { t } = useI18n({ useScope: 'global' })
 
 type ViewState = 'list' | 'detail' | 'add'
 
@@ -48,10 +51,10 @@ watch(
 
 const sheetTitle = computed(() => {
   if (viewState.value === 'add')
-    return 'Add Contact'
+    return t('contacts.addDialog.title')
   if (viewState.value === 'detail')
     return null
-  return 'Contacts'
+  return t('contacts.list.title')
 })
 
 // Keep selectedContact in sync after store edits
@@ -140,7 +143,7 @@ async function handleAddSubmit(data: {
     backToList()
   }
   catch (err) {
-    addError.value = err instanceof Error ? err.message : 'Failed to add contact'
+    addError.value = err instanceof Error ? err.message : t('contacts.addDialog.addError')
   }
   finally {
     isAddLoading.value = false
@@ -193,7 +196,7 @@ async function handleContactPickerImport() {
     await processImportedContacts(picked)
   }
   catch (err) {
-    addError.value = err instanceof Error ? err.message : 'Import failed'
+    addError.value = err instanceof Error ? err.message : t('contacts.addDialog.importError')
   }
   finally {
     isAddLoading.value = false
@@ -215,7 +218,7 @@ async function handleFileChange(event: Event) {
     await processImportedContacts(parsed)
   }
   catch (err) {
-    addError.value = err instanceof Error ? err.message : 'File import failed'
+    addError.value = err instanceof Error ? err.message : t('contacts.addDialog.fileImportError')
   }
   finally {
     isAddLoading.value = false
@@ -237,20 +240,20 @@ function switchAddToForm() {
     <div v-if="viewState === 'list'" class="list-view">
       <button type="button" class="add-contact-btn" @click="openAdd">
         <span class="material-symbols-outlined">person_add</span>
-        Add contact
+        {{ t('contacts.list.addBtn') }}
       </button>
 
       <div v-if="isLoading" class="loading-text">
-        Loading…
+        {{ t('contacts.list.loading') }}
       </div>
 
       <div v-else-if="contacts.length === 0" class="empty-state">
         <span class="material-symbols-outlined empty-icon">group</span>
         <p class="empty-text">
-          No contacts yet.
+          {{ t('contacts.list.emptyTitle') }}
         </p>
         <p class="empty-sub">
-          Add contacts to use them as tour partners.
+          {{ t('contacts.list.emptySubtitle') }}
         </p>
       </div>
 
@@ -292,9 +295,11 @@ function switchAddToForm() {
       <!-- Import results -->
       <div v-if="addViewState === 'import-results'" class="results-view">
         <p class="results-summary">
-          {{ importResults.filter((r) => r.status === 'imported').length }} imported
+          {{ importResults.filter((r) => r.status === 'imported').length }}
+          {{ t('contacts.list.imported') }}
           <template v-if="importResults.some((r) => r.status === 'skipped')">
-            · {{ importResults.filter((r) => r.status === 'skipped').length }} skipped
+            · {{ importResults.filter((r) => r.status === 'skipped').length }}
+            {{ t('contacts.list.skipped') }}
           </template>
         </p>
         <ul class="results-list">
@@ -311,7 +316,7 @@ function switchAddToForm() {
                 class="result-phone result-phone-warning"
                 :title="`Couldn't parse: ${result.rawPhoneNumbers.join(', ')}`"
               >
-                ⚠ Couldn't add invalid phone number: {{ result.rawPhoneNumbers[0]
+                ⚠ {{ t('contacts.list.invalidPhoneWarning') }}: {{ result.rawPhoneNumbers[0]
                 }}{{
                   result.rawPhoneNumbers.length > 1
                     ? ` +${result.rawPhoneNumbers.length - 1} more`
@@ -323,17 +328,21 @@ function switchAddToForm() {
               class="result-badge"
               :class="result.status === 'imported' ? 'badge-imported' : 'badge-skipped'"
             >
-              {{ result.status === 'imported' ? 'Imported' : 'Skipped' }}
+              {{
+                result.status === 'imported'
+                  ? t('contacts.list.importedLabel')
+                  : t('contacts.list.skippedLabel')
+              }}
             </span>
           </li>
         </ul>
         <div class="results-actions">
           <button type="button" class="add-manual-link" @click="switchAddToForm">
             <span class="material-symbols-outlined">add</span>
-            Add another manually
+            {{ t('contacts.list.addManuallyBtn') }}
           </button>
           <button type="button" class="done-btn" @click="backToList">
-            Done
+            {{ t('contacts.addDialog.doneBtn') }}
           </button>
         </div>
       </div>
@@ -348,7 +357,7 @@ function switchAddToForm() {
             @click="handleFileImportClick"
           >
             <span class="material-symbols-outlined">upload_file</span>
-            Import from file
+            {{ t('contacts.addDialog.importFileBtn') }}
           </button>
           <button
             v-if="isContactPickerSupported"
@@ -358,7 +367,7 @@ function switchAddToForm() {
             @click="handleContactPickerImport"
           >
             <span class="material-symbols-outlined">contacts</span>
-            Import from contacts
+            {{ t('contacts.addDialog.importContactsBtn') }}
           </button>
           <input
             ref="fileInput"
@@ -376,7 +385,7 @@ function switchAddToForm() {
         </p>
 
         <ContactForm
-          submit-label="Add Contact"
+          :submit-label="t('contacts.addDialog.title')"
           :is-loading="isAddLoading"
           @submit="handleAddSubmit"
           @cancel="backToList"

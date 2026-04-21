@@ -75,8 +75,8 @@ describe('onboardingPage', () => {
   it('should show validation errors when submitting with empty required fields', async () => {
     const wrapper = mount(OnboardingPage)
     await wrapper.find('form').trigger('submit')
-    expect(wrapper.text()).toContain('First name is required')
-    expect(wrapper.text()).toContain('Last name is required')
+    expect(wrapper.text()).toContain('user.onboarding.firstNameRequired')
+    expect(wrapper.text()).toContain('user.onboarding.lastNameRequired')
   })
 
   it('should show error for completely unparseable phone format', async () => {
@@ -123,6 +123,6 @@ describe('onboardingPage', () => {
 
   it('should display reminder text about profile benefits', () => {
     const wrapper = mount(OnboardingPage)
-    expect(wrapper.text()).toContain('complete')
+    expect(wrapper.text()).toContain('user.onboarding.subtitle')
   })
 })

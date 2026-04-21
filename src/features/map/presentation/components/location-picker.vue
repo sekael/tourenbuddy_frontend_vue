@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Map as MapLibreMap } from 'maplibre-gl'
+import { useI18n } from 'vue-i18n'
 import Crosshair from '@/core/components/crosshair.vue'
 
 const props = defineProps<{
@@ -12,6 +13,8 @@ const emit = defineEmits<{
   confirm: [location: { lng: number, lat: number }]
   cancel: []
 }>()
+
+const { t } = useI18n({ useScope: 'global' })
 
 /**
  * Returns the geographic coordinates at the visual center of the map canvas —
@@ -47,10 +50,10 @@ function handleConfirm() {
       :style="props.actionsBottom != null ? { bottom: `${props.actionsBottom}px` } : undefined"
     >
       <button class="cancel-btn" @click="emit('cancel')">
-        Cancel
+        {{ t('tours.picker.cancelBtn') }}
       </button>
       <button class="confirm-btn" @click="handleConfirm">
-        Continue
+        {{ t('tours.picker.confirmBtn') }}
       </button>
     </div>
   </div>

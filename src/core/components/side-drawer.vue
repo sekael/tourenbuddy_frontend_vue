@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 
@@ -12,6 +13,8 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{ close: [], back: [] }>()
+
+const { t } = useI18n({ useScope: 'global' })
 
 const isDesktop = useIsDesktop()
 </script>
@@ -33,14 +36,14 @@ const isDesktop = useIsDesktop()
     class="side-drawer"
     role="dialog"
     aria-modal="true"
-    :aria-label="props.title ?? props.ariaLabel ?? 'Side drawer'"
+    :aria-label="props.title ?? props.ariaLabel ?? t('core.drawer.close')"
   >
     <div class="drawer-header">
       <button
         v-if="props.backLabel"
         type="button"
         class="back-btn"
-        :aria-label="`Back to ${props.backLabel}`"
+        :aria-label="`${t('core.drawer.back')} ${props.backLabel}`"
         @click="emit('back')"
       >
         <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
@@ -49,7 +52,12 @@ const isDesktop = useIsDesktop()
         {{ props.title }}
       </h2>
       <div v-else class="title-spacer" />
-      <button type="button" class="close-btn" aria-label="Close" @click="emit('close')">
+      <button
+        type="button"
+        class="close-btn"
+        :aria-label="t('core.drawer.close')"
+        @click="emit('close')"
+      >
         <span class="material-symbols-outlined" aria-hidden="true">close</span>
       </button>
     </div>
