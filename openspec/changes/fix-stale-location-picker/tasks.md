@@ -32,10 +32,10 @@
 
 ## 6. Spec verification
 
-- [ ] 6.1 Manual QA on desktop (Brave) per issue steps: edit existing tour → pick Start Point → verify form collapses to "Edit: <tour title>" in top-right, inputs disabled, Escape/backdrop do not dismiss; confirm picker → form reopens with new coordinates; save persists correctly
-- [ ] 6.2 Manual QA on mobile viewport: edit tour → pick Goal → verify sheet collapsed to title-only, no close button, no backdrop-click-close; cancel picker → sheet re-expands with unchanged goal
-- [ ] 6.3 Manual QA start + end + goal all behave identically; create-flow re-pick also suspends the creation dialog
-- [ ] 6.4 Regression check: single-pick add flow still works (no tour edit sheet open during initial pick)
+- [x] 6.1 Manual QA on desktop (Brave) per issue steps: edit existing tour → pick Start Point → verify form collapses to "Edit: <tour title>" in top-right, inputs disabled, Escape/backdrop do not dismiss; confirm picker → form reopens with new coordinates; save persists correctly
+- [x] 6.2 Manual QA on mobile viewport: edit tour → pick Goal → verify sheet collapsed to title-only, no close button, no backdrop-click-close; cancel picker → sheet re-expands with unchanged goal
+- [x] 6.3 Manual QA start + end + goal all behave identically; create-flow re-pick also suspends the creation dialog
+- [x] 6.4 Regression check: single-pick add flow still works (no tour edit sheet open during initial pick)
 
 ## 7. Finalize
 
@@ -43,7 +43,7 @@
 - [x] 7.2 Run `npm run format`
 - [x] 7.3 Run `npm run type-check`
 - [x] 7.4 Run `npm run test` — all must pass
-- [ ] 7.5 Prompt user to commit with message:
+- [x] 7.5 Prompt user to commit with message:
 
   ```
   fix(tours): prevent stale location picker during tour edit
@@ -56,4 +56,4 @@
   Closes #66
   ```
 
-- [ ] 7.6 Prompt user to push branch and open PR against `main`
+- [x] 7.6 Prompt user to push branch and open PR against `main`

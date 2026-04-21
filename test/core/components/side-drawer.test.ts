@@ -74,8 +74,8 @@ describe('sideDrawer', () => {
           },
         })
         expect(wrapper.find('.close-btn').exists()).toBe(false)
-        expect(wrapper.find('.drawer-content').attributes('style')).toContain('display: none')
-        expect(wrapper.find('.drawer-footer').attributes('style')).toContain('display: none')
+        expect(wrapper.find('.drawer-content').attributes('inert')).toBeDefined()
+        expect(wrapper.find('.drawer-footer').attributes('inert')).toBeDefined()
         expect(wrapper.find('.side-drawer--collapsed').exists()).toBe(true)
       })
 

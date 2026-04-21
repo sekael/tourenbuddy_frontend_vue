@@ -15,7 +15,7 @@ const props = defineProps<{
   backLabel?: string
 }>()
 
-const emit = defineEmits<{ close: []; back: [] }>()
+const emit = defineEmits<{ close: [], back: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 
@@ -66,10 +66,10 @@ const isDesktop = useIsDesktop()
         <span class="material-symbols-outlined" aria-hidden="true">close</span>
       </button>
     </div>
-    <div v-show="!props.collapsed" class="drawer-content">
+    <div class="drawer-content" :inert="props.collapsed || undefined" :aria-hidden="props.collapsed || undefined">
       <slot />
     </div>
-    <div v-if="$slots.footer" v-show="!props.collapsed" class="drawer-footer">
+    <div v-if="$slots.footer" class="drawer-footer" :inert="props.collapsed || undefined" :aria-hidden="props.collapsed || undefined">
       <slot name="footer" />
     </div>
   </div>
@@ -82,6 +82,7 @@ const isDesktop = useIsDesktop()
   right: 0;
   width: 400px;
   height: 100vh;
+  max-height: 100vh;
   z-index: 50;
   display: flex;
   flex-direction: column;
@@ -91,14 +92,15 @@ const isDesktop = useIsDesktop()
   animation: slide-in-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   /* Restore pointer events — parent sheet-container sets pointer-events: none */
   pointer-events: auto;
+  transition:
+    max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    border-bottom-left-radius 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
 }
 
 .side-drawer--collapsed {
-  height: auto;
-  width: auto;
-  min-width: 240px;
-  max-width: 400px;
-  border-left: none;
+  /* Collapse vertically to header-only; width unchanged */
+  max-height: 4.5rem;
   border-bottom: 1px solid var(--color-outline-variant);
   border-bottom-left-radius: var(--radius-lg);
   border-top-left-radius: 0;
@@ -174,11 +176,34 @@ const isDesktop = useIsDesktop()
   padding: var(--spacing-lg) var(--spacing-xl);
   flex: 1;
   min-height: 0;
+  opacity: 1;
+  transition:
+    opacity 0.18s ease-out,
+    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .drawer-footer {
   flex-shrink: 0;
   border-top: 1px solid var(--color-outline-variant);
   padding: var(--spacing-sm) var(--spacing-xl) var(--spacing-xl);
+  opacity: 1;
+  transition:
+    opacity 0.18s ease-out,
+    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-top-color 0.3s;
+}
+
+.side-drawer--collapsed .drawer-content,
+.side-drawer--collapsed .drawer-footer {
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  flex: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.side-drawer--collapsed .drawer-footer {
+  border-top-color: transparent;
 }
 </style>
