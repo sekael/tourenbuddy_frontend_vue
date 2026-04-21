@@ -10,7 +10,7 @@ const props = defineProps<{
   showBack?: boolean
 }>()
 
-const emit = defineEmits<{ close: [], back: [] }>()
+const emit = defineEmits<{ close: []; back: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 
@@ -20,16 +20,17 @@ const titleId = 'bottom-sheet-title'
 <template>
   <div
     class="bottom-sheet"
+    :class="{ 'bottom-sheet--collapsed': props.collapsed }"
     role="dialog"
     aria-modal="true"
     :aria-labelledby="props.title ? titleId : undefined"
     :aria-label="!props.title ? (props.ariaLabel ?? t('core.drawer.back')) : undefined"
   >
-    <div class="drag-handle" aria-hidden="true" />
+    <div v-if="!props.collapsed" class="drag-handle" aria-hidden="true" />
 
     <div class="header">
       <button
-        v-if="props.showBack"
+        v-if="props.showBack && !props.collapsed"
         type="button"
         class="back-btn"
         :aria-label="t('core.drawer.back')"
@@ -42,6 +43,7 @@ const titleId = 'bottom-sheet-title'
       </h2>
       <div v-else class="title-spacer" />
       <button
+        v-if="!props.collapsed"
         type="button"
         class="close-btn"
         :aria-label="t('core.drawer.close')"
@@ -51,11 +53,11 @@ const titleId = 'bottom-sheet-title'
       </button>
     </div>
 
-    <div v-if="!props.collapsed" class="content">
+    <div v-show="!props.collapsed" class="content">
       <slot />
     </div>
 
-    <div v-if="$slots.footer && !props.collapsed" class="footer">
+    <div v-if="$slots.footer" v-show="!props.collapsed" class="footer">
       <slot name="footer" />
     </div>
   </div>
@@ -77,6 +79,15 @@ const titleId = 'bottom-sheet-title'
   /* Restore pointer events — parent sheet-container sets pointer-events: none
      to allow FAB clicks through transparent areas */
   pointer-events: auto;
+}
+
+.bottom-sheet--collapsed {
+  max-height: none;
+  padding-top: var(--spacing-md);
+}
+
+.bottom-sheet--collapsed .header {
+  padding-bottom: var(--spacing-md);
 }
 
 .drag-handle {

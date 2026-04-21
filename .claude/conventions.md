@@ -35,7 +35,7 @@
 - Prefer native CSS (nesting, `:has()`, container queries) over preprocessors
 
 ## Internationalization
- 
+
 - User-facing text MUST be added as parameterized text supporting `vue-i18n` library
 - Check for existing key-value pairs for text in locales JSON files
 - Only if none exist, add new key and value for EVERY locale, i.e. `en.json`, `de-CH.json`

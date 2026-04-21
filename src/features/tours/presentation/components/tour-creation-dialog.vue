@@ -1,20 +1,24 @@
 <script setup lang="ts">
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
+import { storeToRefs } from 'pinia'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
+import { useLogger } from '@/core/logging/use-logger'
+import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import TourForm from '@/features/tours/presentation/components/tour-form.vue'
 
-defineProps<{
+const props = defineProps<{
   /** Pre-filled elevation from Swisstopo lookup. */
   initialElevation?: number | null
   /** Pre-filled name suggestion from Swisstopo. */
   initialName?: string | null
   /** Pre-filled start point from secondary location pick. */
-  initialStartPoint?: { lng: number, lat: number } | null
+  initialStartPoint?: { lng: number; lat: number } | null
   /** Pre-filled end point from secondary location pick. */
-  initialEndPoint?: { lng: number, lat: number } | null
+  initialEndPoint?: { lng: number; lat: number } | null
   /** The goal location picked before the dialog opened (required for display). */
-  initialGoal?: { lng: number, lat: number } | null
+  initialGoal?: { lng: number; lat: number } | null
 }>()
 
 const emit = defineEmits<{
@@ -24,8 +28,23 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n({ useScope: 'global' })
+const mapStore = useMapStore()
+const { isPickingLocation } = storeToRefs(mapStore)
+const log = useLogger('tour-creation-dialog')
+
+const isPicking = computed(() => isPickingLocation.value)
+
+const title = computed(() =>
+  isPicking.value
+    ? t('tours.creation.pickingTitle', { name: props.initialName ?? t('tours.creation.title') })
+    : t('tours.creation.title'),
+)
 
 function handleSubmit(draft: TourDraft) {
+  if (mapStore.isPickingLocation) {
+    log.debug('Ignoring create submit while location picker is active')
+    return
+  }
   emit('confirm', draft)
 }
 
@@ -37,7 +56,7 @@ function handlePickPoint(type: 'start' | 'end' | 'goal') {
 </script>
 
 <template>
-  <AdaptiveOverlay :title="t('tours.creation.title')" @close="emit('close')">
+  <AdaptiveOverlay :title="title" :collapsed="isPicking" @close="emit('close')">
     <TourForm
       :submit-label="t('tours.creation.saveBtn')"
       :allow-goal-edit="false"
@@ -46,6 +65,7 @@ function handlePickPoint(type: 'start' | 'end' | 'goal') {
       :initial-name="initialName"
       :initial-start-point="initialStartPoint"
       :initial-end-point="initialEndPoint"
+      :disabled="isPicking"
       @submit="handleSubmit"
       @cancel="emit('close')"
       @pick-point="handlePickPoint"

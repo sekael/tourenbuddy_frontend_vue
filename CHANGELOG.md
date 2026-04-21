@@ -2,20 +2,18 @@
 
 ## [0.5.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.5.0...tourenbuddy-frontend-v0.5.1) (2026-04-20)
 
-
 ### Bug Fixes
 
-* Scrub deleted contact ids from cached partnerIds ([#56](https://github.com/sekael/tourenbuddy_frontend_vue/issues/56)) ([#63](https://github.com/sekael/tourenbuddy_frontend_vue/issues/63)) ([8bd505f](https://github.com/sekael/tourenbuddy_frontend_vue/commit/8bd505fc63afd1fab1e8b03fb5c324ac8958cf49))
+- Scrub deleted contact ids from cached partnerIds ([#56](https://github.com/sekael/tourenbuddy_frontend_vue/issues/56)) ([#63](https://github.com/sekael/tourenbuddy_frontend_vue/issues/63)) ([8bd505f](https://github.com/sekael/tourenbuddy_frontend_vue/commit/8bd505fc63afd1fab1e8b03fb5c324ac8958cf49))
 
 ## [0.5.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.4.1...tourenbuddy-frontend-v0.5.0) (2026-04-20)
 
-
 ### Features
 
-* Contact chip click actions ([#60](https://github.com/sekael/tourenbuddy_frontend_vue/issues/60)) ([21bb76b](https://github.com/sekael/tourenbuddy_frontend_vue/commit/21bb76bc2b395dbe92d1158b9cb1e1b54e6c09da))
-* Searchable and filterable tours list view ([#53](https://github.com/sekael/tourenbuddy_frontend_vue/issues/53)) ([a7dab0c](https://github.com/sekael/tourenbuddy_frontend_vue/commit/a7dab0ca0ef3fd48e3bce8960f2ef8e178ff71f7))
-* Support multiple phone methods per contact with enforced primary ([#57](https://github.com/sekael/tourenbuddy_frontend_vue/issues/57)) ([cf88de8](https://github.com/sekael/tourenbuddy_frontend_vue/commit/cf88de87de1d901555365815402dad5f16bc4bc3))
-* Universal phone validation ([#58](https://github.com/sekael/tourenbuddy_frontend_vue/issues/58)) ([b39aa45](https://github.com/sekael/tourenbuddy_frontend_vue/commit/b39aa45c3014fa8bd1d501bf7e535f5ddd754315))
+- Contact chip click actions ([#60](https://github.com/sekael/tourenbuddy_frontend_vue/issues/60)) ([21bb76b](https://github.com/sekael/tourenbuddy_frontend_vue/commit/21bb76bc2b395dbe92d1158b9cb1e1b54e6c09da))
+- Searchable and filterable tours list view ([#53](https://github.com/sekael/tourenbuddy_frontend_vue/issues/53)) ([a7dab0c](https://github.com/sekael/tourenbuddy_frontend_vue/commit/a7dab0ca0ef3fd48e3bce8960f2ef8e178ff71f7))
+- Support multiple phone methods per contact with enforced primary ([#57](https://github.com/sekael/tourenbuddy_frontend_vue/issues/57)) ([cf88de8](https://github.com/sekael/tourenbuddy_frontend_vue/commit/cf88de87de1d901555365815402dad5f16bc4bc3))
+- Universal phone validation ([#58](https://github.com/sekael/tourenbuddy_frontend_vue/issues/58)) ([b39aa45](https://github.com/sekael/tourenbuddy_frontend_vue/commit/b39aa45c3014fa8bd1d501bf7e535f5ddd754315))
 
 ## [0.4.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.4.0...tourenbuddy-frontend-v0.4.1) (2026-04-18)
 

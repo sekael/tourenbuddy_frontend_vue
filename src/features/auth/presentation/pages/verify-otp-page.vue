@@ -28,11 +28,9 @@ async function handleVerify() {
   try {
     await authStore.verifyOtp(email, otp.value.trim())
     router.push({ name: 'map' })
-  }
-  catch (err) {
+  } catch (err) {
     error.value = err instanceof Error ? err.message : t('auth.verifyOtp.invalidCode')
-  }
-  finally {
+  } finally {
     isLoading.value = false
   }
 }
@@ -43,11 +41,9 @@ async function handleResend() {
   try {
     await authStore.sendEmailOtp(email)
     resendSuccess.value = true
-  }
-  catch {
+  } catch {
     error.value = t('auth.verifyOtp.resendError')
-  }
-  finally {
+  } finally {
     isResending.value = false
   }
 }
@@ -79,7 +75,7 @@ async function handleResend() {
             autocomplete="one-time-code"
             maxlength="8"
             required
-          >
+          />
         </div>
 
         <p v-if="error" class="error-text">

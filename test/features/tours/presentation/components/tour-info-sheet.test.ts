@@ -8,20 +8,22 @@ import TourInfoSheet from '@/features/tours/presentation/components/tour-info-sh
 // Stub heavy child components
 const BottomSheetStub = {
   name: 'BottomSheet',
-  template: '<div><slot /><slot name="default" /><slot name="footer" /></div>',
-  props: ['title'],
+  template:
+    '<div :data-collapsed="collapsed ? \'true\' : \'false\'" :data-title="title"><slot /><slot name="default" /><slot name="footer" /></div>',
+  props: ['title', 'collapsed'],
   emits: ['close'],
 }
 const SideDrawerStub = {
   name: 'SideDrawer',
-  template: '<div><slot /><slot name="default" /><slot name="footer" /></div>',
-  props: ['title'],
+  template:
+    '<div :data-collapsed="collapsed ? \'true\' : \'false\'" :data-title="title"><slot /><slot name="default" /><slot name="footer" /></div>',
+  props: ['title', 'collapsed'],
   emits: ['close'],
 }
 const TourFormStub = {
   name: 'TourForm',
   template:
-    '<div data-testid="tour-form"><button data-testid="stub-submit" @click="$emit(\'submit\', stubDraft)">Save</button><button data-testid="stub-cancel" @click="$emit(\'cancel\')">Cancel</button></div>',
+    '<div data-testid="tour-form" :data-disabled="disabled ? \'true\' : \'false\'"><button data-testid="stub-submit" @click="$emit(\'submit\', stubDraft)">Save</button><button data-testid="stub-cancel" @click="$emit(\'cancel\')">Cancel</button></div>',
   props: [
     'submitLabel',
     'allowGoalEdit',
@@ -29,6 +31,7 @@ const TourFormStub = {
     'initialDraft',
     'initialStartPoint',
     'initialEndPoint',
+    'disabled',
   ],
   emits: ['submit', 'cancel', 'pickPoint'],
   setup() {
@@ -82,7 +85,12 @@ const mockTour = {
   completed: false,
 }
 
-function mountSheet(tourOverrides = {}, authUserId = 'user-1', initialContacts: unknown[] = []) {
+function mountSheet(
+  tourOverrides = {},
+  authUserId = 'user-1',
+  initialContacts: unknown[] = [],
+  mapState: Record<string, unknown> = {},
+) {
   return mount(TourInfoSheet, {
     props: { tour: { ...mockTour, ...tourOverrides } },
     global: {
@@ -93,6 +101,7 @@ function mountSheet(tourOverrides = {}, authUserId = 'user-1', initialContacts: 
             contacts: { contacts: initialContacts },
             tours: { tours: [mockTour] },
             auth: { currentUser: { id: authUserId }, isAuthenticated: true },
+            map: { isPickingLocation: false, ...mapState },
           },
         }),
       ],
@@ -159,6 +168,32 @@ describe('tourInfoSheet', () => {
       )
       // Back to view mode
       expect(wrapper.find('[data-testid="tour-form"]').exists()).toBe(false)
+    })
+
+    it('should collapse sheet and disable form while location picker is active', async () => {
+      const wrapper = mountSheet({}, 'user-1', [], { isPickingLocation: true })
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
+
+      const sheet = wrapper.find('[data-testid="tour-form"]').element.parentElement as HTMLElement
+      // stubbed root of BottomSheet/SideDrawer
+      const root = wrapper.element as HTMLElement
+      expect(root.getAttribute('data-collapsed')).toBe('true')
+      // i18n returns the key itself in tests (no translator wired up)
+      expect(root.getAttribute('data-title')).toContain('editTitle')
+      expect(wrapper.find('[data-testid="tour-form"]').attributes('data-disabled')).toBe('true')
+      expect(sheet).toBeDefined()
+    })
+
+    it('should not call updateTour when edit submit fires while picker is active', async () => {
+      const wrapper = mountSheet({}, 'user-1', [], { isPickingLocation: true })
+      const { useToursStore } = await import('@/features/tours/presentation/stores/tours-store')
+      const store = useToursStore()
+
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
+      await wrapper.find('[data-testid="stub-submit"]').trigger('click')
+      await wrapper.vm.$nextTick()
+
+      expect(store.updateTour).not.toHaveBeenCalled()
     })
 
     it('should show inline error and stay in edit mode when updateTour throws', async () => {
@@ -384,7 +419,7 @@ describe('tourInfoSheet', () => {
 
       const menu = wrapper.findComponent(ContactActionMenuStub)
       const menuContact = menu.props('contact') as typeof updatedContact
-      expect(menuContact.contactMethods.find(m => m.isPrimary)?.id).toBe('method-2')
+      expect(menuContact.contactMethods.find((m) => m.isPrimary)?.id).toBe('method-2')
     })
   })
 })

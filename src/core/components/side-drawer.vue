@@ -6,13 +6,16 @@ import { useIsDesktop } from '@/core/composables/use-is-desktop'
 const props = defineProps<{
   title?: string
   ariaLabel?: string
-  /** Ignored on desktop; accepted so callers using a dynamic `:is` component can pass it uniformly. */
+  /**
+   * Collapse to a compact header — on desktop renders as a top-right header bar with title only;
+   *  on mobile, delegates to BottomSheet's collapsed mode. Slot content stays mounted.
+   */
   collapsed?: boolean
   /** When set, shows a back button with this label in the drawer header. */
   backLabel?: string
 }>()
 
-const emit = defineEmits<{ close: [], back: [] }>()
+const emit = defineEmits<{ close: []; back: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 
@@ -34,13 +37,14 @@ const isDesktop = useIsDesktop()
   <div
     v-else
     class="side-drawer"
+    :class="{ 'side-drawer--collapsed': props.collapsed }"
     role="dialog"
     aria-modal="true"
     :aria-label="props.title ?? props.ariaLabel ?? t('core.drawer.close')"
   >
     <div class="drawer-header">
       <button
-        v-if="props.backLabel"
+        v-if="props.backLabel && !props.collapsed"
         type="button"
         class="back-btn"
         :aria-label="`${t('core.drawer.back')} ${props.backLabel}`"
@@ -53,6 +57,7 @@ const isDesktop = useIsDesktop()
       </h2>
       <div v-else class="title-spacer" />
       <button
+        v-if="!props.collapsed"
         type="button"
         class="close-btn"
         :aria-label="t('core.drawer.close')"
@@ -61,10 +66,10 @@ const isDesktop = useIsDesktop()
         <span class="material-symbols-outlined" aria-hidden="true">close</span>
       </button>
     </div>
-    <div class="drawer-content">
+    <div v-show="!props.collapsed" class="drawer-content">
       <slot />
     </div>
-    <div v-if="$slots.footer" class="drawer-footer">
+    <div v-if="$slots.footer" v-show="!props.collapsed" class="drawer-footer">
       <slot name="footer" />
     </div>
   </div>
@@ -86,6 +91,22 @@ const isDesktop = useIsDesktop()
   animation: slide-in-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   /* Restore pointer events — parent sheet-container sets pointer-events: none */
   pointer-events: auto;
+}
+
+.side-drawer--collapsed {
+  height: auto;
+  width: auto;
+  min-width: 240px;
+  max-width: 400px;
+  border-left: none;
+  border-bottom: 1px solid var(--color-outline-variant);
+  border-bottom-left-radius: var(--radius-lg);
+  border-top-left-radius: 0;
+  animation: none;
+}
+
+.side-drawer--collapsed .drawer-header {
+  border-bottom: none;
 }
 
 @keyframes slide-in-right {

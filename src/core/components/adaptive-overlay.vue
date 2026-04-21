@@ -25,7 +25,13 @@ const isDesktop = useIsDesktop()
     <slot />
   </BottomSheet>
 
-  <DialogWindow v-else :title="props.title" :aria-label="props.ariaLabel" @close="emit('close')">
+  <DialogWindow
+    v-else
+    :title="props.title"
+    :aria-label="props.ariaLabel"
+    :collapsed="props.collapsed"
+    @close="emit('close')"
+  >
     <slot />
   </DialogWindow>
 </template>

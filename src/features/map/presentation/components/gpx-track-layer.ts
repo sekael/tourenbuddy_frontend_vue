@@ -34,13 +34,11 @@ export function useGpxTrackLayer(map: MapLibreMap) {
 
   function updateTrack(tour: Tour | null) {
     const source = map.getSource(GPX_SOURCE_ID)
-    if (!source || source.type !== 'geojson')
-      return
+    if (!source || source.type !== 'geojson') return
 
     if (tour?.gpxTrack) {
       source.setData(tour.gpxTrack as GeoJSON.FeatureCollection)
-    }
-    else {
+    } else {
       source.setData(EMPTY_GEOJSON)
     }
   }

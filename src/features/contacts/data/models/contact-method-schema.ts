@@ -16,7 +16,7 @@ export const contactMethodRowSchema = z
     is_primary: z.boolean(),
     is_valid: z.boolean().default(true),
   })
-  .transform(row => ({
+  .transform((row) => ({
     id: row.id,
     contactId: row.contact_id,
     methodType: row.method_type,

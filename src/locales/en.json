@@ -244,11 +244,12 @@
     },
     "creation": {
       "title": "New Tour",
+      "pickingTitle": "New Tour: {name}",
       "saveBtn": "Save Tour"
     },
     "infoSheet": {
       "editTitlePrefix": "Edit",
-      "pickGoalPrefix": "Pick new goal",
+      "editTitle": "Edit: {name}",
       "unnamedTour": "Unnamed tour",
       "completedBtn": "Completed",
       "completeTourBtn": "Complete Tour",

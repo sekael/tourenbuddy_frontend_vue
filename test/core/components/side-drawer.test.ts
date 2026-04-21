@@ -63,6 +63,48 @@ describe('sideDrawer', () => {
       expect(drawer.attributes('role')).toBe('dialog')
       expect(drawer.attributes('aria-modal')).toBe('true')
     })
+
+    describe('collapsed mode', () => {
+      it('should hide close button, slot content, and footer when collapsed', () => {
+        const wrapper = mount(SideDrawer, {
+          props: { title: 'Test', collapsed: true },
+          slots: {
+            default: '<p class="slot-content">hidden</p>',
+            footer: '<div class="slot-footer">f</div>',
+          },
+        })
+        expect(wrapper.find('.close-btn').exists()).toBe(false)
+        expect(wrapper.find('.drawer-content').attributes('style')).toContain('display: none')
+        expect(wrapper.find('.drawer-footer').attributes('style')).toContain('display: none')
+        expect(wrapper.find('.side-drawer--collapsed').exists()).toBe(true)
+      })
+
+      it('should still render title when collapsed', () => {
+        const wrapper = mount(SideDrawer, {
+          props: { title: 'Edit: Rigi', collapsed: true },
+        })
+        expect(wrapper.find('h2').text()).toBe('Edit: Rigi')
+      })
+
+      it('should preserve slot state across collapsed toggle', async () => {
+        const wrapper = mount(SideDrawer, {
+          props: { title: 'Test', collapsed: false },
+          slots: { default: '<input class="slot-input" />' },
+        })
+        const input = wrapper.find('.slot-input').element as HTMLInputElement
+        input.value = 'typed'
+        await wrapper.setProps({ collapsed: true })
+        await wrapper.setProps({ collapsed: false })
+        expect((wrapper.find('.slot-input').element as HTMLInputElement).value).toBe('typed')
+      })
+
+      it('should hide back button when collapsed', () => {
+        const wrapper = mount(SideDrawer, {
+          props: { title: 'Test', backLabel: 'Tours', collapsed: true },
+        })
+        expect(wrapper.find('.back-btn').exists()).toBe(false)
+      })
+    })
   })
 
   describe('on mobile (<600px)', () => {

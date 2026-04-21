@@ -2,17 +2,25 @@
 const props = defineProps<{
   title?: string
   ariaLabel?: string
+  /** Collapse to a header-only card; suppress backdrop-click dismissal and hide close button. */
+  collapsed?: boolean
 }>()
 
 const emit = defineEmits<{ close: [] }>()
 
 const titleId = 'dialog-window-title'
+
+function handleBackdropClick() {
+  if (props.collapsed) return
+  emit('close')
+}
 </script>
 
 <template>
-  <div class="dialog-backdrop" @click.self="emit('close')">
+  <div class="dialog-backdrop" @click.self="handleBackdropClick">
     <div
       class="dialog-card"
+      :class="{ 'dialog-card--collapsed': props.collapsed }"
       role="dialog"
       aria-modal="true"
       :aria-labelledby="props.title ? titleId : undefined"
@@ -23,11 +31,17 @@ const titleId = 'dialog-window-title'
           {{ props.title }}
         </h2>
         <div v-else class="title-spacer" />
-        <button type="button" class="close-btn" aria-label="Close" @click="emit('close')">
+        <button
+          v-if="!props.collapsed"
+          type="button"
+          class="close-btn"
+          aria-label="Close"
+          @click="emit('close')"
+        >
           <span class="material-symbols-outlined" aria-hidden="true">close</span>
         </button>
       </div>
-      <div class="dialog-content">
+      <div v-show="!props.collapsed" class="dialog-content">
         <slot />
       </div>
     </div>
@@ -71,6 +85,16 @@ const titleId = 'dialog-window-title'
     opacity: 1;
     transform: scale(1);
   }
+}
+
+.dialog-card--collapsed {
+  max-height: none;
+  animation: none;
+}
+
+.dialog-card--collapsed .dialog-header {
+  border-bottom: none;
+  padding-bottom: var(--spacing-xl);
 }
 
 .dialog-header {

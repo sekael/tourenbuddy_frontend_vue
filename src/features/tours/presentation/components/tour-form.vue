@@ -25,7 +25,7 @@ const props = defineProps<{
   /** When true the goal row shows a "Change" button that emits pickPoint: 'goal'. */
   allowGoalEdit?: boolean
   /** Current goal coordinates, controlled by the parent. */
-  currentGoal?: { lng: number, lat: number } | null
+  currentGoal?: { lng: number; lat: number } | null
   /** Seeds all editable fields (edit mode). */
   initialDraft?: TourDraft | null
   /** Prop-updates from parent after elevation lookup (create mode). */
@@ -33,9 +33,11 @@ const props = defineProps<{
   /** Prop-updates from parent after name suggestion (create mode). */
   initialName?: string | null
   /** Prop-updates from parent after start-point pick. */
-  initialStartPoint?: { lng: number, lat: number } | null
+  initialStartPoint?: { lng: number; lat: number } | null
   /** Prop-updates from parent after end-point pick. */
-  initialEndPoint?: { lng: number, lat: number } | null
+  initialEndPoint?: { lng: number; lat: number } | null
+  /** When true, disable all inputs and buttons — used while location picker is active. */
+  disabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -66,10 +68,10 @@ const elevation = ref<string>(
 const elevationAutoFilled = ref(props.initialElevation != null)
 const description = ref(props.initialDraft?.description ?? '')
 const selectedSeasons = ref<Set<Season>>(new Set(props.initialDraft?.seasons ?? []))
-const startPoint = ref<{ lng: number, lat: number } | null>(
+const startPoint = ref<{ lng: number; lat: number } | null>(
   props.initialDraft?.startPoint ?? props.initialStartPoint ?? null,
 )
-const endPoint = ref<{ lng: number, lat: number } | null>(
+const endPoint = ref<{ lng: number; lat: number } | null>(
   props.initialDraft?.endPoint ?? props.initialEndPoint ?? null,
 )
 const equipment = ref(props.initialDraft?.equipment ?? '')
@@ -96,22 +98,19 @@ watch(
 watch(
   () => props.initialName,
   (val) => {
-    if (val)
-      tourName.value = val
+    if (val) tourName.value = val
   },
 )
 watch(
   () => props.initialStartPoint,
   (val) => {
-    if (val)
-      startPoint.value = val
+    if (val) startPoint.value = val
   },
 )
 watch(
   () => props.initialEndPoint,
   (val) => {
-    if (val)
-      endPoint.value = val
+    if (val) endPoint.value = val
   },
 )
 
@@ -119,8 +118,7 @@ watch(
 function togglePartner(contactId: string) {
   if (selectedPartnerIds.value.has(contactId)) {
     selectedPartnerIds.value.delete(contactId)
-  }
-  else {
+  } else {
     selectedPartnerIds.value.add(contactId)
   }
   selectedPartnerIds.value = new Set(selectedPartnerIds.value)
@@ -133,8 +131,7 @@ function toggleTourType(type: TourType) {
 function toggleSeason(season: Season) {
   if (selectedSeasons.value.has(season)) {
     selectedSeasons.value.delete(season)
-  }
-  else {
+  } else {
     selectedSeasons.value.add(season)
   }
   selectedSeasons.value = new Set(selectedSeasons.value)
@@ -143,23 +140,19 @@ function toggleSeason(season: Season) {
 async function handleGpxUpload(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
-  if (!file)
-    return
+  if (!file) return
 
   gpxError.value = null
 
   try {
     gpxTrack.value = await parseGpxFile(file)
     gpxFileName.value = file.name
-  }
-  catch (err) {
+  } catch (err) {
     if (err instanceof GpxFileTooLargeError) {
       gpxError.value = t('tours.form.gpxTooLarge')
-    }
-    else if (err instanceof GpxParseError) {
+    } else if (err instanceof GpxParseError) {
       gpxError.value = t('tours.form.gpxInvalid')
-    }
-    else {
+    } else {
       gpxError.value = t('tours.form.gpxReadError')
     }
     gpxTrack.value = null
@@ -174,11 +167,12 @@ function removeGpx() {
   gpxError.value = null
 }
 
-function formatPoint(point: { lng: number, lat: number }) {
+function formatPoint(point: { lng: number; lat: number }) {
   return `${point.lat.toFixed(4)}°N, ${point.lng.toFixed(4)}°E`
 }
 
 function handleSubmit() {
+  if (props.disabled) return
   if (!tourName.value.trim()) {
     nameError.value = true
     document.getElementById('tf-tourName')?.focus()
@@ -205,254 +199,263 @@ function handleSubmit() {
 
 <template>
   <form class="form" @submit.prevent="handleSubmit">
-    <div class="scroll-body">
-      <!-- SECTION: Location Details -->
-      <div class="section">
-        <p class="section-label">
-          {{ t('tours.form.locationSectionLabel') }}
-        </p>
-
-        <div class="field">
-          <label class="label" for="tf-tourName">{{ t('tours.form.nameLabel') }} <span class="required-mark">*</span></label>
-          <input
-            id="tf-tourName"
-            v-model="tourName"
-            class="input"
-            :class="{ 'input--error': nameError }"
-            type="text"
-            maxlength="100"
-            :placeholder="t('tours.form.namePlaceholder')"
-            aria-required="true"
-            :aria-invalid="nameError"
-            @input="nameError = false"
-          >
-          <p v-if="nameError" class="field-error">
-            {{ t('tours.form.nameRequired') }}
+    <fieldset class="form-fieldset" :disabled="props.disabled">
+      <div class="scroll-body">
+        <!-- SECTION: Location Details -->
+        <div class="section">
+          <p class="section-label">
+            {{ t('tours.form.locationSectionLabel') }}
           </p>
-        </div>
 
-        <!-- Goal (read-only display, with optional change button) -->
-        <div v-if="currentGoal" class="field">
-          <p class="label">
-            {{ t('tours.form.goalLabel') }}
-          </p>
-          <div class="point-row">
-            <span class="point-coords">{{ formatPoint(currentGoal) }}</span>
-            <button
-              v-if="allowGoalEdit"
-              type="button"
-              class="pick-btn"
-              @click="emit('pickPoint', 'goal')"
+          <div class="field">
+            <label class="label" for="tf-tourName"
+              >{{ t('tours.form.nameLabel') }} <span class="required-mark">*</span></label
             >
-              <span class="material-symbols-outlined">my_location</span>
-              {{ t('tours.form.changeGoalBtn') }}
-            </button>
-          </div>
-        </div>
-
-        <div class="field">
-          <label class="label" for="tf-elevation">{{ t('tours.form.elevationLabel') }}</label>
-          <input
-            id="tf-elevation"
-            v-model="elevation"
-            class="input"
-            type="number"
-            min="0"
-            max="9000"
-            :placeholder="t('tours.form.elevationPlaceholder')"
-            @input="elevationAutoFilled = false"
-          >
-        </div>
-
-        <div class="field">
-          <p class="label">
-            {{ t('tours.form.startPointLabel') }}
-          </p>
-          <div class="point-row">
-            <span class="point-coords">{{
-              effectiveStartPoint ? formatPoint(effectiveStartPoint) : t('tours.form.pointNotSet')
-            }}</span>
-            <span v-if="!startPoint && endPoint" class="optional-hint">{{
-              t('tours.form.sameAsEnd')
-            }}</span>
-            <button type="button" class="pick-btn" @click="emit('pickPoint', 'start')">
-              <span class="material-symbols-outlined">my_location</span>
-              {{ startPoint ? t('tours.form.changeGoalBtn') : t('tours.form.pickBtn') }}
-            </button>
-            <button
-              v-if="startPoint"
-              type="button"
-              class="remove-point-btn"
-              @click="startPoint = null"
-            >
-              <span class="material-symbols-outlined">close</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="field">
-          <p class="label">
-            {{ t('tours.form.endPointLabel') }}
-          </p>
-          <div class="point-row">
-            <span class="point-coords">{{
-              effectiveEndPoint ? formatPoint(effectiveEndPoint) : t('tours.form.pointNotSet')
-            }}</span>
-            <span v-if="!endPoint && startPoint" class="optional-hint">{{
-              t('tours.form.roundTrip')
-            }}</span>
-            <button type="button" class="pick-btn" @click="emit('pickPoint', 'end')">
-              <span class="material-symbols-outlined">my_location</span>
-              {{ endPoint ? t('tours.form.changeGoalBtn') : t('tours.form.pickBtn') }}
-            </button>
-            <button v-if="endPoint" type="button" class="remove-point-btn" @click="endPoint = null">
-              <span class="material-symbols-outlined">close</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- SECTION: Tour Partners -->
-      <div v-if="contacts.length > 0" class="section">
-        <p class="section-label">
-          {{ t('tours.form.partnersLabel') }}
-        </p>
-        <div class="chips">
-          <ContactChip
-            v-for="contact in contacts"
-            :key="contact.id"
-            :contact="contact"
-            :selected="selectedPartnerIds.has(contact.id)"
-            @toggle="togglePartner"
-          />
-        </div>
-      </div>
-
-      <!-- SECTION: Tour Type -->
-      <div class="section">
-        <p class="section-label">
-          {{ t('tours.form.activityLabel') }}
-        </p>
-        <div class="type-chips">
-          <button
-            v-for="type in TOUR_TYPE_VALUES"
-            :key="type"
-            type="button"
-            class="type-chip"
-            :class="{ selected: selectedTourType === type }"
-            @click="toggleTourType(type)"
-          >
-            <span class="material-symbols-outlined type-icon">{{ TOUR_TYPE_ICONS[type] }}</span>
-            <span class="type-label">{{
-              t(`tours.type.${TOUR_TYPE_I18N_KEYS[type]}` as any)
-            }}</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- SECTION: Season -->
-      <div class="section">
-        <p class="section-label">
-          {{ t('tours.form.seasonLabel') }}
-        </p>
-        <div class="season-chips">
-          <button
-            v-for="season in SEASON_VALUES"
-            :key="season"
-            type="button"
-            class="season-chip"
-            :class="{ selected: selectedSeasons.has(season) }"
-            @click="toggleSeason(season)"
-          >
-            {{ t(`tours.season.${season}` as any) }}
-          </button>
-        </div>
-      </div>
-
-      <!-- SECTION: Details -->
-      <div class="section">
-        <p class="section-label">
-          {{ t('tours.form.detailSectionLabel') }}
-        </p>
-
-        <div class="field">
-          <label class="label" for="tf-plannedDate">{{ t('tours.form.plannedDateLabel') }}</label>
-          <input id="tf-plannedDate" v-model="plannedDate" class="input" type="date">
-        </div>
-
-        <div class="field">
-          <label class="label" for="tf-description">{{ t('tours.form.descriptionLabel') }}</label>
-          <textarea
-            id="tf-description"
-            v-model="description"
-            class="input textarea"
-            rows="3"
-            :placeholder="t('tours.form.descriptionPlaceholder')"
-          />
-        </div>
-
-        <div class="field">
-          <label class="label" for="tf-equipment">{{ t('tours.form.equipmentLabel') }}</label>
-          <textarea
-            id="tf-equipment"
-            v-model="equipment"
-            class="input textarea"
-            rows="2"
-            :placeholder="t('tours.form.equipmentPlaceholder')"
-          />
-        </div>
-
-        <div class="field">
-          <label class="label" for="tf-notes">{{ t('tours.form.notesLabel') }}</label>
-          <textarea
-            id="tf-notes"
-            v-model="notes"
-            class="input textarea"
-            rows="2"
-            :placeholder="t('tours.form.notesPlaceholder')"
-          />
-        </div>
-      </div>
-
-      <!-- SECTION: GPX Track -->
-      <div class="section">
-        <p class="section-label">
-          {{ t('tours.form.gpxSectionLabel') }}
-        </p>
-        <div class="gpx-row">
-          <label class="pick-btn gpx-upload-btn">
-            <span class="material-symbols-outlined">upload_file</span>
-            Upload GPX
             <input
-              type="file"
-              accept=".gpx,application/gpx+xml"
-              class="hidden-input"
-              @change="handleGpxUpload"
-            >
-          </label>
-          <span v-if="gpxFileName" class="gpx-filename">
-            <span class="material-symbols-outlined gpx-ok-icon">check_circle</span>
-            {{ gpxFileName }}
-          </span>
-          <button v-if="gpxFileName" type="button" class="remove-point-btn" @click="removeGpx">
-            <span class="material-symbols-outlined">close</span>
-          </button>
-        </div>
-        <p v-if="gpxError" class="gpx-error">
-          {{ gpxError }}
-        </p>
-      </div>
-    </div>
-    <!-- end scroll-body -->
+              id="tf-tourName"
+              v-model="tourName"
+              class="input"
+              :class="{ 'input--error': nameError }"
+              type="text"
+              maxlength="100"
+              :placeholder="t('tours.form.namePlaceholder')"
+              aria-required="true"
+              :aria-invalid="nameError"
+              @input="nameError = false"
+            />
+            <p v-if="nameError" class="field-error">
+              {{ t('tours.form.nameRequired') }}
+            </p>
+          </div>
 
-    <div class="actions">
-      <button type="button" class="cancel-btn" @click="emit('cancel')">
-        {{ t('tours.form.cancelBtn') }}
-      </button>
-      <button type="submit" class="submit-btn">
-        {{ submitLabel }}
-      </button>
-    </div>
+          <!-- Goal (read-only display, with optional change button) -->
+          <div v-if="currentGoal" class="field">
+            <p class="label">
+              {{ t('tours.form.goalLabel') }}
+            </p>
+            <div class="point-row">
+              <span class="point-coords">{{ formatPoint(currentGoal) }}</span>
+              <button
+                v-if="allowGoalEdit"
+                type="button"
+                class="pick-btn"
+                @click="emit('pickPoint', 'goal')"
+              >
+                <span class="material-symbols-outlined">my_location</span>
+                {{ t('tours.form.changeGoalBtn') }}
+              </button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="label" for="tf-elevation">{{ t('tours.form.elevationLabel') }}</label>
+            <input
+              id="tf-elevation"
+              v-model="elevation"
+              class="input"
+              type="number"
+              min="0"
+              max="9000"
+              :placeholder="t('tours.form.elevationPlaceholder')"
+              @input="elevationAutoFilled = false"
+            />
+          </div>
+
+          <div class="field">
+            <p class="label">
+              {{ t('tours.form.startPointLabel') }}
+            </p>
+            <div class="point-row">
+              <span class="point-coords">{{
+                effectiveStartPoint ? formatPoint(effectiveStartPoint) : t('tours.form.pointNotSet')
+              }}</span>
+              <span v-if="!startPoint && endPoint" class="optional-hint">{{
+                t('tours.form.sameAsEnd')
+              }}</span>
+              <button type="button" class="pick-btn" @click="emit('pickPoint', 'start')">
+                <span class="material-symbols-outlined">my_location</span>
+                {{ startPoint ? t('tours.form.changeGoalBtn') : t('tours.form.pickBtn') }}
+              </button>
+              <button
+                v-if="startPoint"
+                type="button"
+                class="remove-point-btn"
+                @click="startPoint = null"
+              >
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="field">
+            <p class="label">
+              {{ t('tours.form.endPointLabel') }}
+            </p>
+            <div class="point-row">
+              <span class="point-coords">{{
+                effectiveEndPoint ? formatPoint(effectiveEndPoint) : t('tours.form.pointNotSet')
+              }}</span>
+              <span v-if="!endPoint && startPoint" class="optional-hint">{{
+                t('tours.form.roundTrip')
+              }}</span>
+              <button type="button" class="pick-btn" @click="emit('pickPoint', 'end')">
+                <span class="material-symbols-outlined">my_location</span>
+                {{ endPoint ? t('tours.form.changeGoalBtn') : t('tours.form.pickBtn') }}
+              </button>
+              <button
+                v-if="endPoint"
+                type="button"
+                class="remove-point-btn"
+                @click="endPoint = null"
+              >
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION: Tour Partners -->
+        <div v-if="contacts.length > 0" class="section">
+          <p class="section-label">
+            {{ t('tours.form.partnersLabel') }}
+          </p>
+          <div class="chips">
+            <ContactChip
+              v-for="contact in contacts"
+              :key="contact.id"
+              :contact="contact"
+              :selected="selectedPartnerIds.has(contact.id)"
+              @toggle="togglePartner"
+            />
+          </div>
+        </div>
+
+        <!-- SECTION: Tour Type -->
+        <div class="section">
+          <p class="section-label">
+            {{ t('tours.form.activityLabel') }}
+          </p>
+          <div class="type-chips">
+            <button
+              v-for="type in TOUR_TYPE_VALUES"
+              :key="type"
+              type="button"
+              class="type-chip"
+              :class="{ selected: selectedTourType === type }"
+              @click="toggleTourType(type)"
+            >
+              <span class="material-symbols-outlined type-icon">{{ TOUR_TYPE_ICONS[type] }}</span>
+              <span class="type-label">{{
+                t(`tours.type.${TOUR_TYPE_I18N_KEYS[type]}` as any)
+              }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- SECTION: Season -->
+        <div class="section">
+          <p class="section-label">
+            {{ t('tours.form.seasonLabel') }}
+          </p>
+          <div class="season-chips">
+            <button
+              v-for="season in SEASON_VALUES"
+              :key="season"
+              type="button"
+              class="season-chip"
+              :class="{ selected: selectedSeasons.has(season) }"
+              @click="toggleSeason(season)"
+            >
+              {{ t(`tours.season.${season}` as any) }}
+            </button>
+          </div>
+        </div>
+
+        <!-- SECTION: Details -->
+        <div class="section">
+          <p class="section-label">
+            {{ t('tours.form.detailSectionLabel') }}
+          </p>
+
+          <div class="field">
+            <label class="label" for="tf-plannedDate">{{ t('tours.form.plannedDateLabel') }}</label>
+            <input id="tf-plannedDate" v-model="plannedDate" class="input" type="date" />
+          </div>
+
+          <div class="field">
+            <label class="label" for="tf-description">{{ t('tours.form.descriptionLabel') }}</label>
+            <textarea
+              id="tf-description"
+              v-model="description"
+              class="input textarea"
+              rows="3"
+              :placeholder="t('tours.form.descriptionPlaceholder')"
+            />
+          </div>
+
+          <div class="field">
+            <label class="label" for="tf-equipment">{{ t('tours.form.equipmentLabel') }}</label>
+            <textarea
+              id="tf-equipment"
+              v-model="equipment"
+              class="input textarea"
+              rows="2"
+              :placeholder="t('tours.form.equipmentPlaceholder')"
+            />
+          </div>
+
+          <div class="field">
+            <label class="label" for="tf-notes">{{ t('tours.form.notesLabel') }}</label>
+            <textarea
+              id="tf-notes"
+              v-model="notes"
+              class="input textarea"
+              rows="2"
+              :placeholder="t('tours.form.notesPlaceholder')"
+            />
+          </div>
+        </div>
+
+        <!-- SECTION: GPX Track -->
+        <div class="section">
+          <p class="section-label">
+            {{ t('tours.form.gpxSectionLabel') }}
+          </p>
+          <div class="gpx-row">
+            <label class="pick-btn gpx-upload-btn">
+              <span class="material-symbols-outlined">upload_file</span>
+              Upload GPX
+              <input
+                type="file"
+                accept=".gpx,application/gpx+xml"
+                class="hidden-input"
+                @change="handleGpxUpload"
+              />
+            </label>
+            <span v-if="gpxFileName" class="gpx-filename">
+              <span class="material-symbols-outlined gpx-ok-icon">check_circle</span>
+              {{ gpxFileName }}
+            </span>
+            <button v-if="gpxFileName" type="button" class="remove-point-btn" @click="removeGpx">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <p v-if="gpxError" class="gpx-error">
+            {{ gpxError }}
+          </p>
+        </div>
+      </div>
+      <!-- end scroll-body -->
+
+      <div class="actions">
+        <button type="button" class="cancel-btn" @click="emit('cancel')">
+          {{ t('tours.form.cancelBtn') }}
+        </button>
+        <button type="submit" class="submit-btn">
+          {{ submitLabel }}
+        </button>
+      </div>
+    </fieldset>
   </form>
 </template>
 
@@ -462,6 +465,21 @@ function handleSubmit() {
   flex-direction: column;
   flex: 1;
   min-height: 0;
+}
+
+.form-fieldset {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.form-fieldset[disabled] {
+  opacity: 0.7;
 }
 
 .scroll-body {

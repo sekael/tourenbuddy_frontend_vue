@@ -53,4 +53,48 @@ describe('bottomSheet', () => {
     const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
     expect(wrapper.find('.close-btn').attributes('aria-label')).toBe('core.drawer.close')
   })
+
+  describe('collapsed mode', () => {
+    it('should hide close button, drag handle, and footer when collapsed', () => {
+      const wrapper = mount(BottomSheet, {
+        props: { title: 'Test', collapsed: true },
+        slots: { footer: '<div class="slot-footer">f</div>' },
+      })
+      expect(wrapper.find('.close-btn').exists()).toBe(false)
+      expect(wrapper.find('.drag-handle').exists()).toBe(false)
+      expect(wrapper.find('.footer').attributes('style')).toContain('display: none')
+    })
+
+    it('should keep default slot mounted but hidden when collapsed', () => {
+      const wrapper = mount(BottomSheet, {
+        props: { title: 'Test', collapsed: true },
+        slots: { default: '<p class="slot-content">Preserved</p>' },
+      })
+      expect(wrapper.find('.slot-content').exists()).toBe(true)
+      expect(wrapper.find('.content').attributes('style')).toContain('display: none')
+    })
+
+    it('should preserve slot state across collapsed toggle', async () => {
+      const wrapper = mount(BottomSheet, {
+        props: { title: 'Test', collapsed: false },
+        slots: { default: '<input class="slot-input" />' },
+      })
+      const input = wrapper.find('.slot-input').element as HTMLInputElement
+      input.value = 'typed'
+      await wrapper.setProps({ collapsed: true })
+      // Same DOM node preserved → value retained
+      const afterCollapse = wrapper.find('.slot-input').element as HTMLInputElement
+      expect(afterCollapse).toBe(input)
+      expect(afterCollapse.value).toBe('typed')
+      await wrapper.setProps({ collapsed: false })
+      expect((wrapper.find('.slot-input').element as HTMLInputElement).value).toBe('typed')
+    })
+
+    it('should hide back button when collapsed', () => {
+      const wrapper = mount(BottomSheet, {
+        props: { title: 'Test', collapsed: true, showBack: true },
+      })
+      expect(wrapper.find('.back-btn').exists()).toBe(false)
+    })
+  })
 })

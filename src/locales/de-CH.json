@@ -244,11 +244,12 @@
     },
     "creation": {
       "title": "Neue Tour",
+      "pickingTitle": "Neue Tour: {name}",
       "saveBtn": "Tour speichern"
     },
     "infoSheet": {
       "editTitlePrefix": "Bearbeiten",
-      "pickGoalPrefix": "Neues Ziel wählen",
+      "editTitle": "Bearbeiten: {name}",
       "unnamedTour": "Unbenannte Tour",
       "completedBtn": "Abgeschlossen",
       "completeTourBtn": "Tour abschliessen",

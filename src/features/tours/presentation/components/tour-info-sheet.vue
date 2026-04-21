@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
+import { useLogger } from '@/core/logging/use-logger'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import ContactActionMenu from '@/features/contacts/presentation/components/contact-action-menu.vue'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
@@ -21,7 +22,7 @@ const props = defineProps<{
   /** Set by map-page after a location pick triggered from this sheet. Reset to null via pointConsumed. */
   editPickedPoint?: {
     type: 'start' | 'end' | 'goal'
-    location: { lng: number, lat: number }
+    location: { lng: number; lat: number }
     elevation?: number | null
     suggestedName?: string | null
   } | null
@@ -49,6 +50,9 @@ const { contacts } = storeToRefs(contactsStore)
 const { isPickingLocation } = storeToRefs(mapStore)
 const { currentUser } = storeToRefs(authStore)
 const isDesktop = useIsDesktop()
+const log = useLogger('tour-info-sheet')
+
+const isPicking = computed(() => isPickingLocation.value)
 
 const isOwner = computed(() => !!currentUser.value && currentUser.value.id === props.tour.userId)
 
@@ -56,9 +60,9 @@ const isOwner = computed(() => !!currentUser.value && currentUser.value.id === p
 const mode = ref<'view' | 'edit'>('view')
 
 // Pending goal/points during edit — updated reactively via editPickedPoint prop
-const pendingGoal = ref<{ lng: number, lat: number }>({ ...props.tour.goal })
-const pendingStartPoint = ref<{ lng: number, lat: number } | null>(null)
-const pendingEndPoint = ref<{ lng: number, lat: number } | null>(null)
+const pendingGoal = ref<{ lng: number; lat: number }>({ ...props.tour.goal })
+const pendingStartPoint = ref<{ lng: number; lat: number } | null>(null)
+const pendingEndPoint = ref<{ lng: number; lat: number } | null>(null)
 // Elevation/name updated from Swisstopo after a goal re-pick in edit mode
 const pendingElevation = ref<number | null>(null)
 const pendingSuggestedName = ref<string | null>(null)
@@ -81,25 +85,21 @@ function cancelEdit() {
 // Sheet dismissed (map background click, close button, tour deleted, etc.) while
 // edit mode is still active: notify parent so preview marker is cleaned up.
 onBeforeUnmount(() => {
-  if (mode.value === 'edit')
-    emit('editModeChange', false)
+  if (mode.value === 'edit') emit('editModeChange', false)
 })
 
 // Reactive handoff from map-page after a location pick in edit mode
 watch(
   () => props.editPickedPoint,
   (pick) => {
-    if (!pick)
-      return
+    if (!pick) return
     if (pick.type === 'goal') {
       pendingGoal.value = pick.location
       pendingElevation.value = pick.elevation ?? null
       pendingSuggestedName.value = pick.suggestedName ?? null
-    }
-    else if (pick.type === 'start') {
+    } else if (pick.type === 'start') {
       pendingStartPoint.value = pick.location
-    }
-    else {
+    } else {
       pendingEndPoint.value = pick.location
     }
     emit('pointConsumed')
@@ -111,17 +111,19 @@ const saveError = ref<string | null>(null)
 const isSaving = ref(false)
 
 async function handleEditSubmit(draft: TourDraft) {
+  if (mapStore.isPickingLocation) {
+    log.debug('Ignoring edit submit while location picker is active')
+    return
+  }
   saveError.value = null
   isSaving.value = true
   try {
     await toursStore.updateTour(props.tour.id, draft, pendingGoal.value)
     mode.value = 'view'
     emit('editModeChange', false)
-  }
-  catch (err) {
+  } catch (err) {
     saveError.value = err instanceof Error ? err.message : t('tours.infoSheet.saveFailed')
-  }
-  finally {
+  } finally {
     isSaving.value = false
   }
 }
@@ -141,8 +143,7 @@ async function confirmDelete() {
   try {
     await toursStore.deleteTour(props.tour.id)
     emit('close')
-  }
-  catch (err) {
+  } catch (err) {
     deleteError.value = err instanceof Error ? err.message : t('tours.infoSheet.deleteFailed')
     deleteState.value = 'idle'
   }
@@ -151,23 +152,21 @@ async function confirmDelete() {
 // ── Read-only computed values ────────────────────────────────────────────────
 const displayName = computed(() => props.tour.name ?? t('tours.infoSheet.unnamedTour'))
 
-// On mobile, collapse the sheet to just its header while the user aims the
-// location picker so the map (and crosshair) stays visible. Sheet on desktop
-// is a side drawer that already leaves the map visible — no collapse needed.
-const sheetCollapsed = computed(
-  () => !isDesktop.value && isPickingLocation.value && mode.value === 'edit',
-)
+// While the location picker is active and we're in edit mode, collapse the
+// sheet/drawer to a header-only surface so the map (and crosshair) stay
+// visible and the form can't be submitted with stale state. Applies to both
+// desktop (side drawer → compact top-right header) and mobile (bottom sheet
+// → title-only bar).
+const sheetCollapsed = computed(() => isPicking.value && mode.value === 'edit')
 const sheetTitle = computed(() => {
-  if (sheetCollapsed.value)
-    return `${t('tours.infoSheet.pickGoalPrefix')} — ${displayName.value}`
+  if (sheetCollapsed.value) return t('tours.infoSheet.editTitle', { name: displayName.value })
   return mode.value === 'edit'
     ? `${t('tours.infoSheet.editTitlePrefix')}: ${displayName.value}`
     : displayName.value
 })
 
 const formattedDate = computed(() => {
-  if (!props.tour.plannedDate)
-    return null
+  if (!props.tour.plannedDate) return null
   return new Intl.DateTimeFormat(locale.value, {
     year: 'numeric',
     month: 'long',
@@ -175,13 +174,13 @@ const formattedDate = computed(() => {
   }).format(props.tour.plannedDate)
 })
 
-const partners = computed(() => contacts.value.filter(c => props.tour.partnerIds.includes(c.id)))
+const partners = computed(() => contacts.value.filter((c) => props.tour.partnerIds.includes(c.id)))
 
 // ── Contact action menu ──────────────────────────────────────────────────────
 const activeMenuContactId = ref<string | null>(null)
 const activeMenuContact = computed(() =>
   activeMenuContactId.value
-    ? (partners.value.find(c => c.id === activeMenuContactId.value) ?? null)
+    ? (partners.value.find((c) => c.id === activeMenuContactId.value) ?? null)
     : null,
 )
 const activeChipRect = ref<DOMRect | null>(null)
@@ -210,37 +209,32 @@ const coordinates = computed(
 )
 
 const formattedElevation = computed(() => {
-  if (props.tour.elevation == null)
-    return null
+  if (props.tour.elevation == null) return null
   return `${new Intl.NumberFormat(locale.value, { maximumFractionDigits: 0 }).format(props.tour.elevation)} m`
 })
 
 const startPointText = computed(() => {
-  if (!props.tour.startPoint)
-    return null
+  if (!props.tour.startPoint) return null
   return `${props.tour.startPoint.lat.toFixed(4)}°N, ${props.tour.startPoint.lng.toFixed(4)}°E`
 })
 
 const endPointText = computed(() => {
-  if (!props.tour.endPoint)
-    return null
+  if (!props.tour.endPoint) return null
   return `${props.tour.endPoint.lat.toFixed(4)}°N, ${props.tour.endPoint.lng.toFixed(4)}°E`
 })
 
 const isRoundTrip = computed(() => {
   const s = props.tour.startPoint
   const e = props.tour.endPoint
-  if (!s)
-    return false
-  if (!e)
-    return true
+  if (!s) return false
+  if (!e) return true
   return s.lng === e.lng && s.lat === e.lat
 })
 
 /** Auto-link URLs in plain text: returns array of segments {text, url?}. */
-function linkifyText(text: string): Array<{ text: string, url?: string }> {
+function linkifyText(text: string): Array<{ text: string; url?: string }> {
   const urlPattern = /https?:\/\/[^\s<>[\]{}|\\^`"]+/g
-  const segments: Array<{ text: string, url?: string }> = []
+  const segments: Array<{ text: string; url?: string }> = []
   let lastIndex = 0
   for (let match = urlPattern.exec(text); match !== null; match = urlPattern.exec(text)) {
     if (match.index > lastIndex) {
@@ -282,6 +276,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         :initial-name="pendingSuggestedName"
         :initial-start-point="pendingStartPoint"
         :initial-end-point="pendingEndPoint"
+        :disabled="isPicking"
         @submit="handleEditSubmit"
         @cancel="cancelEdit"
         @pick-point="emit('pickPoint', $event)"
@@ -371,7 +366,8 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
                 target="_blank"
                 rel="noopener noreferrer"
                 class="description-link"
-              >{{ segment.text }}</a>
+                >{{ segment.text }}</a
+              >
               <template v-else>
                 {{ segment.text }}
               </template>
