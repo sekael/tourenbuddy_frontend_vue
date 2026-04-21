@@ -11,7 +11,8 @@ const emit = defineEmits<{ close: [] }>()
 const titleId = 'dialog-window-title'
 
 function handleBackdropClick() {
-  if (props.collapsed) return
+  if (props.collapsed)
+    return
   emit('close')
 }
 </script>

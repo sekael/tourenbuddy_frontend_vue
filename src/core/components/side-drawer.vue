@@ -104,7 +104,7 @@ const isDesktop = useIsDesktop()
   border-bottom: 1px solid var(--color-outline-variant);
   border-bottom-left-radius: var(--radius-lg);
   border-top-left-radius: 0;
-  animation: none;
+  /* Keep the same animation-name so toggling collapsed off doesn't restart slide-in-right */
 }
 
 .side-drawer--collapsed .drawer-header {

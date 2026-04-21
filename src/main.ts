@@ -31,7 +31,8 @@ async function bootstrap() {
   watch(
     () => authStore.isAuthenticated,
     async (isAuth) => {
-      if (isAuth) await profileStore.loadProfile()
+      if (isAuth)
+        await profileStore.loadProfile()
       else profileStore.clear()
     },
   )

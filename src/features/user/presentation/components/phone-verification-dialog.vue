@@ -6,7 +6,7 @@ import { useUserProfileStore } from '@/features/user/presentation/stores/user-pr
 
 const props = defineProps<{ phone: string }>()
 
-const emit = defineEmits<{ verified: []; close: [] }>()
+const emit = defineEmits<{ verified: [], close: [] }>()
 const { t } = useI18n({ useScope: 'global' })
 const displayPhone = computed(() => {
   const result = normalizePhone(props.phone)
@@ -37,7 +37,8 @@ function startCooldown() {
 }
 
 onUnmounted(() => {
-  if (cooldownTimer) clearInterval(cooldownTimer)
+  if (cooldownTimer)
+    clearInterval(cooldownTimer)
 })
 
 async function handleVerify() {
@@ -53,15 +54,18 @@ async function handleVerify() {
     await store.verifyPhone(props.phone, otp.value.trim())
     isVerified.value = true
     setTimeout(() => emit('verified'), 1200)
-  } catch (err) {
+  }
+  catch (err) {
     error.value = err instanceof Error ? err.message : t('user.phoneVerification.invalidCode')
-  } finally {
+  }
+  finally {
     isVerifying.value = false
   }
 }
 
 async function handleResend() {
-  if (resendCooldown.value > 0) return
+  if (resendCooldown.value > 0)
+    return
   isResending.value = true
   resendSuccess.value = false
   error.value = null
@@ -69,9 +73,11 @@ async function handleResend() {
     await store.sendPhoneVerification(props.phone)
     resendSuccess.value = true
     startCooldown()
-  } catch (err) {
+  }
+  catch (err) {
     error.value = err instanceof Error ? err.message : t('user.phoneVerification.resendError')
-  } finally {
+  }
+  finally {
     isResending.value = false
   }
 }
@@ -113,7 +119,7 @@ async function handleResend() {
               autocomplete="one-time-code"
               inputmode="numeric"
               maxlength="6"
-            />
+            >
           </div>
 
           <p v-if="error" class="error-text">

@@ -21,7 +21,8 @@ onMounted(() => {
 })
 
 async function handleInstall() {
-  if (!deferredPrompt) return
+  if (!deferredPrompt)
+    return
   await deferredPrompt.prompt()
   const { outcome } = await deferredPrompt.userChoice
   if (outcome === 'accepted') {

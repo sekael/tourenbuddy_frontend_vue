@@ -39,7 +39,7 @@ watch(
   [() => props.initialContactId, contacts],
   ([id]) => {
     if (id && viewState.value === 'list') {
-      const target = contacts.value.find((c) => c.id === id)
+      const target = contacts.value.find(c => c.id === id)
       if (target) {
         selectedContact.value = target
         viewState.value = 'detail'
@@ -50,15 +50,17 @@ watch(
 )
 
 const sheetTitle = computed(() => {
-  if (viewState.value === 'add') return t('contacts.addDialog.title')
-  if (viewState.value === 'detail') return null
+  if (viewState.value === 'add')
+    return t('contacts.addDialog.title')
+  if (viewState.value === 'detail')
+    return null
   return t('contacts.list.title')
 })
 
 // Keep selectedContact in sync after store edits
 const liveContact = computed(() =>
   selectedContact.value
-    ? (contacts.value.find((c) => c.id === selectedContact.value!.id) ?? null)
+    ? (contacts.value.find(c => c.id === selectedContact.value!.id) ?? null)
     : null,
 )
 
@@ -122,9 +124,9 @@ function handleClose() {
 
 function isDuplicate(first: string, last: string | null): boolean {
   return contacts.value.some(
-    (c) =>
-      c.firstName.toLowerCase() === first.toLowerCase() &&
-      (c.lastName ?? '').toLowerCase() === (last ?? '').toLowerCase(),
+    c =>
+      c.firstName.toLowerCase() === first.toLowerCase()
+      && (c.lastName ?? '').toLowerCase() === (last ?? '').toLowerCase(),
   )
 }
 
@@ -139,9 +141,11 @@ async function handleAddSubmit(data: {
   try {
     await contactsStore.addContact(data.firstName, data.lastName, data.displayName, data.phones)
     backToList()
-  } catch (err) {
+  }
+  catch (err) {
     addError.value = err instanceof Error ? err.message : t('contacts.addDialog.addError')
-  } finally {
+  }
+  finally {
     isAddLoading.value = false
   }
 }
@@ -156,8 +160,8 @@ async function processImportedContacts(
 ) {
   const results: ImportResult[] = []
   for (const item of items) {
-    const primaryPhone =
-      item.phones.find((p) => p.isPrimary)?.value ?? item.phones[0]?.value ?? null
+    const primaryPhone
+      = item.phones.find(p => p.isPrimary)?.value ?? item.phones[0]?.value ?? null
     const rawPhoneNumbers = item.rawPhoneNumbers ?? []
     if (isDuplicate(item.firstName, item.lastName)) {
       results.push({
@@ -190,9 +194,11 @@ async function handleContactPickerImport() {
   try {
     const picked = await pickContacts()
     await processImportedContacts(picked)
-  } catch (err) {
+  }
+  catch (err) {
     addError.value = err instanceof Error ? err.message : t('contacts.addDialog.importError')
-  } finally {
+  }
+  finally {
     isAddLoading.value = false
   }
 }
@@ -203,17 +209,21 @@ function handleFileImportClick() {
 
 async function handleFileChange(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0]
-  if (!file) return
+  if (!file)
+    return
   isAddLoading.value = true
   addError.value = null
   try {
     const parsed = await parseVCardFile(file)
     await processImportedContacts(parsed)
-  } catch (err) {
+  }
+  catch (err) {
     addError.value = err instanceof Error ? err.message : t('contacts.addDialog.fileImportError')
-  } finally {
+  }
+  finally {
     isAddLoading.value = false
-    if (fileInput.value) fileInput.value.value = ''
+    if (fileInput.value)
+      fileInput.value.value = ''
   }
 }
 
@@ -295,15 +305,11 @@ function switchAddToForm() {
         <ul class="results-list">
           <li v-for="(result, i) in importResults" :key="i" class="result-item">
             <div class="result-info">
-              <span class="result-name"
-                >{{ result.firstName }}{{ result.lastName ? ` ${result.lastName}` : '' }}</span
-              >
+              <span class="result-name">{{ result.firstName }}{{ result.lastName ? ` ${result.lastName}` : '' }}</span>
               <span v-if="result.primaryPhone" class="result-phone">
                 <span class="material-symbols-outlined star-icon-sm">star</span>
                 {{ formatPhoneDisplay(result.primaryPhone) }}
-                <span v-if="result.extraPhoneCount > 0" class="extra-phones"
-                  >+{{ result.extraPhoneCount }} more</span
-                >
+                <span v-if="result.extraPhoneCount > 0" class="extra-phones">+{{ result.extraPhoneCount }} more</span>
               </span>
               <span
                 v-if="result.rawPhoneNumbers.length > 0"
@@ -369,7 +375,7 @@ function switchAddToForm() {
             accept=".vcf,.vcard"
             class="file-input-hidden"
             @change="handleFileChange"
-          />
+          >
         </div>
 
         <div class="divider" />
