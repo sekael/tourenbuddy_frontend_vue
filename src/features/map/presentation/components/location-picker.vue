@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { Map as MapLibreMap } from 'maplibre-gl'
+import { useI18n } from 'vue-i18n'
 import Crosshair from '@/core/components/crosshair.vue'
+
+const { t } = useI18n({ useScope: 'global' })
 
 const props = defineProps<{
   map: MapLibreMap | null
@@ -9,7 +12,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  confirm: [location: { lng: number, lat: number }]
+  confirm: [location: { lng: number; lat: number }]
   cancel: []
 }>()
 
@@ -31,8 +34,7 @@ function getCrosshairCoordinates(map: NonNullable<typeof props.map>) {
 }
 
 function handleConfirm() {
-  if (!props.map)
-    return
+  if (!props.map) return
   const coords = getCrosshairCoordinates(props.map)
   emit('confirm', { lng: coords.lng, lat: coords.lat })
 }
@@ -46,12 +48,8 @@ function handleConfirm() {
       class="actions"
       :style="props.actionsBottom != null ? { bottom: `${props.actionsBottom}px` } : undefined"
     >
-      <button class="cancel-btn" @click="emit('cancel')">
-        Cancel
-      </button>
-      <button class="confirm-btn" @click="handleConfirm">
-        Continue
-      </button>
+      <button class="cancel-btn" @click="emit('cancel')">{{ t('tours.picker.cancelBtn') }}</button>
+      <button class="confirm-btn" @click="handleConfirm">{{ t('tours.picker.confirmBtn') }}</button>
     </div>
   </div>
 </template>

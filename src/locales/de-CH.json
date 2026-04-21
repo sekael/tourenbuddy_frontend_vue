@@ -121,7 +121,7 @@
       "noMatchesTitle": "Keine Kontakte gefunden.",
       "clearFiltersBtn": "Filter zurücksetzen",
       "searchPlaceholder": "Kontakte suchen\u2026",
-      "invalidPhoneWarning": "Ungültige Telefonnummer konnte nicht hinzugefügt werden:"
+      "invalidPhoneWarning": "Ungültige Telefonnummer konnte nicht hinzugefügt werden"
     },
     "form": {
       "firstNameLabel": "Vorname",
@@ -169,6 +169,7 @@
       "labelPlaceholder": "Bezeichnung (optional)",
       "invalidPhone": "Ungültige Telefonnummer",
       "valueRequired": "Wert ist erforderlich",
+      "firstNameRequired": "Vorname ist erforderlich",
       "addError": "Fehler beim Hinzufügen",
       "addMethodBtn": "Methode hinzufügen",
       "phoneTypeBtn": "Telefon",
@@ -223,13 +224,23 @@
       "sameAsEnd": "gleich wie Ende",
       "pickBtn": "Wählen",
       "roundTrip": "Rundtour",
-      "partnersLabel": "Tourpartner",
+      "partnersLabel": "Tourenpartner",
       "activityLabel": "Aktivitätstyp",
       "seasonLabel": "Saison",
       "gpxTooLarge": "Datei zu gross (max. 2 MB)",
       "gpxInvalid": "Ungültige GPX-Datei",
       "gpxReadError": "Datei konnte nicht gelesen werden",
-      "cancelBtn": "Abbrechen"
+      "cancelBtn": "Abbrechen",
+      "locationSectionLabel": "Ort",
+      "detailSectionLabel": "Details",
+      "gpxSectionLabel": "GPS Track",
+      "plannedDateLabel": "Geplantes Datum",
+      "descriptionLabel": "Beschreibung",
+      "descriptionPlaceholder": "Routenbeschreibung, Links, Notizen...",
+      "equipmentLabel": "Material",
+      "equipmentPlaceholder": "Materialliste...",
+      "notesLabel": "Notizen",
+      "notesPlaceholder": "Andere Informationen..."
     },
     "creation": {
       "title": "Neue Tour",
@@ -237,7 +248,7 @@
     },
     "infoSheet": {
       "editTitlePrefix": "Bearbeiten",
-      "pickGoalPrefix": "Neues Ziel wählen \u2014",
+      "pickGoalPrefix": "Neues Ziel wählen",
       "unnamedTour": "Unbenannte Tour",
       "completedBtn": "Abgeschlossen",
       "completeTourBtn": "Tour abschliessen",
@@ -268,11 +279,11 @@
     },
     "type": {
       "skiing": "Skifahren",
-      "snowboarding": "Snowboarding",
+      "snowboarding": "Snowboarden",
       "skitour": "Skitour",
-      "splitboarding": "Splitboarding",
+      "splitboarding": "Splitboarden",
       "skiMountaineering": "Skibergsteigen",
-      "paragliding": "Paragliding",
+      "paragliding": "Gleitschirm",
       "hiking": "Wandern",
       "mountaineering": "Bergsteigen",
       "climbing": "Klettern",
@@ -284,6 +295,10 @@
       "spring": "Frühling",
       "summer": "Sommer",
       "autumn": "Herbst"
+    },
+    "picker": {
+      "cancelBtn": "Abbrechen",
+      "confirmBtn": "Bestätigen"
     }
   },
   "map": {
@@ -295,6 +310,11 @@
       "toursTooltip": "Touren",
       "addTourTooltip": "Tourstandort hinzufügen",
       "signInToAddToursTooltip": "Anmelden, um Touren hinzuzufügen"
+    },
+    "styles": {
+      "pickerTooltip": "Kartenstil ändern",
+      "base": "Basiskarte",
+      "classic": "Klassisch"
     }
   },
   "i18n": {

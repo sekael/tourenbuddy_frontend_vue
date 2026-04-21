@@ -121,7 +121,7 @@
       "noMatchesTitle": "No contacts match your search.",
       "clearFiltersBtn": "Clear filters",
       "searchPlaceholder": "Search contacts\u2026",
-      "invalidPhoneWarning": "Couldn't add invalid phone number:"
+      "invalidPhoneWarning": "Couldn't add invalid phone number"
     },
     "form": {
       "firstNameLabel": "First Name",
@@ -169,6 +169,7 @@
       "labelPlaceholder": "Label (optional)",
       "invalidPhone": "Invalid phone number",
       "valueRequired": "Value is required",
+      "firstNameRequired": "First name is required",
       "addError": "Failed to add",
       "addMethodBtn": "Add method",
       "phoneTypeBtn": "Phone",
@@ -229,7 +230,17 @@
       "gpxTooLarge": "File too large (max 2 MB)",
       "gpxInvalid": "Invalid GPX file",
       "gpxReadError": "Failed to read file",
-      "cancelBtn": "Cancel"
+      "cancelBtn": "Cancel",
+      "locationSectionLabel": "Location",
+      "detailSectionLabel": "Details",
+      "gpxSectionLabel": "GPX track",
+      "plannedDateLabel": "Planned date",
+      "descriptionLabel": "Description / Guide",
+      "descriptionPlaceholder": "Route description, links, notes…",
+      "equipmentLabel": "Equipment",
+      "equipmentPlaceholder": "Gear list...",
+      "notesLabel": "Notes",
+      "notesPlaceholder": "Any other info..."
     },
     "creation": {
       "title": "New Tour",
@@ -237,7 +248,7 @@
     },
     "infoSheet": {
       "editTitlePrefix": "Edit",
-      "pickGoalPrefix": "Pick new goal \u2014",
+      "pickGoalPrefix": "Pick new goal",
       "unnamedTour": "Unnamed tour",
       "completedBtn": "Completed",
       "completeTourBtn": "Complete Tour",
@@ -284,6 +295,10 @@
       "spring": "Spring",
       "summer": "Summer",
       "autumn": "Autumn"
+    },
+    "picker": {
+      "cancelBtn": "Cancel",
+      "confirmBtn": "Confirm"
     }
   },
   "map": {
@@ -295,6 +310,11 @@
       "toursTooltip": "Tours",
       "addTourTooltip": "Add tour location",
       "signInToAddToursTooltip": "Sign in to add tours"
+    },
+    "styles": {
+      "pickerTooltip": "Change map style",
+      "base": "Base",
+      "classic": "Classic"
     }
   },
   "i18n": {

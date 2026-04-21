@@ -20,13 +20,12 @@ const result = computed(() => buildGroupSmsRecipients(props.partners))
 const canSend = computed(() => result.value.included.length > 0)
 
 function handleSend() {
-  if (!canSend.value)
-    return
-  const uri = `sms:${result.value.included.map(r => r.e164).join(',')}`
+  if (!canSend.value) return
+  const uri = `sms:${result.value.included.map((r) => r.e164).join(',')}`
   window.location.href = uri
   emit(
     'confirm',
-    result.value.included.map(r => r.e164),
+    result.value.included.map((r) => r.e164),
   )
 }
 </script>

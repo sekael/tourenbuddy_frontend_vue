@@ -26,20 +26,16 @@ function parseTelTypes(params: string): string[] {
 }
 
 function deriveTelLabel(types: string[]): string | null {
-  const known = types.filter(t =>
+  const known = types.filter((t) =>
     ['CELL', 'HOME', 'WORK', 'VOICE', 'FAX', 'PAGER', 'PREF', 'OTHER'].includes(t),
   )
-  const relevant = known.filter(t => t !== 'VOICE' && t !== 'PREF')
-  if (relevant.length === 0)
-    return null
+  const relevant = known.filter((t) => t !== 'VOICE' && t !== 'PREF')
+  if (relevant.length === 0) return null
   const display = relevant
     .map((t) => {
-      if (t === 'CELL')
-        return 'Mobile'
-      if (t === 'HOME')
-        return 'Home'
-      if (t === 'WORK')
-        return 'Work'
+      if (t === 'CELL') return 'Mobile'
+      if (t === 'HOME') return 'Home'
+      if (t === 'WORK') return 'Work'
       return null
     })
     .filter(Boolean) as string[]
@@ -48,8 +44,7 @@ function deriveTelLabel(types: string[]): string | null {
 
 function parsePrefValue(params: string): number | null {
   const v4Match = params.match(/(?:^|;)PREF=(\d+)/i)
-  if (v4Match)
-    return Number.parseInt(v4Match[1]!, 10)
+  if (v4Match) return Number.parseInt(v4Match[1]!, 10)
   return null
 }
 
@@ -81,8 +76,7 @@ export function parseVCardText(text: string): VCardContact[] {
       if (firstPart) {
         firstName = firstPart
         lastName = lastPart || null
-      }
-      else if (lastPart) {
+      } else if (lastPart) {
         const parsed = parseContactName(lastPart)
         firstName = parsed.firstName
         lastName = parsed.lastName
@@ -146,8 +140,7 @@ export function parseVCardText(text: string): VCardContact[] {
           hasPrefV3: p.hasPrefV3,
           types: p.types,
         })
-      }
-      else if (p.rawValue) {
+      } else if (p.rawValue) {
         rawPhoneNumbers.push(p.rawValue)
       }
     }
@@ -157,35 +150,30 @@ export function parseVCardText(text: string): VCardContact[] {
 
     // Determine primary using PREF markers then type priority
     const v4PrefCandidates = parsedPhones
-      .filter(p => p.prefV4 !== null)
+      .filter((p) => p.prefV4 !== null)
       .sort((a, b) => a.prefV4! - b.prefV4!)
-    const v3PrefIdx = parsedPhones.findIndex(p => p.hasPrefV3)
+    const v3PrefIdx = parsedPhones.findIndex((p) => p.hasPrefV3)
 
     let primaryParsedIdx = -1
     if (v4PrefCandidates.length > 0) {
       primaryParsedIdx = parsedPhones.indexOf(v4PrefCandidates[0]!)
-    }
-    else if (v3PrefIdx !== -1) {
+    } else if (v3PrefIdx !== -1) {
       primaryParsedIdx = v3PrefIdx
     }
 
     if (primaryParsedIdx === -1) {
-      const cellIdx = parsedPhones.findIndex(p => p.types.includes('CELL'))
-      if (cellIdx !== -1)
-        primaryParsedIdx = cellIdx
+      const cellIdx = parsedPhones.findIndex((p) => p.types.includes('CELL'))
+      if (cellIdx !== -1) primaryParsedIdx = cellIdx
     }
     if (primaryParsedIdx === -1) {
-      const homeIdx = parsedPhones.findIndex(p => p.types.includes('HOME'))
-      if (homeIdx !== -1)
-        primaryParsedIdx = homeIdx
+      const homeIdx = parsedPhones.findIndex((p) => p.types.includes('HOME'))
+      if (homeIdx !== -1) primaryParsedIdx = homeIdx
     }
     if (primaryParsedIdx === -1) {
-      const workIdx = parsedPhones.findIndex(p => p.types.includes('WORK'))
-      if (workIdx !== -1)
-        primaryParsedIdx = workIdx
+      const workIdx = parsedPhones.findIndex((p) => p.types.includes('WORK'))
+      if (workIdx !== -1) primaryParsedIdx = workIdx
     }
-    if (primaryParsedIdx === -1)
-      primaryParsedIdx = 0
+    if (primaryParsedIdx === -1) primaryParsedIdx = 0
 
     const phones: VCardPhone[] = parsedPhones.map((p, i) => ({
       value: p.value,
