@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.5.1...tourenbuddy-frontend-v0.6.0) (2026-04-21)
+
+
+### Features
+
+* I18n and support for German ([#65](https://github.com/sekael/tourenbuddy_frontend_vue/issues/65)) ([053c6c1](https://github.com/sekael/tourenbuddy_frontend_vue/commit/053c6c1818ac4fa438c4e965f8f1c145f98b0578))
+
+
+### Bug Fixes
+
+* Stale location picker ([#71](https://github.com/sekael/tourenbuddy_frontend_vue/issues/71)) ([1dac712](https://github.com/sekael/tourenbuddy_frontend_vue/commit/1dac712e213b04ee551b8a6d3f21df6fded8f27c))
+
 ## [0.5.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.5.0...tourenbuddy-frontend-v0.5.1) (2026-04-20)
 
 ### Bug Fixes
