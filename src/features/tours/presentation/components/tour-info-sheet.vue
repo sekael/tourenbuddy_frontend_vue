@@ -472,8 +472,8 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           </button>
 
           <template v-if="deleteState === 'confirm'">
+            <span class="delete-confirm-text">{{ t('tours.infoSheet.deleteConfirmText') }}</span>
             <div class="delete-confirm-row">
-              <span class="delete-confirm-text">{{ t('tours.infoSheet.deleteConfirmText') }}</span>
               <button type="button" class="cancel-btn" @click="deleteState = 'idle'">
                 {{ t('tours.infoSheet.cancelBtn') }}
               </button>
@@ -522,6 +522,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
 .edit-delete-row {
   display: flex;
+  justify-content: end;
   align-items: center;
   gap: var(--spacing-sm);
   flex-wrap: wrap;
@@ -566,9 +567,9 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
 .delete-confirm-row {
   display: flex;
+  justify-content: end;
   align-items: center;
   gap: var(--spacing-sm);
-  flex-wrap: wrap;
 }
 
 .delete-confirm-text {
