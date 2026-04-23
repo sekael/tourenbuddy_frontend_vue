@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.6.0...tourenbuddy-frontend-v0.6.1) (2026-04-23)
+
+
+### Bug Fixes
+
+* Alignment of delete confirmation buttons ([#75](https://github.com/sekael/tourenbuddy_frontend_vue/issues/75)) ([b05372c](https://github.com/sekael/tourenbuddy_frontend_vue/commit/b05372c233540e6611f8af2b3b379864391c8b7f))
+* Remove space between phone number and verification badge ([#73](https://github.com/sekael/tourenbuddy_frontend_vue/issues/73)) ([a138e74](https://github.com/sekael/tourenbuddy_frontend_vue/commit/a138e740854ac8a9016f382ec0bf8387e9c1a875))
+
 ## [0.6.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.5.1...tourenbuddy-frontend-v0.6.0) (2026-04-21)
 
 
