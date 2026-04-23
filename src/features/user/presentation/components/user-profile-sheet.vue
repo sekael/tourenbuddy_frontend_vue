@@ -305,6 +305,7 @@ async function handleSignOut() {
 
 .phone-row {
   display: flex;
+  justify-content: start;
   align-items: center;
   gap: var(--spacing-sm);
   min-height: 24px;
@@ -318,7 +319,6 @@ async function handleSignOut() {
 .phone-number {
   font-size: var(--font-size-sm);
   color: var(--color-on-surface);
-  flex: 1;
 }
 
 .verified-icon {
