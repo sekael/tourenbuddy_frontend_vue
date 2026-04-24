@@ -79,7 +79,8 @@
         color: #6b7280;
         line-height: 1.5;
         margin: 0 0 0;
-        word-break: break-all;
+        overflow-wrap: break-word;
+        word-break: normal;
       }
       .fallback-link a {
         color: #1a56db;
@@ -107,6 +108,8 @@
         background-color: #f9fafb;
         border-radius: 8px;
         border-left: 3px solid #e5e7eb;
+        overflow-wrap: break-word;
+        word-break: normal;
       }
       @media (max-width: 560px) {
         .body,

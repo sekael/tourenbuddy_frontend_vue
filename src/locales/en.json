@@ -52,7 +52,7 @@
       "backBtn": "Back"
     },
     "callback": {
-      "loading": "Signing you in…",
+      "loading": "Signing you in, this may take a moment…",
       "errorTitle": "Sign-in failed",
       "errorBody": "The link may have expired or already been used.",
       "backToEmailBtn": "Back to sign in"
