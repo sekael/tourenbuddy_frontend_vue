@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { orderedPhoneMethods } from '@/features/contacts/core/utils/order-phone-methods'
 
 function makeContact(
-  methods: Array<{ id: string, methodType: 'phone' | 'email', isPrimary: boolean }>,
+  methods: Array<{ id: string; methodType: 'phone' | 'email'; isPrimary: boolean }>,
 ) {
   return {
     id: 'c1',
@@ -10,7 +10,7 @@ function makeContact(
     firstName: 'Test',
     lastName: null,
     displayName: null,
-    contactMethods: methods.map(m => ({
+    contactMethods: methods.map((m) => ({
       ...m,
       contactId: 'c1',
       value: `+41 79 ${m.id}`,

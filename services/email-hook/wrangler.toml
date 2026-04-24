@@ -1,0 +1,27 @@
+name = "tourenbuddy-email-hook"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[vars]
+SUPABASE_URL = "https://ytjyjqmoluxdrcuzgnkc.supabase.co" 
+
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1
+
+# Secrets (set via `wrangler secret put`):
+# BREVO_API_KEY
+# SEND_EMAIL_HOOK_SECRET
+# BREVO_TEMPLATE_EN
+# BREVO_TEMPLATE_DE

@@ -29,24 +29,21 @@ const { contacts } = storeToRefs(contactsStore)
 
 function togglePartner(id: string) {
   const next = new Set(props.filters.partnerIds)
-  if (next.has(id))
-    next.delete(id)
+  if (next.has(id)) next.delete(id)
   else next.add(id)
   emit('update:partnerIds', next)
 }
 
 function toggleTourType(type: TourType) {
   const next = new Set(props.filters.tourTypes)
-  if (next.has(type))
-    next.delete(type)
+  if (next.has(type)) next.delete(type)
   else next.add(type)
   emit('update:tourTypes', next)
 }
 
 function toggleSeason(season: Season) {
   const next = new Set(props.filters.seasons)
-  if (next.has(season))
-    next.delete(season)
+  if (next.has(season)) next.delete(season)
   else next.add(season)
   emit('update:seasons', next)
 }
@@ -134,7 +131,7 @@ const completionOptions = [
                     : null,
                 )
             "
-          >
+          />
         </label>
         <label class="date-field">
           <span class="date-label-text">{{ t('tours.filters.dateToLabel') }}</span>
@@ -151,7 +148,7 @@ const completionOptions = [
                     : null,
                 )
             "
-          >
+          />
         </label>
       </div>
     </div>

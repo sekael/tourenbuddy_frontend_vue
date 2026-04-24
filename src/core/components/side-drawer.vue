@@ -15,7 +15,7 @@ const props = defineProps<{
   backLabel?: string
 }>()
 
-const emit = defineEmits<{ close: [], back: [] }>()
+const emit = defineEmits<{ close: []; back: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 
@@ -66,10 +66,19 @@ const isDesktop = useIsDesktop()
         <span class="material-symbols-outlined" aria-hidden="true">close</span>
       </button>
     </div>
-    <div class="drawer-content" :inert="props.collapsed || undefined" :aria-hidden="props.collapsed || undefined">
+    <div
+      class="drawer-content"
+      :inert="props.collapsed || undefined"
+      :aria-hidden="props.collapsed || undefined"
+    >
       <slot />
     </div>
-    <div v-if="$slots.footer" class="drawer-footer" :inert="props.collapsed || undefined" :aria-hidden="props.collapsed || undefined">
+    <div
+      v-if="$slots.footer"
+      class="drawer-footer"
+      :inert="props.collapsed || undefined"
+      :aria-hidden="props.collapsed || undefined"
+    >
       <slot name="footer" />
     </div>
   </div>

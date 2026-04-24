@@ -13,7 +13,7 @@ import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import TourFiltersPanel from './tour-filters-panel.vue'
 import TourListRow from './tour-list-row.vue'
 
-const emit = defineEmits<{ close: [], selectTour: [id: string] }>()
+const emit = defineEmits<{ close: []; selectTour: [id: string] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 
@@ -43,7 +43,7 @@ function handleRowClick(tourId: string) {
           type="search"
           class="search-input"
           :placeholder="t('tours.list.searchPlaceholder')"
-        >
+        />
       </div>
 
       <button class="filters-trigger" type="button" @click="filtersExpanded = !filtersExpanded">

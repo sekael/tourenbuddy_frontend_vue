@@ -24,13 +24,11 @@ async function handleSubmit() {
 
   isLoading.value = true
   try {
-    await authStore.sendEmailOtp(email.value)
-    router.push({ name: 'verify-otp', query: { email: email.value } })
-  }
-  catch (err) {
+    await authStore.sendMagicLink(email.value)
+    router.push({ name: 'check-email', query: { email: email.value } })
+  } catch (err) {
     error.value = err instanceof Error ? err.message : t('auth.emailEntry.sendError')
-  }
-  finally {
+  } finally {
     isLoading.value = false
   }
 }
@@ -61,7 +59,7 @@ async function handleSubmit() {
             :placeholder="t('auth.emailEntry.emailPlaceholder')"
             autocomplete="email"
             required
-          >
+          />
         </div>
 
         <p v-if="error" class="error-text">

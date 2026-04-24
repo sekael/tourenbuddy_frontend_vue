@@ -39,19 +39,15 @@ const full = computed(() => userProfileStore.fullProfile)
 
 const displayPhoneNumber = computed(() => {
   const phone = full.value?.phoneNumber
-  if (!phone)
-    return null
+  if (!phone) return null
   return formatPhoneForDisplay(phone) || phone
 })
 
 const displayName = computed(() => {
   const p = full.value
-  if (!p)
-    return authStore.currentUser?.email ?? 'User'
-  if (p.firstName && p.lastName)
-    return `${p.firstName} ${p.lastName}`
-  if (p.firstName)
-    return p.firstName
+  if (!p) return authStore.currentUser?.email ?? 'User'
+  if (p.firstName && p.lastName) return `${p.firstName} ${p.lastName}`
+  if (p.firstName) return p.firstName
   return p.email ?? 'User'
 })
 
@@ -92,18 +88,15 @@ async function handleSave() {
       pendingPhone.value = phone
       isEditing.value = false
       showPhoneVerification.value = true
-    }
-    else {
+    } else {
       isEditing.value = false
     }
-  }
-  catch (err) {
-    editError.value
-      = err instanceof InvalidPhoneNumberError || err instanceof Error
+  } catch (err) {
+    editError.value =
+      err instanceof InvalidPhoneNumberError || err instanceof Error
         ? (err as Error).message
         : t('user.profile.saveFailed')
-  }
-  finally {
+  } finally {
     isSaving.value = false
   }
 }
@@ -157,7 +150,8 @@ async function handleSignOut() {
               v-if="full.phoneVerified"
               class="material-symbols-outlined verified-icon"
               :title="t('user.profile.verifiedTooltip')"
-            >verified</span>
+              >verified</span
+            >
             <button v-else class="verify-btn" @click="startEdit">
               {{ t('user.profile.verifyBtn') }}
             </button>
@@ -208,7 +202,7 @@ async function handleSignOut() {
               type="text"
               class="input"
               autocomplete="given-name"
-            >
+            />
           </div>
 
           <div class="field">
@@ -219,12 +213,14 @@ async function handleSignOut() {
               type="text"
               class="input"
               autocomplete="family-name"
-            >
+            />
           </div>
 
           <div class="field">
-            <label for="edit-phone" class="label">{{ t('user.shared.phoneLabel') }}
-              <span class="optional">{{ t('user.shared.optional') }}</span></label>
+            <label for="edit-phone" class="label"
+              >{{ t('user.shared.phoneLabel') }}
+              <span class="optional">{{ t('user.shared.optional') }}</span></label
+            >
             <input
               id="edit-phone"
               :value="editPhoneFormatted"
@@ -233,7 +229,7 @@ async function handleSignOut() {
               :placeholder="t('user.shared.phonePlaceholder')"
               autocomplete="tel"
               @input="onEditPhoneInput"
-            >
+            />
           </div>
 
           <p v-if="editError" class="error-text">

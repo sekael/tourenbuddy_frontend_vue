@@ -183,7 +183,7 @@ TEL;TYPE=WORK:+41 44 555 66 77
 TEL;TYPE=CELL:+41 79 123 45 67
 END:VCARD`
     const result = parseVCardText(vcard)
-    const primary = result[0]!.phones.find(p => p.isPrimary)
+    const primary = result[0]!.phones.find((p) => p.isPrimary)
     expect(primary?.label).toBe('Mobile')
   })
 
@@ -195,7 +195,7 @@ TEL;TYPE=WORK:+41 44 555 66 77
 TEL;TYPE=HOME:+41 44 222 33 44
 END:VCARD`
     const result = parseVCardText(vcard)
-    const primary = result[0]!.phones.find(p => p.isPrimary)
+    const primary = result[0]!.phones.find((p) => p.isPrimary)
     expect(primary?.label).toBe('Home')
   })
 
@@ -239,7 +239,7 @@ TEL;type=WORK;type=VOICE:+41 44 555 66 77
 TEL;type=iPhone;type=CELL;type=VOICE:+41 79 123 45 67
 END:VCARD`
     const result = parseVCardText(vcard)
-    const primary = result[0]!.phones.find(p => p.isPrimary)
+    const primary = result[0]!.phones.find((p) => p.isPrimary)
     expect(primary?.value).toBe('+41791234567')
     expect(primary?.label).toBe('Mobile')
   })
@@ -252,7 +252,7 @@ TEL;type=WORK;type=VOICE:+41 44 555 66 77
 TEL;type=iPhone;type=VOICE:+41 79 123 45 67
 END:VCARD`
     const result = parseVCardText(vcard)
-    const primary = result[0]!.phones.find(p => p.isPrimary)
+    const primary = result[0]!.phones.find((p) => p.isPrimary)
     expect(primary?.value).toBe('+41791234567')
   })
 })

@@ -10,10 +10,13 @@ vi.mock('@/core/utils/supabase', () => ({
         .fn()
         .mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
       signInWithOtp: vi.fn().mockResolvedValue({ error: null }),
-      verifyOtp: vi.fn().mockResolvedValue({ error: null }),
       signOut: vi.fn().mockResolvedValue({ error: null }),
     },
   },
+}))
+
+vi.mock('@/features/i18n/presentation/stores/use-locale-store', () => ({
+  useLocaleStore: vi.fn(() => ({ locale: 'en' })),
 }))
 
 describe('useAuthStore', () => {
@@ -40,26 +43,48 @@ describe('useAuthStore', () => {
     expect(store.isAuthenticated).toBe(false)
   })
 
-  it('should call sendEmailOtp via Supabase', async () => {
+  it('should call sendMagicLink with correct signInWithOtp shape for en locale', async () => {
     const { supabase } = await import('@/core/utils/supabase')
+    const { useLocaleStore } = await import('@/features/i18n/presentation/stores/use-locale-store')
+    vi.mocked(useLocaleStore).mockReturnValue({ locale: 'en' } as never)
+
     const store = useAuthStore()
+    await store.sendMagicLink('test@example.com')
 
-    await store.sendEmailOtp('test@example.com')
-
-    expect(supabase.auth.signInWithOtp).toHaveBeenCalledWith({ email: 'test@example.com' })
+    expect(supabase.auth.signInWithOtp).toHaveBeenCalledWith({
+      email: 'test@example.com',
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        data: { locale: 'en' },
+      },
+    })
   })
 
-  it('should call verifyOtp via Supabase', async () => {
+  it('should call sendMagicLink with de locale for de-CH active locale', async () => {
     const { supabase } = await import('@/core/utils/supabase')
+    const { useLocaleStore } = await import('@/features/i18n/presentation/stores/use-locale-store')
+    vi.mocked(useLocaleStore).mockReturnValue({ locale: 'de-CH' } as never)
+
     const store = useAuthStore()
+    await store.sendMagicLink('test@example.com')
 
-    await store.verifyOtp('test@example.com', '123456')
-
-    expect(supabase.auth.verifyOtp).toHaveBeenCalledWith({
+    expect(supabase.auth.signInWithOtp).toHaveBeenCalledWith({
       email: 'test@example.com',
-      token: '123456',
-      type: 'email',
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        data: { locale: 'de' },
+      },
     })
+  })
+
+  it('should throw when sendMagicLink returns an error', async () => {
+    const { supabase } = await import('@/core/utils/supabase')
+    vi.mocked(supabase.auth.signInWithOtp).mockResolvedValue({
+      error: new Error('rate limited'),
+    } as never)
+
+    const store = useAuthStore()
+    await expect(store.sendMagicLink('test@example.com')).rejects.toThrow('rate limited')
   })
 
   it('should clear user on sign out', async () => {
@@ -68,16 +93,6 @@ describe('useAuthStore', () => {
 
     expect(store.currentUser).toBeNull()
     expect(store.isAuthenticated).toBe(false)
-  })
-
-  it('should throw when sendEmailOtp returns an error', async () => {
-    const { supabase } = await import('@/core/utils/supabase')
-    vi.mocked(supabase.auth.signInWithOtp).mockResolvedValue({
-      error: new Error('rate limited'),
-    } as never)
-
-    const store = useAuthStore()
-    await expect(store.sendEmailOtp('test@example.com')).rejects.toThrow('rate limited')
   })
 
   it('should not clear tb.locale from localStorage on sign out', async () => {
