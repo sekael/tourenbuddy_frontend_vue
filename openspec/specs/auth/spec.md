@@ -1,70 +1,51 @@
 ## ADDED Requirements
 
+### Requirement: Magic link callback page completes session
+
+The app SHALL display a callback page at `/auth/callback` that completes the Supabase PKCE exchange triggered by clicking the magic link in the email and routes the user to the appropriate post-login destination.
+
+#### Scenario: Successful magic link click
+
+- **WHEN** an unauthenticated user opens `/auth/callback?code=…` after clicking a valid magic link
+- **THEN** the Supabase JS client SHALL exchange the code automatically (via `detectSessionInUrl`), `onAuthStateChange` SHALL fire `SIGNED_IN`, and the page SHALL redirect to `/map` (or `/onboarding` if the profile is incomplete)
+
+#### Scenario: Expired or invalid token
+
+- **WHEN** the URL contains `?error=access_denied` or `?error_description=…`
+- **THEN** the page SHALL display the localized error message and a button that returns the user to `/auth/email`
+
+#### Scenario: Loading state while exchanging
+
+- **WHEN** the callback page mounts and no auth state has resolved yet
+- **THEN** the page SHALL show a localized loading indicator and SHALL NOT redirect until either `SIGNED_IN` fires or an error is surfaced
+
+### Requirement: Locale captured in user metadata at sign-up
+
+When the auth store calls `signInWithOtp` and the user does not yet exist, the request SHALL include `options.data.locale` set to the base language code (`en` or `de`) derived from the active i18n locale.
+
+#### Scenario: New user with German locale
+
+- **WHEN** a new user with active i18n locale `de-CH` requests a magic link
+- **THEN** the call SHALL pass `options.data.locale = 'de'` so Supabase persists it on user creation in `user_metadata`
+
+#### Scenario: New user with English locale
+
+- **WHEN** a new user with active i18n locale `en` requests a magic link
+- **THEN** the call SHALL pass `options.data.locale = 'en'`
+
 ### Requirement: Email entry page collects user email
 
-The app SHALL display an email entry page at `/auth/email` where users enter their email address to receive a one-time password.
+The app SHALL display an email entry page at `/auth/email` where users enter their email address to receive a magic link.
 
 #### Scenario: Valid email submission
 
 - **WHEN** a user enters a valid email address and submits the form
-- **THEN** the app SHALL call Supabase `signInWithOtp({ email })` and navigate to the OTP verification page
+- **THEN** the app SHALL call Supabase `signInWithOtp({ email, options: { emailRedirectTo: '<origin>/auth/callback', data: { locale } } })` and navigate to the check-email page
 
 #### Scenario: Invalid email submission
 
 - **WHEN** a user enters an invalid email address and submits the form
 - **THEN** the app SHALL display a validation error and NOT call Supabase
-
-### Requirement: OTP verification page verifies the code
-
-The app SHALL display an OTP verification page at `/auth/verify-otp` where users enter the 8-character code received via email.
-
-#### Scenario: Valid OTP verification
-
-- **WHEN** a user enters a valid 8-character OTP code
-- **THEN** the app SHALL call Supabase `verifyOtp({ email, token, type: 'email' })` and on success, redirect to the map page
-
-#### Scenario: Invalid OTP code
-
-- **WHEN** a user enters an incorrect OTP code
-- **THEN** the app SHALL display an error message and allow retry
-
-#### Scenario: Resend OTP
-
-- **WHEN** a user clicks "Resend code"
-- **THEN** the app SHALL call `signInWithOtp` again with the same email
-
-### Requirement: Auth gate redirects based on session state
-
-The Vue Router SHALL use a `beforeEach` navigation guard that checks the user's authentication state and redirects accordingly.
-
-#### Scenario: Unauthenticated user visits protected route
-
-- **WHEN** an unauthenticated user navigates to `/map`
-- **THEN** the router SHALL redirect to `/` (home page)
-
-#### Scenario: Authenticated user visits auth pages
-
-- **WHEN** an authenticated user navigates to `/` or `/auth/*`
-- **THEN** the router SHALL redirect to `/map`
-
-#### Scenario: Auth state changes after login
-
-- **WHEN** a user successfully verifies their OTP
-- **THEN** the Supabase `onAuthStateChange` listener SHALL update the auth store and trigger navigation to `/map`
-
-### Requirement: Auth store manages session state
-
-A Pinia store (`useAuthStore`) SHALL manage the current user session, exposing reactive state for `isAuthenticated`, `currentUser`, and `isLoading`.
-
-#### Scenario: Store initialization
-
-- **WHEN** the app starts
-- **THEN** the auth store SHALL check for an existing Supabase session and set `isAuthenticated` accordingly
-
-#### Scenario: Sign out
-
-- **WHEN** `signOut()` is called on the auth store
-- **THEN** the store SHALL call Supabase `signOut()`, clear the session, and the router guard SHALL redirect to `/`
 
 ### Requirement: Home page for unauthenticated users
 
@@ -77,29 +58,78 @@ The app SHALL display a home/landing page at `/` with the app name and a button 
 
 ## MODIFIED Requirements
 
-### Requirement: Home page layout
+### Requirement: Email entry page collects user email
 
-The home page SHALL display the app title "TourenBuddy" and subtitle centered vertically with generous whitespace. The title SHALL use `--color-primary` and the "Get Started" button SHALL use primary button styling with 12px border-radius. The page background SHALL be `--color-background` with a clean, minimal aesthetic.
+The app SHALL display an email entry page at `/auth/email` where users enter their email address to receive a magic link.
 
-#### Scenario: Home page renders with updated design
+#### Scenario: Valid email submission
 
-- **WHEN** user navigates to the home page
-- **THEN** the page displays with the blueish-grey color scheme, Inter font, and modern button styling
+- **WHEN** a user enters a valid email address and submits the form
+- **THEN** the app SHALL call Supabase `signInWithOtp({ email, options: { emailRedirectTo: '<origin>/auth/callback', data: { locale } } })` and navigate to the check-email page
 
-### Requirement: Email entry page layout
+#### Scenario: Invalid email submission
 
-The email entry page SHALL display a back button using Material Symbols `arrow_back` icon, a title, email input with updated input styling, and submit button with primary button styling. Error messages SHALL use `--color-error`.
+- **WHEN** a user enters an invalid email address and submits the form
+- **THEN** the app SHALL display a validation error and NOT call Supabase
 
-#### Scenario: Email page renders with Material icons
+### Requirement: Auth store manages session state
 
-- **WHEN** user navigates to the email entry page
-- **THEN** the back button displays an `arrow_back` Material Symbol instead of a text arrow
+A Pinia store (`useAuthStore`) SHALL manage the current user session, exposing reactive state for `isAuthenticated`, `currentUser`, and `isLoading`, and a `sendMagicLink(email)` action that issues the Supabase magic link request.
+
+#### Scenario: Store initialization
+
+- **WHEN** the app starts
+- **THEN** the auth store SHALL check for an existing Supabase session and set `isAuthenticated` accordingly
+
+#### Scenario: Sign out
+
+- **WHEN** `signOut()` is called on the auth store
+- **THEN** the store SHALL call Supabase `signOut()`, clear the session, and the router guard SHALL redirect to `/`
+
+#### Scenario: sendMagicLink for new user
+
+- **WHEN** `sendMagicLink('user@example.com')` is called and the user does not yet exist
+- **THEN** the store SHALL call `signInWithOtp` with `emailRedirectTo` pointing to the callback route and `options.data.locale` set to the active base locale
+
+#### Scenario: sendMagicLink for existing user
+
+- **WHEN** `sendMagicLink('user@example.com')` is called and the user already exists
+- **THEN** the store SHALL call `signInWithOtp` with `emailRedirectTo` and the request SHALL succeed without overwriting existing `user_metadata.locale` (Supabase merges `data` only at user creation)
+
+### Requirement: Auth gate redirects based on session state
+
+The Vue Router SHALL use a `beforeEach` navigation guard that checks the user's authentication state and redirects accordingly. The callback route SHALL be exempt from `redirectIfAuth` so it can complete the PKCE exchange while the user is still unauthenticated.
+
+#### Scenario: Unauthenticated user visits protected route
+
+- **WHEN** an unauthenticated user navigates to `/map`
+- **THEN** the router SHALL redirect to `/` (home page)
+
+#### Scenario: Authenticated user visits auth pages
+
+- **WHEN** an authenticated user navigates to `/` or `/auth/email` or `/auth/check-email`
+- **THEN** the router SHALL redirect to `/map`
+
+#### Scenario: Callback route always reachable
+
+- **WHEN** any user (authenticated or not) navigates to `/auth/callback`
+- **THEN** the router SHALL allow the navigation so the callback page can run its exchange/error logic
+
+#### Scenario: Auth state changes after magic link click
+
+- **WHEN** a user clicks the magic link and the callback page completes the exchange
+- **THEN** the Supabase `onAuthStateChange` listener SHALL update the auth store and the callback page SHALL navigate to `/map` or `/onboarding`
+
+## REMOVED Requirements
+
+### Requirement: OTP verification page verifies the code
+
+**Reason**: Replaced by magic link flow. Users no longer enter a code; they click a link that lands on `/auth/callback`.
+
+**Migration**: Delete `src/features/auth/presentation/pages/verify-otp-page.vue` and its route. Replace with `check-email-page.vue` (instructional only) at `/auth/check-email` plus `callback-page.vue` at `/auth/callback`. Any user holding an unredeemed OTP must request a new magic link.
 
 ### Requirement: OTP verification page layout
 
-The verify OTP page SHALL display a back button with Material Symbols `arrow_back` icon, title, OTP input field with updated styling, and verify/resend buttons. Success and error messages SHALL use the updated color tokens.
+**Reason**: The OTP verification page is removed (see above). The replacement check-email page does not require an OTP input.
 
-#### Scenario: OTP page renders with updated design
-
-- **WHEN** user navigates to the OTP verification page
-- **THEN** the page uses Material Symbols for navigation and updated color/typography tokens
+**Migration**: Build `check-email-page.vue` with title, instructional subtitle naming the recipient, a resend button, and a back button — no input field, no verify button.

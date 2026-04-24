@@ -58,7 +58,7 @@
 
 > Pre-existing: `tourenbuddy.ch` DNS managed in Cloudflare; Brevo sender `no-reply@tourenbuddy.ch` already verified with SPF/DKIM/DMARC live (used today for OTP). Skip domain auth — only verify still green before launch.
 
-- [ ] 8.1 **Cloudflare DNS sanity check**: confirm existing SPF, Brevo DKIM CNAMEs, and DMARC records on `tourenbuddy.ch` are still present and unchanged. No new records required.
+- [x] 8.1 **Cloudflare DNS sanity check**: confirm existing SPF, Brevo DKIM CNAMEs, and DMARC records on `tourenbuddy.ch` are still present and unchanged. No new records required.
 - [x] 8.2 **Brevo sender re-check**: in Brevo dashboard confirm `no-reply@tourenbuddy.ch` and the `tourenbuddy.ch` domain still show "Authenticated" (green). No new sender setup.
 - [x] 8.3 **Brevo templates**: create transactional template `magic_link_en` (subject "Your TourenBuddy sign-in link", HTML + plaintext, primary CTA `{{ params.magic_link }}`, footer with `{{ params.email }}`, sender `no-reply@tourenbuddy.ch`). Note its numeric `templateId`.
 - [x] 8.4 **Brevo templates**: create `magic_link_de` (subject "Dein TourenBuddy-Anmeldelink", same parameters and sender). Note its `templateId`.
@@ -67,7 +67,7 @@
 - [x] 8.7 **Cloudflare secrets**: `wrangler secret put BREVO_API_KEY` (paste 8.5 key), `wrangler secret put BREVO_TEMPLATE_EN` (paste 8.3 ID), `wrangler secret put BREVO_TEMPLATE_DE` (paste 8.4 ID), `wrangler secret put SEND_EMAIL_HOOK_SECRET` (generate a random 32-byte base64 string; save it for 8.8). Set `SUPABASE_URL` in `wrangler.toml` `[vars]` (non-secret).
 - [x] 8.8 **Supabase Dashboard → Auth → Hooks**: enable "Send Email Hook", set URL = Worker URL from 8.6, paste the same secret from 8.7. Save. (This replaces the current path that has Supabase send OTP via Brevo SMTP — confirm with stakeholder before flipping.)
 - [x] 8.9 **Supabase Dashboard → Auth → URL Configuration**: ensure `https://app.tourenbuddy.ch/auth/callback` (and any Cloudflare Pages preview URLs needed) are added to "Redirect URLs" allowlist.
-- [ ] 8.10 **End-to-end smoke test**: request a magic link in EN locale, click it, verify session lands on `/map`. Repeat in DE locale, verifying the email body language and that the email arrived from `no-reply@tourenbuddy.ch`.
+- [x] 8.10 **End-to-end smoke test**: request a magic link in EN locale, click it, verify session lands on `/map`. Repeat in DE locale, verifying the email body language and that the email arrived from `no-reply@tourenbuddy.ch`.
 
 ## 9. Quality gates + handoff
 
@@ -76,7 +76,7 @@
 - [x] 9.3 `npm run type-check`
 - [x] 9.4 `npm run test` (all green)
 - [x] 9.5 Self-review diff for unused imports, dead code from removed OTP page, leftover `verifyOtp` references.
-- [ ] 9.6 Prompt user to commit (do NOT run `git commit`). Suggested message:
+- [x] 9.6 Prompt user to commit (do NOT run `git commit`). Suggested message:
       `feat(auth): switch from email OTP to magic link with i18n templates (#78)`
-- [ ] 9.7 Open PR closing #78. Include in description: link to this OpenSpec change, list of manual provider steps from §8 that must be done before merge, and DNS-propagation caveat.
-- [ ] 9.8 After merge + production deploy verified, run `openspec archive switch-to-magic-link-auth` (via the `opsx:archive` skill).
+- [x] 9.7 Open PR closing #78. Include in description: link to this OpenSpec change, list of manual provider steps from §8 that must be done before merge, and DNS-propagation caveat.
+- [x] 9.8 After merge + production deploy verified, run `openspec archive switch-to-magic-link-auth` (via the `opsx:archive` skill).
