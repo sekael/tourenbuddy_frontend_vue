@@ -15,7 +15,7 @@ const props = defineProps<{
   backLabel?: string
 }>()
 
-const emit = defineEmits<{ close: []; back: [] }>()
+const emit = defineEmits<{ close: [], back: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 

@@ -28,19 +28,22 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function sendMagicLink(email: string) {
     const localeStore = useLocaleStore()
+    const emailLocale = toEmailLocale(localeStore.locale)
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-        data: { locale: toEmailLocale(localeStore.locale) },
+        emailRedirectTo: `${window.location.origin}/auth/callback?locale=${emailLocale}`,
+        data: { locale: emailLocale },
       },
     })
-    if (error) throw error
+    if (error)
+      throw error
   }
 
   async function signOut() {
     const { error } = await supabase.auth.signOut()
-    if (error) throw error
+    if (error)
+      throw error
     currentUser.value = null
   }
 

@@ -12,7 +12,7 @@ const {
   mockProfileStore,
 } = vi.hoisted(() => {
   const store = {
-    _profile: null as { id: string; firstName: string | null; lastName: string | null } | null,
+    _profile: null as { id: string, firstName: string | null, lastName: string | null } | null,
     get profile() {
       return store._profile
     },
@@ -61,7 +61,7 @@ describe('onboardingPage', () => {
   it('should not call loadProfile on mount when profile is already loaded', async () => {
     mockProfileStore._profile = { id: 'user-123', firstName: null, lastName: null }
     mount(OnboardingPage)
-    await new Promise((r) => setTimeout(r, 0))
+    await new Promise(r => setTimeout(r, 0))
     expect(mockLoadProfile).not.toHaveBeenCalled()
   })
 

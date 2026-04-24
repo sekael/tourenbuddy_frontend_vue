@@ -14,7 +14,7 @@ export const userProfileRowSchema = z
     first_name: z.string().nullable(),
     last_name: z.string().nullable(),
   })
-  .transform((row) => ({
+  .transform(row => ({
     id: row.id,
     firstName: row.first_name,
     lastName: row.last_name,

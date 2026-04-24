@@ -21,9 +21,11 @@ async function handleResend() {
   try {
     await authStore.sendMagicLink(email)
     resendSuccess.value = true
-  } catch {
+  }
+  catch {
     error.value = t('auth.checkEmail.resendError')
-  } finally {
+  }
+  finally {
     isResending.value = false
   }
 }

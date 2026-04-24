@@ -98,7 +98,7 @@ describe('useLocaleStore', () => {
     mockGetSession.mockResolvedValue({ data: { session: null } })
     const store = useLocaleStore()
     store.setLocale('de-CH')
-    await new Promise((r) => setTimeout(r, 10))
+    await new Promise(r => setTimeout(r, 10))
     expect(mockUpdateUser).not.toHaveBeenCalled()
   })
 })

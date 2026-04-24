@@ -419,7 +419,7 @@ describe('tourInfoSheet', () => {
 
       const menu = wrapper.findComponent(ContactActionMenuStub)
       const menuContact = menu.props('contact') as typeof updatedContact
-      expect(menuContact.contactMethods.find((m) => m.isPrimary)?.id).toBe('method-2')
+      expect(menuContact.contactMethods.find(m => m.isPrimary)?.id).toBe('method-2')
     })
   })
 })

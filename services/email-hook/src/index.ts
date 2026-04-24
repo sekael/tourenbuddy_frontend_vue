@@ -22,19 +22,37 @@ interface SupabaseHookPayload {
   }
 }
 
+const JSON_HEADERS = { 'Content-Type': 'application/json' }
+
+function jsonResponse(status: number, body: Record<string, unknown> = {}) {
+  return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS })
+}
+
+function resolveLocale(redirectTo: string, metadataLocale: string | undefined): 'en' | 'de' {
+  try {
+    const qp = new URL(redirectTo).searchParams.get('locale')
+    if (qp === 'de' || qp === 'en')
+      return qp
+  }
+  catch {
+    // ignore malformed redirect_to
+  }
+  return metadataLocale === 'de' ? 'de' : 'en'
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method !== 'POST') {
-      return new Response('Method Not Allowed', { status: 405 })
+      return jsonResponse(405, { error: 'method_not_allowed' })
     }
 
     if (
-      !env.BREVO_API_KEY ||
-      !env.SEND_EMAIL_HOOK_SECRET ||
-      !env.BREVO_TEMPLATE_EN ||
-      !env.BREVO_TEMPLATE_DE
+      !env.BREVO_API_KEY
+      || !env.SEND_EMAIL_HOOK_SECRET
+      || !env.BREVO_TEMPLATE_EN
+      || !env.BREVO_TEMPLATE_DE
     ) {
-      return new Response('Missing required configuration', { status: 500 })
+      return jsonResponse(500, { error: 'missing_configuration' })
     }
 
     const webhookId = request.headers.get('webhook-id') ?? ''
@@ -49,19 +67,21 @@ export default {
         'webhook-timestamp': webhookTimestamp,
         'webhook-signature': webhookSignature,
       })
-    } catch {
-      return new Response('Invalid signature', { status: 401 })
+    }
+    catch {
+      return jsonResponse(401, { error: 'invalid_signature' })
     }
 
     let payload: SupabaseHookPayload
     try {
       payload = JSON.parse(body) as SupabaseHookPayload
-    } catch {
-      return new Response('Invalid JSON', { status: 400 })
+    }
+    catch {
+      return jsonResponse(400, { error: 'invalid_json' })
     }
 
     const { user, email_data } = payload
-    const locale = user.user_metadata?.locale
+    const locale = resolveLocale(email_data.redirect_to, user.user_metadata?.locale)
     const templateId = Number(locale === 'de' ? env.BREVO_TEMPLATE_DE : env.BREVO_TEMPLATE_EN)
 
     const magicLink = `${env.SUPABASE_URL}/auth/v1/verify?token=${email_data.token_hash}&type=${email_data.email_action_type}&redirect_to=${encodeURIComponent(email_data.redirect_to)}`
@@ -85,9 +105,9 @@ export default {
     if (!brevoResponse.ok) {
       const errorText = await brevoResponse.text()
       console.error(`Brevo error ${brevoResponse.status}: ${errorText}`)
-      return new Response('Email delivery failed', { status: 502 })
+      return jsonResponse(502, { error: 'email_delivery_failed' })
     }
 
-    return new Response('OK', { status: 200 })
+    return jsonResponse(200)
   },
 }

@@ -54,7 +54,7 @@ describe('useAuthStore', () => {
     expect(supabase.auth.signInWithOtp).toHaveBeenCalledWith({
       email: 'test@example.com',
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?locale=en`,
         data: { locale: 'en' },
       },
     })
@@ -71,7 +71,7 @@ describe('useAuthStore', () => {
     expect(supabase.auth.signInWithOtp).toHaveBeenCalledWith({
       email: 'test@example.com',
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?locale=de`,
         data: { locale: 'de' },
       },
     })

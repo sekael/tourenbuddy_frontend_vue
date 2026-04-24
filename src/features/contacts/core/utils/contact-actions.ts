@@ -12,14 +12,14 @@ export interface ContactAction {
 }
 
 export interface GroupSmsResult {
-  included: { contact: Contact; e164: string }[]
-  excluded: { contact: Contact; reason: string }[]
+  included: { contact: Contact, e164: string }[]
+  excluded: { contact: Contact, reason: string }[]
 }
 
 /** Returns one action entry per valid phone method, ordered primary-first. */
 export function buildContactActions(contact: Contact): ContactAction[] {
   return orderedPhoneMethods(contact)
-    .filter((m) => m.isValid && E164_REGEX.test(m.value))
+    .filter(m => m.isValid && E164_REGEX.test(m.value))
     .map((m) => {
       const digits = m.value.slice(1)
       return {
@@ -37,11 +37,12 @@ export function buildGroupSmsRecipients(partners: Contact[]): GroupSmsResult {
   const excluded: GroupSmsResult['excluded'] = []
 
   for (const contact of partners) {
-    const phones = contact.contactMethods.filter((m) => m.methodType === 'phone')
-    const primary = phones.find((m) => m.isPrimary) ?? phones[0]
+    const phones = contact.contactMethods.filter(m => m.methodType === 'phone')
+    const primary = phones.find(m => m.isPrimary) ?? phones[0]
     if (primary && primary.isValid && E164_REGEX.test(primary.value)) {
       included.push({ contact, e164: primary.value })
-    } else {
+    }
+    else {
       excluded.push({ contact, reason: 'No valid phone number' })
     }
   }

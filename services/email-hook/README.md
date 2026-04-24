@@ -8,21 +8,23 @@ See implementation spec: `../../openspec/changes/switch-to-magic-link-auth/`
 
 Ready-to-use templates are in `templates/`:
 
-| File | Purpose | Brevo name |
-|---|---|---|
-| `magic_link_en.html` | HTML body (EN) | `magic_link_en` |
-| `magic_link_en.txt` | Plaintext fallback (EN) | — |
-| `magic_link_de.html` | HTML body (DE) | `magic_link_de` |
-| `magic_link_de.txt` | Plaintext fallback (DE) | — |
+| File                 | Purpose                 | Brevo name      |
+| -------------------- | ----------------------- | --------------- |
+| `magic_link_en.html` | HTML body (EN)          | `magic_link_en` |
+| `magic_link_en.txt`  | Plaintext fallback (EN) | —               |
+| `magic_link_de.html` | HTML body (DE)          | `magic_link_de` |
+| `magic_link_de.txt`  | Plaintext fallback (DE) | —               |
 
-In Brevo: **Transactional → Templates → Create a template**.  
-- Subject EN: `Your TourenBuddy sign-in link`  
-- Subject DE: `Dein TourenBuddy-Anmeldelink`  
-- Sender: `no-reply@tourenbuddy.ch`  
-- Paste HTML content, paste plaintext content.  
+In Brevo: **Transactional → Templates → Create a template**.
+
+- Subject EN: `Your TourenBuddy sign-in link`
+- Subject DE: `Dein TourenBuddy-Anmeldelink`
+- Sender: `no-reply@tourenbuddy.ch`
+- Paste HTML content, paste plaintext content.
 - Note the numeric `templateId` from the template detail page — you need it for `BREVO_TEMPLATE_EN` / `BREVO_TEMPLATE_DE`.
 
 Required params (passed by Worker, referenced in templates):
+
 - `{{ params.magic_link }}` — the full sign-in URL
 - `{{ params.email }}` — the recipient's email address
 

@@ -9,19 +9,22 @@ const DEFAULT_COUNTRY: CountryCode = 'CH'
 function countSignificantChars(s: string): number {
   let count = 0
   for (const ch of s) {
-    if (/\d/.test(ch) || ch === '+') count++
+    if (/\d/.test(ch) || ch === '+')
+      count++
   }
   return count
 }
 
 function findCursorAfterNthSignificantChar(s: string, n: number): number {
-  if (n <= 0) return 0
+  if (n <= 0)
+    return 0
   let count = 0
   for (let i = 0; i < s.length; i++) {
     const ch = s[i]!
     if (/\d/.test(ch) || ch === '+') {
       count++
-      if (count === n) return i + 1
+      if (count === n)
+        return i + 1
     }
   }
   return s.length
@@ -48,7 +51,8 @@ export function useAsYouTypePhone(
   defaultCountry: CountryCode = DEFAULT_COUNTRY,
 ) {
   const formatted = computed(() => {
-    if (!rawRef.value) return ''
+    if (!rawRef.value)
+      return ''
     return new AsYouType(defaultCountry).input(rawRef.value)
   })
 

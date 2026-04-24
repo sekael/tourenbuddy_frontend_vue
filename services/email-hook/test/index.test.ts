@@ -64,6 +64,10 @@ describe('email-hook worker', () => {
     const payload = {
       ...VALID_PAYLOAD,
       user: { ...VALID_PAYLOAD.user, user_metadata: { locale: 'de' } },
+      email_data: {
+        ...VALID_PAYLOAD.email_data,
+        redirect_to: 'https://app.tourenbuddy.ch/auth/callback?locale=de',
+      },
     }
     await worker.fetch(makeRequest(payload), VALID_ENV as never)
     const brevoBody = JSON.parse(
@@ -116,6 +120,28 @@ describe('email-hook worker', () => {
       .mockResolvedValue(new Response('Internal Server Error', { status: 500 }))
     const response = await worker.fetch(makeRequest(VALID_PAYLOAD), VALID_ENV as never)
     expect(response.status).toBe(502)
+  })
+
+  it('returns JSON content-type on success', async () => {
+    const response = await worker.fetch(makeRequest(VALID_PAYLOAD), VALID_ENV as never)
+    expect(response.headers.get('Content-Type')).toBe('application/json')
+    expect(await response.text()).toBe('{}')
+  })
+
+  it('prefers redirect_to locale query over user_metadata locale', async () => {
+    const payload = {
+      ...VALID_PAYLOAD,
+      user: { ...VALID_PAYLOAD.user, user_metadata: { locale: 'en' } },
+      email_data: {
+        ...VALID_PAYLOAD.email_data,
+        redirect_to: 'https://app.tourenbuddy.ch/auth/callback?locale=de',
+      },
+    }
+    await worker.fetch(makeRequest(payload), VALID_ENV as never)
+    const brevoBody = JSON.parse(
+      (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body as string,
+    )
+    expect(brevoBody.templateId).toBe(20)
   })
 
   it('returns 405 for non-POST methods', async () => {

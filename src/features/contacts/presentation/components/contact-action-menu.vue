@@ -25,7 +25,8 @@ const contactName = computed(() => resolveContactName(props.contact))
 
 // ── Desktop popover positioning ───────────────────────────────────────────────
 const popoverStyle = computed(() => {
-  if (!props.anchorRect) return {}
+  if (!props.anchorRect)
+    return {}
   const POPOVER_WIDTH = 240
   const MARGIN = 8
   let left = props.anchorRect.left

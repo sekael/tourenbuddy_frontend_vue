@@ -31,7 +31,7 @@ describe('callbackPage', () => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
     authStateChangeCallback = null
-    Object.keys(mockRouteQuery).forEach((k) => delete mockRouteQuery[k])
+    Object.keys(mockRouteQuery).forEach(k => delete mockRouteQuery[k])
   })
 
   it('should show loading state by default', () => {
