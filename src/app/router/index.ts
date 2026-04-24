@@ -24,10 +24,15 @@ const router = createRouter({
       meta: { redirectIfAuth: true },
     },
     {
-      path: '/auth/verify-otp',
-      name: 'verify-otp',
-      component: () => import('@/features/auth/presentation/pages/verify-otp-page.vue'),
+      path: '/auth/check-email',
+      name: 'check-email',
+      component: () => import('@/features/auth/presentation/pages/check-email-page.vue'),
       meta: { redirectIfAuth: true },
+    },
+    {
+      path: '/auth/callback',
+      name: 'callback',
+      component: () => import('@/features/auth/presentation/pages/callback-page.vue'),
     },
     {
       path: '/onboarding',

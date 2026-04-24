@@ -33,29 +33,6 @@ When the auth store calls `signInWithOtp` and the user does not yet exist, the r
 - **WHEN** a new user with active i18n locale `en` requests a magic link
 - **THEN** the call SHALL pass `options.data.locale = 'en'`
 
-### Requirement: Email entry page collects user email
-
-The app SHALL display an email entry page at `/auth/email` where users enter their email address to receive a magic link.
-
-#### Scenario: Valid email submission
-
-- **WHEN** a user enters a valid email address and submits the form
-- **THEN** the app SHALL call Supabase `signInWithOtp({ email, options: { emailRedirectTo: '<origin>/auth/callback', data: { locale } } })` and navigate to the check-email page
-
-#### Scenario: Invalid email submission
-
-- **WHEN** a user enters an invalid email address and submits the form
-- **THEN** the app SHALL display a validation error and NOT call Supabase
-
-### Requirement: Home page for unauthenticated users
-
-The app SHALL display a home/landing page at `/` with the app name and a button to navigate to the email entry page.
-
-#### Scenario: Navigate to login
-
-- **WHEN** an unauthenticated user clicks the login button on the home page
-- **THEN** the app SHALL navigate to `/auth/email`
-
 ## MODIFIED Requirements
 
 ### Requirement: Email entry page collects user email

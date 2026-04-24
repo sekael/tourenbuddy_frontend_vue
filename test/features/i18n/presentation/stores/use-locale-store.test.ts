@@ -2,6 +2,20 @@ import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useLocaleStore } from '@/features/i18n/presentation/stores/use-locale-store'
 
+const { mockUpdateUser, mockGetSession } = vi.hoisted(() => ({
+  mockGetSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+  mockUpdateUser: vi.fn().mockResolvedValue({ error: null }),
+}))
+
+vi.mock('@/core/utils/supabase', () => ({
+  supabase: {
+    auth: {
+      getSession: mockGetSession,
+      updateUser: mockUpdateUser,
+    },
+  },
+}))
+
 vi.mock('@/core/i18n', () => ({
   i18n: {
     global: {
@@ -19,6 +33,8 @@ describe('useLocaleStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    mockGetSession.mockResolvedValue({ data: { session: null } })
+    mockUpdateUser.mockResolvedValue({ error: null })
     Object.defineProperty(document.documentElement, 'lang', {
       set: vi.fn(),
       get: vi.fn(() => 'en'),
@@ -62,5 +78,27 @@ describe('useLocaleStore', () => {
     const store = useLocaleStore()
     store.setLocale('de-CH')
     expect((i18n.global.locale as { value: string }).value).toBe('de-CH')
+  })
+
+  it('setLocale calls updateUser with de when authenticated and locale is de-CH', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: { user: { id: 'user-1' } } } })
+    const store = useLocaleStore()
+    store.setLocale('de-CH')
+    await vi.waitFor(() => expect(mockUpdateUser).toHaveBeenCalledWith({ data: { locale: 'de' } }))
+  })
+
+  it('setLocale calls updateUser with en when authenticated and locale is en', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: { user: { id: 'user-1' } } } })
+    const store = useLocaleStore()
+    store.setLocale('en')
+    await vi.waitFor(() => expect(mockUpdateUser).toHaveBeenCalledWith({ data: { locale: 'en' } }))
+  })
+
+  it('setLocale does NOT call updateUser when unauthenticated', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null } })
+    const store = useLocaleStore()
+    store.setLocale('de-CH')
+    await new Promise(r => setTimeout(r, 10))
+    expect(mockUpdateUser).not.toHaveBeenCalled()
   })
 })

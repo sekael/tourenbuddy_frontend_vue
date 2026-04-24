@@ -1,8 +1,10 @@
 import type { User } from '@supabase/supabase-js'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { toEmailLocale } from '@/core/i18n/to-email-locale'
 import { useLogger } from '@/core/logging/use-logger'
 import { supabase } from '@/core/utils/supabase'
+import { useLocaleStore } from '@/features/i18n/presentation/stores/use-locale-store'
 
 export const useAuthStore = defineStore('auth', () => {
   const logger = useLogger('AuthStore')
@@ -24,14 +26,16 @@ export const useAuthStore = defineStore('auth', () => {
     })
   }
 
-  async function sendEmailOtp(email: string) {
-    const { error } = await supabase.auth.signInWithOtp({ email })
-    if (error)
-      throw error
-  }
-
-  async function verifyOtp(email: string, token: string) {
-    const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
+  async function sendMagicLink(email: string) {
+    const localeStore = useLocaleStore()
+    const emailLocale = toEmailLocale(localeStore.locale)
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback?locale=${emailLocale}`,
+        data: { locale: emailLocale },
+      },
+    })
     if (error)
       throw error
   }
@@ -48,8 +52,7 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading,
     isAuthenticated,
     initialize,
-    sendEmailOtp,
-    verifyOtp,
+    sendMagicLink,
     signOut,
   }
 })
