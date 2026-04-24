@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.7.0...tourenbuddy-frontend-v0.7.1) (2026-04-24)
+
+
+### Bug Fixes
+
+* Redirect magic link ([#81](https://github.com/sekael/tourenbuddy_frontend_vue/issues/81)) ([c841adc](https://github.com/sekael/tourenbuddy_frontend_vue/commit/c841adcc2ba6c5e39fea566e287df42652791905))
+
 ## [0.7.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.6.1...tourenbuddy-frontend-v0.7.0) (2026-04-24)
 
 
