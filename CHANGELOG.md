@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.6.1...tourenbuddy-frontend-v0.7.0) (2026-04-24)
+
+
+### Features
+
+* Switch to magic link authentication ([#79](https://github.com/sekael/tourenbuddy_frontend_vue/issues/79)) ([52a88a1](https://github.com/sekael/tourenbuddy_frontend_vue/commit/52a88a1ce9c7b0969344231a5f8ff82191463937))
+
 ## [0.6.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.6.0...tourenbuddy-frontend-v0.6.1) (2026-04-23)
 
 
