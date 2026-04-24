@@ -52,7 +52,7 @@
       "backBtn": "Zurück"
     },
     "callback": {
-      "loading": "Anmeldung läuft…",
+      "loading": "Anmeldung läuft, dies kann einen Moment dauern…",
       "errorTitle": "Anmeldung fehlgeschlagen",
       "errorBody": "Der Link ist möglicherweise abgelaufen oder wurde bereits verwendet.",
       "backToEmailBtn": "Zurück zur Anmeldung"
