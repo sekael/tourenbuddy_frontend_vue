@@ -112,12 +112,13 @@ function handleBackdropClick() {
   }
 }
 
-/* Collapsed: header-only bar anchored to top-center, matching side-drawer--collapsed */
+/* Collapsed: header-only bar anchored to top-center, matching side-drawer--collapsed.
+   animation-name intentionally NOT overridden here — same pattern as side-drawer.vue —
+   so toggling collapsed off does not restart dialog-enter. */
 .dialog-card--collapsed {
   max-width: 400px;
   max-height: 4.5rem;
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-  animation: none;
   pointer-events: auto;
 }
 

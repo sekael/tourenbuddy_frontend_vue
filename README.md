@@ -1,6 +1,6 @@
 # TourenBuddy Frontend (Vue)
 
-A tour-planning app for outdoor enthusiasts. 
+A tour-planning app for outdoor enthusiasts.
 Pin tour objectives on the map, remember the friends you want to do it with, contact them, set dates, and finally complete your adventures.
 TourenBuddy aims to be your one tool to keep track of objectives and touring partners outdoors.
 
@@ -66,7 +66,8 @@ The app will be available at `http://localhost:5173`.
 
 ## Tech Stack
 
-Frontend: 
+Frontend:
+
 - **Vue 3** with TypeScript and `<script setup>` SFCs
 - **Vite** — build tool and dev server
 - **Pinia** — state management (composition API stores)
@@ -78,10 +79,12 @@ Frontend:
 - **Vitest** — unit testing
 
 Backend:
+
 - Supabase PostgreSQL database with REST endpoints
 - Supabase authentication and phone verification
 
 Infrastructure:
+
 - Cloudflare pages deployment
 - Github Actions for CI/CD (including deployment to Cloudflare)
 - Brevo for automated email workflows, e.g. sign-up/sign-in
@@ -115,5 +118,5 @@ test/              # Unit tests mirroring src/ structure
 The app uses **magic link** authentication via Supabase:
 
 1. Enter your email address
-2. Check your inbox for a magic link 
+2. Check your inbox for a magic link
 3. Click on the link to authenticate

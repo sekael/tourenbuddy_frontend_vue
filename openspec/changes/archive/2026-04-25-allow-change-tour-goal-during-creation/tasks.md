@@ -37,6 +37,6 @@
 - [x] 7.2 Run `npm run format`.
 - [x] 7.3 Run `npm run type-check`.
 - [x] 7.4 Run `npm run test` — all pass.
-- [ ] 7.5 Manually verify in dev: create new tour, change goal, cancel → values preserved; change goal, confirm same → no change; change goal, confirm new → coords/name/elevation updated; other form fields (partners/date/type/notes) preserved across all paths.
-- [ ] 7.6 Prompt user to commit with message: `feat(tours): allow changing goal location during tour creation\n\nCloses #69`.
-- [ ] 7.7 Prompt user to push branch and open PR against `main`.
+- [x] 7.5 Manually verify in dev: create new tour, change goal, cancel → values preserved; change goal, confirm same → no change; change goal, confirm new → coords/name/elevation updated; other form fields (partners/date/type/notes) preserved across all paths.
+- [x] 7.6 Prompt user to commit with message: `feat(tours): allow changing goal location during tour creation\n\nCloses #69`.
+- [x] 7.7 Prompt user to push branch and open PR against `main`.
