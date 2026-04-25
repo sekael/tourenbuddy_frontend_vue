@@ -362,7 +362,7 @@ function handleDialogClose() {
     <LocationPicker
       v-if="isPickingLocation"
       :map="mapRef?.map ?? null"
-      :actions-bottom="isPickingForEdit && !isDesktop ? 112 : undefined"
+      :actions-bottom="!isDesktop && (isPickingForEdit || showTourCreationDialog) ? 80 : undefined"
       @confirm="handleLocationConfirmed"
       @cancel="handleLocationCancelled"
     />
