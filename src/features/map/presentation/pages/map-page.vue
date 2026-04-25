@@ -12,6 +12,7 @@ import TourenbuddyMap from '@/features/map/presentation/components/tourenbuddy-m
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { getElevation } from '@/features/tours/data/services/swisstopo-elevation-service'
 import { suggestTourName } from '@/features/tours/data/services/swisstopo-name-service'
+import { isSameGoal } from '@/features/tours/domain/distance'
 import TourCreationDialog from '@/features/tours/presentation/components/tour-creation-dialog.vue'
 import TourInfoSheet from '@/features/tours/presentation/components/tour-info-sheet.vue'
 import TourListSheet from '@/features/tours/presentation/components/tour-list-sheet.vue'
@@ -248,7 +249,23 @@ async function handleLocationConfirmed(location: { lng: number, lat: number }) {
     return
   }
 
-  // Main goal pick: fire Swisstopo lookups in parallel before showing dialog
+  // Change-goal during creation: pendingLocation is already set from the initial pick
+  if (pendingPickType.value === 'goal' && pendingLocation.value !== null) {
+    if (!isSameGoal(pendingLocation.value, location)) {
+      pendingLocation.value = location
+      const [elevation, name] = await Promise.all([
+        getElevation(location),
+        suggestTourName(location),
+      ])
+      dialogInitialElevation.value = elevation
+      dialogInitialName.value = name
+    }
+    pendingPickType.value = 'goal'
+    openOverlay('tour-creation')
+    return
+  }
+
+  // Initial goal pick: fire Swisstopo lookups in parallel before showing dialog
   pendingLocation.value = location
   const [elevation, name] = await Promise.all([getElevation(location), suggestTourName(location)])
   dialogInitialElevation.value = elevation
@@ -265,13 +282,17 @@ function handleLocationCancelled() {
     return
   }
   // Re-open dialog if we were picking a secondary point for creation
-  if (pendingPickType.value === 'start' || pendingPickType.value === 'end') {
+  if (
+    pendingPickType.value === 'start'
+    || pendingPickType.value === 'end'
+    || (pendingPickType.value === 'goal' && pendingLocation.value !== null)
+  ) {
     openOverlay('tour-creation')
   }
   pendingPickType.value = 'goal'
 }
 
-function handlePickPoint(type: 'start' | 'end') {
+function handlePickPoint(type: 'start' | 'end' | 'goal') {
   // Keep creation dialog mounted so TourForm state is preserved; it collapses
   // itself based on isPickingLocation.
   pendingPickType.value = type

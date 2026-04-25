@@ -1,6 +1,7 @@
 import { createTestingPinia } from '@pinia/testing'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import TourForm from '@/features/tours/presentation/components/tour-form.vue'
 
 function mountForm(props: Record<string, unknown> = {}) {
@@ -56,6 +57,24 @@ describe('tourForm', () => {
       const wrapper = mountForm({ disabled: false })
       const fieldset = wrapper.find('fieldset.form-fieldset')
       expect(fieldset.attributes('disabled')).toBeUndefined()
+    })
+  })
+
+  describe('initialName prop reactivity', () => {
+    it('updates name field when initialName prop changes to a non-null value', async () => {
+      const wrapper = mountForm({ initialName: 'Original' })
+      await wrapper.setProps({ initialName: 'Updated Name' })
+      await nextTick()
+      const nameInput = wrapper.find('#tf-tourName').element as HTMLInputElement
+      expect(nameInput.value).toBe('Updated Name')
+    })
+
+    it('does not overwrite name when initialName prop changes to null', async () => {
+      const wrapper = mountForm({ initialName: 'Keep Me' })
+      await wrapper.setProps({ initialName: null })
+      await nextTick()
+      const nameInput = wrapper.find('#tf-tourName').element as HTMLInputElement
+      expect(nameInput.value).toBe('Keep Me')
     })
   })
 })

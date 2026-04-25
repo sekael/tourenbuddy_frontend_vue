@@ -24,7 +24,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   confirm: [draft: TourDraft]
   close: []
-  pickPoint: [type: 'start' | 'end']
+  pickPoint: [type: 'start' | 'end' | 'goal']
 }>()
 
 const { t } = useI18n({ useScope: 'global' })
@@ -49,9 +49,7 @@ function handleSubmit(draft: TourDraft) {
 }
 
 function handlePickPoint(type: 'start' | 'end' | 'goal') {
-  if (type === 'start' || type === 'end') {
-    emit('pickPoint', type)
-  }
+  emit('pickPoint', type)
 }
 </script>
 
@@ -59,7 +57,7 @@ function handlePickPoint(type: 'start' | 'end' | 'goal') {
   <AdaptiveOverlay :title="title" :collapsed="isPicking" @close="emit('close')">
     <TourForm
       :submit-label="t('tours.creation.saveBtn')"
-      :allow-goal-edit="false"
+      :allow-goal-edit="true"
       :current-goal="initialGoal ?? null"
       :initial-elevation="initialElevation"
       :initial-name="initialName"

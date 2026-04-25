@@ -98,7 +98,7 @@ watch(
 watch(
   () => props.initialName,
   (val) => {
-    if (val)
+    if (val != null)
       tourName.value = val
   },
 )
