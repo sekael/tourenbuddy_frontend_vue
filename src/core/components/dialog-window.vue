@@ -18,7 +18,11 @@ function handleBackdropClick() {
 </script>
 
 <template>
-  <div class="dialog-backdrop" @click.self="handleBackdropClick">
+  <div
+    class="dialog-backdrop"
+    :class="{ 'dialog-backdrop--collapsed': props.collapsed }"
+    @click.self="handleBackdropClick"
+  >
     <div
       class="dialog-card"
       :class="{ 'dialog-card--collapsed': props.collapsed }"
@@ -42,7 +46,11 @@ function handleBackdropClick() {
           <span class="material-symbols-outlined" aria-hidden="true">close</span>
         </button>
       </div>
-      <div v-show="!props.collapsed" class="dialog-content">
+      <div
+        class="dialog-content"
+        :inert="props.collapsed || undefined"
+        :aria-hidden="props.collapsed || undefined"
+      >
         <slot />
       </div>
     </div>
@@ -60,6 +68,19 @@ function handleBackdropClick() {
   align-items: center;
   justify-content: center;
   z-index: 50;
+  transition:
+    background 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    backdrop-filter 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* When picking a location: remove backdrop, push card to top-right */
+.dialog-backdrop--collapsed {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  pointer-events: none;
+  align-items: flex-start;
+  justify-content: flex-center;
 }
 
 .dialog-card {
@@ -75,6 +96,9 @@ function handleBackdropClick() {
   animation: dialog-enter 0.2s cubic-bezier(0.4, 0, 0.2, 1) both;
   pointer-events: auto;
   overflow: hidden;
+  transition:
+    max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @keyframes dialog-enter {
@@ -88,28 +112,33 @@ function handleBackdropClick() {
   }
 }
 
+/* Collapsed: header-only bar anchored to top-center, matching side-drawer--collapsed.
+   animation-name intentionally NOT overridden here — same pattern as side-drawer.vue —
+   so toggling collapsed off does not restart dialog-enter. */
 .dialog-card--collapsed {
-  max-height: none;
-  animation: none;
+  max-width: 400px;
+  max-height: 4.5rem;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  pointer-events: auto;
 }
 
 .dialog-card--collapsed .dialog-header {
   border-bottom: none;
-  padding-bottom: var(--spacing-xl);
 }
 
 .dialog-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: var(--spacing-sm);
   flex-shrink: 0;
-  padding: var(--spacing-xl) var(--spacing-xl) var(--spacing-md);
+  padding: var(--spacing-lg) var(--spacing-xl) var(--spacing-md);
   border-bottom: 1px solid var(--color-outline-variant);
 }
 
 .dialog-title {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
+  flex: 1;
 }
 
 .title-spacer {
@@ -141,6 +170,10 @@ function handleBackdropClick() {
   min-height: 0;
   scrollbar-width: thin;
   scrollbar-color: var(--color-outline-variant) transparent;
+  opacity: 1;
+  transition:
+    opacity 0.18s ease-out,
+    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .dialog-content::-webkit-scrollbar {
@@ -150,5 +183,14 @@ function handleBackdropClick() {
 .dialog-content::-webkit-scrollbar-thumb {
   background-color: var(--color-outline-variant);
   border-radius: 9999px;
+}
+
+.dialog-card--collapsed .dialog-content {
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  flex: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
 </style>

@@ -10,7 +10,7 @@
 - Handle errors with store state (`loading`, `error`, `data` refs)
 - `computed()` for derived state, `watch()` / `watchEffect()` for side effects
 - ALWAYS run `npx eslint . --fix` after changes
-- NEVER format CHANGELOG, this is handled by release-please
+- NEVER change or format CHANGELOG, this is handled by release-please
 
 ## Pinia
 

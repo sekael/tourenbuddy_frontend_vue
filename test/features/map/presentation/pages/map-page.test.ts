@@ -5,6 +5,13 @@ import MapPage from '@/features/map/presentation/pages/map-page.vue'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
+vi.mock('@/features/tours/data/services/swisstopo-elevation-service', () => ({
+  getElevation: vi.fn().mockResolvedValue(1234),
+}))
+vi.mock('@/features/tours/data/services/swisstopo-name-service', () => ({
+  suggestTourName: vi.fn().mockResolvedValue('Mocked Peak'),
+}))
+
 // Stubs for all heavy child components
 const TourenbuddyMapStub = {
   name: 'TourenbuddyMap',
@@ -328,6 +335,69 @@ describe('mapPage', () => {
 
       expect(wrapper.find('[data-testid="tour-creation-dialog"]').exists()).toBe(false)
       expect(wrapper.find('[data-testid="feedback-sheet"]').exists()).toBe(true)
+    })
+  })
+
+  describe('goal change during creation', () => {
+    const GOAL = { lng: 8.2, lat: 46.8 }
+    // ~100m away from GOAL in LV95
+    const NEW_GOAL = { lng: 8.2015, lat: 46.8009 }
+
+    it('same-goal confirm: does not call elevation/name services and keeps existing values', async () => {
+      const { getElevation }
+        = await import('@/features/tours/data/services/swisstopo-elevation-service')
+      const { suggestTourName }
+        = await import('@/features/tours/data/services/swisstopo-name-service')
+      vi.mocked(getElevation).mockResolvedValue(1234)
+      vi.mocked(suggestTourName).mockResolvedValue('Mocked Peak')
+
+      const wrapper = mountMapPage()
+      wrapper.vm.activeOverlay = 'tour-creation'
+      wrapper.vm.pendingLocation = { ...GOAL }
+      wrapper.vm.dialogInitialElevation = 999
+      wrapper.vm.dialogInitialName = 'Original'
+      wrapper.vm.pendingPickType = 'goal'
+      const mapStore = useMapStore()
+      mapStore.$patch({ isPickingLocation: true })
+      await wrapper.vm.$nextTick()
+
+      await wrapper.vm.handleLocationConfirmed({ ...GOAL })
+      await wrapper.vm.$nextTick()
+
+      expect(getElevation).not.toHaveBeenCalled()
+      expect(suggestTourName).not.toHaveBeenCalled()
+      expect(wrapper.vm.dialogInitialElevation).toBe(999)
+      expect(wrapper.vm.dialogInitialName).toBe('Original')
+      expect(wrapper.vm.activeOverlay).toBe('tour-creation')
+    })
+
+    it('different-goal confirm: calls services and updates pendingLocation/elevation/name', async () => {
+      const { getElevation }
+        = await import('@/features/tours/data/services/swisstopo-elevation-service')
+      const { suggestTourName }
+        = await import('@/features/tours/data/services/swisstopo-name-service')
+      vi.mocked(getElevation).mockResolvedValue(1234)
+      vi.mocked(suggestTourName).mockResolvedValue('Mocked Peak')
+
+      const wrapper = mountMapPage()
+      wrapper.vm.activeOverlay = 'tour-creation'
+      wrapper.vm.pendingLocation = { ...GOAL }
+      wrapper.vm.dialogInitialElevation = 999
+      wrapper.vm.dialogInitialName = 'Original'
+      wrapper.vm.pendingPickType = 'goal'
+      const mapStore = useMapStore()
+      mapStore.$patch({ isPickingLocation: true })
+      await wrapper.vm.$nextTick()
+
+      await wrapper.vm.handleLocationConfirmed(NEW_GOAL)
+      await wrapper.vm.$nextTick()
+
+      expect(getElevation).toHaveBeenCalledWith(NEW_GOAL)
+      expect(suggestTourName).toHaveBeenCalledWith(NEW_GOAL)
+      expect(wrapper.vm.pendingLocation).toEqual(NEW_GOAL)
+      expect(wrapper.vm.dialogInitialElevation).toBe(1234)
+      expect(wrapper.vm.dialogInitialName).toBe('Mocked Peak')
+      expect(wrapper.vm.activeOverlay).toBe('tour-creation')
     })
   })
 })

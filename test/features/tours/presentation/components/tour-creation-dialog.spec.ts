@@ -63,4 +63,16 @@ describe('tourCreationDialog', () => {
     await wrapper.find('[data-testid="stub-submit"]').trigger('click')
     expect(wrapper.emitted('confirm')).toHaveLength(1)
   })
+
+  it('forwards pickPoint: goal when TourForm emits it', async () => {
+    const wrapper = mountDialog()
+    await wrapper.findComponent({ name: 'TourForm' }).vm.$emit('pickPoint', 'goal')
+    expect(wrapper.emitted('pickPoint')).toEqual([['goal']])
+  })
+
+  it('forwards pickPoint: start when TourForm emits it', async () => {
+    const wrapper = mountDialog()
+    await wrapper.findComponent({ name: 'TourForm' }).vm.$emit('pickPoint', 'start')
+    expect(wrapper.emitted('pickPoint')).toEqual([['start']])
+  })
 })

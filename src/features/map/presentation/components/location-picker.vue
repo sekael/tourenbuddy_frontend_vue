@@ -69,7 +69,7 @@ function handleConfirm() {
 
 .actions {
   position: absolute;
-  bottom: var(--spacing-xxl);
+  bottom: var(--spacing-lg);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
