@@ -1,6 +1,14 @@
 # TourenBuddy Frontend (Vue)
 
-A Vue 3 tour-planning app for outdoor enthusiasts. Pin tour objectives on a Swiss topographic map (Swisstopo), associate contacts as tour partners, and set planned dates.
+A tour-planning app for outdoor enthusiasts. 
+Pin tour objectives on the map, remember the friends you want to do it with, contact them, set dates, and finally complete your adventures.
+TourenBuddy aims to be your one tool to keep track of objectives and touring partners outdoors.
+
+## Disclaimer
+
+Most of the code in this repository has been generated with Claude Code using specification-driven development based on the `openspec` framework.
+You may view the configuration and settings used for code generation anytime under [CLAUDE.md](./CLAUDE.md) and [.claude](./.claude/).
+The current version of the specification used in development is always available at [openspec](./openspec/specs/).
 
 ## Prerequisites
 
@@ -58,6 +66,7 @@ The app will be available at `http://localhost:5173`.
 
 ## Tech Stack
 
+Frontend: 
 - **Vue 3** with TypeScript and `<script setup>` SFCs
 - **Vite** — build tool and dev server
 - **Pinia** — state management (composition API stores)
@@ -67,6 +76,16 @@ The app will be available at `http://localhost:5173`.
 - **Swisstopo** — Swiss topographic vector tiles (free, no API key required)
 - **Zod** — runtime validation and type inference
 - **Vitest** — unit testing
+
+Backend:
+- Supabase PostgreSQL database with REST endpoints
+- Supabase authentication and phone verification
+
+Infrastructure:
+- Cloudflare pages deployment
+- Github Actions for CI/CD (including deployment to Cloudflare)
+- Brevo for automated email workflows, e.g. sign-up/sign-in
+- Twilio for verification of phone numbers (currently free tier, so not working correctly)
 
 ## Project Structure
 
@@ -93,10 +112,8 @@ test/              # Unit tests mirroring src/ structure
 
 ## Authentication
 
-The app uses **passwordless email/OTP** authentication via Supabase:
+The app uses **magic link** authentication via Supabase:
 
 1. Enter your email address
-2. Check your inbox for a one-time code
-3. Enter the code to sign in
-
-Note: The Supabase free tier may have slightly higher latency on auth operations.
+2. Check your inbox for a magic link 
+3. Click on the link to authenticate
