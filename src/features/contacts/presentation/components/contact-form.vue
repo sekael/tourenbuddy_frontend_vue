@@ -39,6 +39,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   submit: [data: FormData]
   cancel: []
+  phoneChange: [phone: string]
 }>()
 
 const { t } = useI18n({ useScope: 'global' })
@@ -66,6 +67,13 @@ function getPhoneFormatter(rowId: string) {
     phoneFormatterCache.set(rowId, useAsYouTypePhone(phoneRef))
   }
   return phoneFormatterCache.get(rowId)!
+}
+
+function handlePhoneInput(rowId: string, event: Event) {
+  getPhoneFormatter(rowId).onInput(event)
+  const row = phoneRows.value.find(r => r.id === rowId)
+  if (row)
+    emit('phoneChange', row.value)
 }
 
 watch(
@@ -223,7 +231,7 @@ function handleSubmit() {
             :class="{ 'input--error': row.error }"
             type="tel"
             :placeholder="t('contacts.form.phonePlaceholder')"
-            @input="getPhoneFormatter(row.id).onInput"
+            @input="handlePhoneInput(row.id, $event)"
           >
           <p v-if="row.error" class="error-text">
             {{ row.error }}

@@ -46,6 +46,12 @@ const router = createRouter({
       component: () => import('@/features/map/presentation/pages/map-page.vue'),
       meta: { requiresAuth: true, requiresCompleteProfile: true },
     },
+    {
+      path: '/friends/requests',
+      name: 'friend-requests',
+      component: () => import('@/features/friendships/presentation/pages/friend-requests-page.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 

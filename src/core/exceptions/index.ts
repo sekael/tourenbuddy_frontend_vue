@@ -31,3 +31,19 @@ export class InvalidPhoneNumberError extends Error {
     this.name = 'InvalidPhoneNumberError'
   }
 }
+
+/** Thrown when a friendship operation requires a verified phone but the caller's phone is unverified. */
+export class UnverifiedPhoneError extends Error {
+  constructor(message = 'Phone number must be verified to use this feature') {
+    super(message)
+    this.name = 'UnverifiedPhoneError'
+  }
+}
+
+/** Thrown when a friendship or friend request already exists between two users. */
+export class FriendshipExistsError extends Error {
+  constructor(message = 'A friendship or pending request already exists') {
+    super(message)
+    this.name = 'FriendshipExistsError'
+  }
+}

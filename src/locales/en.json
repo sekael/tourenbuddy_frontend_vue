@@ -328,5 +328,30 @@
     "languageLabel": "Language",
     "en": "English",
     "de-CH": "Deutsch"
+  },
+  "friendships": {
+    "prompt": {
+      "title": "TouringBuddy user found",
+      "body": "This phone belongs to a TouringBuddy user — connect as friends?",
+      "securityNote": "Their identity is not revealed beyond account existence. Sending a request notifies them that you have their number. They may deny without obligation."
+    },
+    "sendRequest": "Send request",
+    "justSaveContact": "Just save contact",
+    "requestSent": "Request sent",
+    "learnMore": "Learn more",
+    "inboxEmpty": "No pending friend requests.",
+    "inboxDenyRightsNote": "You are free to deny any request without justification. Denying has no penalty and does not reveal your identity beyond the act of declining.",
+    "accept": "Accept",
+    "deny": "Deny",
+    "cancel": "Cancel",
+    "requestFrom": "Request from",
+    "requestTo": "Request to",
+    "verifyPhoneHint": "Verify your phone to connect with other users.",
+    "friendsListLink": "Friend requests",
+    "verificationNotice": {
+      "title": "Phone discoverability notice",
+      "body": "Once verified, other verified TouringBuddy users who add this number to their contacts will know an account exists for it and can send a friend request. Your identity is not revealed beyond this. Unverified phones are never discoverable. You can deny any incoming request without justification and without penalty. You may revoke friendship connections in the future.",
+      "acknowledge": "I understand, send code"
+    }
   }
 }

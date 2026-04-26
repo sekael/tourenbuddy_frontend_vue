@@ -204,5 +204,11 @@ export function useVCardImport() {
     return parseVCardText(text)
   }
 
-  return { parseVCardFile }
+  async function parseVCardFiles(files: File[]): Promise<VCardContact[]> {
+    if (files.length !== 1)
+      throw new Error('Exactly one .vcf file must be provided')
+    return parseVCardFile(files[0]!)
+  }
+
+  return { parseVCardFile, parseVCardFiles }
 }

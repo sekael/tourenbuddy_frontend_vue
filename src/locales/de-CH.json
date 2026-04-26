@@ -328,5 +328,30 @@
     "languageLabel": "Sprache",
     "en": "English",
     "de-CH": "Deutsch"
+  },
+  "friendships": {
+    "prompt": {
+      "title": "TouringBuddy-Nutzer gefunden",
+      "body": "Diese Nummer gehört einem TouringBuddy-Nutzer – als Freunde vernetzen?",
+      "securityNote": "Die Identität des Nutzers wird nicht preisgegeben. Das Senden einer Anfrage informiert ihn, dass Sie seine Nummer haben. Er kann die Anfrage ohne Begründung ablehnen."
+    },
+    "sendRequest": "Anfrage senden",
+    "justSaveContact": "Nur speichern",
+    "requestSent": "Anfrage gesendet",
+    "learnMore": "Mehr erfahren",
+    "inboxEmpty": "Keine ausstehenden Freundschaftsanfragen.",
+    "inboxDenyRightsNote": "Sie können jede Anfrage ohne Begründung ablehnen. Eine Ablehnung hat keine Konsequenzen und gibt Ihre Identität nicht preis.",
+    "accept": "Annehmen",
+    "deny": "Ablehnen",
+    "cancel": "Abbrechen",
+    "requestFrom": "Anfrage von",
+    "requestTo": "Anfrage an",
+    "verifyPhoneHint": "Verifizieren Sie Ihre Telefonnummer, um sich mit anderen Nutzern zu vernetzen.",
+    "friendsListLink": "Freundschaftsanfragen",
+    "verificationNotice": {
+      "title": "Hinweis zur Auffindbarkeit",
+      "body": "Nach der Verifizierung können andere verifizierte TouringBuddy-Nutzer, die diese Nummer in ihren Kontakten haben, erkennen, dass ein Konto für diese Nummer existiert, und eine Freundschaftsanfrage senden. Ihre Identität wird dabei nicht preisgegeben. Unverifizierte Nummern sind nie auffindbar. Sie können jede eingehende Anfrage ohne Begründung und ohne Konsequenzen ablehnen. Freundschaften können in Zukunft widerrufen werden.",
+      "acknowledge": "Ich verstehe, Code senden"
+    }
   }
 }
