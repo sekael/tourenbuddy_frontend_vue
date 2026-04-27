@@ -11,7 +11,7 @@
 - [x] 2.5 Create SECURITY DEFINER function `find_user_by_phone(text) returns uuid` — caller verified-phone gate, exact E.164 match against `auth.users.phone` with `phone_confirmed_at IS NOT NULL`, exclude caller's own user_id
 - [x] 2.6 Create SECURITY DEFINER function `find_users_by_phones(text[]) returns table(phone text, user_id uuid)` with same gating
 - [x] 2.7 Create SECURITY DEFINER function `accept_friend_request(uuid)` performing transactional update + ordered-pair insert into `friendships`; idempotent on already-accepted; rejects non-recipient caller
-- [ ] 2.8 Apply migration locally; verify policies and functions with manual SQL test cases (verified caller, unverified caller, self-match, duplicate pending)
+- [x] 2.8 Apply migration locally; verify policies and functions with manual SQL test cases (verified caller, unverified caller, self-match, duplicate pending)
 
 ## 3. Domain & Data Layers (features/friendships)
 
@@ -48,7 +48,7 @@
 
 - [x] 7.1 In contacts list row component, compute icon visibility from `friendUserIds` cross-product over normalized contact phones
 - [x] 7.2 Render Material Symbols `group` icon next to contact name when matched; no icon for pending requests
-- [ ] 7.3 Add derived map / composable so icon updates reactively when friendships change
+- [x] 7.3 Add derived map / composable so icon updates reactively when friendships change
 - [x] 7.4 Verify contacts store remains free of friendship state
 
 ## 8. Friend Requests Inbox Page

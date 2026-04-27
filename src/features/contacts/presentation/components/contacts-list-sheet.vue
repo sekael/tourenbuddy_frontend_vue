@@ -13,6 +13,7 @@ import {
   resolveContactName,
   resolveFullName,
 } from '@/features/contacts/domain/entities/contact'
+import { useContactFriendshipMap } from '@/features/contacts/presentation/composables/use-contact-friendship-map'
 import { useContactPicker } from '@/features/contacts/presentation/composables/use-contact-picker'
 import { useVCardImport } from '@/features/contacts/presentation/composables/use-vcard-import'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
@@ -114,10 +115,11 @@ const fileInput = ref<HTMLInputElement | null>(null)
 // ── Connect prompt state (declared early to avoid hoisting issues) ─────────
 const manualPromptUserId = ref<string | null>(null)
 const manualPromptDismissed = ref(false)
-// Phone→userId map built during import batch lookup; used for friendship icon
-const importMatchMap = ref<Map<string, string>>(new Map())
 // Per-row matched user IDs from import batch lookup
 const importRowMatches = ref<string[][]>([])
+
+// Reactive phone→userId map + friend icon derivation (reacts to friendship changes)
+const { contactFriendIds: friendContactIds, phoneToUserIdMap } = useContactFriendshipMap(contacts)
 
 // ── Navigation ───────────────────────────────────────────────────────────────
 function openDetail(contact: Contact) {
@@ -222,14 +224,14 @@ async function processImportedContacts(
     ]
     if (uniquePhones.length > 0) {
       const matches = await friendshipsStore.findUsersByPhones(uniquePhones)
-      const newMap = new Map(importMatchMap.value)
+      const newMap = new Map(phoneToUserIdMap.value)
       for (const m of matches) newMap.set(m.phone, m.userId)
-      importMatchMap.value = newMap
+      phoneToUserIdMap.value = newMap
       // Build per-row match sets
       importRowMatches.value = results.map((r) => {
         if (!r.primaryPhone)
           return []
-        const match = importMatchMap.value.get(r.primaryPhone)
+        const match = phoneToUserIdMap.value.get(r.primaryPhone)
         return match && !friendUserIds.value.has(match) ? [match] : []
       })
     }
@@ -314,18 +316,6 @@ function onFormPhoneInput(phone: string) {
     clearTimeout(manualPhoneDebounce)
   manualPhoneDebounce = setTimeout(() => lookupPhoneForPrompt(phone), 400)
 }
-
-function isFriendContact(contact: Contact): boolean {
-  const phones = contact.contactMethods.filter(m => m.methodType === 'phone')
-  for (const method of phones) {
-    const norm = normalizePhone(method.value)
-    const phone = norm.ok ? norm.e164 : method.value
-    const uid = importMatchMap.value.get(phone)
-    if (uid && friendUserIds.value.has(uid))
-      return true
-  }
-  return false
-}
 </script>
 
 <template>
@@ -377,7 +367,7 @@ function isFriendContact(contact: Contact): boolean {
             <span class="contact-name-row">
               <span class="contact-name">{{ resolveContactName(contact) }}</span>
               <span
-                v-if="isFriendContact(contact)"
+                v-if="friendContactIds.has(contact.id)"
                 class="material-symbols-outlined friend-icon"
                 title="Friend on TouringBuddy"
               >group</span>
