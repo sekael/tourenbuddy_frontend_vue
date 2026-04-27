@@ -331,9 +331,8 @@
   },
   "friendships": {
     "prompt": {
-      "title": "TouringBuddy user found",
-      "body": "This phone belongs to a TouringBuddy user — connect as friends?",
-      "securityNote": "Their identity is not revealed beyond account existence. Sending a request notifies them that you have their number. They may deny without obligation."
+      "title": "This phone belongs to a TourenBuddy — connect as friends?",
+      "securityNote": "Their identity is not revealed beyond account existence. Sending a request notifies them that you have their number. They may deny your request without stating a reason."
     },
     "sendRequest": "Send request",
     "justSaveContact": "Just save contact",

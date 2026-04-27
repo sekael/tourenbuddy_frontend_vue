@@ -18,6 +18,7 @@ import { useContactPicker } from '@/features/contacts/presentation/composables/u
 import { useVCardImport } from '@/features/contacts/presentation/composables/use-vcard-import'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import ConnectPrompt from '@/features/friendships/presentation/components/connect-prompt.vue'
+import { useDismissedConnectPrompts } from '@/features/friendships/presentation/composables/use-dismissed-connect-prompts'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import ContactDetailView from './contact-detail-view.vue'
 import ContactForm from './contact-form.vue'
@@ -39,6 +40,7 @@ const { contacts, isLoading } = storeToRefs(contactsStore)
 const friendshipsStore = useFriendshipsStore()
 const {
   friendUserIds,
+  outgoingRequests,
   isPhoneVerified: callerPhoneVerified,
   incomingRequests,
 } = storeToRefs(friendshipsStore)
@@ -120,6 +122,25 @@ const importRowMatches = ref<string[][]>([])
 
 // Reactive phone→userId map + friend icon derivation (reacts to friendship changes)
 const { contactFriendIds: friendContactIds, phoneToUserIdMap } = useContactFriendshipMap(contacts)
+
+// ── Connect prompt for existing contact detail view ──────────────────────────
+const { isDismissed: isConnectDismissed, dismiss: dismissConnect } = useDismissedConnectPrompts()
+
+const detailViewMatchedUserId = computed<string | null>(() => {
+  if (!liveContact.value || !callerPhoneVerified.value)
+    return null
+  for (const method of liveContact.value.contactMethods.filter(m => m.methodType === 'phone')) {
+    const norm = normalizePhone(method.value)
+    const phone = norm.ok ? norm.e164 : method.value
+    const uid = phoneToUserIdMap.value.get(phone)
+    if (!uid || friendUserIds.value.has(uid))
+      continue
+    const hasPending = outgoingRequests.value.some(r => r.toUserId === uid && r.status === 'pending')
+    if (!hasPending)
+      return uid
+  }
+  return null
+})
 
 // ── Navigation ───────────────────────────────────────────────────────────────
 function openDetail(contact: Contact) {
@@ -390,6 +411,13 @@ function onFormPhoneInput(phone: string) {
         :contact="liveContact"
         @back="backToList"
         @deleted="handleContactDeleted"
+      />
+      <ConnectPrompt
+        v-if="detailViewMatchedUserId && liveContact && !isConnectDismissed(liveContact.id)"
+        :matched-user-id="detailViewMatchedUserId"
+        class="detail-connect-prompt"
+        @sent="liveContact && dismissConnect(liveContact.id)"
+        @dismissed="liveContact && dismissConnect(liveContact.id)"
       />
     </div>
 
@@ -692,6 +720,10 @@ function onFormPhoneInput(phone: string) {
   font-size: 20px;
   color: var(--color-outline-variant);
   flex-shrink: 0;
+}
+
+.detail-connect-prompt {
+  margin-top: var(--spacing-md);
 }
 
 /* ── Add view ── */

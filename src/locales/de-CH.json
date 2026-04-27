@@ -331,8 +331,7 @@
   },
   "friendships": {
     "prompt": {
-      "title": "TouringBuddy-Nutzer gefunden",
-      "body": "Diese Nummer gehört einem TouringBuddy-Nutzer – als Freunde vernetzen?",
+      "title": "Diese Nummer gehört einem TourenBuddy – als Freunde vernetzen?",
       "securityNote": "Die Identität des Nutzers wird nicht preisgegeben. Das Senden einer Anfrage informiert ihn, dass Sie seine Nummer haben. Er kann die Anfrage ohne Begründung ablehnen."
     },
     "sendRequest": "Anfrage senden",
