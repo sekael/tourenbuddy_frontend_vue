@@ -222,4 +222,40 @@ describe('useFriendshipsStore', () => {
       expect(store.friendUserIds.size).toBe(0)
     })
   })
+
+  describe('failure paths (10.6)', () => {
+    it('should rollback and rethrow when sendRequest fails after friendship already exists', async () => {
+      mockRepo.sendRequest.mockRejectedValue(new Error('already friends'))
+      const store = await makeVerifiedStore()
+      store.friendships = [makeFriendship('user-me', 'user-other')]
+
+      await expect(store.sendRequest('user-other')).rejects.toThrow('already friends')
+      expect(store.outgoingRequests).toHaveLength(0)
+      expect(store.friendships).toHaveLength(1)
+    })
+
+    it('should rollback accept and rethrow on RLS policy violation', async () => {
+      mockRepo.accept.mockRejectedValue(new Error('new row violates row-level security policy'))
+      const store = await makeVerifiedStore()
+      store.incomingRequests = [makeRequest()]
+
+      await expect(store.accept('req-1')).rejects.toThrow('row-level security')
+      expect(store.incomingRequests).toHaveLength(1)
+      expect(store.friendships).toHaveLength(0)
+    })
+
+    it('should return null gracefully when findUserByPhone RPC throws', async () => {
+      mockRepo.findUserByPhone.mockRejectedValue(new Error('RPC error'))
+      const store = await makeVerifiedStore()
+      const result = await store.findUserByPhone('+41791234567')
+      expect(result).toBeNull()
+    })
+
+    it('should return empty array gracefully when findUsersByPhones RPC throws', async () => {
+      mockRepo.findUsersByPhones.mockRejectedValue(new Error('RPC error'))
+      const store = await makeVerifiedStore()
+      const result = await store.findUsersByPhones(['+41791234567'])
+      expect(result).toEqual([])
+    })
+  })
 })

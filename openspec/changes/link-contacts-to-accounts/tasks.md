@@ -83,13 +83,13 @@
 ## 10. Tests
 
 - [x] 10.1 Unit tests for `useFriendshipsStore` actions (mock repository): unverified caller returns null/empty, sendRequest optimistic update, accept moves request to friendships, error paths
-- [ ] 10.2 Unit tests for connect-prompt suppression rules (caller unverified, self-match, already friend, pending request)
-- [ ] 10.3 Component test for contacts list row friendship icon (matched / unmatched / pending-only)
-- [ ] 10.4 Component test for import-results: batched discovery call exactly once over union of phones; matched rows render prompt; import succeeds even when request fails
+- [x] 10.2 Unit tests for connect-prompt suppression rules (caller unverified, self-match, already friend, pending request)
+- [x] 10.3 Component test for contacts list row friendship icon (matched / unmatched / pending-only)
+- [x] 10.4 Component test for import-results: batched discovery call exactly once over union of phones; matched rows render prompt; import succeeds even when request fails
 - [x] 10.5 Component test for FriendRequestsPage: accept/deny/cancel call store actions, empty state renders, deny-rights note visible, Accept/Deny buttons balanced
 - [x] 10.5a Component test for phone-verification security notice: send-code blocked until acknowledged, re-acknowledge required when phone replaced
 - [x] 10.5b Test `useVCardImport` rejects multi-file input and parses multi-block single file
-- [ ] 10.6 Failure-path tests: RPC error, RLS rejection mapping, repeated send-request after acceptance
+- [x] 10.6 Failure-path tests: RPC error, RLS rejection mapping, repeated send-request after acceptance
 
 ## 11. Finalize
 
