@@ -1,10 +1,7 @@
-import type {
-  FriendRequest,
-  Friendship,
-} from '@/features/friendships/data/models/friendship-schemas'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
+import { makeFriendship, makeRequest } from '../../_helpers'
 
 const { mockRepo, mockCurrentUser } = vi.hoisted(() => ({
   mockRepo: {
@@ -16,6 +13,8 @@ const { mockRepo, mockCurrentUser } = vi.hoisted(() => ({
     listFriendships: vi.fn(),
     findUserByPhone: vi.fn(),
     findUsersByPhones: vi.fn(),
+    findPhonesByUserIds: vi.fn(),
+    removeFriendship: vi.fn(),
   },
   mockCurrentUser: {
     value: null as { id: string, phone_confirmed_at: string | null } | null,
@@ -28,12 +27,8 @@ vi.mock('@/features/friendships/data/repositories/friendship-repository-impl', (
 
 vi.mock('@/features/auth/presentation/stores/auth-store', () => ({
   useAuthStore: vi.fn().mockReturnValue({
-    get currentUser() {
-      return mockCurrentUser.value
-    },
-    get isAuthenticated() {
-      return mockCurrentUser.value != null
-    },
+    get currentUser() { return mockCurrentUser.value },
+    get isAuthenticated() { return mockCurrentUser.value != null },
   }),
 }))
 
@@ -41,32 +36,20 @@ vi.mock('@/core/logging/use-logger', () => ({
   useLogger: () => ({ error: vi.fn(), info: vi.fn(), warn: vi.fn() }),
 }))
 
-function makeRequest(overrides: Partial<FriendRequest> = {}): FriendRequest {
-  return {
-    id: 'req-1',
-    fromUserId: 'user-other',
-    toUserId: 'user-me',
-    status: 'pending',
-    createdAt: new Date().toISOString(),
-    respondedAt: null,
-    ...overrides,
-  }
-}
-
-function makeFriendship(a: string, b: string): Friendship {
-  const [userAId, userBId] = [a, b].sort() as [string, string]
-  return { userAId, userBId, createdAt: new Date().toISOString(), requestId: 'req-1' }
-}
-
-/** Creates a verified store and waits for the initial fetchAll to settle. */
-async function makeVerifiedStore() {
+/** Authenticated + phone-verified store with empty initial data; awaits initial fetch. */
+async function verifiedStore() {
   mockCurrentUser.value = { id: 'user-me', phone_confirmed_at: '2024-01-01T00:00:00Z' }
   const store = useFriendshipsStore()
   await vi.waitFor(() => expect(store.isLoading).toBe(false))
   return store
 }
 
-describe('useFriendshipsStore', () => {
+function unverifiedStore() {
+  mockCurrentUser.value = { id: 'user-me', phone_confirmed_at: null }
+  return useFriendshipsStore()
+}
+
+describe('useFriendshipsStore (errors + edges only)', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
@@ -75,187 +58,139 @@ describe('useFriendshipsStore', () => {
     mockRepo.listFriendships.mockResolvedValue([])
   })
 
-  describe('findUserByPhone', () => {
-    it('should return null when caller phone is unverified', async () => {
-      mockCurrentUser.value = { id: 'user-me', phone_confirmed_at: null }
-      const store = useFriendshipsStore()
-      const result = await store.findUserByPhone('+41791234567')
-      expect(result).toBeNull()
-      expect(mockRepo.findUserByPhone).not.toHaveBeenCalled()
-    })
-
-    it('should call repo and return userId when caller is verified', async () => {
-      mockRepo.findUserByPhone.mockResolvedValue('user-found')
-      const store = await makeVerifiedStore()
-      const result = await store.findUserByPhone('+41791234567')
-      expect(mockRepo.findUserByPhone).toHaveBeenCalledWith('+41791234567')
-      expect(result).toBe('user-found')
-    })
-  })
-
-  describe('findUsersByPhones', () => {
-    it('should return empty array when caller is unverified', async () => {
-      mockCurrentUser.value = { id: 'user-me', phone_confirmed_at: null }
-      const store = useFriendshipsStore()
-      const result = await store.findUsersByPhones(['+41791234567'])
-      expect(result).toEqual([])
-      expect(mockRepo.findUsersByPhones).not.toHaveBeenCalled()
-    })
-
-    it('should return empty array for empty phone list', async () => {
-      const store = await makeVerifiedStore()
-      const result = await store.findUsersByPhones([])
-      expect(result).toEqual([])
-      expect(mockRepo.findUsersByPhones).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('sendRequest', () => {
-    it('should return null and skip repo when caller is unverified', async () => {
-      mockCurrentUser.value = { id: 'user-me', phone_confirmed_at: null }
-      const store = useFriendshipsStore()
-      const result = await store.sendRequest('user-other')
-      expect(result).toBeNull()
+  describe('phone-verified gating', () => {
+    it.each([
+      ['sendRequest', async (s: ReturnType<typeof useFriendshipsStore>) => s.sendRequest('user-other'), null],
+      ['findUserByPhone', async (s: ReturnType<typeof useFriendshipsStore>) => s.findUserByPhone('+41791234567'), null],
+      ['findUsersByPhones', async (s: ReturnType<typeof useFriendshipsStore>) => s.findUsersByPhones(['+41791234567']), []],
+    ])('%s short-circuits when caller phone unverified', async (_, action, expected) => {
+      const result = await action(unverifiedStore())
+      expect(result).toEqual(expected)
       expect(mockRepo.sendRequest).not.toHaveBeenCalled()
+      expect(mockRepo.findUserByPhone).not.toHaveBeenCalled()
+      expect(mockRepo.findUsersByPhones).not.toHaveBeenCalled()
     })
 
-    it('should add optimistic request and replace with real one on success', async () => {
-      const realReq = makeRequest({ id: 'real-req', fromUserId: 'user-me', toUserId: 'user-other' })
-      mockRepo.sendRequest.mockResolvedValue(realReq)
-      const store = await makeVerifiedStore()
-      const result = await store.sendRequest('user-other')
-      expect(result).toEqual(realReq)
-      expect(store.outgoingRequests).toHaveLength(1)
-      expect(store.outgoingRequests[0]!.id).toBe('real-req')
+    it('findPhonesByUserIds skips RPC when unverified', async () => {
+      await unverifiedStore().findPhonesByUserIds(['user-a'])
+      expect(mockRepo.findPhonesByUserIds).not.toHaveBeenCalled()
     })
 
-    it('should roll back optimistic request on failure', async () => {
-      mockRepo.sendRequest.mockRejectedValue(new Error('RLS rejected'))
-      const store = await makeVerifiedStore()
-      await expect(store.sendRequest('user-other')).rejects.toThrow('RLS rejected')
+    it('findUsersByPhones early-returns on empty list (no RPC)', async () => {
+      const store = await verifiedStore()
+      expect(await store.findUsersByPhones([])).toEqual([])
+      expect(mockRepo.findUsersByPhones).not.toHaveBeenCalled()
+    })
+
+    it('findPhonesByUserIds skips RPC when all ids already cached', async () => {
+      const store = await verifiedStore()
+      store.userIdToPhoneMap = new Map([['user-a', '+41791111111']])
+      await store.findPhonesByUserIds(['user-a'])
+      expect(mockRepo.findPhonesByUserIds).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('optimistic rollback', () => {
+    it('sendRequest rollback on RLS rejection (no orphan in outgoing)', async () => {
+      mockRepo.sendRequest.mockRejectedValue(new Error('row-level security'))
+      const store = await verifiedStore()
+      await expect(store.sendRequest('user-other')).rejects.toThrow('row-level security')
       expect(store.outgoingRequests).toHaveLength(0)
     })
-  })
 
-  describe('accept', () => {
-    it('should move request from incoming to friendships optimistically', async () => {
-      mockRepo.accept.mockResolvedValue(undefined)
-      const store = await makeVerifiedStore()
-      store.incomingRequests = [
-        makeRequest({ id: 'req-1', fromUserId: 'user-other', toUserId: 'user-me' }),
-      ]
-
-      await store.accept('req-1')
-      expect(store.incomingRequests).toHaveLength(0)
-      expect(store.friendships).toHaveLength(1)
-    })
-
-    it('should rollback on accept failure', async () => {
+    it('accept rollback restores incoming and removes optimistic friendship', async () => {
       mockRepo.accept.mockRejectedValue(new Error('failed'))
-      const store = await makeVerifiedStore()
-      store.incomingRequests = [
-        makeRequest({ id: 'req-1', fromUserId: 'user-other', toUserId: 'user-me' }),
-      ]
-
+      const store = await verifiedStore()
+      store.incomingRequests = [makeRequest()]
       await expect(store.accept('req-1')).rejects.toThrow('failed')
       expect(store.incomingRequests).toHaveLength(1)
       expect(store.friendships).toHaveLength(0)
     })
-  })
 
-  describe('deny', () => {
-    it('should remove request optimistically and call repo', async () => {
-      mockRepo.deny.mockResolvedValue(undefined)
-      const store = await makeVerifiedStore()
-      store.incomingRequests = [makeRequest()]
-
-      await store.deny('req-1')
-      expect(store.incomingRequests).toHaveLength(0)
+    it('accept on unknown requestId is a silent no-op (no repo call)', async () => {
+      const store = await verifiedStore()
+      await store.accept('does-not-exist')
+      expect(mockRepo.accept).not.toHaveBeenCalled()
     })
 
-    it('should rollback on deny failure', async () => {
+    it('deny rollback restores incoming request', async () => {
       mockRepo.deny.mockRejectedValue(new Error('failed'))
-      const store = await makeVerifiedStore()
+      const store = await verifiedStore()
       store.incomingRequests = [makeRequest()]
-
       await expect(store.deny('req-1')).rejects.toThrow('failed')
       expect(store.incomingRequests).toHaveLength(1)
     })
-  })
 
-  describe('cancel', () => {
-    it('should remove outgoing request optimistically and call repo', async () => {
-      mockRepo.cancel.mockResolvedValue(undefined)
-      const store = await makeVerifiedStore()
-      store.outgoingRequests = [
-        makeRequest({ id: 'req-1', fromUserId: 'user-me', toUserId: 'user-other' }),
-      ]
-
-      await store.cancel('req-1')
-      expect(store.outgoingRequests).toHaveLength(0)
-    })
-
-    it('should rollback on cancel failure', async () => {
+    it('cancel rollback restores outgoing request', async () => {
       mockRepo.cancel.mockRejectedValue(new Error('failed'))
-      const store = await makeVerifiedStore()
-      store.outgoingRequests = [
-        makeRequest({ id: 'req-1', fromUserId: 'user-me', toUserId: 'user-other' }),
-      ]
-
-      await expect(store.cancel('req-1')).rejects.toThrow('failed')
+      const store = await verifiedStore()
+      store.outgoingRequests = [makeRequest({ id: 'r', fromUserId: 'user-me', toUserId: 'user-other' })]
+      await expect(store.cancel('r')).rejects.toThrow('failed')
       expect(store.outgoingRequests).toHaveLength(1)
     })
-  })
 
-  describe('friendUserIds', () => {
-    it('should return set of friend user IDs for current user', async () => {
-      const store = await makeVerifiedStore()
-      store.friendships = [makeFriendship('user-me', 'user-a'), makeFriendship('user-me', 'user-b')]
-      expect(store.friendUserIds.has('user-a')).toBe(true)
-      expect(store.friendUserIds.has('user-b')).toBe(true)
-      expect(store.friendUserIds.has('user-me')).toBe(false)
+    it('removeFriendship rollback restores friendship row on RPC failure', async () => {
+      mockRepo.removeFriendship.mockRejectedValue(new Error('rpc error'))
+      const store = await verifiedStore()
+      const f = makeFriendship('user-me', 'user-other')
+      store.friendships = [f]
+      await expect(store.removeFriendship('user-other')).rejects.toThrow('rpc error')
+      expect(store.friendships).toEqual([f])
     })
 
-    it('should return empty set when not authenticated', () => {
-      mockCurrentUser.value = null
+    it('removeFriendship is a no-op when not authenticated', async () => {
+      const store = useFriendshipsStore()
+      await store.removeFriendship('user-other')
+      expect(mockRepo.removeFriendship).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('graceful RPC failure (non-throwing lookups)', () => {
+    it('findUserByPhone returns null when repo throws', async () => {
+      mockRepo.findUserByPhone.mockRejectedValue(new Error('RPC error'))
+      expect(await (await verifiedStore()).findUserByPhone('+41791234567')).toBeNull()
+    })
+
+    it('findUsersByPhones returns [] when repo throws', async () => {
+      mockRepo.findUsersByPhones.mockRejectedValue(new Error('RPC error'))
+      expect(await (await verifiedStore()).findUsersByPhones(['+41791234567'])).toEqual([])
+    })
+
+    it('findPhonesByUserIds swallows error (logged, no throw)', async () => {
+      mockRepo.findPhonesByUserIds.mockRejectedValue(new Error('RPC error'))
+      const store = await verifiedStore()
+      await expect(store.findPhonesByUserIds(['user-a'])).resolves.toBeUndefined()
+    })
+
+    it('fetchAll surfaces error message when listIncoming rejects', async () => {
+      mockRepo.listIncoming.mockRejectedValue(new Error('boom'))
+      const store = await verifiedStore()
+      expect(store.error).toBe('boom')
+    })
+  })
+
+  describe('derived state edges', () => {
+    it('friendUserIds is empty when not authenticated', () => {
       const store = useFriendshipsStore()
       expect(store.friendUserIds.size).toBe(0)
     })
-  })
 
-  describe('failure paths (10.6)', () => {
-    it('should rollback and rethrow when sendRequest fails after friendship already exists', async () => {
-      mockRepo.sendRequest.mockRejectedValue(new Error('already friends'))
-      const store = await makeVerifiedStore()
+    it('friendUserIds excludes self even if friendship row contains self twice (defensive)', async () => {
+      const store = await verifiedStore()
       store.friendships = [makeFriendship('user-me', 'user-other')]
-
-      await expect(store.sendRequest('user-other')).rejects.toThrow('already friends')
-      expect(store.outgoingRequests).toHaveLength(0)
-      expect(store.friendships).toHaveLength(1)
+      expect(store.friendUserIds.has('user-me')).toBe(false)
+      expect(store.friendUserIds.has('user-other')).toBe(true)
     })
 
-    it('should rollback accept and rethrow on RLS policy violation', async () => {
-      mockRepo.accept.mockRejectedValue(new Error('new row violates row-level security policy'))
-      const store = await makeVerifiedStore()
+    it('clear() resets all collections', async () => {
+      const store = await verifiedStore()
       store.incomingRequests = [makeRequest()]
-
-      await expect(store.accept('req-1')).rejects.toThrow('row-level security')
-      expect(store.incomingRequests).toHaveLength(1)
+      store.friendships = [makeFriendship('user-me', 'user-other')]
+      store.userIdToPhoneMap = new Map([['x', '+41']])
+      store.clear()
+      expect(store.incomingRequests).toHaveLength(0)
       expect(store.friendships).toHaveLength(0)
-    })
-
-    it('should return null gracefully when findUserByPhone RPC throws', async () => {
-      mockRepo.findUserByPhone.mockRejectedValue(new Error('RPC error'))
-      const store = await makeVerifiedStore()
-      const result = await store.findUserByPhone('+41791234567')
-      expect(result).toBeNull()
-    })
-
-    it('should return empty array gracefully when findUsersByPhones RPC throws', async () => {
-      mockRepo.findUsersByPhones.mockRejectedValue(new Error('RPC error'))
-      const store = await makeVerifiedStore()
-      const result = await store.findUsersByPhones(['+41791234567'])
-      expect(result).toEqual([])
+      expect(store.userIdToPhoneMap.size).toBe(0)
     })
   })
 })

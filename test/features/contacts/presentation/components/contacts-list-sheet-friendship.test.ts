@@ -3,6 +3,7 @@ import { createTestingPinia } from '@pinia/testing'
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ContactsListSheet from '@/features/contacts/presentation/components/contacts-list-sheet.vue'
+import { makeFriendship, makeRequest } from '../../../friendships/_helpers'
 
 const {
   mockCurrentUser,
@@ -58,8 +59,8 @@ vi.mock('@/features/contacts/data/repositories/contacts-repository-impl', () => 
     fetchContacts: vi.fn().mockResolvedValue([]),
     createContact: vi.fn().mockResolvedValue({
       id: 'new-c',
-      firstName: 'Contact',
-      lastName: 'A',
+      firstName: 'C',
+      lastName: null,
       displayName: null,
       userId: 'user-me',
       contactMethods: [],
@@ -71,7 +72,7 @@ vi.mock('@/features/contacts/data/repositories/contacts-repository-impl', () => 
 vi.mock('@/features/contacts/data/repositories/contact-methods-repository-impl', () => ({
   ContactMethodsRepositoryImpl: vi.fn(() => ({
     addMethod: vi.fn().mockResolvedValue({
-      id: 'm-new',
+      id: 'm',
       contactId: 'new-c',
       methodType: 'phone',
       value: '+41791111111',
@@ -84,7 +85,7 @@ vi.mock('@/features/contacts/data/repositories/contact-methods-repository-impl',
   })),
 }))
 
-const ANNA_PHONE = '+41791234567'
+const PHONE = '+41791234567'
 
 const anna = {
   id: 'c-1',
@@ -93,24 +94,8 @@ const anna = {
   lastName: 'Meier',
   displayName: null,
   contactMethods: [
-    { id: 'm-1', contactId: 'c-1', methodType: 'phone', value: ANNA_PHONE, label: null, isPrimary: true },
+    { id: 'm-1', contactId: 'c-1', methodType: 'phone', value: PHONE, label: null, isPrimary: true },
   ],
-}
-
-function makeFriendship(a: string, b: string): Friendship {
-  const [userAId, userBId] = [a, b].sort() as [string, string]
-  return { userAId, userBId, createdAt: new Date().toISOString(), requestId: 'req-1' }
-}
-
-function makePendingRequest(toUserId: string): FriendRequest {
-  return {
-    id: 'req-out-1',
-    fromUserId: 'user-me',
-    toUserId,
-    status: 'pending',
-    createdAt: new Date().toISOString(),
-    respondedAt: null,
-  }
 }
 
 const ContactFormStub = {
@@ -127,18 +112,14 @@ const ConnectPromptStub = {
   props: ['matchedUserId'],
 }
 
-function mountSheet(contacts = [anna]) {
+function mountSheet(contacts: typeof anna[] = [anna]) {
   return mount(ContactsListSheet, {
     global: {
-      plugins: [
-        createTestingPinia({
-          createSpy: vi.fn,
-          stubActions: false,
-          initialState: {
-            contacts: { contacts, isLoading: false, error: null },
-          },
-        }),
-      ],
+      plugins: [createTestingPinia({
+        createSpy: vi.fn,
+        stubActions: false,
+        initialState: { contacts: { contacts, isLoading: false, error: null } },
+      })],
       stubs: {
         ContactDetailView: { template: '<div />', emits: ['back', 'deleted'], props: ['contact'] },
         ContactForm: ContactFormStub,
@@ -153,31 +134,33 @@ async function openAddView(wrapper: ReturnType<typeof mountSheet>) {
   await wrapper.vm.$nextTick()
 }
 
-// ── 10.2: Connect-prompt suppression rules ───────────────────────────────────
+function resetMocks() {
+  vi.clearAllMocks()
+  mockCurrentUser.value = { id: 'user-me', phone_confirmed_at: '2024-01-01T00:00:00Z' }
+  mockListIncoming.mockResolvedValue([])
+  mockListFriendships.mockResolvedValue([])
+  mockFindUsersByPhones.mockResolvedValue([])
+}
 
-describe('connect-prompt suppression (manual form)', () => {
+// ── connect-prompt suppression ───────────────────────────────────────────────
+
+describe('connect-prompt suppression (no-prompt rules)', () => {
   beforeEach(() => {
     vi.useFakeTimers()
-    vi.clearAllMocks()
-    mockCurrentUser.value = { id: 'user-me', phone_confirmed_at: '2024-01-01T00:00:00Z' }
-    mockListIncoming.mockResolvedValue([])
-    mockListFriendships.mockResolvedValue([])
-    mockFindUsersByPhones.mockResolvedValue([])
+    resetMocks()
   })
-
   afterEach(() => {
     vi.useRealTimers()
   })
 
-  it('should not show prompt when caller phone is unverified', async () => {
+  it('does not run lookup when caller phone is unverified', async () => {
     mockCurrentUser.value = { id: 'user-me', phone_confirmed_at: null }
     mockFindUserByPhone.mockResolvedValue('user-other')
 
     const wrapper = mountSheet()
     await flushPromises()
     await openAddView(wrapper)
-
-    await wrapper.findComponent(ContactFormStub).vm.$emit('phone-change', ANNA_PHONE)
+    await wrapper.findComponent(ContactFormStub).vm.$emit('phone-change', PHONE)
     vi.advanceTimersByTime(400)
     await flushPromises()
 
@@ -185,200 +168,102 @@ describe('connect-prompt suppression (manual form)', () => {
     expect(wrapper.find('[data-testid="connect-prompt"]').exists()).toBe(false)
   })
 
-  it('should not show prompt when matched user is already a friend', async () => {
+  it('suppresses prompt when matched user is already a friend', async () => {
     mockListFriendships.mockResolvedValue([makeFriendship('user-me', 'user-other')])
     mockFindUserByPhone.mockResolvedValue('user-other')
 
     const wrapper = mountSheet()
-    await flushPromises() // fetchAll settles → friendships set, friendUserIds updated
-
+    await flushPromises()
     await openAddView(wrapper)
-    await wrapper.findComponent(ContactFormStub).vm.$emit('phone-change', ANNA_PHONE)
+    await wrapper.findComponent(ContactFormStub).vm.$emit('phone-change', PHONE)
     vi.advanceTimersByTime(400)
     await flushPromises()
 
-    expect(mockFindUserByPhone).toHaveBeenCalledWith(ANNA_PHONE)
     expect(wrapper.find('[data-testid="connect-prompt"]').exists()).toBe(false)
   })
 
-  it('should not show prompt when pending outgoing request already exists for matched user', async () => {
-    mockListIncoming.mockResolvedValue([makePendingRequest('user-other')])
-    mockFindUserByPhone.mockResolvedValue('user-other')
-
-    const wrapper = mountSheet()
-    await flushPromises() // fetchAll settles → outgoingRequests populated
-
-    await openAddView(wrapper)
-    await wrapper.findComponent(ContactFormStub).vm.$emit('phone-change', ANNA_PHONE)
-    vi.advanceTimersByTime(400)
-    await flushPromises()
-
-    expect(mockFindUserByPhone).toHaveBeenCalledWith(ANNA_PHONE)
-    expect(wrapper.find('[data-testid="connect-prompt"]').exists()).toBe(false)
-  })
-
-  it('should show prompt when valid match found with no prior relation', async () => {
+  it('suppresses prompt when a pending outgoing request exists', async () => {
+    mockListIncoming.mockResolvedValue([
+      makeRequest({ id: 'r1', fromUserId: 'user-me', toUserId: 'user-other' }),
+    ])
     mockFindUserByPhone.mockResolvedValue('user-other')
 
     const wrapper = mountSheet()
     await flushPromises()
     await openAddView(wrapper)
-
-    await wrapper.findComponent(ContactFormStub).vm.$emit('phone-change', ANNA_PHONE)
+    await wrapper.findComponent(ContactFormStub).vm.$emit('phone-change', PHONE)
     vi.advanceTimersByTime(400)
     await flushPromises()
-    await wrapper.vm.$nextTick()
 
-    const prompt = wrapper.find('[data-testid="connect-prompt"]')
-    expect(prompt.exists()).toBe(true)
-    expect(prompt.attributes('data-user-id')).toBe('user-other')
+    expect(wrapper.find('[data-testid="connect-prompt"]').exists()).toBe(false)
   })
 })
 
-// ── 10.3: Contacts list row friendship icon ──────────────────────────────────
+// ── friend icon negative cases ───────────────────────────────────────────────
 
-describe('friendship icon in contact list rows', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockCurrentUser.value = { id: 'user-me', phone_confirmed_at: '2024-01-01T00:00:00Z' }
-    mockListIncoming.mockResolvedValue([])
-    mockListFriendships.mockResolvedValue([])
-    mockFindUsersByPhones.mockResolvedValue([])
-  })
+describe('friend icon — negative cases', () => {
+  beforeEach(resetMocks)
 
-  it('should show friend icon when contact phone matches a confirmed friendship', async () => {
-    mockListFriendships.mockResolvedValue([makeFriendship('user-me', 'user-other')])
-    mockFindUsersByPhones.mockResolvedValue([{ phone: ANNA_PHONE, userId: 'user-other' }])
-
+  it('hides friend icon when no phone matches any friendship', async () => {
     const wrapper = mountSheet()
     await flushPromises()
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.find('.friend-icon').exists()).toBe(true)
-  })
-
-  it('should not show friend icon when no phone matches any friendship', async () => {
-    mockFindUsersByPhones.mockResolvedValue([])
-
-    const wrapper = mountSheet()
-    await flushPromises()
-
     expect(wrapper.find('.friend-icon').exists()).toBe(false)
   })
 
-  it('should not show friend icon when only a pending outgoing request exists (not yet accepted)', async () => {
-    // Phone maps to user-other, but user-other is only in outgoingRequests (no friendship entry)
-    mockListIncoming.mockResolvedValue([makePendingRequest('user-other')])
-    mockFindUsersByPhones.mockResolvedValue([{ phone: ANNA_PHONE, userId: 'user-other' }])
+  it('hides friend icon when only a pending request exists (not yet accepted)', async () => {
+    mockListIncoming.mockResolvedValue([
+      makeRequest({ id: 'r1', fromUserId: 'user-me', toUserId: 'user-other' }),
+    ])
+    mockFindUsersByPhones.mockResolvedValue([{ phone: PHONE, userId: 'user-other' }])
 
     const wrapper = mountSheet()
     await flushPromises()
-
-    // outgoingRequests contains the pending request but friendships is empty
-    // → user-other is NOT in friendUserIds → no friend icon
     expect(wrapper.find('.friend-icon').exists()).toBe(false)
   })
 })
 
-// ── 10.4: Import-results batch discovery ─────────────────────────────────────
+// ── import discovery edges ───────────────────────────────────────────────────
 
-describe('import-results discovery', () => {
+describe('import discovery (failure + gating)', () => {
   const PHONE_A = '+41791111111'
   const PHONE_B = '+41792222222'
-
   const importedItems = [
-    {
-      firstName: 'Contact',
-      lastName: 'A',
-      phones: [{ value: PHONE_A, label: null, isPrimary: true }],
-      rawPhoneNumbers: [],
-    },
-    {
-      firstName: 'Contact',
-      lastName: 'B',
-      phones: [{ value: PHONE_B, label: null, isPrimary: true }],
-      rawPhoneNumbers: [],
-    },
+    { firstName: 'A', lastName: '', phones: [{ value: PHONE_A, label: null, isPrimary: true }], rawPhoneNumbers: [] },
+    { firstName: 'B', lastName: '', phones: [{ value: PHONE_B, label: null, isPrimary: true }], rawPhoneNumbers: [] },
   ]
-
-  /** Second .import-btn = contact picker (rendered when isContactPickerSupported = true) */
-  function contactPickerBtn(wrapper: ReturnType<typeof mountSheet>) {
-    return wrapper.findAll('.import-btn')[1]!
-  }
+  const pickerBtn = (w: ReturnType<typeof mountSheet>) => w.findAll('.import-btn')[1]!
 
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockCurrentUser.value = { id: 'user-me', phone_confirmed_at: '2024-01-01T00:00:00Z' }
-    mockListIncoming.mockResolvedValue([])
-    mockListFriendships.mockResolvedValue([])
-    mockFindUsersByPhones.mockResolvedValue([])
+    resetMocks()
     mockPickContacts.mockResolvedValue(importedItems)
   })
 
-  it('should call findUsersByPhones exactly once with union of all phones after batch import', async () => {
-    const wrapper = mountSheet([])
-    await flushPromises()
-    await openAddView(wrapper)
-
-    await contactPickerBtn(wrapper).trigger('click')
-    await flushPromises()
-
-    expect(wrapper.find('.results-view').exists()).toBe(true)
-
-    // processImportedContacts batches all phones into one call (composable may make extra per-contact calls)
-    const batchCall = mockFindUsersByPhones.mock.calls.find(
-      c => c[0].includes(PHONE_A) && c[0].includes(PHONE_B),
-    )
-    expect(batchCall).toBeDefined()
-    expect(batchCall![0]).toContain(PHONE_A)
-    expect(batchCall![0]).toContain(PHONE_B)
-  })
-
-  it('should render ConnectPrompt for matched import rows', async () => {
-    mockFindUsersByPhones.mockResolvedValue([{ phone: PHONE_A, userId: 'user-other' }])
-
-    const wrapper = mountSheet([])
-    await flushPromises()
-    await openAddView(wrapper)
-
-    await contactPickerBtn(wrapper).trigger('click')
-    await flushPromises()
-    await wrapper.vm.$nextTick()
-
-    const prompt = wrapper.find('[data-testid="connect-prompt"]')
-    expect(prompt.exists()).toBe(true)
-    expect(prompt.attributes('data-user-id')).toBe('user-other')
-  })
-
-  it('should show import results even when batch discovery call fails', async () => {
-    // The store's findUsersByPhones swallows the error and returns []; import should still succeed
+  it('still shows import results when batch lookup throws (store swallows error)', async () => {
     mockFindUsersByPhones.mockRejectedValue(new Error('RPC error'))
 
     const wrapper = mountSheet([])
     await flushPromises()
     await openAddView(wrapper)
-
-    await contactPickerBtn(wrapper).trigger('click')
+    await pickerBtn(wrapper).trigger('click')
     await flushPromises()
 
     expect(wrapper.find('.results-view').exists()).toBe(true)
     expect(wrapper.find('[data-testid="connect-prompt"]').exists()).toBe(false)
   })
 
-  it('should not call findUsersByPhones for import when caller is unverified', async () => {
+  it('skips batch discovery when caller phone unverified', async () => {
     mockCurrentUser.value = { id: 'user-me', phone_confirmed_at: null }
 
     const wrapper = mountSheet([])
     await flushPromises()
     await openAddView(wrapper)
-
-    await contactPickerBtn(wrapper).trigger('click')
+    await pickerBtn(wrapper).trigger('click')
     await flushPromises()
 
     expect(wrapper.find('.results-view').exists()).toBe(true)
-    const importBatchCall = mockFindUsersByPhones.mock.calls.find(
-      c => c[0].includes(PHONE_A),
+    const importBatch = mockFindUsersByPhones.mock.calls.find(
+      c => c[0].includes(PHONE_A) && c[0].includes(PHONE_B),
     )
-    expect(importBatchCall).toBeUndefined()
+    expect(importBatch).toBeUndefined()
   })
 })

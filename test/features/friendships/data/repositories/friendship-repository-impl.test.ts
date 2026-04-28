@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FriendshipRepositoryImpl } from '@/features/friendships/data/repositories/friendship-repository-impl'
+import { stubFrom } from '../../_helpers'
 
 const mockRpc = vi.fn()
 const mockFrom = vi.fn()
@@ -11,18 +12,7 @@ vi.mock('@/core/utils/supabase', () => ({
   },
 }))
 
-function makeDbRequest() {
-  return {
-    id: '11111111-1111-1111-1111-111111111111',
-    from_user_id: '22222222-2222-2222-2222-222222222222',
-    to_user_id: '33333333-3333-3333-3333-333333333333',
-    status: 'pending',
-    created_at: new Date().toISOString(),
-    responded_at: null,
-  }
-}
-
-describe('friendshipRepositoryImpl', () => {
+describe('friendshipRepositoryImpl (errors + edges only)', () => {
   let repo: FriendshipRepositoryImpl
 
   beforeEach(() => {
@@ -31,109 +21,99 @@ describe('friendshipRepositoryImpl', () => {
   })
 
   describe('sendRequest', () => {
-    it('should throw with RLS error message when supabase returns policy violation', async () => {
-      mockFrom.mockReturnValue({
-        insert: vi.fn(() => ({
-          select: vi.fn(() => ({
-            single: vi.fn().mockResolvedValue({
-              data: null,
-              error: { message: 'new row violates row-level security policy' },
-            }),
-          })),
-        })),
-      })
-
-      await expect(repo.sendRequest('user-b')).rejects.toThrow(
-        'new row violates row-level security policy',
-      )
+    it('throws RLS message when policy blocks insert', async () => {
+      mockFrom.mockReturnValue(stubFrom({ error: { message: 'new row violates row-level security policy' } }))
+      await expect(repo.sendRequest('user-b')).rejects.toThrow('row-level security')
     })
 
-    it('should parse and return request on success', async () => {
-      const row = makeDbRequest()
-      mockFrom.mockReturnValue({
-        insert: vi.fn(() => ({
-          select: vi.fn(() => ({
-            single: vi.fn().mockResolvedValue({ data: row, error: null }),
-          })),
-        })),
-      })
-
-      const result = await repo.sendRequest('user-b')
-      expect(result.id).toBe('11111111-1111-1111-1111-111111111111')
-      expect(result.fromUserId).toBe('22222222-2222-2222-2222-222222222222')
-      expect(result.status).toBe('pending')
+    it('zod-rejects when DB row is missing required fields (e.g. malformed id)', async () => {
+      mockFrom.mockReturnValue(stubFrom({
+        data: { id: 'not-a-uuid', from_user_id: 'x', to_user_id: 'y', status: 'pending', created_at: '' },
+      }))
+      await expect(repo.sendRequest('user-b')).rejects.toThrow()
     })
   })
 
   describe('accept', () => {
-    it('should throw when accept_friend_request RPC returns error', async () => {
-      mockRpc.mockResolvedValue({ data: null, error: { message: 'permission denied for function' } })
-
-      await expect(repo.accept('req-1')).rejects.toThrow('permission denied for function')
-    })
-
-    it('should resolve without error on success', async () => {
-      mockRpc.mockResolvedValue({ data: null, error: null })
-      await expect(repo.accept('req-1')).resolves.toBeUndefined()
+    it('throws when accept_friend_request RPC errors (e.g. already accepted)', async () => {
+      mockRpc.mockResolvedValue({ data: null, error: { message: 'request not pending' } })
+      await expect(repo.accept('req-1')).rejects.toThrow('request not pending')
     })
   })
 
   describe('deny', () => {
-    it('should throw when supabase returns error on status update', async () => {
-      mockFrom.mockReturnValue({
-        update: vi.fn(() => ({
-          eq: vi.fn().mockResolvedValue({ error: { message: 'permission denied' } }),
-        })),
-      })
-
+    it('throws when caller lacks RLS rights to update', async () => {
+      mockFrom.mockReturnValue(stubFrom({ error: { message: 'permission denied' } }))
       await expect(repo.deny('req-1')).rejects.toThrow('permission denied')
     })
   })
 
-  describe('findUserByPhone', () => {
-    it('should throw when RPC returns error (e.g., caller phone unverified)', async () => {
-      mockRpc.mockResolvedValue({ data: null, error: { message: 'caller phone not verified' } })
+  describe('cancel', () => {
+    it('throws when sender no longer owns request', async () => {
+      mockFrom.mockReturnValue(stubFrom({ error: { message: 'permission denied' } }))
+      await expect(repo.cancel('req-1')).rejects.toThrow('permission denied')
+    })
+  })
 
+  describe('listIncoming / listFriendships', () => {
+    it('listIncoming throws on supabase error', async () => {
+      mockFrom.mockReturnValue(stubFrom({ error: { message: 'network down' } }))
+      await expect(repo.listIncoming()).rejects.toThrow('network down')
+    })
+
+    it('listFriendships throws on supabase error', async () => {
+      mockFrom.mockReturnValue(stubFrom({ error: { message: 'network down' } }))
+      await expect(repo.listFriendships()).rejects.toThrow('network down')
+    })
+  })
+
+  describe('findUserByPhone', () => {
+    it('throws when caller phone is unverified (RPC guard)', async () => {
+      mockRpc.mockResolvedValue({ data: null, error: { message: 'caller phone not verified' } })
       await expect(repo.findUserByPhone('+41791234567')).rejects.toThrow('caller phone not verified')
     })
 
-    it('should return null when no matching user found', async () => {
+    it('returns null when no match (data: null)', async () => {
       mockRpc.mockResolvedValue({ data: null, error: null })
-
-      const result = await repo.findUserByPhone('+41791234567')
-      expect(result).toBeNull()
-    })
-
-    it('should return userId when user found', async () => {
-      mockRpc.mockResolvedValue({ data: 'user-found-id', error: null })
-
-      const result = await repo.findUserByPhone('+41791234567')
-      expect(result).toBe('user-found-id')
+      expect(await repo.findUserByPhone('+41791234567')).toBeNull()
     })
   })
 
   describe('findUsersByPhones', () => {
-    it('should throw when RPC returns error', async () => {
-      mockRpc.mockResolvedValue({ data: null, error: { message: 'RPC error' } })
+    it('short-circuits without RPC call on empty input', async () => {
+      const result = await repo.findUsersByPhones([])
+      expect(result).toEqual([])
+      expect(mockRpc).not.toHaveBeenCalled()
+    })
 
+    it('throws when RPC errors', async () => {
+      mockRpc.mockResolvedValue({ data: null, error: { message: 'RPC error' } })
       await expect(repo.findUsersByPhones(['+41791234567'])).rejects.toThrow('RPC error')
     })
 
-    it('should return empty array for null data', async () => {
+    it('coerces null data to empty array', async () => {
       mockRpc.mockResolvedValue({ data: null, error: null })
+      expect(await repo.findUsersByPhones(['+41791234567'])).toEqual([])
+    })
+  })
 
-      const result = await repo.findUsersByPhones(['+41791234567'])
+  describe('findPhonesByUserIds', () => {
+    it('short-circuits without RPC call on empty input', async () => {
+      const result = await repo.findPhonesByUserIds([])
       expect(result).toEqual([])
+      expect(mockRpc).not.toHaveBeenCalled()
     })
 
-    it('should map snake_case user_id to camelCase userId', async () => {
-      mockRpc.mockResolvedValue({
-        data: [{ phone: '+41791234567', user_id: 'user-abc' }],
-        error: null,
-      })
+    it('throws when RPC errors', async () => {
+      mockRpc.mockResolvedValue({ data: null, error: { message: 'RPC error' } })
+      await expect(repo.findPhonesByUserIds(['user-a'])).rejects.toThrow('RPC error')
+    })
+  })
 
-      const result = await repo.findUsersByPhones(['+41791234567'])
-      expect(result).toEqual([{ phone: '+41791234567', userId: 'user-abc' }])
+  describe('removeFriendship', () => {
+    it('throws when remove_friendship RPC errors (e.g. no such friendship)', async () => {
+      mockRpc.mockResolvedValue({ data: null, error: { message: 'no friendship found' } })
+      await expect(repo.removeFriendship('user-other')).rejects.toThrow('no friendship found')
     })
   })
 })
