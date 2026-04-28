@@ -1,19 +1,18 @@
+import type { User } from '@supabase/supabase-js'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import CallbackPage from '@/features/auth/presentation/pages/callback-page.vue'
-
-let authStateChangeCallback: ((event: string) => void) | null = null
+import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 
 const mockRouteQuery: Record<string, string> = {}
 
 vi.mock('@/core/utils/supabase', () => ({
   supabase: {
     auth: {
-      onAuthStateChange: vi.fn((cb: (event: string) => void) => {
-        authStateChangeCallback = cb
-        return { data: { subscription: { unsubscribe: vi.fn() } } }
-      }),
+      getSession: vi.fn(async () => ({ data: { session: null } })),
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
     },
   },
 }))
@@ -30,20 +29,31 @@ describe('callbackPage', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
-    authStateChangeCallback = null
     Object.keys(mockRouteQuery).forEach(k => delete mockRouteQuery[k])
   })
 
-  it('should show loading state by default', () => {
+  it('should show loading state while auth store still loading', () => {
     const wrapper = mount(CallbackPage)
     expect(wrapper.find('.spinner').exists()).toBe(true)
     expect(wrapper.text()).toContain('auth.callback.loading')
+    expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('should redirect to map on SIGNED_IN event', async () => {
+  it('should redirect to map once authenticated', async () => {
+    const authStore = useAuthStore()
     mount(CallbackPage)
-    authStateChangeCallback?.('SIGNED_IN')
-    await vi.waitFor(() => expect(mockReplace).toHaveBeenCalledWith({ name: 'map' }))
+    authStore.currentUser = { id: 'u1' } as User
+    authStore.isLoading = false
+    await nextTick()
+    expect(mockReplace).toHaveBeenCalledWith({ name: 'map' })
+  })
+
+  it('should not redirect when load finished but unauthenticated', async () => {
+    const authStore = useAuthStore()
+    mount(CallbackPage)
+    authStore.isLoading = false
+    await nextTick()
+    expect(mockReplace).not.toHaveBeenCalled()
   })
 
   it('should show error when error_description query param present', () => {
@@ -52,6 +62,16 @@ describe('callbackPage', () => {
     expect(wrapper.find('.spinner').exists()).toBe(false)
     expect(wrapper.text()).toContain('auth.callback.errorTitle')
     expect(wrapper.text()).toContain('auth.callback.backToEmailBtn')
+  })
+
+  it('should not redirect in error state even if authenticated', async () => {
+    mockRouteQuery.error_description = 'token expired'
+    const authStore = useAuthStore()
+    mount(CallbackPage)
+    authStore.currentUser = { id: 'u1' } as User
+    authStore.isLoading = false
+    await nextTick()
+    expect(mockReplace).not.toHaveBeenCalled()
   })
 
   it('should navigate to email-entry on back button click in error state', async () => {

@@ -1,28 +1,25 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
+import { ref, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { supabase } from '@/core/utils/supabase'
+import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 
 const router = useRouter()
 const route = useRoute()
 const { t } = useI18n({ useScope: 'global' })
 
+const authStore = useAuthStore()
+const { isAuthenticated, isLoading } = storeToRefs(authStore)
+
 const errorDescription = ref<string | null>((route.query.error_description as string) ?? null)
 
-let unsubscribe: (() => void) | null = null
-
-onMounted(() => {
-  const { data } = supabase.auth.onAuthStateChange((event) => {
-    if (event === 'SIGNED_IN') {
-      router.replace({ name: 'map' })
-    }
-  })
-  unsubscribe = data.subscription.unsubscribe
-})
-
-onUnmounted(() => {
-  unsubscribe?.()
+watchEffect(() => {
+  if (errorDescription.value)
+    return
+  if (!isLoading.value && isAuthenticated.value) {
+    router.replace({ name: 'map' })
+  }
 })
 </script>
 
