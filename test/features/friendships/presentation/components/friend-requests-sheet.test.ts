@@ -1,6 +1,7 @@
 import { createTestingPinia } from '@pinia/testing'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import FriendRequestsSheet from '@/features/friendships/presentation/components/friend-requests-sheet.vue'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
@@ -59,6 +60,12 @@ function mountSheet(opts: MountOpts = {}) {
   return { wrapper, friendships: useFriendshipsStore(), contacts: useContactsStore() }
 }
 
+async function triggerAccept(wrapper: ReturnType<typeof mount>) {
+  await wrapper.find('.action-btn--accept').trigger('click')
+  await nextTick()
+  await wrapper.find('.action-btn--accept').trigger('click')
+}
+
 describe('friendRequestsSheet (edges only)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -74,6 +81,15 @@ describe('friendRequestsSheet (edges only)', () => {
       const { wrapper } = mountSheet()
       expect(wrapper.text()).toContain('friendships.inboxEmpty')
     })
+
+    it('shows confirm dialog after clicking accept', async () => {
+      const { wrapper } = mountSheet({
+        incoming: [makeRequest({ id: 'req-1', fromUserId: 'user-other', toUserId: 'user-me' })],
+      })
+      await wrapper.find('.action-btn--accept').trigger('click')
+      await nextTick()
+      expect(wrapper.find('.confirm-content').exists()).toBe(true)
+    })
   })
 
   describe('error handling shows snackbar', () => {
@@ -82,7 +98,7 @@ describe('friendRequestsSheet (edges only)', () => {
         incoming: [makeRequest({ id: 'req-1', fromUserId: 'user-other', toUserId: 'user-me' })],
       })
       vi.mocked(friendships.accept).mockRejectedValue(new Error('boom'))
-      await wrapper.find('.action-btn--accept').trigger('click')
+      await triggerAccept(wrapper)
       await flushPromises()
       expect(mockSnackbarShow).toHaveBeenCalled()
     })
@@ -117,7 +133,7 @@ describe('friendRequestsSheet (edges only)', () => {
         userIdToPhoneMap: new Map(),
       })
       vi.mocked(friendships.accept).mockResolvedValue(undefined)
-      await wrapper.find('.action-btn--accept').trigger('click')
+      await triggerAccept(wrapper)
       await flushPromises()
       expect(contacts.addContact).not.toHaveBeenCalled()
     })
@@ -129,7 +145,7 @@ describe('friendRequestsSheet (edges only)', () => {
         contacts: [{ id: 'c-1', contactMethods: [{ methodType: 'phone', value: PHONE }] }],
       })
       vi.mocked(friendships.accept).mockResolvedValue(undefined)
-      await wrapper.find('.action-btn--accept').trigger('click')
+      await triggerAccept(wrapper)
       await flushPromises()
       expect(contacts.addContact).not.toHaveBeenCalled()
     })
@@ -140,7 +156,7 @@ describe('friendRequestsSheet (edges only)', () => {
         userIdToPhoneMap: new Map([['user-other', PHONE]]),
       })
       vi.mocked(friendships.accept).mockRejectedValue(new Error('rls'))
-      await wrapper.find('.action-btn--accept').trigger('click')
+      await triggerAccept(wrapper)
       await flushPromises()
       expect(contacts.addContact).not.toHaveBeenCalled()
     })
