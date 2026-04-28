@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { onMounted, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import { useSnackbar } from '@/core/composables/use-snackbar'
@@ -47,15 +47,31 @@ async function maybeCreateContactForFriend(userId: string) {
   snackbar.show(t('friendships.contactCreated'))
 }
 
+const confirmingRequestId = ref<string | null>(null)
+const isAccepting = ref(false)
+
+function startAcceptConfirm(requestId: string) {
+  confirmingRequestId.value = requestId
+}
+
+function cancelAcceptConfirm() {
+  confirmingRequestId.value = null
+}
+
 async function handleAccept(requestId: string) {
   const req = incomingRequests.value.find(r => r.id === requestId)
+  isAccepting.value = true
   try {
     await store.accept(requestId)
     if (req)
       await maybeCreateContactForFriend(req.fromUserId)
+    confirmingRequestId.value = null
   }
   catch {
     snackbar.show(`${t('friendships.accept')} failed`)
+  }
+  finally {
+    isAccepting.value = false
   }
 }
 
@@ -104,18 +120,39 @@ async function handleCancel(requestId: string) {
 
           <ul v-else class="request-list">
             <li v-for="req in incomingRequests" :key="req.id" class="request-row">
-              <div class="request-info">
-                <span class="material-symbols-outlined request-icon">person</span>
-                <span class="request-user">{{ phoneFor(req.fromUserId) }}</span>
-              </div>
-              <div class="request-actions">
-                <button type="button" class="action-btn action-btn--deny" @click="handleDeny(req.id)">
-                  {{ t('friendships.deny') }}
-                </button>
-                <button type="button" class="action-btn action-btn--accept" @click="handleAccept(req.id)">
-                  {{ t('friendships.accept') }}
-                </button>
-              </div>
+              <template v-if="confirmingRequestId === req.id">
+                <div class="confirm-content">
+                  <p class="confirm-text">
+                    {{ t('friendships.acceptConfirm') }}
+                  </p>
+                  <p class="confirm-warning">
+                    <span class="material-symbols-outlined warn-icon">warning</span>
+                    {{ t('friendships.acceptWarning') }}
+                  </p>
+                  <div class="confirm-actions">
+                    <button type="button" class="action-btn action-btn--cancel" :disabled="isAccepting" @click="cancelAcceptConfirm">
+                      {{ t('friendships.cancel') }}
+                    </button>
+                    <button type="button" class="action-btn action-btn--accept" :disabled="isAccepting" @click="handleAccept(req.id)">
+                      {{ isAccepting ? t('friendships.acceptingBtn') : t('friendships.accept') }}
+                    </button>
+                  </div>
+                </div>
+              </template>
+              <template v-else>
+                <div class="request-info">
+                  <span class="material-symbols-outlined request-icon">person</span>
+                  <span class="request-user">{{ phoneFor(req.fromUserId) }}</span>
+                </div>
+                <div class="request-actions">
+                  <button type="button" class="action-btn action-btn--deny" @click="handleDeny(req.id)">
+                    {{ t('friendships.deny') }}
+                  </button>
+                  <button type="button" class="action-btn action-btn--accept" @click="startAcceptConfirm(req.id)">
+                    {{ t('friendships.accept') }}
+                  </button>
+                </div>
+              </template>
             </li>
           </ul>
         </section>
@@ -281,5 +318,39 @@ async function handleCancel(requestId: string) {
 
 .action-btn--cancel:hover {
   background-color: var(--color-surface-variant);
+}
+
+.confirm-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  width: 100%;
+}
+
+.confirm-text {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-on-surface);
+}
+
+.confirm-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
+}
+
+.warn-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--color-warning, #f59e0b);
+}
+
+.confirm-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
 }
 </style>

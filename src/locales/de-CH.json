@@ -333,7 +333,7 @@
   "friendships": {
     "prompt": {
       "title": "Diese Nummer gehört einem TourenBuddy – als Freunde vernetzen?",
-      "securityNote": "Die Identität des Nutzers wird nicht preisgegeben. Das Senden einer Anfrage informiert ihn, dass Sie seine Nummer haben. Er kann die Anfrage ohne Begründung ablehnen."
+      "securityNote": "Deine Identität wird nicht preisgegeben. Das Senden einer Anfrage informiert den TourenBuddy, dass Du seine Nummer haben. Er kann die Anfrage ohne Begründung ablehnen. Freundschaften können nicht gelöscht werden."
     },
     "sendRequest": "Anfrage senden",
     "justSaveContact": "Nur speichern",
@@ -350,6 +350,9 @@
     "friendsListLink": "Freundschaftsanfragen",
     "contactCreated": "Kontakt für neuen Freund erstellt",
     "tooltip": "Freund auf TourenBuddy",
+    "acceptConfirm": "Diese Freundschaftsanfrage annehmen?",
+    "acceptWarning": "Angenommene Freundschaften können nicht gelöscht werden. Um diesen Freund zu entfernen, müssen Sie den verknüpften Kontakt löschen.",
+    "acceptingBtn": "Wird angenommen...",
     "verificationNotice": {
       "title": "Hinweis zur Auffindbarkeit",
       "body": "Nach der Verifizierung können andere verifizierte TourenBuddy-Nutzer, die diese Nummer in ihren Kontakten haben, erkennen, dass ein Konto für diese Nummer existiert, und eine Freundschaftsanfrage senden. Ihre Identität wird dabei nicht preisgegeben. Unverifizierte Nummern sind nie auffindbar. Sie können jede eingehende Anfrage ohne Begründung und ohne Konsequenzen ablehnen. Freundschaften können in Zukunft widerrufen werden.",
