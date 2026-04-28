@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.7.1...tourenbuddy-frontend-v0.8.0) (2026-04-25)
+
+
+### Features
+
+* Change tour goal during creation ([#83](https://github.com/sekael/tourenbuddy_frontend_vue/issues/83)) ([36a1750](https://github.com/sekael/tourenbuddy_frontend_vue/commit/36a1750c4cea1622345f822182fb752df62c0429))
+
 ## [0.7.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.7.0...tourenbuddy-frontend-v0.7.1) (2026-04-24)
 
 
