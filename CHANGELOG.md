@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.8.0...tourenbuddy-frontend-v0.8.1) (2026-04-28)
+
+
+### Bug Fixes
+
+* **auth:** Redirect from callback once auth store ready ([#89](https://github.com/sekael/tourenbuddy_frontend_vue/issues/89)) ([ac2ed7c](https://github.com/sekael/tourenbuddy_frontend_vue/commit/ac2ed7c6b2193ba16ab6404d815a313ff8f6ec21))
+
 ## [0.8.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.7.1...tourenbuddy-frontend-v0.8.0) (2026-04-25)
 
 
