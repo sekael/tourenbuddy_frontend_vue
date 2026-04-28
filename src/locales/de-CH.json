@@ -347,6 +347,7 @@
     "requestTo": "Anfrage an",
     "verifyPhoneHint": "Verifizieren Sie Ihre Telefonnummer, um sich mit anderen Nutzern zu vernetzen.",
     "friendsListLink": "Freundschaftsanfragen",
+    "contactCreated": "Kontakt für neuen Freund erstellt",
     "verificationNotice": {
       "title": "Hinweis zur Auffindbarkeit",
       "body": "Nach der Verifizierung können andere verifizierte TouringBuddy-Nutzer, die diese Nummer in ihren Kontakten haben, erkennen, dass ein Konto für diese Nummer existiert, und eine Freundschaftsanfrage senden. Ihre Identität wird dabei nicht preisgegeben. Unverifizierte Nummern sind nie auffindbar. Sie können jede eingehende Anfrage ohne Begründung und ohne Konsequenzen ablehnen. Freundschaften können in Zukunft widerrufen werden.",

@@ -20,6 +20,8 @@ export const useFriendshipsStore = defineStore('friendships', () => {
   const friendships = ref<Friendship[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  /** userId → E.164 phone, populated by all phone-lookup RPCs. */
+  const userIdToPhoneMap = ref(new Map<string, string>())
 
   /** Set of user IDs that are confirmed friends with the caller. */
   const friendUserIds = computed<Set<string>>(() => {
@@ -152,7 +154,13 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     if (!isPhoneVerified.value)
       return null
     try {
-      return await repository.findUserByPhone(phone)
+      const uid = await repository.findUserByPhone(phone)
+      if (uid) {
+        const next = new Map(userIdToPhoneMap.value)
+        next.set(uid, phone)
+        userIdToPhoneMap.value = next
+      }
+      return uid
     }
     catch (err) {
       logger.error('findUserByPhone failed', err)
@@ -166,7 +174,13 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     if (!isPhoneVerified.value || phones.length === 0)
       return []
     try {
-      return await repository.findUsersByPhones(phones)
+      const results = await repository.findUsersByPhones(phones)
+      if (results.length > 0) {
+        const next = new Map(userIdToPhoneMap.value)
+        for (const r of results) next.set(r.userId, r.phone)
+        userIdToPhoneMap.value = next
+      }
+      return results
     }
     catch (err) {
       logger.error('findUsersByPhones failed', err)
@@ -174,10 +188,30 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     }
   }
 
+  async function findPhonesByUserIds(userIds: string[]): Promise<void> {
+    if (!isPhoneVerified.value || userIds.length === 0)
+      return
+    const missing = userIds.filter(id => !userIdToPhoneMap.value.has(id))
+    if (missing.length === 0)
+      return
+    try {
+      const results = await repository.findPhonesByUserIds(missing)
+      if (results.length > 0) {
+        const next = new Map(userIdToPhoneMap.value)
+        for (const r of results) next.set(r.userId, r.phone)
+        userIdToPhoneMap.value = next
+      }
+    }
+    catch (err) {
+      logger.error('findPhonesByUserIds failed', err)
+    }
+  }
+
   function clear() {
     incomingRequests.value = []
     outgoingRequests.value = []
     friendships.value = []
+    userIdToPhoneMap.value = new Map()
     error.value = null
   }
 
@@ -208,8 +242,10 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     accept,
     deny,
     cancel,
+    userIdToPhoneMap,
     findUserByPhone,
     findUsersByPhones,
+    findPhonesByUserIds,
     clear,
   }
 })

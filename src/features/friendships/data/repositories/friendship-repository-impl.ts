@@ -117,4 +117,14 @@ export class FriendshipRepositoryImpl implements FriendshipRepository {
     const rows = data as Array<{ phone: string, user_id: string }> | null
     return (rows ?? []).map(r => ({ phone: r.phone, userId: r.user_id }))
   }
+
+  async findPhonesByUserIds(userIds: string[]): Promise<Array<{ userId: string, phone: string }>> {
+    if (userIds.length === 0)
+      return []
+    const { data, error } = await supabase.rpc('find_phones_by_user_ids', { p_user_ids: userIds })
+    if (error)
+      throw new Error(error.message)
+    const rows = data as Array<{ user_id: string, phone: string }> | null
+    return (rows ?? []).map(r => ({ userId: r.user_id, phone: r.phone }))
+  }
 }

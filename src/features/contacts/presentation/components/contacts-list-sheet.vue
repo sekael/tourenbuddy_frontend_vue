@@ -4,7 +4,6 @@ import type { PhoneEntry } from '@/features/contacts/presentation/stores/contact
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import {
@@ -28,13 +27,12 @@ const props = defineProps<{
   initialContactId?: string | null
 }>()
 
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: [], openFriendRequests: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 
 type ViewState = 'list' | 'detail' | 'add'
 
-const router = useRouter()
 const contactsStore = useContactsStore()
 const { contacts, isLoading } = storeToRefs(contactsStore)
 const friendshipsStore = useFriendshipsStore()
@@ -50,8 +48,7 @@ const pendingIncomingCount = computed(
 )
 
 function goToFriendRequests() {
-  emit('close')
-  router.push({ name: 'friend-requests' })
+  emit('openFriendRequests')
 }
 
 const viewState = ref<ViewState>('list')

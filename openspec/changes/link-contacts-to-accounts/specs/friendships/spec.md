@@ -160,6 +160,25 @@ The store SHALL fetch on auth-store transition to authenticated and SHALL clear 
 - **WHEN** `accept(requestId)` succeeds
 - **THEN** the store SHALL remove the request from `incomingRequests` and add the corresponding friend user ID to `friendships`/`friendUserIds`
 
+### Requirement: Auto-create contact on friendship acceptance
+
+When a user accepts an incoming friend request, the system SHALL check whether any existing contact already has the requesting user's E.164 phone number as a contact method. If no such contact exists, the system SHALL automatically create a new contact with the phone number (formatted for display) as the first name and the E.164 value as a primary phone contact method. The check and creation SHALL be performed client-side immediately after a successful `accept` call, using the phone resolved from `userIdToPhoneMap`. If the phone cannot be resolved (e.g. not yet in the map), no contact SHALL be created. The user SHALL be informed via a transient notification (snackbar) when a contact is auto-created.
+
+#### Scenario: No existing contact — contact auto-created
+
+- **WHEN** a user accepts a friend request and no existing contact has the requester's phone
+- **THEN** a new contact SHALL be created with the requester's formatted phone as first name and E.164 phone as a primary phone method, and a snackbar SHALL inform the user
+
+#### Scenario: Existing contact — no duplicate created
+
+- **WHEN** a user accepts a friend request and an existing contact already holds the requester's phone
+- **THEN** no new contact SHALL be created and no snackbar about contact creation SHALL appear
+
+#### Scenario: Phone not in map — no contact created
+
+- **WHEN** a user accepts a friend request but the requester's phone cannot be resolved from `userIdToPhoneMap`
+- **THEN** the accept SHALL succeed normally and no contact creation SHALL be attempted
+
 #### Scenario: Clear on sign-out
 
 - **WHEN** the auth store signs out

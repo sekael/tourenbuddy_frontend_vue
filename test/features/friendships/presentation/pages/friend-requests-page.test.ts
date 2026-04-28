@@ -1,7 +1,7 @@
 import { createTestingPinia } from '@pinia/testing'
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import FriendRequestsPage from '@/features/friendships/presentation/pages/friend-requests-page.vue'
+import FriendRequestsSheet from '@/features/friendships/presentation/components/friend-requests-sheet.vue'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 
 vi.mock('@/core/composables/use-snackbar', () => ({
@@ -33,7 +33,34 @@ vi.mock('@/features/friendships/data/repositories/friendship-repository-impl', (
     listFriendships: vi.fn().mockResolvedValue([]),
     findUserByPhone: vi.fn(),
     findUsersByPhones: vi.fn(),
+    findPhonesByUserIds: vi.fn().mockResolvedValue([]),
   })),
+}))
+
+vi.mock('@/features/contacts/data/repositories/contacts-repository-impl', () => ({
+  ContactsRepositoryImpl: vi.fn().mockImplementation(() => ({
+    fetchContacts: vi.fn().mockResolvedValue([]),
+    createContact: vi.fn(),
+    updateContact: vi.fn(),
+    deleteContact: vi.fn(),
+  })),
+}))
+
+vi.mock('@/features/contacts/data/repositories/contact-methods-repository-impl', () => ({
+  ContactMethodsRepositoryImpl: vi.fn().mockImplementation(() => ({
+    addMethod: vi.fn(),
+    updateMethod: vi.fn(),
+    removeMethod: vi.fn(),
+    setPrimaryPhone: vi.fn(),
+  })),
+}))
+
+vi.mock('@/core/components/adaptive-overlay.vue', () => ({
+  default: {
+    name: 'AdaptiveOverlay',
+    props: ['title'],
+    template: '<div><slot /></div>',
+  },
 }))
 
 interface RequestRow {
@@ -56,7 +83,7 @@ function makeRow(id: string, from: string, to: string): RequestRow {
   }
 }
 
-function mountPage(
+function mountSheet(
   state: {
     incomingRequests?: RequestRow[]
     outgoingRequests?: RequestRow[]
@@ -72,32 +99,38 @@ function mountPage(
         friendships: [],
         isLoading: state.isLoading ?? false,
         error: null,
+        userIdToPhoneMap: new Map(),
+      },
+      contacts: {
+        contacts: [],
+        isLoading: false,
+        error: null,
       },
     },
   })
-  const wrapper = mount(FriendRequestsPage, { global: { plugins: [pinia] } })
+  const wrapper = mount(FriendRequestsSheet, { global: { plugins: [pinia] } })
   const store = useFriendshipsStore()
   return { wrapper, store }
 }
 
-describe('friendRequestsPage', () => {
+describe('friendRequestsSheet', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('should show deny-rights note', () => {
-    const { wrapper } = mountPage()
+    const { wrapper } = mountSheet()
     expect(wrapper.find('.deny-rights-note').exists()).toBe(true)
     expect(wrapper.text()).toContain('friendships.inboxDenyRightsNote')
   })
 
   it('should show empty state when no incoming requests', () => {
-    const { wrapper } = mountPage()
+    const { wrapper } = mountSheet()
     expect(wrapper.text()).toContain('friendships.inboxEmpty')
   })
 
   it('should render incoming request rows with accept and deny buttons', () => {
-    const { wrapper } = mountPage({
+    const { wrapper } = mountSheet({
       incomingRequests: [makeRow('req-1', 'user-other', 'user-me')],
     })
     expect(wrapper.find('.action-btn--accept').exists()).toBe(true)
@@ -105,7 +138,7 @@ describe('friendRequestsPage', () => {
   })
 
   it('should call accept store action when accept button clicked', async () => {
-    const { wrapper, store } = mountPage({
+    const { wrapper, store } = mountSheet({
       incomingRequests: [makeRow('req-1', 'user-other', 'user-me')],
     })
     await wrapper.find('.action-btn--accept').trigger('click')
@@ -113,7 +146,7 @@ describe('friendRequestsPage', () => {
   })
 
   it('should call deny store action when deny button clicked', async () => {
-    const { wrapper, store } = mountPage({
+    const { wrapper, store } = mountSheet({
       incomingRequests: [makeRow('req-1', 'user-other', 'user-me')],
     })
     await wrapper.find('.action-btn--deny').trigger('click')
@@ -121,14 +154,14 @@ describe('friendRequestsPage', () => {
   })
 
   it('should render outgoing request rows with cancel button', () => {
-    const { wrapper } = mountPage({
+    const { wrapper } = mountSheet({
       outgoingRequests: [makeRow('req-2', 'user-me', 'user-other')],
     })
     expect(wrapper.find('.action-btn--cancel').exists()).toBe(true)
   })
 
   it('should call cancel store action when cancel button clicked', async () => {
-    const { wrapper, store } = mountPage({
+    const { wrapper, store } = mountSheet({
       outgoingRequests: [makeRow('req-2', 'user-me', 'user-other')],
     })
     await wrapper.find('.action-btn--cancel').trigger('click')
@@ -136,7 +169,7 @@ describe('friendRequestsPage', () => {
   })
 
   it('should show loading text when isLoading is true', () => {
-    const { wrapper } = mountPage({ isLoading: true })
+    const { wrapper } = mountSheet({ isLoading: true })
     expect(wrapper.text()).toContain('contacts.list.loading')
     expect(wrapper.find('.action-btn--accept').exists()).toBe(false)
   })

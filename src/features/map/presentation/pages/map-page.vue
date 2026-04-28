@@ -6,6 +6,7 @@ import FeedbackSheet from '@/core/components/feedback-sheet.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import ContactsListSheet from '@/features/contacts/presentation/components/contacts-list-sheet.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
+import FriendRequestsSheet from '@/features/friendships/presentation/components/friend-requests-sheet.vue'
 import LocationPicker from '@/features/map/presentation/components/location-picker.vue'
 import MapActionOverlay from '@/features/map/presentation/components/map-action-overlay.vue'
 import TourenbuddyMap from '@/features/map/presentation/components/tourenbuddy-map.vue'
@@ -21,7 +22,7 @@ import UserProfileSheet from '@/features/user/presentation/components/user-profi
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
 type PickPointType = 'goal' | 'start' | 'end'
-type OverlayName = 'feedback' | 'profile' | 'contacts' | 'tours' | 'tour' | 'tour-creation'
+type OverlayName = 'feedback' | 'profile' | 'contacts' | 'tours' | 'tour' | 'tour-creation' | 'friend-requests'
 
 const mapStore = useMapStore()
 const toursStore = useToursStore()
@@ -44,6 +45,7 @@ const showProfileSheet = computed(() => activeOverlay.value === 'profile')
 const showContactDialog = computed(() => activeOverlay.value === 'contacts')
 const showToursList = computed(() => activeOverlay.value === 'tours')
 const showTourCreationDialog = computed(() => activeOverlay.value === 'tour-creation')
+const showFriendRequests = computed(() => activeOverlay.value === 'friend-requests')
 
 // Location picking state
 const pendingLocation = ref<{ lng: number, lat: number } | null>(null)
@@ -138,6 +140,11 @@ function handleEditContact(contactId: string) {
 function handleContactsClose() {
   editContactId.value = null
   closeOverlay()
+}
+
+function handleOpenFriendRequests() {
+  editContactId.value = null
+  openOverlay('friend-requests')
 }
 
 // Keep activeOverlay in sync when selectedTourId is mutated externally
@@ -397,7 +404,14 @@ function handleDialogClose() {
         <UserProfileSheet @close="closeOverlay" />
       </div>
       <div v-else-if="showContactDialog" key="contacts" class="sheet-container">
-        <ContactsListSheet :initial-contact-id="editContactId" @close="handleContactsClose" />
+        <ContactsListSheet
+          :initial-contact-id="editContactId"
+          @close="handleContactsClose"
+          @open-friend-requests="handleOpenFriendRequests"
+        />
+      </div>
+      <div v-else-if="showFriendRequests" key="friend-requests" class="sheet-container">
+        <FriendRequestsSheet @close="closeOverlay" />
       </div>
       <div v-else-if="showToursList" key="tours" class="sheet-container">
         <TourListSheet @close="closeOverlay" @select-tour="handleTourSelectedFromList" />
