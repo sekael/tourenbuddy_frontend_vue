@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { parseVCardText } from '@/features/contacts/presentation/composables/use-vcard-import'
+import {
+  parseVCardText,
+  useVCardImport,
+} from '@/features/contacts/presentation/composables/use-vcard-import'
 
 const singleVCard = `BEGIN:VCARD
 VERSION:3.0
@@ -254,5 +257,58 @@ END:VCARD`
     const result = parseVCardText(vcard)
     const primary = result[0]!.phones.find(p => p.isPrimary)
     expect(primary?.value).toBe('+41791234567')
+  })
+})
+
+describe('useVCardImport', () => {
+  function makeFile(content: string, name = 'contacts.vcf') {
+    return new File([content], name, { type: 'text/vcard' })
+  }
+
+  const vcfContent = `BEGIN:VCARD
+VERSION:3.0
+FN:Max Muster
+N:Muster;Max;;;
+TEL;TYPE=CELL:+41791234567
+END:VCARD`
+
+  const multiBlockVcf = `BEGIN:VCARD
+VERSION:3.0
+FN:Alice
+N:;Alice;;;
+TEL;TYPE=CELL:+41791234567
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+FN:Bob
+N:;Bob;;;
+TEL;TYPE=CELL:+41791000000
+END:VCARD`
+
+  it('should throw when zero files provided', async () => {
+    const { parseVCardFiles } = useVCardImport()
+    await expect(parseVCardFiles([])).rejects.toThrow('Exactly one .vcf file must be provided')
+  })
+
+  it('should throw when more than one file provided', async () => {
+    const { parseVCardFiles } = useVCardImport()
+    const files = [makeFile(vcfContent), makeFile(vcfContent, 'other.vcf')]
+    await expect(parseVCardFiles(files)).rejects.toThrow('Exactly one .vcf file must be provided')
+  })
+
+  it('should parse a single-file with one vCard block', async () => {
+    const { parseVCardFiles } = useVCardImport()
+    const result = await parseVCardFiles([makeFile(vcfContent)])
+    expect(result).toHaveLength(1)
+    expect(result[0]!.firstName).toBe('Max')
+    expect(result[0]!.lastName).toBe('Muster')
+  })
+
+  it('should parse a single file containing multiple vCard blocks', async () => {
+    const { parseVCardFiles } = useVCardImport()
+    const result = await parseVCardFiles([makeFile(multiBlockVcf)])
+    expect(result).toHaveLength(2)
+    expect(result.map(c => c.firstName)).toContain('Alice')
+    expect(result.map(c => c.firstName)).toContain('Bob')
   })
 })

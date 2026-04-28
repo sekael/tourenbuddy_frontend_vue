@@ -185,6 +185,7 @@
       "addingBtn": "Adding...",
       "addBtn": "Add",
       "deleteConfirm": "Delete this contact?",
+      "deleteFriendWarning": "This contact is linked to a TourenBuddy friend. Deleting it will also remove your friendship connection.",
       "deleteBtn": "Delete contact",
       "deletingBtn": "Deleting..."
     },
@@ -328,5 +329,34 @@
     "languageLabel": "Language",
     "en": "English",
     "de-CH": "Deutsch"
+  },
+  "friendships": {
+    "prompt": {
+      "title": "This phone belongs to a TourenBuddy — connect as friends?",
+      "securityNote": "Your identity is not revealed beyond account existence. Sending a request notifies them that you have their number. They may deny your request without stating a reason. Friendships cannot be deleted."
+    },
+    "sendRequest": "Send request",
+    "justSaveContact": "Just save contact",
+    "requestSent": "Request sent",
+    "learnMore": "Learn more",
+    "inboxEmpty": "No pending friend requests.",
+    "inboxDenyRightsNote": "You are free to deny any request without justification. Denying has no penalty and does not reveal your identity beyond the act of declining.",
+    "accept": "Accept",
+    "deny": "Deny",
+    "cancel": "Cancel",
+    "requestFrom": "Request from",
+    "requestTo": "Request to",
+    "verifyPhoneHint": "Verify your phone to connect with other users.",
+    "friendsListLink": "Friend requests",
+    "contactCreated": "Contact created for new friend",
+    "tooltip": "Friend on TourenBuddy",
+    "acceptConfirm": "Accept this friend request?",
+    "acceptWarning": "Accepted friendships cannot be deleted. To remove this friend, you must delete the linked contact.",
+    "acceptingBtn": "Accepting...",
+    "verificationNotice": {
+      "title": "Phone discoverability notice",
+      "body": "Once verified, other verified TourenBuddy users who add this number to their contacts will know an account exists for it and can send a friend request. Your identity is not revealed beyond this. Unverified phones are never discoverable. You can deny any incoming request.",
+      "acknowledge": "I understand, send code"
+    }
   }
 }

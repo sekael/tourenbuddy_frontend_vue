@@ -1,8 +1,30 @@
 import { createTestingPinia } from '@pinia/testing'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ContactDetailView from '@/features/contacts/presentation/components/contact-detail-view.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
+import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
+
+vi.mock('@/core/logging/use-logger', () => ({
+  useLogger: () => ({ error: vi.fn(), info: vi.fn(), warn: vi.fn() }),
+}))
+vi.mock('@/features/auth/presentation/stores/auth-store', () => ({
+  useAuthStore: vi.fn().mockReturnValue({ currentUser: null, isAuthenticated: false }),
+}))
+vi.mock('@/features/friendships/data/repositories/friendship-repository-impl', () => ({
+  FriendshipRepositoryImpl: vi.fn().mockImplementation(() => ({
+    sendRequest: vi.fn(),
+    accept: vi.fn(),
+    deny: vi.fn(),
+    cancel: vi.fn(),
+    listIncoming: vi.fn().mockResolvedValue([]),
+    listFriendships: vi.fn().mockResolvedValue([]),
+    findUserByPhone: vi.fn(),
+    findUsersByPhones: vi.fn(),
+    findPhonesByUserIds: vi.fn().mockResolvedValue([]),
+    removeFriendship: vi.fn(),
+  })),
+}))
 
 const mockContact = {
   id: 'c-1',
@@ -22,9 +44,9 @@ const mockContact = {
   ],
 }
 
-function mountDetail(contact = mockContact) {
+function mountDetail(contact = mockContact, linkedFriendUserId: string | null = null) {
   return mount(ContactDetailView, {
-    props: { contact },
+    props: { contact, linkedFriendUserId },
     global: {
       plugins: [createTestingPinia({ createSpy: vi.fn, stubActions: true })],
     },
@@ -223,6 +245,71 @@ describe('contactDetailView', () => {
       const wrapper = mountDetail()
       await wrapper.find('.back-btn').trigger('click')
       expect(wrapper.emitted('back')).toHaveLength(1)
+    })
+  })
+
+  describe('linked-friendship deletion (edges)', () => {
+    it('does not render friend warning when contact is not linked to a friend', async () => {
+      const wrapper = mountDetail(mockContact, null)
+      await wrapper.find('.delete-btn').trigger('click')
+      expect(wrapper.find('.delete-friend-warning').exists()).toBe(false)
+    })
+
+    it('renders friend warning only when linked', async () => {
+      const wrapper = mountDetail(mockContact, 'user-friend')
+      await wrapper.find('.delete-btn').trigger('click')
+      expect(wrapper.find('.delete-friend-warning').exists()).toBe(true)
+    })
+
+    it('skips removeFriendship when no linked friend on confirm', async () => {
+      const wrapper = mountDetail(mockContact, null)
+      const friendships = useFriendshipsStore()
+      const contacts = useContactsStore()
+      vi.mocked(contacts.deleteContact).mockResolvedValue(undefined)
+
+      await wrapper.find('.delete-btn').trigger('click')
+      await wrapper.find('.delete-confirm-btn').trigger('click')
+      await flushPromises()
+
+      expect(friendships.removeFriendship).not.toHaveBeenCalled()
+      expect(contacts.deleteContact).toHaveBeenCalledWith('c-1')
+    })
+
+    it('does NOT delete contact when removeFriendship fails (atomic-ish)', async () => {
+      const wrapper = mountDetail(mockContact, 'user-friend')
+      const friendships = useFriendshipsStore()
+      const contacts = useContactsStore()
+      vi.mocked(friendships.removeFriendship).mockRejectedValue(new Error('rpc failed'))
+
+      await wrapper.find('.delete-btn').trigger('click')
+      await wrapper.find('.delete-confirm-btn').trigger('click')
+      await flushPromises()
+
+      expect(friendships.removeFriendship).toHaveBeenCalledWith('user-friend')
+      expect(contacts.deleteContact).not.toHaveBeenCalled()
+      expect(wrapper.emitted('deleted')).toBeFalsy()
+      expect(wrapper.find('.error-text').exists()).toBe(true)
+    })
+
+    it('removes friendship before deleting contact when both succeed', async () => {
+      // Edge: ordering matters because deleteContact may cascade delete the friendship row
+      // out from under removeFriendship and surface a confusing error.
+      const wrapper = mountDetail(mockContact, 'user-friend')
+      const friendships = useFriendshipsStore()
+      const contacts = useContactsStore()
+      const order: string[] = []
+      vi.mocked(friendships.removeFriendship).mockImplementation(async () => {
+        order.push('rm')
+      })
+      vi.mocked(contacts.deleteContact).mockImplementation(async () => {
+        order.push('del')
+      })
+
+      await wrapper.find('.delete-btn').trigger('click')
+      await wrapper.find('.delete-confirm-btn').trigger('click')
+      await flushPromises()
+
+      expect(order).toEqual(['rm', 'del'])
     })
   })
 })

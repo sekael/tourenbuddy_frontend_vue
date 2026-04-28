@@ -9,14 +9,16 @@ import { normalizePhone } from '@/core/utils/phone-normalize'
 import { orderedPhoneMethods } from '@/features/contacts/core/utils/order-phone-methods'
 import { formatPhoneDisplay } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
+import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 
-const props = defineProps<{ contact: Contact }>()
+const props = defineProps<{ contact: Contact, linkedFriendUserId?: string | null }>()
 
 const emit = defineEmits<{ back: [], deleted: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 
 const store = useContactsStore()
+const friendshipsStore = useFriendshipsStore()
 
 const orderedPhones = computed(() => orderedPhoneMethods(props.contact))
 const setPrimaryError = ref<string | null>(null)
@@ -235,6 +237,8 @@ async function confirmDelete() {
   deleteError.value = null
   deleteState.value = 'loading'
   try {
+    if (props.linkedFriendUserId)
+      await friendshipsStore.removeFriendship(props.linkedFriendUserId)
     await store.deleteContact(props.contact.id)
     emit('deleted')
   }
@@ -259,6 +263,11 @@ async function confirmDelete() {
     <section class="section">
       <h3 class="section-label">
         {{ t('contacts.detailView.nameSection') }}
+        <span
+          v-if="linkedFriendUserId"
+          class="material-symbols-outlined detail-friend-icon"
+          :title="t('friendships.tooltip')"
+        >group</span>
       </h3>
       <div class="field">
         <label class="label" for="dv-firstName">{{ t('contacts.form.firstNameLabel') }}<span class="required">*</span></label>
@@ -493,6 +502,10 @@ async function confirmDelete() {
         <p class="delete-confirm-text">
           {{ t('contacts.detailView.deleteConfirm') }}
         </p>
+        <p v-if="linkedFriendUserId" class="delete-friend-warning">
+          <span class="material-symbols-outlined warn-icon">warning</span>
+          {{ t('contacts.detailView.deleteFriendWarning') }}
+        </p>
         <div class="delete-actions">
           <button type="button" class="cancel-btn" @click="deleteState = 'idle'">
             {{ t('contacts.shared.cancelBtn') }}
@@ -555,6 +568,11 @@ async function confirmDelete() {
   font-weight: var(--font-weight-semibold);
 }
 
+.detail-friend-icon {
+  font-size: 20px;
+  color: #f97316;
+}
+
 .section {
   display: flex;
   flex-direction: column;
@@ -568,6 +586,9 @@ async function confirmDelete() {
 }
 
 .section-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--color-on-surface-variant);
@@ -856,6 +877,21 @@ async function confirmDelete() {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--color-error);
+}
+
+.delete-friend-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
+}
+
+.delete-friend-warning .warn-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--color-warning, #f59e0b);
 }
 
 .delete-actions {

@@ -5,15 +5,20 @@ import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
+import { normalizePhone } from '@/core/utils/phone-normalize'
 import {
   formatPhoneDisplay,
   getPrimaryPhone,
   resolveContactName,
   resolveFullName,
 } from '@/features/contacts/domain/entities/contact'
+import { useContactFriendshipMap } from '@/features/contacts/presentation/composables/use-contact-friendship-map'
 import { useContactPicker } from '@/features/contacts/presentation/composables/use-contact-picker'
 import { useVCardImport } from '@/features/contacts/presentation/composables/use-vcard-import'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
+import ConnectPrompt from '@/features/friendships/presentation/components/connect-prompt.vue'
+import { useDismissedConnectPrompts } from '@/features/friendships/presentation/composables/use-dismissed-connect-prompts'
+import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import ContactDetailView from './contact-detail-view.vue'
 import ContactForm from './contact-form.vue'
 
@@ -22,7 +27,7 @@ const props = defineProps<{
   initialContactId?: string | null
 }>()
 
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: [], openFriendRequests: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 
@@ -30,6 +35,21 @@ type ViewState = 'list' | 'detail' | 'add'
 
 const contactsStore = useContactsStore()
 const { contacts, isLoading } = storeToRefs(contactsStore)
+const friendshipsStore = useFriendshipsStore()
+const {
+  friendUserIds,
+  outgoingRequests,
+  isPhoneVerified: callerPhoneVerified,
+  incomingRequests,
+} = storeToRefs(friendshipsStore)
+
+const pendingIncomingCount = computed(
+  () => incomingRequests.value.filter(r => r.status === 'pending').length,
+)
+
+function goToFriendRequests() {
+  emit('openFriendRequests')
+}
 
 const viewState = ref<ViewState>('list')
 const selectedContact = ref<Contact | null>(null)
@@ -90,6 +110,48 @@ const importResults = ref<ImportResult[]>([])
 const addError = ref<string | null>(null)
 const isAddLoading = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
+
+// ── Connect prompt state (declared early to avoid hoisting issues) ─────────
+const manualPromptUserId = ref<string | null>(null)
+const manualPromptDismissed = ref(false)
+// Per-row matched user IDs from import batch lookup
+const importRowMatches = ref<string[][]>([])
+
+// Reactive phone→userId map + friend icon derivation (reacts to friendship changes)
+const { contactFriendIds: friendContactIds, phoneToUserIdMap } = useContactFriendshipMap(contacts)
+
+// ── Linked friend for detail view (drives delete disclaimer) ─────────────────
+const detailLinkedFriendUserId = computed<string | null>(() => {
+  if (!liveContact.value)
+    return null
+  for (const method of liveContact.value.contactMethods.filter(m => m.methodType === 'phone')) {
+    const norm = normalizePhone(method.value)
+    const phone = norm.ok ? norm.e164 : method.value
+    const uid = phoneToUserIdMap.value.get(phone)
+    if (uid && friendUserIds.value.has(uid))
+      return uid
+  }
+  return null
+})
+
+// ── Connect prompt for existing contact detail view ──────────────────────────
+const { isDismissed: isConnectDismissed, dismiss: dismissConnect } = useDismissedConnectPrompts()
+
+const detailViewMatchedUserId = computed<string | null>(() => {
+  if (!liveContact.value || !callerPhoneVerified.value)
+    return null
+  for (const method of liveContact.value.contactMethods.filter(m => m.methodType === 'phone')) {
+    const norm = normalizePhone(method.value)
+    const phone = norm.ok ? norm.e164 : method.value
+    const uid = phoneToUserIdMap.value.get(phone)
+    if (!uid || friendUserIds.value.has(uid))
+      continue
+    const hasPending = outgoingRequests.value.some(r => r.toUserId === uid && r.status === 'pending')
+    if (!hasPending)
+      return uid
+  }
+  return null
+})
 
 // ── Navigation ───────────────────────────────────────────────────────────────
 function openDetail(contact: Contact) {
@@ -186,6 +248,26 @@ async function processImportedContacts(
   }
   importResults.value = results
   addViewState.value = 'import-results'
+
+  // Batch discovery for connect prompts (only when caller phone is verified)
+  if (callerPhoneVerified.value) {
+    const uniquePhones = [
+      ...new Set(items.flatMap(i => i.phones.map(p => p.value)).filter(Boolean)),
+    ]
+    if (uniquePhones.length > 0) {
+      const matches = await friendshipsStore.findUsersByPhones(uniquePhones)
+      const newMap = new Map(phoneToUserIdMap.value)
+      for (const m of matches) newMap.set(m.phone, m.userId)
+      phoneToUserIdMap.value = newMap
+      // Build per-row match sets
+      importRowMatches.value = results.map((r) => {
+        if (!r.primaryPhone)
+          return []
+        const match = phoneToUserIdMap.value.get(r.primaryPhone)
+        return match && !friendUserIds.value.has(match) ? [match] : []
+      })
+    }
+  }
 }
 
 async function handleContactPickerImport() {
@@ -231,6 +313,40 @@ function switchAddToForm() {
   addViewState.value = 'form'
   importResults.value = []
   addError.value = null
+  manualPromptUserId.value = null
+  manualPromptDismissed.value = false
+}
+
+// ── Connect prompt for manual form ──────────────────────────────────────────
+let manualPhoneDebounce: ReturnType<typeof setTimeout> | null = null
+
+async function lookupPhoneForPrompt(phone: string) {
+  if (!callerPhoneVerified.value) {
+    manualPromptUserId.value = null
+    return
+  }
+  const result = normalizePhone(phone)
+  if (!result.ok) {
+    manualPromptUserId.value = null
+    return
+  }
+  const uid = await friendshipsStore.findUserByPhone(result.e164)
+  if (!uid || friendUserIds.value.has(uid)) {
+    manualPromptUserId.value = null
+    return
+  }
+  // Check no pending outgoing request
+  const hasPending = friendshipsStore.outgoingRequests.some(
+    r => r.toUserId === uid && r.status === 'pending',
+  )
+  manualPromptUserId.value = hasPending ? null : uid
+}
+
+function onFormPhoneInput(phone: string) {
+  manualPromptDismissed.value = false
+  if (manualPhoneDebounce)
+    clearTimeout(manualPhoneDebounce)
+  manualPhoneDebounce = setTimeout(() => lookupPhoneForPrompt(phone), 400)
 }
 </script>
 
@@ -238,10 +354,22 @@ function switchAddToForm() {
   <AdaptiveOverlay :title="sheetTitle ?? undefined" @close="handleClose">
     <!-- List view -->
     <div v-if="viewState === 'list'" class="list-view">
-      <button type="button" class="add-contact-btn" @click="openAdd">
-        <span class="material-symbols-outlined">person_add</span>
-        {{ t('contacts.list.addBtn') }}
-      </button>
+      <div class="list-actions-row">
+        <button type="button" class="add-contact-btn" @click="openAdd">
+          <span class="material-symbols-outlined">person_add</span>
+          {{ t('contacts.list.addBtn') }}
+        </button>
+        <button
+          v-if="callerPhoneVerified"
+          type="button"
+          class="friend-requests-btn"
+          @click="goToFriendRequests"
+        >
+          <span class="material-symbols-outlined">group</span>
+          {{ t('friendships.friendsListLink') }}
+          <span v-if="pendingIncomingCount > 0" class="badge">{{ pendingIncomingCount }}</span>
+        </button>
+      </div>
 
       <div v-if="isLoading" class="loading-text">
         {{ t('contacts.list.loading') }}
@@ -268,7 +396,14 @@ function switchAddToForm() {
             {{ resolveContactName(contact)[0]?.toUpperCase() }}
           </div>
           <div class="contact-info">
-            <span class="contact-name">{{ resolveContactName(contact) }}</span>
+            <span class="contact-name-row">
+              <span class="contact-name">{{ resolveContactName(contact) }}</span>
+              <span
+                v-if="friendContactIds.has(contact.id)"
+                class="material-symbols-outlined friend-icon"
+                :title="t('friendships.tooltip')"
+              >group</span>
+            </span>
             <span v-if="contact.displayName" class="contact-subtitle">
               {{ resolveFullName(contact) }}
             </span>
@@ -285,8 +420,16 @@ function switchAddToForm() {
     <div v-else-if="viewState === 'detail' && liveContact">
       <ContactDetailView
         :contact="liveContact"
+        :linked-friend-user-id="detailLinkedFriendUserId"
         @back="backToList"
         @deleted="handleContactDeleted"
+      />
+      <ConnectPrompt
+        v-if="detailViewMatchedUserId && liveContact && !isConnectDismissed(liveContact.id)"
+        :matched-user-id="detailViewMatchedUserId"
+        class="detail-connect-prompt"
+        @sent="liveContact && dismissConnect(liveContact.id)"
+        @dismissed="liveContact && dismissConnect(liveContact.id)"
       />
     </div>
 
@@ -323,6 +466,14 @@ function switchAddToForm() {
                     : ''
                 }}
               </span>
+              <template v-if="importRowMatches[i]">
+                <ConnectPrompt
+                  v-for="uid in importRowMatches[i]"
+                  :key="uid"
+                  :matched-user-id="uid"
+                  @dismissed="importRowMatches[i] = importRowMatches[i]!.filter((u) => u !== uid)"
+                />
+              </template>
             </div>
             <span
               class="result-badge"
@@ -375,7 +526,7 @@ function switchAddToForm() {
             accept=".vcf,.vcard"
             class="file-input-hidden"
             @change="handleFileChange"
-          >
+          ><!-- no multiple attribute: single file only -->
         </div>
 
         <div class="divider" />
@@ -389,6 +540,13 @@ function switchAddToForm() {
           :is-loading="isAddLoading"
           @submit="handleAddSubmit"
           @cancel="backToList"
+          @phone-change="onFormPhoneInput"
+        />
+        <ConnectPrompt
+          v-if="manualPromptUserId && !manualPromptDismissed"
+          :matched-user-id="manualPromptUserId"
+          @sent="manualPromptDismissed = true"
+          @dismissed="manualPromptDismissed = true"
         />
       </div>
     </div>
@@ -403,6 +561,13 @@ function switchAddToForm() {
   gap: var(--spacing-md);
 }
 
+.list-actions-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
 .add-contact-btn {
   display: inline-flex;
   align-items: center;
@@ -413,7 +578,6 @@ function switchAddToForm() {
   color: var(--color-on-surface-variant);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  align-self: flex-start;
   transition: background-color 0.15s;
 }
 
@@ -423,6 +587,41 @@ function switchAddToForm() {
 
 .add-contact-btn .material-symbols-outlined {
   font-size: 18px;
+}
+
+.friend-requests-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-outline-variant);
+  color: var(--color-on-surface-variant);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  transition: background-color 0.15s;
+}
+
+.friend-requests-btn:hover {
+  background-color: var(--color-surface-variant);
+}
+
+.friend-requests-btn .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
 }
 
 .loading-text {
@@ -500,6 +699,12 @@ function switchAddToForm() {
   min-width: 0;
 }
 
+.contact-name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
 .contact-name {
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-medium);
@@ -507,6 +712,12 @@ function switchAddToForm() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.friend-icon {
+  font-size: 16px;
+  color: #f97316;
+  flex-shrink: 0;
 }
 
 .contact-subtitle {
@@ -521,6 +732,10 @@ function switchAddToForm() {
   font-size: 20px;
   color: var(--color-outline-variant);
   flex-shrink: 0;
+}
+
+.detail-connect-prompt {
+  margin-top: var(--spacing-md);
 }
 
 /* ── Add view ── */

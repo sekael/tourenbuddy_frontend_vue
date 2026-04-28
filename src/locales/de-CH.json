@@ -185,6 +185,7 @@
       "addingBtn": "Wird hinzugefügt...",
       "addBtn": "Hinzufügen",
       "deleteConfirm": "Kontakt löschen?",
+      "deleteFriendWarning": "Dieser Kontakt ist mit einem TourenBuddy-Freund verknüpft. Das Löschen entfernt auch die Freundschaftsverbindung.",
       "deleteBtn": "Kontakt löschen",
       "deletingBtn": "Wird gelöscht..."
     },
@@ -328,5 +329,34 @@
     "languageLabel": "Sprache",
     "en": "English",
     "de-CH": "Deutsch"
+  },
+  "friendships": {
+    "prompt": {
+      "title": "Diese Nummer gehört einem TourenBuddy – als Freunde vernetzen?",
+      "securityNote": "Deine Identität wird nicht preisgegeben. Das Senden einer Anfrage informiert den TourenBuddy, dass Du seine Nummer haben. Er kann die Anfrage ohne Begründung ablehnen. Freundschaften können nicht gelöscht werden."
+    },
+    "sendRequest": "Anfrage senden",
+    "justSaveContact": "Nur speichern",
+    "requestSent": "Anfrage gesendet",
+    "learnMore": "Mehr erfahren",
+    "inboxEmpty": "Keine ausstehenden Freundschaftsanfragen.",
+    "inboxDenyRightsNote": "Sie können jede Anfrage ohne Begründung ablehnen. Eine Ablehnung hat keine Konsequenzen und gibt Ihre Identität nicht preis.",
+    "accept": "Annehmen",
+    "deny": "Ablehnen",
+    "cancel": "Abbrechen",
+    "requestFrom": "Anfrage von",
+    "requestTo": "Anfrage an",
+    "verifyPhoneHint": "Verifizieren Sie Ihre Telefonnummer, um sich mit anderen Nutzern zu vernetzen.",
+    "friendsListLink": "Freundschaftsanfragen",
+    "contactCreated": "Kontakt für neuen Freund erstellt",
+    "tooltip": "Freund auf TourenBuddy",
+    "acceptConfirm": "Diese Freundschaftsanfrage annehmen?",
+    "acceptWarning": "Angenommene Freundschaften können nicht gelöscht werden. Um diesen Freund zu entfernen, müssen Sie den verknüpften Kontakt löschen.",
+    "acceptingBtn": "Wird angenommen...",
+    "verificationNotice": {
+      "title": "Hinweis zur Auffindbarkeit",
+      "body": "Nach der Verifizierung können andere verifizierte TourenBuddy-Nutzer, die diese Nummer in ihren Kontakten haben, erkennen, dass ein Konto für diese Nummer existiert, und eine Freundschaftsanfrage senden. Ihre Identität wird dabei nicht preisgegeben. Unverifizierte Nummern sind nie auffindbar. Sie können jede eingehende Anfrage ohne Begründung und ohne Konsequenzen ablehnen. Freundschaften können in Zukunft widerrufen werden.",
+      "acknowledge": "Ich verstehe, Code senden"
+    }
   }
 }

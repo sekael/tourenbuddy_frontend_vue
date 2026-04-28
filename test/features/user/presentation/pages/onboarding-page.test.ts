@@ -44,6 +44,14 @@ vi.mock('@/features/user/presentation/components/phone-verification-dialog.vue',
   default: { template: '<div class="phone-verification-stub" />' },
 }))
 
+vi.mock('@/features/friendships/presentation/components/phone-verification-notice.vue', () => ({
+  default: {
+    emits: ['acknowledged', 'close'],
+    template:
+      '<div class="verification-notice-stub"><button class="ack-btn" @click="$emit(\'acknowledged\')">Ack</button></div>',
+  },
+}))
+
 describe('onboardingPage', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -79,7 +87,7 @@ describe('onboardingPage', () => {
     expect(wrapper.text()).toContain('user.onboarding.lastNameRequired')
   })
 
-  it('should show error for completely unparseable phone format', async () => {
+  it('should show error for completely unparseable phone format after notice acknowledgement', async () => {
     mockUpdateProfile.mockResolvedValue(undefined)
     mockSendPhoneVerification.mockRejectedValue(new InvalidPhoneNumberError())
     const wrapper = mount(OnboardingPage)
@@ -87,6 +95,11 @@ describe('onboardingPage', () => {
     await wrapper.find('#lastName').setValue('Doe')
     await wrapper.find('#phoneNumber').setValue('not-a-number')
     await wrapper.find('form').trigger('submit')
+    await wrapper.vm.$nextTick()
+    // Notice dialog should be shown before OTP send
+    const noticeBtn = wrapper.find('.ack-btn')
+    expect(noticeBtn.exists()).toBe(true)
+    await noticeBtn.trigger('click')
     await wrapper.vm.$nextTick()
     // InvalidPhoneNumberError message is surfaced via errors.phoneNumber
     expect(wrapper.text()).toContain('Invalid phone number')
@@ -102,7 +115,7 @@ describe('onboardingPage', () => {
     await vi.waitFor(() => expect(mockPush).toHaveBeenCalledWith({ name: 'map' }))
   })
 
-  it('should trigger phone verification when phone is provided on submit', async () => {
+  it('should show verification notice before OTP send and trigger phone verification after acknowledgement', async () => {
     mockUpdateProfile.mockResolvedValue(undefined)
     mockSendPhoneVerification.mockResolvedValue(undefined)
     const wrapper = mount(OnboardingPage)
@@ -110,6 +123,12 @@ describe('onboardingPage', () => {
     await wrapper.find('#lastName').setValue('Doe')
     await wrapper.find('#phoneNumber').setValue('+41791234567')
     await wrapper.find('form').trigger('submit')
+    await wrapper.vm.$nextTick()
+    // Notice should be visible before OTP is sent
+    expect(wrapper.find('.verification-notice-stub').exists()).toBe(true)
+    expect(mockSendPhoneVerification).not.toHaveBeenCalled()
+    // Acknowledge the notice
+    await wrapper.find('.ack-btn').trigger('click')
     await vi.waitFor(() => expect(mockSendPhoneVerification).toHaveBeenCalledWith('+41791234567'))
     expect(wrapper.find('.phone-verification-stub').exists()).toBe(true)
   })

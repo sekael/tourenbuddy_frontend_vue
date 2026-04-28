@@ -7,9 +7,10 @@ const props = defineProps<{
   title?: string
   ariaLabel?: string
   collapsed?: boolean
+  showBack?: boolean
 }>()
 
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: [], back: [] }>()
 
 const isDesktop = useIsDesktop()
 </script>
@@ -20,7 +21,9 @@ const isDesktop = useIsDesktop()
     :title="props.title"
     :aria-label="props.ariaLabel"
     :collapsed="props.collapsed"
+    :show-back="props.showBack"
     @close="emit('close')"
+    @back="emit('back')"
   >
     <slot />
   </BottomSheet>
@@ -30,7 +33,9 @@ const isDesktop = useIsDesktop()
     :title="props.title"
     :aria-label="props.ariaLabel"
     :collapsed="props.collapsed"
+    :show-back="props.showBack"
     @close="emit('close')"
+    @back="emit('back')"
   >
     <slot />
   </DialogWindow>

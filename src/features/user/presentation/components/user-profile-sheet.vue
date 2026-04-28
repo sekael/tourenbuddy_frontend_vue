@@ -9,6 +9,7 @@ import { SUPPORTED_LOCALES } from '@/core/i18n/supported'
 import { formatPhoneForDisplay } from '@/core/utils/phone-normalize'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
+import PhoneVerificationNotice from '@/features/friendships/presentation/components/phone-verification-notice.vue'
 import { useLocaleStore } from '@/features/i18n/presentation/stores/use-locale-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
@@ -33,7 +34,9 @@ const editError = ref<string | null>(null)
 const isSaving = ref(false)
 
 const showPhoneVerification = ref(false)
+const showVerificationNotice = ref(false)
 const pendingPhone = ref('')
+const pendingPhoneForNotice = ref('')
 
 const full = computed(() => userProfileStore.fullProfile)
 
@@ -88,10 +91,10 @@ async function handleSave() {
     const phoneChanged = phone !== (full.value?.phoneNumber ?? '')
 
     if (phoneChanged && phone) {
-      await userProfileStore.sendPhoneVerification(phone)
-      pendingPhone.value = phone
+      // Show discoverability notice before sending OTP
+      pendingPhoneForNotice.value = phone
       isEditing.value = false
-      showPhoneVerification.value = true
+      showVerificationNotice.value = true
     }
     else {
       isEditing.value = false
@@ -118,6 +121,30 @@ function handleVerificationComplete() {
 
 function handleVerificationClose() {
   showPhoneVerification.value = false
+}
+
+async function handleNoticeAcknowledged() {
+  showVerificationNotice.value = false
+  isSaving.value = true
+  try {
+    await userProfileStore.sendPhoneVerification(pendingPhoneForNotice.value)
+    pendingPhone.value = pendingPhoneForNotice.value
+    showPhoneVerification.value = true
+  }
+  catch (err) {
+    editError.value
+      = err instanceof InvalidPhoneNumberError || err instanceof Error
+        ? (err as Error).message
+        : 'Failed to send verification code'
+    isEditing.value = true
+  }
+  finally {
+    isSaving.value = false
+  }
+}
+
+function handleNoticeClose() {
+  showVerificationNotice.value = false
 }
 
 async function handleSignOut() {
@@ -252,6 +279,12 @@ async function handleSignOut() {
       </template>
     </div>
   </AdaptiveOverlay>
+
+  <PhoneVerificationNotice
+    v-if="showVerificationNotice"
+    @acknowledged="handleNoticeAcknowledged"
+    @close="handleNoticeClose"
+  />
 
   <PhoneVerificationDialog
     v-if="showPhoneVerification"

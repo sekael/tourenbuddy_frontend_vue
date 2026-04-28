@@ -73,6 +73,28 @@ vi.mock('@/features/user/presentation/components/phone-verification-dialog.vue',
   default: { template: '<div class="phone-verification-stub" />' },
 }))
 
+vi.mock('@/features/friendships/presentation/components/phone-verification-notice.vue', () => ({
+  default: {
+    emits: ['acknowledged', 'close'],
+    template:
+      '<div class="verification-notice-stub"><button class="ack-btn" @click="$emit(\'acknowledged\')">Ack</button></div>',
+  },
+}))
+
+vi.mock('@/features/friendships/presentation/stores/friendships-store', () => ({
+  useFriendshipsStore: vi.fn().mockReturnValue({
+    friendUserIds: { value: new Set() },
+    isPhoneVerified: { value: false },
+    incomingRequests: { value: [] },
+    outgoingRequests: { value: [] },
+    friendships: { value: [] },
+    isLoading: { value: false },
+    error: { value: null },
+    fetchAll: vi.fn(),
+    clear: vi.fn(),
+  }),
+}))
+
 vi.mock('@/core/components/bottom-sheet.vue', () => ({
   default: {
     template: '<div class="bottom-sheet-stub"><slot /></div>',
@@ -176,6 +198,10 @@ describe('userProfileSheet', () => {
     await wrapper.find('.edit-btn').trigger('click')
     await wrapper.find('#edit-phone').setValue('+41791234567')
     await wrapper.find('form').trigger('submit')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('.verification-notice-stub').exists()).toBe(true)
+    expect(mockSendPhoneVerification).not.toHaveBeenCalled()
+    await wrapper.find('.ack-btn').trigger('click')
     await vi.waitFor(() => expect(mockSendPhoneVerification).toHaveBeenCalledWith('+41791234567'))
     expect(wrapper.find('.phone-verification-stub').exists()).toBe(true)
   })

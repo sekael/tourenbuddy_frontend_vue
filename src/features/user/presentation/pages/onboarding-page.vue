@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
 import { InvalidPhoneNumberError } from '@/core/exceptions'
+import PhoneVerificationNotice from '@/features/friendships/presentation/components/phone-verification-notice.vue'
 import PhoneVerificationDialog from '@/features/user/presentation/components/phone-verification-dialog.vue'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
@@ -21,7 +22,9 @@ const isLoading = ref(false)
 const submitError = ref<string | null>(null)
 
 const showPhoneVerification = ref(false)
+const showVerificationNotice = ref(false)
 const pendingPhone = ref('')
+const pendingPhoneForNotice = ref('')
 
 onMounted(async () => {
   if (!store.profile) {
@@ -54,9 +57,9 @@ async function handleSubmit() {
 
     const phone = phoneNumber.value.trim()
     if (phone) {
-      await store.sendPhoneVerification(phone)
-      pendingPhone.value = phone
-      showPhoneVerification.value = true
+      // Show discoverability notice before sending OTP
+      pendingPhoneForNotice.value = phone
+      showVerificationNotice.value = true
     }
     else {
       router.push({ name: 'map' })
@@ -89,6 +92,31 @@ function handleVerificationComplete() {
 function handleVerificationClose() {
   showPhoneVerification.value = false
   router.push({ name: 'map' })
+}
+
+async function handleNoticeAcknowledged() {
+  showVerificationNotice.value = false
+  isLoading.value = true
+  try {
+    await store.sendPhoneVerification(pendingPhoneForNotice.value)
+    pendingPhone.value = pendingPhoneForNotice.value
+    showPhoneVerification.value = true
+  }
+  catch (err) {
+    if (err instanceof InvalidPhoneNumberError) {
+      errors.value = { ...errors.value, phoneNumber: err.message }
+    }
+    else {
+      submitError.value = err instanceof Error ? err.message : 'Something went wrong.'
+    }
+  }
+  finally {
+    isLoading.value = false
+  }
+}
+
+function handleNoticeClose() {
+  showVerificationNotice.value = false
 }
 </script>
 
@@ -168,6 +196,12 @@ function handleVerificationClose() {
         {{ t('user.onboarding.skipBtn') }}
       </button>
     </div>
+
+    <PhoneVerificationNotice
+      v-if="showVerificationNotice"
+      @acknowledged="handleNoticeAcknowledged"
+      @close="handleNoticeClose"
+    />
 
     <PhoneVerificationDialog
       v-if="showPhoneVerification"
