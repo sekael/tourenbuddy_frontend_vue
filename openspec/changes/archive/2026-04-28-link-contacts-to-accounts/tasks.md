@@ -96,7 +96,7 @@
 - [x] 11.1 Run `npx eslint . --fix` until zero warnings
 - [x] 11.2 Run `npm run format` and `npm run type-check`
 - [x] 11.3 Run `npm run test` — all green
-- [ ] 11.4 Manual QA: verified user → import → match → accept on second account → friendship icon appears
-- [ ] 11.5 Prompt user to commit with conventional commit message: `feat(friendships): link contacts to platform accounts via verified phone (#21)`
-- [ ] 11.6 Prompt user to push branch and open PR referencing issue #21
-- [ ] 11.7 After merge, run `openspec archive` skill to archive this change
+- [x] 11.4 Manual QA: verified user → import → match → accept on second account → friendship icon appears
+- [x] 11.5 Prompt user to commit with conventional commit message: `feat(friendships): link contacts to platform accounts via verified phone (#21)`
+- [x] 11.6 Prompt user to push branch and open PR referencing issue #21
+- [x] 11.7 After merge, run `openspec archive` skill to archive this change

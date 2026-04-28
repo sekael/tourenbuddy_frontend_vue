@@ -172,3 +172,24 @@ The contact creation dialog SHALL distinguish imported contacts whose primary ph
 
 - **WHEN** an imported contact has more than one phone
 - **THEN** the import-results row SHALL display only the primary phone inline and a "+N more" indicator where N is the count of remaining phones
+
+## ADDED Requirements
+
+### Requirement: Import results integrate connect prompt
+
+The import-results component SHALL, after parsing vCard or device-picker contacts, batch-call `useFriendshipsStore().findUsersByPhones(uniquePhones)` once for the union of unique normalized phone values across all parsed rows. Each result row whose phones include a matched verified user (excluding the caller) SHALL render the inline connect prompt defined by the `contact-account-linking` capability. Importing the contact and sending the friend request SHALL be independent operations — neither blocks the other.
+
+#### Scenario: Import-results renders prompts
+
+- **WHEN** the import results render and a parsed row's phone matches a verified user other than the caller
+- **THEN** the row SHALL render the connect prompt with "Send request" and "Just save contact" actions
+
+#### Scenario: Import succeeds when request fails
+
+- **WHEN** the user taps "Send request" and the friend-request RPC fails
+- **THEN** the contact import SHALL still complete on user confirmation AND a snackbar SHALL surface the request failure
+
+#### Scenario: Discovery suppressed when caller unverified
+
+- **WHEN** the calling user does not have `phone_confirmed_at` set
+- **THEN** no batch discovery call SHALL be made and no prompts SHALL render in import results
