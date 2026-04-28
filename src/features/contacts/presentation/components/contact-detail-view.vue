@@ -257,17 +257,17 @@ async function confirmDelete() {
         <span class="material-symbols-outlined">arrow_back</span>
       </button>
       <span class="detail-title">{{ t('contacts.detailView.title') }}</span>
-      <span
-        v-if="linkedFriendUserId"
-        class="material-symbols-outlined detail-friend-icon"
-        :title="t('friendships.tooltip')"
-      >group</span>
     </div>
 
     <!-- Name fields -->
     <section class="section">
       <h3 class="section-label">
         {{ t('contacts.detailView.nameSection') }}
+        <span
+          v-if="linkedFriendUserId"
+          class="material-symbols-outlined detail-friend-icon"
+          :title="t('friendships.tooltip')"
+        >group</span>
       </h3>
       <div class="field">
         <label class="label" for="dv-firstName">{{ t('contacts.form.firstNameLabel') }}<span class="required">*</span></label>
@@ -586,6 +586,9 @@ async function confirmDelete() {
 }
 
 .section-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--color-on-surface-variant);
