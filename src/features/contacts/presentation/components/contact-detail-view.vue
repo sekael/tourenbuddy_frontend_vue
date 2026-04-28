@@ -257,6 +257,11 @@ async function confirmDelete() {
         <span class="material-symbols-outlined">arrow_back</span>
       </button>
       <span class="detail-title">{{ t('contacts.detailView.title') }}</span>
+      <span
+        v-if="linkedFriendUserId"
+        class="material-symbols-outlined detail-friend-icon"
+        :title="t('friendships.tooltip')"
+      >group</span>
     </div>
 
     <!-- Name fields -->
@@ -561,6 +566,11 @@ async function confirmDelete() {
 .detail-title {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
+}
+
+.detail-friend-icon {
+  font-size: 20px;
+  color: #f97316;
 }
 
 .section {

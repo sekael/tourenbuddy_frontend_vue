@@ -716,7 +716,7 @@ function onFormPhoneInput(phone: string) {
 
 .friend-icon {
   font-size: 16px;
-  color: var(--color-primary);
+  color: #f97316;
   flex-shrink: 0;
 }
 
