@@ -127,4 +127,10 @@ export class FriendshipRepositoryImpl implements FriendshipRepository {
     const rows = data as Array<{ user_id: string, phone: string }> | null
     return (rows ?? []).map(r => ({ userId: r.user_id, phone: r.phone }))
   }
+
+  async removeFriendship(otherUserId: string): Promise<void> {
+    const { error } = await supabase.rpc('remove_friendship', { p_other_user_id: otherUserId })
+    if (error)
+      throw new Error(error.message)
+  }
 }

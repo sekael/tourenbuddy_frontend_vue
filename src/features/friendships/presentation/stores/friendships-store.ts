@@ -207,6 +207,26 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     }
   }
 
+  async function removeFriendship(otherUserId: string): Promise<void> {
+    const uid = authStore.currentUser?.id
+    if (!uid)
+      return
+    const a = [uid, otherUserId].sort()[0]!
+    const b = [uid, otherUserId].sort()[1]!
+    const removed = friendships.value.find(f => f.userAId === a && f.userBId === b)
+    friendships.value = friendships.value.filter(f => !(f.userAId === a && f.userBId === b))
+
+    try {
+      await repository.removeFriendship(otherUserId)
+    }
+    catch (err) {
+      if (removed)
+        friendships.value = [...friendships.value, removed]
+      logger.error('Failed to remove friendship', err)
+      throw err
+    }
+  }
+
   function clear() {
     incomingRequests.value = []
     outgoingRequests.value = []
@@ -246,6 +266,7 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     findUserByPhone,
     findUsersByPhones,
     findPhonesByUserIds,
+    removeFriendship,
     clear,
   }
 })

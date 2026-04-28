@@ -185,6 +185,7 @@
       "addingBtn": "Adding...",
       "addBtn": "Add",
       "deleteConfirm": "Delete this contact?",
+      "deleteFriendWarning": "This contact is linked to a TourenBuddy friend. Deleting it will also remove your friendship connection.",
       "deleteBtn": "Delete contact",
       "deletingBtn": "Deleting..."
     },
@@ -348,9 +349,10 @@
     "verifyPhoneHint": "Verify your phone to connect with other users.",
     "friendsListLink": "Friend requests",
     "contactCreated": "Contact created for new friend",
+    "tooltip": "Friend on TourenBuddy",
     "verificationNotice": {
       "title": "Phone discoverability notice",
-      "body": "Once verified, other verified TouringBuddy users who add this number to their contacts will know an account exists for it and can send a friend request. Your identity is not revealed beyond this. Unverified phones are never discoverable. You can deny any incoming request without justification and without penalty. You may revoke friendship connections in the future.",
+      "body": "Once verified, other verified TourenBuddy users who add this number to their contacts will know an account exists for it and can send a friend request. Your identity is not revealed beyond this. Unverified phones are never discoverable. You can deny any incoming request without justification and without penalty. You may revoke friendship connections in the future.",
       "acknowledge": "I understand, send code"
     }
   }

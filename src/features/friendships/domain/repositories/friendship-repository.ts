@@ -14,4 +14,5 @@ export interface FriendshipRepository {
   findUserByPhone: (phone: string) => Promise<string | null>
   findUsersByPhones: (phones: string[]) => Promise<Array<{ phone: string, userId: string }>>
   findPhonesByUserIds: (userIds: string[]) => Promise<Array<{ userId: string, phone: string }>>
+  removeFriendship: (otherUserId: string) => Promise<void>
 }

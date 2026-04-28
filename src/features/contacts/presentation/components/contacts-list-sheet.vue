@@ -120,6 +120,20 @@ const importRowMatches = ref<string[][]>([])
 // Reactive phone→userId map + friend icon derivation (reacts to friendship changes)
 const { contactFriendIds: friendContactIds, phoneToUserIdMap } = useContactFriendshipMap(contacts)
 
+// ── Linked friend for detail view (drives delete disclaimer) ─────────────────
+const detailLinkedFriendUserId = computed<string | null>(() => {
+  if (!liveContact.value)
+    return null
+  for (const method of liveContact.value.contactMethods.filter(m => m.methodType === 'phone')) {
+    const norm = normalizePhone(method.value)
+    const phone = norm.ok ? norm.e164 : method.value
+    const uid = phoneToUserIdMap.value.get(phone)
+    if (uid && friendUserIds.value.has(uid))
+      return uid
+  }
+  return null
+})
+
 // ── Connect prompt for existing contact detail view ──────────────────────────
 const { isDismissed: isConnectDismissed, dismiss: dismissConnect } = useDismissedConnectPrompts()
 
@@ -387,7 +401,7 @@ function onFormPhoneInput(phone: string) {
               <span
                 v-if="friendContactIds.has(contact.id)"
                 class="material-symbols-outlined friend-icon"
-                title="Friend on TouringBuddy"
+                :title="t('friendships.tooltip')"
               >group</span>
             </span>
             <span v-if="contact.displayName" class="contact-subtitle">
@@ -406,6 +420,7 @@ function onFormPhoneInput(phone: string) {
     <div v-else-if="viewState === 'detail' && liveContact">
       <ContactDetailView
         :contact="liveContact"
+        :linked-friend-user-id="detailLinkedFriendUserId"
         @back="backToList"
         @deleted="handleContactDeleted"
       />

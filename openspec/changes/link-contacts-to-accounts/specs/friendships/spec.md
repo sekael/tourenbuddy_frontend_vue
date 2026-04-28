@@ -184,6 +184,22 @@ When a user accepts an incoming friend request, the system SHALL check whether a
 - **WHEN** the auth store signs out
 - **THEN** the friendships store SHALL clear all reactive lists
 
+### Requirement: Remove friendship
+
+A SECURITY DEFINER function `remove_friendship(p_other_user_id uuid)` SHALL delete the canonical `friendships` row for the caller–other pair. The function SHALL compute the ordered pair `(least, greatest)` of the two user IDs and delete the matching row. If no row exists the function SHALL be a no-op.
+
+A `removeFriendship(otherUserId)` action in `useFriendshipsStore` SHALL call the RPC, optimistically remove the friendship from the `friendships` ref, and rollback on error.
+
+#### Scenario: Friendship removed
+
+- **WHEN** `remove_friendship` is called by one of the two friends
+- **THEN** the `friendships` row SHALL be deleted and the friend icon SHALL no longer appear in the contacts list
+
+#### Scenario: Non-participant cannot remove
+
+- **WHEN** a user calls `remove_friendship` for a pair they are not part of
+- **THEN** no row SHALL be deleted (function computes pair using `auth.uid()`)
+
 ### Requirement: Friend requests inbox page
 
 A page (e.g. `/friends/requests`) SHALL render two sections: incoming pending requests with Accept and Deny actions, and outgoing pending requests with a Cancel action. Each row SHALL display the requester/recipient identity (name where available, otherwise opaque user reference) and the request creation time.
