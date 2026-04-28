@@ -8,7 +8,7 @@ import { formatPhoneForDisplay } from '@/core/utils/phone-normalize'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: [], back: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 const store = useFriendshipsStore()
@@ -79,7 +79,7 @@ async function handleCancel(requestId: string) {
 </script>
 
 <template>
-  <AdaptiveOverlay :title="t('friendships.friendsListLink')" @close="emit('close')">
+  <AdaptiveOverlay :title="t('friendships.friendsListLink')" show-back @close="emit('close')" @back="emit('back')">
     <div class="content">
       <div class="deny-rights-note">
         <span class="material-symbols-outlined note-icon">info</span>

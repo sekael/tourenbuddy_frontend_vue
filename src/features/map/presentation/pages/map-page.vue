@@ -411,7 +411,7 @@ function handleDialogClose() {
         />
       </div>
       <div v-else-if="showFriendRequests" key="friend-requests" class="sheet-container">
-        <FriendRequestsSheet @close="closeOverlay" />
+        <FriendRequestsSheet @close="closeOverlay" @back="openOverlay('contacts')" />
       </div>
       <div v-else-if="showToursList" key="tours" class="sheet-container">
         <TourListSheet @close="closeOverlay" @select-tour="handleTourSelectedFromList" />

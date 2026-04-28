@@ -4,9 +4,10 @@ const props = defineProps<{
   ariaLabel?: string
   /** Collapse to a header-only card; suppress backdrop-click dismissal and hide close button. */
   collapsed?: boolean
+  showBack?: boolean
 }>()
 
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: [], back: [] }>()
 
 const titleId = 'dialog-window-title'
 
@@ -32,6 +33,15 @@ function handleBackdropClick() {
       :aria-label="!props.title ? (props.ariaLabel ?? 'Dialog') : undefined"
     >
       <div class="dialog-header">
+        <button
+          v-if="props.showBack && !props.collapsed"
+          type="button"
+          class="back-btn"
+          aria-label="Back"
+          @click="emit('back')"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+        </button>
         <h2 v-if="props.title" :id="titleId" class="dialog-title">
           {{ props.title }}
         </h2>
@@ -143,6 +153,22 @@ function handleBackdropClick() {
 
 .title-spacer {
   flex: 1;
+}
+
+.back-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-on-surface-variant);
+  flex-shrink: 0;
+  transition: background-color 0.15s;
+}
+
+.back-btn:hover {
+  background-color: var(--color-surface-variant);
 }
 
 .close-btn {
