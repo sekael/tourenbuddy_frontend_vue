@@ -59,7 +59,7 @@ defineEmits<{ select: [] }>()
   background-color: color-mix(in srgb, var(--color-fab-surface) 90%, transparent);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(203, 213, 225, 0.5);
+  border: 1px solid var(--color-fab-border);
   box-shadow: var(--shadow-sm);
   color: var(--color-fab-on-surface);
   font-size: var(--font-size-sm);
@@ -75,7 +75,7 @@ defineEmits<{ select: [] }>()
   background-color: color-mix(in srgb, var(--color-fab-surface) 90%, transparent);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(203, 213, 225, 0.5);
+  border: 1px solid var(--color-fab-border);
   box-shadow: var(--shadow-md);
   display: flex;
   align-items: center;
@@ -104,6 +104,8 @@ defineEmits<{ select: [] }>()
   .label-chip {
     writing-mode: vertical-rl;
     transform: rotate(180deg);
+    width: fit-content;
+    padding: var(--spacing-sm) var(--spacing-xxs);
   }
 }
 </style>

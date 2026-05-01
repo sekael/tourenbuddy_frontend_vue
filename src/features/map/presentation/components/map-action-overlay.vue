@@ -117,7 +117,7 @@ function closeMenu() {
   background-color: color-mix(in srgb, var(--color-fab-surface) 85%, transparent);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(203, 213, 225, 0.5);
+  border: 1px solid var(--color-fab-border);
   box-shadow: var(--shadow-md);
   display: flex;
   align-items: center;
