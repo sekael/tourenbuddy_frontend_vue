@@ -15,7 +15,8 @@ const { isAuthenticated, isLoading } = storeToRefs(authStore)
 const errorDescription = ref<string | null>((route.query.error_description as string) ?? null)
 
 watchEffect(() => {
-  if (errorDescription.value) return
+  if (errorDescription.value)
+    return
   if (!isLoading.value && isAuthenticated.value) {
     router.replace({ name: 'map' })
   }

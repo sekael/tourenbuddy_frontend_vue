@@ -23,7 +23,7 @@ const {
     } | null,
   },
   mockFindUserByPhone: vi.fn<[string], Promise<string | null>>(),
-  mockFindUsersByPhones: vi.fn<[string[]], Promise<{ phone: string; userId: string }[]>>(),
+  mockFindUsersByPhones: vi.fn<[string[]], Promise<{ phone: string, userId: string }[]>>(),
   mockListFriendships: vi.fn<[], Promise<Friendship[]>>(),
   mockListIncoming: vi.fn<[], Promise<FriendRequest[]>>(),
   mockPickContacts: vi.fn(),
@@ -289,7 +289,7 @@ describe('import discovery (failure + gating)', () => {
 
     expect(wrapper.find('.results-view').exists()).toBe(true)
     const importBatch = mockFindUsersByPhones.mock.calls.find(
-      (c) => c[0].includes(PHONE_A) && c[0].includes(PHONE_B),
+      c => c[0].includes(PHONE_A) && c[0].includes(PHONE_B),
     )
     expect(importBatch).toBeUndefined()
   })

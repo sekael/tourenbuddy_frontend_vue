@@ -60,10 +60,12 @@ async function main() {
 
       if (updateErr) {
         console.error(`Failed to update row ${row.id}:`, updateErr.message)
-      } else {
+      }
+      else {
         updated++
       }
-    } else {
+    }
+    else {
       const { error: flagErr } = await supabase
         .from('contact_methods')
         .update({ is_valid: false })
@@ -71,7 +73,8 @@ async function main() {
 
       if (flagErr) {
         console.error(`Failed to flag row ${row.id}:`, flagErr.message)
-      } else {
+      }
+      else {
         flagged++
       }
     }

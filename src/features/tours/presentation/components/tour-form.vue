@@ -25,7 +25,7 @@ const props = defineProps<{
   /** When true the goal row shows a "Change" button that emits pickPoint: 'goal'. */
   allowGoalEdit?: boolean
   /** Current goal coordinates, controlled by the parent. */
-  currentGoal?: { lng: number; lat: number } | null
+  currentGoal?: { lng: number, lat: number } | null
   /** Seeds all editable fields (edit mode). */
   initialDraft?: TourDraft | null
   /** Prop-updates from parent after elevation lookup (create mode). */
@@ -33,9 +33,9 @@ const props = defineProps<{
   /** Prop-updates from parent after name suggestion (create mode). */
   initialName?: string | null
   /** Prop-updates from parent after start-point pick. */
-  initialStartPoint?: { lng: number; lat: number } | null
+  initialStartPoint?: { lng: number, lat: number } | null
   /** Prop-updates from parent after end-point pick. */
-  initialEndPoint?: { lng: number; lat: number } | null
+  initialEndPoint?: { lng: number, lat: number } | null
   /** When true, disable all inputs and buttons — used while location picker is active. */
   disabled?: boolean
 }>()
@@ -68,10 +68,10 @@ const elevation = ref<string>(
 const elevationAutoFilled = ref(props.initialElevation != null)
 const description = ref(props.initialDraft?.description ?? '')
 const selectedSeasons = ref<Set<Season>>(new Set(props.initialDraft?.seasons ?? []))
-const startPoint = ref<{ lng: number; lat: number } | null>(
+const startPoint = ref<{ lng: number, lat: number } | null>(
   props.initialDraft?.startPoint ?? props.initialStartPoint ?? null,
 )
-const endPoint = ref<{ lng: number; lat: number } | null>(
+const endPoint = ref<{ lng: number, lat: number } | null>(
   props.initialDraft?.endPoint ?? props.initialEndPoint ?? null,
 )
 const equipment = ref(props.initialDraft?.equipment ?? '')
@@ -98,19 +98,22 @@ watch(
 watch(
   () => props.initialName,
   (val) => {
-    if (val != null) tourName.value = val
+    if (val != null)
+      tourName.value = val
   },
 )
 watch(
   () => props.initialStartPoint,
   (val) => {
-    if (val) startPoint.value = val
+    if (val)
+      startPoint.value = val
   },
 )
 watch(
   () => props.initialEndPoint,
   (val) => {
-    if (val) endPoint.value = val
+    if (val)
+      endPoint.value = val
   },
 )
 
@@ -118,7 +121,8 @@ watch(
 function togglePartner(contactId: string) {
   if (selectedPartnerIds.value.has(contactId)) {
     selectedPartnerIds.value.delete(contactId)
-  } else {
+  }
+  else {
     selectedPartnerIds.value.add(contactId)
   }
   selectedPartnerIds.value = new Set(selectedPartnerIds.value)
@@ -131,7 +135,8 @@ function toggleTourType(type: TourType) {
 function toggleSeason(season: Season) {
   if (selectedSeasons.value.has(season)) {
     selectedSeasons.value.delete(season)
-  } else {
+  }
+  else {
     selectedSeasons.value.add(season)
   }
   selectedSeasons.value = new Set(selectedSeasons.value)
@@ -140,19 +145,23 @@ function toggleSeason(season: Season) {
 async function handleGpxUpload(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
-  if (!file) return
+  if (!file)
+    return
 
   gpxError.value = null
 
   try {
     gpxTrack.value = await parseGpxFile(file)
     gpxFileName.value = file.name
-  } catch (err) {
+  }
+  catch (err) {
     if (err instanceof GpxFileTooLargeError) {
       gpxError.value = t('tours.form.gpxTooLarge')
-    } else if (err instanceof GpxParseError) {
+    }
+    else if (err instanceof GpxParseError) {
       gpxError.value = t('tours.form.gpxInvalid')
-    } else {
+    }
+    else {
       gpxError.value = t('tours.form.gpxReadError')
     }
     gpxTrack.value = null
@@ -167,12 +176,13 @@ function removeGpx() {
   gpxError.value = null
 }
 
-function formatPoint(point: { lng: number; lat: number }) {
+function formatPoint(point: { lng: number, lat: number }) {
   return `${point.lat.toFixed(4)}°N, ${point.lng.toFixed(4)}°E`
 }
 
 function handleSubmit() {
-  if (props.disabled) return
+  if (props.disabled)
+    return
   if (!tourName.value.trim()) {
     nameError.value = true
     document.getElementById('tf-tourName')?.focus()
@@ -208,9 +218,7 @@ function handleSubmit() {
           </p>
 
           <div class="field">
-            <label class="label" for="tf-tourName"
-              >{{ t('tours.form.nameLabel') }} <span class="required-mark">*</span></label
-            >
+            <label class="label" for="tf-tourName">{{ t('tours.form.nameLabel') }} <span class="required-mark">*</span></label>
             <input
               id="tf-tourName"
               v-model="tourName"
@@ -222,7 +230,7 @@ function handleSubmit() {
               aria-required="true"
               :aria-invalid="nameError"
               @input="nameError = false"
-            />
+            >
             <p v-if="nameError" class="field-error">
               {{ t('tours.form.nameRequired') }}
             </p>
@@ -258,7 +266,7 @@ function handleSubmit() {
               max="9000"
               :placeholder="t('tours.form.elevationPlaceholder')"
               @input="elevationAutoFilled = false"
-            />
+            >
           </div>
 
           <div class="field">
@@ -379,7 +387,7 @@ function handleSubmit() {
 
           <div class="field">
             <label class="label" for="tf-plannedDate">{{ t('tours.form.plannedDateLabel') }}</label>
-            <input id="tf-plannedDate" v-model="plannedDate" class="input" type="date" />
+            <input id="tf-plannedDate" v-model="plannedDate" class="input" type="date">
           </div>
 
           <div class="field">
@@ -430,7 +438,7 @@ function handleSubmit() {
                 accept=".gpx,application/gpx+xml"
                 class="hidden-input"
                 @change="handleGpxUpload"
-              />
+              >
             </label>
             <span v-if="gpxFileName" class="gpx-filename">
               <span class="material-symbols-outlined gpx-ok-icon">check_circle</span>

@@ -27,7 +27,7 @@ export function makeFriendship(
 }
 
 /** Stub `supabase.from(...)` chainable query returning a fixed result. */
-export function stubFrom(result: { data?: unknown; error?: { message: string } | null }) {
+export function stubFrom(result: { data?: unknown, error?: { message: string } | null }) {
   const terminal = { ...result, error: result.error ?? null, data: result.data ?? null }
   const eq = () => Promise.resolve(terminal)
   const order = () => Promise.resolve(terminal)

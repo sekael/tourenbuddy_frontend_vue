@@ -36,13 +36,15 @@ export class FriendshipRepositoryImpl implements FriendshipRepository {
       .insert({ to_user_id: toUserId })
       .select()
       .single()
-    if (error) throw new Error(error.message)
+    if (error)
+      throw new Error(error.message)
     return mapRequest(data as Record<string, unknown>)
   }
 
   async accept(requestId: string): Promise<void> {
     const { error } = await supabase.rpc('accept_friend_request', { p_request_id: requestId })
-    if (error) throw new Error(error.message)
+    if (error)
+      throw new Error(error.message)
   }
 
   async deny(requestId: string): Promise<void> {
@@ -50,7 +52,8 @@ export class FriendshipRepositoryImpl implements FriendshipRepository {
       .from('friend_requests')
       .update({ status: 'denied', responded_at: new Date().toISOString() })
       .eq('id', requestId)
-    if (error) throw new Error(error.message)
+    if (error)
+      throw new Error(error.message)
   }
 
   async cancel(requestId: string): Promise<void> {
@@ -58,7 +61,8 @@ export class FriendshipRepositoryImpl implements FriendshipRepository {
       .from('friend_requests')
       .update({ status: 'cancelled' })
       .eq('id', requestId)
-    if (error) throw new Error(error.message)
+    if (error)
+      throw new Error(error.message)
   }
 
   async listIncoming(): Promise<FriendRequest[]> {
@@ -67,7 +71,8 @@ export class FriendshipRepositoryImpl implements FriendshipRepository {
       .select()
       .eq('status', 'pending')
       .order('created_at', { ascending: false })
-    if (error) throw new Error(error.message)
+    if (error)
+      throw new Error(error.message)
     const rows = data as Record<string, unknown>[]
     return rows.map(mapRequest)
   }
@@ -77,7 +82,8 @@ export class FriendshipRepositoryImpl implements FriendshipRepository {
       .from('friend_requests')
       .select()
       .order('created_at', { ascending: false })
-    if (error) throw new Error(error.message)
+    if (error)
+      throw new Error(error.message)
     const rows = data as Record<string, unknown>[]
     // RLS returns only rows where caller is sender or recipient;
     // we filter client-side for outgoing (from_user_id = caller handled via store)
@@ -89,35 +95,42 @@ export class FriendshipRepositoryImpl implements FriendshipRepository {
       .from('friendships')
       .select()
       .order('created_at', { ascending: false })
-    if (error) throw new Error(error.message)
+    if (error)
+      throw new Error(error.message)
     const rows = data as Record<string, unknown>[]
     return rows.map(mapFriendship)
   }
 
   async findUserByPhone(phone: string): Promise<string | null> {
     const { data, error } = await supabase.rpc('find_user_by_phone', { p_phone: phone })
-    if (error) throw new Error(error.message)
+    if (error)
+      throw new Error(error.message)
     return (data as string | null) ?? null
   }
 
-  async findUsersByPhones(phones: string[]): Promise<Array<{ phone: string; userId: string }>> {
-    if (phones.length === 0) return []
+  async findUsersByPhones(phones: string[]): Promise<Array<{ phone: string, userId: string }>> {
+    if (phones.length === 0)
+      return []
     const { data, error } = await supabase.rpc('find_users_by_phones', { p_phones: phones })
-    if (error) throw new Error(error.message)
-    const rows = data as Array<{ phone: string; user_id: string }> | null
-    return (rows ?? []).map((r) => ({ phone: r.phone, userId: r.user_id }))
+    if (error)
+      throw new Error(error.message)
+    const rows = data as Array<{ phone: string, user_id: string }> | null
+    return (rows ?? []).map(r => ({ phone: r.phone, userId: r.user_id }))
   }
 
-  async findPhonesByUserIds(userIds: string[]): Promise<Array<{ userId: string; phone: string }>> {
-    if (userIds.length === 0) return []
+  async findPhonesByUserIds(userIds: string[]): Promise<Array<{ userId: string, phone: string }>> {
+    if (userIds.length === 0)
+      return []
     const { data, error } = await supabase.rpc('find_phones_by_user_ids', { p_user_ids: userIds })
-    if (error) throw new Error(error.message)
-    const rows = data as Array<{ user_id: string; phone: string }> | null
-    return (rows ?? []).map((r) => ({ userId: r.user_id, phone: r.phone }))
+    if (error)
+      throw new Error(error.message)
+    const rows = data as Array<{ user_id: string, phone: string }> | null
+    return (rows ?? []).map(r => ({ userId: r.user_id, phone: r.phone }))
   }
 
   async removeFriendship(otherUserId: string): Promise<void> {
     const { error } = await supabase.rpc('remove_friendship', { p_other_user_id: otherUserId })
-    if (error) throw new Error(error.message)
+    if (error)
+      throw new Error(error.message)
   }
 }

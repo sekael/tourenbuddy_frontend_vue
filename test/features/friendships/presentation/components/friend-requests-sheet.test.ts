@@ -37,7 +37,7 @@ interface MountOpts {
   outgoing?: ReturnType<typeof makeRequest>[]
   isLoading?: boolean
   userIdToPhoneMap?: Map<string, string>
-  contacts?: Array<{ id: string; contactMethods: Array<{ methodType: string; value: string }> }>
+  contacts?: Array<{ id: string, contactMethods: Array<{ methodType: string, value: string }> }>
 }
 
 function mountSheet(opts: MountOpts = {}) {

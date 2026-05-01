@@ -27,11 +27,12 @@ export function useMapOverlay(emit: {
   const isOpen = computed(() => view.value !== 'closed')
 
   const pendingIncomingCount = computed(
-    () => incomingRequests.value.filter((r) => r.status === 'pending').length,
+    () => incomingRequests.value.filter(r => r.status === 'pending').length,
   )
 
   watch(isPickingLocation, (val) => {
-    if (val) view.value = 'closed'
+    if (val)
+      view.value = 'closed'
   })
 
   const menuItems = computed<SpeedDialMenuItem[]>(() => [
@@ -77,18 +78,23 @@ export function useMapOverlay(emit: {
       view.value = 'closed'
       mapStore.selectTour(null)
       mapStore.setPickingLocation(true)
-    } else if (id === 'tours') {
+    }
+    else if (id === 'tours') {
       view.value = 'closed'
       emit('openTours')
-    } else if (id === 'contacts') {
+    }
+    else if (id === 'contacts') {
       view.value = 'closed'
       emit('openContacts')
-    } else if (id === 'profile') {
+    }
+    else if (id === 'profile') {
       view.value = 'closed'
       emit('openProfile')
-    } else if (id === 'base-map') {
+    }
+    else if (id === 'base-map') {
       view.value = 'base-map'
-    } else if (id === 'feedback') {
+    }
+    else if (id === 'feedback') {
       view.value = 'closed'
       emit('openFeedback')
     }

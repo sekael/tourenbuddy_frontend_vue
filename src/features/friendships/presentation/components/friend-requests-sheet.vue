@@ -8,7 +8,7 @@ import { formatPhoneForDisplay } from '@/core/utils/phone-normalize'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 
-const emit = defineEmits<{ close: []; back: [] }>()
+const emit = defineEmits<{ close: [], back: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 const store = useFriendshipsStore()
@@ -24,8 +24,8 @@ function phoneFor(userId: string): string {
 
 async function resolveRequestPhones() {
   const ids = [
-    ...incomingRequests.value.map((r) => r.fromUserId),
-    ...outgoingRequests.value.map((r) => r.toUserId),
+    ...incomingRequests.value.map(r => r.fromUserId),
+    ...outgoingRequests.value.map(r => r.toUserId),
   ]
   await store.findPhonesByUserIds([...new Set(ids)])
 }
@@ -35,11 +35,13 @@ watch([incomingRequests, outgoingRequests], resolveRequestPhones)
 
 async function maybeCreateContactForFriend(userId: string) {
   const phone = userIdToPhoneMap.value.get(userId)
-  if (!phone) return
-  const alreadyExists = contacts.value.some((c) =>
-    c.contactMethods.some((m) => m.methodType === 'phone' && m.value === phone),
+  if (!phone)
+    return
+  const alreadyExists = contacts.value.some(c =>
+    c.contactMethods.some(m => m.methodType === 'phone' && m.value === phone),
   )
-  if (alreadyExists) return
+  if (alreadyExists)
+    return
   const displayPhone = formatPhoneForDisplay(phone) || phone
   await contactsStore.addContact(displayPhone, null, null, [{ value: phone, isPrimary: true }])
   snackbar.show(t('friendships.contactCreated'))
@@ -57,15 +59,18 @@ function cancelAcceptConfirm() {
 }
 
 async function handleAccept(requestId: string) {
-  const req = incomingRequests.value.find((r) => r.id === requestId)
+  const req = incomingRequests.value.find(r => r.id === requestId)
   isAccepting.value = true
   try {
     await store.accept(requestId)
-    if (req) await maybeCreateContactForFriend(req.fromUserId)
+    if (req)
+      await maybeCreateContactForFriend(req.fromUserId)
     confirmingRequestId.value = null
-  } catch {
+  }
+  catch {
     snackbar.show(`${t('friendships.accept')} failed`)
-  } finally {
+  }
+  finally {
     isAccepting.value = false
   }
 }
@@ -73,7 +78,8 @@ async function handleAccept(requestId: string) {
 async function handleDeny(requestId: string) {
   try {
     await store.deny(requestId)
-  } catch {
+  }
+  catch {
     snackbar.show(`${t('friendships.deny')} failed`)
   }
 }
@@ -81,7 +87,8 @@ async function handleDeny(requestId: string) {
 async function handleCancel(requestId: string) {
   try {
     await store.cancel(requestId)
-  } catch {
+  }
+  catch {
     snackbar.show(`${t('friendships.cancel')} failed`)
   }
 }

@@ -17,7 +17,7 @@ const { mockRepo, mockCurrentUser } = vi.hoisted(() => ({
     removeFriendship: vi.fn(),
   },
   mockCurrentUser: {
-    value: null as { id: string; phone_confirmed_at: string | null } | null,
+    value: null as { id: string, phone_confirmed_at: string | null } | null,
   },
 }))
 

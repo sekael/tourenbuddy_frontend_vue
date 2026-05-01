@@ -35,7 +35,8 @@ const showCompass = computed(() => Math.abs(props.bearing ?? 0) > 0.5)
 async function toggleMenu() {
   if (isOpen.value) {
     view.value = 'closed'
-  } else {
+  }
+  else {
     view.value = 'menu'
     await menuRef.value?.focusFirst()
   }
@@ -59,8 +60,7 @@ function closeMenu() {
       <span
         class="material-symbols-outlined compass-icon"
         :style="{ transform: `rotate(${iconRotation}deg)` }"
-        >explore</span
-      >
+      >explore</span>
     </button>
 
     <Transition name="panel">

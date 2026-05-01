@@ -31,13 +31,16 @@ function onKeydown(e: KeyboardEvent) {
   if (e.key === 'ArrowDown') {
     e.preventDefault()
     btns[(idx + 1) % btns.length]?.focus()
-  } else if (e.key === 'ArrowUp') {
+  }
+  else if (e.key === 'ArrowUp') {
     e.preventDefault()
     btns[(idx - 1 + btns.length) % btns.length]?.focus()
-  } else if (e.key === 'Home') {
+  }
+  else if (e.key === 'Home') {
     e.preventDefault()
     btns[0]?.focus()
-  } else if (e.key === 'End') {
+  }
+  else if (e.key === 'End') {
     e.preventDefault()
     btns[btns.length - 1]?.focus()
   }

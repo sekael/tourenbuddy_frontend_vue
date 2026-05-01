@@ -224,7 +224,7 @@ describe('userProfileSheet', () => {
     it('should call setLocale when a language button is clicked', async () => {
       const wrapper = mount(UserProfileSheet)
       const buttons = wrapper.findAll('.language-option')
-      const deBtn = buttons.find((b) => b.text().includes('Deutsch'))
+      const deBtn = buttons.find(b => b.text().includes('Deutsch'))
       expect(deBtn).toBeDefined()
       await deBtn!.trigger('click')
       expect(mockSetLocale).toHaveBeenCalledWith('de-CH')

@@ -52,7 +52,7 @@ describe('useTourFilters', () => {
     const toursStore = useToursStore()
     const contactsStore = useContactsStore()
     toursStore.tours = tours as any
-    contactsStore.contacts = contacts.map((c) => ({
+    contactsStore.contacts = contacts.map(c => ({
       ...c,
       userId: 'u-1',
       contactMethods: [],

@@ -344,10 +344,10 @@ describe('mapPage', () => {
     const NEW_GOAL = { lng: 8.2015, lat: 46.8009 }
 
     it('same-goal confirm: does not call elevation/name services and keeps existing values', async () => {
-      const { getElevation } =
-        await import('@/features/tours/data/services/swisstopo-elevation-service')
-      const { suggestTourName } =
-        await import('@/features/tours/data/services/swisstopo-name-service')
+      const { getElevation }
+        = await import('@/features/tours/data/services/swisstopo-elevation-service')
+      const { suggestTourName }
+        = await import('@/features/tours/data/services/swisstopo-name-service')
       vi.mocked(getElevation).mockResolvedValue(1234)
       vi.mocked(suggestTourName).mockResolvedValue('Mocked Peak')
 
@@ -372,10 +372,10 @@ describe('mapPage', () => {
     })
 
     it('different-goal confirm: calls services and updates pendingLocation/elevation/name', async () => {
-      const { getElevation } =
-        await import('@/features/tours/data/services/swisstopo-elevation-service')
-      const { suggestTourName } =
-        await import('@/features/tours/data/services/swisstopo-name-service')
+      const { getElevation }
+        = await import('@/features/tours/data/services/swisstopo-elevation-service')
+      const { suggestTourName }
+        = await import('@/features/tours/data/services/swisstopo-name-service')
       vi.mocked(getElevation).mockResolvedValue(1234)
       vi.mocked(suggestTourName).mockResolvedValue('Mocked Peak')
 

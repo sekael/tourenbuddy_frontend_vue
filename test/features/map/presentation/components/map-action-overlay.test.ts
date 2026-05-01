@@ -7,7 +7,7 @@ function mountOverlay(
   options: {
     isAuthenticated?: boolean
     isPickingLocation?: boolean
-    incomingRequests?: Array<{ id: string; status: string }>
+    incomingRequests?: Array<{ id: string, status: string }>
     bearing?: number
   } = {},
 ) {
@@ -145,7 +145,7 @@ describe('mapActionOverlay', () => {
       const wrapper = mountOverlay({ isAuthenticated: false })
       await wrapper.find('[aria-haspopup="menu"]').trigger('click')
       const buttons = wrapper.findAll('[role="menuitem"]')
-      const addTourBtn = buttons.find((b) => b.text().includes('map.overlay.addTour'))
+      const addTourBtn = buttons.find(b => b.text().includes('map.overlay.addTour'))
       expect(addTourBtn?.attributes('disabled')).toBeDefined()
     })
 
@@ -153,7 +153,7 @@ describe('mapActionOverlay', () => {
       const wrapper = mountOverlay({ isAuthenticated: false })
       await wrapper.find('[aria-haspopup="menu"]').trigger('click')
       const buttons = wrapper.findAll('[role="menuitem"]')
-      const addTourBtn = buttons.find((b) => b.text().includes('map.overlay.addTour'))
+      const addTourBtn = buttons.find(b => b.text().includes('map.overlay.addTour'))
       await addTourBtn?.trigger('click')
       expect(wrapper.find('.overlay').exists()).toBe(true)
     })
@@ -195,7 +195,7 @@ describe('mapActionOverlay', () => {
       const wrapper = mountOverlay()
       await wrapper.find('[aria-haspopup="menu"]').trigger('click')
       const buttons = wrapper.findAll('[role="menuitem"]')
-      const toursBtn = buttons.find((b) => b.text().includes('map.overlay.tours'))
+      const toursBtn = buttons.find(b => b.text().includes('map.overlay.tours'))
       await toursBtn?.trigger('click')
       expect(wrapper.emitted('openTours')).toHaveLength(1)
       expect(wrapper.find('[role="menu"]').exists()).toBe(false)
@@ -205,7 +205,7 @@ describe('mapActionOverlay', () => {
       const wrapper = mountOverlay()
       await wrapper.find('[aria-haspopup="menu"]').trigger('click')
       const buttons = wrapper.findAll('[role="menuitem"]')
-      const contactsBtn = buttons.find((b) => b.text().includes('map.overlay.contacts'))
+      const contactsBtn = buttons.find(b => b.text().includes('map.overlay.contacts'))
       await contactsBtn?.trigger('click')
       expect(wrapper.emitted('openContacts')).toHaveLength(1)
       expect(wrapper.find('[role="menu"]').exists()).toBe(false)
@@ -215,7 +215,7 @@ describe('mapActionOverlay', () => {
       const wrapper = mountOverlay()
       await wrapper.find('[aria-haspopup="menu"]').trigger('click')
       const buttons = wrapper.findAll('[role="menuitem"]')
-      const profileBtn = buttons.find((b) => b.text().includes('map.overlay.profile'))
+      const profileBtn = buttons.find(b => b.text().includes('map.overlay.profile'))
       await profileBtn?.trigger('click')
       expect(wrapper.emitted('openProfile')).toHaveLength(1)
     })
@@ -224,7 +224,7 @@ describe('mapActionOverlay', () => {
       const wrapper = mountOverlay()
       await wrapper.find('[aria-haspopup="menu"]').trigger('click')
       const buttons = wrapper.findAll('[role="menuitem"]')
-      const feedbackBtn = buttons.find((b) => b.text().includes('map.overlay.feedback'))
+      const feedbackBtn = buttons.find(b => b.text().includes('map.overlay.feedback'))
       await feedbackBtn?.trigger('click')
       expect(wrapper.emitted('openFeedback')).toHaveLength(1)
     })
