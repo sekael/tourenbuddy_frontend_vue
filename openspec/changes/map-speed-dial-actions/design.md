@@ -40,11 +40,11 @@ The component is rendered by `map-page.vue` on both mobile and desktop and emits
 
 ### 2. Layout: vertical menu above the trigger
 
-Menu items stack vertically and animate in from the bottom-up (staggered translateY + fade, 30ms per item, total ≤180ms). Each item is a pill with the **label on the left and the icon on the right** — the icon column is fixed-width and right-aligned, so all item icons line up vertically regardless of label length, forming a clean visual axis with the trigger below. Labels grow leftward; the pill width hugs its content. The column is right-aligned with the trigger.
+Menu items stack vertically and animate in from the bottom-up. Each item is a **circular icon FAB with a persistent label chip to its left** — visible whenever the menu is open (no hover required). The icon FABs align on a single vertical axis with the trigger; label chips grow leftward.
 
-Implementation: pills use `display: inline-flex; flex-direction: row;` with order `[label][icon]`. The icon element has a fixed width (e.g. `width: 24px; flex: none; text-align: center`) and pills are right-anchored (`align-self: flex-end` in the menu's `flex-direction: column; align-items: flex-end` container) so the icon column inherits the trigger's right edge.
+Implementation: `speed-dial-item` is a single `<button role="menuitem">` with children `[.label-chip][.icon-fab]`. The `.label-chip` is a small rounded-pill span with its own background; `.icon-fab` is a 48×48 circular span. The menu container uses `flex-direction: column; align-items: flex-end` so icon FABs are right-aligned with the trigger.
 
-Add-tour is the **topmost** menu item (closest to the trigger, primary action), then Tours, Contacts, User profile, Change base map, Feedback. Order optimizes for tap distance from the trigger by frequency.
+Feedback is the **topmost** menu item (farthest from trigger), then Change base map, Profile, Contacts, Tours, Add tour. Add tour is at the **bottom**, closest to the trigger.
 
 ### 3. Color: introduce `--color-fab-surface` token (light blue)
 

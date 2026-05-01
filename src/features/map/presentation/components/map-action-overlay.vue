@@ -156,4 +156,17 @@ function closeMenu() {
   opacity: 0;
   transform: translateY(8px) scale(0.97);
 }
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .overlay {
+    flex-direction: row;
+    align-items: flex-end;
+  }
+
+  .panel-enter-from,
+  .panel-leave-to {
+    opacity: 0;
+    transform: translateX(8px) scale(0.97);
+  }
+}
 </style>

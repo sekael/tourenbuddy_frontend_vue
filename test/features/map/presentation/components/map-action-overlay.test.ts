@@ -231,13 +231,13 @@ describe('mapActionOverlay', () => {
   })
 
   describe('menu-item layout', () => {
-    it('should have label before icon in DOM order', async () => {
+    it('should have label-chip before icon-fab in DOM order', async () => {
       const wrapper = mountOverlay()
       await wrapper.find('[aria-haspopup="menu"]').trigger('click')
       const firstItem = wrapper.find('[role="menuitem"]')
       const children = firstItem.element.children
-      expect(children[0]!.classList.contains('label')).toBe(true)
-      expect(children[1]!.classList.contains('icon-wrap')).toBe(true)
+      expect(children[0]!.classList.contains('label-chip')).toBe(true)
+      expect(children[1]!.classList.contains('icon-fab')).toBe(true)
     })
   })
 })

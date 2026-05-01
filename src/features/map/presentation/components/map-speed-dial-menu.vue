@@ -79,6 +79,13 @@ defineExpose({ focusFirst })
   gap: var(--spacing-xs);
 }
 
+@media (orientation: landscape) and (max-height: 500px) {
+  .menu {
+    flex-direction: row;
+    align-items: flex-end;
+  }
+}
+
 .badge {
   position: absolute;
   top: -4px;

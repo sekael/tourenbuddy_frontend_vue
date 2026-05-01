@@ -37,19 +37,17 @@ export function useMapOverlay(emit: {
 
   const menuItems = computed<SpeedDialMenuItem[]>(() => [
     {
-      id: 'add-tour',
-      icon: 'add_location_alt',
-      label: t('map.overlay.addTour'),
-      disabled: !isAuthenticated.value,
-      tooltip: isAuthenticated.value
-        ? t('map.overlay.addTourTooltip')
-        : t('map.overlay.signInToAddToursTooltip'),
+      id: 'feedback',
+      icon: 'feedback',
+      label: t('map.overlay.feedback'),
+      tooltip: t('map.overlay.feedbackTooltip'),
     },
+    { id: 'base-map', icon: 'map', label: t('map.overlay.changeBaseMap') },
     {
-      id: 'tours',
-      icon: 'location_on',
-      label: t('map.overlay.tours'),
-      tooltip: t('map.overlay.toursTooltip'),
+      id: 'profile',
+      icon: 'account_circle',
+      label: t('map.overlay.profile'),
+      tooltip: t('map.overlay.profileTooltip'),
     },
     {
       id: 'contacts',
@@ -59,17 +57,19 @@ export function useMapOverlay(emit: {
       tooltip: t('map.overlay.contactsTooltip'),
     },
     {
-      id: 'profile',
-      icon: 'account_circle',
-      label: t('map.overlay.profile'),
-      tooltip: t('map.overlay.profileTooltip'),
+      id: 'tours',
+      icon: 'location_on',
+      label: t('map.overlay.tours'),
+      tooltip: t('map.overlay.toursTooltip'),
     },
-    { id: 'base-map', icon: 'map', label: t('map.overlay.changeBaseMap') },
     {
-      id: 'feedback',
-      icon: 'feedback',
-      label: t('map.overlay.feedback'),
-      tooltip: t('map.overlay.feedbackTooltip'),
+      id: 'add-tour',
+      icon: 'add_location_alt',
+      label: t('map.overlay.addTour'),
+      disabled: !isAuthenticated.value,
+      tooltip: isAuthenticated.value
+        ? t('map.overlay.addTourTooltip')
+        : t('map.overlay.signInToAddToursTooltip'),
     },
   ])
 

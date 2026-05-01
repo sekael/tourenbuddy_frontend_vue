@@ -12,14 +12,15 @@ defineEmits<{ select: [] }>()
 <template>
   <button
     role="menuitem"
-    class="item"
+    class="item-row"
     :disabled="disabled"
     :aria-disabled="disabled"
-    :title="tooltip"
+    :title="tooltip ?? label"
+    :aria-label="tooltip ?? label"
     @click="$emit('select')"
   >
-    <span class="label">{{ label }}</span>
-    <span class="icon-wrap">
+    <span class="label-chip">{{ label }}</span>
+    <span class="icon-fab">
       <slot name="badge" />
       <span class="material-symbols-outlined icon">{{ icon }}</span>
     </span>
@@ -27,14 +28,35 @@ defineEmits<{ select: [] }>()
 </template>
 
 <style scoped>
-.item {
+.item-row {
   display: inline-flex;
-  flex-direction: row;
   align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-lg);
-  background-color: color-mix(in srgb, var(--color-fab-surface) 85%, transparent);
+  gap: var(--spacing-xs);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.15s;
+}
+
+.item-row:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.item-row:hover:not(:disabled) .icon-fab {
+  background-color: color-mix(in srgb, var(--color-fab-surface-strong) 90%, transparent);
+  box-shadow: var(--shadow-lg);
+}
+
+.item-row:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.label-chip {
+  padding: var(--spacing-xxs) var(--spacing-sm);
+  border-radius: var(--radius-md);
+  background-color: color-mix(in srgb, var(--color-fab-surface) 90%, transparent);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(203, 213, 225, 0.5);
@@ -43,38 +65,45 @@ defineEmits<{ select: [] }>()
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   white-space: nowrap;
-  cursor: pointer;
-  transition:
-    background-color 0.15s,
-    box-shadow 0.15s,
-    transform 0.15s;
 }
 
-.item:hover:not(:disabled) {
-  background-color: color-mix(in srgb, var(--color-fab-surface-strong) 85%, transparent);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
-}
-
-.item:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.label {
-  flex: 1;
-}
-
-.icon-wrap {
+.icon-fab {
   position: relative;
-  width: 24px;
-  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: color-mix(in srgb, var(--color-fab-surface) 90%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(203, 213, 225, 0.5);
+  box-shadow: var(--shadow-md);
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--color-fab-on-surface);
+  flex-shrink: 0;
+  transition:
+    background-color 0.15s,
+    box-shadow 0.15s;
 }
 
 .icon {
   font-size: 20px;
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .item-row {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .item-row:hover:not(:disabled) {
+    transform: translateX(-1px);
+  }
+
+  .label-chip {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+  }
 }
 </style>
