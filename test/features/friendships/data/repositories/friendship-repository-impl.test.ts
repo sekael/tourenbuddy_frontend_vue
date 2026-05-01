@@ -22,14 +22,24 @@ describe('friendshipRepositoryImpl (errors + edges only)', () => {
 
   describe('sendRequest', () => {
     it('throws RLS message when policy blocks insert', async () => {
-      mockFrom.mockReturnValue(stubFrom({ error: { message: 'new row violates row-level security policy' } }))
+      mockFrom.mockReturnValue(
+        stubFrom({ error: { message: 'new row violates row-level security policy' } }),
+      )
       await expect(repo.sendRequest('user-b')).rejects.toThrow('row-level security')
     })
 
     it('zod-rejects when DB row is missing required fields (e.g. malformed id)', async () => {
-      mockFrom.mockReturnValue(stubFrom({
-        data: { id: 'not-a-uuid', from_user_id: 'x', to_user_id: 'y', status: 'pending', created_at: '' },
-      }))
+      mockFrom.mockReturnValue(
+        stubFrom({
+          data: {
+            id: 'not-a-uuid',
+            from_user_id: 'x',
+            to_user_id: 'y',
+            status: 'pending',
+            created_at: '',
+          },
+        }),
+      )
       await expect(repo.sendRequest('user-b')).rejects.toThrow()
     })
   })
@@ -70,7 +80,9 @@ describe('friendshipRepositoryImpl (errors + edges only)', () => {
   describe('findUserByPhone', () => {
     it('throws when caller phone is unverified (RPC guard)', async () => {
       mockRpc.mockResolvedValue({ data: null, error: { message: 'caller phone not verified' } })
-      await expect(repo.findUserByPhone('+41791234567')).rejects.toThrow('caller phone not verified')
+      await expect(repo.findUserByPhone('+41791234567')).rejects.toThrow(
+        'caller phone not verified',
+      )
     })
 
     it('returns null when no match (data: null)', async () => {

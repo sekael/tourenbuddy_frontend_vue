@@ -15,9 +15,9 @@ const { t } = useI18n({ useScope: 'global' })
 const firstName = ref('')
 const lastName = ref('')
 const phoneNumber = ref('')
-const { formatted: phoneNumberFormatted, onInput: onPhoneNumberInput }
-  = useAsYouTypePhone(phoneNumber)
-const errors = ref<{ firstName?: string, lastName?: string, phoneNumber?: string }>({})
+const { formatted: phoneNumberFormatted, onInput: onPhoneNumberInput } =
+  useAsYouTypePhone(phoneNumber)
+const errors = ref<{ firstName?: string; lastName?: string; phoneNumber?: string }>({})
 const isLoading = ref(false)
 const submitError = ref<string | null>(null)
 
@@ -34,17 +34,14 @@ onMounted(async () => {
 
 function validate(): boolean {
   const newErrors: typeof errors.value = {}
-  if (!firstName.value.trim())
-    newErrors.firstName = t('user.onboarding.firstNameRequired')
-  if (!lastName.value.trim())
-    newErrors.lastName = t('user.onboarding.lastNameRequired')
+  if (!firstName.value.trim()) newErrors.firstName = t('user.onboarding.firstNameRequired')
+  if (!lastName.value.trim()) newErrors.lastName = t('user.onboarding.lastNameRequired')
   errors.value = newErrors
   return Object.keys(newErrors).length === 0
 }
 
 async function handleSubmit() {
-  if (!validate())
-    return
+  if (!validate()) return
 
   isLoading.value = true
   submitError.value = null
@@ -60,21 +57,17 @@ async function handleSubmit() {
       // Show discoverability notice before sending OTP
       pendingPhoneForNotice.value = phone
       showVerificationNotice.value = true
-    }
-    else {
+    } else {
       router.push({ name: 'map' })
     }
-  }
-  catch (err) {
+  } catch (err) {
     if (err instanceof InvalidPhoneNumberError) {
       errors.value = { ...errors.value, phoneNumber: err.message }
+    } else {
+      submitError.value =
+        err instanceof Error ? err.message : 'Something went wrong. Please try again.'
     }
-    else {
-      submitError.value
-        = err instanceof Error ? err.message : 'Something went wrong. Please try again.'
-    }
-  }
-  finally {
+  } finally {
     isLoading.value = false
   }
 }
@@ -101,16 +94,13 @@ async function handleNoticeAcknowledged() {
     await store.sendPhoneVerification(pendingPhoneForNotice.value)
     pendingPhone.value = pendingPhoneForNotice.value
     showPhoneVerification.value = true
-  }
-  catch (err) {
+  } catch (err) {
     if (err instanceof InvalidPhoneNumberError) {
       errors.value = { ...errors.value, phoneNumber: err.message }
-    }
-    else {
+    } else {
       submitError.value = err instanceof Error ? err.message : 'Something went wrong.'
     }
-  }
-  finally {
+  } finally {
     isLoading.value = false
   }
 }
@@ -132,8 +122,10 @@ function handleNoticeClose() {
 
       <form class="form" @submit.prevent="handleSubmit">
         <div class="field">
-          <label for="firstName" class="label">{{ t('user.shared.firstNameLabel') }}
-            <span class="required">{{ t('user.shared.required') }}</span></label>
+          <label for="firstName" class="label"
+            >{{ t('user.shared.firstNameLabel') }}
+            <span class="required">{{ t('user.shared.required') }}</span></label
+          >
           <input
             id="firstName"
             v-model="firstName"
@@ -142,15 +134,17 @@ function handleNoticeClose() {
             :class="{ 'input--error': errors.firstName }"
             :placeholder="t('user.shared.firstNamePlaceholder')"
             autocomplete="given-name"
-          >
+          />
           <p v-if="errors.firstName" class="error-text">
             {{ errors.firstName }}
           </p>
         </div>
 
         <div class="field">
-          <label for="lastName" class="label">{{ t('user.shared.lastNameLabel') }}
-            <span class="required">{{ t('user.shared.required') }}</span></label>
+          <label for="lastName" class="label"
+            >{{ t('user.shared.lastNameLabel') }}
+            <span class="required">{{ t('user.shared.required') }}</span></label
+          >
           <input
             id="lastName"
             v-model="lastName"
@@ -159,15 +153,17 @@ function handleNoticeClose() {
             :class="{ 'input--error': errors.lastName }"
             :placeholder="t('user.shared.lastNamePlaceholder')"
             autocomplete="family-name"
-          >
+          />
           <p v-if="errors.lastName" class="error-text">
             {{ errors.lastName }}
           </p>
         </div>
 
         <div class="field">
-          <label for="phoneNumber" class="label">{{ t('user.shared.phoneLabel') }}
-            <span class="optional">{{ t('user.shared.optional') }}</span></label>
+          <label for="phoneNumber" class="label"
+            >{{ t('user.shared.phoneLabel') }}
+            <span class="optional">{{ t('user.shared.optional') }}</span></label
+          >
           <input
             id="phoneNumber"
             :value="phoneNumberFormatted"
@@ -177,7 +173,7 @@ function handleNoticeClose() {
             :placeholder="t('user.shared.phonePlaceholder')"
             autocomplete="tel"
             @input="onPhoneNumberInput"
-          >
+          />
           <p v-if="errors.phoneNumber" class="error-text">
             {{ errors.phoneNumber }}
           </p>

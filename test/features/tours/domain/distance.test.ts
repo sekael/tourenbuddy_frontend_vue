@@ -6,7 +6,7 @@ const BASE = { lng: 7.44, lat: 46.95 }
 
 // Approximate inverse: 1° lng ≈ 76200m in LV95 at Swiss latitudes, 1° lat ≈ 111320m
 // (LV95 easting scale ~211456 per 0.0001 lngShifted unit → ~76124m/degree at 46.95°N)
-function offsetByMeters(base: { lng: number, lat: number }, dE: number, dN: number) {
+function offsetByMeters(base: { lng: number; lat: number }, dE: number, dN: number) {
   return {
     lng: base.lng + dE / 76200,
     lat: base.lat + dN / 111320,

@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-const emit = defineEmits<{ acknowledged: [], close: [] }>()
+const emit = defineEmits<{ acknowledged: []; close: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 const acknowledged = ref(false)
@@ -27,7 +27,7 @@ const acknowledged = ref(false)
       </div>
 
       <label class="checkbox-row">
-        <input v-model="acknowledged" type="checkbox" class="checkbox">
+        <input v-model="acknowledged" type="checkbox" class="checkbox" />
         <span class="checkbox-label">{{ t('friendships.verificationNotice.acknowledge') }}</span>
       </label>
 

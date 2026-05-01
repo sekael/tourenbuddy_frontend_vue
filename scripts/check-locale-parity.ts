@@ -13,8 +13,7 @@ function collectKeys(obj: JsonObject, prefix = ''): string[] {
     const fullKey = prefix ? `${prefix}.${k}` : k
     if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
       keys.push(...collectKeys(v as JsonObject, fullKey))
-    }
-    else {
+    } else {
       keys.push(fullKey)
     }
   }
@@ -28,17 +27,17 @@ const deCh = JSON.parse(readFileSync(resolve(root, 'src/locales/de-CH.json'), 'u
 const enKeys = new Set(collectKeys(en))
 const deChKeys = new Set(collectKeys(deCh))
 
-const missing = [...enKeys].filter(k => !deChKeys.has(k))
-const extra = [...deChKeys].filter(k => !enKeys.has(k))
+const missing = [...enKeys].filter((k) => !deChKeys.has(k))
+const extra = [...deChKeys].filter((k) => !enKeys.has(k))
 
 if (extra.length > 0) {
   console.warn(`⚠  de-CH has ${extra.length} extra key(s) not in en.json:`)
-  extra.forEach(k => console.warn(`   + ${k}`))
+  extra.forEach((k) => console.warn(`   + ${k}`))
 }
 
 if (missing.length > 0) {
   console.error(`✗  de-CH is missing ${missing.length} key(s) from en.json:`)
-  missing.forEach(k => console.error(`   - ${k}`))
+  missing.forEach((k) => console.error(`   - ${k}`))
   process.exit(1)
 }
 

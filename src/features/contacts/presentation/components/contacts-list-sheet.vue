@@ -27,7 +27,7 @@ const props = defineProps<{
   initialContactId?: string | null
 }>()
 
-const emit = defineEmits<{ close: [], openFriendRequests: [] }>()
+const emit = defineEmits<{ close: []; openFriendRequests: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 
@@ -44,7 +44,7 @@ const {
 } = storeToRefs(friendshipsStore)
 
 const pendingIncomingCount = computed(
-  () => incomingRequests.value.filter(r => r.status === 'pending').length,
+  () => incomingRequests.value.filter((r) => r.status === 'pending').length,
 )
 
 function goToFriendRequests() {
@@ -59,7 +59,7 @@ watch(
   [() => props.initialContactId, contacts],
   ([id]) => {
     if (id && viewState.value === 'list') {
-      const target = contacts.value.find(c => c.id === id)
+      const target = contacts.value.find((c) => c.id === id)
       if (target) {
         selectedContact.value = target
         viewState.value = 'detail'
@@ -70,17 +70,15 @@ watch(
 )
 
 const sheetTitle = computed(() => {
-  if (viewState.value === 'add')
-    return t('contacts.addDialog.title')
-  if (viewState.value === 'detail')
-    return null
+  if (viewState.value === 'add') return t('contacts.addDialog.title')
+  if (viewState.value === 'detail') return null
   return t('contacts.list.title')
 })
 
 // Keep selectedContact in sync after store edits
 const liveContact = computed(() =>
   selectedContact.value
-    ? (contacts.value.find(c => c.id === selectedContact.value!.id) ?? null)
+    ? (contacts.value.find((c) => c.id === selectedContact.value!.id) ?? null)
     : null,
 )
 
@@ -122,14 +120,12 @@ const { contactFriendIds: friendContactIds, phoneToUserIdMap } = useContactFrien
 
 // ── Linked friend for detail view (drives delete disclaimer) ─────────────────
 const detailLinkedFriendUserId = computed<string | null>(() => {
-  if (!liveContact.value)
-    return null
-  for (const method of liveContact.value.contactMethods.filter(m => m.methodType === 'phone')) {
+  if (!liveContact.value) return null
+  for (const method of liveContact.value.contactMethods.filter((m) => m.methodType === 'phone')) {
     const norm = normalizePhone(method.value)
     const phone = norm.ok ? norm.e164 : method.value
     const uid = phoneToUserIdMap.value.get(phone)
-    if (uid && friendUserIds.value.has(uid))
-      return uid
+    if (uid && friendUserIds.value.has(uid)) return uid
   }
   return null
 })
@@ -138,17 +134,16 @@ const detailLinkedFriendUserId = computed<string | null>(() => {
 const { isDismissed: isConnectDismissed, dismiss: dismissConnect } = useDismissedConnectPrompts()
 
 const detailViewMatchedUserId = computed<string | null>(() => {
-  if (!liveContact.value || !callerPhoneVerified.value)
-    return null
-  for (const method of liveContact.value.contactMethods.filter(m => m.methodType === 'phone')) {
+  if (!liveContact.value || !callerPhoneVerified.value) return null
+  for (const method of liveContact.value.contactMethods.filter((m) => m.methodType === 'phone')) {
     const norm = normalizePhone(method.value)
     const phone = norm.ok ? norm.e164 : method.value
     const uid = phoneToUserIdMap.value.get(phone)
-    if (!uid || friendUserIds.value.has(uid))
-      continue
-    const hasPending = outgoingRequests.value.some(r => r.toUserId === uid && r.status === 'pending')
-    if (!hasPending)
-      return uid
+    if (!uid || friendUserIds.value.has(uid)) continue
+    const hasPending = outgoingRequests.value.some(
+      (r) => r.toUserId === uid && r.status === 'pending',
+    )
+    if (!hasPending) return uid
   }
   return null
 })
@@ -186,9 +181,9 @@ function handleClose() {
 
 function isDuplicate(first: string, last: string | null): boolean {
   return contacts.value.some(
-    c =>
-      c.firstName.toLowerCase() === first.toLowerCase()
-      && (c.lastName ?? '').toLowerCase() === (last ?? '').toLowerCase(),
+    (c) =>
+      c.firstName.toLowerCase() === first.toLowerCase() &&
+      (c.lastName ?? '').toLowerCase() === (last ?? '').toLowerCase(),
   )
 }
 
@@ -203,11 +198,9 @@ async function handleAddSubmit(data: {
   try {
     await contactsStore.addContact(data.firstName, data.lastName, data.displayName, data.phones)
     backToList()
-  }
-  catch (err) {
+  } catch (err) {
     addError.value = err instanceof Error ? err.message : t('contacts.addDialog.addError')
-  }
-  finally {
+  } finally {
     isAddLoading.value = false
   }
 }
@@ -222,8 +215,8 @@ async function processImportedContacts(
 ) {
   const results: ImportResult[] = []
   for (const item of items) {
-    const primaryPhone
-      = item.phones.find(p => p.isPrimary)?.value ?? item.phones[0]?.value ?? null
+    const primaryPhone =
+      item.phones.find((p) => p.isPrimary)?.value ?? item.phones[0]?.value ?? null
     const rawPhoneNumbers = item.rawPhoneNumbers ?? []
     if (isDuplicate(item.firstName, item.lastName)) {
       results.push({
@@ -252,7 +245,7 @@ async function processImportedContacts(
   // Batch discovery for connect prompts (only when caller phone is verified)
   if (callerPhoneVerified.value) {
     const uniquePhones = [
-      ...new Set(items.flatMap(i => i.phones.map(p => p.value)).filter(Boolean)),
+      ...new Set(items.flatMap((i) => i.phones.map((p) => p.value)).filter(Boolean)),
     ]
     if (uniquePhones.length > 0) {
       const matches = await friendshipsStore.findUsersByPhones(uniquePhones)
@@ -261,8 +254,7 @@ async function processImportedContacts(
       phoneToUserIdMap.value = newMap
       // Build per-row match sets
       importRowMatches.value = results.map((r) => {
-        if (!r.primaryPhone)
-          return []
+        if (!r.primaryPhone) return []
         const match = phoneToUserIdMap.value.get(r.primaryPhone)
         return match && !friendUserIds.value.has(match) ? [match] : []
       })
@@ -276,11 +268,9 @@ async function handleContactPickerImport() {
   try {
     const picked = await pickContacts()
     await processImportedContacts(picked)
-  }
-  catch (err) {
+  } catch (err) {
     addError.value = err instanceof Error ? err.message : t('contacts.addDialog.importError')
-  }
-  finally {
+  } finally {
     isAddLoading.value = false
   }
 }
@@ -291,21 +281,17 @@ function handleFileImportClick() {
 
 async function handleFileChange(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0]
-  if (!file)
-    return
+  if (!file) return
   isAddLoading.value = true
   addError.value = null
   try {
     const parsed = await parseVCardFile(file)
     await processImportedContacts(parsed)
-  }
-  catch (err) {
+  } catch (err) {
     addError.value = err instanceof Error ? err.message : t('contacts.addDialog.fileImportError')
-  }
-  finally {
+  } finally {
     isAddLoading.value = false
-    if (fileInput.value)
-      fileInput.value.value = ''
+    if (fileInput.value) fileInput.value.value = ''
   }
 }
 
@@ -337,15 +323,14 @@ async function lookupPhoneForPrompt(phone: string) {
   }
   // Check no pending outgoing request
   const hasPending = friendshipsStore.outgoingRequests.some(
-    r => r.toUserId === uid && r.status === 'pending',
+    (r) => r.toUserId === uid && r.status === 'pending',
   )
   manualPromptUserId.value = hasPending ? null : uid
 }
 
 function onFormPhoneInput(phone: string) {
   manualPromptDismissed.value = false
-  if (manualPhoneDebounce)
-    clearTimeout(manualPhoneDebounce)
+  if (manualPhoneDebounce) clearTimeout(manualPhoneDebounce)
   manualPhoneDebounce = setTimeout(() => lookupPhoneForPrompt(phone), 400)
 }
 </script>
@@ -402,7 +387,8 @@ function onFormPhoneInput(phone: string) {
                 v-if="friendContactIds.has(contact.id)"
                 class="material-symbols-outlined friend-icon"
                 :title="t('friendships.tooltip')"
-              >group</span>
+                >group</span
+              >
             </span>
             <span v-if="contact.displayName" class="contact-subtitle">
               {{ resolveFullName(contact) }}
@@ -448,11 +434,15 @@ function onFormPhoneInput(phone: string) {
         <ul class="results-list">
           <li v-for="(result, i) in importResults" :key="i" class="result-item">
             <div class="result-info">
-              <span class="result-name">{{ result.firstName }}{{ result.lastName ? ` ${result.lastName}` : '' }}</span>
+              <span class="result-name"
+                >{{ result.firstName }}{{ result.lastName ? ` ${result.lastName}` : '' }}</span
+              >
               <span v-if="result.primaryPhone" class="result-phone">
                 <span class="material-symbols-outlined star-icon-sm">star</span>
                 {{ formatPhoneDisplay(result.primaryPhone) }}
-                <span v-if="result.extraPhoneCount > 0" class="extra-phones">+{{ result.extraPhoneCount }} more</span>
+                <span v-if="result.extraPhoneCount > 0" class="extra-phones"
+                  >+{{ result.extraPhoneCount }} more</span
+                >
               </span>
               <span
                 v-if="result.rawPhoneNumbers.length > 0"
@@ -526,7 +516,7 @@ function onFormPhoneInput(phone: string) {
             accept=".vcf,.vcard"
             class="file-input-hidden"
             @change="handleFileChange"
-          ><!-- no multiple attribute: single file only -->
+          /><!-- no multiple attribute: single file only -->
         </div>
 
         <div class="divider" />

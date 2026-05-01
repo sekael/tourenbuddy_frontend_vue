@@ -11,14 +11,12 @@ const { t } = useI18n({ useScope: 'global' })
 <template>
   <div class="home-page">
     <picture class="background">
-      <source media="(max-width: 768px)" :srcset="bgMobile">
-      <img :src="bgDesktop" alt="" aria-hidden="true">
+      <source media="(max-width: 768px)" :srcset="bgMobile" />
+      <img :src="bgDesktop" alt="" aria-hidden="true" />
     </picture>
     <div class="overlay" aria-hidden="true" />
     <div class="content">
-      <h1 class="title">
-        TourenBuddy
-      </h1>
+      <h1 class="title">TourenBuddy</h1>
       <p class="subtitle">
         {{ t('auth.home.subtitle') }}
       </p>

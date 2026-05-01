@@ -12,8 +12,7 @@ const E164_REGEX = /^\+[1-9]\d{1,14}$/
 export function usePhoneActions(phoneNumber: MaybeRef<string | null>) {
   const telLink = computed(() => {
     const phone = toValue(phoneNumber)
-    if (!phone)
-      return null
+    if (!phone) return null
     const trimmed = phone.trim()
     const hasPlus = trimmed.startsWith('+')
     const digits = trimmed.replace(/\D/g, '')
@@ -22,8 +21,7 @@ export function usePhoneActions(phoneNumber: MaybeRef<string | null>) {
 
   const whatsAppLink = computed(() => {
     const phone = toValue(phoneNumber)
-    if (!phone)
-      return null
+    if (!phone) return null
     const trimmed = phone.trim()
     if (E164_REGEX.test(trimmed)) {
       const digits = trimmed.slice(1)

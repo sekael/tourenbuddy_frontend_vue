@@ -55,7 +55,7 @@ export function setupRouterGuards(
     isLoading: boolean
   },
   profileStore: {
-    profile: { firstName: string | null, lastName: string | null } | null
+    profile: { firstName: string | null; lastName: string | null } | null
     sessionSkipped: boolean
   },
 ) {

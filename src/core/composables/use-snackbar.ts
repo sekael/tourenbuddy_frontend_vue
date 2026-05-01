@@ -14,8 +14,7 @@ export function useSnackbar(duration = 4000) {
   let timer: ReturnType<typeof setTimeout> | null = null
 
   function show(message: string) {
-    if (timer)
-      clearTimeout(timer)
+    if (timer) clearTimeout(timer)
     snackbar.value = { visible: true, message }
     timer = setTimeout(() => {
       snackbar.value.visible = false
@@ -23,8 +22,7 @@ export function useSnackbar(duration = 4000) {
   }
 
   function dismiss() {
-    if (timer)
-      clearTimeout(timer)
+    if (timer) clearTimeout(timer)
     snackbar.value.visible = false
   }
 

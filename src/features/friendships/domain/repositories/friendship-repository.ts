@@ -12,7 +12,7 @@ export interface FriendshipRepository {
   listOutgoing: () => Promise<FriendRequest[]>
   listFriendships: () => Promise<Friendship[]>
   findUserByPhone: (phone: string) => Promise<string | null>
-  findUsersByPhones: (phones: string[]) => Promise<Array<{ phone: string, userId: string }>>
-  findPhonesByUserIds: (userIds: string[]) => Promise<Array<{ userId: string, phone: string }>>
+  findUsersByPhones: (phones: string[]) => Promise<Array<{ phone: string; userId: string }>>
+  findPhonesByUserIds: (userIds: string[]) => Promise<Array<{ userId: string; phone: string }>>
   removeFriendship: (otherUserId: string) => Promise<void>
 }

@@ -24,8 +24,7 @@ export const useLocaleStore = defineStore('locale', () => {
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
         supabase.auth.updateUser({ data: { locale: toEmailLocale(code) } }).then(({ error }) => {
-          if (error)
-            logger.error('Failed to sync locale to user metadata', error)
+          if (error) logger.error('Failed to sync locale to user metadata', error)
         })
       }
     })

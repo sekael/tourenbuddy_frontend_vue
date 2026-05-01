@@ -31,10 +31,8 @@ function jsonResponse(status: number, body: Record<string, unknown> = {}) {
 function resolveLocale(redirectTo: string, metadataLocale: string | undefined): 'en' | 'de' {
   try {
     const qp = new URL(redirectTo).searchParams.get('locale')
-    if (qp === 'de' || qp === 'en')
-      return qp
-  }
-  catch {
+    if (qp === 'de' || qp === 'en') return qp
+  } catch {
     // ignore malformed redirect_to
   }
   return metadataLocale === 'de' ? 'de' : 'en'
@@ -47,10 +45,10 @@ export default {
     }
 
     if (
-      !env.BREVO_API_KEY
-      || !env.SEND_EMAIL_HOOK_SECRET
-      || !env.BREVO_TEMPLATE_EN
-      || !env.BREVO_TEMPLATE_DE
+      !env.BREVO_API_KEY ||
+      !env.SEND_EMAIL_HOOK_SECRET ||
+      !env.BREVO_TEMPLATE_EN ||
+      !env.BREVO_TEMPLATE_DE
     ) {
       return jsonResponse(500, { error: 'missing_configuration' })
     }
@@ -67,16 +65,14 @@ export default {
         'webhook-timestamp': webhookTimestamp,
         'webhook-signature': webhookSignature,
       })
-    }
-    catch {
+    } catch {
       return jsonResponse(401, { error: 'invalid_signature' })
     }
 
     let payload: SupabaseHookPayload
     try {
       payload = JSON.parse(body) as SupabaseHookPayload
-    }
-    catch {
+    } catch {
       return jsonResponse(400, { error: 'invalid_json' })
     }
 

@@ -26,17 +26,15 @@ export const useFriendshipsStore = defineStore('friendships', () => {
   /** Set of user IDs that are confirmed friends with the caller. */
   const friendUserIds = computed<Set<string>>(() => {
     const uid = authStore.currentUser?.id
-    if (!uid)
-      return new Set()
-    return new Set(friendships.value.map(f => (f.userAId === uid ? f.userBId : f.userAId)))
+    if (!uid) return new Set()
+    return new Set(friendships.value.map((f) => (f.userAId === uid ? f.userBId : f.userAId)))
   })
 
   /** Whether the current user has a verified phone (drives friendship UX gates). */
   const isPhoneVerified = computed(() => authStore.currentUser?.phone_confirmed_at != null)
 
   async function fetchAll() {
-    if (!authStore.isAuthenticated || !isPhoneVerified.value)
-      return
+    if (!authStore.isAuthenticated || !isPhoneVerified.value) return
 
     isLoading.value = true
     error.value = null
@@ -47,22 +45,19 @@ export const useFriendshipsStore = defineStore('friendships', () => {
         repository.listFriendships(),
       ])
       const uid = authStore.currentUser!.id
-      incomingRequests.value = allRequests.filter(r => r.toUserId === uid)
-      outgoingRequests.value = allRequests.filter(r => r.fromUserId === uid)
+      incomingRequests.value = allRequests.filter((r) => r.toUserId === uid)
+      outgoingRequests.value = allRequests.filter((r) => r.fromUserId === uid)
       friendships.value = fships
-    }
-    catch (err) {
+    } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load friendships'
       logger.error('Failed to fetch friendships', err)
-    }
-    finally {
+    } finally {
       isLoading.value = false
     }
   }
 
   async function sendRequest(toUserId: string): Promise<FriendRequest | null> {
-    if (!isPhoneVerified.value)
-      return null
+    if (!isPhoneVerified.value) return null
 
     // Optimistic: add placeholder outgoing request
     const tempId = crypto.randomUUID()
@@ -78,23 +73,21 @@ export const useFriendshipsStore = defineStore('friendships', () => {
 
     try {
       const created = await repository.sendRequest(toUserId)
-      outgoingRequests.value = outgoingRequests.value.filter(r => r.id !== tempId).concat(created)
+      outgoingRequests.value = outgoingRequests.value.filter((r) => r.id !== tempId).concat(created)
       return created
-    }
-    catch (err) {
-      outgoingRequests.value = outgoingRequests.value.filter(r => r.id !== tempId)
+    } catch (err) {
+      outgoingRequests.value = outgoingRequests.value.filter((r) => r.id !== tempId)
       logger.error('Failed to send friend request', err)
       throw err
     }
   }
 
   async function accept(requestId: string): Promise<void> {
-    const req = incomingRequests.value.find(r => r.id === requestId)
-    if (!req)
-      return
+    const req = incomingRequests.value.find((r) => r.id === requestId)
+    if (!req) return
 
     // Optimistic: move from incoming to friendships
-    incomingRequests.value = incomingRequests.value.filter(r => r.id !== requestId)
+    incomingRequests.value = incomingRequests.value.filter((r) => r.id !== requestId)
     const uid = authStore.currentUser!.id
     const a = [req.fromUserId, uid].sort()[0]!
     const b = [req.fromUserId, uid].sort()[1]!
@@ -108,12 +101,11 @@ export const useFriendshipsStore = defineStore('friendships', () => {
 
     try {
       await repository.accept(requestId)
-    }
-    catch (err) {
+    } catch (err) {
       // Rollback
       incomingRequests.value = [...incomingRequests.value, req]
       friendships.value = friendships.value.filter(
-        f => !(f.userAId === a && f.userBId === b && f.requestId === requestId),
+        (f) => !(f.userAId === a && f.userBId === b && f.requestId === requestId),
       )
       logger.error('Failed to accept friend request', err)
       throw err
@@ -121,38 +113,33 @@ export const useFriendshipsStore = defineStore('friendships', () => {
   }
 
   async function deny(requestId: string): Promise<void> {
-    const req = incomingRequests.value.find(r => r.id === requestId)
-    incomingRequests.value = incomingRequests.value.filter(r => r.id !== requestId)
+    const req = incomingRequests.value.find((r) => r.id === requestId)
+    incomingRequests.value = incomingRequests.value.filter((r) => r.id !== requestId)
 
     try {
       await repository.deny(requestId)
-    }
-    catch (err) {
-      if (req)
-        incomingRequests.value = [...incomingRequests.value, req]
+    } catch (err) {
+      if (req) incomingRequests.value = [...incomingRequests.value, req]
       logger.error('Failed to deny friend request', err)
       throw err
     }
   }
 
   async function cancel(requestId: string): Promise<void> {
-    const req = outgoingRequests.value.find(r => r.id === requestId)
-    outgoingRequests.value = outgoingRequests.value.filter(r => r.id !== requestId)
+    const req = outgoingRequests.value.find((r) => r.id === requestId)
+    outgoingRequests.value = outgoingRequests.value.filter((r) => r.id !== requestId)
 
     try {
       await repository.cancel(requestId)
-    }
-    catch (err) {
-      if (req)
-        outgoingRequests.value = [...outgoingRequests.value, req]
+    } catch (err) {
+      if (req) outgoingRequests.value = [...outgoingRequests.value, req]
       logger.error('Failed to cancel friend request', err)
       throw err
     }
   }
 
   async function findUserByPhone(phone: string): Promise<string | null> {
-    if (!isPhoneVerified.value)
-      return null
+    if (!isPhoneVerified.value) return null
     try {
       const uid = await repository.findUserByPhone(phone)
       if (uid) {
@@ -161,8 +148,7 @@ export const useFriendshipsStore = defineStore('friendships', () => {
         userIdToPhoneMap.value = next
       }
       return uid
-    }
-    catch (err) {
+    } catch (err) {
       logger.error('findUserByPhone failed', err)
       return null
     }
@@ -170,9 +156,8 @@ export const useFriendshipsStore = defineStore('friendships', () => {
 
   async function findUsersByPhones(
     phones: string[],
-  ): Promise<Array<{ phone: string, userId: string }>> {
-    if (!isPhoneVerified.value || phones.length === 0)
-      return []
+  ): Promise<Array<{ phone: string; userId: string }>> {
+    if (!isPhoneVerified.value || phones.length === 0) return []
     try {
       const results = await repository.findUsersByPhones(phones)
       if (results.length > 0) {
@@ -181,19 +166,16 @@ export const useFriendshipsStore = defineStore('friendships', () => {
         userIdToPhoneMap.value = next
       }
       return results
-    }
-    catch (err) {
+    } catch (err) {
       logger.error('findUsersByPhones failed', err)
       return []
     }
   }
 
   async function findPhonesByUserIds(userIds: string[]): Promise<void> {
-    if (!isPhoneVerified.value || userIds.length === 0)
-      return
-    const missing = userIds.filter(id => !userIdToPhoneMap.value.has(id))
-    if (missing.length === 0)
-      return
+    if (!isPhoneVerified.value || userIds.length === 0) return
+    const missing = userIds.filter((id) => !userIdToPhoneMap.value.has(id))
+    if (missing.length === 0) return
     try {
       const results = await repository.findPhonesByUserIds(missing)
       if (results.length > 0) {
@@ -201,27 +183,23 @@ export const useFriendshipsStore = defineStore('friendships', () => {
         for (const r of results) next.set(r.userId, r.phone)
         userIdToPhoneMap.value = next
       }
-    }
-    catch (err) {
+    } catch (err) {
       logger.error('findPhonesByUserIds failed', err)
     }
   }
 
   async function removeFriendship(otherUserId: string): Promise<void> {
     const uid = authStore.currentUser?.id
-    if (!uid)
-      return
+    if (!uid) return
     const a = [uid, otherUserId].sort()[0]!
     const b = [uid, otherUserId].sort()[1]!
-    const removed = friendships.value.find(f => f.userAId === a && f.userBId === b)
-    friendships.value = friendships.value.filter(f => !(f.userAId === a && f.userBId === b))
+    const removed = friendships.value.find((f) => f.userAId === a && f.userBId === b)
+    friendships.value = friendships.value.filter((f) => !(f.userAId === a && f.userBId === b))
 
     try {
       await repository.removeFriendship(otherUserId)
-    }
-    catch (err) {
-      if (removed)
-        friendships.value = [...friendships.value, removed]
+    } catch (err) {
+      if (removed) friendships.value = [...friendships.value, removed]
       logger.error('Failed to remove friendship', err)
       throw err
     }
@@ -241,8 +219,7 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     ([authed, verified]) => {
       if (authed && verified) {
         fetchAll()
-      }
-      else if (!authed) {
+      } else if (!authed) {
         clear()
       }
     },

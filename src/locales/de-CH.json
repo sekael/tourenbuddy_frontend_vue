@@ -317,7 +317,15 @@
       "contactsTooltip": "Kontakte",
       "toursTooltip": "Touren",
       "addTourTooltip": "Tourstandort hinzufügen",
-      "signInToAddToursTooltip": "Anmelden, um Touren hinzuzufügen"
+      "signInToAddToursTooltip": "Anmelden, um Touren hinzuzufügen",
+      "menuOpen": "Menü",
+      "menuClose": "Menü schliessen",
+      "addTour": "Tour hinzufügen",
+      "tours": "Touren",
+      "contacts": "Kontakte",
+      "profile": "Profil",
+      "changeBaseMap": "Karte ändern",
+      "feedback": "Feedback"
     },
     "styles": {
       "pickerTooltip": "Kartenstil ändern",

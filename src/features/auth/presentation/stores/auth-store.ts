@@ -36,14 +36,12 @@ export const useAuthStore = defineStore('auth', () => {
         data: { locale: emailLocale },
       },
     })
-    if (error)
-      throw error
+    if (error) throw error
   }
 
   async function signOut() {
     const { error } = await supabase.auth.signOut()
-    if (error)
-      throw error
+    if (error) throw error
     currentUser.value = null
   }
 

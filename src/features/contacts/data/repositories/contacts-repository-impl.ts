@@ -10,10 +10,9 @@ export class ContactsRepositoryImpl implements ContactsRepository {
       .select('*, contact_methods(*)')
       .order('first_name', { ascending: true })
 
-    if (error)
-      throw new Error(error.message)
+    if (error) throw new Error(error.message)
 
-    return (data ?? []).map(row => contactRowSchema.parse(row))
+    return (data ?? []).map((row) => contactRowSchema.parse(row))
   }
 
   async createContact(contact: Omit<Contact, 'id' | 'contactMethods'>): Promise<Contact> {
@@ -28,8 +27,7 @@ export class ContactsRepositoryImpl implements ContactsRepository {
       .select('*, contact_methods(*)')
       .single()
 
-    if (error)
-      throw new Error(error.message)
+    if (error) throw new Error(error.message)
 
     return contactRowSchema.parse(data)
   }
@@ -39,12 +37,9 @@ export class ContactsRepositoryImpl implements ContactsRepository {
     data: Partial<Omit<Contact, 'id' | 'userId' | 'contactMethods'>>,
   ): Promise<Contact> {
     const update: Record<string, unknown> = {}
-    if (data.firstName !== undefined)
-      update.first_name = data.firstName
-    if (data.lastName !== undefined)
-      update.last_name = data.lastName
-    if (data.displayName !== undefined)
-      update.display_name = data.displayName
+    if (data.firstName !== undefined) update.first_name = data.firstName
+    if (data.lastName !== undefined) update.last_name = data.lastName
+    if (data.displayName !== undefined) update.display_name = data.displayName
 
     const { data: row, error } = await supabase
       .from('contacts')
@@ -53,8 +48,7 @@ export class ContactsRepositoryImpl implements ContactsRepository {
       .select('*, contact_methods(*)')
       .single()
 
-    if (error)
-      throw new Error(error.message)
+    if (error) throw new Error(error.message)
 
     return contactRowSchema.parse(row)
   }
@@ -62,7 +56,6 @@ export class ContactsRepositoryImpl implements ContactsRepository {
   async deleteContact(id: string): Promise<void> {
     const { error } = await supabase.from('contacts').delete().eq('id', id)
 
-    if (error)
-      throw new Error(error.message)
+    if (error) throw new Error(error.message)
   }
 }

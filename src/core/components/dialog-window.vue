@@ -7,13 +7,12 @@ const props = defineProps<{
   showBack?: boolean
 }>()
 
-const emit = defineEmits<{ close: [], back: [] }>()
+const emit = defineEmits<{ close: []; back: [] }>()
 
 const titleId = 'dialog-window-title'
 
 function handleBackdropClick() {
-  if (props.collapsed)
-    return
+  if (props.collapsed) return
   emit('close')
 }
 </script>

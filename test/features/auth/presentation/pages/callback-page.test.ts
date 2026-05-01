@@ -29,7 +29,7 @@ describe('callbackPage', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
-    Object.keys(mockRouteQuery).forEach(k => delete mockRouteQuery[k])
+    Object.keys(mockRouteQuery).forEach((k) => delete mockRouteQuery[k])
   })
 
   it('should show loading state while auth store still loading', () => {

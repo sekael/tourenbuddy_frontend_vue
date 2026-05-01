@@ -9,8 +9,7 @@ function loadFromStorage(userId: string): Set<string> {
   try {
     const raw = localStorage.getItem(storageKey(userId))
     return raw ? new Set(JSON.parse(raw) as string[]) : new Set()
-  }
-  catch {
+  } catch {
     return new Set()
   }
 }
@@ -18,8 +17,7 @@ function loadFromStorage(userId: string): Set<string> {
 function saveToStorage(userId: string, set: Set<string>): void {
   try {
     localStorage.setItem(storageKey(userId), JSON.stringify([...set]))
-  }
-  catch {}
+  } catch {}
 }
 
 /**
