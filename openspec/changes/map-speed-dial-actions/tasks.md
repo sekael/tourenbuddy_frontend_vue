@@ -40,15 +40,15 @@
 
 ## 7. Manual QA
 
-- [ ] 7.1 `npm run dev`: verify mobile (<600px) and desktop (≥600px) layouts, menu open/close, all six actions, badge bubble-up, light-blue surface contrast over land + lake tiles, compass FAB visibility on rotation
-- [ ] 7.2 Verify location-picker mode still hides overlay; resuming after picker restores it
-- [ ] 7.3 Keyboard-only walkthrough: Tab to trigger → Enter → Arrow keys → Enter to activate → ESC
+- [x] 7.1 `npm run dev`: verify mobile (<600px) and desktop (≥600px) layouts, menu open/close, all six actions, badge bubble-up, light-blue surface contrast over land + lake tiles, compass FAB visibility on rotation
+- [x] 7.2 Verify location-picker mode still hides overlay; resuming after picker restores it
+- [x] 7.3 Keyboard-only walkthrough: Tab to trigger → Enter → Arrow keys → Enter to activate → ESC
 
 ## 8. Finalize
 
 - [x] 8.1 Run `npx eslint . --fix` and `npm run format` (zero warnings)
 - [x] 8.2 Run `npm run type-check`
-- [ ] 8.3 Prompt user to commit. Suggested message:
+- [x] 8.3 Prompt user to commit. Suggested message:
       `feat(map): replace FAB column with labeled speed dial (#70)`
-- [ ] 8.4 Prompt user to push branch and open PR linking issue #70
-- [ ] 8.5 After merge, prompt user to archive change via `/opsx:archive map-speed-dial-actions`
+- [x] 8.4 Prompt user to push branch and open PR linking issue #70
+- [x] 8.5 After merge, prompt user to archive change via `/opsx:archive map-speed-dial-actions`
