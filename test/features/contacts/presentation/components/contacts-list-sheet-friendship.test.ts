@@ -1,4 +1,7 @@
-import type { FriendRequest, Friendship } from '@/features/friendships/data/models/friendship-schemas'
+import type {
+  FriendRequest,
+  Friendship,
+} from '@/features/friendships/data/models/friendship-schemas'
 import { createTestingPinia } from '@pinia/testing'
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -14,9 +17,10 @@ const {
   mockPickContacts,
 } = vi.hoisted(() => ({
   mockCurrentUser: {
-    value: { id: 'user-me', phone_confirmed_at: '2024-01-01T00:00:00Z' } as
-    | { id: string, phone_confirmed_at: string | null }
-    | null,
+    value: { id: 'user-me', phone_confirmed_at: '2024-01-01T00:00:00Z' } as {
+      id: string
+      phone_confirmed_at: string | null
+    } | null,
   },
   mockFindUserByPhone: vi.fn<[string], Promise<string | null>>(),
   mockFindUsersByPhones: vi.fn<[string[]], Promise<{ phone: string, userId: string }[]>>(),
@@ -38,8 +42,12 @@ vi.mock('@/features/contacts/presentation/composables/use-vcard-import', () => (
 }))
 vi.mock('@/features/auth/presentation/stores/auth-store', () => ({
   useAuthStore: vi.fn(() => ({
-    get currentUser() { return mockCurrentUser.value },
-    get isAuthenticated() { return mockCurrentUser.value != null },
+    get currentUser() {
+      return mockCurrentUser.value
+    },
+    get isAuthenticated() {
+      return mockCurrentUser.value != null
+    },
   })),
 }))
 vi.mock('@/features/friendships/data/repositories/friendship-repository-impl', () => ({
@@ -94,7 +102,14 @@ const anna = {
   lastName: 'Meier',
   displayName: null,
   contactMethods: [
-    { id: 'm-1', contactId: 'c-1', methodType: 'phone', value: PHONE, label: null, isPrimary: true },
+    {
+      id: 'm-1',
+      contactId: 'c-1',
+      methodType: 'phone',
+      value: PHONE,
+      label: null,
+      isPrimary: true,
+    },
   ],
 }
 
@@ -112,14 +127,16 @@ const ConnectPromptStub = {
   props: ['matchedUserId'],
 }
 
-function mountSheet(contacts: typeof anna[] = [anna]) {
+function mountSheet(contacts: (typeof anna)[] = [anna]) {
   return mount(ContactsListSheet, {
     global: {
-      plugins: [createTestingPinia({
-        createSpy: vi.fn,
-        stubActions: false,
-        initialState: { contacts: { contacts, isLoading: false, error: null } },
-      })],
+      plugins: [
+        createTestingPinia({
+          createSpy: vi.fn,
+          stubActions: false,
+          initialState: { contacts: { contacts, isLoading: false, error: null } },
+        }),
+      ],
       stubs: {
         ContactDetailView: { template: '<div />', emits: ['back', 'deleted'], props: ['contact'] },
         ContactForm: ContactFormStub,
@@ -228,8 +245,18 @@ describe('import discovery (failure + gating)', () => {
   const PHONE_A = '+41791111111'
   const PHONE_B = '+41792222222'
   const importedItems = [
-    { firstName: 'A', lastName: '', phones: [{ value: PHONE_A, label: null, isPrimary: true }], rawPhoneNumbers: [] },
-    { firstName: 'B', lastName: '', phones: [{ value: PHONE_B, label: null, isPrimary: true }], rawPhoneNumbers: [] },
+    {
+      firstName: 'A',
+      lastName: '',
+      phones: [{ value: PHONE_A, label: null, isPrimary: true }],
+      rawPhoneNumbers: [],
+    },
+    {
+      firstName: 'B',
+      lastName: '',
+      phones: [{ value: PHONE_B, label: null, isPrimary: true }],
+      rawPhoneNumbers: [],
+    },
   ]
   const pickerBtn = (w: ReturnType<typeof mountSheet>) => w.findAll('.import-btn')[1]!
 

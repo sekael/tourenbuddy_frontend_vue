@@ -27,8 +27,12 @@ vi.mock('@/features/friendships/data/repositories/friendship-repository-impl', (
 
 vi.mock('@/features/auth/presentation/stores/auth-store', () => ({
   useAuthStore: vi.fn().mockReturnValue({
-    get currentUser() { return mockCurrentUser.value },
-    get isAuthenticated() { return mockCurrentUser.value != null },
+    get currentUser() {
+      return mockCurrentUser.value
+    },
+    get isAuthenticated() {
+      return mockCurrentUser.value != null
+    },
   }),
 }))
 
@@ -60,9 +64,21 @@ describe('useFriendshipsStore (errors + edges only)', () => {
 
   describe('phone-verified gating', () => {
     it.each([
-      ['sendRequest', async (s: ReturnType<typeof useFriendshipsStore>) => s.sendRequest('user-other'), null],
-      ['findUserByPhone', async (s: ReturnType<typeof useFriendshipsStore>) => s.findUserByPhone('+41791234567'), null],
-      ['findUsersByPhones', async (s: ReturnType<typeof useFriendshipsStore>) => s.findUsersByPhones(['+41791234567']), []],
+      [
+        'sendRequest',
+        async (s: ReturnType<typeof useFriendshipsStore>) => s.sendRequest('user-other'),
+        null,
+      ],
+      [
+        'findUserByPhone',
+        async (s: ReturnType<typeof useFriendshipsStore>) => s.findUserByPhone('+41791234567'),
+        null,
+      ],
+      [
+        'findUsersByPhones',
+        async (s: ReturnType<typeof useFriendshipsStore>) => s.findUsersByPhones(['+41791234567']),
+        [],
+      ],
     ])('%s short-circuits when caller phone unverified', async (_, action, expected) => {
       const result = await action(unverifiedStore())
       expect(result).toEqual(expected)
@@ -124,7 +140,9 @@ describe('useFriendshipsStore (errors + edges only)', () => {
     it('cancel rollback restores outgoing request', async () => {
       mockRepo.cancel.mockRejectedValue(new Error('failed'))
       const store = await verifiedStore()
-      store.outgoingRequests = [makeRequest({ id: 'r', fromUserId: 'user-me', toUserId: 'user-other' })]
+      store.outgoingRequests = [
+        makeRequest({ id: 'r', fromUserId: 'user-me', toUserId: 'user-other' }),
+      ]
       await expect(store.cancel('r')).rejects.toThrow('failed')
       expect(store.outgoingRequests).toHaveLength(1)
     })

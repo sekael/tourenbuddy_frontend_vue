@@ -1,15 +1,12 @@
 <script setup lang="ts">
-import { storeToRefs } from 'pinia'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
-import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
-import { useMapStore } from '@/features/map/presentation/stores/map-store'
-import BaseMapPicker from './base-map-picker.vue'
+import { useMapOverlay } from '../composables/use-map-overlay'
+import MapBaseMapPanel from './map-base-map-panel.vue'
+import MapSpeedDialMenu from './map-speed-dial-menu.vue'
+import SpeedDialTrigger from './speed-dial-trigger.vue'
 
-const props = defineProps<{
-  bearing?: number
-}>()
+const props = defineProps<{ bearing?: number }>()
 
 const emit = defineEmits<{
   openProfile: []
@@ -20,32 +17,43 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n({ useScope: 'global' })
+const {
+  view,
+  isOpen,
+  isPickingLocation,
+  currentStyleIndex,
+  pendingIncomingCount,
+  menuItems,
+  onMenuSelect,
+  selectStyle,
+} = useMapOverlay(emit)
 
+const menuRef = ref<InstanceType<typeof MapSpeedDialMenu> | null>(null)
 const iconRotation = computed(() => -(props.bearing ?? 0))
 const showCompass = computed(() => Math.abs(props.bearing ?? 0) > 0.5)
 
-const mapStore = useMapStore()
-const authStore = useAuthStore()
-const friendshipsStore = useFriendshipsStore()
-const { isPickingLocation } = storeToRefs(mapStore)
-const { isAuthenticated } = storeToRefs(authStore)
-const { incomingRequests } = storeToRefs(friendshipsStore)
+async function toggleMenu() {
+  if (isOpen.value) {
+    view.value = 'closed'
+  }
+  else {
+    view.value = 'menu'
+    await menuRef.value?.focusFirst()
+  }
+}
 
-const pendingIncomingCount = computed(
-  () => incomingRequests.value.filter(r => r.status === 'pending').length,
-)
-
-function startAddTour() {
-  mapStore.selectTour(null)
-  mapStore.setPickingLocation(true)
+function closeMenu() {
+  view.value = 'closed'
 }
 </script>
 
 <template>
-  <div v-if="!isPickingLocation" class="overlay">
+  <div v-if="!isPickingLocation" class="overlay" @keydown.esc="closeMenu">
+    <div v-if="isOpen" class="backdrop" aria-hidden="true" @click="closeMenu" />
+
     <button
       v-if="showCompass"
-      class="fab"
+      class="compass-fab"
       :title="t('map.overlay.compassTooltip')"
       @click="emit('resetBearing')"
     >
@@ -55,37 +63,30 @@ function startAddTour() {
       >explore</span>
     </button>
 
-    <button class="fab" :title="t('map.overlay.feedbackTooltip')" @click="emit('openFeedback')">
-      <span class="material-symbols-outlined">feedback</span>
-    </button>
+    <Transition name="panel">
+      <MapSpeedDialMenu
+        v-if="view === 'menu'"
+        ref="menuRef"
+        :items="menuItems"
+        @select="onMenuSelect"
+      />
+    </Transition>
 
-    <button class="fab" :title="t('map.overlay.profileTooltip')" @click="emit('openProfile')">
-      <span class="material-symbols-outlined">account_circle</span>
-    </button>
+    <Transition name="panel">
+      <MapBaseMapPanel
+        v-if="view === 'base-map'"
+        :current-style-index="currentStyleIndex"
+        @select="selectStyle"
+      />
+    </Transition>
 
-    <BaseMapPicker />
-
-    <div class="fab-wrapper">
-      <button class="fab" :title="t('map.overlay.contactsTooltip')" @click="emit('openContacts')">
-        <span class="material-symbols-outlined">group</span>
-      </button>
-      <span v-if="pendingIncomingCount > 0" class="fab-badge">{{ pendingIncomingCount }}</span>
-    </div>
-
-    <button class="fab" :title="t('map.overlay.toursTooltip')" @click="emit('openTours')">
-      <span class="material-symbols-outlined">location_on</span>
-    </button>
-
-    <button
-      class="fab"
-      :disabled="!isAuthenticated"
-      :title="
-        isAuthenticated ? t('map.overlay.addTourTooltip') : t('map.overlay.signInToAddToursTooltip')
-      "
-      @click="startAddTour"
-    >
-      <span class="material-symbols-outlined">add_location_alt</span>
-    </button>
+    <SpeedDialTrigger
+      :is-open="isOpen"
+      :has-badge="pendingIncomingCount > 0"
+      :title-open="t('map.overlay.menuClose')"
+      :title-closed="t('map.overlay.menuOpen')"
+      @toggle="toggleMenu"
+    />
   </div>
 </template>
 
@@ -96,66 +97,76 @@ function startAddTour() {
   right: var(--spacing-lg);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
-  align-items: center;
+  gap: var(--spacing-sm);
+  align-items: flex-end;
   z-index: 10;
 }
 
-.fab {
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: transparent;
+  pointer-events: auto;
+}
+
+.compass-fab {
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background-color: rgba(248, 250, 252, 0.75);
+  background-color: color-mix(in srgb, var(--color-fab-surface) 85%, transparent);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(203, 213, 225, 0.5);
+  border: 1px solid var(--color-fab-border);
   box-shadow: var(--shadow-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-on-surface-variant);
+  color: var(--color-fab-on-surface);
+  align-self: flex-end;
   transition:
     box-shadow 0.2s,
-    opacity 0.2s,
     transform 0.15s;
 }
 
-.fab:hover:not(:disabled) {
+.compass-fab:hover {
+  background-color: color-mix(in srgb, var(--color-fab-surface-strong) 85%, transparent);
   box-shadow: var(--shadow-lg);
   transform: translateY(-1px);
-}
-
-.fab:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
 }
 
 .compass-icon {
   transition: transform 0.15s ease-out;
 }
 
-.fab-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.panel-enter-active {
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
 }
 
-.fab-badge {
-  position: absolute;
-  top: 0;
-  right: 0;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
-  border-radius: 9999px;
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  font-size: 11px;
-  font-weight: var(--font-weight-semibold);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
+.panel-leave-active {
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease;
+}
+
+.panel-enter-from,
+.panel-leave-to {
+  opacity: 0;
+  transform: translateY(8px) scale(0.97);
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .overlay {
+    flex-direction: row;
+    align-items: flex-end;
+  }
+
+  .panel-enter-from,
+  .panel-leave-to {
+    opacity: 0;
+    transform: translateX(8px) scale(0.97);
+  }
 }
 </style>

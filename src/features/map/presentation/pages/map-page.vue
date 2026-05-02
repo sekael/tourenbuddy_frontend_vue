@@ -22,7 +22,14 @@ import UserProfileSheet from '@/features/user/presentation/components/user-profi
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
 type PickPointType = 'goal' | 'start' | 'end'
-type OverlayName = 'feedback' | 'profile' | 'contacts' | 'tours' | 'tour' | 'tour-creation' | 'friend-requests'
+type OverlayName
+  = | 'feedback'
+    | 'profile'
+    | 'contacts'
+    | 'tours'
+    | 'tour'
+    | 'tour-creation'
+    | 'friend-requests'
 
 const mapStore = useMapStore()
 const toursStore = useToursStore()

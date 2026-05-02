@@ -317,7 +317,15 @@
       "contactsTooltip": "Contacts",
       "toursTooltip": "Tours",
       "addTourTooltip": "Add tour location",
-      "signInToAddToursTooltip": "Sign in to add tours"
+      "signInToAddToursTooltip": "Sign in to add tours",
+      "menuOpen": "Menu",
+      "menuClose": "Close menu",
+      "addTour": "Add tour",
+      "tours": "Tours",
+      "contacts": "Contacts",
+      "profile": "Profile",
+      "changeBaseMap": "Change base map",
+      "feedback": "Feedback"
     },
     "styles": {
       "pickerTooltip": "Change map style",

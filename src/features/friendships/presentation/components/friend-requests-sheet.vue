@@ -95,7 +95,12 @@ async function handleCancel(requestId: string) {
 </script>
 
 <template>
-  <AdaptiveOverlay :title="t('friendships.friendsListLink')" show-back @close="emit('close')" @back="emit('back')">
+  <AdaptiveOverlay
+    :title="t('friendships.friendsListLink')"
+    show-back
+    @close="emit('close')"
+    @back="emit('back')"
+  >
     <div class="content">
       <div class="deny-rights-note">
         <span class="material-symbols-outlined note-icon">info</span>
@@ -130,10 +135,20 @@ async function handleCancel(requestId: string) {
                     {{ t('friendships.acceptWarning') }}
                   </p>
                   <div class="confirm-actions">
-                    <button type="button" class="action-btn action-btn--cancel" :disabled="isAccepting" @click="cancelAcceptConfirm">
+                    <button
+                      type="button"
+                      class="action-btn action-btn--cancel"
+                      :disabled="isAccepting"
+                      @click="cancelAcceptConfirm"
+                    >
                       {{ t('friendships.cancel') }}
                     </button>
-                    <button type="button" class="action-btn action-btn--accept" :disabled="isAccepting" @click="handleAccept(req.id)">
+                    <button
+                      type="button"
+                      class="action-btn action-btn--accept"
+                      :disabled="isAccepting"
+                      @click="handleAccept(req.id)"
+                    >
                       {{ isAccepting ? t('friendships.acceptingBtn') : t('friendships.accept') }}
                     </button>
                   </div>
@@ -145,10 +160,18 @@ async function handleCancel(requestId: string) {
                   <span class="request-user">{{ phoneFor(req.fromUserId) }}</span>
                 </div>
                 <div class="request-actions">
-                  <button type="button" class="action-btn action-btn--deny" @click="handleDeny(req.id)">
+                  <button
+                    type="button"
+                    class="action-btn action-btn--deny"
+                    @click="handleDeny(req.id)"
+                  >
                     {{ t('friendships.deny') }}
                   </button>
-                  <button type="button" class="action-btn action-btn--accept" @click="startAcceptConfirm(req.id)">
+                  <button
+                    type="button"
+                    class="action-btn action-btn--accept"
+                    @click="startAcceptConfirm(req.id)"
+                  >
                     {{ t('friendships.accept') }}
                   </button>
                 </div>
@@ -172,7 +195,11 @@ async function handleCancel(requestId: string) {
                 <span class="material-symbols-outlined request-icon">person</span>
                 <span class="request-user">{{ phoneFor(req.toUserId) }}</span>
               </div>
-              <button type="button" class="action-btn action-btn--cancel" @click="handleCancel(req.id)">
+              <button
+                type="button"
+                class="action-btn action-btn--cancel"
+                @click="handleCancel(req.id)"
+              >
                 {{ t('friendships.cancel') }}
               </button>
             </li>

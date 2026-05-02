@@ -146,7 +146,9 @@ const detailViewMatchedUserId = computed<string | null>(() => {
     const uid = phoneToUserIdMap.value.get(phone)
     if (!uid || friendUserIds.value.has(uid))
       continue
-    const hasPending = outgoingRequests.value.some(r => r.toUserId === uid && r.status === 'pending')
+    const hasPending = outgoingRequests.value.some(
+      r => r.toUserId === uid && r.status === 'pending',
+    )
     if (!hasPending)
       return uid
   }
