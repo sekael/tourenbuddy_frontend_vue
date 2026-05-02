@@ -345,7 +345,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
         <!-- Tour type -->
         <div v-if="tour.tourType" class="detail-row">
-          <span class="detail-icon material-symbols-outlined">{{
+          <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipType')">{{
             TOUR_TYPE_ICONS[tour.tourType]
           }}</span>
           <span>{{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[tour.tourType]}` as any) }}</span>
@@ -353,26 +353,26 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
         <!-- Planned date -->
         <div v-if="formattedDate" class="detail-row">
-          <span class="detail-icon material-symbols-outlined">calendar_today</span>
+          <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipDate')">calendar_today</span>
           <span>{{ formattedDate }}</span>
         </div>
 
         <!-- Goal coordinates -->
         <div class="detail-row">
-          <span class="detail-icon material-symbols-outlined">location_on</span>
+          <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipGoal')">location_on</span>
           <span class="coords">{{ coordinates }}</span>
         </div>
 
         <!-- Elevation -->
         <div v-if="formattedElevation" class="detail-row">
-          <span class="detail-icon material-symbols-outlined">landscape</span>
+          <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipElevation')">landscape</span>
           <span>{{ formattedElevation }}</span>
         </div>
 
         <!-- Start / end points -->
         <template v-if="startPointText">
           <div class="detail-row">
-            <span class="detail-icon material-symbols-outlined">home</span>
+            <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipStartPoint')">home</span>
             <span v-if="tour.startPointName" class="point-meta">
               {{ tour.startPointName }}
               <span v-if="tour.startPointElevation != null" class="point-elevation">
@@ -382,11 +382,11 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
             <span v-else class="coords">{{ startPointText }}</span>
           </div>
           <div v-if="isOneWayToGoal" class="detail-row">
-            <span class="detail-icon material-symbols-outlined">directions</span>
+            <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipEndPoint')">directions</span>
             <span class="round-trip-hint">{{ t('tours.infoSheet.oneWayToGoalIndicator') }}</span>
           </div>
           <div v-else class="detail-row">
-            <span class="detail-icon material-symbols-outlined">flag</span>
+            <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipEndPoint')">flag</span>
             <span v-if="isRoundTrip" class="round-trip-hint">{{
               t('tours.infoSheet.roundTrip')
             }}</span>
@@ -404,7 +404,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
         <!-- Seasons -->
         <div v-if="tour.seasons && tour.seasons.length > 0" class="detail-row align-start">
-          <span class="detail-icon material-symbols-outlined">wb_sunny</span>
+          <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipSeasons')">wb_sunny</span>
           <div class="season-tags">
             <span v-for="season in tour.seasons" :key="season" class="season-tag">
               {{ t(`tours.season.${season}` as any) }}
@@ -414,7 +414,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
         <!-- Description -->
         <div v-if="tour.description" class="detail-row align-start">
-          <span class="detail-icon material-symbols-outlined">description</span>
+          <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipDescription')">description</span>
           <p class="description-text">
             <template v-for="(segment, i) in linkifyText(tour.description)" :key="i">
               <a
@@ -433,7 +433,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
         <!-- Equipment -->
         <div v-if="tour.equipment" class="detail-row align-start">
-          <span class="detail-icon material-symbols-outlined">hardware</span>
+          <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipEquipment')">hardware</span>
           <p class="detail-text">
             {{ tour.equipment }}
           </p>
@@ -441,7 +441,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
         <!-- Notes -->
         <div v-if="tour.notes" class="detail-row align-start">
-          <span class="detail-icon material-symbols-outlined">sticky_note_2</span>
+          <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipNotes')">sticky_note_2</span>
           <p class="detail-text">
             {{ tour.notes }}
           </p>
@@ -449,13 +449,13 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
         <!-- GPX track indicator -->
         <div v-if="tour.gpxTrack" class="detail-row">
-          <span class="detail-icon material-symbols-outlined">route</span>
+          <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipGpxTrack')">route</span>
           <span class="gpx-label">{{ t('tours.infoSheet.gpxTrackAvailable') }}</span>
         </div>
 
         <!-- Partners -->
         <div v-if="partners.length > 0" class="detail-row align-start">
-          <span class="detail-icon material-symbols-outlined">group</span>
+          <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipPartners')">group</span>
           <div class="partner-chips-section">
             <div class="partner-chips">
               <ContactChip

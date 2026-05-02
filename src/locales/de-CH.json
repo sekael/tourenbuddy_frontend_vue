@@ -275,7 +275,19 @@
       "saveFailed": "Speichern fehlgeschlagen",
       "deleteFailed": "Löschen fehlgeschlagen",
       "backToTours": "Touren",
-      "saveLabel": "Speichern"
+      "saveLabel": "Speichern",
+      "iconTooltipType": "Aktivitätstyp",
+      "iconTooltipDate": "Geplantes Datum",
+      "iconTooltipGoal": "Ziel",
+      "iconTooltipElevation": "Höhe",
+      "iconTooltipStartPoint": "Startpunkt",
+      "iconTooltipEndPoint": "Endpunkt",
+      "iconTooltipSeasons": "Saison",
+      "iconTooltipDescription": "Beschreibung",
+      "iconTooltipEquipment": "Ausrüstung",
+      "iconTooltipNotes": "Notizen",
+      "iconTooltipGpxTrack": "GPX-Track",
+      "iconTooltipPartners": "Tourenpartner"
     },
     "filters": {
       "partnerLabel": "Partner",
