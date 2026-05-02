@@ -18,6 +18,10 @@ export interface TourDraft {
   seasons: Season[] | null
   startPoint: { lng: number, lat: number } | null
   endPoint: { lng: number, lat: number } | null
+  startPointName: string | null
+  startPointElevation: number | null
+  endPointName: string | null
+  endPointElevation: number | null
   equipment: string | null
   notes: string | null
   completed?: boolean

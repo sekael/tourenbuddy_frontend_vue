@@ -75,4 +75,54 @@ describe('tourCreationDialog', () => {
     await wrapper.findComponent({ name: 'TourForm' }).vm.$emit('pickPoint', 'start')
     expect(wrapper.emitted('pickPoint')).toEqual([['start']])
   })
+
+  describe('collapsed header label per activePickType', () => {
+    it('shows "Tour Goal" label when picker is active with goal type', () => {
+      const wrapper = mount(TourCreationDialog, {
+        props: { initialGoal: { lng: 8.2, lat: 46.8 }, activePickType: 'goal' },
+        global: {
+          plugins: [
+            createTestingPinia({
+              createSpy: vi.fn,
+              initialState: { map: { isPickingLocation: true } },
+            }),
+          ],
+          stubs: { AdaptiveOverlay: AdaptiveOverlayStub, TourForm: TourFormStub },
+        },
+      })
+      expect(wrapper.element.getAttribute('data-title')).toContain('Tour Goal')
+    })
+
+    it('shows "Start Point" label when picker is active with start type', () => {
+      const wrapper = mount(TourCreationDialog, {
+        props: { initialGoal: { lng: 8.2, lat: 46.8 }, activePickType: 'start' },
+        global: {
+          plugins: [
+            createTestingPinia({
+              createSpy: vi.fn,
+              initialState: { map: { isPickingLocation: true } },
+            }),
+          ],
+          stubs: { AdaptiveOverlay: AdaptiveOverlayStub, TourForm: TourFormStub },
+        },
+      })
+      expect(wrapper.element.getAttribute('data-title')).toContain('Start Point')
+    })
+
+    it('shows "End Point" label when picker is active with end type', () => {
+      const wrapper = mount(TourCreationDialog, {
+        props: { initialGoal: { lng: 8.2, lat: 46.8 }, activePickType: 'end' },
+        global: {
+          plugins: [
+            createTestingPinia({
+              createSpy: vi.fn,
+              initialState: { map: { isPickingLocation: true } },
+            }),
+          ],
+          stubs: { AdaptiveOverlay: AdaptiveOverlayStub, TourForm: TourFormStub },
+        },
+      })
+      expect(wrapper.element.getAttribute('data-title')).toContain('End Point')
+    })
+  })
 })

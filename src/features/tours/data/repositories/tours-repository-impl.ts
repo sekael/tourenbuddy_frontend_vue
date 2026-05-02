@@ -33,6 +33,10 @@ export class ToursRepositoryImpl implements ToursRepository {
         ? `POINT(${draft.startPoint.lng} ${draft.startPoint.lat})`
         : null,
       p_end_point: draft.endPoint ? `POINT(${draft.endPoint.lng} ${draft.endPoint.lat})` : null,
+      p_start_point_name: draft.startPointName ?? null,
+      p_start_point_elevation: draft.startPointElevation ?? null,
+      p_end_point_name: draft.endPointName ?? null,
+      p_end_point_elevation: draft.endPointElevation ?? null,
       p_equipment: draft.equipment ?? null,
       p_notes: draft.notes ?? null,
     })
@@ -61,6 +65,10 @@ export class ToursRepositoryImpl implements ToursRepository {
         ? `POINT(${draft.startPoint.lng} ${draft.startPoint.lat})`
         : null,
       p_end_point: draft.endPoint ? `POINT(${draft.endPoint.lng} ${draft.endPoint.lat})` : null,
+      p_start_point_name: draft.startPointName ?? null,
+      p_start_point_elevation: draft.startPointElevation ?? null,
+      p_end_point_name: draft.endPointName ?? null,
+      p_end_point_elevation: draft.endPointElevation ?? null,
       p_equipment: draft.equipment ?? null,
       p_notes: draft.notes ?? null,
     })

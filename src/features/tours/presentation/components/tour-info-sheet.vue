@@ -28,6 +28,8 @@ const props = defineProps<{
   } | null
   /** Desktop only: show a back button pointing to the tours list. */
   showBack?: boolean
+  /** Which pick type is active — drives the collapsed header label in edit mode. */
+  activePickType?: 'goal' | 'start' | 'end' | null
 }>()
 const emit = defineEmits<{
   close: []
@@ -66,6 +68,8 @@ const pendingEndPoint = ref<{ lng: number, lat: number } | null>(null)
 // Elevation/name updated from Swisstopo after a goal re-pick in edit mode
 const pendingElevation = ref<number | null>(null)
 const pendingSuggestedName = ref<string | null>(null)
+const pendingStartPointMeta = ref<{ name: string | null, elevation: number | null } | null>(null)
+const pendingEndPointMeta = ref<{ name: string | null, elevation: number | null } | null>(null)
 
 function enterEditMode() {
   pendingGoal.value = { ...props.tour.goal }
@@ -73,6 +77,8 @@ function enterEditMode() {
   pendingEndPoint.value = null
   pendingElevation.value = null
   pendingSuggestedName.value = null
+  pendingStartPointMeta.value = null
+  pendingEndPointMeta.value = null
   mode.value = 'edit'
   emit('editModeChange', true)
 }
@@ -102,9 +108,17 @@ watch(
     }
     else if (pick.type === 'start') {
       pendingStartPoint.value = pick.location
+      pendingStartPointMeta.value = {
+        name: pick.suggestedName ?? null,
+        elevation: pick.elevation ?? null,
+      }
     }
     else {
       pendingEndPoint.value = pick.location
+      pendingEndPointMeta.value = {
+        name: pick.suggestedName ?? null,
+        elevation: pick.elevation ?? null,
+      }
     }
     emit('pointConsumed')
   },
@@ -166,8 +180,13 @@ const displayName = computed(() => props.tour.name ?? t('tours.infoSheet.unnamed
 // → title-only bar).
 const sheetCollapsed = computed(() => isPicking.value && mode.value === 'edit')
 const sheetTitle = computed(() => {
-  if (sheetCollapsed.value)
-    return t('tours.infoSheet.editTitle', { name: displayName.value })
+  if (sheetCollapsed.value) {
+    if (props.activePickType === 'start')
+      return t('tours.picker.startTitle')
+    if (props.activePickType === 'end')
+      return t('tours.picker.endTitle')
+    return t('tours.picker.goalTitle')
+  }
   return mode.value === 'edit'
     ? `${t('tours.infoSheet.editTitlePrefix')}: ${displayName.value}`
     : displayName.value
@@ -241,8 +260,12 @@ const isRoundTrip = computed(() => {
   if (!s)
     return false
   if (!e)
-    return true
+    return false
   return s.lng === e.lng && s.lat === e.lat
+})
+
+const isOneWayToGoal = computed(() => {
+  return !!props.tour.startPoint && !props.tour.endPoint
 })
 
 /** Auto-link URLs in plain text: returns array of segments {text, url?}. */
@@ -290,6 +313,8 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         :initial-name="pendingSuggestedName"
         :initial-start-point="pendingStartPoint"
         :initial-end-point="pendingEndPoint"
+        :initial-start-point-meta="pendingStartPointMeta"
+        :initial-end-point-meta="pendingEndPointMeta"
         :disabled="isPicking"
         @submit="handleEditSubmit"
         @cancel="cancelEdit"
@@ -348,14 +373,32 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         <template v-if="startPointText">
           <div class="detail-row">
             <span class="detail-icon material-symbols-outlined">home</span>
-            <span class="coords">{{ startPointText }}</span>
+            <span v-if="tour.startPointName" class="point-meta">
+              {{ tour.startPointName }}
+              <span v-if="tour.startPointElevation != null" class="point-elevation">
+                {{ tour.startPointElevation }} m
+              </span>
+            </span>
+            <span v-else class="coords">{{ startPointText }}</span>
           </div>
-          <div class="detail-row">
+          <div v-if="isOneWayToGoal" class="detail-row">
+            <span class="detail-icon material-symbols-outlined">directions</span>
+            <span class="round-trip-hint">{{ t('tours.infoSheet.oneWayToGoalIndicator') }}</span>
+          </div>
+          <div v-else class="detail-row">
             <span class="detail-icon material-symbols-outlined">flag</span>
             <span v-if="isRoundTrip" class="round-trip-hint">{{
               t('tours.infoSheet.roundTrip')
             }}</span>
-            <span v-else class="coords">{{ endPointText }}</span>
+            <template v-else>
+              <span v-if="tour.endPointName" class="point-meta">
+                {{ tour.endPointName }}
+                <span v-if="tour.endPointElevation != null" class="point-elevation">
+                  {{ tour.endPointElevation }} m
+                </span>
+              </span>
+              <span v-else class="coords">{{ endPointText }}</span>
+            </template>
           </div>
         </template>
 
@@ -645,6 +688,18 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 .round-trip-hint {
   font-size: var(--font-size-sm);
   font-style: italic;
+  color: var(--color-outline);
+}
+
+.point-meta {
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.point-elevation {
   color: var(--color-outline);
 }
 

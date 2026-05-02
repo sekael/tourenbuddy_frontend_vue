@@ -46,6 +46,10 @@ const TourFormStub = {
       seasons: null,
       startPoint: null,
       endPoint: null,
+      startPointName: null,
+      startPointElevation: null,
+      endPointName: null,
+      endPointElevation: null,
       equipment: null,
       notes: null,
     }
@@ -80,6 +84,10 @@ const mockTour = {
   seasons: null,
   startPoint: null,
   endPoint: null,
+  startPointName: null,
+  startPointElevation: null,
+  endPointName: null,
+  endPointElevation: null,
   equipment: null,
   notes: null,
   completed: false,
@@ -178,8 +186,8 @@ describe('tourInfoSheet', () => {
       // stubbed root of BottomSheet/SideDrawer
       const root = wrapper.element as HTMLElement
       expect(root.getAttribute('data-collapsed')).toBe('true')
-      // i18n returns the key itself in tests (no translator wired up)
-      expect(root.getAttribute('data-title')).toContain('editTitle')
+      // collapsed title now shows pick-type label (defaults to goalTitle key when no activePickType)
+      expect(root.getAttribute('data-title')).toContain('goalTitle')
       expect(wrapper.find('[data-testid="tour-form"]').attributes('data-disabled')).toBe('true')
       expect(sheet).toBeDefined()
     })
@@ -310,6 +318,98 @@ describe('tourInfoSheet', () => {
 
       expect(wrapper.emitted('close')).toBeFalsy()
       expect(wrapper.find('.delete-error').text()).toBe('Delete failed')
+    })
+  })
+
+  // ── Pick-type label in collapsed header ───────────────────────────────────
+
+  describe('collapsed header label per activePickType', () => {
+    function mountSheetWithPick(activePickType: 'goal' | 'start' | 'end') {
+      return mount(TourInfoSheet, {
+        props: {
+          tour: { ...mockTour },
+          activePickType,
+        },
+        global: {
+          plugins: [
+            createTestingPinia({
+              createSpy: vi.fn,
+              initialState: {
+                contacts: { contacts: [] },
+                tours: { tours: [mockTour] },
+                auth: { currentUser: { id: 'user-1' }, isAuthenticated: true },
+                map: { isPickingLocation: true },
+              },
+            }),
+          ],
+          stubs: {
+            BottomSheet: BottomSheetStub,
+            SideDrawer: SideDrawerStub,
+            TourForm: TourFormStub,
+            ContactChip: ContactChipStub,
+            ContactActionMenu: ContactActionMenuStub,
+          },
+        },
+      })
+    }
+
+    it('shows goalTitle when activePickType is goal during edit pick', async () => {
+      const wrapper = mountSheetWithPick('goal')
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
+      expect((wrapper.element as HTMLElement).getAttribute('data-title')).toContain('goalTitle')
+    })
+
+    it('shows startTitle when activePickType is start during edit pick', async () => {
+      const wrapper = mountSheetWithPick('start')
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
+      expect((wrapper.element as HTMLElement).getAttribute('data-title')).toContain('startTitle')
+    })
+
+    it('shows endTitle when activePickType is end during edit pick', async () => {
+      const wrapper = mountSheetWithPick('end')
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
+      expect((wrapper.element as HTMLElement).getAttribute('data-title')).toContain('endTitle')
+    })
+  })
+
+  // ── Start/end metadata and one-way indicator ───────────────────────────────
+
+  describe('start/end point metadata display', () => {
+    it('renders startPointName and startPointElevation when present', () => {
+      const wrapper = mountSheet({
+        startPoint: { lng: 8.0, lat: 46.5 },
+        startPointName: 'Grindelwald',
+        startPointElevation: 1034,
+      })
+      expect(wrapper.text()).toContain('Grindelwald')
+      expect(wrapper.text()).toContain('1034')
+    })
+
+    it('renders "One-way to goal" indicator when start is set and end is null', () => {
+      const wrapper = mountSheet({
+        startPoint: { lng: 8.0, lat: 46.5 },
+        endPoint: null,
+      })
+      expect(wrapper.text()).toContain('oneWayToGoalIndicator')
+    })
+
+    it('does not render one-way indicator when both start and end are set', () => {
+      const wrapper = mountSheet({
+        startPoint: { lng: 8.0, lat: 46.5 },
+        endPoint: { lng: 8.1, lat: 46.6 },
+      })
+      expect(wrapper.text()).not.toContain('oneWayToGoalIndicator')
+    })
+
+    it('renders endPointName when end is set and name is present', () => {
+      const wrapper = mountSheet({
+        startPoint: { lng: 8.0, lat: 46.5 },
+        endPoint: { lng: 8.1, lat: 46.6 },
+        endPointName: 'Kleine Scheidegg',
+        endPointElevation: 2061,
+      })
+      expect(wrapper.text()).toContain('Kleine Scheidegg')
+      expect(wrapper.text()).toContain('2061')
     })
   })
 

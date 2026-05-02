@@ -46,24 +46,37 @@ const mapBearing = ref(0)
 // Single source of truth for which overlay is open (at most one at a time)
 const activeOverlay = ref<OverlayName | null>(null)
 
+// Location picking state
+const pendingLocation = ref<{ lng: number, lat: number } | null>(null)
+// 'goal' = main tour objective, 'start' = start point, 'end' = end point
+const pendingPickType = ref<'goal' | 'start' | 'end'>('goal')
+
 // Computed visibility flags for template readability
 const showFeedbackSheet = computed(() => activeOverlay.value === 'feedback')
 const showProfileSheet = computed(() => activeOverlay.value === 'profile')
 const showContactDialog = computed(() => activeOverlay.value === 'contacts')
 const showToursList = computed(() => activeOverlay.value === 'tours')
-const showTourCreationDialog = computed(() => activeOverlay.value === 'tour-creation')
+const showTourCreationDialog = computed(
+  () =>
+    activeOverlay.value === 'tour-creation'
+    || (isPickingLocation.value
+      && pendingPickType.value === 'goal'
+      && pendingLocation.value === null
+      && activeOverlay.value === null),
+)
 const showFriendRequests = computed(() => activeOverlay.value === 'friend-requests')
-
-// Location picking state
-const pendingLocation = ref<{ lng: number, lat: number } | null>(null)
-// 'goal' = main tour objective, 'start' = start point, 'end' = end point
-const pendingPickType = ref<'goal' | 'start' | 'end'>('goal')
 
 // Pre-fill values for the creation dialog (from Swisstopo lookups & secondary picks)
 const dialogInitialElevation = ref<number | null>(null)
 const dialogInitialName = ref<string | null>(null)
 const dialogInitialStartPoint = ref<{ lng: number, lat: number } | null>(null)
 const dialogInitialEndPoint = ref<{ lng: number, lat: number } | null>(null)
+const dialogInitialStartPointMeta = ref<{ name: string | null, elevation: number | null } | null>(
+  null,
+)
+const dialogInitialEndPointMeta = ref<{ name: string | null, elevation: number | null } | null>(
+  null,
+)
 
 // Derived reactively from store so it updates immediately when tours are mutated
 const selectedTour = computed(() => tours.value.find(t => t.id === selectedTourId.value) ?? null)
@@ -95,6 +108,8 @@ function resetTourCreationState() {
   dialogInitialName.value = null
   dialogInitialStartPoint.value = null
   dialogInitialEndPoint.value = null
+  dialogInitialStartPointMeta.value = null
+  dialogInitialEndPointMeta.value = null
   pendingPickType.value = 'goal'
 }
 
@@ -246,19 +261,27 @@ async function handleLocationConfirmed(location: { lng: number, lat: number }) {
       editPickedPoint.value = { type: 'goal', location, elevation, suggestedName }
     }
     else {
-      editPickedPoint.value = { type: pickType, location }
+      const [elevation, suggestedName] = await Promise.all([
+        getElevation(location),
+        suggestTourName(location),
+      ])
+      editPickedPoint.value = { type: pickType, location, elevation, suggestedName }
     }
     return
   }
 
   if (pendingPickType.value === 'start') {
     dialogInitialStartPoint.value = location
+    const [elevation, name] = await Promise.all([getElevation(location), suggestTourName(location)])
+    dialogInitialStartPointMeta.value = { name, elevation }
     openOverlay('tour-creation')
     return
   }
 
   if (pendingPickType.value === 'end') {
     dialogInitialEndPoint.value = location
+    const [elevation, name] = await Promise.all([getElevation(location), suggestTourName(location)])
+    dialogInitialEndPointMeta.value = { name, elevation }
     openOverlay('tour-creation')
     return
   }
@@ -396,6 +419,7 @@ function handleDialogClose() {
           :tour="selectedTour"
           :edit-picked-point="editPickedPoint"
           :show-back="tourOpenedFromList"
+          :active-pick-type="isPickingForEdit ? pendingPickType : null"
           @close="closeOverlay"
           @back="handleTourInfoBack"
           @pick-point="(t: 'start' | 'end' | 'goal') => handleInfoSheetPickPoint(t)"
@@ -429,7 +453,10 @@ function handleDialogClose() {
           :initial-name="dialogInitialName"
           :initial-start-point="dialogInitialStartPoint"
           :initial-end-point="dialogInitialEndPoint"
+          :initial-start-point-meta="dialogInitialStartPointMeta"
+          :initial-end-point-meta="dialogInitialEndPointMeta"
           :initial-goal="pendingLocation"
+          :active-pick-type="pendingPickType"
           @confirm="handleTourCreated"
           @close="handleDialogClose"
           @pick-point="handlePickPoint"
