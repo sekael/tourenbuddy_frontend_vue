@@ -59,22 +59,14 @@ body:
       label: Browser or App
       description: How are you accessing TourenBuddy?
       options:
-        - Safari
+        - Brave Browser
         - Chrome
         - Firefox
+        - Safari
         - Edge
         - Samsung Internet
         - Installed as app (added to home screen)
-        - Other
-    validations:
-      required: false
-
-  - type: input
-    id: version
-    attributes:
-      label: App version
-      description: Optional — visible in the app settings or about page
-      placeholder: e.g. 0.9.0
+        - Other browser
     validations:
       required: false
 

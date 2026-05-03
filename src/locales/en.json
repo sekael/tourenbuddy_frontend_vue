@@ -19,7 +19,8 @@
     "feedback": {
       "sheet": {
         "title": "Feedback",
-        "openIssue": "Open Issue on GitHub",
+        "openBugReport": "Report a Bug on GitHub",
+        "openIssue": "Provide Feedback on GitHub",
         "noGitHub": "No GitHub account? Reach out at",
         "errorOpening": "Could not open the GitHub page. Please email us at {email}"
       }
