@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.9.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.8.1...tourenbuddy-frontend-v0.9.0) (2026-05-03)
+
+
+### Features
+
+* Fade-transition menu/close icons in speed dial trigger ([#96](https://github.com/sekael/tourenbuddy_frontend_vue/issues/96)) ([16d7c14](https://github.com/sekael/tourenbuddy_frontend_vue/commit/16d7c143feb6f0f05efe823c6659695de2960c37))
+* Improve support for non-round-trip tours ([#95](https://github.com/sekael/tourenbuddy_frontend_vue/issues/95)) ([4b1e055](https://github.com/sekael/tourenbuddy_frontend_vue/commit/4b1e055f25e1fb71cdb83b1c29a8540b850af441))
+* Link contacts to platform accounts via verified phone ([#87](https://github.com/sekael/tourenbuddy_frontend_vue/issues/87)) ([30df2ad](https://github.com/sekael/tourenbuddy_frontend_vue/commit/30df2ad7a614f91f3ab8f8769a2e444752f75739))
+* Map speed dial actions ([#93](https://github.com/sekael/tourenbuddy_frontend_vue/issues/93)) ([175da12](https://github.com/sekael/tourenbuddy_frontend_vue/commit/175da12cb862d930b6ee60a2d795296dfd4c5a53))
+
 ## [0.8.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.8.0...tourenbuddy-frontend-v0.8.1) (2026-04-28)
 
 
