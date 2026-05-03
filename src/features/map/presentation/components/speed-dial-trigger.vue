@@ -20,7 +20,8 @@ defineEmits<{ toggle: [] }>()
       :title="isOpen ? titleOpen : titleClosed"
       @click="$emit('toggle')"
     >
-      <span class="material-symbols-outlined icon">add</span>
+      <span class="material-symbols-outlined icon icon-menu" :class="{ hidden: isOpen }">menu</span>
+      <span class="material-symbols-outlined icon icon-close" :class="{ hidden: !isOpen }">close</span>
     </button>
     <span v-if="hasBadge && !isOpen" class="dot" aria-hidden="true" />
   </div>
@@ -60,11 +61,13 @@ defineEmits<{ toggle: [] }>()
 }
 
 .icon {
-  transition: transform 0.15s ease;
+  position: absolute;
+  transition: opacity 0.25s ease;
 }
 
-.fab.open .icon {
-  transform: rotate(45deg);
+.icon.hidden {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .dot {
