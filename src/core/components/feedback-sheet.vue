@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import ErrorSnackbar from '@/core/components/error-snackbar.vue'
 import { useSnackbar } from '@/core/composables/use-snackbar'
@@ -8,7 +9,6 @@ import {
   FEEDBACK_GITHUB_ISSUE_URL,
 } from '@/core/constants/feedback'
 import { useLogger } from '@/core/logging/use-logger'
-import { useI18n } from 'vue-i18n'
 
 const emit = defineEmits<{ close: [] }>()
 
@@ -22,7 +22,8 @@ function openFeedbackIssue() {
   const tab = window.open(FEEDBACK_GITHUB_ISSUE_URL, '_blank', 'noopener,noreferrer')
   if (tab === null) {
     show(t('core.feedback.sheet.errorOpening', { email: FEEDBACK_EMAIL }))
-  } else {
+  }
+  else {
     emit('close')
   }
 }
@@ -33,7 +34,8 @@ function openBugReport() {
   const tab = window.open(BUG_REPORT_GITHUB_ISSUE_URL, '_blank', 'noopener,noreferrer')
   if (tab === null) {
     show(t('core.feedback.sheet.errorOpening', { email: FEEDBACK_EMAIL }))
-  } else {
+  }
+  else {
     emit('close')
   }
 }
