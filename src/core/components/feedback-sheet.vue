@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import ErrorSnackbar from '@/core/components/error-snackbar.vue'
 import { useSnackbar } from '@/core/composables/use-snackbar'
-import { FEEDBACK_EMAIL, FEEDBACK_GITHUB_ISSUE_URL } from '@/core/constants/feedback'
+import {
+  BUG_REPORT_GITHUB_ISSUE_URL,
+  FEEDBACK_EMAIL,
+  FEEDBACK_GITHUB_ISSUE_URL,
+} from '@/core/constants/feedback'
 import { useLogger } from '@/core/logging/use-logger'
+import { useI18n } from 'vue-i18n'
 
 const emit = defineEmits<{ close: [] }>()
 
@@ -13,13 +17,23 @@ const logger = useLogger('feedback-sheet')
 const { snackbar, show, dismiss } = useSnackbar()
 
 /** Opens the GitHub bug report issue template in a new tab. Shows an error snackbar if blocked. */
-function openIssue() {
+function openFeedbackIssue() {
   logger.info('Opening GitHub issue URL', FEEDBACK_GITHUB_ISSUE_URL)
   const tab = window.open(FEEDBACK_GITHUB_ISSUE_URL, '_blank', 'noopener,noreferrer')
   if (tab === null) {
     show(t('core.feedback.sheet.errorOpening', { email: FEEDBACK_EMAIL }))
+  } else {
+    emit('close')
   }
-  else {
+}
+
+/** Opens the GitHub bug report issue template in a new tab. Shows an error snackbar if blocked. */
+function openBugReport() {
+  logger.info('Opening GitHub bug report URL', BUG_REPORT_GITHUB_ISSUE_URL)
+  const tab = window.open(BUG_REPORT_GITHUB_ISSUE_URL, '_blank', 'noopener,noreferrer')
+  if (tab === null) {
+    show(t('core.feedback.sheet.errorOpening', { email: FEEDBACK_EMAIL }))
+  } else {
     emit('close')
   }
 }
@@ -28,7 +42,10 @@ function openIssue() {
 <template>
   <AdaptiveOverlay :title="t('core.feedback.sheet.title')" @close="emit('close')">
     <div class="feedback-content">
-      <button type="button" class="primary-btn" @click="openIssue">
+      <button type="button" class="primary-btn" @click="openBugReport">
+        {{ t('core.feedback.sheet.openBugReport') }}
+      </button>
+      <button type="button" class="secondary-btn" @click="openFeedbackIssue">
         {{ t('core.feedback.sheet.openIssue') }}
       </button>
       <p class="hint">
