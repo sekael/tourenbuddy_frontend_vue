@@ -339,7 +339,9 @@ function handleSubmit() {
             </div>
             <template v-if="startPoint">
               <div class="field">
-                <label class="label" for="tf-start-name">{{ t('tours.form.pointNameLabel') }}</label>
+                <label class="label" for="tf-start-name">{{
+                  t('tours.form.pointNameLabel')
+                }}</label>
                 <input
                   id="tf-start-name"
                   v-model="startPointName"
@@ -350,7 +352,9 @@ function handleSubmit() {
                 >
               </div>
               <div class="field">
-                <label class="label" for="tf-start-elevation">{{ t('tours.form.elevationLabel') }}</label>
+                <label class="label" for="tf-start-elevation">{{
+                  t('tours.form.elevationLabel')
+                }}</label>
                 <input
                   id="tf-start-elevation"
                   v-model="startPointElevation"
@@ -402,7 +406,9 @@ function handleSubmit() {
                 >
               </div>
               <div class="field">
-                <label class="label" for="tf-end-elevation">{{ t('tours.form.elevationLabel') }}</label>
+                <label class="label" for="tf-end-elevation">{{
+                  t('tours.form.elevationLabel')
+                }}</label>
                 <input
                   id="tf-end-elevation"
                   v-model="endPointElevation"
