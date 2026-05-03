@@ -96,17 +96,17 @@ describe('mapActionOverlay', () => {
   })
 
   describe('trigger icon', () => {
-    it('should render add glyph when collapsed', () => {
+    it('should render menu glyph when collapsed', () => {
       const wrapper = mountOverlay()
       const icon = wrapper.find('.material-symbols-outlined')
-      expect(icon.text()).toBe('add')
+      expect(icon.text()).toBe('menu')
     })
 
-    it('should render add glyph (no swap) when expanded', async () => {
+    it('should render menu glyph (no swap) when expanded', async () => {
       const wrapper = mountOverlay()
       await wrapper.find('[aria-haspopup="menu"]').trigger('click')
       const fabButton = wrapper.find('.fab')
-      expect(fabButton.find('.material-symbols-outlined').text()).toBe('add')
+      expect(fabButton.find('.material-symbols-outlined').text()).toBe('menu')
     })
 
     it('should apply open class to trigger when menu is open', async () => {
