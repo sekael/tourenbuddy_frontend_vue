@@ -19,7 +19,7 @@ const { snackbar, show, dismiss } = useSnackbar()
 /** Opens the GitHub bug report issue template in a new tab. Shows an error snackbar if blocked. */
 function openFeedbackIssue() {
   logger.info('Opening GitHub issue URL', FEEDBACK_GITHUB_ISSUE_URL)
-  const tab = window.open(FEEDBACK_GITHUB_ISSUE_URL, '_blank', 'noopener,noreferrer')
+  const tab = window.open(FEEDBACK_GITHUB_ISSUE_URL, '_blank')
   if (tab === null) {
     show(t('core.feedback.sheet.errorOpening', { email: FEEDBACK_EMAIL }))
   }
@@ -31,7 +31,7 @@ function openFeedbackIssue() {
 /** Opens the GitHub bug report issue template in a new tab. Shows an error snackbar if blocked. */
 function openBugReport() {
   logger.info('Opening GitHub bug report URL', BUG_REPORT_GITHUB_ISSUE_URL)
-  const tab = window.open(BUG_REPORT_GITHUB_ISSUE_URL, '_blank', 'noopener,noreferrer')
+  const tab = window.open(BUG_REPORT_GITHUB_ISSUE_URL, '_blank')
   if (tab === null) {
     show(t('core.feedback.sheet.errorOpening', { email: FEEDBACK_EMAIL }))
   }
