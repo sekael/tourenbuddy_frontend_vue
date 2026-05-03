@@ -64,7 +64,7 @@
 
 - [x] 9.1 Run `npx eslint . --fix` and `npm run format`
 - [x] 9.2 Run `npm run type-check` and `npm run test` — all must pass
-- [ ] 9.3 Manually verify in dev: pick goal (title bar), pick start (auto-fill), add end point, remove end point, save, reopen info sheet
-- [ ] 9.4 Prompt user to commit with conventional message:
+- [x] 9.3 Manually verify in dev: pick goal (title bar), pick start (auto-fill), add end point, remove end point, save, reopen info sheet
+- [x] 9.4 Prompt user to commit with conventional message:
       `feat(tours): support non-summit tours with optional end point and start/end metadata (#92)`
-- [ ] 9.5 Prompt user to push and open PR linking issue #92
+- [x] 9.5 Prompt user to push and open PR linking issue #92
