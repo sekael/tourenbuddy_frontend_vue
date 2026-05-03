@@ -45,7 +45,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  submit: [draft: TourDraft]
+  submit: [draft: TourDraft, gpxFile: File | null, gpxRemoved: boolean]
   cancel: []
   pickPoint: [type: 'start' | 'end' | 'goal']
 }>()
@@ -100,8 +100,9 @@ const endPointElevation = ref<string>(
 )
 const equipment = ref(props.initialDraft?.equipment ?? '')
 const notes = ref(props.initialDraft?.notes ?? '')
-const gpxTrack = ref<GeoJSON.FeatureCollection | null>(props.initialDraft?.gpxTrack ?? null)
-const gpxFileName = ref<string | null>(gpxTrack.value ? 'Existing track' : null)
+const gpxFile = ref<File | null>(null)
+const gpxFilepath = ref<string | null>(props.initialDraft?.gpxFilepath ?? null)
+const gpxRemoved = ref(false)
 const gpxError = ref<string | null>(null)
 const nameError = ref(false)
 
@@ -193,8 +194,9 @@ async function handleGpxUpload(event: Event) {
   gpxError.value = null
 
   try {
-    gpxTrack.value = await parseGpxFile(file)
-    gpxFileName.value = file.name
+    await parseGpxFile(file)
+    gpxFile.value = file
+    gpxRemoved.value = false
   }
   catch (err) {
     if (err instanceof GpxFileTooLargeError) {
@@ -206,15 +208,15 @@ async function handleGpxUpload(event: Event) {
     else {
       gpxError.value = t('tours.form.gpxReadError')
     }
-    gpxTrack.value = null
-    gpxFileName.value = null
+    gpxFile.value = null
   }
   input.value = ''
 }
 
-function removeGpx() {
-  gpxTrack.value = null
-  gpxFileName.value = null
+function handleRemoveGpx() {
+  gpxFile.value = null
+  gpxFilepath.value = null
+  gpxRemoved.value = true
   gpxError.value = null
 }
 
@@ -231,13 +233,19 @@ function handleSubmit() {
     return
   }
 
+  const currentFilepath = gpxRemoved.value
+    ? null
+    : gpxFile.value
+      ? gpxFilepath.value
+      : gpxFilepath.value
+
   const draft: TourDraft = {
     name: tourName.value.trim(),
     plannedDate: plannedDate.value ? new Date(plannedDate.value) : null,
     partnerIds: Array.from(selectedPartnerIds.value),
     tourType: selectedTourType.value,
     elevation: elevation.value ? Number(elevation.value) : null,
-    gpxTrack: gpxTrack.value,
+    gpxFilepath: currentFilepath,
     description: description.value.trim() || null,
     seasons: selectedSeasons.value.size > 0 ? Array.from(selectedSeasons.value) : null,
     startPoint: startPoint.value,
@@ -249,7 +257,7 @@ function handleSubmit() {
     equipment: equipment.value.trim() || null,
     notes: notes.value.trim() || null,
   }
-  emit('submit', draft)
+  emit('submit', draft, gpxFile.value, gpxRemoved.value)
 }
 </script>
 
@@ -536,12 +544,16 @@ function handleSubmit() {
         <!-- SECTION: GPX Track -->
         <div class="section">
           <p class="section-label">
-            {{ t('tours.form.gpxSectionLabel') }}
+            {{ t('tours.form.gpxLabel') }}
           </p>
-          <div class="gpx-row">
-            <label class="pick-btn gpx-upload-btn">
+          <div v-if="gpxFile || gpxFilepath" class="gpx-filled-row">
+            <span class="gpx-filename">
+              <span class="material-symbols-outlined gpx-ok-icon">route</span>
+              {{ gpxFile ? gpxFile.name : t('tours.form.gpxExistingTrack') }}
+            </span>
+            <label class="gpx-action-btn">
               <span class="material-symbols-outlined">upload_file</span>
-              Upload GPX
+              {{ t('tours.form.gpxReplaceBtn') }}
               <input
                 type="file"
                 accept=".gpx,application/gpx+xml"
@@ -549,13 +561,22 @@ function handleSubmit() {
                 @change="handleGpxUpload"
               >
             </label>
-            <span v-if="gpxFileName" class="gpx-filename">
-              <span class="material-symbols-outlined gpx-ok-icon">check_circle</span>
-              {{ gpxFileName }}
-            </span>
-            <button v-if="gpxFileName" type="button" class="remove-point-btn" @click="removeGpx">
+            <button type="button" class="gpx-action-btn gpx-remove-btn" @click="handleRemoveGpx">
               <span class="material-symbols-outlined">close</span>
+              {{ t('tours.form.gpxRemoveBtn') }}
             </button>
+          </div>
+          <div v-else class="gpx-empty-row">
+            <label class="pick-btn gpx-upload-btn">
+              <span class="material-symbols-outlined">upload_file</span>
+              {{ t('tours.form.gpxUploadBtn') }}
+              <input
+                type="file"
+                accept=".gpx,application/gpx+xml"
+                class="hidden-input"
+                @change="handleGpxUpload"
+              >
+            </label>
           </div>
           <p v-if="gpxError" class="gpx-error">
             {{ gpxError }}
@@ -831,15 +852,54 @@ function handleSubmit() {
 }
 
 /* GPX */
-.gpx-row {
+.gpx-empty-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.gpx-filled-row {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
   flex-wrap: wrap;
+  min-height: 44px;
 }
 
 .gpx-upload-btn {
   cursor: pointer;
+}
+
+.gpx-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1.5px solid var(--color-outline-variant);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
+  background: transparent;
+  cursor: pointer;
+  min-height: 44px;
+  white-space: nowrap;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.gpx-action-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.gpx-action-btn .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.gpx-remove-btn:hover {
+  border-color: var(--color-error);
+  color: var(--color-error);
 }
 
 .hidden-input {

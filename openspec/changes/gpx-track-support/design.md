@@ -14,6 +14,7 @@ Other constraints: Supabase free tier; 2 MB client cap stays; no `console.log`; 
 ## Goals / Non-Goals
 
 **Goals:**
+
 - Persist `.gpx` files in Supabase Storage with a path layout that survives the future shift from owner-only to shared/public RLS.
 - Render selected tour's track in a darker variant of the tour-type color via MapLibre data-driven styling.
 - Cascade delete: remove track or delete tour → Storage object gone.
@@ -21,15 +22,17 @@ Other constraints: Supabase free tier; 2 MB client cap stays; no `console.log`; 
 - Maintain offline-friendly behaviour via PWA runtime cache.
 
 **Non-Goals:**
+
 - In-app GPX editing.
 - Drawing new tracks on the map.
 - Multi-track per tour.
 - Server-side GPX simplification.
-- Sharing/public-tour features themselves (only the *path layout* is forward-compatible).
+- Sharing/public-tour features themselves (only the _path layout_ is forward-compatible).
 
 ## Decisions
 
 ### 1. Storage layout — tour-id-rooted, owner-agnostic
+
 - Bucket: `tour-gpx`, **private**.
 - Object key: `${tourId}.gpx` (flat). Tour ids are UUIDs → no collision.
 - Why not `${userId}/${tourId}.gpx`: that locks the path to the original owner. Future "shared with friends" or "public" tours would still resolve auth via the `tours` row, not the path; encoding the owner in the path adds zero benefit and forces re-keying if ownership transfers ever appear.
@@ -38,22 +41,26 @@ Other constraints: Supabase free tier; 2 MB client cap stays; no `console.log`; 
 - RLS resolves `${path}` → `tour_id := substring(name from '^(.*)\.gpx$')::uuid` → look up `tours` row → authorise. Today the rule is `tours.user_id = auth.uid()`. When sharing/public columns are added, the policy clause expands without touching paths.
 
 ### 2. Source-of-truth model
+
 - Storage holds the `.gpx`. DB holds the path.
 - Drop `gpx_track` JSONB column outright in the same migration. No dual-write, no backfill (no production rows exist).
 
 ### 3. Client fetch + parse
+
 - On tour selection, gpx-track-layer reads `tour.gpxFilepath`, requests a signed URL (60 min TTL), downloads, parses with `parseGpxFile`.
 - In-memory `Map<tourId, FeatureCollection>` LRU cache (max 10) avoids re-parsing on re-selection.
 - PWA `StaleWhileRevalidate` runtime cache rule for the Storage origin keeps repeat loads instant offline.
 
 ### 4. Track color — darker than marker
+
 - New constant `TOUR_TYPE_TRACK_COLORS` mirroring `TOUR_TYPE_COLORS` but with a darker variant per type. Computed once at module load via an HSL `darken(color, 18%)` helper (small util in `core/utils/color.ts`); committed as literal hex values for stability and easy review.
 - Layer paint uses a `match` expression: `['match', ['get', 'tourType'], ...flatMap(TOUR_TYPE_TRACK_COLORS), <fallback>]`.
 - `tourType` injected as a feature property at parse time before `setData`.
-- Why darker (not lighter): the existing `TOUR_TYPE_PREVIEW_COLORS` is the lighter variant used for edit preview; tracks need visual hierarchy *below* the marker so they read as background lines, with the marker popping in front.
+- Why darker (not lighter): the existing `TOUR_TYPE_PREVIEW_COLORS` is the lighter variant used for edit preview; tracks need visual hierarchy _below_ the marker so they read as background lines, with the marker popping in front.
 - Rejected alternative: client-side `darken()` via a layer expression. MapLibre style expressions cannot manipulate color components reliably across all renderers; literal map is simpler and deterministic.
 
 ### 5. RLS and policies (forward-compatible)
+
 - Bucket policies on `storage.objects` for `tour-gpx`:
   - **Helper**: SQL function `tour_id_from_gpx_path(text) returns uuid` extracts the UUID from `${tourId}.gpx`.
   - **SELECT**: `EXISTS (SELECT 1 FROM tours t WHERE t.id = tour_id_from_gpx_path(name) AND t.user_id = auth.uid())`.
@@ -62,12 +69,14 @@ Other constraints: Supabase free tier; 2 MB client cap stays; no `console.log`; 
 - DB trigger `AFTER DELETE ON tours` calls a SECURITY DEFINER function that issues `storage.objects` delete by name when `gpx_filepath` is non-null. Belt-and-suspenders cleanup if client crashes between row delete and storage delete.
 
 ### 6. Upload orchestration
+
 - **Create flow**: parse → validate locally → call repo `create` (without filepath) → on success, upload `.gpx` to `${tourId}.gpx` → patch `gpx_filepath`. Tour ID required for key, hence two-step.
 - **Edit flow with replace**: upload (overwrite same key) → no filepath patch needed (key unchanged).
 - **Edit flow with remove**: delete object → patch `gpx_filepath = null`.
 - Rejected alternative: client-generated UUID for object key before insert. Cleaner upload-first flow but loses the "key === tour id" invariant that simplifies RLS extraction.
 
 ### 7. UX (mobile + desktop)
+
 - Reuse existing `tour-form.vue` GPX block. Replace native `<input type="file">` styling with the app's button design tokens. States:
   - Empty: outline button "Upload GPX track" with file picker.
   - Filled: filename chip + small `Replace` and `Remove` actions; small color swatch matching the (darker) track color.
@@ -81,6 +90,7 @@ Other constraints: Supabase free tier; 2 MB client cap stays; no `console.log`; 
 This change ships with private-only tours, but the storage layout and RLS shape are picked so the future shared/public model needs **only a policy diff** — no path change, no file move, no re-upload.
 
 **Future schema (illustrative, not part of this change):**
+
 - `tours.visibility enum('private','shared','public') default 'private'`
 - `tour_shares(tour_id uuid, user_id uuid, primary key (tour_id, user_id))`
 
@@ -104,17 +114,18 @@ INSERT/UPDATE/DELETE remain owner-only.
 
 **Visibility transitions** are pure DB writes on the `tours` row (and `tour_shares` table). The Storage object is never touched.
 
-| Transition | DB operation | Effect on new fetches |
-|---|---|---|
-| private → shared | insert `tour_shares` rows | recipients pass RLS immediately |
-| private → public | `tours.visibility = 'public'` | anyone matching public clause passes immediately |
-| shared → private | delete `tour_shares` rows or flip visibility | new requests denied — see revocation caveat |
-| public → private | `tours.visibility = 'private'` | new requests denied — see revocation caveat |
-| shared → public / reverse | column flip + share-table edits as needed | immediate |
+| Transition                | DB operation                                 | Effect on new fetches                            |
+| ------------------------- | -------------------------------------------- | ------------------------------------------------ |
+| private → shared          | insert `tour_shares` rows                    | recipients pass RLS immediately                  |
+| private → public          | `tours.visibility = 'public'`                | anyone matching public clause passes immediately |
+| shared → private          | delete `tour_shares` rows or flip visibility | new requests denied — see revocation caveat      |
+| public → private          | `tours.visibility = 'private'`               | new requests denied — see revocation caveat      |
+| shared → public / reverse | column flip + share-table edits as needed    | immediate                                        |
 
 **Revocation caveat — signed URLs bypass RLS until expiry.** Supabase signed URLs are pre-signed tokens: once issued, they remain valid for the full TTL even if the underlying RLS predicate would now deny. So a viewer who fetched a signed URL while a tour was public retains read access until that URL expires, even after the tour is flipped to private.
 
 Mitigations, in increasing cost:
+
 1. **Short TTL** — current design uses 60 min. Acceptable for recreational GPX (low-sensitivity).
 2. **Shorter TTL on demand** — drop to ~5 min when stronger revocation matters.
 3. **Edge Function proxy** that re-evaluates RLS on every request and streams the object. Instant revocation, higher latency and cost. Add only if a real revocation requirement appears.
@@ -125,6 +136,7 @@ Mitigations, in increasing cost:
 **Anonymous (logged-out) public access**, if required, will need the SELECT policy to grant the `anon` role too. The path layout does not constrain that decision.
 
 **Implication for this change**: nothing extra to build now. The forward-compat contract is captured in:
+
 - Path layout: `${tourId}.gpx` (no owner / visibility encoded).
 - Helper function `tour_id_from_gpx_path(text) returns uuid`.
 - Single-table predicate shape that future visibility clauses can extend.

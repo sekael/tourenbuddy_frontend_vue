@@ -14,6 +14,7 @@ import GroupSmsConfirmDialog from '@/features/contacts/presentation/components/g
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { TOUR_TYPE_I18N_KEYS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
+import { downloadOriginal } from '@/features/tours/data/services/gpx-storage-service'
 import TourForm from '@/features/tours/presentation/components/tour-form.vue'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
@@ -128,7 +129,7 @@ watch(
 const saveError = ref<string | null>(null)
 const isSaving = ref(false)
 
-async function handleEditSubmit(draft: TourDraft) {
+async function handleEditSubmit(draft: TourDraft, gpxFile: File | null, gpxRemoved: boolean) {
   if (mapStore.isPickingLocation) {
     log.debug('Ignoring edit submit while location picker is active')
     return
@@ -136,7 +137,7 @@ async function handleEditSubmit(draft: TourDraft) {
   saveError.value = null
   isSaving.value = true
   try {
-    await toursStore.updateTour(props.tour.id, draft, pendingGoal.value)
+    await toursStore.updateTour(props.tour.id, draft, pendingGoal.value, gpxFile, gpxRemoved)
     mode.value = 'view'
     emit('editModeChange', false)
   }
@@ -145,6 +146,17 @@ async function handleEditSubmit(draft: TourDraft) {
   }
   finally {
     isSaving.value = false
+  }
+}
+
+async function handleDownloadGpx() {
+  if (!props.tour.gpxFilepath)
+    return
+  try {
+    await downloadOriginal(props.tour.gpxFilepath, `${props.tour.name ?? 'track'}.gpx`)
+  }
+  catch (err) {
+    log.error('GPX download failed', err)
   }
 }
 
@@ -316,7 +328,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         :initial-start-point-meta="pendingStartPointMeta"
         :initial-end-point-meta="pendingEndPointMeta"
         :disabled="isPicking"
-        @submit="handleEditSubmit"
+        @submit="(d, f, r) => handleEditSubmit(d, f, r)"
         @cancel="cancelEdit"
         @pick-point="emit('pickPoint', $event)"
       />
@@ -478,13 +490,16 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           </p>
         </div>
 
-        <!-- GPX track indicator -->
-        <div v-if="tour.gpxTrack" class="detail-row">
+        <!-- GPX track download -->
+        <div v-if="tour.gpxFilepath" class="detail-row">
           <span
             class="detail-icon material-symbols-outlined"
             :title="t('tours.infoSheet.iconTooltipGpxTrack')"
           >route</span>
-          <span class="gpx-label">{{ t('tours.infoSheet.gpxTrackAvailable') }}</span>
+          <button type="button" class="gpx-download-btn" @click="handleDownloadGpx">
+            <span class="material-symbols-outlined">download</span>
+            {{ t('tours.infoSheet.downloadGpxBtn') }}
+          </button>
         </div>
 
         <!-- Partners -->
@@ -775,10 +790,26 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   word-break: break-word;
 }
 
-.gpx-label {
+.gpx-download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-outline-variant);
   font-size: var(--font-size-sm);
-  color: var(--color-primary);
   font-weight: var(--font-weight-medium);
+  color: var(--color-on-surface-variant);
+  min-height: 44px;
+  transition: background-color 0.15s;
+}
+
+.gpx-download-btn:hover {
+  background-color: var(--color-surface-variant);
+}
+
+.gpx-download-btn .material-symbols-outlined {
+  font-size: 16px;
 }
 
 .partner-chips-section {

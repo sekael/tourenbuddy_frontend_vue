@@ -9,6 +9,7 @@ export interface ToursRepository {
     goal: { lng: number, lat: number },
   ) => Promise<void>
   updateTour: (id: string, draft: TourDraft, goal: { lng: number, lat: number }) => Promise<void>
+  patchGpxFilepath: (id: string, filepath: string | null) => Promise<void>
   patchCompleted: (id: string, completed: boolean) => Promise<void>
   deleteTour: (id: string) => Promise<void>
 }

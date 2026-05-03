@@ -78,6 +78,17 @@ export default defineConfig({
               },
             },
           },
+          {
+            urlPattern: /\/storage\/v1\/object\/(?:sign\/)?tour-gpx\//i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'tour-gpx-files',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 30,
+              },
+            },
+          },
         ],
       },
     }),

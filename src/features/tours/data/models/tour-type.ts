@@ -74,6 +74,20 @@ export const TOUR_TYPE_COLORS: Record<TourType, string> = {
   'trailrunning': '#DC2626',
 }
 
+export const TOUR_TYPE_TRACK_COLORS: Record<TourType, string> = {
+  'skiing': '#0c396d',
+  'snowboarding': '#0c396d',
+  'skitour': '#0c396d',
+  'splitboarding': '#0c396d',
+  'ski-mountaineering': '#0c396d',
+  'paragliding': '#804604',
+  'hiking': '#8f1717',
+  'mountaineering': '#8f1717',
+  'climbing': '#8f1717',
+  'mountain-biking': '#8f1717',
+  'trailrunning': '#8f1717',
+}
+
 export const TOUR_TYPE_PREVIEW_COLORS: Record<TourType, string> = {
   'skiing': '#60A5FA',
   'snowboarding': '#60A5FA',

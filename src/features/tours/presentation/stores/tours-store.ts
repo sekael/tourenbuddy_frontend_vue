@@ -6,6 +6,7 @@ import { useLogger } from '@/core/logging/use-logger'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { ToursRepositoryImpl } from '@/features/tours/data/repositories/tours-repository-impl'
+import { removeGpx, uploadGpx } from '@/features/tours/data/services/gpx-storage-service'
 
 const repository = new ToursRepositoryImpl()
 
@@ -57,6 +58,7 @@ export const useToursStore = defineStore('tours', () => {
   async function createTourFromDraft(
     draft: TourDraft,
     goal: { lng: number, lat: number },
+    gpxFile: File | null = null,
   ): Promise<string | null> {
     const userId = authStore.currentUser?.id
     if (!userId)
@@ -64,15 +66,53 @@ export const useToursStore = defineStore('tours', () => {
 
     const id = uuidv4()
     await repository.createTourWithPartners(id, draft, goal)
+
+    if (gpxFile) {
+      try {
+        const filepath = await uploadGpx(id, gpxFile)
+        await repository.patchGpxFilepath(id, filepath)
+      }
+      catch (err) {
+        logger.warn('GPX upload failed after tour creation', err)
+      }
+    }
+
     await loadTours()
     return id
   }
 
-  async function updateTour(id: string, draft: TourDraft, goal: { lng: number, lat: number }) {
+  async function updateTour(
+    id: string,
+    draft: TourDraft,
+    goal: { lng: number, lat: number },
+    gpxFile: File | null = null,
+    gpxRemoved: boolean = false,
+  ) {
+    if (gpxFile) {
+      try {
+        await uploadGpx(id, gpxFile)
+      }
+      catch (err) {
+        logger.warn('GPX upload failed during tour update', err)
+      }
+    }
+    else if (gpxRemoved) {
+      try {
+        await removeGpx(id)
+      }
+      catch (err) {
+        logger.warn('GPX remove failed during tour update (trigger is fallback)', err)
+      }
+    }
+
     await repository.updateTour(id, draft, goal)
+
     const existing = tours.value.find(t => t.id === id)
     if (!existing)
       return
+
+    const newFilepath = gpxFile ? `${id}.gpx` : gpxRemoved ? null : draft.gpxFilepath
+
     tours.value = tours.value.map(t =>
       t.id === id
         ? {
@@ -82,7 +122,7 @@ export const useToursStore = defineStore('tours', () => {
             partnerIds: draft.partnerIds,
             tourType: draft.tourType,
             elevation: draft.elevation,
-            gpxTrack: draft.gpxTrack,
+            gpxFilepath: newFilepath ?? null,
             description: draft.description,
             seasons: draft.seasons,
             startPoint: draft.startPoint,
@@ -119,6 +159,15 @@ export const useToursStore = defineStore('tours', () => {
   }
 
   async function deleteTour(id: string) {
+    const tour = tours.value.find(t => t.id === id)
+    if (tour?.gpxFilepath) {
+      try {
+        await removeGpx(id)
+      }
+      catch (err) {
+        logger.warn('GPX remove failed before tour delete (trigger is fallback)', err)
+      }
+    }
     await repository.deleteTour(id)
     tours.value = tours.value.filter(t => t.id !== id)
   }

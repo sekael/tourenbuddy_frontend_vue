@@ -116,7 +116,7 @@
     "list": {
       "title": "Contacts",
       "addBtn": "Add contact",
-      "loading": "Loading\u2026",
+      "loading": "Loading…",
       "imported": "contact imported",
       "importedLabel": "imported",
       "skipped": "contact skipped",
@@ -126,7 +126,7 @@
       "emptySubtitle": "Add contacts to use them as tour partners.",
       "noMatchesTitle": "No contacts match your search.",
       "clearFiltersBtn": "Clear filters",
-      "searchPlaceholder": "Search contacts\u2026",
+      "searchPlaceholder": "Search contacts…",
       "invalidPhoneWarning": "Couldn't add invalid phone number"
     },
     "form": {
@@ -170,7 +170,7 @@
       "noMethods": "No contact methods yet.",
       "primaryPhoneTooltip": "Primary phone",
       "setAsPrimaryTooltip": "Set as primary",
-      "invalidPhoneHint": "Invalid number \u2014 enter a valid phone to fix",
+      "invalidPhoneHint": "Invalid number — enter a valid phone to fix",
       "phonePlaceholder": "+41 79 012 34 56",
       "labelPlaceholder": "Label (optional)",
       "invalidPhone": "Invalid phone number",
@@ -209,9 +209,9 @@
   "tours": {
     "list": {
       "title": "Tours",
-      "searchPlaceholder": "Search tours\u2026",
+      "searchPlaceholder": "Search tours…",
       "filtersBtn": "Filters",
-      "loading": "Loading\u2026",
+      "loading": "Loading…",
       "emptyTitle": "No tours yet.",
       "emptySubtitle": "Create one from the map.",
       "noMatchesTitle": "No tours match your filters.",
@@ -250,7 +250,15 @@
       "equipmentLabel": "Equipment",
       "equipmentPlaceholder": "Gear list...",
       "notesLabel": "Notes",
-      "notesPlaceholder": "Any other info..."
+      "notesPlaceholder": "Any other info...",
+      "gpxLabel": "GPX Track",
+      "gpxUploadBtn": "Upload GPX track",
+      "gpxReplaceBtn": "Replace",
+      "gpxRemoveBtn": "Remove",
+      "gpxUploading": "Uploading…",
+      "gpxUploadFailed": "Upload failed. Try again.",
+      "gpxRetry": "Retry",
+      "gpxExistingTrack": "Existing track"
     },
     "creation": {
       "title": "New Tour",
@@ -271,7 +279,7 @@
       "deleteConfirmText": "Delete this tour?",
       "cancelBtn": "Cancel",
       "deleteBtn": "Delete",
-      "deletingBtn": "Deleting\u2026",
+      "deletingBtn": "Deleting…",
       "saveFailed": "Failed to save",
       "deleteFailed": "Failed to delete",
       "backToTours": "Tours",
@@ -287,7 +295,8 @@
       "iconTooltipEquipment": "Equipment",
       "iconTooltipNotes": "Notes",
       "iconTooltipGpxTrack": "GPX track",
-      "iconTooltipPartners": "Partners"
+      "iconTooltipPartners": "Partners",
+      "downloadGpxBtn": "Download GPX"
     },
     "filters": {
       "partnerLabel": "Partner",

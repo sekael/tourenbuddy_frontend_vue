@@ -18,9 +18,11 @@ Tours currently embed parsed GPX as inline GeoJSON in a Postgres column. This bl
 ## Capabilities
 
 ### New Capabilities
+
 - `gpx-tracks`: Upload, store, retrieve, render, and delete tour GPX tracks via Supabase Storage with tour-type-colored map rendering.
 
 ### Modified Capabilities
+
 <!-- No existing OpenSpec specs to modify. -->
 
 ## Impact

@@ -5,6 +5,15 @@ import { nextTick } from 'vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import TourInfoSheet from '@/features/tours/presentation/components/tour-info-sheet.vue'
 
+const mockDownloadOriginal = vi.fn()
+
+vi.mock('@/features/tours/data/services/gpx-storage-service', () => ({
+  downloadOriginal: (...args: unknown[]) => mockDownloadOriginal(...args),
+  uploadGpx: vi.fn(),
+  removeGpx: vi.fn(),
+  getSignedUrl: vi.fn(),
+}))
+
 // Stub heavy child components
 const BottomSheetStub = {
   name: 'BottomSheet',
@@ -23,7 +32,7 @@ const SideDrawerStub = {
 const TourFormStub = {
   name: 'TourForm',
   template:
-    '<div data-testid="tour-form" :data-disabled="disabled ? \'true\' : \'false\'"><button data-testid="stub-submit" @click="$emit(\'submit\', stubDraft)">Save</button><button data-testid="stub-cancel" @click="$emit(\'cancel\')">Cancel</button></div>',
+    '<div data-testid="tour-form" :data-disabled="disabled ? \'true\' : \'false\'"><button data-testid="stub-submit" @click="$emit(\'submit\', stubDraft, null, false)">Save</button><button data-testid="stub-cancel" @click="$emit(\'cancel\')">Cancel</button></div>',
   props: [
     'submitLabel',
     'allowGoalEdit',
@@ -41,7 +50,7 @@ const TourFormStub = {
       partnerIds: [],
       tourType: null,
       elevation: null,
-      gpxTrack: null,
+      gpxFilepath: null,
       description: null,
       seasons: null,
       startPoint: null,
@@ -79,7 +88,7 @@ const mockTour = {
   partnerIds: [],
   tourType: null,
   elevation: null,
-  gpxTrack: null,
+  gpxFilepath: null,
   description: null,
   seasons: null,
   startPoint: null,
@@ -173,6 +182,8 @@ describe('tourInfoSheet', () => {
         'tour-1',
         expect.objectContaining({ name: 'Edited Tour' }),
         { lng: 8.2, lat: 46.8 },
+        null,
+        false,
       )
       // Back to view mode
       expect(wrapper.find('[data-testid="tour-form"]').exists()).toBe(false)
@@ -520,6 +531,36 @@ describe('tourInfoSheet', () => {
       const menu = wrapper.findComponent(ContactActionMenuStub)
       const menuContact = menu.props('contact') as typeof updatedContact
       expect(menuContact.contactMethods.find(m => m.isPrimary)?.id).toBe('method-2')
+    })
+  })
+
+  describe('gPX download button', () => {
+    it('should not show download button when gpxFilepath is null', () => {
+      const wrapper = mountSheet({ gpxFilepath: null })
+      const btn = wrapper.find('.gpx-download-btn')
+      expect(btn.exists()).toBe(false)
+    })
+
+    it('should show download button when gpxFilepath is set', () => {
+      const wrapper = mountSheet({ gpxFilepath: 'tour-abc.gpx' })
+      const btn = wrapper.find('.gpx-download-btn')
+      expect(btn.exists()).toBe(true)
+    })
+
+    it('should call downloadOriginal when download button is clicked', async () => {
+      mockDownloadOriginal.mockResolvedValue(undefined)
+      const wrapper = mountSheet({ gpxFilepath: 'tour-abc.gpx', name: 'My Tour' })
+      const btn = wrapper.find('.gpx-download-btn')
+      await btn.trigger('click')
+      await nextTick()
+      expect(mockDownloadOriginal).toHaveBeenCalledWith('tour-abc.gpx', 'My Tour.gpx')
+    })
+
+    it('should not throw when downloadOriginal fails', async () => {
+      mockDownloadOriginal.mockRejectedValue(new Error('network error'))
+      const wrapper = mountSheet({ gpxFilepath: 'tour-abc.gpx' })
+      const btn = wrapper.find('.gpx-download-btn')
+      await expect(btn.trigger('click')).resolves.not.toThrow()
     })
   })
 })

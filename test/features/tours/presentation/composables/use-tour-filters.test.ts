@@ -15,7 +15,7 @@ const baseTour: Tour = {
   partnerIds: [],
   tourType: 'hiking',
   elevation: 1500,
-  gpxTrack: null,
+  gpxFilepath: null,
   description: null,
   seasons: ['summer'],
   startPoint: null,

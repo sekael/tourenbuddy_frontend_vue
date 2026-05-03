@@ -107,6 +107,96 @@ describe('tourForm', () => {
     })
   })
 
+  describe('gPX section states', () => {
+    it('shows upload button in empty state', () => {
+      const wrapper = mountForm()
+      const uploadBtn = wrapper.find('.gpx-upload-btn')
+      expect(uploadBtn.exists()).toBe(true)
+      const filledRow = wrapper.find('.gpx-filled-row')
+      expect(filledRow.exists()).toBe(false)
+    })
+
+    it('shows filled row when initialDraft has gpxFilepath', () => {
+      const wrapper = mountForm({
+        initialDraft: {
+          name: 'Test',
+          plannedDate: null,
+          partnerIds: [],
+          tourType: null,
+          elevation: null,
+          gpxFilepath: 'tour-abc.gpx',
+          description: null,
+          seasons: null,
+          startPoint: null,
+          endPoint: null,
+          startPointName: null,
+          startPointElevation: null,
+          endPointName: null,
+          endPointElevation: null,
+          equipment: null,
+          notes: null,
+        },
+      })
+      expect(wrapper.find('.gpx-filled-row').exists()).toBe(true)
+      expect(wrapper.find('.gpx-upload-btn').exists()).toBe(false)
+    })
+
+    it('emits gpxRemoved=true after remove click', async () => {
+      const wrapper = mountForm({
+        initialDraft: {
+          name: 'Test',
+          plannedDate: null,
+          partnerIds: [],
+          tourType: null,
+          elevation: null,
+          gpxFilepath: 'tour-abc.gpx',
+          description: null,
+          seasons: null,
+          startPoint: null,
+          endPoint: null,
+          startPointName: null,
+          startPointElevation: null,
+          endPointName: null,
+          endPointElevation: null,
+          equipment: null,
+          notes: null,
+        },
+      })
+      const removeBtn = wrapper.find('.gpx-remove-btn')
+      await removeBtn.trigger('click')
+      await nextTick()
+
+      expect(wrapper.find('.gpx-filled-row').exists()).toBe(false)
+      expect(wrapper.find('.gpx-upload-btn').exists()).toBe(true)
+
+      await wrapper.find('#tf-tourName').setValue('Test Tour')
+      await wrapper.find('form').trigger('submit.prevent')
+
+      const emitted = wrapper.emitted('submit')
+      expect(emitted).toHaveLength(1)
+      const [, , gpxRemoved] = emitted![0] as [unknown, unknown, boolean]
+      expect(gpxRemoved).toBe(true)
+    })
+
+    it('shows gpxError when parseGpxFile throws for invalid GPX', async () => {
+      const { GpxParseError } = await import('@/features/tours/data/services/gpx-parser')
+      vi.doMock('@/features/tours/data/services/gpx-parser', () => ({
+        parseGpxFile: vi.fn().mockRejectedValue(new GpxParseError('bad xml')),
+        GpxParseError,
+        GpxFileTooLargeError: class GpxFileTooLargeError extends Error {},
+      }))
+
+      const wrapper = mountForm()
+      const input = wrapper.find('input[type="file"]')
+      const file = new File(['bad'], 'bad.gpx')
+      Object.defineProperty(input.element, 'files', { value: { 0: file, length: 1 } })
+      await input.trigger('change')
+      await nextTick()
+      await nextTick()
+      expect(wrapper.find('.gpx-error').exists()).toBe(true)
+    })
+  })
+
   describe('initialName prop reactivity', () => {
     it('updates name field when initialName prop changes to a non-null value', async () => {
       const wrapper = mountForm({ initialName: 'Original' })
