@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.9.0...tourenbuddy-frontend-v0.9.1) (2026-05-03)
+
+
+### Bug Fixes
+
+* Create more user friendly github template ([#97](https://github.com/sekael/tourenbuddy_frontend_vue/issues/97)) ([3c17399](https://github.com/sekael/tourenbuddy_frontend_vue/commit/3c173992321811bcea4deee180d54ec4ec42de0b))
+* Improve bug reports ([#99](https://github.com/sekael/tourenbuddy_frontend_vue/issues/99)) ([8b7079c](https://github.com/sekael/tourenbuddy_frontend_vue/commit/8b7079c22d83d57aace8519c2d6888fae15530df))
+
 ## [0.9.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.8.1...tourenbuddy-frontend-v0.9.0) (2026-05-03)
 
 
