@@ -26,7 +26,7 @@ export class ToursRepositoryImpl implements ToursRepository {
       p_partner_ids: draft.partnerIds,
       p_tour_type: draft.tourType ?? null,
       p_elevation: draft.elevation ?? null,
-      p_gpx_track: draft.gpxTrack ?? null,
+      p_gpx_filepath: draft.gpxFilepath ?? null,
       p_description: draft.description ?? null,
       p_seasons: draft.seasons ?? null,
       p_start_point: draft.startPoint
@@ -58,7 +58,7 @@ export class ToursRepositoryImpl implements ToursRepository {
       p_partner_ids: draft.partnerIds,
       p_tour_type: draft.tourType ?? null,
       p_elevation: draft.elevation ?? null,
-      p_gpx_track: draft.gpxTrack ?? null,
+      p_gpx_filepath: draft.gpxFilepath ?? null,
       p_description: draft.description ?? null,
       p_seasons: draft.seasons ?? null,
       p_start_point: draft.startPoint
@@ -73,6 +73,12 @@ export class ToursRepositoryImpl implements ToursRepository {
       p_notes: draft.notes ?? null,
     })
 
+    if (error)
+      throw new Error(error.message)
+  }
+
+  async patchGpxFilepath(id: string, filepath: string | null): Promise<void> {
+    const { error } = await supabase.from('tours').update({ gpx_filepath: filepath }).eq('id', id)
     if (error)
       throw new Error(error.message)
   }

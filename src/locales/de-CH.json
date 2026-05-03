@@ -117,7 +117,7 @@
     "list": {
       "title": "Kontakte",
       "addBtn": "Kontakt hinzufügen",
-      "loading": "Wird geladen\u2026",
+      "loading": "Wird geladen…",
       "imported": "Kontakt importiert",
       "importedLabel": "importiert",
       "skipped": "Kontakt übersprungen",
@@ -127,7 +127,7 @@
       "emptySubtitle": "Fügen Sie Kontakte hinzu, um sie als Tourpartner zu verwenden.",
       "noMatchesTitle": "Keine Kontakte gefunden.",
       "clearFiltersBtn": "Filter zurücksetzen",
-      "searchPlaceholder": "Kontakte suchen\u2026",
+      "searchPlaceholder": "Kontakte suchen…",
       "invalidPhoneWarning": "Ungültige Telefonnummer konnte nicht hinzugefügt werden"
     },
     "form": {
@@ -171,7 +171,7 @@
       "noMethods": "Noch keine Kontaktmethoden.",
       "primaryPhoneTooltip": "Haupttelefon",
       "setAsPrimaryTooltip": "Als Haupttelefon festlegen",
-      "invalidPhoneHint": "Ungültige Nummer \u2014 geben Sie eine gültige Nummer ein",
+      "invalidPhoneHint": "Ungültige Nummer — geben Sie eine gültige Nummer ein",
       "phonePlaceholder": "+41 79 012 34 56",
       "labelPlaceholder": "Bezeichnung (optional)",
       "invalidPhone": "Ungültige Telefonnummer",
@@ -210,9 +210,9 @@
   "tours": {
     "list": {
       "title": "Touren",
-      "searchPlaceholder": "Touren suchen\u2026",
+      "searchPlaceholder": "Touren suchen…",
       "filtersBtn": "Filter",
-      "loading": "Wird geladen\u2026",
+      "loading": "Wird geladen…",
       "emptyTitle": "Noch keine Touren.",
       "emptySubtitle": "Erstellen Sie eine auf der Karte.",
       "noMatchesTitle": "Keine Touren gefunden.",
@@ -251,7 +251,15 @@
       "equipmentLabel": "Material",
       "equipmentPlaceholder": "Materialliste...",
       "notesLabel": "Notizen",
-      "notesPlaceholder": "Andere Informationen..."
+      "notesPlaceholder": "Andere Informationen...",
+      "gpxLabel": "GPX-Track",
+      "gpxUploadBtn": "GPX-Track hochladen",
+      "gpxReplaceBtn": "Ersetzen",
+      "gpxRemoveBtn": "Entfernen",
+      "gpxUploading": "Wird hochgeladen…",
+      "gpxUploadFailed": "Upload fehlgeschlagen. Nochmals versuchen.",
+      "gpxRetry": "Nochmals",
+      "gpxExistingTrack": "Bestehender Track"
     },
     "creation": {
       "title": "Neue Tour",
@@ -272,7 +280,7 @@
       "deleteConfirmText": "Diese Tour löschen?",
       "cancelBtn": "Abbrechen",
       "deleteBtn": "Löschen",
-      "deletingBtn": "Wird gelöscht\u2026",
+      "deletingBtn": "Wird gelöscht…",
       "saveFailed": "Speichern fehlgeschlagen",
       "deleteFailed": "Löschen fehlgeschlagen",
       "backToTours": "Touren",
@@ -288,7 +296,8 @@
       "iconTooltipEquipment": "Ausrüstung",
       "iconTooltipNotes": "Notizen",
       "iconTooltipGpxTrack": "GPX-Track",
-      "iconTooltipPartners": "Tourenpartner"
+      "iconTooltipPartners": "Tourenpartner",
+      "downloadGpxBtn": "GPX herunterladen"
     },
     "filters": {
       "partnerLabel": "Partner",

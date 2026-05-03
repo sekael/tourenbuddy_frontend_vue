@@ -13,7 +13,7 @@ export interface TourDraft {
   partnerIds: string[]
   tourType: TourType | null
   elevation: number | null
-  gpxTrack: GeoJSON.FeatureCollection | null
+  gpxFilepath: string | null
   description: string | null
   seasons: Season[] | null
   startPoint: { lng: number, lat: number } | null

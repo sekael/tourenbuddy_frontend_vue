@@ -18,7 +18,7 @@ const baseDraft: TourDraft = {
   partnerIds: [],
   tourType: null,
   elevation: null,
-  gpxTrack: null,
+  gpxFilepath: null,
   description: null,
   seasons: null,
   startPoint: null,
@@ -76,6 +76,16 @@ describe('toursRepositoryImpl: new RPC params', () => {
       )
     })
 
+    it('passes gpxFilepath through RPC', async () => {
+      mockRpc.mockResolvedValue({ error: null })
+      const draft: TourDraft = { ...baseDraft, gpxFilepath: 'abc-123.gpx' }
+      await repo.createTourWithPartners('id-1', draft, goal)
+      expect(mockRpc).toHaveBeenCalledWith(
+        'create_tour_full',
+        expect.objectContaining({ p_gpx_filepath: 'abc-123.gpx' }),
+      )
+    })
+
     it('throws when RPC returns an error', async () => {
       mockRpc.mockResolvedValue({ error: { message: 'permission denied' } })
       await expect(repo.createTourWithPartners('id-1', baseDraft, goal)).rejects.toThrow(
@@ -118,6 +128,40 @@ describe('toursRepositoryImpl: new RPC params', () => {
           p_end_point_elevation: null,
         }),
       )
+    })
+
+    it('passes null gpxFilepath when track removed', async () => {
+      mockRpc.mockResolvedValue({ error: null })
+      const draft: TourDraft = { ...baseDraft, gpxFilepath: null }
+      await repo.updateTour('id-1', draft, goal)
+      expect(mockRpc).toHaveBeenCalledWith(
+        'update_tour_full',
+        expect.objectContaining({ p_gpx_filepath: null }),
+      )
+    })
+  })
+
+  describe('patchGpxFilepath', () => {
+    it('patches gpx_filepath to given value', async () => {
+      const mockUpdate = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) })
+      mockFrom.mockReturnValue({ update: mockUpdate })
+      await repo.patchGpxFilepath('tour-id', 'tour-id.gpx')
+      expect(mockUpdate).toHaveBeenCalledWith({ gpx_filepath: 'tour-id.gpx' })
+    })
+
+    it('patches gpx_filepath to null', async () => {
+      const mockUpdate = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) })
+      mockFrom.mockReturnValue({ update: mockUpdate })
+      await repo.patchGpxFilepath('tour-id', null)
+      expect(mockUpdate).toHaveBeenCalledWith({ gpx_filepath: null })
+    })
+
+    it('throws when patch fails', async () => {
+      const mockUpdate = vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ error: { message: 'DB error' } }),
+      })
+      mockFrom.mockReturnValue({ update: mockUpdate })
+      await expect(repo.patchGpxFilepath('tour-id', 'x.gpx')).rejects.toThrow('DB error')
     })
   })
 })
