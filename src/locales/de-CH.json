@@ -231,6 +231,9 @@
       "sameAsEnd": "gleich wie Ende",
       "pickBtn": "Wählen",
       "roundTrip": "Rundtour",
+      "addEndPointBtn": "Endpunkt hinzufügen",
+      "pointNameLabel": "Name",
+      "pointElevationLabel": "Höhe (m)",
       "partnersLabel": "Tourenpartner",
       "activityLabel": "Aktivitätstyp",
       "seasonLabel": "Saison",
@@ -261,6 +264,7 @@
       "completedBtn": "Abgeschlossen",
       "completeTourBtn": "Tour abschliessen",
       "roundTrip": "Rundtour",
+      "oneWayToGoalIndicator": "Einfache Tour zum Ziel",
       "gpxTrackAvailable": "Track verfügbar",
       "messageAll": "Alle anschreiben",
       "editBtn": "Bearbeiten",
@@ -271,7 +275,19 @@
       "saveFailed": "Speichern fehlgeschlagen",
       "deleteFailed": "Löschen fehlgeschlagen",
       "backToTours": "Touren",
-      "saveLabel": "Speichern"
+      "saveLabel": "Speichern",
+      "iconTooltipType": "Aktivitätstyp",
+      "iconTooltipDate": "Geplantes Datum",
+      "iconTooltipGoal": "Ziel",
+      "iconTooltipElevation": "Höhe",
+      "iconTooltipStartPoint": "Startpunkt",
+      "iconTooltipEndPoint": "Endpunkt",
+      "iconTooltipSeasons": "Saison",
+      "iconTooltipDescription": "Beschreibung",
+      "iconTooltipEquipment": "Ausrüstung",
+      "iconTooltipNotes": "Notizen",
+      "iconTooltipGpxTrack": "GPX-Track",
+      "iconTooltipPartners": "Tourenpartner"
     },
     "filters": {
       "partnerLabel": "Partner",
@@ -306,7 +322,10 @@
     },
     "picker": {
       "cancelBtn": "Abbrechen",
-      "confirmBtn": "Bestätigen"
+      "confirmBtn": "Bestätigen",
+      "goalTitle": "Tourenziel",
+      "startTitle": "Startpunkt",
+      "endTitle": "Endpunkt"
     }
   },
   "map": {

@@ -231,6 +231,9 @@
       "sameAsEnd": "same as end",
       "pickBtn": "Pick",
       "roundTrip": "round trip",
+      "addEndPointBtn": "Add end point",
+      "pointNameLabel": "Name",
+      "pointElevationLabel": "Elevation (m)",
       "partnersLabel": "Tour Partners",
       "activityLabel": "Activity Type",
       "seasonLabel": "Season",
@@ -261,6 +264,7 @@
       "completedBtn": "Completed",
       "completeTourBtn": "Complete Tour",
       "roundTrip": "Round trip",
+      "oneWayToGoalIndicator": "One-way to goal",
       "gpxTrackAvailable": "Track available",
       "messageAll": "Message all",
       "editBtn": "Edit",
@@ -271,7 +275,19 @@
       "saveFailed": "Failed to save",
       "deleteFailed": "Failed to delete",
       "backToTours": "Tours",
-      "saveLabel": "Save"
+      "saveLabel": "Save",
+      "iconTooltipType": "Tour type",
+      "iconTooltipDate": "Planned date",
+      "iconTooltipGoal": "Goal",
+      "iconTooltipElevation": "Elevation",
+      "iconTooltipStartPoint": "Start point",
+      "iconTooltipEndPoint": "End point",
+      "iconTooltipSeasons": "Seasons",
+      "iconTooltipDescription": "Description",
+      "iconTooltipEquipment": "Equipment",
+      "iconTooltipNotes": "Notes",
+      "iconTooltipGpxTrack": "GPX track",
+      "iconTooltipPartners": "Partners"
     },
     "filters": {
       "partnerLabel": "Partner",
@@ -306,7 +322,10 @@
     },
     "picker": {
       "cancelBtn": "Cancel",
-      "confirmBtn": "Confirm"
+      "confirmBtn": "Confirm",
+      "goalTitle": "Tour Goal",
+      "startTitle": "Start Point",
+      "endTitle": "End Point"
     }
   },
   "map": {

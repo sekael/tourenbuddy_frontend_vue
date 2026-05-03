@@ -19,6 +19,12 @@ const props = defineProps<{
   initialEndPoint?: { lng: number, lat: number } | null
   /** The goal location picked before the dialog opened (required for display). */
   initialGoal?: { lng: number, lat: number } | null
+  /** Metadata fetched after start-point pick: name + elevation. */
+  initialStartPointMeta?: { name: string | null, elevation: number | null } | null
+  /** Metadata fetched after end-point pick: name + elevation. */
+  initialEndPointMeta?: { name: string | null, elevation: number | null } | null
+  /** Which pick is currently active — drives the collapsed header label. */
+  activePickType?: 'goal' | 'start' | 'end' | null
 }>()
 
 const emit = defineEmits<{
@@ -34,11 +40,17 @@ const log = useLogger('tour-creation-dialog')
 
 const isPicking = computed(() => isPickingLocation.value)
 
-const title = computed(() =>
-  isPicking.value
-    ? t('tours.creation.pickingTitle', { name: props.initialName ?? t('tours.creation.title') })
-    : t('tours.creation.title'),
-)
+const pickTypeLabel = computed(() => {
+  if (!isPicking.value)
+    return null
+  if (props.activePickType === 'start')
+    return t('tours.picker.startTitle')
+  if (props.activePickType === 'end')
+    return t('tours.picker.endTitle')
+  return t('tours.picker.goalTitle')
+})
+
+const title = computed(() => pickTypeLabel.value ?? t('tours.creation.title'))
 
 function handleSubmit(draft: TourDraft) {
   if (mapStore.isPickingLocation) {
@@ -63,6 +75,8 @@ function handlePickPoint(type: 'start' | 'end' | 'goal') {
       :initial-name="initialName"
       :initial-start-point="initialStartPoint"
       :initial-end-point="initialEndPoint"
+      :initial-start-point-meta="initialStartPointMeta"
+      :initial-end-point-meta="initialEndPointMeta"
       :disabled="isPicking"
       @submit="handleSubmit"
       @cancel="emit('close')"

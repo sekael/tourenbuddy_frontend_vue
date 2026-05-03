@@ -60,6 +60,53 @@ describe('tourForm', () => {
     })
   })
 
+  describe('end-point row conditional rendering', () => {
+    it('shows "Add end point" button and hides point inputs when endPoint is null', () => {
+      const wrapper = mountForm()
+      // No initialEndPoint → end-point row collapsed to "Add" button
+      const addBtn = wrapper.findAll('button').filter(b => b.text().includes('Add end point'))
+      expect(addBtn.length).toBeGreaterThan(0)
+      // No point-coords span for end point (only start point "Not set" shown)
+      const coords = wrapper.findAll('.point-coords')
+      expect(coords.length).toBe(1) // only start point
+    })
+
+    it('reveals end-point row when initialEndPoint is provided', () => {
+      const wrapper = mountForm({ initialEndPoint: { lng: 7.9, lat: 46.5 } })
+      // "Add end point" button should not be present
+      const addBtn = wrapper.findAll('button').filter(b => b.text().includes('Add end point'))
+      expect(addBtn.length).toBe(0)
+      // Remove button present for end point
+      const removeBtns = wrapper.findAll('.remove-point-btn')
+      expect(removeBtns.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('clearing end point also clears metadata', () => {
+    it('should include null endPointName and endPointElevation in draft when end point is removed', async () => {
+      const wrapper = mountForm({
+        initialEndPoint: { lng: 7.9, lat: 46.5 },
+        initialEndPointMeta: { name: 'Murren', elevation: 1638 },
+      })
+      // Remove the end point
+      const removeBtn = wrapper.find('.remove-point-btn')
+      await removeBtn.trigger('click')
+      await nextTick()
+
+      // Submit with a valid name
+      const nameInput = wrapper.find('#tf-tourName')
+      await nameInput.setValue('My Tour')
+      await wrapper.find('form').trigger('submit.prevent')
+
+      const emitted = wrapper.emitted('submit')
+      expect(emitted).toHaveLength(1)
+      const draft = (emitted![0] as unknown[])[0] as Record<string, unknown>
+      expect(draft.endPoint).toBeNull()
+      expect(draft.endPointName).toBeNull()
+      expect(draft.endPointElevation).toBeNull()
+    })
+  })
+
   describe('initialName prop reactivity', () => {
     it('updates name field when initialName prop changes to a non-null value', async () => {
       const wrapper = mountForm({ initialName: 'Original' })

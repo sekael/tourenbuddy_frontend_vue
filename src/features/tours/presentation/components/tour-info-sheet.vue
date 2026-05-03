@@ -28,6 +28,8 @@ const props = defineProps<{
   } | null
   /** Desktop only: show a back button pointing to the tours list. */
   showBack?: boolean
+  /** Which pick type is active — drives the collapsed header label in edit mode. */
+  activePickType?: 'goal' | 'start' | 'end' | null
 }>()
 const emit = defineEmits<{
   close: []
@@ -66,6 +68,8 @@ const pendingEndPoint = ref<{ lng: number, lat: number } | null>(null)
 // Elevation/name updated from Swisstopo after a goal re-pick in edit mode
 const pendingElevation = ref<number | null>(null)
 const pendingSuggestedName = ref<string | null>(null)
+const pendingStartPointMeta = ref<{ name: string | null, elevation: number | null } | null>(null)
+const pendingEndPointMeta = ref<{ name: string | null, elevation: number | null } | null>(null)
 
 function enterEditMode() {
   pendingGoal.value = { ...props.tour.goal }
@@ -73,6 +77,8 @@ function enterEditMode() {
   pendingEndPoint.value = null
   pendingElevation.value = null
   pendingSuggestedName.value = null
+  pendingStartPointMeta.value = null
+  pendingEndPointMeta.value = null
   mode.value = 'edit'
   emit('editModeChange', true)
 }
@@ -102,9 +108,17 @@ watch(
     }
     else if (pick.type === 'start') {
       pendingStartPoint.value = pick.location
+      pendingStartPointMeta.value = {
+        name: pick.suggestedName ?? null,
+        elevation: pick.elevation ?? null,
+      }
     }
     else {
       pendingEndPoint.value = pick.location
+      pendingEndPointMeta.value = {
+        name: pick.suggestedName ?? null,
+        elevation: pick.elevation ?? null,
+      }
     }
     emit('pointConsumed')
   },
@@ -166,8 +180,13 @@ const displayName = computed(() => props.tour.name ?? t('tours.infoSheet.unnamed
 // → title-only bar).
 const sheetCollapsed = computed(() => isPicking.value && mode.value === 'edit')
 const sheetTitle = computed(() => {
-  if (sheetCollapsed.value)
-    return t('tours.infoSheet.editTitle', { name: displayName.value })
+  if (sheetCollapsed.value) {
+    if (props.activePickType === 'start')
+      return t('tours.picker.startTitle')
+    if (props.activePickType === 'end')
+      return t('tours.picker.endTitle')
+    return t('tours.picker.goalTitle')
+  }
   return mode.value === 'edit'
     ? `${t('tours.infoSheet.editTitlePrefix')}: ${displayName.value}`
     : displayName.value
@@ -241,8 +260,12 @@ const isRoundTrip = computed(() => {
   if (!s)
     return false
   if (!e)
-    return true
+    return false
   return s.lng === e.lng && s.lat === e.lat
+})
+
+const isOneWayToGoal = computed(() => {
+  return !!props.tour.startPoint && !props.tour.endPoint
 })
 
 /** Auto-link URLs in plain text: returns array of segments {text, url?}. */
@@ -290,6 +313,8 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         :initial-name="pendingSuggestedName"
         :initial-start-point="pendingStartPoint"
         :initial-end-point="pendingEndPoint"
+        :initial-start-point-meta="pendingStartPointMeta"
+        :initial-end-point-meta="pendingEndPointMeta"
         :disabled="isPicking"
         @submit="handleEditSubmit"
         @cancel="cancelEdit"
@@ -320,7 +345,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
         <!-- Tour type -->
         <div v-if="tour.tourType" class="detail-row">
-          <span class="detail-icon material-symbols-outlined">{{
+          <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipType')">{{
             TOUR_TYPE_ICONS[tour.tourType]
           }}</span>
           <span>{{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[tour.tourType]}` as any) }}</span>
@@ -328,40 +353,58 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
         <!-- Planned date -->
         <div v-if="formattedDate" class="detail-row">
-          <span class="detail-icon material-symbols-outlined">calendar_today</span>
+          <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipDate')">calendar_today</span>
           <span>{{ formattedDate }}</span>
         </div>
 
         <!-- Goal coordinates -->
         <div class="detail-row">
-          <span class="detail-icon material-symbols-outlined">location_on</span>
+          <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipGoal')">location_on</span>
           <span class="coords">{{ coordinates }}</span>
         </div>
 
         <!-- Elevation -->
         <div v-if="formattedElevation" class="detail-row">
-          <span class="detail-icon material-symbols-outlined">landscape</span>
+          <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipElevation')">landscape</span>
           <span>{{ formattedElevation }}</span>
         </div>
 
         <!-- Start / end points -->
         <template v-if="startPointText">
           <div class="detail-row">
-            <span class="detail-icon material-symbols-outlined">home</span>
-            <span class="coords">{{ startPointText }}</span>
+            <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipStartPoint')">home</span>
+            <span v-if="tour.startPointName" class="point-meta">
+              {{ tour.startPointName }}
+              <span v-if="tour.startPointElevation != null" class="point-elevation">
+                {{ tour.startPointElevation }} m
+              </span>
+            </span>
+            <span v-else class="coords">{{ startPointText }}</span>
           </div>
-          <div class="detail-row">
-            <span class="detail-icon material-symbols-outlined">flag</span>
+          <div v-if="isOneWayToGoal" class="detail-row">
+            <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipEndPoint')">directions</span>
+            <span class="round-trip-hint">{{ t('tours.infoSheet.oneWayToGoalIndicator') }}</span>
+          </div>
+          <div v-else class="detail-row">
+            <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipEndPoint')">flag</span>
             <span v-if="isRoundTrip" class="round-trip-hint">{{
               t('tours.infoSheet.roundTrip')
             }}</span>
-            <span v-else class="coords">{{ endPointText }}</span>
+            <template v-else>
+              <span v-if="tour.endPointName" class="point-meta">
+                {{ tour.endPointName }}
+                <span v-if="tour.endPointElevation != null" class="point-elevation">
+                  {{ tour.endPointElevation }} m
+                </span>
+              </span>
+              <span v-else class="coords">{{ endPointText }}</span>
+            </template>
           </div>
         </template>
 
         <!-- Seasons -->
         <div v-if="tour.seasons && tour.seasons.length > 0" class="detail-row align-start">
-          <span class="detail-icon material-symbols-outlined">wb_sunny</span>
+          <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipSeasons')">wb_sunny</span>
           <div class="season-tags">
             <span v-for="season in tour.seasons" :key="season" class="season-tag">
               {{ t(`tours.season.${season}` as any) }}
@@ -371,7 +414,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
         <!-- Description -->
         <div v-if="tour.description" class="detail-row align-start">
-          <span class="detail-icon material-symbols-outlined">description</span>
+          <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipDescription')">description</span>
           <p class="description-text">
             <template v-for="(segment, i) in linkifyText(tour.description)" :key="i">
               <a
@@ -390,7 +433,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
         <!-- Equipment -->
         <div v-if="tour.equipment" class="detail-row align-start">
-          <span class="detail-icon material-symbols-outlined">hardware</span>
+          <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipEquipment')">hardware</span>
           <p class="detail-text">
             {{ tour.equipment }}
           </p>
@@ -398,7 +441,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
         <!-- Notes -->
         <div v-if="tour.notes" class="detail-row align-start">
-          <span class="detail-icon material-symbols-outlined">sticky_note_2</span>
+          <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipNotes')">sticky_note_2</span>
           <p class="detail-text">
             {{ tour.notes }}
           </p>
@@ -406,13 +449,13 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
         <!-- GPX track indicator -->
         <div v-if="tour.gpxTrack" class="detail-row">
-          <span class="detail-icon material-symbols-outlined">route</span>
+          <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipGpxTrack')">route</span>
           <span class="gpx-label">{{ t('tours.infoSheet.gpxTrackAvailable') }}</span>
         </div>
 
         <!-- Partners -->
         <div v-if="partners.length > 0" class="detail-row align-start">
-          <span class="detail-icon material-symbols-outlined">group</span>
+          <span class="detail-icon material-symbols-outlined" :title="t('tours.infoSheet.iconTooltipPartners')">group</span>
           <div class="partner-chips-section">
             <div class="partner-chips">
               <ContactChip
@@ -645,6 +688,18 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 .round-trip-hint {
   font-size: var(--font-size-sm);
   font-style: italic;
+  color: var(--color-outline);
+}
+
+.point-meta {
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.point-elevation {
   color: var(--color-outline);
 }
 

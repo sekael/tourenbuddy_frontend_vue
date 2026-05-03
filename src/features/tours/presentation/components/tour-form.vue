@@ -3,7 +3,7 @@ import type { Season } from '@/features/tours/data/models/season'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
-import { computed, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
@@ -36,6 +36,10 @@ const props = defineProps<{
   initialStartPoint?: { lng: number, lat: number } | null
   /** Prop-updates from parent after end-point pick. */
   initialEndPoint?: { lng: number, lat: number } | null
+  /** Metadata (name + elevation) fetched after start-point pick. */
+  initialStartPointMeta?: { name: string | null, elevation: number | null } | null
+  /** Metadata (name + elevation) fetched after end-point pick. */
+  initialEndPointMeta?: { name: string | null, elevation: number | null } | null
   /** When true, disable all inputs and buttons — used while location picker is active. */
   disabled?: boolean
 }>()
@@ -74,16 +78,32 @@ const startPoint = ref<{ lng: number, lat: number } | null>(
 const endPoint = ref<{ lng: number, lat: number } | null>(
   props.initialDraft?.endPoint ?? props.initialEndPoint ?? null,
 )
+const startPointName = ref<string>(
+  props.initialDraft?.startPointName ?? props.initialStartPointMeta?.name ?? '',
+)
+const startPointElevation = ref<string>(
+  props.initialDraft?.startPointElevation != null
+    ? String(props.initialDraft.startPointElevation)
+    : props.initialStartPointMeta?.elevation != null
+      ? String(props.initialStartPointMeta.elevation)
+      : '',
+)
+const endPointName = ref<string>(
+  props.initialDraft?.endPointName ?? props.initialEndPointMeta?.name ?? '',
+)
+const endPointElevation = ref<string>(
+  props.initialDraft?.endPointElevation != null
+    ? String(props.initialDraft.endPointElevation)
+    : props.initialEndPointMeta?.elevation != null
+      ? String(props.initialEndPointMeta.elevation)
+      : '',
+)
 const equipment = ref(props.initialDraft?.equipment ?? '')
 const notes = ref(props.initialDraft?.notes ?? '')
 const gpxTrack = ref<GeoJSON.FeatureCollection | null>(props.initialDraft?.gpxTrack ?? null)
 const gpxFileName = ref<string | null>(gpxTrack.value ? 'Existing track' : null)
 const gpxError = ref<string | null>(null)
 const nameError = ref(false)
-
-// Resolved display values: single point defaults to the other, both null stays null.
-const effectiveStartPoint = computed(() => startPoint.value ?? endPoint.value ?? null)
-const effectiveEndPoint = computed(() => endPoint.value ?? startPoint.value ?? null)
 
 // Sync individual prop updates from parent (create mode post-pick callbacks).
 watch(
@@ -110,10 +130,32 @@ watch(
   },
 )
 watch(
+  () => props.initialStartPointMeta,
+  (val) => {
+    if (val) {
+      if (val.name != null)
+        startPointName.value = val.name
+      if (val.elevation != null)
+        startPointElevation.value = String(val.elevation)
+    }
+  },
+)
+watch(
   () => props.initialEndPoint,
   (val) => {
     if (val)
       endPoint.value = val
+  },
+)
+watch(
+  () => props.initialEndPointMeta,
+  (val) => {
+    if (val) {
+      if (val.name != null)
+        endPointName.value = val.name
+      if (val.elevation != null)
+        endPointElevation.value = String(val.elevation)
+    }
   },
 )
 
@@ -198,8 +240,12 @@ function handleSubmit() {
     gpxTrack: gpxTrack.value,
     description: description.value.trim() || null,
     seasons: selectedSeasons.value.size > 0 ? Array.from(selectedSeasons.value) : null,
-    startPoint: effectiveStartPoint.value,
-    endPoint: effectiveEndPoint.value,
+    startPoint: startPoint.value,
+    endPoint: endPoint.value,
+    startPointName: startPointName.value.trim() || null,
+    startPointElevation: startPointElevation.value ? Number(startPointElevation.value) : null,
+    endPointName: endPointName.value.trim() || null,
+    endPointElevation: endPointElevation.value ? Number(endPointElevation.value) : null,
     equipment: equipment.value.trim() || null,
     notes: notes.value.trim() || null,
   }
@@ -269,16 +315,14 @@ function handleSubmit() {
             >
           </div>
 
+          <!-- Start point -->
           <div class="field">
             <p class="label">
               {{ t('tours.form.startPointLabel') }}
             </p>
             <div class="point-row">
               <span class="point-coords">{{
-                effectiveStartPoint ? formatPoint(effectiveStartPoint) : t('tours.form.pointNotSet')
-              }}</span>
-              <span v-if="!startPoint && endPoint" class="optional-hint">{{
-                t('tours.form.sameAsEnd')
+                startPoint ? formatPoint(startPoint) : t('tours.form.pointNotSet')
               }}</span>
               <button type="button" class="pick-btn" @click="emit('pickPoint', 'start')">
                 <span class="material-symbols-outlined">my_location</span>
@@ -293,32 +337,91 @@ function handleSubmit() {
                 <span class="material-symbols-outlined">close</span>
               </button>
             </div>
+            <template v-if="startPoint">
+              <div class="field">
+                <label class="label" for="tf-start-name">{{ t('tours.form.pointNameLabel') }}</label>
+                <input
+                  id="tf-start-name"
+                  v-model="startPointName"
+                  class="input"
+                  type="text"
+                  maxlength="100"
+                  :placeholder="t('tours.form.namePlaceholder')"
+                >
+              </div>
+              <div class="field">
+                <label class="label" for="tf-start-elevation">{{ t('tours.form.elevationLabel') }}</label>
+                <input
+                  id="tf-start-elevation"
+                  v-model="startPointElevation"
+                  class="input"
+                  type="number"
+                  min="0"
+                  max="9000"
+                  :placeholder="t('tours.form.elevationPlaceholder')"
+                >
+              </div>
+            </template>
           </div>
 
+          <!-- End point: collapsed to "Add end point" button when null -->
           <div class="field">
             <p class="label">
               {{ t('tours.form.endPointLabel') }}
             </p>
-            <div class="point-row">
-              <span class="point-coords">{{
-                effectiveEndPoint ? formatPoint(effectiveEndPoint) : t('tours.form.pointNotSet')
-              }}</span>
-              <span v-if="!endPoint && startPoint" class="optional-hint">{{
-                t('tours.form.roundTrip')
-              }}</span>
-              <button type="button" class="pick-btn" @click="emit('pickPoint', 'end')">
-                <span class="material-symbols-outlined">my_location</span>
-                {{ endPoint ? t('tours.form.changeGoalBtn') : t('tours.form.pickBtn') }}
-              </button>
-              <button
-                v-if="endPoint"
-                type="button"
-                class="remove-point-btn"
-                @click="endPoint = null"
-              >
-                <span class="material-symbols-outlined">close</span>
-              </button>
-            </div>
+            <template v-if="endPoint">
+              <div class="point-row">
+                <span class="point-coords">{{ formatPoint(endPoint) }}</span>
+                <button type="button" class="pick-btn" @click="emit('pickPoint', 'end')">
+                  <span class="material-symbols-outlined">my_location</span>
+                  {{ t('tours.form.changeGoalBtn') }}
+                </button>
+                <button
+                  type="button"
+                  class="remove-point-btn"
+                  @click="
+                    () => {
+                      endPoint = null
+                      endPointName = ''
+                      endPointElevation = ''
+                    }
+                  "
+                >
+                  <span class="material-symbols-outlined">close</span>
+                </button>
+              </div>
+              <div class="field">
+                <label class="label" for="tf-end-name">{{ t('tours.form.pointNameLabel') }}</label>
+                <input
+                  id="tf-end-name"
+                  v-model="endPointName"
+                  class="input"
+                  type="text"
+                  maxlength="100"
+                  :placeholder="t('tours.form.namePlaceholder')"
+                >
+              </div>
+              <div class="field">
+                <label class="label" for="tf-end-elevation">{{ t('tours.form.elevationLabel') }}</label>
+                <input
+                  id="tf-end-elevation"
+                  v-model="endPointElevation"
+                  class="input"
+                  type="number"
+                  min="0"
+                  max="9000"
+                  :placeholder="t('tours.form.elevationPlaceholder')"
+                >
+              </div>
+            </template>
+            <template v-else>
+              <div class="point-row">
+                <button type="button" class="pick-btn" @click="emit('pickPoint', 'end')">
+                  <span class="material-symbols-outlined">add</span>
+                  {{ t('tours.form.addEndPointBtn') }}
+                </button>
+              </div>
+            </template>
           </div>
         </div>
 
