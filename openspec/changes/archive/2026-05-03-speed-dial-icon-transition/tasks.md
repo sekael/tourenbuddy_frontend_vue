@@ -13,6 +13,6 @@
 
 - [x] 3.1 Run `npx eslint . --fix` and `npm run format`, ensure zero warnings
 - [x] 3.2 Run `npm run type-check` — must pass
-- [ ] 3.3 Manually verify fade transition in browser (open/close speed dial)
-- [ ] 3.4 Prompt user to commit with message: `feat(map): fade-transition menu/close icons in speed dial trigger`
-- [ ] 3.5 Prompt user to push branch and open PR targeting `main`
+- [x] 3.3 Manually verify fade transition in browser (open/close speed dial)
+- [x] 3.4 Prompt user to commit with message: `feat(map): fade-transition menu/close icons in speed dial trigger`
+- [x] 3.5 Prompt user to push branch and open PR targeting `main`
