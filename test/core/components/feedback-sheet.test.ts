@@ -1,7 +1,11 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import FeedbackSheet from '@/core/components/feedback-sheet.vue'
-import { FEEDBACK_EMAIL, FEEDBACK_GITHUB_ISSUE_URL } from '@/core/constants/feedback'
+import {
+  BUG_REPORT_GITHUB_ISSUE_URL,
+  FEEDBACK_EMAIL,
+  FEEDBACK_GITHUB_ISSUE_URL,
+} from '@/core/constants/feedback'
 
 vi.mock('@/core/logging/use-logger', () => ({
   useLogger: () => ({ info: vi.fn() }),
@@ -12,17 +16,23 @@ describe('feedbackSheet', () => {
     vi.restoreAllMocks()
   })
 
-  it('should call window.open with the correct URL and emit close on success', async () => {
+  it('should open bug report URL and emit close when primary button clicked', async () => {
     const mockOpen = vi.spyOn(window, 'open').mockReturnValue({} as Window)
     const wrapper = mount(FeedbackSheet)
 
     await wrapper.find('.primary-btn').trigger('click')
 
-    expect(mockOpen).toHaveBeenCalledWith(
-      FEEDBACK_GITHUB_ISSUE_URL,
-      '_blank',
-      'noopener,noreferrer',
-    )
+    expect(mockOpen).toHaveBeenCalledWith(BUG_REPORT_GITHUB_ISSUE_URL, '_blank')
+    expect(wrapper.emitted('close')).toHaveLength(1)
+  })
+
+  it('should open feedback URL and emit close when secondary button clicked', async () => {
+    const mockOpen = vi.spyOn(window, 'open').mockReturnValue({} as Window)
+    const wrapper = mount(FeedbackSheet)
+
+    await wrapper.find('.secondary-btn').trigger('click')
+
+    expect(mockOpen).toHaveBeenCalledWith(FEEDBACK_GITHUB_ISSUE_URL, '_blank')
     expect(wrapper.emitted('close')).toHaveLength(1)
   })
 
