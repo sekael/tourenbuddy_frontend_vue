@@ -5,6 +5,7 @@ import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { SEASON_VALUES } from '@/features/tours/data/models/season'
@@ -18,6 +19,7 @@ import {
   GpxParseError,
   parseGpxFile,
 } from '@/features/tours/data/services/gpx-parser'
+import { removeGpx, uploadGpx } from '@/features/tours/data/services/gpx-storage-service'
 
 const props = defineProps<{
   /** Label for the submit button. */
@@ -45,13 +47,14 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  submit: [draft: TourDraft, gpxFile: File | null, gpxRemoved: boolean]
+  submit: [draft: TourDraft, gpxFile: File | null, gpxRemoved: boolean, preUploadedTourId: string | null]
   cancel: []
   pickPoint: [type: 'start' | 'end' | 'goal']
 }>()
 
 const { t } = useI18n({ useScope: 'global' })
 
+const authStore = useAuthStore()
 const contactsStore = useContactsStore()
 const { contacts } = storeToRefs(contactsStore)
 
@@ -105,6 +108,10 @@ const gpxFilepath = ref<string | null>(props.initialDraft?.gpxFilepath ?? null)
 const gpxRemoved = ref(false)
 const gpxError = ref<string | null>(null)
 const nameError = ref(false)
+const pendingGpxKey = ref<string | null>(null)
+const pendingTourId = ref<string | null>(null)
+const isUploadingGpx = ref(false)
+const wasCancelledDuringUpload = ref(false)
 
 // Sync individual prop updates from parent (create mode post-pick callbacks).
 watch(
@@ -192,11 +199,10 @@ async function handleGpxUpload(event: Event) {
     return
 
   gpxError.value = null
+  input.value = ''
 
   try {
     await parseGpxFile(file)
-    gpxFile.value = file
-    gpxRemoved.value = false
   }
   catch (err) {
     if (err instanceof GpxFileTooLargeError) {
@@ -209,11 +215,68 @@ async function handleGpxUpload(event: Event) {
       gpxError.value = t('tours.form.gpxReadError')
     }
     gpxFile.value = null
+    return
   }
-  input.value = ''
+
+  if (pendingGpxKey.value) {
+    removeGpx(pendingGpxKey.value).catch(() => {})
+    pendingGpxKey.value = null
+    pendingTourId.value = null
+  }
+
+  gpxFile.value = file
+  gpxRemoved.value = false
+
+  const userId = authStore.currentUser?.id
+  if (!userId) {
+    gpxError.value = t('tours.form.gpxUploadFailed')
+    gpxFile.value = null
+    return
+  }
+
+  const newTourId = crypto.randomUUID()
+  pendingTourId.value = newTourId
+  isUploadingGpx.value = true
+  wasCancelledDuringUpload.value = false
+
+  try {
+    const key = await uploadGpx(userId, newTourId, file)
+    if (wasCancelledDuringUpload.value) {
+      removeGpx(key).catch(() => {})
+    }
+    else {
+      pendingGpxKey.value = key
+    }
+  }
+  catch {
+    if (!wasCancelledDuringUpload.value) {
+      gpxError.value = t('tours.form.gpxUploadFailed')
+      gpxFile.value = null
+    }
+    pendingTourId.value = null
+  }
+  finally {
+    isUploadingGpx.value = false
+  }
+}
+
+function handleCancel() {
+  if (isUploadingGpx.value) {
+    wasCancelledDuringUpload.value = true
+  }
+  else if (pendingGpxKey.value) {
+    removeGpx(pendingGpxKey.value).catch(() => {})
+    pendingGpxKey.value = null
+  }
+  emit('cancel')
 }
 
 function handleRemoveGpx() {
+  if (pendingGpxKey.value) {
+    removeGpx(pendingGpxKey.value).catch(() => {})
+    pendingGpxKey.value = null
+    pendingTourId.value = null
+  }
   gpxFile.value = null
   gpxFilepath.value = null
   gpxRemoved.value = true
@@ -233,11 +296,8 @@ function handleSubmit() {
     return
   }
 
-  const currentFilepath = gpxRemoved.value
-    ? null
-    : gpxFile.value
-      ? gpxFilepath.value
-      : gpxFilepath.value
+  const effectiveGpxFilepath = gpxRemoved.value ? null : (pendingGpxKey.value ?? gpxFilepath.value)
+  const preUploadedTourId = pendingTourId.value
 
   const draft: TourDraft = {
     name: tourName.value.trim(),
@@ -245,7 +305,7 @@ function handleSubmit() {
     partnerIds: Array.from(selectedPartnerIds.value),
     tourType: selectedTourType.value,
     elevation: elevation.value ? Number(elevation.value) : null,
-    gpxFilepath: currentFilepath,
+    gpxFilepath: effectiveGpxFilepath,
     description: description.value.trim() || null,
     seasons: selectedSeasons.value.size > 0 ? Array.from(selectedSeasons.value) : null,
     startPoint: startPoint.value,
@@ -257,7 +317,7 @@ function handleSubmit() {
     equipment: equipment.value.trim() || null,
     notes: notes.value.trim() || null,
   }
-  emit('submit', draft, gpxFile.value, gpxRemoved.value)
+  emit('submit', draft, null, gpxRemoved.value, preUploadedTourId)
 }
 </script>
 
@@ -548,12 +608,17 @@ function handleSubmit() {
           </p>
           <div v-if="gpxFile || gpxFilepath" class="gpx-filled-row">
             <span class="gpx-filename">
-              <span class="material-symbols-outlined gpx-ok-icon">route</span>
+              <span v-if="isUploadingGpx" class="gpx-spinner" />
+              <span v-else class="material-symbols-outlined gpx-ok-icon">route</span>
               {{ gpxFile ? gpxFile.name : t('tours.form.gpxExistingTrack') }}
+              <span v-if="isUploadingGpx" class="gpx-uploading-label">{{ t('tours.form.gpxUploading') }}</span>
             </span>
-            <label class="gpx-action-btn">
+            <label
+              class="gpx-icon-btn"
+              :title="t('tours.form.gpxReplaceTooltip')"
+              :aria-label="t('tours.form.gpxReplaceTooltip')"
+            >
               <span class="material-symbols-outlined">upload_file</span>
-              {{ t('tours.form.gpxReplaceBtn') }}
               <input
                 type="file"
                 accept=".gpx,application/gpx+xml"
@@ -561,9 +626,14 @@ function handleSubmit() {
                 @change="handleGpxUpload"
               >
             </label>
-            <button type="button" class="gpx-action-btn gpx-remove-btn" @click="handleRemoveGpx">
+            <button
+              type="button"
+              class="gpx-icon-btn gpx-remove-btn"
+              :title="t('tours.form.gpxRemoveTooltip')"
+              :aria-label="t('tours.form.gpxRemoveTooltip')"
+              @click="handleRemoveGpx"
+            >
               <span class="material-symbols-outlined">close</span>
-              {{ t('tours.form.gpxRemoveBtn') }}
             </button>
           </div>
           <div v-else class="gpx-empty-row">
@@ -586,10 +656,10 @@ function handleSubmit() {
       <!-- end scroll-body -->
 
       <div class="actions">
-        <button type="button" class="cancel-btn" @click="emit('cancel')">
+        <button type="button" class="cancel-btn" @click="handleCancel">
           {{ t('tours.form.cancelBtn') }}
         </button>
-        <button type="submit" class="submit-btn">
+        <button type="submit" class="submit-btn" :disabled="isUploadingGpx">
           {{ submitLabel }}
         </button>
       </div>
@@ -870,36 +940,35 @@ function handleSubmit() {
   cursor: pointer;
 }
 
-.gpx-action-btn {
+.gpx-icon-btn {
   display: inline-flex;
   align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-sm);
+  justify-content: center;
+  width: 44px;
+  height: 44px;
   border: 1.5px solid var(--color-outline-variant);
   border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
   color: var(--color-on-surface-variant);
   background: transparent;
   cursor: pointer;
-  min-height: 44px;
-  white-space: nowrap;
+  flex-shrink: 0;
   transition:
     border-color 0.15s,
     color 0.15s;
 }
 
-.gpx-action-btn:hover {
+.gpx-icon-btn:hover {
   border-color: var(--color-primary);
   color: var(--color-primary);
 }
 
-.gpx-action-btn .material-symbols-outlined {
-  font-size: 16px;
+.gpx-icon-btn .material-symbols-outlined {
+  font-size: 20px;
 }
 
 .gpx-remove-btn:hover {
-  border-color: var(--color-error);
-  color: var(--color-error);
+  border-color: var(--color-error) !important;
+  color: var(--color-error) !important;
 }
 
 .hidden-input {
@@ -921,6 +990,28 @@ function handleSubmit() {
 .gpx-ok-icon {
   font-size: 16px;
   color: var(--color-primary);
+}
+
+.gpx-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-outline-variant);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: gpx-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes gpx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.gpx-uploading-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-outline);
 }
 
 .gpx-error {
@@ -974,5 +1065,16 @@ function handleSubmit() {
 .submit-btn:hover {
   background-color: var(--color-primary-dark);
   transform: translateY(-1px);
+}
+
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.submit-btn:disabled:hover {
+  background-color: var(--color-primary);
+  transform: none;
 }
 </style>

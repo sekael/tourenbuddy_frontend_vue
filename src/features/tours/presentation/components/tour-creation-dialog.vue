@@ -28,7 +28,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  confirm: [draft: TourDraft, gpxFile: File | null, gpxRemoved: boolean]
+  confirm: [draft: TourDraft, gpxFile: File | null, gpxRemoved: boolean, preUploadedTourId: string | null]
   close: []
   pickPoint: [type: 'start' | 'end' | 'goal']
 }>()
@@ -52,12 +52,12 @@ const pickTypeLabel = computed(() => {
 
 const title = computed(() => pickTypeLabel.value ?? t('tours.creation.title'))
 
-function handleSubmit(draft: TourDraft, gpxFile: File | null, gpxRemoved: boolean) {
+function handleSubmit(draft: TourDraft, gpxFile: File | null, gpxRemoved: boolean, preUploadedTourId: string | null) {
   if (mapStore.isPickingLocation) {
     log.debug('Ignoring create submit while location picker is active')
     return
   }
-  emit('confirm', draft, gpxFile, gpxRemoved)
+  emit('confirm', draft, gpxFile, gpxRemoved, preUploadedTourId)
 }
 
 function handlePickPoint(type: 'start' | 'end' | 'goal') {
@@ -78,7 +78,7 @@ function handlePickPoint(type: 'start' | 'end' | 'goal') {
       :initial-start-point-meta="initialStartPointMeta"
       :initial-end-point-meta="initialEndPointMeta"
       :disabled="isPicking"
-      @submit="(d, f, r) => handleSubmit(d, f, r)"
+      @submit="(d, f, r, tid) => handleSubmit(d, f, r, tid)"
       @cancel="emit('close')"
       @pick-point="handlePickPoint"
     />

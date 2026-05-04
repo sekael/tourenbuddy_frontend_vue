@@ -1,65 +1,4 @@
-# gpx-display Specification
-
-## Purpose
-
-Defines requirements for GPX file upload, track rendering on the map, and track storage.
-## Requirements
-### Requirement: GPX file upload
-
-The tour creation and edit forms SHALL allow users to upload a GPX file (`.gpx` extension, max 2MB). Uploads SHALL begin eagerly when the file is picked.
-
-#### Scenario: Valid GPX uploaded
-
-- **WHEN** the user selects a valid GPX file under 2MB
-- **THEN** the system SHALL parse it client-side and SHALL upload it to blob storage immediately, retaining the storage key for submit
-
-#### Scenario: File too large
-
-- **WHEN** the user selects a GPX file over 2MB
-- **THEN** the system SHALL show an error message and reject the file without uploading
-
-#### Scenario: Invalid GPX file
-
-- **WHEN** the user selects a file that cannot be parsed as valid GPX
-- **THEN** the system SHALL show an error message and reject the file without uploading
-
-#### Scenario: Remove uploaded GPX
-
-- **WHEN** the user has uploaded a GPX file and clicks remove
-- **THEN** the GPX SHALL be cleared from the form and any pre-uploaded blob SHALL be deleted from storage
-
-### Requirement: GPX track rendering on map
-
-When a tour has a GPX track, it SHALL be rendered as a polyline on the MapLibre map.
-
-#### Scenario: Tour with GPX track selected
-
-- **WHEN** a tour with a GPX track is selected on the map
-- **THEN** the track SHALL be rendered as a colored polyline layer on the map
-
-#### Scenario: Tour without GPX track selected
-
-- **WHEN** a tour without a GPX track is selected
-- **THEN** no polyline layer SHALL be rendered
-
-#### Scenario: Deselect tour hides track
-
-- **WHEN** a tour with a visible GPX track is deselected
-- **THEN** the polyline layer SHALL be removed from the map
-
-### Requirement: GPX track storage
-
-GPX tracks SHALL be stored as GeoJSON in a `jsonb` column on the tours table.
-
-#### Scenario: Tour saved with GPX
-
-- **WHEN** a tour is created with a GPX track
-- **THEN** the GeoJSON representation SHALL be persisted in the `gpx_track` column
-
-#### Scenario: Tour saved without GPX
-
-- **WHEN** a tour is created without a GPX track
-- **THEN** the `gpx_track` column SHALL be null
+## ADDED Requirements
 
 ### Requirement: Eager GPX upload on file pick
 
@@ -137,3 +76,28 @@ When the form displays a GPX file (either an existing track loaded from the tour
 - **WHEN** the user hovers the Replace or Remove icon button
 - **THEN** the browser SHALL display a tooltip with the localized action label
 
+## MODIFIED Requirements
+
+### Requirement: GPX file upload
+
+The tour creation and edit forms SHALL allow users to upload a GPX file (`.gpx` extension, max 2MB). Uploads SHALL begin eagerly when the file is picked.
+
+#### Scenario: Valid GPX uploaded
+
+- **WHEN** the user selects a valid GPX file under 2MB
+- **THEN** the system SHALL parse it client-side and SHALL upload it to blob storage immediately, retaining the storage key for submit
+
+#### Scenario: File too large
+
+- **WHEN** the user selects a GPX file over 2MB
+- **THEN** the system SHALL show an error message and reject the file without uploading
+
+#### Scenario: Invalid GPX file
+
+- **WHEN** the user selects a file that cannot be parsed as valid GPX
+- **THEN** the system SHALL show an error message and reject the file without uploading
+
+#### Scenario: Remove uploaded GPX
+
+- **WHEN** the user has uploaded a GPX file and clicks remove
+- **THEN** the GPX SHALL be cleared from the form and any pre-uploaded blob SHALL be deleted from storage

@@ -22,8 +22,8 @@ function makeFile(content: string, name = 'track.gpx', type = 'application/gpx+x
 }
 
 function makeOversizedFile(): File {
-  const twoMBPlusOne = 2 * 1024 * 1024 + 1
-  const buf = new Uint8Array(twoMBPlusOne).fill(32)
+  const fiveMBPlusOne = 5 * 1024 * 1024 + 1
+  const buf = new Uint8Array(fiveMBPlusOne).fill(32)
   return new File([buf], 'big.gpx', { type: 'application/gpx+xml' })
 }
 
@@ -36,7 +36,7 @@ describe('parseGpxFile', () => {
     expect(result.features.length).toBeGreaterThan(0)
   })
 
-  it('should throw GpxFileTooLargeError when file exceeds 2 MB', async () => {
+  it('should throw GpxFileTooLargeError when file exceeds 5 MB', async () => {
     const file = makeOversizedFile()
     await expect(parseGpxFile(file)).rejects.toThrow(GpxFileTooLargeError)
   })

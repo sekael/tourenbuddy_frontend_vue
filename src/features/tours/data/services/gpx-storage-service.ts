@@ -3,12 +3,8 @@ import { supabase } from '@/core/utils/supabase'
 const BUCKET = 'tour-gpx'
 const SIGNED_URL_EXPIRES_IN = 3600
 
-function objectKey(tourId: string): string {
-  return `${tourId}.gpx`
-}
-
-export async function uploadGpx(tourId: string, file: File): Promise<string> {
-  const key = objectKey(tourId)
+export async function uploadGpx(userId: string, tourId: string, file: File): Promise<string> {
+  const key = `${userId}/${tourId}.gpx`
   const { error } = await supabase.storage
     .from(BUCKET)
     .upload(key, file, { contentType: 'application/gpx+xml', upsert: true })
@@ -17,8 +13,8 @@ export async function uploadGpx(tourId: string, file: File): Promise<string> {
   return key
 }
 
-export async function removeGpx(tourId: string): Promise<void> {
-  const { error } = await supabase.storage.from(BUCKET).remove([objectKey(tourId)])
+export async function removeGpx(filepath: string): Promise<void> {
+  const { error } = await supabase.storage.from(BUCKET).remove([filepath])
   if (error)
     throw new Error(error.message)
 }

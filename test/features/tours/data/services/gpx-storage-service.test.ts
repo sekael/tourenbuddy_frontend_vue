@@ -30,13 +30,13 @@ describe('gpxStorageService', () => {
   })
 
   describe('uploadGpx', () => {
-    it('returns the canonical key on success', async () => {
+    it('returns the user-prefixed key on success', async () => {
       mockUpload.mockResolvedValue({ error: null })
       const file = new File(['gpx-content'], 'track.gpx')
-      const result = await uploadGpx('tour-abc', file)
-      expect(result).toBe('tour-abc.gpx')
+      const result = await uploadGpx('user-123', 'tour-abc', file)
+      expect(result).toBe('user-123/tour-abc.gpx')
       expect(mockUpload).toHaveBeenCalledWith(
-        'tour-abc.gpx',
+        'user-123/tour-abc.gpx',
         file,
         expect.objectContaining({ upsert: true }),
       )
@@ -45,20 +45,20 @@ describe('gpxStorageService', () => {
     it('throws when upload fails', async () => {
       mockUpload.mockResolvedValue({ error: { message: 'storage full' } })
       const file = new File(['gpx-content'], 'track.gpx')
-      await expect(uploadGpx('tour-abc', file)).rejects.toThrow('storage full')
+      await expect(uploadGpx('user-123', 'tour-abc', file)).rejects.toThrow('storage full')
     })
   })
 
   describe('removeGpx', () => {
-    it('removes the canonical key', async () => {
+    it('removes the given filepath directly', async () => {
       mockRemove.mockResolvedValue({ error: null })
-      await removeGpx('tour-abc')
-      expect(mockRemove).toHaveBeenCalledWith(['tour-abc.gpx'])
+      await removeGpx('user-123/tour-abc.gpx')
+      expect(mockRemove).toHaveBeenCalledWith(['user-123/tour-abc.gpx'])
     })
 
     it('throws when remove fails', async () => {
       mockRemove.mockResolvedValue({ error: { message: 'not found' } })
-      await expect(removeGpx('tour-abc')).rejects.toThrow('not found')
+      await expect(removeGpx('user-123/tour-abc.gpx')).rejects.toThrow('not found')
     })
   })
 

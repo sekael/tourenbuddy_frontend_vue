@@ -10,7 +10,7 @@
 - [x] 2.4 RLS policies on `storage.objects` for `bucket_id = 'tour-gpx'` (SELECT/INSERT/UPDATE/DELETE), each authorised by `EXISTS (SELECT 1 FROM tours t WHERE t.id = tour_id_from_gpx_path(name) AND t.user_id = auth.uid())` — structured to be extended later for shared/public tours without path changes
 - [x] 2.5 `AFTER DELETE ON tours` trigger function (SECURITY DEFINER) deletes the Storage object referenced by `OLD.gpx_filepath`
 - [x] 2.6 Update RPCs `create_tour_full` and `update_tour_full`: replace `p_gpx_track jsonb` with `p_gpx_filepath text`
-- [ ] 2.7 Verify migration applies cleanly on a fresh local Supabase instance
+- [x] 2.7 Verify migration applies cleanly on a fresh local Supabase instance
 
 ## 3. Domain + Data Layer
 
@@ -30,7 +30,7 @@
 - [x] 4.5 `tour-form.vue`: redesign GPX block with design tokens — empty / filled (chip + replace + remove + track-color swatch) / uploading / error states; ≥44 px tap targets
 - [x] 4.6 `tour-creation-dialog.vue`: pass File through; show submission spinner while upload in flight
 - [x] 4.7 `tour-info-sheet.vue`: when `gpxFilepath` set, render a "Download GPX" button that calls `downloadOriginal`; hide when null
-- [ ] 4.8 Verify mobile bottom-sheet and desktop dialog layouts via `adaptive-overlay`
+- [x] 4.8 Verify mobile bottom-sheet and desktop dialog layouts via `adaptive-overlay`
 
 ## 5. Map Layer Color + Lazy Load
 
@@ -64,7 +64,7 @@
 ## 9. Finalize
 
 - [x] 9.1 Run `npm run type-check && npx eslint . --fix && npm run format && npm run test` — all green
-- [ ] 9.2 Manual QA mobile: create / edit (replace + remove) / delete; verify track color darker than marker; download original; offline reload still renders cached track
-- [ ] 9.3 Manual QA desktop: same matrix
+- [x] 9.2 Manual QA mobile: create / edit (replace + remove) / delete; verify track color darker than marker; download original; offline reload still renders cached track
+- [x] 9.3 Manual QA desktop: same matrix
 - [x] 9.4 Prompt user to commit with conventional message (e.g., `feat(tours): store GPX in Supabase Storage with type-colored tracks (#61)`); do NOT run `git commit`
 - [x] 9.5 Prompt user to push branch and open PR linking issue #61

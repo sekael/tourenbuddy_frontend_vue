@@ -129,7 +129,7 @@ watch(
 const saveError = ref<string | null>(null)
 const isSaving = ref(false)
 
-async function handleEditSubmit(draft: TourDraft, gpxFile: File | null, gpxRemoved: boolean) {
+async function handleEditSubmit(draft: TourDraft, _gpxFile: File | null, gpxRemoved: boolean) {
   if (mapStore.isPickingLocation) {
     log.debug('Ignoring edit submit while location picker is active')
     return
@@ -137,7 +137,7 @@ async function handleEditSubmit(draft: TourDraft, gpxFile: File | null, gpxRemov
   saveError.value = null
   isSaving.value = true
   try {
-    await toursStore.updateTour(props.tour.id, draft, pendingGoal.value, gpxFile, gpxRemoved)
+    await toursStore.updateTour(props.tour.id, draft, pendingGoal.value, gpxRemoved)
     mode.value = 'view'
     emit('editModeChange', false)
   }

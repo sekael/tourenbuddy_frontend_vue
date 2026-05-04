@@ -35,7 +35,7 @@ vi.mock('@/features/tours/data/repositories/tours-repository-impl', () => ({
 }))
 
 vi.mock('@/features/tours/data/services/gpx-storage-service', () => ({
-  uploadGpx: vi.fn().mockResolvedValue('mock-tour-id.gpx'),
+  uploadGpx: vi.fn().mockResolvedValue('user-123/mock-uuid-123.gpx'),
   removeGpx: vi.fn().mockResolvedValue(undefined),
   getSignedUrl: vi.fn(),
   downloadOriginal: vi.fn(),
@@ -236,6 +236,36 @@ describe('useToursStore', () => {
   })
 
   describe('updateTour', () => {
+    it('should store pre-uploaded gpxFilepath from draft without calling uploadGpx', async () => {
+      const { uploadGpx } = await import('@/features/tours/data/services/gpx-storage-service')
+      mockUpdateTour.mockResolvedValue(undefined)
+
+      const store = useToursStore()
+      store.tours = [...mockTours]
+
+      await store.updateTour(
+        'tour-1',
+        {
+          name: 'Rigi',
+          plannedDate: null,
+          partnerIds: [],
+          tourType: null,
+          elevation: null,
+          gpxFilepath: 'user-123/pre-uploaded-uuid.gpx',
+          description: null,
+          seasons: null,
+          startPoint: null,
+          endPoint: null,
+          equipment: null,
+          notes: null,
+        },
+        { lng: 8.2, lat: 46.8 },
+      )
+
+      expect(uploadGpx).not.toHaveBeenCalled()
+      expect(store.tours[0]?.gpxFilepath).toBe('user-123/pre-uploaded-uuid.gpx')
+    })
+
     it('should replace the updated tour in the local list on success', async () => {
       mockUpdateTour.mockResolvedValue(undefined)
 

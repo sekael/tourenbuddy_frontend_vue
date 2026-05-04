@@ -61,9 +61,19 @@ export function useGpxTrackLayer(map: MapLibreMap) {
       return
     }
 
+    function annotate(geojson: GeoJSON.FeatureCollection): GeoJSON.FeatureCollection {
+      return {
+        ...geojson,
+        features: geojson.features.map(f => ({
+          ...f,
+          properties: { ...f.properties, tourType: tour!.tourType ?? null },
+        })),
+      }
+    }
+
     const cached = cache.get(tour.id)
     if (cached) {
-      source.setData(cached)
+      source.setData(annotate(cached))
       return
     }
 
@@ -76,16 +86,8 @@ export function useGpxTrackLayer(map: MapLibreMap) {
       const file = new File([blob], `${tour.id}.gpx`, { type: 'application/gpx+xml' })
       const geojson = await parseGpxFile(file)
 
-      const annotated: GeoJSON.FeatureCollection = {
-        ...geojson,
-        features: geojson.features.map(f => ({
-          ...f,
-          properties: { ...f.properties, tourType: tour.tourType ?? null },
-        })),
-      }
-
-      cache.set(tour.id, annotated)
-      source.setData(annotated)
+      cache.set(tour.id, geojson)
+      source.setData(annotate(geojson))
     }
     catch (err) {
       logger.error('Failed to load GPX track', err)
