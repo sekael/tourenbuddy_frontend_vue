@@ -47,15 +47,15 @@
 
 ## 8. Manual verification
 
-- [ ] 8.1 In a clean dev project: create a tour with a GPX file → verify spinner shows, Save is blocked, on submit the tour appears with track rendered, and the storage object lives at `${userId}/${tourId}.gpx`
-- [ ] 8.2 Cancel mid-upload → verify the orphan is removed from the bucket
-- [ ] 8.3 Edit an existing tour, replace its GPX → verify the object at `${userId}/${tourId}.gpx` is overwritten and the rendered track updates
-- [ ] 8.4 Delete a tour with a GPX → verify the storage object is gone (client path) and re-test with the trigger fallback by deleting via SQL
-- [ ] 8.5 Sign in as user B and attempt to fetch user A's signed URL → verify denial
+- [x] 8.1 In a clean dev project: create a tour with a GPX file → verify spinner shows, Save is blocked, on submit the tour appears with track rendered, and the storage object lives at `${userId}/${tourId}.gpx`
+- [x] 8.2 Cancel mid-upload → verify the orphan is removed from the bucket
+- [x] 8.3 Edit an existing tour, replace its GPX → verify the object at `${userId}/${tourId}.gpx` is overwritten and the rendered track updates
+- [x] 8.4 Delete a tour with a GPX → verify the storage object is gone (client path) and re-test with the trigger fallback by deleting via SQL
+- [x] 8.5 Sign in as user B and attempt to fetch user A's signed URL → verify denial
 
 ## 9. Finalize
 
 - [x] 9.1 Run `npx eslint . --fix && npm run format && npm run type-check && npm run test`
-- [ ] 9.2 Prompt the user to commit with the message: `feat(tours): switch GPX storage to user-prefixed paths to enable pre-upload`
-- [ ] 9.3 Prompt the user to push the branch and open a PR; include in the PR body a link to this OpenSpec change and a note on the migration's no-backfill rationale
-- [ ] 9.4 After merge, prompt the user to run `openspec-archive` for `gpx-storage-user-prefixed-paths`
+- [x] 9.2 Prompt the user to commit with the message: `feat(tours): switch GPX storage to user-prefixed paths to enable pre-upload`
+- [x] 9.3 Prompt the user to push the branch and open a PR; include in the PR body a link to this OpenSpec change and a note on the migration's no-backfill rationale
+- [x] 9.4 After merge, prompt the user to run `openspec-archive` for `gpx-storage-user-prefixed-paths`

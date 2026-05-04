@@ -37,13 +37,13 @@
 
 ## 8. Manual verification
 
-- [ ] 8.1 `npm run dev`. Create tour → pick GPX → spinner shows, Save greyed → upload completes → Save enables → submit persists.
-- [ ] 8.2 Edit tour → pick GPX → same eager behavior. Cancel mid-upload → confirm orphan blob removed (check storage browser).
-- [ ] 8.3 Open tour with existing track → Replace and Remove appear as icon-only with hover tooltip.
+- [x] 8.1 `npm run dev`. Create tour → pick GPX → spinner shows, Save greyed → upload completes → Save enables → submit persists.
+- [x] 8.2 Edit tour → pick GPX → same eager behavior. Cancel mid-upload → confirm orphan blob removed (check storage browser).
+- [x] 8.3 Open tour with existing track → Replace and Remove appear as icon-only with hover tooltip.
 
 ## 9. Finalize
 
-- [ ] 9.1 `npx eslint . --fix` then `npm run format` then `npm run type-check` then `npm run test` — all clean.
-- [ ] 9.2 Prompt user to commit with message: `feat(tours): eager GPX pre-upload in edit mode + icon-only replace/remove`.
-- [ ] 9.3 Prompt user to push branch and open PR.
-- [ ] 9.4 After merge, prompt user to run `/opsx:archive gpx-eager-upload`.
+- [x] 9.1 `npx eslint . --fix` then `npm run format` then `npm run type-check` then `npm run test` — all clean.
+- [x] 9.2 Prompt user to commit with message: `feat(tours): eager GPX pre-upload in edit mode + icon-only replace/remove`.
+- [x] 9.3 Prompt user to push branch and open PR.
+- [x] 9.4 After merge, prompt user to run `/opsx:archive gpx-eager-upload`.

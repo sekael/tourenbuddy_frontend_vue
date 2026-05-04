@@ -64,7 +64,7 @@
 ## 9. Finalize
 
 - [x] 9.1 Run `npm run type-check && npx eslint . --fix && npm run format && npm run test` — all green
-- [ ] 9.2 Manual QA mobile: create / edit (replace + remove) / delete; verify track color darker than marker; download original; offline reload still renders cached track
-- [ ] 9.3 Manual QA desktop: same matrix
+- [x] 9.2 Manual QA mobile: create / edit (replace + remove) / delete; verify track color darker than marker; download original; offline reload still renders cached track
+- [x] 9.3 Manual QA desktop: same matrix
 - [x] 9.4 Prompt user to commit with conventional message (e.g., `feat(tours): store GPX in Supabase Storage with type-colored tracks (#61)`); do NOT run `git commit`
 - [x] 9.5 Prompt user to push branch and open PR linking issue #61
