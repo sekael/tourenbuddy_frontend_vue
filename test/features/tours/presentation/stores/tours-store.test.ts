@@ -236,14 +236,12 @@ describe('useToursStore', () => {
   })
 
   describe('updateTour', () => {
-    it('should call uploadGpx with (userId, tourId, file) and store user-prefixed key', async () => {
+    it('should store pre-uploaded gpxFilepath from draft without calling uploadGpx', async () => {
       const { uploadGpx } = await import('@/features/tours/data/services/gpx-storage-service')
       mockUpdateTour.mockResolvedValue(undefined)
-      mockListTours.mockResolvedValue(mockTours)
 
       const store = useToursStore()
       store.tours = [...mockTours]
-      const file = new File(['gpx'], 'track.gpx')
 
       await store.updateTour(
         'tour-1',
@@ -253,7 +251,7 @@ describe('useToursStore', () => {
           partnerIds: [],
           tourType: null,
           elevation: null,
-          gpxFilepath: null,
+          gpxFilepath: 'user-123/pre-uploaded-uuid.gpx',
           description: null,
           seasons: null,
           startPoint: null,
@@ -262,11 +260,10 @@ describe('useToursStore', () => {
           notes: null,
         },
         { lng: 8.2, lat: 46.8 },
-        file,
       )
 
-      expect(uploadGpx).toHaveBeenCalledWith('user-123', 'tour-1', file)
-      expect(store.tours[0]?.gpxFilepath).toBe('user-123/mock-uuid-123.gpx')
+      expect(uploadGpx).not.toHaveBeenCalled()
+      expect(store.tours[0]?.gpxFilepath).toBe('user-123/pre-uploaded-uuid.gpx')
     })
 
     it('should replace the updated tour in the local list on success', async () => {

@@ -182,7 +182,6 @@ describe('tourInfoSheet', () => {
         'tour-1',
         expect.objectContaining({ name: 'Edited Tour' }),
         { lng: 8.2, lat: 46.8 },
-        null,
         false,
       )
       // Back to view mode

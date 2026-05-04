@@ -44,10 +44,6 @@ const props = defineProps<{
   initialEndPointMeta?: { name: string | null, elevation: number | null } | null
   /** When true, disable all inputs and buttons — used while location picker is active. */
   disabled?: boolean
-  /** When true, upload GPX immediately on file pick (create mode pre-upload). */
-  preUploadGpx?: boolean
-  /** When true, show the GPX spinner (controlled externally, e.g. during edit save). */
-  gpxUploading?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -222,7 +218,7 @@ async function handleGpxUpload(event: Event) {
     return
   }
 
-  if (props.preUploadGpx && pendingGpxKey.value) {
+  if (pendingGpxKey.value) {
     removeGpx(pendingGpxKey.value).catch(() => {})
     pendingGpxKey.value = null
     pendingTourId.value = null
@@ -231,56 +227,52 @@ async function handleGpxUpload(event: Event) {
   gpxFile.value = file
   gpxRemoved.value = false
 
-  if (props.preUploadGpx) {
-    const userId = authStore.currentUser?.id
-    if (!userId) {
+  const userId = authStore.currentUser?.id
+  if (!userId) {
+    gpxError.value = t('tours.form.gpxUploadFailed')
+    gpxFile.value = null
+    return
+  }
+
+  const newTourId = crypto.randomUUID()
+  pendingTourId.value = newTourId
+  isUploadingGpx.value = true
+  wasCancelledDuringUpload.value = false
+
+  try {
+    const key = await uploadGpx(userId, newTourId, file)
+    if (wasCancelledDuringUpload.value) {
+      removeGpx(key).catch(() => {})
+    }
+    else {
+      pendingGpxKey.value = key
+    }
+  }
+  catch {
+    if (!wasCancelledDuringUpload.value) {
       gpxError.value = t('tours.form.gpxUploadFailed')
       gpxFile.value = null
-      return
     }
-
-    const newTourId = crypto.randomUUID()
-    pendingTourId.value = newTourId
-    isUploadingGpx.value = true
-    wasCancelledDuringUpload.value = false
-
-    try {
-      const key = await uploadGpx(userId, newTourId, file)
-      if (wasCancelledDuringUpload.value) {
-        removeGpx(key).catch(() => {})
-      }
-      else {
-        pendingGpxKey.value = key
-      }
-    }
-    catch {
-      if (!wasCancelledDuringUpload.value) {
-        gpxError.value = t('tours.form.gpxUploadFailed')
-        gpxFile.value = null
-      }
-      pendingTourId.value = null
-    }
-    finally {
-      isUploadingGpx.value = false
-    }
+    pendingTourId.value = null
+  }
+  finally {
+    isUploadingGpx.value = false
   }
 }
 
 function handleCancel() {
-  if (props.preUploadGpx) {
-    if (isUploadingGpx.value) {
-      wasCancelledDuringUpload.value = true
-    }
-    else if (pendingGpxKey.value) {
-      removeGpx(pendingGpxKey.value).catch(() => {})
-      pendingGpxKey.value = null
-    }
+  if (isUploadingGpx.value) {
+    wasCancelledDuringUpload.value = true
+  }
+  else if (pendingGpxKey.value) {
+    removeGpx(pendingGpxKey.value).catch(() => {})
+    pendingGpxKey.value = null
   }
   emit('cancel')
 }
 
 function handleRemoveGpx() {
-  if (props.preUploadGpx && pendingGpxKey.value) {
+  if (pendingGpxKey.value) {
     removeGpx(pendingGpxKey.value).catch(() => {})
     pendingGpxKey.value = null
     pendingTourId.value = null
@@ -304,21 +296,8 @@ function handleSubmit() {
     return
   }
 
-  let effectiveGpxFilepath: string | null
-  let fileToUpload: File | null = null
-  let preUploadedTourId: string | null = null
-
-  if (gpxRemoved.value) {
-    effectiveGpxFilepath = null
-  }
-  else if (props.preUploadGpx && pendingGpxKey.value) {
-    effectiveGpxFilepath = pendingGpxKey.value
-    preUploadedTourId = pendingTourId.value
-  }
-  else {
-    effectiveGpxFilepath = gpxFilepath.value
-    fileToUpload = gpxFile.value
-  }
+  const effectiveGpxFilepath = gpxRemoved.value ? null : (pendingGpxKey.value ?? gpxFilepath.value)
+  const preUploadedTourId = pendingTourId.value
 
   const draft: TourDraft = {
     name: tourName.value.trim(),
@@ -338,7 +317,7 @@ function handleSubmit() {
     equipment: equipment.value.trim() || null,
     notes: notes.value.trim() || null,
   }
-  emit('submit', draft, fileToUpload, gpxRemoved.value, preUploadedTourId)
+  emit('submit', draft, null, gpxRemoved.value, preUploadedTourId)
 }
 </script>
 
@@ -629,14 +608,17 @@ function handleSubmit() {
           </p>
           <div v-if="gpxFile || gpxFilepath" class="gpx-filled-row">
             <span class="gpx-filename">
-              <span v-if="isUploadingGpx || props.gpxUploading" class="gpx-spinner" />
+              <span v-if="isUploadingGpx" class="gpx-spinner" />
               <span v-else class="material-symbols-outlined gpx-ok-icon">route</span>
               {{ gpxFile ? gpxFile.name : t('tours.form.gpxExistingTrack') }}
-              <span v-if="isUploadingGpx || props.gpxUploading" class="gpx-uploading-label">{{ t('tours.form.gpxUploading') }}</span>
+              <span v-if="isUploadingGpx" class="gpx-uploading-label">{{ t('tours.form.gpxUploading') }}</span>
             </span>
-            <label class="gpx-action-btn">
+            <label
+              class="gpx-icon-btn"
+              :title="t('tours.form.gpxReplaceTooltip')"
+              :aria-label="t('tours.form.gpxReplaceTooltip')"
+            >
               <span class="material-symbols-outlined">upload_file</span>
-              {{ t('tours.form.gpxReplaceBtn') }}
               <input
                 type="file"
                 accept=".gpx,application/gpx+xml"
@@ -644,9 +626,14 @@ function handleSubmit() {
                 @change="handleGpxUpload"
               >
             </label>
-            <button type="button" class="gpx-action-btn gpx-remove-btn" @click="handleRemoveGpx">
+            <button
+              type="button"
+              class="gpx-icon-btn gpx-remove-btn"
+              :title="t('tours.form.gpxRemoveTooltip')"
+              :aria-label="t('tours.form.gpxRemoveTooltip')"
+              @click="handleRemoveGpx"
+            >
               <span class="material-symbols-outlined">close</span>
-              {{ t('tours.form.gpxRemoveBtn') }}
             </button>
           </div>
           <div v-else class="gpx-empty-row">
@@ -672,7 +659,7 @@ function handleSubmit() {
         <button type="button" class="cancel-btn" @click="handleCancel">
           {{ t('tours.form.cancelBtn') }}
         </button>
-        <button type="submit" class="submit-btn" :disabled="isUploadingGpx || props.gpxUploading">
+        <button type="submit" class="submit-btn" :disabled="isUploadingGpx">
           {{ submitLabel }}
         </button>
       </div>
@@ -953,36 +940,35 @@ function handleSubmit() {
   cursor: pointer;
 }
 
-.gpx-action-btn {
+.gpx-icon-btn {
   display: inline-flex;
   align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-sm);
+  justify-content: center;
+  width: 44px;
+  height: 44px;
   border: 1.5px solid var(--color-outline-variant);
   border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
   color: var(--color-on-surface-variant);
   background: transparent;
   cursor: pointer;
-  min-height: 44px;
-  white-space: nowrap;
+  flex-shrink: 0;
   transition:
     border-color 0.15s,
     color 0.15s;
 }
 
-.gpx-action-btn:hover {
+.gpx-icon-btn:hover {
   border-color: var(--color-primary);
   color: var(--color-primary);
 }
 
-.gpx-action-btn .material-symbols-outlined {
-  font-size: 16px;
+.gpx-icon-btn .material-symbols-outlined {
+  font-size: 20px;
 }
 
 .gpx-remove-btn:hover {
-  border-color: var(--color-error);
-  color: var(--color-error);
+  border-color: var(--color-error) !important;
+  color: var(--color-error) !important;
 }
 
 .hidden-input {
@@ -1079,5 +1065,16 @@ function handleSubmit() {
 .submit-btn:hover {
   background-color: var(--color-primary-dark);
   transform: translateY(-1px);
+}
+
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.submit-btn:disabled:hover {
+  background-color: var(--color-primary);
+  transform: none;
 }
 </style>

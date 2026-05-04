@@ -78,7 +78,6 @@ function handlePickPoint(type: 'start' | 'end' | 'goal') {
       :initial-start-point-meta="initialStartPointMeta"
       :initial-end-point-meta="initialEndPointMeta"
       :disabled="isPicking"
-      :pre-upload-gpx="true"
       @submit="(d, f, r, tid) => handleSubmit(d, f, r, tid)"
       @cancel="emit('close')"
       @pick-point="handlePickPoint"

@@ -6,7 +6,7 @@ import { useLogger } from '@/core/logging/use-logger'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { ToursRepositoryImpl } from '@/features/tours/data/repositories/tours-repository-impl'
-import { removeGpx, uploadGpx } from '@/features/tours/data/services/gpx-storage-service'
+import { removeGpx } from '@/features/tours/data/services/gpx-storage-service'
 
 const repository = new ToursRepositoryImpl()
 
@@ -86,21 +86,9 @@ export const useToursStore = defineStore('tours', () => {
     id: string,
     draft: TourDraft,
     goal: { lng: number, lat: number },
-    gpxFile: File | null = null,
     gpxRemoved: boolean = false,
   ) {
-    const userId = authStore.currentUser?.id
-    let uploadedFilepath: string | null = null
-
-    if (gpxFile && userId) {
-      try {
-        uploadedFilepath = await uploadGpx(userId, id, gpxFile)
-      }
-      catch (err) {
-        logger.warn('GPX upload failed during tour update', err)
-      }
-    }
-    else if (gpxRemoved) {
+    if (gpxRemoved) {
       const existing = tours.value.find(t => t.id === id)
       if (existing?.gpxFilepath) {
         try {
@@ -118,7 +106,7 @@ export const useToursStore = defineStore('tours', () => {
     if (!existing)
       return
 
-    const newFilepath = gpxFile ? uploadedFilepath : gpxRemoved ? null : draft.gpxFilepath
+    const newFilepath = gpxRemoved ? null : draft.gpxFilepath
 
     tours.value = tours.value.map(t =>
       t.id === id
