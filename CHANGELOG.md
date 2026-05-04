@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.10.0...tourenbuddy-frontend-v0.11.0) (2026-05-04)
+
+
+### Features
+
+* UX improvements round trip tours ([#102](https://github.com/sekael/tourenbuddy_frontend_vue/issues/102)) ([32532c6](https://github.com/sekael/tourenbuddy_frontend_vue/commit/32532c6cb7038946cd3c15bbc8b0aa96bb2eca3f))
+
 ## [0.10.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.9.1...tourenbuddy-frontend-v0.10.0) (2026-05-04)
 
 
