@@ -27,7 +27,6 @@ export const useToursStore = defineStore('tours', () => {
       else if (!authed && wasAuthed)
         clear()
     },
-    { immediate: true },
   )
 
   contactsStore.$onAction(({ name, args, after }) => {
