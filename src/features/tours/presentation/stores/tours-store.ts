@@ -88,25 +88,24 @@ export const useToursStore = defineStore('tours', () => {
     goal: { lng: number, lat: number },
     gpxRemoved: boolean = false,
   ) {
-    if (gpxRemoved) {
-      const existing = tours.value.find(t => t.id === id)
-      if (existing?.gpxFilepath) {
-        try {
-          await removeGpx(existing.gpxFilepath)
-        }
-        catch (err) {
-          logger.warn('GPX remove failed during tour update (trigger is fallback)', err)
-        }
-      }
-    }
+    const existing = tours.value.find(t => t.id === id)
+    const previousFilepath = existing?.gpxFilepath ?? null
 
     await repository.updateTour(id, draft, goal)
 
-    const existing = tours.value.find(t => t.id === id)
+    const newFilepath = gpxRemoved ? null : draft.gpxFilepath
+
+    if (previousFilepath && previousFilepath !== newFilepath) {
+      try {
+        await removeGpx(previousFilepath)
+      }
+      catch (err) {
+        logger.warn('Tour updated but old GPX blob removal failed (orphan)', err)
+      }
+    }
+
     if (!existing)
       return
-
-    const newFilepath = gpxRemoved ? null : draft.gpxFilepath
 
     tours.value = tours.value.map(t =>
       t.id === id
@@ -155,15 +154,15 @@ export const useToursStore = defineStore('tours', () => {
 
   async function deleteTour(id: string) {
     const tour = tours.value.find(t => t.id === id)
+    await repository.deleteTour(id)
     if (tour?.gpxFilepath) {
       try {
         await removeGpx(tour.gpxFilepath)
       }
       catch (err) {
-        logger.warn('GPX remove failed before tour delete (trigger is fallback)', err)
+        logger.warn('Tour deleted but GPX blob removal failed (orphan)', err)
       }
     }
-    await repository.deleteTour(id)
     tours.value = tours.value.filter(t => t.id !== id)
   }
 
