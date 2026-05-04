@@ -1,7 +1,7 @@
 import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 import { defineStore } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useLogger } from '@/core/logging/use-logger'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
@@ -18,6 +18,16 @@ export const useToursStore = defineStore('tours', () => {
   const tours = ref<Tour[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+
+  watch(
+    () => authStore.isAuthenticated,
+    (authed, wasAuthed) => {
+      if (authed && !wasAuthed)
+        loadTours()
+      else if (!authed && wasAuthed)
+        clear()
+    },
+  )
 
   contactsStore.$onAction(({ name, args, after }) => {
     if (name !== 'deleteContact')
@@ -91,7 +101,14 @@ export const useToursStore = defineStore('tours', () => {
     const existing = tours.value.find(t => t.id === id)
     const previousFilepath = existing?.gpxFilepath ?? null
 
-    await repository.updateTour(id, draft, goal)
+    try {
+      await repository.updateTour(id, draft, goal)
+    }
+    catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to update tour'
+      logger.error('updateTour failed', err)
+      throw err
+    }
 
     const newFilepath = gpxRemoved ? null : draft.gpxFilepath
 
