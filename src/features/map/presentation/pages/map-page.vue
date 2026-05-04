@@ -362,14 +362,14 @@ function handleMapBackgroundClick() {
   closeOverlay()
 }
 
-async function handleTourCreated(draft: TourDraft, gpxFile: File | null, _gpxRemoved: boolean) {
+async function handleTourCreated(draft: TourDraft, gpxFile: File | null, _gpxRemoved: boolean, preUploadedTourId: string | null = null) {
   if (!pendingLocation.value)
     return
   // Capture goal before closeOverlay resets state
   const goal = pendingLocation.value
   closeOverlay()
 
-  const newId = await toursStore.createTourFromDraft(draft, goal, gpxFile)
+  const newId = await toursStore.createTourFromDraft(draft, goal, gpxFile, preUploadedTourId)
   if (newId)
     mapStore.selectTour(newId)
 }
@@ -457,7 +457,7 @@ function handleDialogClose() {
           :initial-end-point-meta="dialogInitialEndPointMeta"
           :initial-goal="pendingLocation"
           :active-pick-type="pendingPickType"
-          @confirm="(d, f, r) => handleTourCreated(d, f, r)"
+          @confirm="(d, f, r, tid) => handleTourCreated(d, f, r, tid)"
           @close="handleDialogClose"
           @pick-point="handlePickPoint"
         />

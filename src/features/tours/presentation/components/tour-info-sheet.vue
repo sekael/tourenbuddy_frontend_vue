@@ -128,6 +128,7 @@ watch(
 // ── Edit save ────────────────────────────────────────────────────────────────
 const saveError = ref<string | null>(null)
 const isSaving = ref(false)
+const isGpxSaving = ref(false)
 
 async function handleEditSubmit(draft: TourDraft, gpxFile: File | null, gpxRemoved: boolean) {
   if (mapStore.isPickingLocation) {
@@ -136,6 +137,7 @@ async function handleEditSubmit(draft: TourDraft, gpxFile: File | null, gpxRemov
   }
   saveError.value = null
   isSaving.value = true
+  isGpxSaving.value = !!gpxFile
   try {
     await toursStore.updateTour(props.tour.id, draft, pendingGoal.value, gpxFile, gpxRemoved)
     mode.value = 'view'
@@ -146,6 +148,7 @@ async function handleEditSubmit(draft: TourDraft, gpxFile: File | null, gpxRemov
   }
   finally {
     isSaving.value = false
+    isGpxSaving.value = false
   }
 }
 
@@ -328,6 +331,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         :initial-start-point-meta="pendingStartPointMeta"
         :initial-end-point-meta="pendingEndPointMeta"
         :disabled="isPicking"
+        :gpx-uploading="isGpxSaving"
         @submit="(d, f, r) => handleEditSubmit(d, f, r)"
         @cancel="cancelEdit"
         @pick-point="emit('pickPoint', $event)"

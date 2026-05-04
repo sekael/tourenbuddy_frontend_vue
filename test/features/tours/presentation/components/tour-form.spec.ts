@@ -1,8 +1,22 @@
 import { createTestingPinia } from '@pinia/testing'
 import { mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import TourForm from '@/features/tours/presentation/components/tour-form.vue'
+
+const { mockUploadGpx, mockRemoveGpx } = vi.hoisted(() => ({
+  mockUploadGpx: vi.fn(),
+  mockRemoveGpx: vi.fn(),
+}))
+
+vi.mock('@/features/tours/data/services/gpx-storage-service', () => ({
+  uploadGpx: mockUploadGpx,
+  removeGpx: mockRemoveGpx,
+}))
+
+vi.mock('@/features/auth/presentation/stores/auth-store', () => ({
+  useAuthStore: vi.fn().mockReturnValue({ currentUser: { id: 'user-abc' } }),
+}))
 
 function mountForm(props: Record<string, unknown> = {}) {
   return mount(TourForm, {
@@ -17,6 +31,13 @@ function mountForm(props: Record<string, unknown> = {}) {
       stubs: { ContactChip: true },
     },
   })
+}
+
+async function pickFile(wrapper: ReturnType<typeof mountForm>, file: File) {
+  const input = wrapper.find('input[type="file"]')
+  Object.defineProperty(input.element, 'files', { value: { 0: file, length: 1 }, configurable: true })
+  await input.trigger('change')
+  await nextTick()
 }
 
 describe('tourForm', () => {
@@ -194,6 +215,90 @@ describe('tourForm', () => {
       await nextTick()
       await nextTick()
       expect(wrapper.find('.gpx-error').exists()).toBe(true)
+    })
+  })
+
+  describe('pre-upload mode (preUploadGpx=true)', () => {
+    const validGpxContent = `<?xml version="1.0"?><gpx version="1.1"><trk><trkseg><trkpt lat="46.5" lon="8.2"/></trkseg></trk></gpx>`
+
+    beforeEach(() => {
+      vi.clearAllMocks()
+      mockUploadGpx.mockResolvedValue('user-abc/new-tour-id.gpx')
+      mockRemoveGpx.mockResolvedValue(undefined)
+    })
+
+    it('should trigger upload and show spinner on valid file pick', async () => {
+      const { parseGpxFile } = await import('@/features/tours/data/services/gpx-parser')
+      vi.mocked(parseGpxFile).mockResolvedValue(undefined as never)
+
+      const wrapper = mountForm({ preUploadGpx: true })
+      const file = new File([validGpxContent], 'track.gpx')
+
+      await pickFile(wrapper, file)
+
+      expect(mockUploadGpx).toHaveBeenCalledWith('user-abc', expect.any(String), file)
+      expect(wrapper.find('.gpx-filled-row').exists()).toBe(true)
+    })
+
+    it('should disable Save while uploading', async () => {
+      const { parseGpxFile } = await import('@/features/tours/data/services/gpx-parser')
+      vi.mocked(parseGpxFile).mockResolvedValue(undefined as never)
+
+      let resolveUpload!: () => void
+      mockUploadGpx.mockReturnValue(
+        new Promise<string>((res) => {
+          resolveUpload = () => res('user-abc/id.gpx')
+        }),
+      )
+
+      const wrapper = mountForm({ preUploadGpx: true })
+      const file = new File([validGpxContent], 'track.gpx')
+
+      const pickPromise = pickFile(wrapper, file)
+      await nextTick()
+
+      const submitBtn = wrapper.find('.submit-btn').element as HTMLButtonElement
+      expect(submitBtn.disabled).toBe(true)
+
+      resolveUpload()
+      await pickPromise
+      await nextTick()
+
+      expect(submitBtn.disabled).toBe(false)
+    })
+
+    it('should delete prior pending object when user picks a replacement file', async () => {
+      const { parseGpxFile } = await import('@/features/tours/data/services/gpx-parser')
+      vi.mocked(parseGpxFile).mockResolvedValue(undefined as never)
+
+      mockUploadGpx
+        .mockResolvedValueOnce('user-abc/first-id.gpx')
+        .mockResolvedValueOnce('user-abc/second-id.gpx')
+
+      const wrapper = mountForm({ preUploadGpx: true })
+
+      await pickFile(wrapper, new File([validGpxContent], 'first.gpx'))
+      await nextTick()
+      expect(mockUploadGpx).toHaveBeenCalledTimes(1)
+
+      await pickFile(wrapper, new File([validGpxContent], 'second.gpx'))
+      await nextTick()
+
+      expect(mockRemoveGpx).toHaveBeenCalledWith('user-abc/first-id.gpx')
+      expect(mockUploadGpx).toHaveBeenCalledTimes(2)
+    })
+
+    it('should delete pending object on cancel', async () => {
+      const { parseGpxFile } = await import('@/features/tours/data/services/gpx-parser')
+      vi.mocked(parseGpxFile).mockResolvedValue(undefined as never)
+
+      const wrapper = mountForm({ preUploadGpx: true })
+      await pickFile(wrapper, new File([validGpxContent], 'track.gpx'))
+      await nextTick()
+
+      await wrapper.find('.cancel-btn').trigger('click')
+
+      expect(mockRemoveGpx).toHaveBeenCalledWith('user-abc/new-tour-id.gpx')
     })
   })
 
