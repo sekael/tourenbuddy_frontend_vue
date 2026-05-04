@@ -19,7 +19,7 @@ export class GpxFileTooLargeError extends Error {
 /**
  * Parses a GPX File into a GeoJSON FeatureCollection.
  *
- * @throws {GpxFileTooLargeError} if the file exceeds 2 MB
+ * @throws {GpxFileTooLargeError} if the file exceeds 5 MB
  * @throws {GpxParseError} if the file is not valid GPX XML
  */
 export async function parseGpxFile(file: File): Promise<GeoJSON.FeatureCollection> {

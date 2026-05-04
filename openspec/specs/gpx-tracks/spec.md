@@ -95,6 +95,11 @@ The system SHALL render the selected tour's GPX track on the map as a polyline w
 - **WHEN** a tour has a tour type not present in `TOUR_TYPE_TRACK_COLORS`
 - **THEN** the track renders in the defined fallback color
 
+#### Scenario: Activity type changed on selected tour
+
+- **WHEN** the selected tour's `tourType` is updated (e.g. from `splitboarding` to `mountaineering`) or set from null to a defined type
+- **THEN** the rendered track color updates immediately to the new type's `TOUR_TYPE_TRACK_COLORS` entry without a page refresh, even when the parsed GeoJSON is served from the in-memory cache
+
 ### Requirement: Lazy fetch and caching of GPX data
 
 The system SHALL fetch and parse a tour's GPX file on demand when the tour is selected on the map, and SHALL cache parsed GeoJSON in memory for the session to avoid duplicate work.
@@ -107,7 +112,7 @@ The system SHALL fetch and parse a tour's GPX file on demand when the tour is se
 #### Scenario: Re-selection
 
 - **WHEN** the same tour is re-selected later in the session
-- **THEN** the cached GeoJSON is reused without re-downloading
+- **THEN** the cached GeoJSON is reused without re-downloading, and the track is re-annotated with the tour's current `tourType` before being applied to the source so color always reflects the latest activity type
 
 #### Scenario: Tour without track
 
