@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.10.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.9.1...tourenbuddy-frontend-v0.10.0) (2026-05-04)
+
+
+### Features
+
+* **tours:** Store GPX in Supabase Storage with type-colored tracks ([#61](https://github.com/sekael/tourenbuddy_frontend_vue/issues/61)) ([c620614](https://github.com/sekael/tourenbuddy_frontend_vue/commit/c62061436698b3a775665b006acf3f262c79bf0a))
+
+
+### Bug Fixes
+
+* Gpx track support ([#101](https://github.com/sekael/tourenbuddy_frontend_vue/issues/101)) ([ada1b32](https://github.com/sekael/tourenbuddy_frontend_vue/commit/ada1b32728b783ed4321b2ea59e946da237c758f))
+
 ## [0.9.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.9.0...tourenbuddy-frontend-v0.9.1) (2026-05-03)
 
 
