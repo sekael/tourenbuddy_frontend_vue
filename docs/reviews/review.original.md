@@ -6,6 +6,7 @@ sample selectively based on what you find.
 or delete any file under any circumstance. Only report findings.**
 
 **Review scope (in priority order):**
+
 1. Architecture & module boundaries — check `src/features/` for
    DDD violations, circular deps, or leaking domain logic into
    presentation
@@ -22,6 +23,7 @@ or delete any file under any circumstance. Only report findings.**
    defineProps/emits usage, v-model patterns
 
 **What to read:**
+
 - Top-level directory tree (1 level deep)
 - `src/features/` tree (2 levels deep)
 - `specs/` fully — read all spec files before touching any
@@ -39,6 +41,7 @@ auto-generated types, migration SQL files.
 **Spec conformance — what to check:**
 For each spec file found, cross-reference against the matching
 feature implementation and flag:
+
 - Endpoints called in code but absent from the spec (undocumented
   surface)
 - Endpoints in the spec with no corresponding implementation
@@ -82,32 +85,41 @@ When the review is complete, write ALL findings to a new file at:
 Create any missing directories. The file structure should be:
 
 ---
+
 # Code Review — [date]
 
 ## Summary
+
 [2–3 sentence overview of overall codebase health]
 
 ## Findings by Category
 
 ### Architecture
+
 [findings]
 
 ### Spec Gaps
+
 [findings]
 
 ### Security
+
 [findings]
 
 ### State Management
+
 [findings]
 
 ### PWA
+
 [findings]
 
 ### Vue Best Practices
+
 [findings]
 
 ## Priority Action List
+
 Top 5 findings to address first, ranked by severity and impact.
 
 ---
