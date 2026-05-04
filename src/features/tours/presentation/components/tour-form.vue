@@ -283,6 +283,14 @@ function handleRemoveGpx() {
   gpxError.value = null
 }
 
+function handleRoundTrip() {
+  if (!startPoint.value)
+    return
+  endPoint.value = { lng: startPoint.value.lng, lat: startPoint.value.lat }
+  endPointName.value = startPointName.value
+  endPointElevation.value = startPointElevation.value
+}
+
 function formatPoint(point: { lng: number, lat: number }) {
   return `${point.lat.toFixed(4)}°N, ${point.lng.toFixed(4)}°E`
 }
@@ -493,6 +501,15 @@ function handleSubmit() {
                 <button type="button" class="pick-btn" @click="emit('pickPoint', 'end')">
                   <span class="material-symbols-outlined">add</span>
                   {{ t('tours.form.addEndPointBtn') }}
+                </button>
+                <button
+                  v-if="startPoint"
+                  type="button"
+                  class="pick-btn"
+                  @click="handleRoundTrip"
+                >
+                  <span class="material-symbols-outlined">replay</span>
+                  {{ t('tours.form.roundTripBtn') }}
                 </button>
               </div>
             </template>
