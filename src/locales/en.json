@@ -233,6 +233,7 @@
       "pickBtn": "Pick",
       "roundTrip": "round trip",
       "addEndPointBtn": "Add end point",
+      "roundTripBtn": "Round Trip",
       "pointNameLabel": "Name",
       "pointElevationLabel": "Elevation (m)",
       "partnersLabel": "Tour Partners",

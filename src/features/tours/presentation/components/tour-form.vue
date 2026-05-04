@@ -283,6 +283,29 @@ function handleRemoveGpx() {
   gpxError.value = null
 }
 
+function handleRemoveStart() {
+  startPoint.value = null
+  startPointName.value = ''
+  startPointElevation.value = ''
+  endPoint.value = null
+  endPointName.value = ''
+  endPointElevation.value = ''
+}
+
+function handleRemoveEnd() {
+  endPoint.value = null
+  endPointName.value = ''
+  endPointElevation.value = ''
+}
+
+function handleRoundTrip() {
+  if (!startPoint.value)
+    return
+  endPoint.value = { lng: startPoint.value.lng, lat: startPoint.value.lat }
+  endPointName.value = startPointName.value
+  endPointElevation.value = startPointElevation.value
+}
+
 function formatPoint(point: { lng: number, lat: number }) {
   return `${point.lat.toFixed(4)}°N, ${point.lng.toFixed(4)}°E`
 }
@@ -351,10 +374,11 @@ function handleSubmit() {
           </div>
 
           <!-- Goal (read-only display, with optional change button) -->
-          <div v-if="currentGoal" class="field">
-            <p class="label">
-              {{ t('tours.form.goalLabel') }}
-            </p>
+          <div v-if="currentGoal" class="point-section point-section--goal">
+            <div class="point-section-header">
+              <span class="material-symbols-outlined point-section-icon">flag</span>
+              <span class="point-section-title">{{ t('tours.form.goalLabel') }}</span>
+            </div>
             <div class="point-row">
               <span class="point-coords">{{ formatPoint(currentGoal) }}</span>
               <button
@@ -367,27 +391,27 @@ function handleSubmit() {
                 {{ t('tours.form.changeGoalBtn') }}
               </button>
             </div>
-          </div>
-
-          <div class="field">
-            <label class="label" for="tf-elevation">{{ t('tours.form.elevationLabel') }}</label>
-            <input
-              id="tf-elevation"
-              v-model="elevation"
-              class="input"
-              type="number"
-              min="0"
-              max="9000"
-              :placeholder="t('tours.form.elevationPlaceholder')"
-              @input="elevationAutoFilled = false"
-            >
+            <div class="field">
+              <label class="label" for="tf-elevation">{{ t('tours.form.elevationLabel') }}</label>
+              <input
+                id="tf-elevation"
+                v-model="elevation"
+                class="input"
+                type="number"
+                min="0"
+                max="9000"
+                :placeholder="t('tours.form.elevationPlaceholder')"
+                @input="elevationAutoFilled = false"
+              >
+            </div>
           </div>
 
           <!-- Start point -->
-          <div class="field">
-            <p class="label">
-              {{ t('tours.form.startPointLabel') }}
-            </p>
+          <div class="point-section point-section--start">
+            <div class="point-section-header">
+              <span class="material-symbols-outlined point-section-icon">trip_origin</span>
+              <span class="point-section-title">{{ t('tours.form.startPointLabel') }}</span>
+            </div>
             <div class="point-row">
               <span class="point-coords">{{
                 startPoint ? formatPoint(startPoint) : t('tours.form.pointNotSet')
@@ -400,7 +424,7 @@ function handleSubmit() {
                 v-if="startPoint"
                 type="button"
                 class="remove-point-btn"
-                @click="startPoint = null"
+                @click="handleRemoveStart"
               >
                 <span class="material-symbols-outlined">close</span>
               </button>
@@ -436,11 +460,12 @@ function handleSubmit() {
             </template>
           </div>
 
-          <!-- End point: collapsed to "Add end point" button when null -->
-          <div class="field">
-            <p class="label">
-              {{ t('tours.form.endPointLabel') }}
-            </p>
+          <!-- End point: only available once start point is set -->
+          <div v-if="startPoint" class="point-section point-section--end">
+            <div class="point-section-header">
+              <span class="material-symbols-outlined point-section-icon">sports_score</span>
+              <span class="point-section-title">{{ t('tours.form.endPointLabel') }}</span>
+            </div>
             <template v-if="endPoint">
               <div class="point-row">
                 <span class="point-coords">{{ formatPoint(endPoint) }}</span>
@@ -451,13 +476,7 @@ function handleSubmit() {
                 <button
                   type="button"
                   class="remove-point-btn"
-                  @click="
-                    () => {
-                      endPoint = null
-                      endPointName = ''
-                      endPointElevation = ''
-                    }
-                  "
+                  @click="handleRemoveEnd"
                 >
                   <span class="material-symbols-outlined">close</span>
                 </button>
@@ -493,6 +512,14 @@ function handleSubmit() {
                 <button type="button" class="pick-btn" @click="emit('pickPoint', 'end')">
                   <span class="material-symbols-outlined">add</span>
                   {{ t('tours.form.addEndPointBtn') }}
+                </button>
+                <button
+                  type="button"
+                  class="pick-btn"
+                  @click="handleRoundTrip"
+                >
+                  <span class="material-symbols-outlined">replay</span>
+                  {{ t('tours.form.roundTripBtn') }}
                 </button>
               </div>
             </template>
@@ -859,6 +886,60 @@ function handleSubmit() {
 .textarea {
   resize: vertical;
   min-height: 72px;
+}
+
+/* Point sections (goal / start / end) */
+.point-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-outline-variant);
+  border-left: 3px solid var(--color-outline-variant);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface-variant, transparent);
+}
+
+.point-section--goal {
+  border-left-color: var(--color-primary);
+}
+
+.point-section--start {
+  border-left-color: #2e7d32;
+}
+
+.point-section--end {
+  border-left-color: #c62828;
+}
+
+.point-section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-on-surface);
+}
+
+.point-section-icon {
+  font-size: 18px;
+  color: var(--color-on-surface-variant);
+}
+
+.point-section--goal .point-section-icon {
+  color: var(--color-primary);
+}
+
+.point-section--start .point-section-icon {
+  color: #2e7d32;
+}
+
+.point-section--end .point-section-icon {
+  color: #c62828;
+}
+
+.point-section-title {
+  letter-spacing: 0.02em;
 }
 
 /* Point pickers */
