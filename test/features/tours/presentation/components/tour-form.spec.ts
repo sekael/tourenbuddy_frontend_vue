@@ -35,7 +35,10 @@ function mountForm(props: Record<string, unknown> = {}) {
 
 async function pickFile(wrapper: ReturnType<typeof mountForm>, file: File) {
   const input = wrapper.find('input[type="file"]')
-  Object.defineProperty(input.element, 'files', { value: { 0: file, length: 1 }, configurable: true })
+  Object.defineProperty(input.element, 'files', {
+    value: { 0: file, length: 1 },
+    configurable: true,
+  })
   await input.trigger('change')
   await nextTick()
 }

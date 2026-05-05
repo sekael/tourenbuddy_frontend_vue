@@ -12,9 +12,11 @@ The tour form treats goal, start, and end points as flat fields with thin labels
 ## Capabilities
 
 ### New Capabilities
+
 <!-- none -->
 
 ### Modified Capabilities
+
 - `tour-form-extended`: Tighten the "Start and end point pickers" requirement (end point gated on start, removing start cascades), add a "Round Trip Tour" affordance, and add a visual-grouping requirement for the three point sections.
 
 ## Impact

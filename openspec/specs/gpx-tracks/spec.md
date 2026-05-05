@@ -1,8 +1,11 @@
 # gpx-tracks Specification
 
 ## Purpose
+
 TBD - created by archiving change gpx-track-support. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: GPX file storage in Supabase Storage
 
 The system SHALL persist user-uploaded GPX files in a private Supabase Storage bucket named `tour-gpx` using the object key `${userId}/${tourId}.gpx`, where `userId` is `auth.uid()` of the uploader and `tourId` is the UUID also used as `tours.id`. The system SHALL store this full key on the `tours` row in column `gpx_filepath`. The path's first segment encodes the **uploader**, not the readers — read access remains independently controllable so future visibility models (private / shared / public) can be implemented by editing only the SELECT policy, without re-keying objects or migrating existing data.
@@ -180,4 +183,3 @@ The system SHALL provide all GPX-related user-facing text in both `en` and `de-C
 
 - **WHEN** the locale switcher toggles between English and Swiss German
 - **THEN** every GPX-related label, button, and error message renders translated text in the active locale
-

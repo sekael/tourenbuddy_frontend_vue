@@ -33,14 +33,16 @@ We need write-time authorisation that does not depend on a `tours` row existing.
 The first path segment is the uploader's `auth.uid()`. The second is the tour id (UUID generated client-side, used both for storage and for the eventual `tours.id`).
 
 **Why this format:**
+
 - INSERT/UPDATE/DELETE can be authorised purely by checking `(storage.foldername(name))[1] = auth.uid()::text`. No join, no cast, no helper function. This is the canonical Supabase pattern and the failure mode is impossible-by-construction.
 - The tour id remains in the path, so the trigger can still locate and delete the object via `old.gpx_filepath`, and so future SELECT policies can join `tours` on the second segment without parsing.
 - The user prefix encodes the **uploader**, not the **reader**. Read policies can extend independently — see decision (3).
 
 **Alternatives considered:**
-- *Random object id under user prefix (`${userId}/${randomId}.gpx`):* loses the tour-id-in-path linkage that the delete trigger and future shared-read policies rely on. Rejected.
-- *Keep tour-id-only, pre-create the tour row:* requires inserting a "draft" tour with placeholder values just to allow upload, which leaks half-state into the table and complicates cancel. Rejected.
-- *Keep tour-id-only, drop pre-upload:* regresses UX (no spinner during multi-MB upload, Save can hang). Rejected per user requirement.
+
+- _Random object id under user prefix (`${userId}/${randomId}.gpx`):_ loses the tour-id-in-path linkage that the delete trigger and future shared-read policies rely on. Rejected.
+- _Keep tour-id-only, pre-create the tour row:_ requires inserting a "draft" tour with placeholder values just to allow upload, which leaks half-state into the table and complicates cancel. Rejected.
+- _Keep tour-id-only, drop pre-upload:_ regresses UX (no spinner during multi-MB upload, Save can hang). Rejected per user requirement.
 
 ### 2. Write authorisation by path prefix only
 
@@ -51,6 +53,7 @@ INSERT, UPDATE, DELETE policies on `storage.objects` for `bucket_id = 'tour-gpx'
 ```
 
 No reference to `public.tours`. A user can write any object under their own prefix — even before a tour row exists. This is safe because:
+
 - Storage quota is bounded per-user via the 5 MB client-side cap and the bucket's per-object size limit.
 - Orphaned objects (upload then cancel) are cleaned up client-side; the trigger remains the row-deletion fallback.
 - `auth.uid()::text` is null for anonymous calls → policy denies, matching current behaviour.
@@ -98,7 +101,7 @@ The migration drops old policies, drops the helper, recreates the four policies.
 
 ## Risks / Trade-offs
 
-- **[Risk] Orphan objects from cancelled or crashed uploads** → Mitigation: client deletes the object on cancel; future periodic sweeper job (out of scope) can reconcile `tours.gpx_filepath` against bucket listings per user prefix. The user prefix actually makes such a sweeper *easier* than the flat layout did.
+- **[Risk] Orphan objects from cancelled or crashed uploads** → Mitigation: client deletes the object on cancel; future periodic sweeper job (out of scope) can reconcile `tours.gpx_filepath` against bucket listings per user prefix. The user prefix actually makes such a sweeper _easier_ than the flat layout did.
 - **[Risk] User prefix exposes the user UUID in object paths** → Trade-off accepted. The UUID is already exposed via `tours.user_id` in client queries, signed URLs are short-lived, and the bucket is private. No additional information leaks.
 - **[Risk] Migrating dev environments with stale `${tourId}.gpx` objects breaks the bucket listing UI** → Mitigation: migration includes a comment instructing devs to drop dev-only objects manually before applying. Production is empty.
 - **[Risk] Pre-upload before a tour row exists could be abused to fill storage with orphans** → Mitigation: 5 MB client cap, plus per-user storage quota at the Supabase project level. Abuse vector exists today for any authenticated user uploading to any bucket they have write access to; not unique to this design.

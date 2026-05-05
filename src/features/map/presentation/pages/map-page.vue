@@ -362,7 +362,12 @@ function handleMapBackgroundClick() {
   closeOverlay()
 }
 
-async function handleTourCreated(draft: TourDraft, gpxFile: File | null, _gpxRemoved: boolean, preUploadedTourId: string | null = null) {
+async function handleTourCreated(
+  draft: TourDraft,
+  gpxFile: File | null,
+  _gpxRemoved: boolean,
+  preUploadedTourId: string | null = null,
+) {
   if (!pendingLocation.value)
     return
   // Capture goal before closeOverlay resets state

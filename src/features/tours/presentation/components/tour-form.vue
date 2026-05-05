@@ -47,7 +47,12 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  submit: [draft: TourDraft, gpxFile: File | null, gpxRemoved: boolean, preUploadedTourId: string | null]
+  submit: [
+    draft: TourDraft,
+    gpxFile: File | null,
+    gpxRemoved: boolean,
+    preUploadedTourId: string | null,
+  ]
   cancel: []
   pickPoint: [type: 'start' | 'end' | 'goal']
 }>()
@@ -473,11 +478,7 @@ function handleSubmit() {
                   <span class="material-symbols-outlined">my_location</span>
                   {{ t('tours.form.changeGoalBtn') }}
                 </button>
-                <button
-                  type="button"
-                  class="remove-point-btn"
-                  @click="handleRemoveEnd"
-                >
+                <button type="button" class="remove-point-btn" @click="handleRemoveEnd">
                   <span class="material-symbols-outlined">close</span>
                 </button>
               </div>
@@ -513,11 +514,7 @@ function handleSubmit() {
                   <span class="material-symbols-outlined">add</span>
                   {{ t('tours.form.addEndPointBtn') }}
                 </button>
-                <button
-                  type="button"
-                  class="pick-btn"
-                  @click="handleRoundTrip"
-                >
+                <button type="button" class="pick-btn" @click="handleRoundTrip">
                   <span class="material-symbols-outlined">replay</span>
                   {{ t('tours.form.roundTripBtn') }}
                 </button>
@@ -638,7 +635,9 @@ function handleSubmit() {
               <span v-if="isUploadingGpx" class="gpx-spinner" />
               <span v-else class="material-symbols-outlined gpx-ok-icon">route</span>
               {{ gpxFile ? gpxFile.name : t('tours.form.gpxExistingTrack') }}
-              <span v-if="isUploadingGpx" class="gpx-uploading-label">{{ t('tours.form.gpxUploading') }}</span>
+              <span v-if="isUploadingGpx" class="gpx-uploading-label">{{
+                t('tours.form.gpxUploading')
+              }}</span>
             </span>
             <label
               class="gpx-icon-btn"

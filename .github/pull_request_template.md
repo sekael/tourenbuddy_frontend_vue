@@ -20,8 +20,8 @@
 - [ ] I have performed a self-review of my own code.
 - [ ] `npm run lint` passes locally with no warnings.
 - [ ] `npm run type-check` passes locally.
-- [ ] `npm run format` has been run.
 - [ ] `npm run test` passes locally.
+- [ ] `npx eslint --fix` has been run.
 - [ ] I have added/updated unit or component tests (if applicable).
 - [ ] My changes generate no new errors in the browser console.
 
