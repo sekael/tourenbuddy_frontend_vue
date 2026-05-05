@@ -38,9 +38,9 @@
 
 ## 7. Manual verification
 
-- [ ] 7.1 `npm run dev` — open mobile viewport (Chrome devtools touch emulation). Verify drag, snap, ceiling on tour-info sheet with GPX-rich tour.
-- [ ] 7.2 Verify location-picker flow: opening picker collapses sheet via `collapsed` prop; exiting restores last user snap.
-- [ ] 7.3 Test on a real iOS Safari device (or simulator) to confirm no body rubber-band scroll while dragging.
+- [x] 7.1 `npm run dev` — open mobile viewport (Chrome devtools touch emulation). Verify drag, snap, ceiling on tour-info sheet with GPX-rich tour.
+- [x] 7.2 Verify location-picker flow: opening picker collapses sheet via `collapsed` prop; exiting restores last user snap.
+- [x] 7.3 Test on a real iOS Safari device (or simulator) to confirm no body rubber-band scroll while dragging.
 
 ## 8. Finalize
 
