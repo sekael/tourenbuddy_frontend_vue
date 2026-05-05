@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.12.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.11.0...tourenbuddy-frontend-v0.12.0) (2026-05-05)
+
+
+### Features
+
+* Draggable bottom sheet height ([#108](https://github.com/sekael/tourenbuddy_frontend_vue/issues/108)) ([f1d5e00](https://github.com/sekael/tourenbuddy_frontend_vue/commit/f1d5e00da5b90d34ca5f883b122739bd6d61af74))
+
+
+### Bug Fixes
+
+* Specs and tours store auth guard ([#104](https://github.com/sekael/tourenbuddy_frontend_vue/issues/104)) ([e6110df](https://github.com/sekael/tourenbuddy_frontend_vue/commit/e6110df63fbc3073964cc82d5ea643db04b6437a))
+
 ## [0.11.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.10.0...tourenbuddy-frontend-v0.11.0) (2026-05-04)
 
 
