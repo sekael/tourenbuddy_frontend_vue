@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
@@ -38,6 +38,7 @@ const currentHeight = ref(0)
 const isDragging = ref(false)
 const lastSnap = ref<Snap>('default')
 
+const sheetRef = ref<HTMLElement | null>(null)
 const headerRef = ref<HTMLElement | null>(null)
 const handleRef = ref<HTMLElement | null>(null)
 
@@ -171,6 +172,34 @@ function onHandleKeydown(e: KeyboardEvent) {
   }
 }
 
+// ── Natural height open ──────────────────────────────────────────────────────
+async function openAtNaturalHeight() {
+  isDragging.value = true
+  currentHeight.value = expandedHeight.value
+  await nextTick()
+
+  const el = sheetRef.value
+  if (!el) {
+    lastSnap.value = 'expanded'
+    await nextTick()
+    isDragging.value = false
+    return
+  }
+
+  // CSS max-height: 60vh acts as the ceiling — offsetHeight at height:auto
+  // gives us min(naturalContentH, 60vh) directly.
+  el.style.height = 'auto'
+  const measuredH = el.offsetHeight
+  const targetH = measuredH > 0 ? measuredH : expandedHeight.value
+  // Set inline immediately to avoid a flash before Vue's reactive render
+  el.style.height = `${targetH}px`
+
+  currentHeight.value = targetH
+  lastSnap.value = nearestSnap(targetH, 'up')
+  await nextTick()
+  isDragging.value = false
+}
+
 // ── Collapse prop ────────────────────────────────────────────────────────────
 watch(
   () => props.collapsed,
@@ -179,8 +208,7 @@ watch(
       cancelDrag()
     }
     else {
-      // Restore last user snap (or default on first show)
-      currentHeight.value = snapHeightPx(lastSnap.value)
+      void openAtNaturalHeight()
     }
   },
 )
@@ -210,7 +238,8 @@ onMounted(() => {
   if (handleRef.value)
     headerResizeObserver.value.observe(handleRef.value)
 
-  currentHeight.value = snapHeightPx('default')
+  if (!props.collapsed)
+    void openAtNaturalHeight()
   window.addEventListener('resize', onWindowResize)
 })
 
@@ -228,6 +257,7 @@ const sheetStyle = computed(() => {
 
 <template>
   <div
+    ref="sheetRef"
     class="bottom-sheet"
     :class="{
       'bottom-sheet--collapsed': props.collapsed,

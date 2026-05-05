@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
@@ -145,32 +145,32 @@ describe('bottomSheet', () => {
   })
 
   describe('drag resize', () => {
-    it('should set height to default snap on mount', async () => {
+    it('should set height to expanded snap on mount (natural height unmeasurable in test env)', async () => {
       const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
-      await nextTick()
-      // default snap = Math.round(1000 * 0.4) = 400
-      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 400px')
+      await flushPromises()
+      // measured offsetHeight = 0 in happy-dom → fallback to expandedHeight = 600
+      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 600px')
     })
 
     it('should update height during drag', async () => {
       const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
-      await nextTick()
+      await flushPromises()
       const handle = wrapper.find('.drag-handle').element
-      // Start drag at y=500 (sheet is at 400px)
+      // Start drag at y=500 (sheet is at 600px)
       firePointer(handle, 'pointerdown', 500)
-      // Move up 80px → newHeight = 400 - (420 - 500) = 400 + 80 = 480
-      firePointer(handle, 'pointermove', 420)
+      // Move down 100px → newHeight = 600 - (600 - 500) = 500
+      firePointer(handle, 'pointermove', 600)
       await nextTick()
       const style = wrapper.find('.bottom-sheet').attributes('style') ?? ''
-      expect(style).toContain('height: 480px')
+      expect(style).toContain('height: 500px')
     })
 
     it('should clamp height to expanded ceiling during drag', async () => {
       const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
-      await nextTick()
+      await flushPromises()
       const handle = wrapper.find('.drag-handle').element
       firePointer(handle, 'pointerdown', 500)
-      // Move up by 400px → would be 800px but clamped to 600 (expandedHeight)
+      // Move up by 400px → would be 1000px but clamped to 600 (expandedHeight)
       firePointer(handle, 'pointermove', 100)
       await nextTick()
       expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 600px')
@@ -178,14 +178,13 @@ describe('bottomSheet', () => {
 
     it('should clamp height to peek floor during drag', async () => {
       const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
-      await nextTick()
+      await flushPromises()
       const handle = wrapper.find('.drag-handle').element
       firePointer(handle, 'pointerdown', 300)
-      // Move down by 600px → would be -200 but clamped to peekHeight (~0 in test env)
+      // Move down by 600px → would be 0 but clamped to peekHeight (~0 in test env)
       firePointer(handle, 'pointermove', 900)
       await nextTick()
       const styleAttr = wrapper.find('.bottom-sheet').attributes('style') ?? ''
-      // Height should be at the peek floor (≤ defaultHeight)
       const heightMatch = styleAttr.match(/height: (\d+)px/)
       const h = heightMatch ? Number(heightMatch[1]) : 999
       expect(h).toBeLessThanOrEqual(400)
@@ -193,52 +192,60 @@ describe('bottomSheet', () => {
 
     it('should snap to expanded when released after large upward drag', async () => {
       const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
-      await nextTick()
+      await flushPromises()
       const handle = wrapper.find('.drag-handle').element
       firePointer(handle, 'pointerdown', 500)
-      // Move up ~200px → currentHeight ≈ 600 → nearest snap = expanded
+      // Move up ~200px → currentHeight clamped at 600 → nearest snap = expanded
       firePointer(handle, 'pointermove', 300)
       firePointer(handle, 'pointerup', 300)
       await nextTick()
       expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 600px')
     })
 
-    it('should snap back to default when tap (< 4px movement)', async () => {
+    it('should keep current snap when tap (< 4px movement)', async () => {
       const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
-      await nextTick()
+      await flushPromises()
       const handle = wrapper.find('.drag-handle').element
       firePointer(handle, 'pointerdown', 500)
       // Move only 2px — below threshold
       firePointer(handle, 'pointermove', 502)
       firePointer(handle, 'pointerup', 502)
       await nextTick()
-      // Should remain at the current snap (default = 400px)
-      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 400px')
+      // Should remain at current snap (expanded = 600px in test env)
+      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 600px')
     })
   })
 
   describe('keyboard navigation', () => {
     async function mountAndGetHandle() {
       const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
-      await nextTick()
+      await flushPromises()
+      // starts at expanded (index 2) — natural height unmeasurable in happy-dom → fallback
       return wrapper
     }
 
-    it('should cycle to expanded snap on ArrowUp from default', async () => {
+    it('should stay at expanded on ArrowUp when already expanded', async () => {
       const wrapper = await mountAndGetHandle()
-      // starts at default (index 1), ArrowUp → expanded (index 2)
       await wrapper.find('.drag-handle').trigger('keydown', { key: 'ArrowUp' })
       await nextTick()
       expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 600px')
       expect(wrapper.find('.drag-handle').attributes('aria-valuenow')).toBe('2')
     })
 
-    it('should cycle to peek snap on ArrowDown from default', async () => {
+    it('should go to default snap on ArrowDown from expanded', async () => {
       const wrapper = await mountAndGetHandle()
-      // starts at default (index 1), ArrowDown → peek (index 0)
       await wrapper.find('.drag-handle').trigger('keydown', { key: 'ArrowDown' })
       await nextTick()
-      // peek height = 0 in test env (offsetHeight = 0)
+      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 400px')
+      expect(wrapper.find('.drag-handle').attributes('aria-valuenow')).toBe('1')
+    })
+
+    it('should cycle expanded → default → peek on repeated ArrowDown', async () => {
+      const wrapper = await mountAndGetHandle()
+      await wrapper.find('.drag-handle').trigger('keydown', { key: 'ArrowDown' })
+      await nextTick()
+      await wrapper.find('.drag-handle').trigger('keydown', { key: 'ArrowDown' })
+      await nextTick()
       const style = wrapper.find('.bottom-sheet').attributes('style') ?? ''
       const h = Number(style.match(/height: (\d+)px/)?.[1] ?? -1)
       expect(h).toBeLessThan(400)
@@ -247,11 +254,7 @@ describe('bottomSheet', () => {
 
     it('should not advance past expanded on ArrowUp', async () => {
       const wrapper = await mountAndGetHandle()
-      // Go to expanded first
-      await wrapper.find('.drag-handle').trigger('keydown', { key: 'Home' })
-      await nextTick()
       expect(wrapper.find('.drag-handle').attributes('aria-valuenow')).toBe('2')
-      // ArrowUp again — should stay at expanded
       await wrapper.find('.drag-handle').trigger('keydown', { key: 'ArrowUp' })
       await nextTick()
       expect(wrapper.find('.drag-handle').attributes('aria-valuenow')).toBe('2')
@@ -259,6 +262,8 @@ describe('bottomSheet', () => {
 
     it('should jump to expanded on Home key', async () => {
       const wrapper = await mountAndGetHandle()
+      await wrapper.find('.drag-handle').trigger('keydown', { key: 'ArrowDown' })
+      await nextTick()
       await wrapper.find('.drag-handle').trigger('keydown', { key: 'Home' })
       await nextTick()
       expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 600px')
@@ -281,7 +286,7 @@ describe('bottomSheet', () => {
         props: { title: 'Test' },
         slots: { default: '<div style="height:2000px">tall content</div>' },
       })
-      await nextTick()
+      await flushPromises()
       const initialStyle = wrapper.find('.bottom-sheet').attributes('style')
       // Dispatch wheel/scroll on the content — should not affect height
       wrapper.find('.content').element.dispatchEvent(new Event('scroll', { bubbles: false }))
