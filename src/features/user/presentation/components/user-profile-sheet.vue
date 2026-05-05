@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
+import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
 import { InvalidPhoneNumberError } from '@/core/exceptions'
 import { SUPPORTED_LOCALES } from '@/core/i18n/supported'
@@ -180,11 +181,9 @@ async function handleSignOut() {
           <template v-if="full?.phoneNumber">
             <span class="material-symbols-outlined phone-icon">phone</span>
             <span class="phone-number">{{ displayPhoneNumber }}</span>
-            <span
-              v-if="full.phoneVerified"
-              class="material-symbols-outlined verified-icon"
-              :title="t('user.profile.verifiedTooltip')"
-            >verified</span>
+            <BaseTooltip v-if="full.phoneVerified" :text="t('user.profile.verifiedTooltip')">
+              <span class="material-symbols-outlined verified-icon">verified</span>
+            </BaseTooltip>
             <button v-else class="verify-btn" @click="startEdit">
               {{ t('user.profile.verifyBtn') }}
             </button>

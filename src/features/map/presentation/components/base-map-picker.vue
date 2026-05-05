@@ -2,6 +2,7 @@
 import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { SWISSTOPO_STYLES } from '@/features/map/data/swisstopo-styles'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 
@@ -19,14 +20,15 @@ function selectStyle(index: number) {
 
 <template>
   <div class="picker-wrapper">
-    <button
-      class="fab"
-      :class="{ active: isOpen }"
-      :title="t('map.styles.pickerTooltip')"
-      @click="isOpen = !isOpen"
-    >
-      <span class="material-symbols-outlined">map</span>
-    </button>
+    <BaseTooltip :text="t('map.styles.pickerTooltip')">
+      <button
+        class="fab"
+        :class="{ active: isOpen }"
+        @click="isOpen = !isOpen"
+      >
+        <span class="material-symbols-outlined">map</span>
+      </button>
+    </BaseTooltip>
 
     <Transition name="menu">
       <div v-if="isOpen" class="menu">

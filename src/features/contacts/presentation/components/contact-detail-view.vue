@@ -4,6 +4,7 @@ import type { ContactMethod } from '@/features/contacts/domain/entities/contact-
 import type { NewContactMethod } from '@/features/contacts/domain/repositories/contact-methods-repository'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import { orderedPhoneMethods } from '@/features/contacts/core/utils/order-phone-methods'
@@ -263,11 +264,9 @@ async function confirmDelete() {
     <section class="section">
       <h3 class="section-label">
         {{ t('contacts.detailView.nameSection') }}
-        <span
-          v-if="linkedFriendUserId"
-          class="material-symbols-outlined detail-friend-icon"
-          :title="t('friendships.tooltip')"
-        >group</span>
+        <BaseTooltip v-if="linkedFriendUserId" :text="t('friendships.tooltip')">
+          <span class="material-symbols-outlined detail-friend-icon">group</span>
+        </BaseTooltip>
       </h3>
       <div class="field">
         <label class="label" for="dv-firstName">{{ t('contacts.form.firstNameLabel') }}<span class="required">*</span></label>
@@ -332,14 +331,15 @@ async function confirmDelete() {
           type="button"
           class="primary-star"
           :class="{ 'primary-star--selected': method.isPrimary }"
-          :title="
-            method.isPrimary
-              ? t('contacts.detailView.primaryPhoneTooltip')
-              : t('contacts.detailView.setAsPrimaryTooltip')
-          "
           @click="setPrimaryPhone(method)"
         >
-          <span class="material-symbols-outlined">star</span>
+          <BaseTooltip
+            :text="method.isPrimary
+              ? t('contacts.detailView.primaryPhoneTooltip')
+              : t('contacts.detailView.setAsPrimaryTooltip')"
+          >
+            <span class="material-symbols-outlined">star</span>
+          </BaseTooltip>
         </button>
         <div class="method-type-badge">
           <span class="material-symbols-outlined">phone</span>
