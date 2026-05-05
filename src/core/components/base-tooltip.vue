@@ -9,6 +9,7 @@ const props = defineProps<{
 const isTouch = useIsTouch()
 const visible = ref(false)
 const wrapperRef = ref<HTMLElement | null>(null)
+const bubbleRef = ref<HTMLElement | null>(null)
 const posStyle = ref<{ top: string, left: string, transform: string }>({
   top: '0px',
   left: '0px',
@@ -19,23 +20,30 @@ let dismissTimer: ReturnType<typeof setTimeout> | null = null
 const tooltipId = `tooltip-${Math.random().toString(36).slice(2, 9)}`
 
 const OFFSET = 8
+const EDGE_PADDING = 8
 
 function computePosition() {
   if (!wrapperRef.value)
     return
   const rect = wrapperRef.value.getBoundingClientRect()
-  const centerX = rect.left + rect.width / 2
+  const bubbleWidth = bubbleRef.value?.offsetWidth ?? 0
+  const vw = window.innerWidth
+  const idealX = rect.left + rect.width / 2
+  const clampedX = Math.max(
+    EDGE_PADDING + bubbleWidth / 2,
+    Math.min(idealX, vw - EDGE_PADDING - bubbleWidth / 2),
+  )
   if (rect.top < 48) {
     posStyle.value = {
       top: `${rect.bottom + OFFSET}px`,
-      left: `${centerX}px`,
+      left: `${clampedX}px`,
       transform: 'translate(-50%, 0)',
     }
   }
   else {
     posStyle.value = {
       top: `${rect.top - OFFSET}px`,
-      left: `${centerX}px`,
+      left: `${clampedX}px`,
       transform: 'translate(-50%, -100%)',
     }
   }
@@ -96,6 +104,7 @@ onUnmounted(() => {
   <Teleport to="body">
     <span
       :id="tooltipId"
+      ref="bubbleRef"
       class="tooltip-bubble"
       :class="{ 'tooltip-bubble--visible': visible }"
       :style="posStyle"
