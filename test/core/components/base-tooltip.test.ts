@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 
 function mockMatchMedia(hoverNone: boolean) {
@@ -18,19 +18,64 @@ function mockMatchMedia(hoverNone: boolean) {
   })
 }
 
+function getBubble() {
+  return document.querySelector('.tooltip-bubble') as HTMLElement | null
+}
+
 describe('baseTooltip', () => {
+  let container: HTMLElement
+
+  beforeEach(() => {
+    container = document.createElement('div')
+    document.body.appendChild(container)
+  })
+
+  afterEach(() => {
+    container.remove()
+    document.querySelectorAll('.tooltip-bubble').forEach(el => el.remove())
+  })
+
   describe('on hover device (desktop)', () => {
     beforeEach(() => mockMatchMedia(false))
 
     it('should not show bubble on touchstart', async () => {
-      const wrapper = mount(BaseTooltip, { props: { text: 'Hint' }, slots: { default: '<span>icon</span>' } })
+      const wrapper = mount(BaseTooltip, {
+        props: { text: 'Hint' },
+        slots: { default: '<span>icon</span>' },
+        attachTo: container,
+      })
       await wrapper.find('.tooltip-wrapper').trigger('touchstart')
-      expect(wrapper.find('.tooltip-bubble').classes()).not.toContain('tooltip-bubble--visible')
+      expect(getBubble()?.classList.contains('tooltip-bubble--visible')).toBe(false)
     })
 
-    it('should render tooltip bubble with correct text', () => {
-      const wrapper = mount(BaseTooltip, { props: { text: 'My tooltip' }, slots: { default: '<span>x</span>' } })
-      expect(wrapper.find('.tooltip-bubble').text()).toBe('My tooltip')
+    it('should show bubble on mouseenter', async () => {
+      const wrapper = mount(BaseTooltip, {
+        props: { text: 'Hint' },
+        slots: { default: '<span>icon</span>' },
+        attachTo: container,
+      })
+      await wrapper.find('.tooltip-wrapper').trigger('mouseenter')
+      expect(getBubble()?.classList.contains('tooltip-bubble--visible')).toBe(true)
+    })
+
+    it('should hide bubble on mouseleave', async () => {
+      const wrapper = mount(BaseTooltip, {
+        props: { text: 'Hint' },
+        slots: { default: '<span>icon</span>' },
+        attachTo: container,
+      })
+      await wrapper.find('.tooltip-wrapper').trigger('mouseenter')
+      await wrapper.find('.tooltip-wrapper').trigger('mouseleave')
+      expect(getBubble()?.classList.contains('tooltip-bubble--visible')).toBe(false)
+    })
+
+    it('should render bubble with correct text', () => {
+      mount(BaseTooltip, {
+        props: { text: 'My tooltip' },
+        slots: { default: '<span>x</span>' },
+        attachTo: container,
+      })
+      expect(getBubble()?.textContent?.trim()).toBe('My tooltip')
     })
   })
 
@@ -38,49 +83,78 @@ describe('baseTooltip', () => {
     beforeEach(() => mockMatchMedia(true))
 
     it('should show bubble on touchstart', async () => {
-      const wrapper = mount(BaseTooltip, { props: { text: 'Hint' }, slots: { default: '<span>icon</span>' } })
+      const wrapper = mount(BaseTooltip, {
+        props: { text: 'Hint' },
+        slots: { default: '<span>icon</span>' },
+        attachTo: container,
+      })
       await wrapper.find('.tooltip-wrapper').trigger('touchstart')
-      expect(wrapper.find('.tooltip-bubble').classes()).toContain('tooltip-bubble--visible')
+      expect(getBubble()?.classList.contains('tooltip-bubble--visible')).toBe(true)
+    })
+
+    it('should not show bubble on mouseenter', async () => {
+      const wrapper = mount(BaseTooltip, {
+        props: { text: 'Hint' },
+        slots: { default: '<span>icon</span>' },
+        attachTo: container,
+      })
+      await wrapper.find('.tooltip-wrapper').trigger('mouseenter')
+      expect(getBubble()?.classList.contains('tooltip-bubble--visible')).toBe(false)
     })
 
     it('should hide bubble on escape keydown', async () => {
-      const wrapper = mount(BaseTooltip, { props: { text: 'Hint' }, slots: { default: '<span>icon</span>' } })
+      const wrapper = mount(BaseTooltip, {
+        props: { text: 'Hint' },
+        slots: { default: '<span>icon</span>' },
+        attachTo: container,
+      })
       await wrapper.find('.tooltip-wrapper').trigger('touchstart')
-      expect(wrapper.find('.tooltip-bubble').classes()).toContain('tooltip-bubble--visible')
       await wrapper.find('.tooltip-wrapper').trigger('keydown', { key: 'Escape' })
-      expect(wrapper.find('.tooltip-bubble').classes()).not.toContain('tooltip-bubble--visible')
+      expect(getBubble()?.classList.contains('tooltip-bubble--visible')).toBe(false)
     })
 
     it('should auto-dismiss after 3 seconds', async () => {
       vi.useFakeTimers()
-      const wrapper = mount(BaseTooltip, { props: { text: 'Hint' }, slots: { default: '<span>icon</span>' } })
+      const wrapper = mount(BaseTooltip, {
+        props: { text: 'Hint' },
+        slots: { default: '<span>icon</span>' },
+        attachTo: container,
+      })
       await wrapper.find('.tooltip-wrapper').trigger('touchstart')
-      expect(wrapper.find('.tooltip-bubble').classes()).toContain('tooltip-bubble--visible')
+      expect(getBubble()?.classList.contains('tooltip-bubble--visible')).toBe(true)
       vi.advanceTimersByTime(3000)
       await wrapper.vm.$nextTick()
-      expect(wrapper.find('.tooltip-bubble').classes()).not.toContain('tooltip-bubble--visible')
+      expect(getBubble()?.classList.contains('tooltip-bubble--visible')).toBe(false)
       vi.useRealTimers()
     })
 
     it('should reset dismiss timer on repeated touchstart', async () => {
       vi.useFakeTimers()
-      const wrapper = mount(BaseTooltip, { props: { text: 'Hint' }, slots: { default: '<span>icon</span>' } })
+      const wrapper = mount(BaseTooltip, {
+        props: { text: 'Hint' },
+        slots: { default: '<span>icon</span>' },
+        attachTo: container,
+      })
       await wrapper.find('.tooltip-wrapper').trigger('touchstart')
       vi.advanceTimersByTime(2000)
       await wrapper.find('.tooltip-wrapper').trigger('touchstart')
       vi.advanceTimersByTime(2000)
       await wrapper.vm.$nextTick()
-      expect(wrapper.find('.tooltip-bubble').classes()).toContain('tooltip-bubble--visible')
+      expect(getBubble()?.classList.contains('tooltip-bubble--visible')).toBe(true)
       vi.useRealTimers()
     })
   })
 
   it('should have correct role and aria attributes', () => {
     mockMatchMedia(false)
-    const wrapper = mount(BaseTooltip, { props: { text: 'Label' }, slots: { default: '<span>x</span>' } })
-    const bubble = wrapper.find('.tooltip-bubble')
-    expect(bubble.attributes('role')).toBe('tooltip')
-    const wrapperId = wrapper.find('.tooltip-wrapper').attributes('aria-describedby')
-    expect(wrapperId).toBe(bubble.attributes('id'))
+    const wrapper = mount(BaseTooltip, {
+      props: { text: 'Label' },
+      slots: { default: '<span>x</span>' },
+      attachTo: container,
+    })
+    const bubble = getBubble()
+    expect(bubble?.getAttribute('role')).toBe('tooltip')
+    const describedBy = wrapper.find('.tooltip-wrapper').attributes('aria-describedby')
+    expect(describedBy).toBe(bubble?.getAttribute('id'))
   })
 })

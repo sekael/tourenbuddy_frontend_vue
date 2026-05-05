@@ -8,22 +8,72 @@ const props = defineProps<{
 
 const isTouch = useIsTouch()
 const visible = ref(false)
+const wrapperRef = ref<HTMLElement | null>(null)
+const posStyle = ref<{ top: string, left: string, transform: string }>({
+  top: '0px',
+  left: '0px',
+  transform: 'translate(-50%, -100%)',
+})
 let dismissTimer: ReturnType<typeof setTimeout> | null = null
 
 const tooltipId = `tooltip-${Math.random().toString(36).slice(2, 9)}`
 
-function show() {
-  if (!isTouch.value)
+const OFFSET = 8
+
+function computePosition() {
+  if (!wrapperRef.value)
     return
-  visible.value = true
-  clearTimeout(dismissTimer!)
-  dismissTimer = setTimeout(() => (visible.value = false), 3000)
+  const rect = wrapperRef.value.getBoundingClientRect()
+  const centerX = rect.left + rect.width / 2
+  if (rect.top < 48) {
+    posStyle.value = {
+      top: `${rect.bottom + OFFSET}px`,
+      left: `${centerX}px`,
+      transform: 'translate(-50%, 0)',
+    }
+  }
+  else {
+    posStyle.value = {
+      top: `${rect.top - OFFSET}px`,
+      left: `${centerX}px`,
+      transform: 'translate(-50%, -100%)',
+    }
+  }
 }
 
-function hide() {
+function showTooltip() {
+  computePosition()
+  visible.value = true
+}
+
+function hideTooltip() {
   visible.value = false
   clearTimeout(dismissTimer!)
   dismissTimer = null
+}
+
+function onMouseEnter() {
+  if (isTouch.value)
+    return
+  showTooltip()
+}
+
+function onMouseLeave() {
+  if (isTouch.value)
+    return
+  hideTooltip()
+}
+
+function onTouchStart() {
+  if (!isTouch.value)
+    return
+  showTooltip()
+  clearTimeout(dismissTimer!)
+  dismissTimer = setTimeout(hideTooltip, 3000)
+}
+
+function onEscape() {
+  hideTooltip()
 }
 
 onUnmounted(() => {
@@ -33,34 +83,30 @@ onUnmounted(() => {
 
 <template>
   <span
+    ref="wrapperRef"
     class="tooltip-wrapper"
     :aria-describedby="tooltipId"
-    @touchstart.passive="show"
-    @keydown.escape="hide"
+    @mouseenter="onMouseEnter"
+    @mouseleave="onMouseLeave"
+    @touchstart.passive="onTouchStart"
+    @keydown.escape="onEscape"
   >
     <slot />
+  </span>
+  <Teleport to="body">
     <span
       :id="tooltipId"
       class="tooltip-bubble"
       :class="{ 'tooltip-bubble--visible': visible }"
+      :style="posStyle"
       role="tooltip"
     >{{ props.text }}</span>
-  </span>
+  </Teleport>
 </template>
 
-<style scoped>
-.tooltip-wrapper {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
+<style>
 .tooltip-bubble {
-  position: absolute;
-  bottom: calc(100% + var(--spacing-xs));
-  left: 50%;
-  transform: translateX(-50%);
+  position: fixed;
   background-color: var(--color-on-surface);
   color: var(--color-surface);
   font-size: 0.75rem;
@@ -72,22 +118,23 @@ onUnmounted(() => {
   text-align: center;
   box-shadow: var(--shadow-md);
   pointer-events: none;
-  z-index: 100;
+  z-index: 9999;
 
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.15s ease;
 }
 
-@media (hover: hover) {
-  .tooltip-wrapper:hover .tooltip-bubble {
-    opacity: 1;
-    visibility: visible;
-  }
-}
-
 .tooltip-bubble--visible {
   opacity: 1;
   visibility: visible;
+}
+</style>
+
+<style scoped>
+.tooltip-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>
