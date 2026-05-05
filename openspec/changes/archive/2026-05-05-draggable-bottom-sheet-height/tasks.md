@@ -45,7 +45,7 @@
 ## 8. Finalize
 
 - [x] 8.1 Run `npx eslint . --fix && npm run format && npm run type-check && npm run test`.
-- [ ] 8.2 Prompt user to commit. Suggested message:
+- [x] 8.2 Prompt user to commit. Suggested message:
 
   ```
   feat(core): make BottomSheet height draggable with snap points
@@ -56,4 +56,4 @@
   `collapsed` prop unchanged.
   ```
 
-- [ ] 8.3 Prompt user to push branch and open PR against `main`.
+- [x] 8.3 Prompt user to push branch and open PR against `main`.
