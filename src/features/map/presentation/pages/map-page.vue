@@ -200,7 +200,7 @@ async function flyToSelectedTour() {
   pendingFlyTo.value = false
   const padding = isDesktop.value
     ? { top: 0, right: 400, bottom: 0, left: 0 }
-    : { top: 0, right: 0, bottom: sheetContainerRef.value?.offsetHeight ?? 0, left: 0 }
+    : { top: 0, right: 0, bottom: sheetContainerRef.value?.offsetHeight + 100 ?? 100, left: 0 }
   mapRef.value?.map?.flyTo({
     center: [selectedTour.value.goal.lng, selectedTour.value.goal.lat],
     zoom: 12,
@@ -362,7 +362,12 @@ function handleMapBackgroundClick() {
   closeOverlay()
 }
 
-async function handleTourCreated(draft: TourDraft, gpxFile: File | null, _gpxRemoved: boolean, preUploadedTourId: string | null = null) {
+async function handleTourCreated(
+  draft: TourDraft,
+  gpxFile: File | null,
+  _gpxRemoved: boolean,
+  preUploadedTourId: string | null = null,
+) {
   if (!pendingLocation.value)
     return
   // Capture goal before closeOverlay resets state

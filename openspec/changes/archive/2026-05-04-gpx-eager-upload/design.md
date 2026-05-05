@@ -5,12 +5,14 @@
 ## Goals / Non-Goals
 
 **Goals:**
+
 - Single eager-upload code path used by both create and edit.
 - Save button visually disabled (greyed out, cursor not-allowed) while upload in flight.
 - Cancel during upload aborts and removes any orphaned blob.
 - Existing-track replace/remove become icon-only with `title` tooltips.
 
 **Non-Goals:**
+
 - Reworking `gpx-storage-service` API (no abort signal — keep cancel-via-flag).
 - Resumable uploads, retry UI, progress percentage.
 

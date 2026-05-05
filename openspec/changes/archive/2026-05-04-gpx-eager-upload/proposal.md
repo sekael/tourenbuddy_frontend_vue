@@ -13,9 +13,11 @@ GPX upload only pre-uploads in create mode. In edit mode, upload happens on Save
 ## Capabilities
 
 ### New Capabilities
+
 <!-- none -->
 
 ### Modified Capabilities
+
 - `gpx-display`: Add requirements for eager pre-upload in edit mode, save-button disable-during-upload, cancel rollback, and icon-only replace/remove buttons for existing tracks.
 
 ## Impact

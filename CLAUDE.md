@@ -30,7 +30,6 @@ Vue 3 tour-planning app. Users pin tour objectives on Swiss topo map (Swisstopo)
 ```bash
 npm run dev          # dev server
 npm run test         # all tests
-npm run format       # enforced in CI
 npm run type-check
 
 npx eslint           # zero warnings — enforced in CI

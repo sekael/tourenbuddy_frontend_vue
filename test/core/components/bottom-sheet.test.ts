@@ -1,6 +1,27 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
+
+// happy-dom stubs for APIs not supported in test env
+beforeEach(() => {
+  Object.defineProperty(window, 'innerHeight', { value: 1000, writable: true, configurable: true })
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  )
+  // @ts-expect-error stubbing browser API for tests
+  HTMLElement.prototype.setPointerCapture = vi.fn()
+  // @ts-expect-error stubbing browser API for tests
+  HTMLElement.prototype.releasePointerCapture = vi.fn()
+})
+
+function firePointer(el: Element, type: string, clientY: number, pointerId = 1) {
+  el.dispatchEvent(new PointerEvent(type, { clientY, pointerId, bubbles: true, cancelable: true }))
+}
 
 describe('bottomSheet', () => {
   it('should render the title when provided', () => {
@@ -95,6 +116,177 @@ describe('bottomSheet', () => {
         props: { title: 'Test', collapsed: true, showBack: true },
       })
       expect(wrapper.find('.back-btn').exists()).toBe(false)
+    })
+  })
+
+  describe('drag handle', () => {
+    it('should render drag handle with correct a11y attributes', () => {
+      const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
+      const handle = wrapper.find('.drag-handle')
+      expect(handle.exists()).toBe(true)
+      expect(handle.attributes('role')).toBe('separator')
+      expect(handle.attributes('aria-orientation')).toBe('horizontal')
+      expect(handle.attributes('tabindex')).toBe('0')
+      expect(handle.attributes('aria-valuemin')).toBe('0')
+      expect(handle.attributes('aria-valuemax')).toBe('2')
+    })
+
+    it('should not render drag handle when collapsed', () => {
+      const wrapper = mount(BottomSheet, { props: { title: 'Test', collapsed: true } })
+      expect(wrapper.find('.drag-handle').exists()).toBe(false)
+    })
+
+    it('should not start drag when collapsed prop is true', async () => {
+      const wrapper = mount(BottomSheet, { props: { title: 'Test', collapsed: true } })
+      // collapsed → no handle → no drag possible; inline height style should be empty
+      const style = wrapper.find('.bottom-sheet').attributes('style') ?? ''
+      expect(style).not.toContain('height')
+    })
+  })
+
+  describe('drag resize', () => {
+    it('should set height to default snap on mount', async () => {
+      const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
+      await nextTick()
+      // default snap = Math.round(1000 * 0.4) = 400
+      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 400px')
+    })
+
+    it('should update height during drag', async () => {
+      const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
+      await nextTick()
+      const handle = wrapper.find('.drag-handle').element
+      // Start drag at y=500 (sheet is at 400px)
+      firePointer(handle, 'pointerdown', 500)
+      // Move up 80px → newHeight = 400 - (420 - 500) = 400 + 80 = 480
+      firePointer(handle, 'pointermove', 420)
+      await nextTick()
+      const style = wrapper.find('.bottom-sheet').attributes('style') ?? ''
+      expect(style).toContain('height: 480px')
+    })
+
+    it('should clamp height to expanded ceiling during drag', async () => {
+      const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
+      await nextTick()
+      const handle = wrapper.find('.drag-handle').element
+      firePointer(handle, 'pointerdown', 500)
+      // Move up by 400px → would be 800px but clamped to 600 (expandedHeight)
+      firePointer(handle, 'pointermove', 100)
+      await nextTick()
+      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 600px')
+    })
+
+    it('should clamp height to peek floor during drag', async () => {
+      const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
+      await nextTick()
+      const handle = wrapper.find('.drag-handle').element
+      firePointer(handle, 'pointerdown', 300)
+      // Move down by 600px → would be -200 but clamped to peekHeight (~0 in test env)
+      firePointer(handle, 'pointermove', 900)
+      await nextTick()
+      const styleAttr = wrapper.find('.bottom-sheet').attributes('style') ?? ''
+      // Height should be at the peek floor (≤ defaultHeight)
+      const heightMatch = styleAttr.match(/height: (\d+)px/)
+      const h = heightMatch ? Number(heightMatch[1]) : 999
+      expect(h).toBeLessThanOrEqual(400)
+    })
+
+    it('should snap to expanded when released after large upward drag', async () => {
+      const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
+      await nextTick()
+      const handle = wrapper.find('.drag-handle').element
+      firePointer(handle, 'pointerdown', 500)
+      // Move up ~200px → currentHeight ≈ 600 → nearest snap = expanded
+      firePointer(handle, 'pointermove', 300)
+      firePointer(handle, 'pointerup', 300)
+      await nextTick()
+      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 600px')
+    })
+
+    it('should snap back to default when tap (< 4px movement)', async () => {
+      const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
+      await nextTick()
+      const handle = wrapper.find('.drag-handle').element
+      firePointer(handle, 'pointerdown', 500)
+      // Move only 2px — below threshold
+      firePointer(handle, 'pointermove', 502)
+      firePointer(handle, 'pointerup', 502)
+      await nextTick()
+      // Should remain at the current snap (default = 400px)
+      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 400px')
+    })
+  })
+
+  describe('keyboard navigation', () => {
+    async function mountAndGetHandle() {
+      const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
+      await nextTick()
+      return wrapper
+    }
+
+    it('should cycle to expanded snap on ArrowUp from default', async () => {
+      const wrapper = await mountAndGetHandle()
+      // starts at default (index 1), ArrowUp → expanded (index 2)
+      await wrapper.find('.drag-handle').trigger('keydown', { key: 'ArrowUp' })
+      await nextTick()
+      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 600px')
+      expect(wrapper.find('.drag-handle').attributes('aria-valuenow')).toBe('2')
+    })
+
+    it('should cycle to peek snap on ArrowDown from default', async () => {
+      const wrapper = await mountAndGetHandle()
+      // starts at default (index 1), ArrowDown → peek (index 0)
+      await wrapper.find('.drag-handle').trigger('keydown', { key: 'ArrowDown' })
+      await nextTick()
+      // peek height = 0 in test env (offsetHeight = 0)
+      const style = wrapper.find('.bottom-sheet').attributes('style') ?? ''
+      const h = Number(style.match(/height: (\d+)px/)?.[1] ?? -1)
+      expect(h).toBeLessThan(400)
+      expect(wrapper.find('.drag-handle').attributes('aria-valuenow')).toBe('0')
+    })
+
+    it('should not advance past expanded on ArrowUp', async () => {
+      const wrapper = await mountAndGetHandle()
+      // Go to expanded first
+      await wrapper.find('.drag-handle').trigger('keydown', { key: 'Home' })
+      await nextTick()
+      expect(wrapper.find('.drag-handle').attributes('aria-valuenow')).toBe('2')
+      // ArrowUp again — should stay at expanded
+      await wrapper.find('.drag-handle').trigger('keydown', { key: 'ArrowUp' })
+      await nextTick()
+      expect(wrapper.find('.drag-handle').attributes('aria-valuenow')).toBe('2')
+    })
+
+    it('should jump to expanded on Home key', async () => {
+      const wrapper = await mountAndGetHandle()
+      await wrapper.find('.drag-handle').trigger('keydown', { key: 'Home' })
+      await nextTick()
+      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 600px')
+    })
+
+    it('should jump to peek on End key', async () => {
+      const wrapper = await mountAndGetHandle()
+      await wrapper.find('.drag-handle').trigger('keydown', { key: 'End' })
+      await nextTick()
+      const style = wrapper.find('.bottom-sheet').attributes('style') ?? ''
+      const h = Number(style.match(/height: (\d+)px/)?.[1] ?? -1)
+      expect(h).toBeLessThan(400)
+      expect(wrapper.find('.drag-handle').attributes('aria-valuenow')).toBe('0')
+    })
+  })
+
+  describe('scrolling content', () => {
+    it('should not modify sheet height when content area receives scroll events', async () => {
+      const wrapper = mount(BottomSheet, {
+        props: { title: 'Test' },
+        slots: { default: '<div style="height:2000px">tall content</div>' },
+      })
+      await nextTick()
+      const initialStyle = wrapper.find('.bottom-sheet').attributes('style')
+      // Dispatch wheel/scroll on the content — should not affect height
+      wrapper.find('.content').element.dispatchEvent(new Event('scroll', { bubbles: false }))
+      await nextTick()
+      expect(wrapper.find('.bottom-sheet').attributes('style')).toBe(initialStyle)
     })
   })
 })

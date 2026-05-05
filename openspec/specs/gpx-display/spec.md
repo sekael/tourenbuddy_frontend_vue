@@ -3,7 +3,9 @@
 ## Purpose
 
 Defines requirements for GPX file upload, track rendering on the map, and track storage.
+
 ## Requirements
+
 ### Requirement: GPX file upload
 
 The tour creation and edit forms SHALL allow users to upload a GPX file (`.gpx` extension, max 2MB). Uploads SHALL begin eagerly when the file is picked.
@@ -136,4 +138,3 @@ When the form displays a GPX file (either an existing track loaded from the tour
 
 - **WHEN** the user hovers the Replace or Remove icon button
 - **THEN** the browser SHALL display a tooltip with the localized action label
-

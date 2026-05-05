@@ -28,6 +28,9 @@
     "drawer": {
       "close": "Schliessen",
       "back": "Zurück"
+    },
+    "bottomSheet": {
+      "resizeHandle": "Panel anpassen"
     }
   },
   "auth": {
