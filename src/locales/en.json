@@ -366,6 +366,9 @@
       "pickerTooltip": "Change map style",
       "base": "Base",
       "classic": "Classic"
+    },
+    "cluster": {
+      "label": "Cluster of {count} tours"
     }
   },
   "i18n": {

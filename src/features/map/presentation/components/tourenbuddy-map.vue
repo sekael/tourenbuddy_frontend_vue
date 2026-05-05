@@ -3,6 +3,7 @@ import type { Map as MapLibreMap } from 'maplibre-gl'
 import maplibregl from 'maplibre-gl'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { SWISSTOPO_STYLES } from '@/features/map/data/swisstopo-styles'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
@@ -14,6 +15,8 @@ const emit = defineEmits<{
   tourClicked: [tourId: string]
   mapBackgroundClick: []
 }>()
+
+const { t } = useI18n({ useScope: 'global' })
 
 const mapContainer = ref<HTMLDivElement | null>(null)
 let mapInstance: MapLibreMap | null = null
@@ -46,9 +49,11 @@ onMounted(() => {
   map.value = mapInstance
 
   mapInstance.on('load', async () => {
-    markerLayer = useToursMarkerLayer(mapInstance!, (tourId) => {
-      emit('tourClicked', tourId)
-    })
+    markerLayer = useToursMarkerLayer(
+      mapInstance!,
+      (tourId) => { emit('tourClicked', tourId) },
+      count => t('map.cluster.label', { count }),
+    )
     await markerLayer.setup()
     markerLayer.updateTours(tours.value, selectedTourId.value)
     markerLayer.updatePreview(editPreviewGoal.value, selectedTour.value?.tourType ?? null)
@@ -69,6 +74,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  markerLayer?.cleanup()
   mapInstance?.remove()
   mapInstance = null
   map.value = null
@@ -91,6 +97,7 @@ watch(currentStyleIndex, (index) => {
     return
   const style = SWISSTOPO_STYLES[index]
   if (style) {
+    markerLayer?.cleanup()
     mapInstance.setStyle(style.style)
     mapInstance.once('style.load', async () => {
       await markerLayer?.setup()

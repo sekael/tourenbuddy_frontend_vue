@@ -366,6 +366,9 @@
       "pickerTooltip": "Kartenstil ändern",
       "base": "Basiskarte",
       "classic": "Klassisch"
+    },
+    "cluster": {
+      "label": "Cluster aus {count} Touren"
     }
   },
   "i18n": {
