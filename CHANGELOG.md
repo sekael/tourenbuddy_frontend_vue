@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.12.0...tourenbuddy-frontend-v0.13.0) (2026-05-05)
+
+
+### Features
+
+* Mobile tooltips ([#109](https://github.com/sekael/tourenbuddy_frontend_vue/issues/109)) ([43d9f20](https://github.com/sekael/tourenbuddy_frontend_vue/commit/43d9f2010c43cedd68697c2d6ef3092b0da0a735))
+
 ## [0.12.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.11.0...tourenbuddy-frontend-v0.12.0) (2026-05-05)
 
 
