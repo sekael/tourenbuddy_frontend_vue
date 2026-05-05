@@ -2,6 +2,7 @@
 import type { PhoneEntry } from '@/features/contacts/presentation/stores/contacts-store'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 
@@ -215,14 +216,15 @@ function handleSubmit() {
           type="button"
           class="primary-star"
           :class="{ 'primary-star--selected': row.isPrimary }"
-          :title="
-            row.isPrimary
-              ? t('contacts.form.primaryPhoneTooltip')
-              : t('contacts.form.setAsPrimaryTooltip')
-          "
           @click="selectPrimary(i)"
         >
-          <span class="material-symbols-outlined">star</span>
+          <BaseTooltip
+            :text="row.isPrimary
+              ? t('contacts.form.primaryPhoneTooltip')
+              : t('contacts.form.setAsPrimaryTooltip')"
+          >
+            <span class="material-symbols-outlined">star</span>
+          </BaseTooltip>
         </button>
         <div class="phone-inputs">
           <input
@@ -247,10 +249,11 @@ function handleSubmit() {
           v-if="phoneRows.length > 1"
           type="button"
           class="remove-phone-btn"
-          :title="t('contacts.form.removePhoneTooltip')"
           @click="removePhoneRow(i)"
         >
-          <span class="material-symbols-outlined">remove_circle_outline</span>
+          <BaseTooltip :text="t('contacts.form.removePhoneTooltip')">
+            <span class="material-symbols-outlined">remove_circle_outline</span>
+          </BaseTooltip>
         </button>
       </div>
 

@@ -5,6 +5,7 @@ import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
+import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import {
   formatPhoneDisplay,
@@ -400,11 +401,9 @@ function onFormPhoneInput(phone: string) {
           <div class="contact-info">
             <span class="contact-name-row">
               <span class="contact-name">{{ resolveContactName(contact) }}</span>
-              <span
-                v-if="friendContactIds.has(contact.id)"
-                class="material-symbols-outlined friend-icon"
-                :title="t('friendships.tooltip')"
-              >group</span>
+              <BaseTooltip v-if="friendContactIds.has(contact.id)" :text="t('friendships.tooltip')">
+                <span class="material-symbols-outlined friend-icon">group</span>
+              </BaseTooltip>
             </span>
             <span v-if="contact.displayName" class="contact-subtitle">
               {{ resolveFullName(contact) }}
@@ -456,18 +455,19 @@ function onFormPhoneInput(phone: string) {
                 {{ formatPhoneDisplay(result.primaryPhone) }}
                 <span v-if="result.extraPhoneCount > 0" class="extra-phones">+{{ result.extraPhoneCount }} more</span>
               </span>
-              <span
+              <BaseTooltip
                 v-if="result.rawPhoneNumbers.length > 0"
-                class="result-phone result-phone-warning"
-                :title="`Couldn't parse: ${result.rawPhoneNumbers.join(', ')}`"
+                :text="`Couldn't parse: ${result.rawPhoneNumbers.join(', ')}`"
               >
-                ⚠ {{ t('contacts.list.invalidPhoneWarning') }}: {{ result.rawPhoneNumbers[0]
-                }}{{
-                  result.rawPhoneNumbers.length > 1
-                    ? ` +${result.rawPhoneNumbers.length - 1} more`
-                    : ''
-                }}
-              </span>
+                <span class="result-phone result-phone-warning">
+                  ⚠ {{ t('contacts.list.invalidPhoneWarning') }}: {{ result.rawPhoneNumbers[0]
+                  }}{{
+                    result.rawPhoneNumbers.length > 1
+                      ? ` +${result.rawPhoneNumbers.length - 1} more`
+                      : ''
+                  }}
+                </span>
+              </BaseTooltip>
               <template v-if="importRowMatches[i]">
                 <ConnectPrompt
                   v-for="uid in importRowMatches[i]"

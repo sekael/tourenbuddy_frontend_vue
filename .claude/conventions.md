@@ -9,7 +9,7 @@
 - No `console.log()` — use logger composable
 - Handle errors with store state (`loading`, `error`, `data` refs)
 - `computed()` for derived state, `watch()` / `watchEffect()` for side effects
-- ALWAYS run `npx eslint . --fix` after changes
+- ALWAYS run `npx eslint . --fix` after changes — NEVER use `npm run format`
 - NEVER change or format CHANGELOG, this is handled by release-please
 
 ## Pinia

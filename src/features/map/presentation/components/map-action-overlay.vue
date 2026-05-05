@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useMapOverlay } from '../composables/use-map-overlay'
 import MapBaseMapPanel from './map-base-map-panel.vue'
 import MapSpeedDialMenu from './map-speed-dial-menu.vue'
@@ -51,17 +52,17 @@ function closeMenu() {
   <div v-if="!isPickingLocation" class="overlay" @keydown.esc="closeMenu">
     <div v-if="isOpen" class="backdrop" aria-hidden="true" @click="closeMenu" />
 
-    <button
-      v-if="showCompass"
-      class="compass-fab"
-      :title="t('map.overlay.compassTooltip')"
-      @click="emit('resetBearing')"
-    >
-      <span
-        class="material-symbols-outlined compass-icon"
-        :style="{ transform: `rotate(${iconRotation}deg)` }"
-      >explore</span>
-    </button>
+    <BaseTooltip v-if="showCompass" :text="t('map.overlay.compassTooltip')">
+      <button
+        class="compass-fab"
+        @click="emit('resetBearing')"
+      >
+        <span
+          class="material-symbols-outlined compass-icon"
+          :style="{ transform: `rotate(${iconRotation}deg)` }"
+        >explore</span>
+      </button>
+    </BaseTooltip>
 
     <Transition name="panel">
       <MapSpeedDialMenu

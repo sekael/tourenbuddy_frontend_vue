@@ -3,6 +3,7 @@ import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseTooltip from '@/core/components/base-tooltip.vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
@@ -357,47 +358,42 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
         <!-- Tour type -->
         <div v-if="tour.tourType" class="detail-row">
-          <span
-            class="detail-icon material-symbols-outlined"
-            :title="t('tours.infoSheet.iconTooltipType')"
-          >{{ TOUR_TYPE_ICONS[tour.tourType] }}</span>
+          <BaseTooltip :text="t('tours.infoSheet.iconTooltipType')">
+            <span class="detail-icon material-symbols-outlined">{{ TOUR_TYPE_ICONS[tour.tourType] }}</span>
+          </BaseTooltip>
           <span>{{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[tour.tourType]}` as any) }}</span>
         </div>
 
         <!-- Planned date -->
         <div v-if="formattedDate" class="detail-row">
-          <span
-            class="detail-icon material-symbols-outlined"
-            :title="t('tours.infoSheet.iconTooltipDate')"
-          >calendar_today</span>
+          <BaseTooltip :text="t('tours.infoSheet.iconTooltipDate')">
+            <span class="detail-icon material-symbols-outlined">calendar_today</span>
+          </BaseTooltip>
           <span>{{ formattedDate }}</span>
         </div>
 
         <!-- Goal coordinates -->
         <div class="detail-row">
-          <span
-            class="detail-icon material-symbols-outlined"
-            :title="t('tours.infoSheet.iconTooltipGoal')"
-          >location_on</span>
+          <BaseTooltip :text="t('tours.infoSheet.iconTooltipGoal')">
+            <span class="detail-icon material-symbols-outlined">location_on</span>
+          </BaseTooltip>
           <span class="coords">{{ coordinates }}</span>
         </div>
 
         <!-- Elevation -->
         <div v-if="formattedElevation" class="detail-row">
-          <span
-            class="detail-icon material-symbols-outlined"
-            :title="t('tours.infoSheet.iconTooltipElevation')"
-          >landscape</span>
+          <BaseTooltip :text="t('tours.infoSheet.iconTooltipElevation')">
+            <span class="detail-icon material-symbols-outlined">landscape</span>
+          </BaseTooltip>
           <span>{{ formattedElevation }}</span>
         </div>
 
         <!-- Start / end points -->
         <template v-if="startPointText">
           <div class="detail-row">
-            <span
-              class="detail-icon material-symbols-outlined"
-              :title="t('tours.infoSheet.iconTooltipStartPoint')"
-            >home</span>
+            <BaseTooltip :text="t('tours.infoSheet.iconTooltipStartPoint')">
+              <span class="detail-icon material-symbols-outlined">home</span>
+            </BaseTooltip>
             <span v-if="tour.startPointName" class="point-meta">
               {{ tour.startPointName }}
               <span v-if="tour.startPointElevation != null" class="point-elevation">
@@ -407,17 +403,15 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
             <span v-else class="coords">{{ startPointText }}</span>
           </div>
           <div v-if="isOneWayToGoal" class="detail-row">
-            <span
-              class="detail-icon material-symbols-outlined"
-              :title="t('tours.infoSheet.iconTooltipEndPoint')"
-            >directions</span>
+            <BaseTooltip :text="t('tours.infoSheet.iconTooltipEndPoint')">
+              <span class="detail-icon material-symbols-outlined">directions</span>
+            </BaseTooltip>
             <span class="round-trip-hint">{{ t('tours.infoSheet.oneWayToGoalIndicator') }}</span>
           </div>
           <div v-else class="detail-row">
-            <span
-              class="detail-icon material-symbols-outlined"
-              :title="t('tours.infoSheet.iconTooltipEndPoint')"
-            >flag</span>
+            <BaseTooltip :text="t('tours.infoSheet.iconTooltipEndPoint')">
+              <span class="detail-icon material-symbols-outlined">flag</span>
+            </BaseTooltip>
             <span v-if="isRoundTrip" class="round-trip-hint">{{
               t('tours.infoSheet.roundTrip')
             }}</span>
@@ -435,10 +429,9 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
         <!-- Seasons -->
         <div v-if="tour.seasons && tour.seasons.length > 0" class="detail-row align-start">
-          <span
-            class="detail-icon material-symbols-outlined"
-            :title="t('tours.infoSheet.iconTooltipSeasons')"
-          >wb_sunny</span>
+          <BaseTooltip :text="t('tours.infoSheet.iconTooltipSeasons')">
+            <span class="detail-icon material-symbols-outlined">wb_sunny</span>
+          </BaseTooltip>
           <div class="season-tags">
             <span v-for="season in tour.seasons" :key="season" class="season-tag">
               {{ t(`tours.season.${season}` as any) }}
@@ -448,10 +441,9 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
         <!-- Description -->
         <div v-if="tour.description" class="detail-row align-start">
-          <span
-            class="detail-icon material-symbols-outlined"
-            :title="t('tours.infoSheet.iconTooltipDescription')"
-          >description</span>
+          <BaseTooltip :text="t('tours.infoSheet.iconTooltipDescription')">
+            <span class="detail-icon material-symbols-outlined">description</span>
+          </BaseTooltip>
           <p class="description-text">
             <template v-for="(segment, i) in linkifyText(tour.description)" :key="i">
               <a
@@ -470,10 +462,9 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
         <!-- Equipment -->
         <div v-if="tour.equipment" class="detail-row align-start">
-          <span
-            class="detail-icon material-symbols-outlined"
-            :title="t('tours.infoSheet.iconTooltipEquipment')"
-          >hardware</span>
+          <BaseTooltip :text="t('tours.infoSheet.iconTooltipEquipment')">
+            <span class="detail-icon material-symbols-outlined">hardware</span>
+          </BaseTooltip>
           <p class="detail-text">
             {{ tour.equipment }}
           </p>
@@ -481,10 +472,9 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
         <!-- Notes -->
         <div v-if="tour.notes" class="detail-row align-start">
-          <span
-            class="detail-icon material-symbols-outlined"
-            :title="t('tours.infoSheet.iconTooltipNotes')"
-          >sticky_note_2</span>
+          <BaseTooltip :text="t('tours.infoSheet.iconTooltipNotes')">
+            <span class="detail-icon material-symbols-outlined">sticky_note_2</span>
+          </BaseTooltip>
           <p class="detail-text">
             {{ tour.notes }}
           </p>
@@ -492,10 +482,9 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
         <!-- GPX track download -->
         <div v-if="tour.gpxFilepath" class="detail-row">
-          <span
-            class="detail-icon material-symbols-outlined"
-            :title="t('tours.infoSheet.iconTooltipGpxTrack')"
-          >route</span>
+          <BaseTooltip :text="t('tours.infoSheet.iconTooltipGpxTrack')">
+            <span class="detail-icon material-symbols-outlined">route</span>
+          </BaseTooltip>
           <button type="button" class="gpx-download-btn" @click="handleDownloadGpx">
             <span class="material-symbols-outlined">download</span>
             {{ t('tours.infoSheet.downloadGpxBtn') }}
@@ -504,10 +493,9 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
         <!-- Partners -->
         <div v-if="partners.length > 0" class="detail-row align-start">
-          <span
-            class="detail-icon material-symbols-outlined"
-            :title="t('tours.infoSheet.iconTooltipPartners')"
-          >group</span>
+          <BaseTooltip :text="t('tours.infoSheet.iconTooltipPartners')">
+            <span class="detail-icon material-symbols-outlined">group</span>
+          </BaseTooltip>
           <div class="partner-chips-section">
             <div class="partner-chips">
               <ContactChip
@@ -524,7 +512,6 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
               type="button"
               class="group-sms-btn"
               data-testid="group-sms-btn"
-              :title="t('tours.infoSheet.messageAll')"
               @click="showGroupSmsDialog = true"
             >
               <span class="material-symbols-outlined">sms</span>

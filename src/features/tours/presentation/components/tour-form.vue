@@ -5,6 +5,7 @@ import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
@@ -639,28 +640,30 @@ function handleSubmit() {
                 t('tours.form.gpxUploading')
               }}</span>
             </span>
-            <label
-              class="gpx-icon-btn"
-              :title="t('tours.form.gpxReplaceTooltip')"
-              :aria-label="t('tours.form.gpxReplaceTooltip')"
-            >
-              <span class="material-symbols-outlined">upload_file</span>
-              <input
-                type="file"
-                accept=".gpx,application/gpx+xml"
-                class="hidden-input"
-                @change="handleGpxUpload"
+            <BaseTooltip :text="t('tours.form.gpxReplaceTooltip')">
+              <label
+                class="gpx-icon-btn"
+                :aria-label="t('tours.form.gpxReplaceTooltip')"
               >
-            </label>
-            <button
-              type="button"
-              class="gpx-icon-btn gpx-remove-btn"
-              :title="t('tours.form.gpxRemoveTooltip')"
-              :aria-label="t('tours.form.gpxRemoveTooltip')"
-              @click="handleRemoveGpx"
-            >
-              <span class="material-symbols-outlined">close</span>
-            </button>
+                <span class="material-symbols-outlined">upload_file</span>
+                <input
+                  type="file"
+                  accept=".gpx,application/gpx+xml"
+                  class="hidden-input"
+                  @change="handleGpxUpload"
+                >
+              </label>
+            </BaseTooltip>
+            <BaseTooltip :text="t('tours.form.gpxRemoveTooltip')">
+              <button
+                type="button"
+                class="gpx-icon-btn gpx-remove-btn"
+                :aria-label="t('tours.form.gpxRemoveTooltip')"
+                @click="handleRemoveGpx"
+              >
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </BaseTooltip>
           </div>
           <div v-else class="gpx-empty-row">
             <label class="pick-btn gpx-upload-btn">
