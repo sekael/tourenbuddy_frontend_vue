@@ -38,6 +38,7 @@ function makeStubMap(individualFeatures: object[] = []) {
     addImage: vi.fn(),
     easeTo: vi.fn(),
     getZoom: vi.fn(() => 10),
+    getMaxZoom: vi.fn(() => 22),
     getBounds: vi.fn(() => ({
       getWest: () => 7,
       getSouth: () => 46,
@@ -143,18 +144,34 @@ describe('useToursMarkerLayer — setup', () => {
     const layer = useToursMarkerLayer(map, vi.fn(), () => 'Cluster')
     await layer.setup()
 
-    // Trigger all cluster-sync events
     ;(map as ReturnType<typeof makeStubMap>).emit('move')
     ;(map as ReturnType<typeof makeStubMap>).emit('moveend')
     ;(map as ReturnType<typeof makeStubMap>).emit('idle')
 
-    // querySourceFeatures should NOT have been called with the cluster filter
+    // querySourceFeatures must never be called with the cluster filter
     const calls = (map.querySourceFeatures as ReturnType<typeof vi.fn>).mock.calls
     const clusterCalls = calls.filter(
       (args: unknown[]) =>
-        Array.isArray(args[1]?.filter) && args[1].filter[1] === 'point_count',
+        Array.isArray((args as [string, { filter?: unknown[] }])[1]?.filter)
+        && (args as [string, { filter?: unknown[] }])[1]?.filter?.[1] === 'point_count',
     )
     expect(clusterCalls).toHaveLength(0)
+  })
+
+  it('should add source without cluster:true', async () => {
+    vi.resetModules()
+    const { useToursMarkerLayer } = await import(
+      '@/features/map/presentation/components/tours-marker-layer'
+    )
+    const map = makeStubMap() as unknown as import('maplibre-gl').Map
+    const layer = useToursMarkerLayer(map, vi.fn(), () => 'Cluster')
+    await layer.setup()
+
+    const tourSourceCall = (map.addSource as ReturnType<typeof vi.fn>).mock.calls.find(
+      (args: unknown[]) => args[0] === 'tours',
+    )
+    expect(tourSourceCall).toBeDefined()
+    expect((tourSourceCall as [string, Record<string, unknown>])[1]).not.toHaveProperty('cluster')
   })
 })
 
@@ -238,55 +255,7 @@ describe('opacity bridge — pie-marker', () => {
     expect(el.style.opacity).toBe('0')
     expect(onDone).not.toHaveBeenCalled()
 
-    // Simulate transitionend
     el.dispatchEvent(new Event('transitionend'))
     expect(onDone).toHaveBeenCalledOnce()
-  })
-})
-
-describe('anticipatory staging', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.resetModules()
-  })
-
-  it('should stage markers at opacity 0 on zoomstart', async () => {
-    const { useToursMarkerLayer } = await import(
-      '@/features/map/presentation/components/tours-marker-layer'
-    )
-    const map = makeStubMap() as unknown as import('maplibre-gl').Map
-    const layer = useToursMarkerLayer(map, vi.fn(), () => 'Cluster')
-    await layer.setup()
-
-    // Loading tours triggers index.load — with empty map getBounds/getZoom stubs, no staging
-    layer.updateTours([], null)
-
-    const maplibregl = await import('maplibre-gl')
-    const MarkerMock = vi.mocked(maplibregl.Marker)
-    const callCountBefore = MarkerMock.mock.calls.length
-
-    // Trigger zoomstart — anticipatory staging runs
-    ;(map as ReturnType<typeof makeStubMap>).emit('zoomstart')
-
-    // Any staged markers (if index returned clusters) would have opacity 0
-    const newCalls = MarkerMock.mock.calls.slice(callCountBefore)
-    for (const [opts] of newCalls as [{ element?: HTMLElement }][]) {
-      if (opts?.element) {
-        expect(opts.element.style.opacity).toBe('0')
-      }
-    }
-  })
-
-  it('should promote staged marker to cache on zoomend if in authoritative snapshot', async () => {
-    const { useToursMarkerLayer } = await import(
-      '@/features/map/presentation/components/tours-marker-layer'
-    )
-    const map = makeStubMap() as unknown as import('maplibre-gl').Map
-    const layer = useToursMarkerLayer(map, vi.fn(), () => 'Cluster')
-    await layer.setup()
-
-    // No tours so no clusters — just verify zoomend doesn't throw
-    ;(map as ReturnType<typeof makeStubMap>).emit('zoomstart')
-    expect(() => (map as ReturnType<typeof makeStubMap>).emit('zoomend')).not.toThrow()
   })
 })

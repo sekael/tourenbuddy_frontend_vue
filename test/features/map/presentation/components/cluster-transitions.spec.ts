@@ -1,133 +1,86 @@
-import type { ClusterSnapshot } from '@/features/map/presentation/components/cluster-transitions'
+import type { RenderedNode } from '@/features/map/presentation/components/cluster-transitions'
 import { describe, expect, it } from 'vitest'
-import { diffSnapshots, snapshotClusters } from '@/features/map/presentation/components/cluster-transitions'
-import {
-  CLUSTER_MAX_ZOOM,
-  CLUSTER_MIN_POINTS,
-  CLUSTER_RADIUS,
-} from '@/features/map/presentation/components/tours-marker-layer'
+import { diffForests } from '@/features/map/presentation/components/cluster-transitions'
+import { CLUSTER_RADIUS } from '@/features/map/presentation/components/tours-marker-layer'
 
-// Minimal stub matching the ClusterIndex interface
-function makeStubIndex(clusters: Array<{ id: number, lngLat: [number, number], leafIds: string[] }>) {
-  return {
-    getClusters: (_bbox: [number, number, number, number], _zoom: number) =>
-      clusters.map(c => ({
-        geometry: { coordinates: c.lngLat },
-        properties: { cluster: true, cluster_id: c.id, point_count: c.leafIds.length },
-      })),
-    getLeaves: (clusterId: number) => {
-      const cluster = clusters.find(c => c.id === clusterId)
-      return (cluster?.leafIds ?? []).map(id => ({ properties: { id } }))
-    },
-  }
+function node(id: string, kind: 'leaf' | 'internal', centroid: [number, number], leafIds: string[]): RenderedNode {
+  return { id, kind, centroid, leafIds }
 }
 
-describe('snapshotClusters (JS index)', () => {
-  it('should return empty map when index has no clusters', () => {
-    const index = makeStubIndex([])
-    const snapshot = snapshotClusters(index, [7, 46, 9, 48], 10)
-    expect(snapshot.size).toBe(0)
-  })
-
-  it('should return one entry per cluster with populated leafIds', () => {
-    const index = makeStubIndex([
-      { id: 1, lngLat: [8.0, 47.0], leafIds: ['tour-a', 'tour-b'] },
-    ])
-    const snapshot = snapshotClusters(index, [7, 46, 9, 48], 10)
-    expect(snapshot.size).toBe(1)
-    expect(snapshot.get(1)!.lngLat).toEqual([8.0, 47.0])
-    expect(snapshot.get(1)!.leafIds).toEqual(['tour-a', 'tour-b'])
-  })
-
-  it('should return entries for multiple clusters with correct leafIds each', () => {
-    const index = makeStubIndex([
-      { id: 1, lngLat: [8.0, 47.0], leafIds: ['a', 'b'] },
-      { id: 2, lngLat: [8.5, 47.5], leafIds: ['c'] },
-    ])
-    const snapshot = snapshotClusters(index, [7, 46, 9, 48], 10)
-    expect(snapshot.size).toBe(2)
-    expect(snapshot.get(2)!.leafIds).toEqual(['c'])
-  })
-
-  it('should skip features without cluster property', () => {
-    const index = {
-      getClusters: () => [
-        { geometry: { coordinates: [8, 47] }, properties: { id: 'individual-1' } },
-      ],
-      getLeaves: () => [],
-    }
-    const snapshot = snapshotClusters(index, [7, 46, 9, 48], 10)
-    expect(snapshot.size).toBe(0)
-  })
-})
-
 describe('cluster config constants', () => {
-  it('gL source and JS index should share CLUSTER_RADIUS = 50', () => {
+  it('should export CLUSTER_RADIUS = 50', () => {
     expect(CLUSTER_RADIUS).toBe(50)
   })
-
-  it('gL source and JS index should share CLUSTER_MAX_ZOOM = 14', () => {
-    expect(CLUSTER_MAX_ZOOM).toBe(14)
-  })
-
-  it('gL source and JS index should share CLUSTER_MIN_POINTS = 2', () => {
-    expect(CLUSTER_MIN_POINTS).toBe(2)
-  })
 })
 
-describe('diffSnapshots', () => {
-  it('should detect split leaves when cluster breaks into individuals', () => {
-    const prevSnapshot: ClusterSnapshot = new Map([
-      [10, { lngLat: [8.0, 47.0], leafIds: ['tour-a', 'tour-b'] }],
+describe('diffForests', () => {
+  it('should return empty diff when old and new are identical', () => {
+    const n1 = node('a', 'leaf', [8, 47], ['a'])
+    const old = new Map([['a', n1]])
+    const { appeared, disappeared, updated } = diffForests(old, [
+      { kind: 'leaf', id: 'a', coord: [8, 47], tourType: null },
     ])
-    const newSnapshot: ClusterSnapshot = new Map()
-    const prevIndividualIds = new Set<string>()
-    const newIndividualIds = new Set(['tour-a', 'tour-b'])
-
-    const { splitLeaves, mergeLeaves } = diffSnapshots(
-      prevSnapshot,
-      newSnapshot,
-      prevIndividualIds,
-      newIndividualIds,
-    )
-
-    expect(splitLeaves).toHaveLength(2)
-    expect(splitLeaves.map(l => l.tourId)).toContain('tour-a')
-    expect(splitLeaves.map(l => l.tourId)).toContain('tour-b')
-    expect(mergeLeaves).toHaveLength(0)
+    expect(appeared).toHaveLength(0)
+    expect(disappeared).toHaveLength(0)
+    expect(updated).toHaveLength(1)
   })
 
-  it('should detect merge leaves when individuals enter a new cluster', () => {
-    const prevSnapshot: ClusterSnapshot = new Map()
-    const newSnapshot: ClusterSnapshot = new Map([
-      [20, { lngLat: [8.0, 47.0], leafIds: ['tour-c', 'tour-d'] }],
+  it('should detect appeared nodes', () => {
+    const old: Map<string, RenderedNode> = new Map()
+    const { appeared } = diffForests(old, [
+      { kind: 'leaf', id: 'a', coord: [8, 47], tourType: null },
     ])
-    const prevIndividualIds = new Set(['tour-c', 'tour-d'])
-    const newIndividualIds = new Set<string>()
-
-    const { splitLeaves, mergeLeaves } = diffSnapshots(
-      prevSnapshot,
-      newSnapshot,
-      prevIndividualIds,
-      newIndividualIds,
-    )
-
-    expect(mergeLeaves).toHaveLength(2)
-    expect(mergeLeaves.map(l => l.tourId)).toContain('tour-c')
-    expect(splitLeaves).toHaveLength(0)
+    expect(appeared).toHaveLength(1)
+    expect(appeared[0]!.id).toBe('a')
   })
 
-  it('should produce empty lists when no transitions occur', () => {
-    const snapshot: ClusterSnapshot = new Map([
-      [1, { lngLat: [8.0, 47.0], leafIds: ['tour-a'] }],
-    ])
-    const { splitLeaves, mergeLeaves } = diffSnapshots(
-      snapshot,
-      snapshot,
-      new Set<string>(),
-      new Set<string>(),
-    )
-    expect(splitLeaves).toHaveLength(0)
-    expect(mergeLeaves).toHaveLength(0)
+  it('should detect disappeared nodes', () => {
+    const old = new Map([['a', node('a', 'leaf', [8, 47], ['a'])]])
+    const { disappeared } = diffForests(old, [])
+    expect(disappeared).toHaveLength(1)
+    expect(disappeared[0]!.id).toBe('a')
+  })
+
+  it('should handle cluster split: parent disappeared, children appeared', () => {
+    const parent = node('cluster-0', 'internal', [8, 47], ['a', 'b'])
+    const old = new Map([['cluster-0', parent]])
+
+    const newForest: import('@/features/map/presentation/components/cluster-tree').TreeNode[] = [
+      { kind: 'leaf', id: 'a', coord: [7.9, 47.0], tourType: null },
+      { kind: 'leaf', id: 'b', coord: [8.1, 47.0], tourType: null },
+    ]
+
+    const { appeared, disappeared, updated } = diffForests(old, newForest)
+    expect(disappeared).toHaveLength(1)
+    expect(disappeared[0]!.id).toBe('cluster-0')
+    expect(appeared.map(n => n.id).sort()).toEqual(['a', 'b'])
+    expect(updated).toHaveLength(0)
+  })
+
+  it('should handle merge: children disappeared, parent appeared', () => {
+    const c1 = node('a', 'leaf', [7.9, 47], ['a'])
+    const c2 = node('b', 'leaf', [8.1, 47], ['b'])
+    const old = new Map([['a', c1], ['b', c2]])
+
+    const newForest: import('@/features/map/presentation/components/cluster-tree').TreeNode[] = [
+      {
+        kind: 'internal',
+        id: 'cluster-0',
+        centroid: [8.0, 47.0],
+        leafIds: ['a', 'b'],
+        children: [
+          { kind: 'leaf', id: 'a', coord: [7.9, 47], tourType: null },
+          { kind: 'leaf', id: 'b', coord: [8.1, 47], tourType: null },
+        ],
+        splitZoom: 10,
+        totalLeafCount: 2,
+      },
+    ]
+
+    const { appeared, disappeared, updated } = diffForests(old, newForest)
+    expect(appeared).toHaveLength(1)
+    expect(appeared[0]!.id).toBe('cluster-0')
+    expect(disappeared.map(n => n.id).sort()).toEqual(['a', 'b'])
+    expect(updated).toHaveLength(0)
   })
 })

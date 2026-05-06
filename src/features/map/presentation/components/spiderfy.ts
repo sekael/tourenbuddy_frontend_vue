@@ -43,7 +43,7 @@ export interface Spiderfier {
   setup: () => void
   teardown: () => void
   spiderfy: (
-    clusterId: number,
+    clusterId: string,
     centroid: [number, number],
     leaves: SpiderfyLeaf[],
     spiderfyHint: string,
@@ -51,11 +51,11 @@ export interface Spiderfier {
   ) => void
   collapse: () => void
   isActive: () => boolean
-  getActiveClusterId: () => number | null
+  getActiveClusterId: () => string | null
 }
 
 export function createSpiderfier(map: MapLibreMap): Spiderfier {
-  let activeClusterId: number | null = null
+  let activeClusterId: string | null = null
   const leafMarkers: maplibregl.Marker[] = []
   let restoreFocusEl: HTMLElement | null = null
 
@@ -112,7 +112,7 @@ export function createSpiderfier(map: MapLibreMap): Spiderfier {
   }
 
   function spiderfy(
-    clusterId: number,
+    clusterId: string,
     centroid: [number, number],
     leaves: SpiderfyLeaf[],
     spiderfyHint: string,
