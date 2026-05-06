@@ -46,16 +46,16 @@
 
 ## 7. Manual verification
 
-- [ ] 7.1 In dev, seed two ski + two mountaineering tours within ~50 m of each other; verify a half-blue / half-red cluster with `4` label appears, splits on zoom-in with fan-out animation, re-aggregates on zoom-out with collapse animation
-- [ ] 7.2 Verify completed-tour check glyph still renders for non-clustered completed tours and is absent (or expected behavior) when those tours are inside a cluster
-- [ ] 7.3 Verify edit-mode preview marker still renders unchanged
-- [ ] 7.4 Verify style switch (Base ↔ Full Color) does not leave orphan cluster or temp animation DOM markers
-- [ ] 7.5 Toggle OS-level reduced-motion preference; verify markers swap instantly with no animation and no orphan nodes
-- [ ] 7.6 Rapidly zoom in/out repeatedly; verify no orphan DOM markers remain after motion stops
+- [x] 7.1 In dev, seed two ski + two mountaineering tours within ~50 m of each other; verify a half-blue / half-red cluster with `4` label appears, splits on zoom-in with fan-out animation, re-aggregates on zoom-out with collapse animation
+- [x] 7.2 Verify completed-tour check glyph still renders for non-clustered completed tours and is absent (or expected behavior) when those tours are inside a cluster
+- [x] 7.3 Verify edit-mode preview marker still renders unchanged
+- [x] 7.4 Verify style switch (Base ↔ Full Color) does not leave orphan cluster or temp animation DOM markers
+- [x] 7.5 Toggle OS-level reduced-motion preference; verify markers swap instantly with no animation and no orphan nodes
+- [x] 7.6 Rapidly zoom in/out repeatedly; verify no orphan DOM markers remain after motion stops
 
 ## 8. Finalize
 
 - [x] 8.1 Run `npx eslint . --fix` (project rule: never `npm run format`); ensure zero warnings
 - [x] 8.2 Run `npm run type-check` and `npm run test`; all green
-- [ ] 8.3 Prompt user to commit using a ready-to-copy conventional commit message, e.g. `feat(map): cluster overlapping tour markers as pie chart (#22)`
-- [ ] 8.4 Prompt user to push the branch and open a PR; reference issue #22 in the PR body
+- [x] 8.3 Prompt user to commit using a ready-to-copy conventional commit message, e.g. `feat(map): cluster overlapping tour markers as pie chart (#22)`
+- [x] 8.4 Prompt user to push the branch and open a PR; reference issue #22 in the PR body
