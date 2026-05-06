@@ -1,33 +1,77 @@
 import type { ClusterSnapshot } from '@/features/map/presentation/components/cluster-transitions'
 import { describe, expect, it } from 'vitest'
 import { diffSnapshots, snapshotClusters } from '@/features/map/presentation/components/cluster-transitions'
+import {
+  CLUSTER_MAX_ZOOM,
+  CLUSTER_MIN_POINTS,
+  CLUSTER_RADIUS,
+} from '@/features/map/presentation/components/tours-marker-layer'
 
-function makeMap(stubFeatures: { cluster_id: number, coords: [number, number] }[]) {
+// Minimal stub matching the ClusterIndex interface
+function makeStubIndex(clusters: Array<{ id: number, lngLat: [number, number], leafIds: string[] }>) {
   return {
-    querySourceFeatures: (_sourceId: string, _opts: unknown) => stubFeatures.map(f => ({
-      properties: { cluster_id: f.cluster_id, point_count: 2 },
-      geometry: { type: 'Point', coordinates: f.coords },
-    })),
-    getSource: () => undefined,
-  } as unknown as import('maplibre-gl').Map
+    getClusters: (_bbox: [number, number, number, number], _zoom: number) =>
+      clusters.map(c => ({
+        geometry: { coordinates: c.lngLat },
+        properties: { cluster: true, cluster_id: c.id, point_count: c.leafIds.length },
+      })),
+    getLeaves: (clusterId: number) => {
+      const cluster = clusters.find(c => c.id === clusterId)
+      return (cluster?.leafIds ?? []).map(id => ({ properties: { id } }))
+    },
+  }
 }
 
-describe('snapshotClusters', () => {
-  it('should return empty map when no cluster features', () => {
-    const map = makeMap([])
-    const snapshot = snapshotClusters(map, 'tours')
+describe('snapshotClusters (JS index)', () => {
+  it('should return empty map when index has no clusters', () => {
+    const index = makeStubIndex([])
+    const snapshot = snapshotClusters(index, [7, 46, 9, 48], 10)
     expect(snapshot.size).toBe(0)
   })
 
-  it('should record one entry per unique cluster_id', () => {
-    const map = makeMap([
-      { cluster_id: 1, coords: [8.0, 47.0] },
-      { cluster_id: 2, coords: [8.5, 47.5] },
-      { cluster_id: 1, coords: [8.0, 47.0] }, // duplicate
+  it('should return one entry per cluster with populated leafIds', () => {
+    const index = makeStubIndex([
+      { id: 1, lngLat: [8.0, 47.0], leafIds: ['tour-a', 'tour-b'] },
     ])
-    const snapshot = snapshotClusters(map, 'tours')
-    expect(snapshot.size).toBe(2)
+    const snapshot = snapshotClusters(index, [7, 46, 9, 48], 10)
+    expect(snapshot.size).toBe(1)
     expect(snapshot.get(1)!.lngLat).toEqual([8.0, 47.0])
+    expect(snapshot.get(1)!.leafIds).toEqual(['tour-a', 'tour-b'])
+  })
+
+  it('should return entries for multiple clusters with correct leafIds each', () => {
+    const index = makeStubIndex([
+      { id: 1, lngLat: [8.0, 47.0], leafIds: ['a', 'b'] },
+      { id: 2, lngLat: [8.5, 47.5], leafIds: ['c'] },
+    ])
+    const snapshot = snapshotClusters(index, [7, 46, 9, 48], 10)
+    expect(snapshot.size).toBe(2)
+    expect(snapshot.get(2)!.leafIds).toEqual(['c'])
+  })
+
+  it('should skip features without cluster property', () => {
+    const index = {
+      getClusters: () => [
+        { geometry: { coordinates: [8, 47] }, properties: { id: 'individual-1' } },
+      ],
+      getLeaves: () => [],
+    }
+    const snapshot = snapshotClusters(index, [7, 46, 9, 48], 10)
+    expect(snapshot.size).toBe(0)
+  })
+})
+
+describe('cluster config constants', () => {
+  it('gL source and JS index should share CLUSTER_RADIUS = 50', () => {
+    expect(CLUSTER_RADIUS).toBe(50)
+  })
+
+  it('gL source and JS index should share CLUSTER_MAX_ZOOM = 14', () => {
+    expect(CLUSTER_MAX_ZOOM).toBe(14)
+  })
+
+  it('gL source and JS index should share CLUSTER_MIN_POINTS = 2', () => {
+    expect(CLUSTER_MIN_POINTS).toBe(2)
   })
 })
 

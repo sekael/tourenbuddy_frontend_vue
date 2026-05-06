@@ -108,13 +108,45 @@ export interface PieMarkerResult {
  * Creates a pie-chart SVG element for a cluster marker.
  * Returns the wrapper element and an update function for in-place mutation.
  */
+export function fadeIn(el: HTMLElement): void {
+  requestAnimationFrame(() => {
+    el.style.opacity = '1'
+  })
+}
+
+export function fadeOut(el: HTMLElement, onDone: () => void): void {
+  if (el.style.opacity === '0') {
+    onDone()
+    return
+  }
+
+  let done = false
+  let timer: ReturnType<typeof setTimeout>
+  const handler = (e: Event) => {
+    if (e.target === el)
+      fire()
+  }
+  function fire() {
+    if (done)
+      return
+    done = true
+    clearTimeout(timer)
+    el.removeEventListener('transitionend', handler)
+    onDone()
+  }
+
+  el.addEventListener('transitionend', handler)
+  el.style.opacity = '0'
+  timer = setTimeout(fire, 250)
+}
+
 export function createPieMarkerElement(
   counts: CountMap,
   total: number,
   palette: PaletteMap,
 ): PieMarkerResult {
   const wrapper = document.createElement('div')
-  wrapper.style.cssText = 'cursor:pointer;'
+  wrapper.style.cssText = 'cursor:pointer;opacity:0;transition:opacity 200ms ease;'
 
   let currentSvg = buildSvgElement(counts, total, palette)
   wrapper.appendChild(currentSvg)

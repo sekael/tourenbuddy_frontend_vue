@@ -1,79 +1,41 @@
-import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl'
-
 export type ClusterSnapshot = Map<number, { lngLat: [number, number], leafIds: string[] }>
 
-/**
- * Captures the current set of visible cluster features with their centroids and leaf tour IDs.
- * Uses querySourceFeatures (sync) for centroids; leaf IDs are fetched async via getClusterLeaves.
- * Returns a snapshot map keyed by cluster_id.
- *
- * Note: leafIds may be empty if getClusterLeaves is not yet available (style not loaded).
- */
-export async function snapshotClustersAsync(
-  map: MapLibreMap,
-  sourceId: string,
-): Promise<ClusterSnapshot> {
-  const snapshot: ClusterSnapshot = new Map()
-
-  const features = map.querySourceFeatures(sourceId, {
-    filter: ['has', 'point_count'],
-  })
-
-  const source = map.getSource(sourceId) as GeoJSONSource | undefined
-  if (!source)
-    return snapshot
-
-  const deduped = new Map<number, { lngLat: [number, number] }>()
-  for (const feature of features) {
-    const clusterId = feature.properties?.cluster_id as number | undefined
-    if (clusterId == null)
-      continue
-    const coords = (feature.geometry as GeoJSON.Point).coordinates as [number, number]
-    if (!deduped.has(clusterId))
-      deduped.set(clusterId, { lngLat: coords })
-  }
-
-  await Promise.all(
-    [...deduped.entries()].map(async ([clusterId, { lngLat }]) => {
-      try {
-        const leaves = await new Promise<GeoJSON.Feature[]>((resolve, reject) => {
-          source.getClusterLeaves(clusterId, Infinity, 0, (err, result) => {
-            if (err)
-              reject(err)
-            else
-              resolve(result ?? [])
-          })
-        })
-        const leafIds = leaves
-          .map(f => f.properties?.id as string)
-          .filter(Boolean)
-        snapshot.set(clusterId, { lngLat, leafIds })
-      }
-      catch {
-        snapshot.set(clusterId, { lngLat, leafIds: [] })
-      }
-    }),
-  )
-
-  return snapshot
+interface ClusterIndex {
+  getClusters: (
+    bbox: [number, number, number, number],
+    zoom: number,
+  ) => Array<{
+    geometry: { coordinates: number[] }
+    properties: Record<string, unknown> | null
+  }>
+  getLeaves: (
+    clusterId: number,
+    limit?: number,
+    offset?: number,
+  ) => Array<{ properties: Record<string, unknown> | null }>
 }
 
 /**
- * Synchronous snapshot using only querySourceFeatures (no async leaf lookup).
- * Returns centroids only; leafIds will be empty.
- * Used on zoomstart where we need a fast synchronous snapshot.
+ * Synchronously snapshots visible clusters from a JS-side Supercluster index.
+ * Returns a map keyed by cluster_id with populated lngLat and leafIds.
  */
-export function snapshotClusters(map: MapLibreMap, sourceId: string): ClusterSnapshot {
+export function snapshotClusters(
+  index: ClusterIndex,
+  bbox: [number, number, number, number],
+  zoom: number,
+): ClusterSnapshot {
   const snapshot: ClusterSnapshot = new Map()
-  const features = map.querySourceFeatures(sourceId, {
-    filter: ['has', 'point_count'],
-  })
-  for (const feature of features) {
-    const clusterId = feature.properties?.cluster_id as number | undefined
-    if (clusterId == null || snapshot.has(clusterId))
+  const features = index.getClusters(bbox, Math.floor(zoom))
+  for (const f of features) {
+    if (!f.properties?.cluster)
       continue
-    const coords = (feature.geometry as GeoJSON.Point).coordinates as [number, number]
-    snapshot.set(clusterId, { lngLat: coords, leafIds: [] })
+    const clusterId = f.properties.cluster_id as number
+    const lngLat = f.geometry.coordinates as [number, number]
+    const leafIds = index
+      .getLeaves(clusterId, Infinity, 0)
+      .map(l => l.properties?.id as string)
+      .filter(Boolean)
+    snapshot.set(clusterId, { lngLat, leafIds })
   }
   return snapshot
 }
@@ -96,7 +58,6 @@ export function diffSnapshots(
   const splitLeaves: { tourId: string, fromClusterId: number }[] = []
   const mergeLeaves: { tourId: string, toClusterId: number }[] = []
 
-  // Split: was in prev cluster, now individual
   for (const [clusterId, { leafIds }] of prevSnapshot) {
     for (const tourId of leafIds) {
       if (newIndividualIds.has(tourId)) {
@@ -105,7 +66,6 @@ export function diffSnapshots(
     }
   }
 
-  // Merge: was individual before, now in a new cluster
   const prevLeafIds = new Set<string>()
   for (const { leafIds } of prevSnapshot.values()) {
     for (const id of leafIds)

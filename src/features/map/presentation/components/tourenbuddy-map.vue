@@ -53,6 +53,7 @@ onMounted(() => {
       mapInstance!,
       (tourId) => { emit('tourClicked', tourId) },
       count => t('map.cluster.label', { count }),
+      () => t('map.cluster.spiderfyHint'),
     )
     await markerLayer.setup()
     markerLayer.updateTours(tours.value, selectedTourId.value)

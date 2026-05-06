@@ -1,12 +1,14 @@
-import type { ExpressionSpecification, GeoJSONSource, LngLatLike, Map as MapLibreMap } from 'maplibre-gl'
+import type { ExpressionSpecification, LngLatLike, Map as MapLibreMap } from 'maplibre-gl'
 import type { ClusterSnapshot } from './cluster-transitions'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import maplibregl from 'maplibre-gl'
-import { TOUR_TYPE_COLORS, TOUR_TYPE_PREVIEW_COLORS, TOUR_TYPE_VALUES } from '@/features/tours/data/models/tour-type'
+import Supercluster from 'supercluster'
+import { TOUR_TYPE_COLORS, TOUR_TYPE_PREVIEW_COLORS } from '@/features/tours/data/models/tour-type'
 import { toursToGeoJson } from '@/features/tours/domain/entities/tour'
-import { diffSnapshots, snapshotClusters, snapshotClustersAsync } from './cluster-transitions'
-import { createPieMarkerElement } from './pie-marker'
+import { diffSnapshots } from './cluster-transitions'
+import { createPieMarkerElement, fadeIn, fadeOut } from './pie-marker'
+import { createSpiderfier } from './spiderfy'
 
 const SOURCE_ID = 'tours'
 const PREVIEW_SOURCE_ID = 'tours-preview'
@@ -17,8 +19,13 @@ const CHECK_LAYER_ID = 'tours-completed-check'
 const PREVIEW_LAYER_ID = 'tours-preview-circle'
 const CHECK_ICON_ID = 'tour-check-icon'
 
-const CLUSTER_RADIUS = 32
-const CLUSTER_MAX_ZOOM = 14
+export const CLUSTER_RADIUS = 50
+export const CLUSTER_MAX_ZOOM = 14
+export const CLUSTER_MIN_POINTS = 2
+export const SPIDERFY_CIRCLE_RADIUS_PX = 32
+export const SPIDERFY_SPIRAL_THRESHOLD = 8
+export const SPIDERFY_SPIRAL_A = 28
+export const SPIDERFY_SPIRAL_B = 5
 const ANIMATION_DURATION_MS = 300
 
 function buildMatchExpr(
@@ -32,17 +39,8 @@ function buildMatchExpr(
 const COLOR_EXPR = buildMatchExpr(TOUR_TYPE_COLORS, '#78716C')
 const PREVIEW_COLOR_EXPR = buildMatchExpr(TOUR_TYPE_PREVIEW_COLORS, '#A8A29E')
 
-/** Builds clusterProperties aggregation from TourType values — one count per type + unknown bucket. */
-export function buildClusterProperties(): Record<string, ExpressionSpecification> {
-  const props: Record<string, ExpressionSpecification> = {}
-  for (const type of TOUR_TYPE_VALUES) {
-    props[type] = ['+', ['case', ['==', ['get', 'tourType'], type], 1, 0]] as ExpressionSpecification
-  }
-  props.unknown = ['+', ['case', ['!', ['has', 'tourType']], 1, 0]] as ExpressionSpecification
-  return props
-}
+interface ClusterPointProps { id: string, tourType: TourType | null, completed: boolean }
 
-/** Loads a check SVG as a MapLibre icon image via addImage. Resolves true on success. */
 async function loadCheckIcon(map: MapLibreMap): Promise<boolean> {
   if (map.hasImage(CHECK_ICON_ID))
     return true
@@ -127,27 +125,31 @@ interface ClusterEntry {
   update: (counts: Record<string, number>, total: number) => void
 }
 
-/**
- * Manages the MapLibre GL circle layers that represent tour markers,
- * including pie-chart cluster DOM markers and animated split/merge transitions.
- */
 export function useToursMarkerLayer(
   map: MapLibreMap,
   onTourClick: (tourId: string) => void,
   getAriaLabel: (count: number) => string,
+  getSpiderfyHint: () => string = () => 'Press Escape to collapse',
 ) {
-  const clusterCache = new Map<number, ClusterEntry>()
+  const index = new Supercluster<ClusterPointProps>({
+    radius: CLUSTER_RADIUS,
+    maxZoom: CLUSTER_MAX_ZOOM,
+    minPoints: CLUSTER_MIN_POINTS,
+  })
 
-  // Animation state
+  const clusterCache = new Map<number, ClusterEntry>()
+  const staged = new Map<number, ClusterEntry>()
+
   const animatingIds = new Set<string>()
   const pendingClusterIds = new Set<number>()
   const tempMarkers = new Map<string, { marker: maplibregl.Marker, handle: AnimHandle }>()
 
-  // Tour data cache: tourId -> { lngLat, tourType } for animation positioning and coloring
   const tourDataCache = new Map<string, { lngLat: [number, number], tourType: TourType | null }>()
+  const clusterCountCache = new Map<string, Record<string, number>>()
 
-  let prevSnapshot: ClusterSnapshot = new Map()
-  let prevIndividualIds = new Set<string>()
+  let currentIndividualIds = new Set<string>()
+  let prevZoom = 0
+  let indexReady = false
 
   let currentSelectedId: string | null = null
 
@@ -155,114 +157,214 @@ export function useToursMarkerLayer(
     ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
     : false
 
-  // --- Filter builders ---
+  const spiderfier = createSpiderfier(map)
 
-  function buildAnimExclusion(): ExpressionSpecification[] {
-    if (animatingIds.size === 0)
-      return []
-    return [['!', ['in', ['get', 'id'], ['literal', [...animatingIds]]]]]
+  function getClusterCounts(clusterId: number, total: number): Record<string, number> {
+    const key = `${clusterId}:${total}`
+    const cached = clusterCountCache.get(key)
+    if (cached)
+      return cached
+
+    const leaves = index.getLeaves(clusterId, Infinity, 0)
+    const counts: Record<string, number> = {}
+    for (const leaf of leaves) {
+      const type = (leaf.properties?.tourType as string | null) ?? 'unknown'
+      counts[type] = (counts[type] ?? 0) + 1
+    }
+    clusterCountCache.set(key, counts)
+    return counts
+  }
+
+  function getBboxNow(): [number, number, number, number] {
+    const b = map.getBounds()
+    return [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]
+  }
+
+  function snapshotAt(zoom: number): { clusters: ClusterSnapshot, individualIds: Set<string> } {
+    if (!indexReady)
+      return { clusters: new Map(), individualIds: new Set() }
+
+    const features = index.getClusters(getBboxNow(), Math.floor(zoom))
+    const clusters: ClusterSnapshot = new Map()
+    const individualIds = new Set<string>()
+
+    for (const f of features) {
+      if (f.properties?.cluster) {
+        const clusterId = f.properties.cluster_id as number
+        const lngLat = f.geometry.coordinates as [number, number]
+        const leafIds = index
+          .getLeaves(clusterId, Infinity, 0)
+          .map(l => l.properties?.id as string)
+          .filter(Boolean)
+        clusters.set(clusterId, { lngLat, leafIds })
+      }
+      else {
+        const id = f.properties?.id as string | undefined
+        if (id)
+          individualIds.add(id)
+      }
+    }
+
+    return { clusters, individualIds }
+  }
+
+  function getCurrentSnapshot(): { clusters: ClusterSnapshot, individualIds: Set<string> } {
+    if (!map.getSource(SOURCE_ID))
+      return { clusters: new Map(), individualIds: new Set() }
+    return snapshotAt(map.getZoom())
   }
 
   function refreshLayerFilters() {
     if (!map.getLayer(LAYER_ID))
       return
 
-    const notClustered: ExpressionSpecification = ['!', ['has', 'point_count']]
-    const exclusions = buildAnimExclusion()
+    const visibleIds = [...currentIndividualIds].filter(id => !animatingIds.has(id))
+    const inVisible: ExpressionSpecification = ['in', ['get', 'id'], ['literal', visibleIds]]
 
     map.setFilter(LAYER_ID, [
       'all',
-      notClustered,
+      inVisible,
       ['!=', ['get', 'id'], currentSelectedId ?? ''],
-      ...exclusions,
     ] as ExpressionSpecification)
 
     map.setFilter(SELECTED_LAYER_ID, [
       'all',
-      notClustered,
+      inVisible,
       ['==', ['get', 'id'], currentSelectedId ?? ''],
-      ...exclusions,
     ] as ExpressionSpecification)
 
     if (map.getLayer(CHECK_LAYER_ID)) {
       map.setFilter(CHECK_LAYER_ID, [
         'all',
-        notClustered,
+        inVisible,
         ['==', ['get', 'completed'], true],
-        ...exclusions,
       ] as ExpressionSpecification)
     }
   }
 
-  // --- Cluster marker sync ---
+  function attachClusterHandlers(
+    element: HTMLElement,
+    clusterId: number,
+    lngLat: [number, number],
+  ) {
+    const onExpand = () => {
+      const expansionZoom = index.getClusterExpansionZoom(clusterId)
+      if (expansionZoom <= map.getZoom()) {
+        if (spiderfier.getActiveClusterId() !== clusterId) {
+          const leaves = index.getLeaves(clusterId, Infinity, 0).map(l => ({
+            id: l.properties?.id as string,
+            tourType: (l.properties?.tourType as TourType | null) ?? null,
+          }))
+          spiderfier.spiderfy(clusterId, lngLat, leaves, getSpiderfyHint(), onTourClick)
+        }
+      }
+      else {
+        spiderfier.collapse()
+        map.easeTo({ center: lngLat as LngLatLike, zoom: expansionZoom })
+      }
+    }
 
-  function syncClusterMarkers() {
+    element.addEventListener('click', onExpand)
+    element.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        onExpand()
+      }
+    })
+  }
+
+  function createClusterMarkerEntry(
+    clusterId: number,
+    lngLat: [number, number],
+    leafIds: string[],
+  ): ClusterEntry {
+    const total = leafIds.length
+    const counts = getClusterCounts(clusterId, total)
+    const { element, update } = createPieMarkerElement(counts, total, TOUR_TYPE_COLORS)
+    element.setAttribute('role', 'button')
+    element.setAttribute('tabindex', '0')
+    element.setAttribute('aria-label', getAriaLabel(total))
+
+    attachClusterHandlers(element, clusterId, lngLat)
+
+    const marker = new maplibregl.Marker({ element, anchor: 'center' })
+      .setLngLat(lngLat as LngLatLike)
+      .addTo(map)
+
+    return { marker, update }
+  }
+
+  function syncFromIndex() {
     if (!map.getSource(SOURCE_ID))
       return
 
-    const features = map.querySourceFeatures(SOURCE_ID, {
-      filter: ['has', 'point_count'],
-    })
+    const { clusters, individualIds } = getCurrentSnapshot()
+    currentIndividualIds = individualIds
 
     const seen = new Set<number>()
-    for (const feature of features) {
-      const clusterId = feature.properties?.cluster_id as number | undefined
-      if (clusterId == null)
-        continue
+    for (const [clusterId, { lngLat, leafIds }] of clusters) {
       seen.add(clusterId)
       if (pendingClusterIds.has(clusterId))
         continue
 
-      const lngLat = (feature.geometry as GeoJSON.Point).coordinates as [number, number]
-      const total = (feature.properties?.point_count ?? 0) as number
-      const counts: Record<string, number> = {}
-      for (const type of TOUR_TYPE_VALUES) {
-        counts[type] = (feature.properties?.[type] ?? 0) as number
-      }
-      counts.unknown = (feature.properties?.unknown ?? 0) as number
+      const total = leafIds.length
+      const counts = getClusterCounts(clusterId, total)
+      const existing = clusterCache.get(clusterId) ?? staged.get(clusterId)
 
-      const existing = clusterCache.get(clusterId)
       if (existing) {
         existing.update(counts, total)
         existing.marker.setLngLat(lngLat as LngLatLike)
+        if (staged.has(clusterId)) {
+          staged.delete(clusterId)
+          clusterCache.set(clusterId, existing)
+          fadeIn(existing.marker.getElement())
+        }
       }
       else {
-        const { element, update } = createPieMarkerElement(counts, total, TOUR_TYPE_COLORS)
-        element.setAttribute('role', 'button')
-        element.setAttribute('tabindex', '0')
-        element.setAttribute('aria-label', getAriaLabel(total))
-
-        const onExpand = () => {
-          const geoSource = map.getSource(SOURCE_ID) as GeoJSONSource
-          geoSource.getClusterExpansionZoom(clusterId, (err, zoom) => {
-            if (err || zoom == null)
-              return
-            map.easeTo({ center: lngLat as LngLatLike, zoom })
-          })
-        }
-
-        element.addEventListener('click', onExpand)
-        element.addEventListener('keydown', (e: KeyboardEvent) => {
-          if (e.key === 'Enter' || e.key === ' ')
-            onExpand()
-        })
-
-        const marker = new maplibregl.Marker({ element, anchor: 'center' })
-          .setLngLat(lngLat as LngLatLike)
-          .addTo(map)
-        clusterCache.set(clusterId, { marker, update })
+        const entry = createClusterMarkerEntry(clusterId, lngLat, leafIds)
+        fadeIn(entry.marker.getElement())
+        clusterCache.set(clusterId, entry)
       }
     }
 
     for (const [clusterId, entry] of clusterCache) {
-      if (!seen.has(clusterId)) {
-        entry.marker.remove()
+      if (!seen.has(clusterId) && !pendingClusterIds.has(clusterId)) {
         clusterCache.delete(clusterId)
+        const el = entry.marker.getElement()
+        fadeOut(el, () => entry.marker.remove())
       }
+    }
+
+    refreshLayerFilters()
+  }
+
+  function stageAnticipatory(targetZoom: number) {
+    if (!indexReady)
+      return
+    const predicted = snapshotAt(targetZoom).clusters
+
+    for (const [clusterId, { lngLat, leafIds }] of predicted) {
+      if (clusterCache.has(clusterId) || staged.has(clusterId))
+        continue
+      const entry = createClusterMarkerEntry(clusterId, lngLat, leafIds)
+      staged.set(clusterId, entry)
     }
   }
 
-  // --- Animation ---
+  function reconcileStaged() {
+    const { clusters: authSnapshot } = getCurrentSnapshot()
+
+    for (const [clusterId, entry] of staged) {
+      if (authSnapshot.has(clusterId)) {
+        clusterCache.set(clusterId, entry)
+        fadeIn(entry.marker.getElement())
+      }
+      else {
+        entry.marker.remove()
+      }
+      staged.delete(clusterId)
+    }
+  }
 
   function cancelAllAnimations() {
     for (const { marker, handle } of tempMarkers.values()) {
@@ -274,29 +376,24 @@ export function useToursMarkerLayer(
     pendingClusterIds.clear()
   }
 
-  async function runTransitions() {
+  function startSplitMergeAnimations(
+    fromSnapshot: ClusterSnapshot,
+    fromIndividualIds: Set<string>,
+    toSnapshot: ClusterSnapshot,
+    toIndividualIds: Set<string>,
+  ) {
     if (reducedMotion)
       return
 
-    const newSnapshot = await snapshotClustersAsync(map, SOURCE_ID)
-
-    const individualFeatures = map.querySourceFeatures(SOURCE_ID, {
-      filter: ['!', ['has', 'point_count']],
-    })
-    const newIndividualIds = new Set(
-      individualFeatures.map(f => f.properties?.id as string).filter(Boolean),
-    )
-
     const { splitLeaves, mergeLeaves } = diffSnapshots(
-      prevSnapshot,
-      newSnapshot,
-      prevIndividualIds,
-      newIndividualIds,
+      fromSnapshot,
+      toSnapshot,
+      fromIndividualIds,
+      toIndividualIds,
     )
 
-    // Animate split leaves (cluster → individual)
     for (const { tourId, fromClusterId } of splitLeaves) {
-      const prev = prevSnapshot.get(fromClusterId)
+      const prev = fromSnapshot.get(fromClusterId)
       const tourData = tourDataCache.get(tourId)
       if (!prev || !tourData)
         continue
@@ -320,9 +417,8 @@ export function useToursMarkerLayer(
       tempMarkers.set(tourId, { marker, handle })
     }
 
-    // Animate merge leaves (individual → cluster)
     for (const { tourId, toClusterId } of mergeLeaves) {
-      const newCluster = newSnapshot.get(toClusterId)
+      const newCluster = toSnapshot.get(toClusterId)
       const tourData = tourDataCache.get(tourId)
       if (!newCluster || !tourData)
         continue
@@ -345,29 +441,21 @@ export function useToursMarkerLayer(
         tempMarkers.delete(tourId)
         pendingClusterIds.delete(toClusterId)
         refreshLayerFilters()
-        syncClusterMarkers()
+        syncFromIndex()
       })
       tempMarkers.set(tourId, { marker, handle })
     }
 
-    if (splitLeaves.length > 0 || mergeLeaves.length > 0) {
+    if (splitLeaves.length > 0 || mergeLeaves.length > 0)
       refreshLayerFilters()
-    }
-
-    prevSnapshot = newSnapshot
-    prevIndividualIds = newIndividualIds
   }
 
-  // --- Setup ---
-
   async function setup() {
+    prevZoom = map.getZoom()
+
     map.addSource(SOURCE_ID, {
       type: 'geojson',
       data: { type: 'FeatureCollection', features: [] },
-      cluster: true,
-      clusterMaxZoom: CLUSTER_MAX_ZOOM,
-      clusterRadius: CLUSTER_RADIUS,
-      clusterProperties: buildClusterProperties() as Record<string, ExpressionSpecification>,
     })
 
     map.addSource(PREVIEW_SOURCE_ID, {
@@ -375,17 +463,16 @@ export function useToursMarkerLayer(
       data: { type: 'FeatureCollection', features: [] },
     })
 
-    const notClustered: ExpressionSpecification = ['!', ['has', 'point_count']]
-
     map.addLayer({
       id: LAYER_ID,
       type: 'circle',
       source: SOURCE_ID,
-      filter: ['all', notClustered, ['!=', ['get', 'id'], '']],
+      filter: ['in', ['get', 'id'], ['literal', []]],
       paint: {
         'circle-radius': 14,
         'circle-color': COLOR_EXPR,
         'circle-opacity': 0.85,
+        'circle-opacity-transition': { duration: 200 },
       },
     })
 
@@ -393,15 +480,18 @@ export function useToursMarkerLayer(
       id: SELECTED_LAYER_ID,
       type: 'circle',
       source: SOURCE_ID,
-      filter: ['all', notClustered, ['==', ['get', 'id'], '']],
+      filter: ['in', ['get', 'id'], ['literal', []]],
       paint: {
         'circle-radius': 18,
         'circle-color': COLOR_EXPR,
         'circle-opacity': 1,
+        'circle-opacity-transition': { duration: 200 },
         'circle-stroke-width': 3,
         'circle-stroke-color': '#ffffff',
       },
     })
+
+    spiderfier.setup()
 
     map.addLayer({
       id: PREVIEW_LAYER_ID,
@@ -422,12 +512,16 @@ export function useToursMarkerLayer(
         id: CHECK_LAYER_ID,
         type: 'symbol',
         source: SOURCE_ID,
-        filter: ['all', notClustered, ['==', ['get', 'completed'], true]],
+        filter: ['in', ['get', 'id'], ['literal', []]],
         layout: {
           'icon-image': CHECK_ICON_ID,
           'icon-size': 0.65,
           'icon-allow-overlap': true,
           'icon-ignore-placement': true,
+        },
+        paint: {
+          'icon-opacity': 1,
+          'icon-opacity-transition': { duration: 200 },
         },
       })
     }
@@ -447,29 +541,55 @@ export function useToursMarkerLayer(
       map.getCanvas().style.cursor = ''
     })
 
-    map.on('data', () => syncClusterMarkers())
-    map.on('moveend', () => syncClusterMarkers())
+    map.on('move', () => syncFromIndex())
+    map.on('moveend', () => syncFromIndex())
+    map.on('zoom', () => syncFromIndex())
+    map.on('idle', () => syncFromIndex())
+
+    map.on('movestart', () => spiderfier.collapse())
 
     map.on('zoomstart', () => {
+      spiderfier.collapse()
       cancelAllAnimations()
-      refreshLayerFilters()
-      prevSnapshot = snapshotClusters(map, SOURCE_ID)
+
+      // Flush any leftover staged markers from a prior gesture
+      for (const entry of staged.values())
+        entry.marker.remove()
+      staged.clear()
+
+      const currentZoom = map.getZoom()
+      const zoomDelta = currentZoom - prevZoom
+      const targetZoom = currentZoom + Math.sign(zoomDelta !== 0 ? zoomDelta : 1)
+
+      const fromSnap = snapshotAt(currentZoom)
+      const toSnap = snapshotAt(targetZoom)
+
+      startSplitMergeAnimations(
+        fromSnap.clusters,
+        fromSnap.individualIds,
+        toSnap.clusters,
+        toSnap.individualIds,
+      )
+
+      stageAnticipatory(targetZoom)
+      prevZoom = currentZoom
     })
 
     map.on('zoomend', () => {
-      runTransitions().then(() => syncClusterMarkers()).catch(() => syncClusterMarkers())
+      reconcileStaged()
+      syncFromIndex()
+      prevZoom = map.getZoom()
     })
   }
-
-  // --- Public API ---
 
   function updateTours(tours: Tour[], selectedTourId: string | null) {
     const source = map.getSource(SOURCE_ID)
     if (!source || source.type !== 'geojson')
       return
 
-    // Refresh tour data cache for animation
     tourDataCache.clear()
+    clusterCountCache.clear()
+
     for (const tour of tours) {
       tourDataCache.set(tour.id, {
         lngLat: [tour.goal.lng, tour.goal.lat],
@@ -477,9 +597,13 @@ export function useToursMarkerLayer(
       })
     }
 
+    const geoJson = toursToGeoJson(tours)
+    index.load(geoJson.features as Parameters<typeof index.load>[0])
+    indexReady = true
+
     currentSelectedId = selectedTourId
-    source.setData(toursToGeoJson(tours))
-    refreshLayerFilters()
+    source.setData(geoJson)
+    syncFromIndex()
   }
 
   function updatePreview(goal: { lng: number, lat: number } | null, tourType: TourType | null) {
@@ -501,13 +625,18 @@ export function useToursMarkerLayer(
     })
   }
 
-  /** Removes all cluster DOM markers and cancels animations. Call before style reload and on unmount. */
   function cleanup() {
+    spiderfier.teardown()
     cancelAllAnimations()
     for (const { marker } of clusterCache.values()) {
       marker.remove()
     }
     clusterCache.clear()
+    for (const { marker } of staged.values()) {
+      marker.remove()
+    }
+    staged.clear()
+    clusterCountCache.clear()
   }
 
   return { setup, updateTours, updatePreview, cleanup }

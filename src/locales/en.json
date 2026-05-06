@@ -368,7 +368,8 @@
       "classic": "Classic"
     },
     "cluster": {
-      "label": "Cluster of {count} tours"
+      "label": "Cluster of {count} tours",
+      "spiderfyHint": "Press Escape to collapse"
     }
   },
   "i18n": {
