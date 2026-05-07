@@ -33,16 +33,18 @@ On first application load (no persisted user choice), the system SHALL select th
 - **WHEN** the user has no persisted locale and no `navigator.languages` entry matches a supported code or base
 - **THEN** the active locale SHALL be `en`
 
+## MODIFIED Requirements
+
 ### Requirement: Locale persistence per device
 
-A user-chosen locale SHALL be persisted in `localStorage` under key `tb.locale`. The persisted value SHALL be read synchronously before the Vue app mounts to avoid a flash of incorrect language. The value SHALL survive sign-out. The value SHALL NOT be transmitted to Supabase as the source of truth for the UI locale; per-device UI isolation MUST be preserved. A separate, derived value (the base language code, `en` or `de`) MAY be written to Supabase `user_metadata.locale` for the sole purpose of selecting the recipient's email template (see `auth` and `user-profile` specs).
+A user-chosen locale SHALL be persisted in `localStorage` under key `tb.locale` as a boot-time cache to prevent flashing the wrong language on cold reload. The persisted value SHALL be read synchronously before the Vue app mounts. The value SHALL survive sign-out. For authenticated users, `localStorage` is NOT the source of truth — the user's `user_profile.locale` (see `user-profile` spec) overrides it once the profile loads. For unauthenticated visitors, `localStorage` remains the only persistence.
 
-#### Scenario: Persist on selection
+#### Scenario: Persist on selection (cache)
 
 - **WHEN** the user selects a locale via the profile language selector
 - **THEN** the system SHALL write the selected code to `localStorage['tb.locale']` synchronously
 
-#### Scenario: Restore on reload
+#### Scenario: Restore on cold boot (cache)
 
 - **WHEN** the application boots and `localStorage['tb.locale']` contains a supported code
 - **THEN** the active locale on first paint SHALL be that code (overriding browser detection)
@@ -52,25 +54,20 @@ A user-chosen locale SHALL be persisted in `localStorage` under key `tb.locale`.
 - **WHEN** the user signs out
 - **THEN** `localStorage['tb.locale']` SHALL remain unchanged
 
-#### Scenario: Per-device isolation for UI
+#### Scenario: Profile overrides cache after load
 
-- **WHEN** the same authenticated user opens the app on a second device
-- **THEN** the UI locale on the second device SHALL be determined independently (from its own localStorage or detection), not synced from the first device
+- **WHEN** an authenticated user's `user_profile.locale` is loaded and differs from the boot-time active locale
+- **THEN** the system SHALL invoke `useLocaleStore.setLocale(profile.locale)` so the UI re-renders in the persisted preference
 
-#### Scenario: Email locale follows latest device choice
+#### Scenario: Cross-device sync via profile
 
-- **WHEN** the same authenticated user changes language on device B after previously using device A
-- **THEN** subsequent magic link emails SHALL be sent in the language chosen on device B (because `user_metadata.locale` was updated by device B), even though device A's UI is unaffected
+- **WHEN** the same authenticated user opens the app on a second device after selecting `de-CH` on the first
+- **THEN** the second device SHALL render the UI in `de-CH` once `user_profile.locale` is loaded, regardless of its local `localStorage['tb.locale']` value
 
-#### Scenario: Installed PWA isolated from browser (Android)
+#### Scenario: Unauthenticated visitor remains per-device
 
-- **WHEN** the user installs the PWA on Android and selects a locale inside the installed app
-- **THEN** the locale in the Chrome browser tab on the same device and account SHALL remain unchanged
-
-#### Scenario: Installed PWA isolated from browser (iOS)
-
-- **WHEN** the user adds the app to Home Screen on iOS (standalone Safari WebApp) and selects a locale there
-- **THEN** the locale in the Safari browser tab on the same device and account SHALL remain unchanged
+- **WHEN** an unauthenticated visitor selects a locale
+- **THEN** persistence SHALL be limited to `localStorage['tb.locale']` and SHALL NOT propagate across devices
 
 ### Requirement: Reactive locale switching
 
@@ -111,17 +108,27 @@ CI SHALL fail if any non-English locale catalog is missing keys that exist in th
 
 ### Requirement: Locale store
 
-A Pinia store `useLocaleStore` SHALL expose the current locale code as a reactive ref and a `setLocale(code)` action. The action SHALL update vue-i18n, write to localStorage, and update `<html lang>`.
+A Pinia store `useLocaleStore` SHALL expose the current locale code as a reactive ref and a `setLocale(code)` action. The action SHALL update vue-i18n, write to `localStorage`, update `<html lang>`, write through to the user's profile (if authenticated and profile loaded), and update `user_metadata.locale` (for email templating).
 
 #### Scenario: setLocale rejects unsupported code
 
 - **WHEN** `setLocale('xx-YY')` is called with an unsupported code
 - **THEN** the store SHALL not update state and SHALL emit a warning via the logger composable
 
-#### Scenario: setLocale updates all sinks
+#### Scenario: setLocale updates all sinks (authenticated)
 
-- **WHEN** `setLocale('de-CH')` is called
-- **THEN** the store SHALL update its ref, set `i18n.global.locale.value`, write `localStorage['tb.locale']`, and set `document.documentElement.lang`, in that order
+- **WHEN** `setLocale('de-CH')` is called and the user is authenticated with a loaded profile
+- **THEN** the store SHALL update its ref, set `i18n.global.locale.value`, write `localStorage['tb.locale']`, set `document.documentElement.lang`, persist to `user_profile.locale`, and update `user_metadata.locale`
+
+#### Scenario: setLocale skips profile write when profile not loaded
+
+- **WHEN** `setLocale('de-CH')` is called before `useUserProfileStore.profile` is populated
+- **THEN** the store SHALL update i18n, localStorage, and `<html lang>`, SHALL NOT throw, and SHALL NOT attempt the profile upsert; the next change after profile load SHALL persist
+
+#### Scenario: Profile write failure does not break UI
+
+- **WHEN** the profile upsert call fails
+- **THEN** the active UI locale SHALL remain changed and the failure SHALL be logged via the logger composable
 
 ### Requirement: Localized formatting helpers
 
