@@ -128,6 +128,7 @@ function makeDotEl(color: string): HTMLElement {
 interface ClusterEntry {
   marker: maplibregl.Marker
   update: (counts: Record<string, number>, total: number) => void
+  setNode: (node: InternalNode) => void
 }
 
 export function useToursMarkerLayer(
@@ -267,7 +268,7 @@ export function useToursMarkerLayer(
   function classifyDisappeared(
     node: RenderedNode,
     newByNodeId: Map<string, RenderedNode>,
-  ): { kind: 'merged-into', targetCentroid: [number, number] } | { kind: 'deleted' } {
+  ): { kind: 'merged-into', targetCentroid: [number, number] } | { kind: 'split' } | { kind: 'deleted' } {
     for (const newNode of newByNodeId.values()) {
       if (newNode.id === node.id)
         continue
@@ -275,10 +276,20 @@ export function useToursMarkerLayer(
       if (node.leafIds.every(id => newLeafSet.has(id)))
         return { kind: 'merged-into', targetCentroid: newNode.centroid }
     }
+    // Split: leafIds spread across 2+ new nodes
+    const containers = new Set<string>()
+    const leafSet = new Set(node.leafIds)
+    for (const newNode of newByNodeId.values()) {
+      if (newNode.leafIds.some(id => leafSet.has(id)))
+        containers.add(newNode.id)
+    }
+    if (containers.size >= 2)
+      return { kind: 'split' }
     return { kind: 'deleted' }
   }
 
   function createClusterMarkerEntry(node: InternalNode): ClusterEntry {
+    let currentNode = node
     const counts = getCountsForNode(node)
     const { element, update } = createPieMarkerElement(counts, node.totalLeafCount, TOUR_TYPE_COLORS)
     element.setAttribute('role', 'button')
@@ -286,18 +297,18 @@ export function useToursMarkerLayer(
     element.setAttribute('aria-label', getAriaLabel(node.totalLeafCount))
 
     const onExpand = () => {
-      if (node.splitZoom > map.getMaxZoom()) {
-        if (spiderfier.getActiveClusterId() !== node.id) {
-          const leaves = node.leafIds.map(id => ({
+      if (currentNode.splitZoom > map.getMaxZoom()) {
+        if (spiderfier.getActiveClusterId() !== currentNode.id) {
+          const leaves = currentNode.leafIds.map(id => ({
             id,
             tourType: tourDataCache.get(id)?.tourType ?? null,
           }))
-          spiderfier.spiderfy(node.id, node.centroid, leaves, getSpiderfyHint(), onTourClick)
+          spiderfier.spiderfy(currentNode.id, currentNode.centroid, leaves, getSpiderfyHint(), onTourClick)
         }
       }
       else {
         spiderfier.collapse()
-        map.easeTo({ center: node.centroid as LngLatLike, zoom: node.splitZoom + 0.01 })
+        map.easeTo({ center: currentNode.centroid as LngLatLike, zoom: currentNode.splitZoom + 0.01 })
       }
     }
 
@@ -313,7 +324,10 @@ export function useToursMarkerLayer(
       .setLngLat(node.centroid as LngLatLike)
       .addTo(map)
 
-    return { marker, update }
+    function setNode(n: InternalNode) {
+      currentNode = n
+    }
+    return { marker, update, setNode }
   }
 
   function commitFrame(newTree: TreeNode | null, newZoom: number) {
@@ -370,6 +384,10 @@ export function useToursMarkerLayer(
             () => {},
           )
         }
+      }
+      else if (classification.kind === 'split') {
+        // Remove parent instantly so children fan-out is the only visible motion
+        clusterEntry?.marker.remove()
       }
       else {
         // deleted
@@ -429,6 +447,7 @@ export function useToursMarkerLayer(
         continue
 
       const oldNode = oldByNodeId.get(node.id)!
+      entry.setNode(treeNode)
       const centroidChanged
         = oldNode.centroid[0] !== treeNode.centroid[0]
           || oldNode.centroid[1] !== treeNode.centroid[1]

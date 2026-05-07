@@ -77,13 +77,13 @@
 
 ## 10. Manual verification against known bugs
 
-- [ ] 10.1 Reproduce the "sticky cluster markers" recording (clustered-markers-sticky*.png) from main; verify on this branch that no leftover cluster markers remain after zooming through any number of integer zoom levels
-- [ ] 10.2 Reproduce the "expand-during-zoom-out" recording (Screen Recording 2026-05-06 at 13.09.59.mov); verify that during a continuous zoom-out, no cluster ever splits back into individuals
-- [ ] 10.3 Reproduce the "late animation" symptom; verify the fan-out animation is visible during the zoom gesture, not after
-- [ ] 10.4 Manually invoke `useToursMarkerLayer.updateTours` from devtools while a zoom gesture is in progress; verify the in-flight animation is cancelled and the new tour list animates in correctly
-- [ ] 10.5 Manually delete a tour from the list while a cluster pie is visible; verify the pie's count decreases, its centroid tweens, and no flicker occurs
-- [ ] 10.6 Toggle OS-level reduced-motion on; verify no tweens fire on threshold crossings or on data updates (instant snap)
-- [ ] 10.7 Switch map style (Base ↔ Classic) while a cluster is visible; verify `cleanup()` tears down state and the new style rebuilds correctly
+- x ] 10.1 Reproduce the "sticky cluster markers" recording (clustered-markers-sticky*.png) from main; verify on this branch that no leftover cluster markers remain after zooming through any number of integer zoom levels
+- [x] 10.2 Reproduce the "expand-during-zoom-out" recording (Screen Recording 2026-05-06 at 13.09.59.mov); verify that during a continuous zoom-out, no cluster ever splits back into individuals
+- [x] 10.3 Reproduce the "late animation" symptom; verify the fan-out animation is visible during the zoom gesture, not after
+- [x] 10.4 Manually invoke `useToursMarkerLayer.updateTours` from devtools while a zoom gesture is in progress; verify the in-flight animation is cancelled and the new tour list animates in correctly
+- [x] 10.5 Manually delete a tour from the list while a cluster pie is visible; verify the pie's count decreases, its centroid tweens, and no flicker occurs
+- [x] 10.6 Toggle OS-level reduced-motion on; verify no tweens fire on threshold crossings or on data updates (instant snap)
+- [x] 10.7 Switch map style (Base ↔ Classic) while a cluster is visible; verify `cleanup()` tears down state and the new style rebuilds correctly
 
 ## 11. Lint, type-check, tests
 
@@ -93,5 +93,5 @@
 
 ## 12. Finalize
 
-- [ ] 12.1 Prompt user to commit with conventional message, e.g. `refactor(map): drive clustering from a hierarchical tree with monotone identity and threshold-driven animations (#22)`
-- [ ] 12.2 Prompt user to push and choose PR strategy (fold into existing PR #22 or open a new PR superseding it)
+- [x] 12.1 Prompt user to commit with conventional message, e.g. `refactor(map): drive clustering from a hierarchical tree with monotone identity and threshold-driven animations (#22)`
+- [x] 12.2 Prompt user to push and choose PR strategy (fold into existing PR #22 or open a new PR superseding it)
