@@ -22,8 +22,8 @@ function mapRequest(row: Record<string, unknown>): FriendRequest {
 
 function mapFriendship(row: Record<string, unknown>): Friendship {
   return friendshipSchema.parse({
-    userAId: row.user_a_id,
-    userBId: row.user_b_id,
+    requestUserId: row.request_user_id,
+    responseUserId: row.response_user_id,
     createdAt: row.created_at,
     requestId: row.request_id ?? null,
   })
