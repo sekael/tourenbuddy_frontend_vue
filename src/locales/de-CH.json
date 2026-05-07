@@ -366,6 +366,10 @@
       "pickerTooltip": "Kartenstil ändern",
       "base": "Basiskarte",
       "classic": "Klassisch"
+    },
+    "cluster": {
+      "label": "Cluster aus {count} Touren",
+      "spiderfyHint": "Esc drücken, um zu schliessen"
     }
   },
   "i18n": {
