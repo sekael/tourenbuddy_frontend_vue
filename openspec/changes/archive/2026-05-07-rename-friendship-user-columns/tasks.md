@@ -27,7 +27,7 @@
 
 ## 4. Spec Update
 
-- [ ] 4.1 Update `openspec/specs/friendships/spec.md` per the change's `specs/friendships/spec.md` deltas (handled by archive step, but verify no drift)
+- [x] 4.1 Update `openspec/specs/friendships/spec.md` per the change's `specs/friendships/spec.md` deltas (handled by archive step, but verify no drift)
 
 ## 5. Tests
 
@@ -39,7 +39,7 @@
 
 - [x] 6.1 `npx eslint . --fix` — zero warnings
 - [x] 6.2 `npm run type-check` — clean
-- [ ] 6.3 Prompt user to commit with conventional commit message:
+- [x] 6.3 Prompt user to commit with conventional commit message:
   - `refactor(friendships): rename friendship columns to request/response semantics (#111)`
-- [ ] 6.4 Prompt user to push branch and open PR linking issue #111
-- [ ] 6.5 After merge, prompt to archive change with `/opsx:archive`
+- [x] 6.4 Prompt user to push branch and open PR linking issue #111
+- [x] 6.5 After merge, prompt to archive change with `/opsx:archive`

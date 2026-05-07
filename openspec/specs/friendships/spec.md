@@ -5,19 +5,24 @@
 The system SHALL persist friendships and friend requests in two Supabase tables:
 
 - `friend_requests(id uuid pk, from_user_id uuid fk auth.users, to_user_id uuid fk auth.users, status text check in ('pending','accepted','denied','cancelled'), created_at timestamptz, responded_at timestamptz)` with a unique partial index on `(from_user_id, to_user_id) WHERE status = 'pending'`.
-- `friendships(user_a_id uuid, user_b_id uuid, created_at timestamptz, request_id uuid fk friend_requests, primary key (user_a_id, user_b_id))` with the invariant `user_a_id < user_b_id`.
+- `friendships(request_user_id uuid, response_user_id uuid, created_at timestamptz, request_id uuid fk friend_requests, primary key (request_user_id, response_user_id))` where `request_user_id` is the user that sent the originating friend request and `response_user_id` is the user that accepted it. The check `request_user_id <> response_user_id` SHALL hold.
 
-Friendships SHALL be symmetric and SHALL NOT be duplicated per pair.
+Friendships SHALL be symmetric in meaning (both users are friends) and SHALL NOT be duplicated per pair: at most one `friendships` row SHALL exist for any unordered `{u1, u2}` pair, regardless of role assignment.
 
 #### Scenario: Pending request uniqueness
 
 - **WHEN** a `pending` `friend_request` from user A to user B exists and a second insert for the same `(from, to, pending)` is attempted
 - **THEN** the database SHALL reject the insert via the unique partial index
 
-#### Scenario: Friendship pair canonical order
+#### Scenario: Friendship row reflects request roles
 
-- **WHEN** a friendship row is inserted for users X and Y
-- **THEN** the row SHALL store `user_a_id = least(X, Y)` and `user_b_id = greatest(X, Y)`
+- **WHEN** an accept of a `friend_request` from X to Y succeeds
+- **THEN** the inserted `friendships` row SHALL have `request_user_id = X` and `response_user_id = Y`
+
+#### Scenario: No duplicate per unordered pair
+
+- **WHEN** a `friendships` row already exists for users X and Y in either role assignment and a second insert is attempted for the same pair (in either ordering)
+- **THEN** the database SHALL NOT create a duplicate row
 
 ### Requirement: Verified-phone gating on request creation
 
@@ -73,14 +78,14 @@ A SECURITY DEFINER function `accept_friend_request(request_id uuid)` SHALL, in a
 
 1. Verify the calling user equals the request's `to_user_id` and the request status is `pending`
 2. Update the request to `status = 'accepted'`, `responded_at = now()`
-3. Insert the canonically-ordered pair into `friendships` (no-op if already present)
+3. Insert a row into `friendships` with `request_user_id = from_user_id` and `response_user_id = to_user_id` (no-op if a row for the unordered pair already exists)
 
 If the friendship already exists, the function SHALL still mark the request `accepted` and SHALL NOT raise.
 
 #### Scenario: Successful accept
 
-- **WHEN** the recipient calls `accept_friend_request(req)` on a pending request addressed to them
-- **THEN** the request status SHALL become `accepted`, `responded_at` SHALL be set, and a `friendships` row SHALL exist with the ordered user pair
+- **WHEN** the recipient calls `accept_friend_request(req)` on a pending request from X to Y addressed to them
+- **THEN** the request status SHALL become `accepted`, `responded_at` SHALL be set, and a `friendships` row SHALL exist with `request_user_id = X`, `response_user_id = Y`
 
 #### Scenario: Caller is not recipient
 
@@ -117,12 +122,12 @@ The sender SHALL be able to cancel their own pending request by updating its sta
 
 ### Requirement: Friendships list visibility
 
-A user SHALL be able to read `friendships` rows where they appear as `user_a_id` or `user_b_id`, and SHALL NOT be able to read any other friendship row. A user SHALL NOT have client-side INSERT/UPDATE/DELETE on `friendships`.
+A user SHALL be able to read `friendships` rows where they appear as `request_user_id` or `response_user_id`, and SHALL NOT be able to read any other friendship row. A user SHALL NOT have client-side INSERT/UPDATE/DELETE on `friendships`.
 
 #### Scenario: User reads own friendships
 
 - **WHEN** a user queries `friendships`
-- **THEN** the response SHALL contain only rows where the user is `user_a_id` or `user_b_id`
+- **THEN** the response SHALL contain only rows where the user is `request_user_id` or `response_user_id`
 
 #### Scenario: Direct write rejected
 
@@ -186,19 +191,24 @@ When a user accepts an incoming friend request, the system SHALL check whether a
 
 ### Requirement: Remove friendship
 
-A SECURITY DEFINER function `remove_friendship(p_other_user_id uuid)` SHALL delete the canonical `friendships` row for the caller–other pair. The function SHALL compute the ordered pair `(least, greatest)` of the two user IDs and delete the matching row. If no row exists the function SHALL be a no-op.
+A SECURITY DEFINER function `remove_friendship(p_other_user_id uuid)` SHALL delete the `friendships` row for the unordered caller–other pair, regardless of which user is `request_user_id` vs `response_user_id`. If no row exists the function SHALL be a no-op.
 
 A `removeFriendship(otherUserId)` action in `useFriendshipsStore` SHALL call the RPC, optimistically remove the friendship from the `friendships` ref, and rollback on error.
 
-#### Scenario: Friendship removed
+#### Scenario: Friendship removed by requester
 
-- **WHEN** `remove_friendship` is called by one of the two friends
-- **THEN** the `friendships` row SHALL be deleted and the friend icon SHALL no longer appear in the contacts list
+- **WHEN** `remove_friendship` is called by the user stored as `request_user_id` of the pair
+- **THEN** the `friendships` row SHALL be deleted
+
+#### Scenario: Friendship removed by responder
+
+- **WHEN** `remove_friendship` is called by the user stored as `response_user_id` of the pair
+- **THEN** the `friendships` row SHALL be deleted
 
 #### Scenario: Non-participant cannot remove
 
 - **WHEN** a user calls `remove_friendship` for a pair they are not part of
-- **THEN** no row SHALL be deleted (function computes pair using `auth.uid()`)
+- **THEN** no row SHALL be deleted (function computes match using `auth.uid()`)
 
 ### Requirement: Friend requests inbox page
 
