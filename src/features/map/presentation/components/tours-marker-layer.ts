@@ -1,6 +1,6 @@
 import type { ExpressionSpecification, LngLatLike, Map as MapLibreMap } from 'maplibre-gl'
 import type { RenderedNode } from './cluster-transitions'
-import type { InternalNode, LeafNode, TreeNode } from './cluster-tree'
+import type { InternalNode, TreeNode } from './cluster-tree'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import maplibregl from 'maplibre-gl'
@@ -324,10 +324,12 @@ export function useToursMarkerLayer(
     const forest = cutForest(newTree, newZoom, bbox)
 
     const newByNodeId = new Map<string, RenderedNode>()
+    const newTreeById = new Map<string, TreeNode>()
     for (const node of forest) {
       const centroid = node.kind === 'leaf' ? node.coord : node.centroid
       const leafIds = node.kind === 'leaf' ? [node.id] : node.leafIds
       newByNodeId.set(node.id, { id: node.id, kind: node.kind, centroid, leafIds })
+      newTreeById.set(node.id, node)
     }
 
     const { byNodeId: oldByNodeId } = lastFrame
@@ -384,15 +386,17 @@ export function useToursMarkerLayer(
     }
 
     for (const node of appeared) {
-      const classification = classifyAppeared(node, oldByNodeId, parentMap)
+      const treeNode = newTreeById.get(node.id)
+      if (!treeNode)
+        continue
+      const classification = classifyAppeared(treeNode, oldByNodeId, parentMap)
 
-      if (node.kind === 'internal') {
-        const internalNode = node as InternalNode
-        const entry = createClusterMarkerEntry(internalNode)
+      if (treeNode.kind === 'internal') {
+        const entry = createClusterMarkerEntry(treeNode)
         clusterCache.set(node.id, entry)
 
         if (!reducedMotion && classification.kind === 'split-from') {
-          spawnTemp(makePieTempEl(internalNode.leafIds), classification.sourceCentroid, internalNode.centroid, () => {
+          spawnTemp(makePieTempEl(treeNode.leafIds), classification.sourceCentroid, treeNode.centroid, () => {
             fadeIn(entry.marker.getElement())
           })
         }
@@ -407,7 +411,7 @@ export function useToursMarkerLayer(
           if (tourData) {
             animatingIds.add(node.id)
             const color = tourData.tourType ? (TOUR_TYPE_COLORS[tourData.tourType] ?? '#78716C') : '#78716C'
-            spawnTemp(makeDotEl(color), classification.sourceCentroid, (node as LeafNode).coord, () => {
+            spawnTemp(makeDotEl(color), classification.sourceCentroid, treeNode.coord, () => {
               animatingIds.delete(node.id)
               refreshLayerFilters()
             })
@@ -417,32 +421,32 @@ export function useToursMarkerLayer(
     }
 
     for (const node of updated) {
-      if (node.kind !== 'internal')
+      const treeNode = newTreeById.get(node.id)
+      if (!treeNode || treeNode.kind !== 'internal')
         continue
-      const internalNode = node as InternalNode
       const entry = clusterCache.get(node.id)
       if (!entry)
         continue
 
       const oldNode = oldByNodeId.get(node.id)!
       const centroidChanged
-        = oldNode.centroid[0] !== internalNode.centroid[0]
-          || oldNode.centroid[1] !== internalNode.centroid[1]
-      const leafCountChanged = oldNode.leafIds.length !== internalNode.leafIds.length
+        = oldNode.centroid[0] !== treeNode.centroid[0]
+          || oldNode.centroid[1] !== treeNode.centroid[1]
+      const leafCountChanged = oldNode.leafIds.length !== treeNode.leafIds.length
 
       if (centroidChanged) {
         if (reducedMotion) {
-          entry.marker.setLngLat(internalNode.centroid as LngLatLike)
+          entry.marker.setLngLat(treeNode.centroid as LngLatLike)
         }
         else {
-          animateMarker(entry.marker, oldNode.centroid, internalNode.centroid, ANIMATION_DURATION_MS, () => {})
+          animateMarker(entry.marker, oldNode.centroid, treeNode.centroid, ANIMATION_DURATION_MS, () => {})
         }
       }
 
       if (leafCountChanged) {
-        const counts = getCountsForNode(internalNode)
-        entry.update(counts, internalNode.totalLeafCount)
-        entry.marker.getElement().setAttribute('aria-label', getAriaLabel(internalNode.totalLeafCount))
+        const counts = getCountsForNode(treeNode)
+        entry.update(counts, treeNode.totalLeafCount)
+        entry.marker.getElement().setAttribute('aria-label', getAriaLabel(treeNode.totalLeafCount))
       }
     }
 
