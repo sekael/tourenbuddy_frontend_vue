@@ -34,6 +34,7 @@ export class UserProfileRepositoryImpl implements UserProfileRepository {
         id: profile.id,
         first_name: profile.firstName,
         last_name: profile.lastName,
+        locale: profile.locale,
       })
       .select()
       .single()

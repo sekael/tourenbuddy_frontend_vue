@@ -46,6 +46,16 @@ vi.mock('@/core/utils/supabase', () => ({
   },
 }))
 
+const mockLocaleStoreSetLocale = vi.hoisted(() => vi.fn())
+const mockLocaleStoreLocale = vi.hoisted(() => ({ value: 'en' }))
+
+vi.mock('@/features/i18n/presentation/stores/use-locale-store', () => ({
+  useLocaleStore: () => ({
+    get locale() { return mockLocaleStoreLocale.value },
+    setLocale: mockLocaleStoreSetLocale,
+  }),
+}))
+
 describe('useUserProfileStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -56,11 +66,12 @@ describe('useUserProfileStore', () => {
       phone: null,
       phone_confirmed_at: null,
     }
+    mockLocaleStoreLocale.value = 'en'
   })
 
   describe('loadProfile', () => {
     it('should load existing profile', async () => {
-      const mockProfile = { id: 'user-123', firstName: 'Max', lastName: 'Mustermann' }
+      const mockProfile = { id: 'user-123', firstName: 'Max', lastName: 'Mustermann', locale: 'en' as const }
       mockGetUserById.mockResolvedValue(mockProfile)
 
       const store = useUserProfileStore()
@@ -72,7 +83,7 @@ describe('useUserProfileStore', () => {
     })
 
     it('should create profile when none exists', async () => {
-      const newProfile = { id: 'user-123', firstName: null, lastName: null }
+      const newProfile = { id: 'user-123', firstName: null, lastName: null, locale: null }
       mockGetUserById.mockResolvedValue(null)
       mockUpsertProfile.mockResolvedValue(newProfile)
 
@@ -83,6 +94,7 @@ describe('useUserProfileStore', () => {
         id: 'user-123',
         firstName: null,
         lastName: null,
+        locale: null,
       })
       expect(store.profile).toEqual(newProfile)
     })
@@ -95,6 +107,43 @@ describe('useUserProfileStore', () => {
 
       expect(store.error).toBe('DB error')
       expect(store.profile).toBeNull()
+    })
+
+    it('should call setLocale when profile.locale differs from active locale', async () => {
+      mockLocaleStoreLocale.value = 'en'
+      const mockProfile = { id: 'user-123', firstName: null, lastName: null, locale: 'de-CH' as const }
+      mockGetUserById.mockResolvedValue(mockProfile)
+
+      const store = useUserProfileStore()
+      await store.loadProfile()
+
+      expect(mockLocaleStoreSetLocale).toHaveBeenCalledWith('de-CH')
+    })
+
+    it('should not call setLocale when profile.locale matches active locale', async () => {
+      mockLocaleStoreLocale.value = 'en'
+      const mockProfile = { id: 'user-123', firstName: null, lastName: null, locale: 'en' as const }
+      mockGetUserById.mockResolvedValue(mockProfile)
+
+      const store = useUserProfileStore()
+      await store.loadProfile()
+
+      expect(mockLocaleStoreSetLocale).not.toHaveBeenCalled()
+    })
+
+    it('should seed server locale when profile.locale is null', async () => {
+      mockLocaleStoreLocale.value = 'de-CH'
+      const mockProfile = { id: 'user-123', firstName: null, lastName: null, locale: null }
+      const seededProfile = { ...mockProfile, locale: 'de-CH' as const }
+      mockGetUserById.mockResolvedValue(mockProfile)
+      mockUpsertProfile.mockResolvedValue(seededProfile)
+
+      const store = useUserProfileStore()
+      await store.loadProfile()
+
+      await vi.waitFor(() => expect(mockUpsertProfile).toHaveBeenCalledWith(
+        expect.objectContaining({ locale: 'de-CH' }),
+      ))
     })
   })
 
@@ -109,6 +158,7 @@ describe('useUserProfileStore', () => {
         id: 'user-123',
         firstName: 'Max',
         lastName: 'Mustermann',
+        locale: 'en',
       })
       mockCurrentUser.value = {
         id: 'user-123',
@@ -135,6 +185,7 @@ describe('useUserProfileStore', () => {
         id: 'user-123',
         firstName: 'Max',
         lastName: 'Mustermann',
+        locale: 'en',
       })
       mockCurrentUser.value = {
         id: 'user-123',
@@ -152,9 +203,9 @@ describe('useUserProfileStore', () => {
 
   describe('updateProfile', () => {
     it('should call upsertProfile with merged fields', async () => {
-      const existing = { id: 'user-123', firstName: 'Max', lastName: null }
+      const existing = { id: 'user-123', firstName: 'Max', lastName: null, locale: 'en' as const }
       mockGetUserById.mockResolvedValue(existing)
-      mockUpsertProfile.mockResolvedValue({ id: 'user-123', firstName: 'Max', lastName: 'Doe' })
+      mockUpsertProfile.mockResolvedValue({ id: 'user-123', firstName: 'Max', lastName: 'Doe', locale: 'en' as const })
 
       const store = useUserProfileStore()
       await store.loadProfile()
@@ -164,6 +215,7 @@ describe('useUserProfileStore', () => {
         id: 'user-123',
         firstName: 'Max',
         lastName: 'Doe',
+        locale: 'en',
       })
     })
   })
@@ -180,7 +232,7 @@ describe('useUserProfileStore', () => {
   describe('clear', () => {
     it('should clear profile on sign out', async () => {
       const store = useUserProfileStore()
-      store.profile = { id: 'user-123', firstName: 'Max', lastName: null }
+      store.profile = { id: 'user-123', firstName: 'Max', lastName: null, locale: null }
       store.clear()
 
       expect(store.profile).toBeNull()
