@@ -1,3 +1,4 @@
+import type { SupportedLocaleCode } from '@/features/user/data/models/user-profile-schema'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { i18n } from '@/core/i18n'
@@ -26,6 +27,9 @@ export const useLocaleStore = defineStore('locale', () => {
         supabase.auth.updateUser({ data: { locale: toEmailLocale(code) } }).then(({ error }) => {
           if (error)
             logger.error('Failed to sync locale to user metadata', error)
+        })
+        import('@/features/user/presentation/stores/user-profile-store').then(({ useUserProfileStore }) => {
+          useUserProfileStore().setLocale(code as SupportedLocaleCode)
         })
       }
     })

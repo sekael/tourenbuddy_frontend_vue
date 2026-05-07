@@ -29,12 +29,23 @@ vi.mock('@/core/i18n/persistence', () => ({
   writePersistedLocale: vi.fn(),
 }))
 
+const mockProfileStoreSetLocale = vi.hoisted(() => vi.fn())
+const mockProfileStoreProfile = vi.hoisted(() => ({ value: null as { locale: string | null } | null }))
+
+vi.mock('@/features/user/presentation/stores/user-profile-store', () => ({
+  useUserProfileStore: () => ({
+    get profile() { return mockProfileStoreProfile.value },
+    setLocale: mockProfileStoreSetLocale,
+  }),
+}))
+
 describe('useLocaleStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
     mockGetSession.mockResolvedValue({ data: { session: null } })
     mockUpdateUser.mockResolvedValue({ error: null })
+    mockProfileStoreProfile.value = null
     Object.defineProperty(document.documentElement, 'lang', {
       set: vi.fn(),
       get: vi.fn(() => 'en'),
@@ -100,5 +111,29 @@ describe('useLocaleStore', () => {
     store.setLocale('de-CH')
     await new Promise(r => setTimeout(r, 10))
     expect(mockUpdateUser).not.toHaveBeenCalled()
+  })
+
+  it('setLocale calls profile setLocale when authenticated and profile loaded', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
+    mockProfileStoreProfile.value = { locale: 'en' }
+    const store = useLocaleStore()
+    store.setLocale('de-CH')
+    await vi.waitFor(() => expect(mockProfileStoreSetLocale).toHaveBeenCalledWith('de-CH'))
+  })
+
+  it('setLocale does NOT call profile setLocale when unauthenticated', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null } })
+    mockProfileStoreProfile.value = { locale: 'en' }
+    const store = useLocaleStore()
+    store.setLocale('de-CH')
+    await new Promise(r => setTimeout(r, 20))
+    expect(mockProfileStoreSetLocale).not.toHaveBeenCalled()
+  })
+
+  it('setLocale does NOT throw when profile not loaded', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
+    mockProfileStoreProfile.value = null
+    const store = useLocaleStore()
+    expect(() => store.setLocale('de-CH')).not.toThrow()
   })
 })

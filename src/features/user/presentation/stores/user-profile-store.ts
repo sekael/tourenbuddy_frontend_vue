@@ -1,3 +1,4 @@
+import type { SupportedLocaleCode } from '@/features/user/data/models/user-profile-schema'
 import type { FullUserProfile } from '@/features/user/domain/entities/full-user-profile'
 import type { UserProfile } from '@/features/user/domain/entities/user-profile'
 import { defineStore } from 'pinia'
@@ -49,10 +50,24 @@ export const useUserProfileStore = defineStore('userProfile', () => {
           id: userId,
           firstName: null,
           lastName: null,
+          locale: null,
         })
       }
 
       profile.value = fetched
+
+      const { useLocaleStore } = await import('@/features/i18n/presentation/stores/use-locale-store')
+      const localeStore = useLocaleStore()
+
+      if (fetched.locale !== null && fetched.locale !== localeStore.locale) {
+        localeStore.setLocale(fetched.locale)
+      }
+      else if (fetched.locale === null) {
+        const seedLocale = localeStore.locale as SupportedLocaleCode
+        repository.upsertProfile({ ...fetched, locale: seedLocale }).then((updated) => {
+          profile.value = updated
+        }).catch(err => logger.error('Failed to seed locale on profile', err))
+      }
     }
     catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load profile'
@@ -88,6 +103,17 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     }
     finally {
       isLoading.value = false
+    }
+  }
+
+  async function setLocale(code: SupportedLocaleCode): Promise<void> {
+    if (!profile.value || profile.value.locale === code)
+      return
+    try {
+      await updateProfile({ locale: code })
+    }
+    catch {
+      // updateProfile already logs; swallow to keep setLocale non-throwing
     }
   }
 
@@ -132,6 +158,7 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     sessionSkipped,
     loadProfile,
     updateProfile,
+    setLocale,
     sendPhoneVerification,
     verifyPhone,
     skipOnboarding,
