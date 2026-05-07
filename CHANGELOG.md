@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.14.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.13.0...tourenbuddy-frontend-v0.14.0) (2026-05-07)
+
+
+### Features
+
+* Cluster overlapping tour markers ([#114](https://github.com/sekael/tourenbuddy_frontend_vue/issues/114)) ([5d78fc1](https://github.com/sekael/tourenbuddy_frontend_vue/commit/5d78fc1a7d1eaba33f312f18d8c7ce6f383b4756))
+* Persist user language preference ([#116](https://github.com/sekael/tourenbuddy_frontend_vue/issues/116)) ([5bb9077](https://github.com/sekael/tourenbuddy_frontend_vue/commit/5bb9077f0e6f97a26e07e1f0076f573ad2347ea1))
+
 ## [0.13.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.12.0...tourenbuddy-frontend-v0.13.0) (2026-05-05)
 
 
