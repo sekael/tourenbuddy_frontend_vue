@@ -16,14 +16,13 @@ export function makeRequest(overrides: Partial<FriendRequest> = {}): FriendReque
   }
 }
 
-/** Build a Friendship fixture with the canonical (sorted) user-id ordering. */
+/** Build a Friendship fixture: requestUserId sent the request, responseUserId accepted it. */
 export function makeFriendship(
-  a: string,
-  b: string,
+  requestUserId: string,
+  responseUserId: string,
   requestId: string | null = 'req-1',
 ): Friendship {
-  const [userAId, userBId] = [a, b].sort() as [string, string]
-  return { userAId, userBId, createdAt: '2024-01-01T00:00:00Z', requestId }
+  return { requestUserId, responseUserId, createdAt: '2024-01-01T00:00:00Z', requestId }
 }
 
 /** Stub `supabase.from(...)` chainable query returning a fixed result. */

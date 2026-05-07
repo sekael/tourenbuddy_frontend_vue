@@ -10,8 +10,8 @@ export const friendRequestSchema = z.object({
 })
 
 export const friendshipSchema = z.object({
-  userAId: z.string().uuid(),
-  userBId: z.string().uuid(),
+  requestUserId: z.string().uuid(),
+  responseUserId: z.string().uuid(),
   createdAt: z.string(),
   requestId: z.string().uuid().nullable(),
 })

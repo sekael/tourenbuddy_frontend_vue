@@ -28,7 +28,7 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     const uid = authStore.currentUser?.id
     if (!uid)
       return new Set()
-    return new Set(friendships.value.map(f => (f.userAId === uid ? f.userBId : f.userAId)))
+    return new Set(friendships.value.map(f => (f.requestUserId === uid ? f.responseUserId : f.requestUserId)))
   })
 
   /** Whether the current user has a verified phone (drives friendship UX gates). */
@@ -96,11 +96,9 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     // Optimistic: move from incoming to friendships
     incomingRequests.value = incomingRequests.value.filter(r => r.id !== requestId)
     const uid = authStore.currentUser!.id
-    const a = [req.fromUserId, uid].sort()[0]!
-    const b = [req.fromUserId, uid].sort()[1]!
     const optimisticFriendship: Friendship = {
-      userAId: a,
-      userBId: b,
+      requestUserId: req.fromUserId,
+      responseUserId: uid,
       createdAt: new Date().toISOString(),
       requestId,
     }
@@ -113,7 +111,7 @@ export const useFriendshipsStore = defineStore('friendships', () => {
       // Rollback
       incomingRequests.value = [...incomingRequests.value, req]
       friendships.value = friendships.value.filter(
-        f => !(f.userAId === a && f.userBId === b && f.requestId === requestId),
+        f => !(f.requestUserId === req.fromUserId && f.responseUserId === uid && f.requestId === requestId),
       )
       logger.error('Failed to accept friend request', err)
       throw err
@@ -211,10 +209,11 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     const uid = authStore.currentUser?.id
     if (!uid)
       return
-    const a = [uid, otherUserId].sort()[0]!
-    const b = [uid, otherUserId].sort()[1]!
-    const removed = friendships.value.find(f => f.userAId === a && f.userBId === b)
-    friendships.value = friendships.value.filter(f => !(f.userAId === a && f.userBId === b))
+    const isMatch = (f: Friendship) =>
+      (f.requestUserId === uid && f.responseUserId === otherUserId)
+      || (f.requestUserId === otherUserId && f.responseUserId === uid)
+    const removed = friendships.value.find(isMatch)
+    friendships.value = friendships.value.filter(f => !isMatch(f))
 
     try {
       await repository.removeFriendship(otherUserId)
