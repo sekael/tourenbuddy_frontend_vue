@@ -77,6 +77,66 @@ Note the Worker URL from the deploy output — you need it to configure the Supa
 wrangler dev
 ```
 
+## Notification routes
+
+Two additional routes handle friend-request push + email dispatch. See `SETUP-NOTIFICATIONS.md` for full operator setup.
+
+### `POST /notify/friend-request-received`
+
+Called by the client after successfully sending a friend request.
+
+**Request**
+
+```
+Authorization: Bearer <supabase_access_token>
+Content-Type: application/json
+{ "friendshipId": "<uuid>" }
+```
+
+**Behaviour**
+
+- Verifies JWT; rejects 401 if missing/invalid.
+- Loads friendship row; rejects 403 if caller is not `request_user_id`.
+- Fetches recipient prefs + subscriptions via service role.
+- Skips all dispatch if `friend_requests` is in `notif_muted_types`.
+- Dispatches Web Push to every registered browser of the recipient (cleans up 410/404 endpoints).
+- Sends Brevo email using the locale-matching template (`BREVO_TEMPLATE_FRIEND_RECEIVED_EN/DE`).
+
+### `POST /notify/friend-request-responded`
+
+Called by the client after accepting or declining a friend request.
+
+**Request**
+
+```
+Authorization: Bearer <supabase_access_token>
+Content-Type: application/json
+{ "friendshipId": "<uuid>" }
+```
+
+**Behaviour**
+
+- Same as above but caller must be `response_user_id`.
+- Notifies the original sender (requester).
+- Notification body never reveals accept vs decline.
+
+### Brevo friend-request templates
+
+| Secret name                          | Template purpose                  |
+| ------------------------------------ | --------------------------------- |
+| `BREVO_TEMPLATE_FRIEND_RECEIVED_EN`  | "New friend request" — English    |
+| `BREVO_TEMPLATE_FRIEND_RECEIVED_DE`  | "New friend request" — German     |
+| `BREVO_TEMPLATE_FRIEND_RESPONDED_EN` | "Friend request update" — English |
+| `BREVO_TEMPLATE_FRIEND_RESPONDED_DE` | "Friend request update" — German  |
+
+Template params: `{{ params.actorName }}`, `{{ params.appUrl }}`
+
+Copy-ready HTML and TXT drafts are in `brevo-templates/`.
+
+## Notification setup
+
+For full operator setup instructions (VAPID generation, Brevo template creation, secrets, migration, env vars), see [SETUP-NOTIFICATIONS.md](./SETUP-NOTIFICATIONS.md).
+
 ## Tests
 
 ```sh

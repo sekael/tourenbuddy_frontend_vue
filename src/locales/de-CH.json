@@ -408,5 +408,19 @@
       "body": "Nach der Verifizierung können andere verifizierte TourenBuddy-Nutzer, die diese Nummer in ihren Kontakten haben, erkennen, dass ein Konto für diese Nummer existiert, und eine Freundschaftsanfrage senden. Ihre Identität wird dabei nicht preisgegeben. Unverifizierte Nummern sind nie auffindbar. Sie können jede eingehende Anfrage ohne Begründung und ohne Konsequenzen ablehnen. Freundschaften können in Zukunft widerrufen werden.",
       "acknowledge": "Ich verstehe, Code senden"
     }
+  },
+  "notifications": {
+    "sectionTitle": "Benachrichtigungen",
+    "pushLabel": "Push-Benachrichtigungen",
+    "pushDescription": "Benachrichtigungen auf diesem Gerät erhalten",
+    "emailLabel": "E-Mail-Benachrichtigungen",
+    "emailDescription": "Benachrichtigungen per E-Mail erhalten",
+    "typesLabel": "Benachrichtige mich über",
+    "type": {
+      "friend_requests": "Freundschaftsanfragen"
+    },
+    "allOffDisclaimer": "Sie erhalten keine Benachrichtigungen über Freundschaftsanfragen oder andere wichtige Ereignisse. Aktivieren Sie mindestens einen Kanal, um informiert zu bleiben.",
+    "installHint": "Um Push-Benachrichtigungen zu aktivieren, fügen Sie TourenBuddy zuerst zum Home-Bildschirm hinzu.",
+    "deniedHint": "Push-Benachrichtigungen sind blockiert. Aktivieren Sie sie in den Browser- oder Geräteeinstellungen."
   }
 }

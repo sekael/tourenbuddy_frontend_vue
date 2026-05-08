@@ -38,12 +38,24 @@ jobs:
         run: npm ci
 
       - name: Create Env File
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          NOTIFY_HOOK_URL: ${{ secrets.NOTIFY_HOOK_URL }}
         run: |
-          echo "VITE_SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env
-          echo "VITE_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
-          echo "VITE_VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }}" >> .env
-          echo "VITE_NOTIFY_HOOK_URL=${{ secrets.NOTIFY_HOOK_URL }}" >> .env
-          echo "VITE_NOTIFICATIONS_ENABLED=true" >> .env
+          {
+            echo "VITE_SUPABASE_URL=$SUPABASE_URL"
+            echo "VITE_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY"
+            [ -n "$VAPID_PUBLIC_KEY" ] && echo "VITE_VAPID_PUBLIC_KEY=$VAPID_PUBLIC_KEY"
+            [ -n "$NOTIFY_HOOK_URL" ]  && echo "VITE_NOTIFY_HOOK_URL=$NOTIFY_HOOK_URL"
+            echo "VITE_NOTIFICATIONS_ENABLED=true"
+          } > .env
+          echo "=== Secret presence (values redacted) ==="
+          [ -n "$SUPABASE_URL" ]      && echo "SUPABASE_URL: SET"      || echo "SUPABASE_URL: EMPTY"
+          [ -n "$SUPABASE_ANON_KEY" ] && echo "SUPABASE_ANON_KEY: SET" || echo "SUPABASE_ANON_KEY: EMPTY"
+          [ -n "$VAPID_PUBLIC_KEY" ]  && echo "VAPID_PUBLIC_KEY: SET"  || echo "VAPID_PUBLIC_KEY: EMPTY"
+          [ -n "$NOTIFY_HOOK_URL" ]   && echo "NOTIFY_HOOK_URL: SET"   || echo "NOTIFY_HOOK_URL: EMPTY"
 
       - name: Build Web
         run: npm run build

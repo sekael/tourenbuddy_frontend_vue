@@ -8,6 +8,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@block65/webcrypto-web-push": "^1.0.2",
+    "@supabase/supabase-js": "^2.105.3",
     "standardwebhooks": "^1.0.0"
   },
   "devDependencies": {

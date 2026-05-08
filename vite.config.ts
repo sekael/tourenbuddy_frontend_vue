@@ -21,6 +21,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'prompt',
       injectRegister: false,
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       includeAssets: ['apple-touch-icon.png', 'icons/icon-192.png', 'icons/icon-512.png'],
       manifest: {
         name: 'TourenBuddy',
@@ -45,54 +48,14 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
-        cleanupOutdatedCaches: true,
-        clientsClaim: true,
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
-        runtimeCaching: [
-          {
-            urlPattern: /\/assets\/background-.*\.webp$/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'welcome-backgrounds',
-              expiration: { maxEntries: 4, maxAgeSeconds: 60 * 60 * 24 * 30 },
-            },
-          },
-          {
-            urlPattern: /^https:\/\/vectortiles\.geo\.admin\.ch\/.*/i,
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'swisstopo-tiles',
-              expiration: {
-                maxEntries: 500,
-                maxAgeSeconds: 60 * 60 * 24 * 30,
-              },
-            },
-          },
-          {
-            urlPattern: /^https:\/\/wmts\.geo\.admin\.ch\/.*/i,
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'swisstopo-wmts',
-              expiration: {
-                maxEntries: 500,
-                maxAgeSeconds: 60 * 60 * 24 * 30,
-              },
-            },
-          },
-          {
-            urlPattern: /\/storage\/v1\/object\/(?:sign\/)?tour-gpx\//i,
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'tour-gpx-files',
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 * 30,
-              },
-            },
-          },
-        ],
+      },
+      devOptions: {
+        enabled: true,
+        type: 'module',
+        navigateFallback: 'index.html',
       },
     }),
   ],

@@ -281,11 +281,17 @@ Backend:
 
 Infrastructure:
 
-- Cloudflare Pages deployment for frontend
-- Cloudflare Workers for the email hook (`wrangler deploy`)
+- Cloudflare Pages deployment for frontend (production deploy on release, preview deploy per PR)
+- Cloudflare Workers for the email hook (`wrangler deploy`, manual)
 - GitHub Actions for CI/CD
 - Brevo for transactional email (auth + notifications)
 - Twilio Verify for phone-number verification
+
+### Preview deployments
+
+Every PR to `main` triggers `.github/workflows/deploy-preview.yml`, which builds the frontend with production secrets and deploys to `https://<branch-slug>.tourenbuddy.pages.dev`. The workflow posts a sticky comment on the PR with the preview URL. Preview builds use the **production** Supabase, Worker, Brevo, and VAPID infrastructure — test data lands in prod, so use throwaway accounts and clean up after.
+
+For enabling push and email notifications, see [services/email-hook/SETUP-NOTIFICATIONS.md](./services/email-hook/SETUP-NOTIFICATIONS.md).
 
 ## Project Structure
 

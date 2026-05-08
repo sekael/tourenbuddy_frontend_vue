@@ -8,6 +8,7 @@ import { computed, ref, watch } from 'vue'
 import { useLogger } from '@/core/logging/use-logger'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { FriendshipRepositoryImpl } from '@/features/friendships/data/repositories/friendship-repository-impl'
+import { notifyFriendRequestReceived, notifyFriendRequestResponded } from '@/features/notifications/data/notify-dispatch'
 
 const repository: FriendshipRepository = new FriendshipRepositoryImpl()
 
@@ -79,6 +80,7 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     try {
       const created = await repository.sendRequest(toUserId)
       outgoingRequests.value = outgoingRequests.value.filter(r => r.id !== tempId).concat(created)
+      notifyFriendRequestReceived(created.id)
       return created
     }
     catch (err) {
@@ -106,6 +108,7 @@ export const useFriendshipsStore = defineStore('friendships', () => {
 
     try {
       await repository.accept(requestId)
+      notifyFriendRequestResponded(requestId)
     }
     catch (err) {
       // Rollback
@@ -124,6 +127,7 @@ export const useFriendshipsStore = defineStore('friendships', () => {
 
     try {
       await repository.deny(requestId)
+      notifyFriendRequestResponded(requestId)
     }
     catch (err) {
       if (req)
