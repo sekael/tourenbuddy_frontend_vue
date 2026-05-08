@@ -1,80 +1,57 @@
 ## ADDED Requirements
 
-### Requirement: Magic link callback page completes session
+### Requirement: OTP verification page verifies the code
 
-The app SHALL display a callback page at `/auth/callback` that completes the Supabase PKCE exchange triggered by clicking the magic link in the email and routes the user to the appropriate post-login destination.
+The app SHALL display an OTP verification page at `/auth/verify-otp` where users enter the 6-digit code received by email and submit it for verification.
 
-#### Scenario: Successful magic link click
+#### Scenario: Successful OTP submission
 
-- **WHEN** an unauthenticated user opens `/auth/callback?code=…` after clicking a valid magic link
-- **THEN** the Supabase JS client SHALL exchange the code automatically (via `detectSessionInUrl`), `onAuthStateChange` SHALL fire `SIGNED_IN`, and the page SHALL redirect to `/map` (or `/onboarding` if the profile is incomplete)
+- **WHEN** an unauthenticated user enters a valid 6-digit code on `/auth/verify-otp?email=<email>` and submits
+- **THEN** the app SHALL call Supabase `verifyOtp({ email, token, type: 'email' })`, the auth store SHALL receive `SIGNED_IN` via `onAuthStateChange`, and the router SHALL navigate to `/map` (or `/onboarding` if the profile is incomplete)
 
-#### Scenario: Expired or invalid token
+#### Scenario: Invalid or expired code
 
-- **WHEN** the URL contains `?error=access_denied` or `?error_description=…`
-- **THEN** the page SHALL display the localized error message and a button that returns the user to `/auth/email`
+- **WHEN** Supabase returns an error from `verifyOtp` (wrong code, expired, used)
+- **THEN** the page SHALL display a localized error message under the input, clear the input, and remain on `/auth/verify-otp`
 
-#### Scenario: Loading state while exchanging
+#### Scenario: Resend code
 
-- **WHEN** the callback page mounts and no auth state has resolved yet
-- **THEN** the page SHALL show a localized loading indicator and SHALL NOT redirect until either `SIGNED_IN` fires or an error is surfaced
+- **WHEN** the user clicks the resend button on `/auth/verify-otp`
+- **THEN** the app SHALL call `sendEmailOtp(email)` and SHALL display a localized confirmation that a new code was sent
 
-### Requirement: Locale captured in user metadata at sign-up
+#### Scenario: Back to email entry
 
-When the auth store calls `signInWithOtp` and the user does not yet exist, the request SHALL include `options.data.locale` set to the base language code (`en` or `de`) derived from the active i18n locale.
+- **WHEN** the user clicks the back button
+- **THEN** the app SHALL navigate to `/auth/email` and SHALL NOT call Supabase
 
-#### Scenario: New user with German locale
+### Requirement: OTP verification page layout
 
-- **WHEN** a new user with active i18n locale `de-CH` requests a magic link
-- **THEN** the call SHALL pass `options.data.locale = 'de'` so Supabase persists it on user creation in `user_metadata`
+The OTP verification page SHALL include a title, a subtitle naming the recipient email, a single 6-digit numeric input with `inputmode="numeric"` and `autocomplete="one-time-code"`, a verify button, a resend button, and a back button.
 
-#### Scenario: New user with English locale
+#### Scenario: Numeric-only input on mobile
 
-- **WHEN** a new user with active i18n locale `en` requests a magic link
-- **THEN** the call SHALL pass `options.data.locale = 'en'`
-
-### Requirement: Email entry page collects user email
-
-The app SHALL display an email entry page at `/auth/email` where users enter their email address to receive a magic link.
-
-#### Scenario: Valid email submission
-
-- **WHEN** a user enters a valid email address and submits the form
-- **THEN** the app SHALL call Supabase `signInWithOtp({ email, options: { emailRedirectTo: '<origin>/auth/callback', data: { locale } } })` and navigate to the check-email page
-
-#### Scenario: Invalid email submission
-
-- **WHEN** a user enters an invalid email address and submits the form
-- **THEN** the app SHALL display a validation error and NOT call Supabase
-
-### Requirement: Home page for unauthenticated users
-
-The app SHALL display a home/landing page at `/` with the app name and a button to navigate to the email entry page.
-
-#### Scenario: Navigate to login
-
-- **WHEN** an unauthenticated user clicks the login button on the home page
-- **THEN** the app SHALL navigate to `/auth/email`
+- **WHEN** the page mounts on a mobile device
+- **THEN** the input SHALL surface a numeric keyboard and SHALL accept the device's one-time-code autofill where supported
 
 ## MODIFIED Requirements
 
 ### Requirement: Email entry page collects user email
 
-The app SHALL display an email entry page at `/auth/email` where users enter their email address to receive a magic link.
+The app SHALL display an email entry page at `/auth/email` where users enter their email address to receive a one-time code.
 
 #### Scenario: Valid email submission
 
 - **WHEN** a user enters a valid email address and submits the form
-- **THEN** the app SHALL call Supabase `signInWithOtp({ email, options: { emailRedirectTo: '<origin>/auth/callback', data: { locale } } })` and navigate to the check-email page
+- **THEN** the app SHALL call Supabase `signInWithOtp({ email, options: { data: { locale } } })` (no `emailRedirectTo`) and navigate to `/auth/verify-otp?email=<email>`
 
 #### Scenario: Invalid email submission
 
 - **WHEN** a user enters an invalid email address and submits the form
-- **THEN** the app SHALL display a validation error and NOT call Supabase
+- **THEN** the app SHALL display a validation error and SHALL NOT call Supabase
 
 ### Requirement: Auth store manages session state
 
-A Pinia store (`useAuthStore`) SHALL manage the current user session, exposing reactive state for `isAuthenticated`, `currentUser`, and `isLoading`, and a `sendMagicLink(email)` action that issues the Supabase magic link request.
+A Pinia store (`useAuthStore`) SHALL manage the current user session, exposing reactive state for `isAuthenticated`, `currentUser`, and `isLoading`, a `sendEmailOtp(email)` action that issues the Supabase OTP request, and a `verifyOtp(email, token)` action that redeems the 6-digit code.
 
 #### Scenario: Store initialization
 
@@ -86,19 +63,29 @@ A Pinia store (`useAuthStore`) SHALL manage the current user session, exposing r
 - **WHEN** `signOut()` is called on the auth store
 - **THEN** the store SHALL call Supabase `signOut()`, clear the session, and the router guard SHALL redirect to `/`
 
-#### Scenario: sendMagicLink for new user
+#### Scenario: sendEmailOtp for new user
 
-- **WHEN** `sendMagicLink('user@example.com')` is called and the user does not yet exist
-- **THEN** the store SHALL call `signInWithOtp` with `emailRedirectTo` pointing to the callback route and `options.data.locale` set to the active base locale
+- **WHEN** `sendEmailOtp('user@example.com')` is called and the user does not yet exist
+- **THEN** the store SHALL call `signInWithOtp({ email, options: { data: { locale } } })` with `locale` set to the active base locale and SHALL NOT pass `emailRedirectTo`
 
-#### Scenario: sendMagicLink for existing user
+#### Scenario: sendEmailOtp for existing user
 
-- **WHEN** `sendMagicLink('user@example.com')` is called and the user already exists
-- **THEN** the store SHALL call `signInWithOtp` with `emailRedirectTo` and the request SHALL succeed without overwriting existing `user_metadata.locale` (Supabase merges `data` only at user creation)
+- **WHEN** `sendEmailOtp('user@example.com')` is called and the user already exists
+- **THEN** the store SHALL call `signInWithOtp` with the same shape and the request SHALL succeed without overwriting existing `user_metadata.locale`
+
+#### Scenario: verifyOtp success
+
+- **WHEN** `verifyOtp('user@example.com', '123456')` is called with a valid code
+- **THEN** the store SHALL call `supabase.auth.verifyOtp({ email, token, type: 'email' })` and `isAuthenticated` SHALL become true via `onAuthStateChange`
+
+#### Scenario: verifyOtp failure
+
+- **WHEN** `verifyOtp` is called with an invalid or expired code
+- **THEN** the store SHALL surface the Supabase error to the caller and `isAuthenticated` SHALL remain false
 
 ### Requirement: Auth gate redirects based on session state
 
-The Vue Router SHALL use a `beforeEach` navigation guard that checks the user's authentication state and redirects accordingly. The callback route SHALL be exempt from `redirectIfAuth` so it can complete the PKCE exchange while the user is still unauthenticated.
+The Vue Router SHALL use a `beforeEach` navigation guard that checks the user's authentication state and redirects accordingly.
 
 #### Scenario: Unauthenticated user visits protected route
 
@@ -107,29 +94,33 @@ The Vue Router SHALL use a `beforeEach` navigation guard that checks the user's 
 
 #### Scenario: Authenticated user visits auth pages
 
-- **WHEN** an authenticated user navigates to `/` or `/auth/email` or `/auth/check-email`
+- **WHEN** an authenticated user navigates to `/`, `/auth/email`, or `/auth/verify-otp`
 - **THEN** the router SHALL redirect to `/map`
 
-#### Scenario: Callback route always reachable
+### Requirement: Locale captured in user metadata at sign-up
 
-- **WHEN** any user (authenticated or not) navigates to `/auth/callback`
-- **THEN** the router SHALL allow the navigation so the callback page can run its exchange/error logic
+When the auth store calls `signInWithOtp` and the user does not yet exist, the request SHALL include `options.data.locale` set to the base language code (`en` or `de`) derived from the active i18n locale.
 
-#### Scenario: Auth state changes after magic link click
+#### Scenario: New user with German locale
 
-- **WHEN** a user clicks the magic link and the callback page completes the exchange
-- **THEN** the Supabase `onAuthStateChange` listener SHALL update the auth store and the callback page SHALL navigate to `/map` or `/onboarding`
+- **WHEN** a new user with active i18n locale `de-CH` requests an OTP
+- **THEN** the call SHALL pass `options.data.locale = 'de'` so Supabase persists it on user creation in `user_metadata`
+
+#### Scenario: New user with English locale
+
+- **WHEN** a new user with active i18n locale `en` requests an OTP
+- **THEN** the call SHALL pass `options.data.locale = 'en'`
 
 ## REMOVED Requirements
 
-### Requirement: OTP verification page verifies the code
+### Requirement: Magic link callback page completes session
 
-**Reason**: Replaced by magic link flow. Users no longer enter a code; they click a link that lands on `/auth/callback`.
+**Reason**: Magic links break the installed-PWA experience — the link always opens in the system browser, not the standalone PWA window, leaving the user unable to complete sign-in inside the app. Replaced by 6-digit OTP code entry in `/auth/verify-otp`.
 
-**Migration**: Delete `src/features/auth/presentation/pages/verify-otp-page.vue` and its route. Replace with `check-email-page.vue` (instructional only) at `/auth/check-email` plus `callback-page.vue` at `/auth/callback`. Any user holding an unredeemed OTP must request a new magic link.
+**Migration**: Delete `src/features/auth/presentation/pages/callback-page.vue` and the `/auth/callback` route. Remove `https://app.tourenbuddy.ch/auth/callback` from the Supabase Auth → URL Configuration → Redirect URLs allowlist. Anyone holding an unredeemed magic link SHALL request a new code.
 
-### Requirement: OTP verification page layout
+### Requirement: Email entry page collects user email (magic-link variant)
 
-**Reason**: The OTP verification page is removed (see above). The replacement check-email page does not require an OTP input.
+**Reason**: The `signInWithOtp` call no longer passes `emailRedirectTo`; see the MODIFIED variant above. This requirement is superseded.
 
-**Migration**: Build `check-email-page.vue` with title, instructional subtitle naming the recipient, a resend button, and a back button — no input field, no verify button.
+**Migration**: Update `email-entry-page.vue` to call `sendEmailOtp(email)` and navigate to `/auth/verify-otp?email=<email>` instead of `/auth/check-email`. The `check-email-page.vue` file SHALL be deleted.
