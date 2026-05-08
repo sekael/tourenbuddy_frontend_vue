@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import worker from '../src/index'
 
 const VALID_ENV = {
-  SUPABASE_URL: 'https://project.supabase.co',
   BREVO_API_KEY: 'key-abc',
   SEND_EMAIL_HOOK_SECRET: 'whsec_dGVzdHNlY3JldA==',
   BREVO_TEMPLATE_EN: '10',
@@ -15,9 +14,7 @@ const VALID_PAYLOAD = {
     user_metadata: { locale: 'en' },
   },
   email_data: {
-    token_hash: 'abc123',
-    email_action_type: 'magiclink',
-    redirect_to: 'https://app.tourenbuddy.ch/auth/callback',
+    token: '123456',
   },
 }
 
@@ -64,10 +61,6 @@ describe('email-hook worker', () => {
     const payload = {
       ...VALID_PAYLOAD,
       user: { ...VALID_PAYLOAD.user, user_metadata: { locale: 'de' } },
-      email_data: {
-        ...VALID_PAYLOAD.email_data,
-        redirect_to: 'https://app.tourenbuddy.ch/auth/callback?locale=de',
-      },
     }
     await worker.fetch(makeRequest(payload), VALID_ENV as never)
     const brevoBody = JSON.parse(
@@ -88,13 +81,20 @@ describe('email-hook worker', () => {
     expect(brevoBody.templateId).toBe(10)
   })
 
-  it('includes magic_link param in Brevo body', async () => {
+  it('forwards OTP token verbatim as params.otp', async () => {
     await worker.fetch(makeRequest(VALID_PAYLOAD), VALID_ENV as never)
     const brevoBody = JSON.parse(
       (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body as string,
     )
-    expect(brevoBody.params.magic_link).toContain('token=abc123')
-    expect(brevoBody.params.magic_link).toContain('type=magiclink')
+    expect(brevoBody.params.otp).toBe('123456')
+    expect(brevoBody.params.email).toBe('user@example.com')
+  })
+
+  it('returns 400 when email_data.token is missing', async () => {
+    const payload = { ...VALID_PAYLOAD, email_data: {} }
+    const response = await worker.fetch(makeRequest(payload), VALID_ENV as never)
+    expect(response.status).toBe(400)
+    expect(fetch).not.toHaveBeenCalled()
   })
 
   it('returns 401 when signature verification fails', async () => {
@@ -126,22 +126,6 @@ describe('email-hook worker', () => {
     const response = await worker.fetch(makeRequest(VALID_PAYLOAD), VALID_ENV as never)
     expect(response.headers.get('Content-Type')).toBe('application/json')
     expect(await response.text()).toBe('{}')
-  })
-
-  it('prefers redirect_to locale query over user_metadata locale', async () => {
-    const payload = {
-      ...VALID_PAYLOAD,
-      user: { ...VALID_PAYLOAD.user, user_metadata: { locale: 'en' } },
-      email_data: {
-        ...VALID_PAYLOAD.email_data,
-        redirect_to: 'https://app.tourenbuddy.ch/auth/callback?locale=de',
-      },
-    }
-    await worker.fetch(makeRequest(payload), VALID_ENV as never)
-    const brevoBody = JSON.parse(
-      (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body as string,
-    )
-    expect(brevoBody.templateId).toBe(20)
   })
 
   it('returns 405 for non-POST methods', async () => {

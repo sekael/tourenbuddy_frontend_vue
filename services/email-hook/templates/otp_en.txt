@@ -1,0 +1,16 @@
+TourenBuddy – Sign in to your account
+======================================
+
+Enter this code in the app to sign in:
+
+    {{ params.otp }}
+
+This code is valid for 60 minutes and can only be used once.
+
+Do not share this code with anyone. TourenBuddy will never ask for your sign-in code.
+
+If you didn't request this, you can ignore this email. Someone may have entered {{ params.email }} by mistake.
+
+---
+TourenBuddy – Plan your outdoor tours
+Sent to {{ params.email }}

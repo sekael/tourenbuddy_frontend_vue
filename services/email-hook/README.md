@@ -1,32 +1,27 @@
 # tourenbuddy-email-hook
 
-Cloudflare Worker that implements the Supabase "Send Email Hook". Receives Supabase auth email payloads via HMAC-verified webhook, picks a Brevo transactional template based on the user's locale, and sends the magic link email.
+Cloudflare Worker implementing the Supabase "Send Email Hook". Receives Supabase auth email payloads via HMAC-verified webhook, picks a Brevo transactional template based on the user's locale, and sends the OTP code email.
 
-See implementation spec: `../../openspec/changes/switch-to-magic-link-auth/`
+See implementation spec: `../../openspec/changes/switch-auth-to-otp/`
 
 ## Brevo templates
 
-Ready-to-use templates are in `templates/`:
+Create two Brevo transactional templates: **Transactional → Templates → Create a template**.
 
-| File                 | Purpose                 | Brevo name      |
-| -------------------- | ----------------------- | --------------- |
-| `magic_link_en.html` | HTML body (EN)          | `magic_link_en` |
-| `magic_link_en.txt`  | Plaintext fallback (EN) | —               |
-| `magic_link_de.html` | HTML body (DE)          | `magic_link_de` |
-| `magic_link_de.txt`  | Plaintext fallback (DE) | —               |
+| Template name | Subject (Brevo)                 | Language |
+| ------------- | ------------------------------- | -------- |
+| `otp_en`      | `Your TourenBuddy sign-in code` | EN       |
+| `otp_de`      | `Dein TourenBuddy-Anmeldecode`  | DE       |
 
-In Brevo: **Transactional → Templates → Create a template**.
-
-- Subject EN: `Your TourenBuddy sign-in link`
-- Subject DE: `Dein TourenBuddy-Anmeldelink`
 - Sender: `no-reply@tourenbuddy.ch`
-- Paste HTML content, paste plaintext content.
 - Note the numeric `templateId` from the template detail page — you need it for `BREVO_TEMPLATE_EN` / `BREVO_TEMPLATE_DE`.
 
-Required params (passed by Worker, referenced in templates):
+Required template params (passed by Worker):
 
-- `{{ params.magic_link }}` — the full sign-in URL
+- `{{ params.otp }}` — the 6-digit sign-in code
 - `{{ params.email }}` — the recipient's email address
+
+Include a "Do not share this code. It expires in 1 hour." warning in the template body.
 
 ## Secrets
 
@@ -35,11 +30,11 @@ Set all secrets via Wrangler before deploying:
 ```sh
 wrangler secret put BREVO_API_KEY
 wrangler secret put SEND_EMAIL_HOOK_SECRET
-wrangler secret put BREVO_TEMPLATE_EN
-wrangler secret put BREVO_TEMPLATE_DE
+wrangler secret put BREVO_TEMPLATE_EN   # numeric ID of otp_en template
+wrangler secret put BREVO_TEMPLATE_DE   # numeric ID of otp_de template
 ```
 
-Set `SUPABASE_URL` in `wrangler.toml` under `[vars]` (non-secret).
+No `[vars]` configuration required in `wrangler.toml`.
 
 ## Deploy
 

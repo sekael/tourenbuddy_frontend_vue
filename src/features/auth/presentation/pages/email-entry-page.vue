@@ -24,8 +24,8 @@ async function handleSubmit() {
 
   isLoading.value = true
   try {
-    await authStore.sendMagicLink(email.value)
-    router.push({ name: 'check-email', query: { email: email.value } })
+    await authStore.sendEmailOtp(email.value)
+    router.push({ name: 'verify-otp', query: { email: email.value } })
   }
   catch (err) {
     error.value = err instanceof Error ? err.message : t('auth.emailEntry.sendError')

@@ -40,29 +40,27 @@
     },
     "emailEntry": {
       "title": "E-Mail-Adresse eingeben",
-      "subtitle": "Wir senden Ihnen einen Anmelde-Link",
+      "subtitle": "Wir senden Ihnen einen Anmeldecode",
       "emailLabel": "E-Mail-Adresse",
       "emailPlaceholder": "sie{'@'}beispiel.ch",
       "invalidEmail": "Bitte geben Sie eine gültige E-Mail-Adresse ein",
-      "sendCodeBtn": "Link senden",
-      "sendError": "Link konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
-    },
-    "checkEmail": {
-      "title": "Prüfen Sie Ihre E-Mails",
-      "subtitlePrefix": "Wir haben einen Anmelde-Link gesendet an",
-      "resendBtn": "Link erneut senden",
-      "resendSuccess": "Link erneut gesendet! Prüfen Sie Ihre E-Mails.",
-      "resendError": "Link konnte nicht erneut gesendet werden. Bitte versuchen Sie es erneut.",
-      "backBtn": "Zurück"
-    },
-    "callback": {
-      "loading": "Anmeldung läuft, dies kann einen Moment dauern…",
-      "errorTitle": "Anmeldung fehlgeschlagen",
-      "errorBody": "Der Link ist möglicherweise abgelaufen oder wurde bereits verwendet.",
-      "backToEmailBtn": "Zurück zur Anmeldung"
+      "sendCodeBtn": "Code senden",
+      "sendError": "Code konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
     },
     "shared": {
       "sendingBtn": "Wird gesendet...",
+      "backBtn": "Zurück"
+    },
+    "verifyOtp": {
+      "title": "Code eingeben",
+      "subtitlePrefix": "Wir haben einen 6-stelligen Anmeldecode gesendet an",
+      "inputLabel": "Anmeldecode",
+      "inputPlaceholder": "123456",
+      "verifyBtn": "Bestätigen",
+      "verifyError": "Ungültiger oder abgelaufener Code. Bitte versuchen Sie es erneut.",
+      "resendBtn": "Code erneut senden",
+      "resendSuccess": "Code erneut gesendet! Prüfen Sie Ihre E-Mails.",
+      "resendError": "Code konnte nicht erneut gesendet werden. Bitte versuchen Sie es erneut.",
       "backBtn": "Zurück"
     }
   },

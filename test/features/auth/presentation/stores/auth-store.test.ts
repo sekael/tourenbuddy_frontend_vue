@@ -10,6 +10,7 @@ vi.mock('@/core/utils/supabase', () => ({
         .fn()
         .mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
       signInWithOtp: vi.fn().mockResolvedValue({ error: null }),
+      verifyOtp: vi.fn().mockResolvedValue({ error: null }),
       signOut: vi.fn().mockResolvedValue({ error: null }),
     },
   },
@@ -43,48 +44,69 @@ describe('useAuthStore', () => {
     expect(store.isAuthenticated).toBe(false)
   })
 
-  it('should call sendMagicLink with correct signInWithOtp shape for en locale', async () => {
+  it('should call signInWithOtp without emailRedirectTo for en locale', async () => {
     const { supabase } = await import('@/core/utils/supabase')
     const { useLocaleStore } = await import('@/features/i18n/presentation/stores/use-locale-store')
     vi.mocked(useLocaleStore).mockReturnValue({ locale: 'en' } as never)
 
     const store = useAuthStore()
-    await store.sendMagicLink('test@example.com')
+    await store.sendEmailOtp('test@example.com')
 
     expect(supabase.auth.signInWithOtp).toHaveBeenCalledWith({
       email: 'test@example.com',
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?locale=en`,
         data: { locale: 'en' },
       },
     })
   })
 
-  it('should call sendMagicLink with de locale for de-CH active locale', async () => {
+  it('should call signInWithOtp with de locale for de-CH active locale', async () => {
     const { supabase } = await import('@/core/utils/supabase')
     const { useLocaleStore } = await import('@/features/i18n/presentation/stores/use-locale-store')
     vi.mocked(useLocaleStore).mockReturnValue({ locale: 'de-CH' } as never)
 
     const store = useAuthStore()
-    await store.sendMagicLink('test@example.com')
+    await store.sendEmailOtp('test@example.com')
 
     expect(supabase.auth.signInWithOtp).toHaveBeenCalledWith({
       email: 'test@example.com',
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?locale=de`,
         data: { locale: 'de' },
       },
     })
   })
 
-  it('should throw when sendMagicLink returns an error', async () => {
+  it('should throw when sendEmailOtp returns an error', async () => {
     const { supabase } = await import('@/core/utils/supabase')
     vi.mocked(supabase.auth.signInWithOtp).mockResolvedValue({
       error: new Error('rate limited'),
     } as never)
 
     const store = useAuthStore()
-    await expect(store.sendMagicLink('test@example.com')).rejects.toThrow('rate limited')
+    await expect(store.sendEmailOtp('test@example.com')).rejects.toThrow('rate limited')
+  })
+
+  it('should call verifyOtp with correct shape', async () => {
+    const { supabase } = await import('@/core/utils/supabase')
+
+    const store = useAuthStore()
+    await store.verifyOtp('test@example.com', '123456')
+
+    expect(supabase.auth.verifyOtp).toHaveBeenCalledWith({
+      email: 'test@example.com',
+      token: '123456',
+      type: 'email',
+    })
+  })
+
+  it('should throw when verifyOtp returns an error', async () => {
+    const { supabase } = await import('@/core/utils/supabase')
+    vi.mocked(supabase.auth.verifyOtp).mockResolvedValue({
+      error: new Error('invalid token'),
+    } as never)
+
+    const store = useAuthStore()
+    await expect(store.verifyOtp('test@example.com', '000000')).rejects.toThrow('invalid token')
   })
 
   it('should clear user on sign out', async () => {
