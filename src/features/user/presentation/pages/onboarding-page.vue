@@ -30,6 +30,13 @@ onMounted(async () => {
   if (!store.profile) {
     await store.loadProfile()
   }
+  if (store.profile) {
+    firstName.value = store.profile.firstName ?? ''
+    lastName.value = store.profile.lastName ?? ''
+  }
+  if (store.fullProfile?.phoneNumber) {
+    phoneNumber.value = store.fullProfile.phoneNumber
+  }
 })
 
 function validate(): boolean {

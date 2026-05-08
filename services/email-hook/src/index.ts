@@ -1,7 +1,6 @@
 import { Webhook } from 'standardwebhooks'
 
 interface Env {
-  SUPABASE_URL: string
   BREVO_API_KEY: string
   SEND_EMAIL_HOOK_SECRET: string
   BREVO_TEMPLATE_EN: string
@@ -16,9 +15,7 @@ interface SupabaseHookPayload {
     }
   }
   email_data: {
-    token_hash: string
-    email_action_type: string
-    redirect_to: string
+    token: string
   }
 }
 
@@ -28,15 +25,7 @@ function jsonResponse(status: number, body: Record<string, unknown> = {}) {
   return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS })
 }
 
-function resolveLocale(redirectTo: string, metadataLocale: string | undefined): 'en' | 'de' {
-  try {
-    const qp = new URL(redirectTo).searchParams.get('locale')
-    if (qp === 'de' || qp === 'en')
-      return qp
-  }
-  catch {
-    // ignore malformed redirect_to
-  }
+function resolveLocale(metadataLocale: string | undefined): 'en' | 'de' {
   return metadataLocale === 'de' ? 'de' : 'en'
 }
 
@@ -81,10 +70,13 @@ export default {
     }
 
     const { user, email_data } = payload
-    const locale = resolveLocale(email_data.redirect_to, user.user_metadata?.locale)
-    const templateId = Number(locale === 'de' ? env.BREVO_TEMPLATE_DE : env.BREVO_TEMPLATE_EN)
 
-    const magicLink = `${env.SUPABASE_URL}/auth/v1/verify?token=${email_data.token_hash}&type=${email_data.email_action_type}&redirect_to=${encodeURIComponent(email_data.redirect_to)}`
+    if (!email_data.token) {
+      return jsonResponse(400, { error: 'missing_otp_token' })
+    }
+
+    const locale = resolveLocale(user.user_metadata?.locale)
+    const templateId = Number(locale === 'de' ? env.BREVO_TEMPLATE_DE : env.BREVO_TEMPLATE_EN)
 
     const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
@@ -96,7 +88,7 @@ export default {
         to: [{ email: user.email }],
         templateId,
         params: {
-          magic_link: magicLink,
+          otp: email_data.token,
           email: user.email,
         },
       }),

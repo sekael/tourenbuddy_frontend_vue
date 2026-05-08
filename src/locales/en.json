@@ -40,29 +40,27 @@
     },
     "emailEntry": {
       "title": "Enter your email",
-      "subtitle": "We'll send you a magic link to sign in",
+      "subtitle": "We'll send you a sign-in code",
       "emailLabel": "Email address",
       "emailPlaceholder": "you{'@'}example.com",
       "invalidEmail": "Please enter a valid email address",
-      "sendCodeBtn": "Send Link",
-      "sendError": "Failed to send link. Please try again."
-    },
-    "checkEmail": {
-      "title": "Check your email",
-      "subtitlePrefix": "We sent a sign-in link to",
-      "resendBtn": "Resend link",
-      "resendSuccess": "Link resent! Check your email.",
-      "resendError": "Failed to resend link. Please try again.",
-      "backBtn": "Back"
-    },
-    "callback": {
-      "loading": "Signing you in, this may take a moment…",
-      "errorTitle": "Sign-in failed",
-      "errorBody": "The link may have expired or already been used.",
-      "backToEmailBtn": "Back to sign in"
+      "sendCodeBtn": "Send Code",
+      "sendError": "Failed to send code. Please try again."
     },
     "shared": {
       "sendingBtn": "Sending...",
+      "backBtn": "Back"
+    },
+    "verifyOtp": {
+      "title": "Enter your code",
+      "subtitlePrefix": "We sent a 6-digit sign-in code to",
+      "inputLabel": "Sign-in code",
+      "inputPlaceholder": "123456",
+      "verifyBtn": "Verify",
+      "verifyError": "Invalid or expired code. Please try again.",
+      "resendBtn": "Resend code",
+      "resendSuccess": "Code resent! Check your email.",
+      "resendError": "Failed to resend code. Please try again.",
       "backBtn": "Back"
     }
   },
