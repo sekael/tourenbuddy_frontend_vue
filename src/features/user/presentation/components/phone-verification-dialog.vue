@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
+import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
@@ -13,6 +15,7 @@ const displayPhone = computed(() => {
   return result.ok ? result.value : props.phone
 })
 const store = useUserProfileStore()
+const isDesktop = useIsDesktop()
 
 const otp = ref('')
 const error = ref<string | null>(null)
@@ -84,116 +87,163 @@ async function handleResend() {
 </script>
 
 <template>
-  <div class="overlay" @click.self="emit('close')">
-    <div class="dialog">
-      <button class="close-btn" @click="emit('close')">
-        <span class="material-symbols-outlined">close</span>
-      </button>
+  <Teleport to="body">
+    <div v-if="!isDesktop" class="sheet-container" @click.self="emit('close')">
+      <AdaptiveOverlay
+        :title="isVerified ? '' : t('user.phoneVerification.title')"
+        @close="emit('close')"
+      >
+        <div class="dialog-content">
+          <template v-if="isVerified">
+            <div class="verified-state">
+              <span class="verified-icon material-symbols-outlined">check_circle</span>
+              <p class="verified-text">
+                {{ t('user.phoneVerification.verifiedMsg') }}
+              </p>
+            </div>
+          </template>
 
-      <template v-if="isVerified">
-        <div class="verified-state">
-          <span class="verified-icon material-symbols-outlined">check_circle</span>
-          <p class="verified-text">
-            {{ t('user.phoneVerification.verifiedMsg') }}
-          </p>
-        </div>
-      </template>
+          <template v-else>
+            <p class="subtitle">
+              {{ t('user.phoneVerification.subtitlePrefix') }} <strong>{{ displayPhone }}</strong>
+            </p>
 
-      <template v-else>
-        <h2 class="title">
-          {{ t('user.phoneVerification.title') }}
-        </h2>
-        <p class="subtitle">
-          {{ t('user.phoneVerification.subtitlePrefix') }} <strong>{{ displayPhone }}</strong>
-        </p>
+            <form class="form" @submit.prevent="handleVerify">
+              <div class="field">
+                <label for="phone-otp" class="label">{{ t('user.phoneVerification.codeLabel') }}</label>
+                <input
+                  id="phone-otp"
+                  v-model="otp"
+                  type="text"
+                  class="input otp-input"
+                  :placeholder="t('user.phoneVerification.codePlaceholder')"
+                  autocomplete="one-time-code"
+                  inputmode="numeric"
+                  maxlength="6"
+                >
+              </div>
 
-        <form class="form" @submit.prevent="handleVerify">
-          <div class="field">
-            <label for="phone-otp" class="label">{{ t('user.phoneVerification.codeLabel') }}</label>
-            <input
-              id="phone-otp"
-              v-model="otp"
-              type="text"
-              class="input otp-input"
-              :placeholder="t('user.phoneVerification.codePlaceholder')"
-              autocomplete="one-time-code"
-              inputmode="numeric"
-              maxlength="6"
+              <p v-if="error" class="error-text">
+                {{ error }}
+              </p>
+              <p v-if="resendSuccess" class="success-text">
+                {{ t('user.phoneVerification.resendSuccess') }}
+              </p>
+
+              <button type="submit" class="submit-btn" :disabled="isVerifying">
+                {{
+                  isVerifying
+                    ? t('user.phoneVerification.verifyingBtn')
+                    : t('user.phoneVerification.verifyBtn')
+                }}
+              </button>
+            </form>
+
+            <button
+              class="resend-btn"
+              :disabled="isResending || resendCooldown > 0"
+              @click="handleResend"
             >
+              {{
+                resendCooldown > 0
+                  ? `${t('user.phoneVerification.resendCountdown')} ${resendCooldown}s`
+                  : isResending
+                    ? t('user.phoneVerification.sendingBtn')
+                    : t('user.phoneVerification.resendBtn')
+              }}
+            </button>
+          </template>
+        </div>
+      </AdaptiveOverlay>
+    </div>
+
+    <AdaptiveOverlay
+      v-else
+      :title="isVerified ? '' : t('user.phoneVerification.title')"
+      @close="emit('close')"
+    >
+      <div class="dialog-content">
+        <template v-if="isVerified">
+          <div class="verified-state">
+            <span class="verified-icon material-symbols-outlined">check_circle</span>
+            <p class="verified-text">
+              {{ t('user.phoneVerification.verifiedMsg') }}
+            </p>
           </div>
+        </template>
 
-          <p v-if="error" class="error-text">
-            {{ error }}
-          </p>
-          <p v-if="resendSuccess" class="success-text">
-            {{ t('user.phoneVerification.resendSuccess') }}
+        <template v-else>
+          <p class="subtitle">
+            {{ t('user.phoneVerification.subtitlePrefix') }} <strong>{{ displayPhone }}</strong>
           </p>
 
-          <button type="submit" class="submit-btn" :disabled="isVerifying">
+          <form class="form" @submit.prevent="handleVerify">
+            <div class="field">
+              <label for="phone-otp-desktop" class="label">{{ t('user.phoneVerification.codeLabel') }}</label>
+              <input
+                id="phone-otp-desktop"
+                v-model="otp"
+                type="text"
+                class="input otp-input"
+                :placeholder="t('user.phoneVerification.codePlaceholder')"
+                autocomplete="one-time-code"
+                inputmode="numeric"
+                maxlength="6"
+              >
+            </div>
+
+            <p v-if="error" class="error-text">
+              {{ error }}
+            </p>
+            <p v-if="resendSuccess" class="success-text">
+              {{ t('user.phoneVerification.resendSuccess') }}
+            </p>
+
+            <button type="submit" class="submit-btn" :disabled="isVerifying">
+              {{
+                isVerifying
+                  ? t('user.phoneVerification.verifyingBtn')
+                  : t('user.phoneVerification.verifyBtn')
+              }}
+            </button>
+          </form>
+
+          <button
+            class="resend-btn"
+            :disabled="isResending || resendCooldown > 0"
+            @click="handleResend"
+          >
             {{
-              isVerifying
-                ? t('user.phoneVerification.verifyingBtn')
-                : t('user.phoneVerification.verifyBtn')
+              resendCooldown > 0
+                ? `${t('user.phoneVerification.resendCountdown')} ${resendCooldown}s`
+                : isResending
+                  ? t('user.phoneVerification.sendingBtn')
+                  : t('user.phoneVerification.resendBtn')
             }}
           </button>
-        </form>
-
-        <button
-          class="resend-btn"
-          :disabled="isResending || resendCooldown > 0"
-          @click="handleResend"
-        >
-          {{
-            resendCooldown > 0
-              ? `${t('user.phoneVerification.resendCountdown')} ${resendCooldown}s`
-              : isResending
-                ? t('user.phoneVerification.sendingBtn')
-                : t('user.phoneVerification.resendBtn')
-          }}
-        </button>
-      </template>
-    </div>
-  </div>
+        </template>
+      </div>
+    </AdaptiveOverlay>
+  </Teleport>
 </template>
 
 <style scoped>
-.overlay {
+.sheet-container {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  padding: var(--spacing-xl);
-  z-index: 100;
+  z-index: 120;
+  background: rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
 }
 
-.dialog {
-  position: relative;
-  background-color: var(--color-surface);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-xl);
-  width: 100%;
-  max-width: 360px;
+.dialog-content {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
-  box-shadow: var(--shadow-lg);
-}
-
-.close-btn {
-  position: absolute;
-  top: var(--spacing-md);
-  right: var(--spacing-md);
-  color: var(--color-on-surface-variant);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.title {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-medium);
 }
 
 .subtitle {

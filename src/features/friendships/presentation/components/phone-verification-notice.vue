@@ -1,87 +1,96 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
+import { useIsDesktop } from '@/core/composables/use-is-desktop'
 
 const emit = defineEmits<{ acknowledged: [], close: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
+const isDesktop = useIsDesktop()
 const acknowledged = ref(false)
 </script>
 
 <template>
-  <div class="overlay" @click.self="emit('close')">
-    <div class="dialog">
-      <button class="close-btn" @click="emit('close')">
-        <span class="material-symbols-outlined">close</span>
-      </button>
-
-      <h2 class="title">
-        {{ t('friendships.verificationNotice.title') }}
-      </h2>
-
-      <div class="notice-body">
-        <span class="material-symbols-outlined notice-icon">privacy_tip</span>
-        <p class="notice-text">
-          {{ t('friendships.verificationNotice.body') }}
-        </p>
-      </div>
-
-      <label class="checkbox-row">
-        <input v-model="acknowledged" type="checkbox" class="checkbox">
-        <span class="checkbox-label">{{ t('friendships.verificationNotice.acknowledge') }}</span>
-      </label>
-
-      <button
-        type="button"
-        class="confirm-btn"
-        :disabled="!acknowledged"
-        @click="emit('acknowledged')"
+  <Teleport to="body">
+    <div v-if="!isDesktop" class="sheet-container" @click.self="emit('close')">
+      <AdaptiveOverlay
+        :title="t('friendships.verificationNotice.title')"
+        @close="emit('close')"
       >
-        {{ t('friendships.verificationNotice.acknowledge') }}
-      </button>
+        <div class="notice-content">
+          <div class="notice-body">
+            <span class="material-symbols-outlined notice-icon">privacy_tip</span>
+            <p class="notice-text">
+              {{ t('friendships.verificationNotice.body') }}
+            </p>
+          </div>
+
+          <label class="checkbox-row">
+            <input v-model="acknowledged" type="checkbox" class="checkbox">
+            <span class="checkbox-label">{{ t('friendships.verificationNotice.acknowledge') }}</span>
+          </label>
+
+          <button
+            type="button"
+            class="confirm-btn"
+            :disabled="!acknowledged"
+            @click="emit('acknowledged')"
+          >
+            {{ t('friendships.verificationNotice.acknowledge') }}
+          </button>
+        </div>
+      </AdaptiveOverlay>
     </div>
-  </div>
+
+    <AdaptiveOverlay
+      v-else
+      :title="t('friendships.verificationNotice.title')"
+      @close="emit('close')"
+    >
+      <div class="notice-content">
+        <div class="notice-body">
+          <span class="material-symbols-outlined notice-icon">privacy_tip</span>
+          <p class="notice-text">
+            {{ t('friendships.verificationNotice.body') }}
+          </p>
+        </div>
+
+        <label class="checkbox-row">
+          <input v-model="acknowledged" type="checkbox" class="checkbox">
+          <span class="checkbox-label">{{ t('friendships.verificationNotice.acknowledge') }}</span>
+        </label>
+
+        <button
+          type="button"
+          class="confirm-btn"
+          :disabled="!acknowledged"
+          @click="emit('acknowledged')"
+        >
+          {{ t('friendships.verificationNotice.acknowledge') }}
+        </button>
+      </div>
+    </AdaptiveOverlay>
+  </Teleport>
 </template>
 
 <style scoped>
-.overlay {
+.sheet-container {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  padding: var(--spacing-xl);
-  z-index: 110;
+  z-index: 120;
+  background: rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
 }
 
-.dialog {
-  position: relative;
-  background-color: var(--color-surface);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-xl);
-  width: 100%;
-  max-width: 400px;
+.notice-content {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
-  box-shadow: var(--shadow-lg);
-}
-
-.close-btn {
-  position: absolute;
-  top: var(--spacing-md);
-  right: var(--spacing-md);
-  color: var(--color-on-surface-variant);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.title {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  padding-right: var(--spacing-xl);
 }
 
 .notice-body {
