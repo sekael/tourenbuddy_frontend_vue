@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.15.0...tourenbuddy-frontend-v0.15.1) (2026-05-08)
+
+
+### Bug Fixes
+
+* Phone verification bottom sheet ([#122](https://github.com/sekael/tourenbuddy_frontend_vue/issues/122)) ([16c0a1b](https://github.com/sekael/tourenbuddy_frontend_vue/commit/16c0a1b2f48749b2055b32ac61e2bbfaa0293851))
+
 ## [0.15.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.14.0...tourenbuddy-frontend-v0.15.0) (2026-05-08)
 
 
