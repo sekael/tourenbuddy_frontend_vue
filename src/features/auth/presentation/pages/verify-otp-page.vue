@@ -16,7 +16,8 @@ const { t } = useI18n({ useScope: 'global' })
 watch(
   [() => authStore.isAuthenticated, () => profileStore.isLoading],
   ([isAuth, isLoading]) => {
-    if (isAuth && !isLoading) router.push({ name: 'map' })
+    if (isAuth && !isLoading)
+      router.push({ name: 'map' })
   },
 )
 

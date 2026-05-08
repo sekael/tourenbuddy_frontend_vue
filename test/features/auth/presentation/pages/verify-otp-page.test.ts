@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { reactive } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { reactive } from 'vue'
 import VerifyOtpPage from '@/features/auth/presentation/pages/verify-otp-page.vue'
 
 const mockVerifyOtp = vi.fn()
