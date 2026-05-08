@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.14.0...tourenbuddy-frontend-v0.15.0) (2026-05-08)
+
+
+### Features
+
+* **auth:** Switch from magic link back to email OTP for PWA support ([#118](https://github.com/sekael/tourenbuddy_frontend_vue/issues/118)) ([e3585e5](https://github.com/sekael/tourenbuddy_frontend_vue/commit/e3585e5b955c0b1ef3dc52290b26171143ed33dd))
+
 ## [0.14.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.13.0...tourenbuddy-frontend-v0.14.0) (2026-05-07)
 
 
