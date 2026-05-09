@@ -2,7 +2,6 @@ name: Bug Report
 description: Something not working as expected? Let us know!
 title: '[BUG]: '
 labels: [bug]
-projects: [sekael/projects/1]
 body:
   - type: markdown
     attributes:
