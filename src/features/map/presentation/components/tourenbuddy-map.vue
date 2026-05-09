@@ -44,6 +44,8 @@ onMounted(() => {
     style: SWISSTOPO_STYLES[0]!.style,
     center: [8.2, 46.8],
     zoom: 8,
+    minZoom: 5.8,
+    renderWorldCopies: false,
   })
 
   map.value = mapInstance
