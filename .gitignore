@@ -32,3 +32,10 @@ public/sw.js
 public/workbox-*.js
 public/sw.js.map
 public/workbox-*.js.map
+
+# Cursor
+.cursor/
+
+# Supabase
+supabase/.branches
+supabase/.temp

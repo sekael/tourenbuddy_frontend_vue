@@ -16,6 +16,10 @@ The current version of the specification used in development is always available
 - **npm** 10 or later
 - A [Supabase](https://supabase.com) project (free tier works fine)
 
+### Additional requirements for development with a local Supabase instance
+
+- **Docker**: Supabase runs in containers locally (Docker Desktop or any other docker runtime)
+
 ## Setup
 
 ### 1. Clone and install dependencies
@@ -41,8 +45,6 @@ VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
-You can find these values in your Supabase project under **Settings → API**.
-
 ### 3. Start the dev server
 
 ```bash
@@ -50,6 +52,23 @@ npm run dev
 ```
 
 The app will be available at `http://localhost:5173`.
+
+## Local Supabase (Optional)
+
+1. Run the full stack from the repo root (Docker must be running):
+
+```bash
+npx supabase start
+```
+
+2. Setup `.env.local` with the values of `npx supabase status`:
+
+Vite loads `.env.local` automatically and overrides values from `.env`:
+
+- Use the `Project URL` as `VITE_SUPABASE_URL`
+- Use the `Publishable` authentication key as `VITE_SUPABASE_ANON_KEY`
+
+3. Email sign-in uses a **6-digit email OTP**. Locally, messages are not delivered via e-mail. They are captured by Mailpit at http://127.0.0.1:54324
 
 ## Available Commands
 
@@ -115,8 +134,4 @@ test/              # Unit tests mirroring src/ structure
 
 ## Authentication
 
-The app uses **magic link** authentication via Supabase:
-
-1. Enter your email address
-2. Check your inbox for a magic link
-3. Click on the link to authenticate
+The app uses **email OTP** via Supabase: you enter your email, receive a one-time code, and verify it on `/auth/verify-otp`. With a **hosted** project, the code arrives in your real inbox (or your project’s email provider). With **local** Supabase, read the code from Mailpit as described in [Local Supabase](#local-supabase).
