@@ -1,9 +1,30 @@
 import { fileURLToPath, URL } from 'node:url'
 import vue from '@vitejs/plugin-vue'
+import type { Plugin } from 'vite'
 import { defineConfig } from 'vitest/config'
 
+function virtualPwaRegisterStub(): Plugin {
+  const moduleId = 'virtual:pwa-register/vue'
+  const resolvedId = `\0${moduleId}`
+  return {
+    name: 'virtual-pwa-register-stub',
+    resolveId(id) {
+      if (id === moduleId)
+        return resolvedId
+    },
+    load(id) {
+      if (id === resolvedId) {
+        return `import { ref } from 'vue'
+export function useRegisterSW() {
+  return { needRefresh: ref(false), offlineReady: ref(false), updateSW: () => {} }
+}`
+      }
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [vue(), virtualPwaRegisterStub()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

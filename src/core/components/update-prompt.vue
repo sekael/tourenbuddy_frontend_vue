@@ -1,0 +1,96 @@
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+import { usePwaUpdate } from '@/core/composables/use-pwa-update'
+
+const { t } = useI18n({ useScope: 'global' })
+const { needRefresh, accept, dismiss } = usePwaUpdate()
+</script>
+
+<template>
+  <Transition name="banner">
+    <div v-if="needRefresh" class="banner" role="status">
+      <div class="content">
+        <p class="text">
+          {{ t('core.pwa.update.message') }}
+        </p>
+        <div class="actions">
+          <button class="dismiss-btn" @click="dismiss">
+            {{ t('core.pwa.update.dismiss') }}
+          </button>
+          <button class="reload-btn" @click="accept">
+            {{ t('core.pwa.update.action') }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </Transition>
+</template>
+
+<style scoped>
+.banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: var(--color-surface);
+  border-top: 1px solid var(--color-outline-variant);
+  box-shadow: var(--shadow-lg);
+  z-index: 300;
+  padding: var(--spacing-lg) var(--spacing-xl);
+  padding-bottom: calc(var(--spacing-lg) + env(safe-area-inset-bottom));
+}
+
+.content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-lg);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.text {
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
+  flex: 1;
+}
+
+.actions {
+  display: flex;
+  gap: var(--spacing-md);
+  flex-shrink: 0;
+}
+
+.dismiss-btn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  color: var(--color-on-surface-variant);
+  font-size: var(--font-size-sm);
+}
+
+.reload-btn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
+  border-radius: 12px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  transition:
+    background-color 0.2s,
+    transform 0.15s;
+}
+
+.reload-btn:hover {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-1px);
+}
+
+.banner-enter-active,
+.banner-leave-active {
+  transition: transform 0.3s ease;
+}
+
+.banner-enter-from,
+.banner-leave-to {
+  transform: translateY(100%);
+}
+</style>
