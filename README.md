@@ -43,6 +43,65 @@ VITE_SUPABASE_ANON_KEY=your-anon-key-here
 
 You can find these values in your Supabase project under **Settings → API**.
 
+### Local Supabase development (recommended)
+
+Run a full Supabase stack on your machine — DB, Auth, Storage, Studio — instead of pointing at production.
+
+**Prerequisites:** Docker Desktop running, [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started) installed.
+
+1. Start the local stack from repo root:
+
+   ```bash
+   supabase start
+   ```
+
+   First run pulls images (~5 min). Subsequent runs are fast. Stack URL: `http://127.0.0.1:54321`. Studio: `http://127.0.0.1:54323`.
+
+2. Get local anon key:
+
+   ```bash
+   supabase status
+   ```
+
+   Copy `anon key` from output.
+
+3. Create `.env.local` (overrides `.env`, gitignored):
+
+   ```env
+   VITE_SUPABASE_URL=http://127.0.0.1:54321
+   VITE_SUPABASE_ANON_KEY=<anon key from supabase status>
+   ```
+
+4. Apply migrations to local DB:
+
+   ```bash
+   supabase db reset
+   ```
+
+   Re-runs every file under `supabase/migrations/` from clean state.
+
+5. Run frontend:
+
+   ```bash
+   npm run dev
+   ```
+
+   App at `http://localhost:5173`, talking to local Supabase.
+
+**Stop stack:** `supabase stop`. **View logs:** `supabase logs <service>`. **Inbox for OTP/magic-link emails:** Inbucket at `http://127.0.0.1:54324`.
+
+### Database changes
+
+All schema/RLS/storage changes go through migrations — never edit prod directly. See [.claude/conventions.md](./.claude/conventions.md#supabase--database).
+
+```bash
+supabase migration new <descriptive_name>     # create file
+# edit supabase/migrations/<timestamp>_<name>.sql
+supabase db reset                              # apply locally from scratch
+npm run test                                   # verify
+supabase db push                               # deploy to prod (after review)
+```
+
 ### 3. Start the dev server
 
 ```bash
