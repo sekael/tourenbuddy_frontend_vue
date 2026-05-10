@@ -17,7 +17,8 @@
   },
   "dependencies": {
     "@intlify/unplugin-vue-i18n": "^11.0.7",
-    "@supabase/supabase-js": "^2.49.0",
+    "@supabase-labs/y-supabase": "^0.1.0",
+    "@supabase/supabase-js": "^2.105.4",
     "@tmcw/togeojson": "^7.1.2",
     "@types/uuid": "^10.0.0",
     "@vueuse/core": "^12.8.0",
@@ -30,6 +31,7 @@
     "vue": "^3.5.0",
     "vue-i18n": "^11.3.2",
     "vue-router": "^4.5.0",
+    "yjs": "^13.6.30",
     "zod": "^3.24.0"
   },
   "devDependencies": {

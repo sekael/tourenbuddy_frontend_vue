@@ -12,7 +12,11 @@ export default defineConfig({
   test: {
     environment: 'happy-dom',
     globals: false,
-    include: ['test/**/*.test.ts', 'test/features/map/**/*.spec.ts'],
+    include: [
+      'test/**/*.test.ts',
+      'test/features/map/**/*.spec.ts',
+      'test/features/presence/**/*.test.ts',
+    ],
     setupFiles: ['test/setup.ts'],
   },
 })

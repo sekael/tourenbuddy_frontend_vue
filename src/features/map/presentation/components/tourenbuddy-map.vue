@@ -6,6 +6,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { SWISSTOPO_STYLES } from '@/features/map/data/swisstopo-styles'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
+import FriendCursorsLayer from '@/features/presence/presentation/components/friend-cursors-layer.vue'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import { useGpxTrackLayer } from './gpx-track-layer'
 import { TOUR_LAYER_IDS, useToursMarkerLayer } from './tours-marker-layer'
@@ -113,6 +114,7 @@ watch(currentStyleIndex, (index) => {
 
 <template>
   <div ref="mapContainer" class="map-container" />
+  <FriendCursorsLayer v-if="map" :map="map" />
 </template>
 
 <style scoped>
