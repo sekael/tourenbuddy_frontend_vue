@@ -1,6 +1,6 @@
+import type { Plugin } from 'vite'
 import { fileURLToPath, URL } from 'node:url'
 import vue from '@vitejs/plugin-vue'
-import type { Plugin } from 'vite'
 import { defineConfig } from 'vitest/config'
 
 function virtualPwaRegisterStub(): Plugin {

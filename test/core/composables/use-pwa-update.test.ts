@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 
-const mockUpdateSW = vi.fn()
+const mockUpdateServiceWorker = vi.fn()
 const mockNeedRefresh = ref(false)
 let capturedControllerChangeListener: (() => void) | undefined
 
 vi.mock('virtual:pwa-register/vue', () => ({
-  useRegisterSW: () => ({ needRefresh: mockNeedRefresh, updateSW: mockUpdateSW }),
+  useRegisterSW: () => ({ needRefresh: mockNeedRefresh, updateServiceWorker: mockUpdateServiceWorker }),
 }))
 
 const mockAddEventListener = vi.fn((event: string, listener: () => void) => {
@@ -24,26 +24,25 @@ Object.defineProperty(navigator, 'serviceWorker', {
 describe('usePwaUpdate', () => {
   beforeEach(async () => {
     mockNeedRefresh.value = false
-    mockUpdateSW.mockClear()
+    mockUpdateServiceWorker.mockClear()
     capturedControllerChangeListener = undefined
     vi.resetModules()
   })
 
-  it('should set needRefresh to false on dismiss without calling updateSW', async () => {
+  it('should set needRefresh to false on dismiss without calling updateServiceWorker', async () => {
     const { usePwaUpdate } = await import('@/core/composables/use-pwa-update')
     mockNeedRefresh.value = true
     const { dismiss } = usePwaUpdate()
     dismiss()
     expect(mockNeedRefresh.value).toBe(false)
-    expect(mockUpdateSW).not.toHaveBeenCalled()
+    expect(mockUpdateServiceWorker).not.toHaveBeenCalled()
   })
 
-  it('should call updateSW(true) exactly once on accept', async () => {
+  it('should call updateServiceWorker once on accept', async () => {
     const { usePwaUpdate } = await import('@/core/composables/use-pwa-update')
     const { accept } = usePwaUpdate()
     accept()
-    expect(mockUpdateSW).toHaveBeenCalledTimes(1)
-    expect(mockUpdateSW).toHaveBeenCalledWith(true)
+    expect(mockUpdateServiceWorker).toHaveBeenCalledTimes(1)
   })
 
   it('should reload once and guard against second controllerchange', async () => {

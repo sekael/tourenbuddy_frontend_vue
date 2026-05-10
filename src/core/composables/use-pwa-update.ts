@@ -3,7 +3,7 @@ import { useRegisterSW } from 'virtual:pwa-register/vue'
 let reloading = false
 
 export function usePwaUpdate() {
-  const { needRefresh, updateSW } = useRegisterSW({ immediate: true })
+  const { needRefresh, updateServiceWorker } = useRegisterSW({ immediate: true })
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -17,8 +17,7 @@ export function usePwaUpdate() {
   }
 
   function accept() {
-    reloading = true
-    updateSW(true)
+    updateServiceWorker()
   }
 
   function dismiss() {
