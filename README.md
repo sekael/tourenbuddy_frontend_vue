@@ -180,6 +180,72 @@ enabled = false  # default locally; flip to true to send real SMS via Twilio Ver
 
 ---
 
+## Local test users (seeded)
+
+`supabase/seed.sql` runs automatically on every `supabase db reset` (never pushed to prod) and seeds three phone-verified test users with a friendship graph, contacts and tours so friend/tour features can be exercised end-to-end:
+
+| Name    | Email                    | Phone           | Relations                           |
+| ------- | ------------------------ | --------------- | ----------------------------------- |
+| Patrick | `patrick@tourenbuddy.ch` | `+41790000001`  | friends with Jakob; pending request from Reni |
+| Jakob   | `jakob@tourenbuddy.ch`   | `+41790000002`  | friends with Patrick                |
+| Reni    | `reni@tourenbuddy.ch`    | `+41790000003`  | sent pending friend request to Patrick |
+
+Re-running `supabase db reset` is idempotent — every insert uses `ON CONFLICT DO NOTHING` on fixed UUIDs.
+
+### Login — Email OTP via Inbucket (recommended)
+
+The app's only login path is email OTP, so this is the standard local flow. The Supabase CLI does **not** support `[auth.email.test_otp]`, so email codes are dynamic — every login generates a fresh code. Capture them locally by routing mail to Inbucket (Supabase's built-in mail catcher at `http://127.0.0.1:54324`) — disable both production-style email paths in `supabase/config.toml`:
+
+```toml
+# 1) Disable Brevo SMTP so mail isn't relayed through a real provider
+[auth.email.smtp]
+enabled = false   # was: true
+
+# 2) Disable the Cloudflare worker send-email hook so GoTrue keeps the email itself
+[auth.hook.send_email]
+enabled = false   # was: true
+```
+
+Apply the change (config edits require an auth restart):
+
+```bash
+supabase stop
+supabase start
+```
+
+Login flow:
+
+1. In the app, request an email OTP for e.g. `jakob@tourenbuddy.ch`.
+2. Open Inbucket at `http://127.0.0.1:54324`.
+3. Open the inbox for the test address; copy the 6-digit code from the email body.
+4. Paste into the app's OTP field.
+
+Re-enable the hook + Brevo SMTP when testing the production-equivalent email path (see _Auth email & SMS — local delivery modes_ below).
+
+### Phone verification — fixed SMS OTP (no app login)
+
+The app verifies a user's phone number separately from login (phone verification gates friend features). Seeded users already have `phone_confirmed_at` set, so no in-app verification is needed for them. If you need to re-trigger the phone-verification flow against a seeded user, `supabase/config.toml` defines `[auth.sms.test_otp]` mapping all three phone numbers to the fixed code **`123456`**, and Twilio is enabled with placeholder credentials (required by GoTrue for `test_otp` to short-circuit — no real SMS is sent):
+
+```toml
+[auth.sms.twilio]
+enabled = true
+account_sid = "ACtest"
+message_service_sid = "MGtest"
+auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
+
+[auth.sms.test_otp]
+41790000001 = "123456"
+41790000002 = "123456"
+41790000003 = "123456"
+```
+
+Export the dummy auth token before starting the stack so GoTrue accepts the placeholder Twilio config (any non-empty value works):
+
+```bash
+export SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN=test
+supabase start
+```
+
 ## Database changes
 
 All schema/RLS/storage changes go through migrations — never edit prod directly. See [.claude/conventions.md](./.claude/conventions.md#supabase--database).

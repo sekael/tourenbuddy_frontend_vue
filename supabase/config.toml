@@ -231,7 +231,7 @@ otp_expiry = 3600
 # Production-ready SMTP via Brevo. Disable to fall back to Inbucket/Mailpit (default local capture).
 # Secrets resolved from supabase/.env (auto-loaded by Supabase CLI).
 [auth.email.smtp]
-enabled = true
+enabled = false 
 host = "smtp-relay.brevo.com"
 port = 587
 user = "env(BREVO_SMTP_LOGIN)"
@@ -280,7 +280,7 @@ max_frequency = "5s"
 # Disables built-in SMTP sending for auth emails — Brevo SMTP block above is bypassed
 # when this hook is enabled and reachable.
 [auth.hook.send_email]
-enabled = true
+enabled = false 
 uri = "http://host.docker.internal:8787/"
 secrets = "env(SEND_EMAIL_HOOK_SECRET)"
 
