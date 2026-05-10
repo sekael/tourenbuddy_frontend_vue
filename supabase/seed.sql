@@ -121,31 +121,11 @@ ON CONFLICT (id) DO NOTHING;
 
 -- ----- public.tours ---------------------------------------------------------
 -- Solo tour for Patrick.
-INSERT INTO public.tours (
-  id, planned_date, user_id, goal, name, tour_type, start_point_name
-) VALUES (
-  'cccccccc-0000-0000-0000-000000000001',
-  current_date + 7,
-  '11111111-1111-1111-1111-111111111111',
-  ST_GeogFromText('SRID=4326;POINT(7.6566 46.5547)'),
-  'Eigertrail Solo',
-  'hiking',
-  'Grindelwald'
-)
+INSERT INTO public.tours (id, planned_date, user_id, goal, name, tour_type, elevation, description, seasons, start_point, end_point, equipment, notes, completed, start_point_name, start_point_elevation, end_point_name, end_point_elevation, gpx_filepath) VALUES ('cccccccc-0000-0000-0000-000000000001', '2026-05-17', '11111111-1111-1111-1111-111111111111', '0101000020E6100000805554B4A3C6234018C9E1F574654740', 'Büelehora', 'hiking', 2512, NULL, '{summer}', '0101000020E610000040ECF72C27B023406871F8EABF674740', NULL, NULL, NULL, false, 'Flüelabach', 1559, NULL, NULL, NULL)
 ON CONFLICT (id) DO NOTHING;
 
 -- Joint tour: owned by Patrick, partner = Jakob (via Patrick's contact for Jakob).
-INSERT INTO public.tours (
-  id, planned_date, user_id, goal, name, tour_type, start_point_name
-) VALUES (
-  'cccccccc-0000-0000-0000-000000000002',
-  current_date + 14,
-  '11111111-1111-1111-1111-111111111111',
-  ST_GeogFromText('SRID=4326;POINT(8.0234 46.7654)'),
-  'Skitour Wildhorn',
-  'skitour',
-  'Lauenen'
-)
+INSERT INTO public.tours (id, planned_date, user_id, goal, name, tour_type, elevation, description, seasons, start_point, end_point, equipment, notes, completed, start_point_name, start_point_elevation, end_point_name, end_point_elevation, gpx_filepath) VALUES ('cccccccc-0000-0000-0000-000000000002', '2027-01-09', '11111111-1111-1111-1111-111111111111', '0101000020E61000009045D1B72ABE2340487CC076605C4740', 'Gfroren Hora', 'skitour', 2747, NULL, '{winter}', '0101000020E610000020A6FC867AB22340A4FEF803E85C4740', '0101000020E610000020A6FC867AB22340A4FEF803E85C4740', NULL, NULL, false, 'Sertig Dörfji', 1864, 'Sertig Dörfji', 1864, NULL)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.tour_partners (tour_id, contact_id) VALUES
