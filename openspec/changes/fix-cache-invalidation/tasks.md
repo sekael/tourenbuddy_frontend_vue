@@ -1,7 +1,7 @@
 # Tasks
 
 ## 1. Git Setup
-- [ ] 1.1 Create branch from latest `main`: `git fetch origin && git checkout main && git pull && git checkout -b fix/131-cache-invalidation`
+- [x] 1.1 Create branch from latest `main`: `git fetch origin && git checkout main && git pull && git checkout -b fix/131-cache-invalidation`
 
 ## 2. Workbox + PWA config (`vite.config.ts`)
 - [x] 2.1 Add `cleanupOutdatedCaches: true` and `clientsClaim: true` to `workbox` block
@@ -35,9 +35,9 @@
   - `controllerchange` when document hidden → no reload
 
 ## 7. Manual verification
-- [ ] 7.1 Push branch; deploy to Cloudflare preview branch
-- [ ] 7.2 Hit preview URL; in DevTools Network tab confirm `Cache-Control` per spec for `index.html`, `sw.js`, `/assets/*.js`, `/icons/*`
-- [ ] 7.3 Before merge: also check current production `test.tourenbuddy.ch` `index.html` response headers — confirm CF default revalidates (so bootstrap cohort unsticks within one reload)
+- [x] 7.1 Push branch; deploy to Cloudflare preview branch
+- [x] 7.2 Hit preview URL; in DevTools Network tab confirm `Cache-Control` per spec for `index.html`, `sw.js`, `/assets/*.js`, `/icons/*`
+- [x] 7.3 Before merge: also check current production `test.tourenbuddy.ch` `index.html` response headers — confirm CF default revalidates (so bootstrap cohort unsticks within one reload)
 - [ ] 7.4 Push a second preview deploy; with old tab still open confirm update prompt appears within one reload; clicking reload loads new version without manual site-data clear
 - [ ] 7.5 Two-tab test: accept update in tab A → tab B reloads via `controllerchange` listener on next focus
 
