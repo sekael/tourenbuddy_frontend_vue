@@ -12,13 +12,16 @@ The current version of the specification used in development is always available
 
 ## Prerequisites
 
-- **Node.js** 20 or later
-- **npm** 10 or later
-- A [Supabase](https://supabase.com) project (free tier works fine)
+- **Node.js** 20 or later, **npm** 10 or later
+- **Docker Desktop** running (for local Supabase stack)
+- **Supabase CLI** — install via [supabase.com/docs/guides/local-development/cli/getting-started](https://supabase.com/docs/guides/local-development/cli/getting-started)
+- (Optional) Brevo + Twilio Verify accounts for real email/SMS delivery; otherwise local stack uses Inbucket/Mailpit and Twilio test mode
 
 ## Setup
 
-### 1. Clone and install dependencies
+Local-first development is the default — frontend talks to a Supabase stack running on your machine, never to production. Production credentials are only needed when explicitly testing prod behavior.
+
+### 1. Clone and install
 
 ```bash
 git clone <repo-url>
@@ -26,128 +29,84 @@ cd tourenbuddy_frontend_vue
 npm install
 ```
 
-### 2. Configure environment variables
-
-Copy the example env file and fill in your Supabase credentials:
+### 2. Start local Supabase stack
 
 ```bash
-cp .env.example .env
+supabase start
 ```
 
-Edit `.env`:
+First run pulls images (~5 min). Stack URLs once running:
+
+| Service          | URL                       |
+| ---------------- | ------------------------- |
+| API              | `http://127.0.0.1:54321`  |
+| Studio (DB UI)   | `http://127.0.0.1:54323`  |
+| Inbucket/Mailpit | `http://127.0.0.1:54324`  |
+
+Get the local anon key: `supabase status` → copy `anon key`.
+
+Apply migrations from clean state at any time:
+
+```bash
+supabase db reset
+```
+
+### 3. Configure frontend env
+
+Create `.env.local` (gitignored, overrides `.env`):
 
 ```env
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key-here
+VITE_SUPABASE_URL=http://127.0.0.1:54321
+VITE_SUPABASE_ANON_KEY=<anon key from supabase status>
 ```
 
-You can find these values in your Supabase project under **Settings → API**.
+### 4. Run frontend
 
-### Local Supabase development (recommended)
+```bash
+npm run dev
+```
 
-Run a full Supabase stack on your machine — DB, Auth, Storage, Studio — instead of pointing at production.
+App at `http://localhost:5173`, talking to local Supabase.
 
-**Prerequisites:** Docker Desktop running, [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started) installed.
+**Stop stack:** `supabase stop`. **View logs:** `supabase logs <service>` (e.g. `auth`).
 
-1. Start the local stack from repo root:
+---
 
-   ```bash
-   supabase start
-   ```
+## Auth email & SMS — local delivery modes
 
-   First run pulls images (~5 min). Subsequent runs are fast. Stack URL: `http://127.0.0.1:54321`. Studio: `http://127.0.0.1:54323`.
+The local stack supports three email modes; SMS delivery is opt-in. Pick what matches the test.
 
-2. Get local anon key:
+### Email mode A — Inbucket (default, no secrets needed)
 
-   ```bash
-   supabase status
-   ```
+If `services/email-hook/wrangler dev` is not running and `[auth.email.smtp]` has no valid Brevo credentials, OTP/magic-link emails are captured by Inbucket at `http://127.0.0.1:54324`. Fast, free, ideal for routine dev.
 
-   Copy `anon key` from output.
+### Email mode B — Cloudflare worker + Brevo templates (matches production)
 
-3. Create `.env.local` (overrides `.env`, gitignored):
+Production uses the Cloudflare worker in `services/email-hook/` as Supabase's [Send Email Hook](https://supabase.com/docs/guides/auth/auth-hooks/send-email-hook). The worker picks a Brevo transactional template per user locale (EN/DE) and submits via the Brevo API. `supabase/config.toml` already has the hook enabled — it points at `http://host.docker.internal:8787/`.
 
-   ```env
-   VITE_SUPABASE_URL=http://127.0.0.1:54321
-   VITE_SUPABASE_ANON_KEY=<anon key from supabase status>
-   ```
-
-4. Apply migrations to local DB:
-
-   ```bash
-   supabase db reset
-   ```
-
-   Re-runs every file under `supabase/migrations/` from clean state.
-
-5. Run frontend:
-
-   ```bash
-   npm run dev
-   ```
-
-   App at `http://localhost:5173`, talking to local Supabase.
-
-**Stop stack:** `supabase stop`. **View logs:** `supabase logs <service>`. **Inbox for OTP/magic-link emails:** Inbucket at `http://127.0.0.1:54324`.
-
-### Real email + SMS delivery (optional)
-
-By default, local Supabase captures all auth emails in Inbucket/Mailpit and disables SMS. To make local behave like production — real OTP emails via Brevo, real SMS via Twilio — provide secrets through `supabase/.env`:
-
-1. Copy template:
-
-   ```bash
-   cp supabase/.env.example supabase/.env
-   ```
-
-2. Fill in values:
-   - **Brevo:** dashboard → SMTP & API → **SMTP tab**:
-     - `BREVO_SMTP_LOGIN`: the address shown under "Login" (typically your Brevo account email).
-     - `BREVO_SMTP_API_KEY`: under **SMTP Keys** click _Generate a new SMTP key_ — copy the value (only shown once). NOT a key from the separate "API Keys" tab; those are for the REST API and won't authenticate SMTP.
-     - `BREVO_SENDER_EMAIL`: verified sender address (Senders → add + verify domain or single sender).
-   - **Twilio:** Console → Account SID, Auth Token, Messaging Service SID with SMS-capable sender for `+41`.
-
-3. Restart stack so `supabase/config.toml` re-reads env:
-
-   ```bash
-   supabase stop
-   supabase start
-   ```
-
-`supabase/.env` is gitignored. Secrets are interpolated into `config.toml` via `env(VAR_NAME)` references in `[auth.email.smtp]` and `[auth.sms.twilio]`.
-
-**To revert to Inbucket-only:** delete `supabase/.env` (or set `enabled = false` under `[auth.email.smtp]` / `[auth.sms.twilio]`) and restart. Recommended for fast iteration — real-provider mode burns Brevo and Twilio quotas on every test.
-
-Caveats:
-- `supabase db reset` wipes `auth.users` — every reset costs a fresh signup quota.
-- Brevo sender email must be verified before any mail is delivered.
-- Twilio Verify service must be configured for the recipient country (`+41` for Switzerland).
-
-### Send Email Hook (Cloudflare worker)
-
-Production sends auth emails via the Cloudflare worker in `services/email-hook/` — it picks a Brevo transactional template per locale (EN/DE) and submits via Brevo's API. Local Supabase delegates to this worker the same way once configured.
-
-`supabase/config.toml` already has the hook enabled at `http://host.docker.internal:8787/` (the host-network bridge from inside Supabase containers).
-
-1. Generate shared secret:
+1. Generate a shared HMAC secret (Standard Webhooks format expected by Supabase):
 
    ```bash
    echo "v1,whsec_$(openssl rand -base64 48 | tr -d '\n')"
    ```
 
-   Paste the value into both:
-   - `supabase/.env` → `SEND_EMAIL_HOOK_SECRET=...`
-   - `services/email-hook/.dev.vars` → `SEND_EMAIL_HOOK_SECRET=...`
+   Paste the same value into both files:
+   - `supabase/.env` → `SEND_EMAIL_HOOK_SECRET=`
+   - `services/email-hook/.dev.vars` → `SEND_EMAIL_HOOK_SECRET=`
 
-2. Fill remaining values in `services/email-hook/.dev.vars` (template provided as `.dev.vars.example`):
+2. Fill remaining values in `services/email-hook/.dev.vars` (see `.dev.vars.example` for the full list including the friend-related notification templates):
 
    ```env
-   BREVO_API_KEY=<Brevo transactional API key — API Keys tab, NOT SMTP key>
-   BREVO_TEMPLATE_EN=<numeric template ID for otp_en>
-   BREVO_TEMPLATE_DE=<numeric template ID for otp_de>
+   BREVO_API_KEY=<Brevo "API Keys" tab key — NOT an SMTP key>
+   BREVO_TEMPLATE_EN=<numeric ID of otp_en transactional template>
+   BREVO_TEMPLATE_DE=<numeric ID of otp_de transactional template>
+   BREVO_TEMPLATE_FRIEND_RECEIVED_EN=...
+   BREVO_TEMPLATE_FRIEND_RECEIVED_DE=...
+   BREVO_TEMPLATE_FRIEND_RESPONDED_EN=...
+   BREVO_TEMPLATE_FRIEND_RESPONDED_DE=...
    ```
 
-3. Run worker:
+3. Start the worker (separate terminal, port 8787):
 
    ```bash
    cd services/email-hook
@@ -155,28 +114,73 @@ Production sends auth emails via the Cloudflare worker in `services/email-hook/`
    npx wrangler dev
    ```
 
-   Listens on `http://127.0.0.1:8787`. Reachable from Supabase containers via `host.docker.internal:8787`.
-
-4. Restart Supabase so it picks up the hook config:
+4. Restart Supabase so it re-reads `config.toml` + `supabase/.env`:
 
    ```bash
    supabase stop && supabase start
    ```
 
-5. Verify:
-   - Sign up with a real email in the app.
-   - `services/email-hook` terminal shows incoming POST.
-   - `supabase logs auth` shows `send email hook` invocation.
-   - Email arrives via real Brevo using the per-locale template.
+5. Sign up with a real email — verify:
+   - `wrangler dev` terminal logs `POST / 200`
+   - `supabase logs auth` shows `send email hook` invocation
+   - Email arrives via Brevo with the per-locale template
 
-**Bypass the hook (fall back to Inbucket/SMTP):** in `supabase/config.toml` set `enabled = false` under `[auth.hook.send_email]`, then `supabase stop && supabase start`. Use during fast iteration to avoid Brevo quota.
+### Email mode C — Brevo SMTP relay (rarely needed)
 
-**Caveats:**
-- If `wrangler dev` is not running while the hook is enabled, auth emails fail silently — the OTP is still created in DB but the user never receives it.
-- Worker uses real Brevo → real quota burn per test.
-- Brevo API key here is a transactional key (API Keys tab). Different from the SMTP key used for the SMTP relay path.
+`[auth.email.smtp]` block in `config.toml` points at Brevo SMTP. Used only when the Send Email Hook is disabled. Set in `supabase/.env`:
 
-### Database changes
+- `BREVO_SMTP_LOGIN`: address shown under **SMTP & API → SMTP tab → Login** (your Brevo account email)
+- `BREVO_SMTP_API_KEY`: generate under **SMTP & API → SMTP Keys → Generate a new SMTP key** (NOT an "API Keys" tab key)
+- `BREVO_SENDER_EMAIL`: verified sender (Senders → add and verify)
+
+Restart stack to apply.
+
+### SMS — Twilio Verify (disabled by default locally)
+
+`[auth.sms.twilio_verify]` is `enabled = false` in committed `supabase/config.toml`. Phone verification UI will fail until you opt in. Enable only when explicitly testing the phone-verification flow against real Twilio — every send burns real quota.
+
+To enable:
+
+1. Set `enabled = true` under `[auth.sms.twilio_verify]` in `supabase/config.toml` (do not commit this change unless team agrees).
+2. Add to `supabase/.env`:
+
+   ```env
+   TWILIO_ACCOUNT_SID=<Console → Account Info>
+   TWILIO_VERIFY_SERVICE_SID=<Console → Verify → Services, starts with VA>
+   SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN=<Auth Token; variable name fixed by Supabase CLI>
+   ```
+
+3. Verify service must be configured for the recipient country (e.g. `+41` for Switzerland).
+4. `supabase stop && supabase start`.
+
+### Switching modes
+
+Toggle blocks in `supabase/config.toml`:
+
+```toml
+[auth.hook.send_email]
+enabled = true   # mode B; false → falls back to mode A or C
+
+[auth.email.smtp]
+enabled = true   # mode C; ignored when hook is enabled
+
+[auth.sms.twilio_verify]
+enabled = false  # default locally; flip to true to send real SMS via Twilio Verify
+```
+
+`supabase stop && supabase start` after every config change. `supabase db reset` does NOT reload config.
+
+### Caveats
+
+- `supabase db reset` wipes `auth.users` — re-signup needed each time, burns Brevo quota in mode B and Twilio quota when SMS enabled.
+- If the Send Email Hook is enabled but `wrangler dev` is not running, signup will fail with hook timeout.
+- Brevo has two distinct credential types: **SMTP keys** (mode C) vs **API keys** (mode B). They are not interchangeable.
+- Twilio Verify expects a **Verify Service SID** (`VAxxx`), not a Messaging Service SID — using the wrong one yields error 21212.
+- Phone verification will fail locally with SMS disabled (default). Enable only for explicit testing.
+
+---
+
+## Database changes
 
 All schema/RLS/storage changes go through migrations — never edit prod directly. See [.claude/conventions.md](./.claude/conventions.md#supabase--database).
 
@@ -185,16 +189,10 @@ supabase migration new <descriptive_name>     # create file
 # edit supabase/migrations/<timestamp>_<name>.sql
 supabase db reset                              # apply locally from scratch
 npm run test                                   # verify
-supabase db push                               # deploy to prod (after review)
+supabase db push                               # deploy to prod (after review, prompt user)
 ```
 
-### 3. Start the dev server
-
-```bash
-npm run dev
-```
-
-The app will be available at `http://localhost:5173`.
+Baseline `supabase/migrations/20260101000000_initial_schema.sql` reflects prod schema at cutover. Pre-baseline patches archived under `supabase/migrations/_archived/` — reference only, do not run.
 
 ## Available Commands
 
@@ -225,43 +223,54 @@ Frontend:
 
 Backend:
 
-- Supabase PostgreSQL database with REST endpoints
-- Supabase authentication and phone verification
+- Supabase PostgreSQL (PostGIS) with auto-generated REST + Auth (email OTP)
+- Supabase Storage for GPX uploads (bucket `tour-gpx`, owner-scoped RLS)
+- Cloudflare worker (`services/email-hook/`) — Supabase Send Email Hook → Brevo transactional templates per locale
 
 Infrastructure:
 
-- Cloudflare pages deployment
-- Github Actions for CI/CD (including deployment to Cloudflare)
-- Brevo for automated email workflows, e.g. sign-up/sign-in
-- Twilio for verification of phone numbers (currently free tier, so not working correctly)
+- Cloudflare Pages deployment for frontend
+- Cloudflare Workers for the email hook (`wrangler deploy`)
+- GitHub Actions for CI/CD
+- Brevo for transactional email (auth + notifications)
+- Twilio Verify for phone-number verification
 
 ## Project Structure
 
 ```
 src/
   app/
-    router/        # Vue Router config and navigation guards
-    theme/         # CSS custom properties, design tokens
+    router/                  # Vue Router config and navigation guards
+    theme/                   # CSS custom properties, design tokens
   core/
-    composables/   # Shared composables (useSnackbar, etc.)
-    components/    # Shared UI components
-    constants/     # Environment validation
-    exceptions/    # Custom error classes
-    logging/       # Logger composable wrapping consola
-    utils/         # Supabase client singleton
+    composables/             # Shared composables (useSnackbar, etc.)
+    components/              # Shared UI components
+    constants/               # Environment validation
+    exceptions/              # Custom error classes
+    logging/                 # Logger composable wrapping consola
+    utils/                   # Supabase client singleton
   features/
-    auth/          # Email/OTP authentication flow
-    contacts/      # Contact management (tour partners)
-    map/           # MapLibre map, location picker, overlays
-    tours/         # Tour creation, listing, map markers
-    user/          # User profile management
-test/              # Unit tests mirroring src/ structure
+    auth/                    # Email OTP authentication flow
+    contacts/                # Contact management (tour partners)
+    map/                     # MapLibre map, location picker, overlays
+    tours/                   # Tour creation, listing, map markers
+    user/                    # User profile + phone verification
+test/                        # Unit tests mirroring src/ structure
+supabase/
+  config.toml                # Local stack config (auth, hooks, SMTP, SMS)
+  migrations/                # Versioned schema changes
+  .env / .env.example        # Secrets for env() interpolation in config.toml
+services/
+  email-hook/                # Cloudflare worker (Supabase Send Email Hook → Brevo)
+    .dev.vars                # Local worker secrets (gitignored)
 ```
 
 ## Authentication
 
-The app uses **magic link** authentication via Supabase:
+The app uses **email OTP** via Supabase:
 
-1. Enter your email address
-2. Check your inbox for a magic link
-3. Click on the link to authenticate
+1. Enter email address
+2. Receive 6-digit OTP code (real Brevo template in production / mode B; Inbucket otherwise)
+3. Enter code in app to authenticate
+
+Phone numbers are verified separately via Twilio Verify in the user profile.

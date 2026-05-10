@@ -302,7 +302,7 @@ auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
 # Twilio Verify handles sender selection + OTP delivery. Use this when prod uses
 # a Verify Service (not a Messaging Service). message_service_sid here = Verify Service SID.
 [auth.sms.twilio_verify]
-enabled = true
+enabled = false
 account_sid = "env(TWILIO_ACCOUNT_SID)"
 message_service_sid = "env(TWILIO_VERIFY_SERVICE_SID)"
 auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
