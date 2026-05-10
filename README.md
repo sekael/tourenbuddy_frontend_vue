@@ -15,7 +15,7 @@ The current version of the specification used in development is always available
 - **Node.js** 20 or later, **npm** 10 or later
 - **Docker Desktop** running (for local Supabase stack)
 - **Supabase CLI** — install via [supabase.com/docs/guides/local-development/cli/getting-started](https://supabase.com/docs/guides/local-development/cli/getting-started)
-- (Optional) Brevo + Twilio Verify accounts for real email/SMS delivery; otherwise local stack uses Inbucket/Mailpit and Twilio test mode
+- (Optional) Brevo + Twilio Verify accounts for real email/SMS delivery; otherwise local stack uses Inbucket/Mailpit for email and `[auth.sms.test_otp]` (fixed code `123456`, placeholder Twilio creds) for phone verification of seeded test users
 
 ## Setup
 
@@ -78,7 +78,7 @@ The local stack supports three email modes; SMS delivery is opt-in. Pick what ma
 
 ### Email mode A — Inbucket (default, no secrets needed)
 
-If `services/email-hook/wrangler dev` is not running and `[auth.email.smtp]` has no valid Brevo credentials, OTP/magic-link emails are captured by Inbucket at `http://127.0.0.1:54324`. Fast, free, ideal for routine dev.
+Committed `supabase/config.toml` ships with both `[auth.email.smtp]` and `[auth.hook.send_email]` set to `enabled = false`, so all auth emails (OTP / magic link) are captured by Inbucket at `http://127.0.0.1:54324`. Fast, free, ideal for routine dev and the **default flow for seeded test users** (see _Local test users (seeded)_ below).
 
 ### Email mode B — Cloudflare worker + Brevo templates (matches production)
 
@@ -135,13 +135,16 @@ Production uses the Cloudflare worker in `services/email-hook/` as Supabase's [S
 
 Restart stack to apply.
 
-### SMS — Twilio Verify (disabled by default locally)
+### SMS — committed defaults
 
-`[auth.sms.twilio_verify]` is `enabled = false` in committed `supabase/config.toml`. Phone verification UI will fail until you opt in. Enable only when explicitly testing the phone-verification flow against real Twilio — every send burns real quota.
+Two providers are configured in `supabase/config.toml`:
 
-To enable:
+- `[auth.sms.twilio]` — **enabled** with **placeholder creds** (`account_sid = "ACtest"` etc.). Required by GoTrue so `[auth.sms.test_otp]` can short-circuit OTP delivery for the three seeded test phone numbers (fixed code `123456`). No real SMS is sent for matched numbers; non-test phones would error. Set `SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN=test` in your shell or `supabase/.env` before `supabase start`.
+- `[auth.sms.twilio_verify]` — `enabled = false`. The production phone-verification path. Opt in only when explicitly testing real Twilio — every send burns real quota.
 
-1. Set `enabled = true` under `[auth.sms.twilio_verify]` in `supabase/config.toml` (do not commit this change unless team agrees).
+To enable real Twilio Verify locally:
+
+1. Set `enabled = true` under `[auth.sms.twilio_verify]`, and `enabled = false` under `[auth.sms.twilio]` (only one provider can be active). Do not commit this change unless team agrees.
 2. Add to `supabase/.env`:
 
    ```env
@@ -172,7 +175,7 @@ enabled = false  # default locally; flip to true to send real SMS via Twilio Ver
 
 ### Caveats
 
-- `supabase db reset` wipes `auth.users` — re-signup needed each time, burns Brevo quota in mode B and Twilio quota when SMS enabled.
+- `supabase db reset` wipes `auth.users` but `supabase/seed.sql` re-creates the three seeded test users (Patrick / Jakob / Reni) automatically. Real signups still need to be re-done after a reset and burn Brevo quota in mode B and Twilio quota when SMS Verify is enabled.
 - If the Send Email Hook is enabled but `wrangler dev` is not running, signup will fail with hook timeout.
 - Brevo has two distinct credential types: **SMTP keys** (mode C) vs **API keys** (mode B). They are not interchangeable.
 - Twilio Verify expects a **Verify Service SID** (`VAxxx`), not a Messaging Service SID — using the wrong one yields error 21212.
@@ -194,24 +197,7 @@ Re-running `supabase db reset` is idempotent — every insert uses `ON CONFLICT 
 
 ### Login — Email OTP via Inbucket (recommended)
 
-The app's only login path is email OTP, so this is the standard local flow. The Supabase CLI does **not** support `[auth.email.test_otp]`, so email codes are dynamic — every login generates a fresh code. Capture them locally by routing mail to Inbucket (Supabase's built-in mail catcher at `http://127.0.0.1:54324`) — disable both production-style email paths in `supabase/config.toml`:
-
-```toml
-# 1) Disable Brevo SMTP so mail isn't relayed through a real provider
-[auth.email.smtp]
-enabled = false   # was: true
-
-# 2) Disable the Cloudflare worker send-email hook so GoTrue keeps the email itself
-[auth.hook.send_email]
-enabled = false   # was: true
-```
-
-Apply the change (config edits require an auth restart):
-
-```bash
-supabase stop
-supabase start
-```
+The app's only login path is email OTP. The Supabase CLI does **not** support `[auth.email.test_otp]`, so email codes are dynamic — every login generates a fresh code. With the committed default (mode A — both `[auth.email.smtp]` and `[auth.hook.send_email]` disabled), all auth emails land in Inbucket at `http://127.0.0.1:54324`, no extra config needed.
 
 Login flow:
 
@@ -220,7 +206,7 @@ Login flow:
 3. Open the inbox for the test address; copy the 6-digit code from the email body.
 4. Paste into the app's OTP field.
 
-Re-enable the hook + Brevo SMTP when testing the production-equivalent email path (see _Auth email & SMS — local delivery modes_ below).
+Switch to mode B/C only when explicitly testing the production-equivalent email path (see _Auth email & SMS — local delivery modes_ above).
 
 ### Phone verification — fixed SMS OTP (no app login)
 
@@ -325,6 +311,7 @@ test/                        # Unit tests mirroring src/ structure
 supabase/
   config.toml                # Local stack config (auth, hooks, SMTP, SMS)
   migrations/                # Versioned schema changes
+  seed.sql                   # Local-only test data (auto-loaded on `supabase db reset`)
   .env / .env.example        # Secrets for env() interpolation in config.toml
 services/
   email-hook/                # Cloudflare worker (Supabase Send Email Hook → Brevo)
@@ -336,7 +323,7 @@ services/
 The app uses **email OTP** via Supabase:
 
 1. Enter email address
-2. Receive 6-digit OTP code (real Brevo template in production / mode B; Inbucket otherwise)
+2. Receive 6-digit OTP code — production uses Brevo templates via the Send Email Hook; locally the default is mode A (Inbucket capture at `http://127.0.0.1:54324`)
 3. Enter code in app to authenticate
 
-Phone numbers are verified separately via Twilio Verify in the user profile.
+Phone numbers are verified separately. In production via Twilio Verify; locally seeded test users come pre-verified, and `[auth.sms.test_otp]` (fixed code `123456`) short-circuits the verification flow if re-triggered.

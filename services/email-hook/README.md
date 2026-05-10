@@ -6,15 +6,14 @@ See implementation spec: `../../openspec/changes/switch-auth-to-otp/`
 
 ## Brevo templates
 
-Create two Brevo transactional templates: **Transactional → Templates → Create a template**.
+Create the Brevo transactional templates under **Transactional → Templates → Create a template**.
+
+### OTP sign-in templates (currently used by the worker)
 
 | Template name | Subject (Brevo)                 | Language |
 | ------------- | ------------------------------- | -------- |
 | `otp_en`      | `Your TourenBuddy sign-in code` | EN       |
 | `otp_de`      | `Dein TourenBuddy-Anmeldecode`  | DE       |
-
-- Sender: `no-reply@tourenbuddy.ch`
-- Note the numeric `templateId` from the template detail page — you need it for `BREVO_TEMPLATE_EN` / `BREVO_TEMPLATE_DE`.
 
 Required template params (passed by Worker):
 
@@ -22,6 +21,24 @@ Required template params (passed by Worker):
 - `{{ params.email }}` — the recipient's email address
 
 Include a "Do not share this code. It expires in 1 hour." warning in the template body.
+
+### Friend-notification templates (planned)
+
+The worker source (`src/index.ts`) does **not** yet dispatch friend-related emails — these template IDs are reserved for the upcoming feature and are already declared in `.dev.vars.example` so configuration can be staged ahead of implementation.
+
+| Template name           | Subject (suggested)                | Language | Trigger                                  |
+| ----------------------- | ---------------------------------- | -------- | ---------------------------------------- |
+| `friend_received_en`    | `New friend request on TourenBuddy`| EN       | Recipient receives a new friend request  |
+| `friend_received_de`    | `Neue Freundschaftsanfrage`        | DE       | "                                        |
+| `friend_responded_en`   | `Your friend request was answered` | EN       | Sender's request is accepted or denied   |
+| `friend_responded_de`   | `Deine Freundschaftsanfrage`       | DE       | "                                        |
+
+Common template params (when wired up):
+
+- `{{ params.actor_name }}` — display name of the other user
+- `{{ params.app_url }}` — link back into the app
+
+Sender for all templates: `no-reply@tourenbuddy.ch`. Note the numeric `templateId` from each template's detail page — you need it for the matching env var.
 
 ## Secrets
 
@@ -32,6 +49,14 @@ wrangler secret put BREVO_API_KEY
 wrangler secret put SEND_EMAIL_HOOK_SECRET
 wrangler secret put BREVO_TEMPLATE_EN   # numeric ID of otp_en template
 wrangler secret put BREVO_TEMPLATE_DE   # numeric ID of otp_de template
+
+# Reserved for the planned friend-notification feature — set in advance so
+# config is in place when the worker starts dispatching them. Not yet read
+# by src/index.ts.
+wrangler secret put BREVO_TEMPLATE_FRIEND_RECEIVED_EN
+wrangler secret put BREVO_TEMPLATE_FRIEND_RECEIVED_DE
+wrangler secret put BREVO_TEMPLATE_FRIEND_RESPONDED_EN
+wrangler secret put BREVO_TEMPLATE_FRIEND_RESPONDED_DE
 ```
 
 No `[vars]` configuration required in `wrangler.toml`.
