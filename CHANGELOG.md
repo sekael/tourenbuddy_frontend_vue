@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.16.0...tourenbuddy-frontend-v0.16.1) (2026-05-10)
+
+
+### Bug Fixes
+
+* Cache invalidation ([#133](https://github.com/sekael/tourenbuddy_frontend_vue/issues/133)) ([d4e2888](https://github.com/sekael/tourenbuddy_frontend_vue/commit/d4e2888dfcae18ae14f06ab6134b7a4373be2c66))
+
 ## [0.16.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.15.1...tourenbuddy-frontend-v0.16.0) (2026-05-10)
 
 
