@@ -37,11 +37,11 @@ supabase start
 
 First run pulls images (~5 min). Stack URLs once running:
 
-| Service          | URL                       |
-| ---------------- | ------------------------- |
-| API              | `http://127.0.0.1:54321`  |
-| Studio (DB UI)   | `http://127.0.0.1:54323`  |
-| Inbucket/Mailpit | `http://127.0.0.1:54324`  |
+| Service          | URL                      |
+| ---------------- | ------------------------ |
+| API              | `http://127.0.0.1:54321` |
+| Studio (DB UI)   | `http://127.0.0.1:54323` |
+| Inbucket/Mailpit | `http://127.0.0.1:54324` |
 
 Get the local anon key: `supabase status` → copy `anon key`.
 
@@ -162,13 +162,13 @@ Toggle blocks in `supabase/config.toml`:
 
 ```toml
 [auth.hook.send_email]
-enabled = true   # mode B; false → falls back to mode A or C
+enabled = true # mode B; false → falls back to mode A or C
 
 [auth.email.smtp]
-enabled = true   # mode C; ignored when hook is enabled
+enabled = true # mode C; ignored when hook is enabled
 
 [auth.sms.twilio_verify]
-enabled = false  # default locally; flip to true to send real SMS via Twilio Verify
+enabled = false # default locally; flip to true to send real SMS via Twilio Verify
 ```
 
 `supabase stop && supabase start` after every config change. `supabase db reset` does NOT reload config.
@@ -187,11 +187,11 @@ enabled = false  # default locally; flip to true to send real SMS via Twilio Ver
 
 `supabase/seed.sql` runs automatically on every `supabase db reset` (never pushed to prod) and seeds three phone-verified test users with a friendship graph, contacts and tours so friend/tour features can be exercised end-to-end:
 
-| Name    | Email                    | Phone           | Relations                           |
-| ------- | ------------------------ | --------------- | ----------------------------------- |
-| Patrick | `patrick@tourenbuddy.ch` | `+41790000001`  | friends with Jakob; pending request from Reni |
-| Jakob   | `jakob@tourenbuddy.ch`   | `+41790000002`  | friends with Patrick                |
-| Reni    | `reni@tourenbuddy.ch`    | `+41790000003`  | sent pending friend request to Patrick |
+| Name    | Email                    | Phone          | Relations                                     |
+| ------- | ------------------------ | -------------- | --------------------------------------------- |
+| Patrick | `patrick@tourenbuddy.ch` | `+41790000001` | friends with Jakob; pending request from Reni |
+| Jakob   | `jakob@tourenbuddy.ch`   | `+41790000002` | friends with Patrick                          |
+| Reni    | `reni@tourenbuddy.ch`    | `+41790000003` | sent pending friend request to Patrick        |
 
 Re-running `supabase db reset` is idempotent — every insert uses `ON CONFLICT DO NOTHING` on fixed UUIDs.
 
@@ -220,9 +220,9 @@ message_service_sid = "MGtest"
 auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
 
 [auth.sms.test_otp]
-41790000001 = "123456"
-41790000002 = "123456"
-41790000003 = "123456"
+"41790000001" = "123456"
+"41790000002" = "123456"
+"41790000003" = "123456"
 ```
 
 Export the dummy auth token before starting the stack so GoTrue accepts the placeholder Twilio config (any non-empty value works):

@@ -10,9 +10,15 @@ enabled = true
 port = 54321
 # Schemas to expose in your API. Tables, views and stored procedures in this schema will get API
 # endpoints. `public` and `graphql_public` schemas are included by default.
-schemas = ["public", "graphql_public"]
+schemas = [
+  "public",
+  "graphql_public"
+]
 # Extra schemas to add to the search_path of every request.
-extra_search_path = ["public", "extensions"]
+extra_search_path = [
+  "public",
+  "extensions"
+]
 # The maximum number of rows returns from a view, table, or stored procedure. Limits payload size
 # for accidental or malicious requests.
 max_rows = 1000
@@ -62,17 +68,17 @@ schema_paths = []
 enabled = true
 # Specifies an ordered list of seed files to load during db reset.
 # Supports glob patterns relative to supabase directory: "./seeds/*.sql"
-sql_paths = ["./seed.sql"]
+sql_paths = [ "./seed.sql" ]
 
 [db.network_restrictions]
 # Enable management of network restrictions.
 enabled = false
 # List of IPv4 CIDR blocks allowed to connect to the database.
 # Defaults to allow all IPv4 connections. Set empty array to block all IPs.
-allowed_cidrs = ["0.0.0.0/0"]
+allowed_cidrs = [ "0.0.0.0/0" ]
 # List of IPv6 CIDR blocks allowed to connect to the database.
 # Defaults to allow all IPv6 connections. Set empty array to block all IPs.
-allowed_cidrs_v6 = ["::/0"]
+allowed_cidrs_v6 = [ "::/0" ]
 
 # Uncomment to reject non-secure connections to the database.
 # [db.ssl_enforcement]
@@ -155,7 +161,7 @@ site_url = "http://127.0.0.1:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+additional_redirect_urls = [ "https://127.0.0.1:3000" ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -231,7 +237,7 @@ otp_expiry = 3600
 # Production-ready SMTP via Brevo. Disable to fall back to Inbucket/Mailpit (default local capture).
 # Secrets resolved from supabase/.env (auto-loaded by Supabase CLI).
 [auth.email.smtp]
-enabled = false 
+enabled = false
 host = "smtp-relay.brevo.com"
 port = 587
 user = "env(BREVO_SMTP_LOGIN)"
@@ -263,27 +269,9 @@ max_frequency = "5s"
 # Use pre-defined map of phone number to OTP for testing.
 # Local-only — these phone numbers map to seeded test users in supabase/seed.sql.
 [auth.sms.test_otp]
-41790000001 = "123456"
-41790000002 = "123456"
-41790000003 = "123456"
-
-# Configure logged in session timeouts.
-# [auth.sessions]
-# Force log out after the specified duration.
-# timebox = "24h"
-# Force log out if the user has been inactive longer than the specified duration.
-# inactivity_timeout = "8h"
-
-# Send Email Hook — delegates auth emails (OTP, magic link, recovery, etc.) to a webhook.
-# Locally point at `wrangler dev` for services/email-hook (port 8787 by default).
-# host.docker.internal resolves to host machine from inside Supabase containers.
-# Disables built-in SMTP sending for auth emails — Brevo SMTP block above is bypassed
-# when this hook is enabled and reachable.
-[auth.hook.send_email]
-enabled = false 
-uri = "http://host.docker.internal:8787/"
-secrets = "env(SEND_EMAIL_HOOK_SECRET)"
-
+"41790000001" = "123456"
+"41790000002" = "123456"
+"41790000003" = "123456"
 # This hook runs before a new user is created and allows developers to reject the request based on the incoming user object.
 # [auth.hook.before_user_created]
 # enabled = true
@@ -312,6 +300,23 @@ enabled = false
 account_sid = "env(TWILIO_ACCOUNT_SID)"
 message_service_sid = "env(TWILIO_VERIFY_SERVICE_SID)"
 auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
+
+# Configure logged in session timeouts.
+# [auth.sessions]
+# Force log out after the specified duration.
+# timebox = "24h"
+# Force log out if the user has been inactive longer than the specified duration.
+# inactivity_timeout = "8h"
+
+# Send Email Hook — delegates auth emails (OTP, magic link, recovery, etc.) to a webhook.
+# Locally point at `wrangler dev` for services/email-hook (port 8787 by default).
+# host.docker.internal resolves to host machine from inside Supabase containers.
+# Disables built-in SMTP sending for auth emails — Brevo SMTP block above is bypassed
+# when this hook is enabled and reachable.
+[auth.hook.send_email]
+enabled = false
+uri = "http://host.docker.internal:8787/"
+secrets = "env(SEND_EMAIL_HOOK_SECRET)"
 
 # Multi-factor-authentication is available to Supabase Pro plan.
 [auth.mfa]

@@ -26,12 +26,12 @@ Include a "Do not share this code. It expires in 1 hour." warning in the templat
 
 The worker source (`src/index.ts`) does **not** yet dispatch friend-related emails — these template IDs are reserved for the upcoming feature and are already declared in `.dev.vars.example` so configuration can be staged ahead of implementation.
 
-| Template name           | Subject (suggested)                | Language | Trigger                                  |
-| ----------------------- | ---------------------------------- | -------- | ---------------------------------------- |
-| `friend_received_en`    | `New friend request on TourenBuddy`| EN       | Recipient receives a new friend request  |
-| `friend_received_de`    | `Neue Freundschaftsanfrage`        | DE       | "                                        |
-| `friend_responded_en`   | `Your friend request was answered` | EN       | Sender's request is accepted or denied   |
-| `friend_responded_de`   | `Deine Freundschaftsanfrage`       | DE       | "                                        |
+| Template name         | Subject (suggested)                 | Language | Trigger                                 |
+| --------------------- | ----------------------------------- | -------- | --------------------------------------- |
+| `friend_received_en`  | `New friend request on TourenBuddy` | EN       | Recipient receives a new friend request |
+| `friend_received_de`  | `Neue Freundschaftsanfrage`         | DE       | "                                       |
+| `friend_responded_en` | `Your friend request was answered`  | EN       | Sender's request is accepted or denied  |
+| `friend_responded_de` | `Deine Freundschaftsanfrage`        | DE       | "                                       |
 
 Common template params (when wired up):
 
