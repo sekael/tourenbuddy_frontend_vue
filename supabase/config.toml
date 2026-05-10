@@ -261,8 +261,11 @@ template = "Your code is {{ .Code }}"
 max_frequency = "5s"
 
 # Use pre-defined map of phone number to OTP for testing.
-# [auth.sms.test_otp]
-# 4152127777 = "123456"
+# Local-only — these phone numbers map to seeded test users in supabase/seed.sql.
+[auth.sms.test_otp]
+41790000001 = "123456"
+41790000002 = "123456"
+41790000003 = "123456"
 
 # Configure logged in session timeouts.
 # [auth.sessions]
@@ -292,10 +295,13 @@ secrets = "env(SEND_EMAIL_HOOK_SECRET)"
 # uri = "pg-functions://<database>/<schema>/<hook_name>"
 
 # Configure one of the supported SMS providers: `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
+# Locally enabled with placeholder creds so [auth.sms.test_otp] above can short-circuit
+# delivery for seeded test phone numbers — GoTrue requires a provider to be enabled
+# even when test_otp covers the number. No real SMS is sent for test_otp matches.
 [auth.sms.twilio]
-enabled = false
-account_sid = ""
-message_service_sid = ""
+enabled = true
+account_sid = "ACtest"
+message_service_sid = "MGtest"
 # DO NOT commit your Twilio auth token to git. Use environment variable substitution instead:
 auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
 
