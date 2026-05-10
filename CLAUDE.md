@@ -9,6 +9,7 @@ Vue 3 tour-planning app. Users pin tour objectives on Swiss topo map (Swisstopo)
 - **State:** Pinia 3 composition stores (`defineStore` setup syntax)
 - **Routing:** Vue Router 4, manual route definitions in `src/app/router/index.ts`
 - **Backend:** Supabase (PostgreSQL + PostgREST + Auth via email/OTP) — use `@supabase/supabase-js` directly, no Axios
+  - IMPORTANT: ALL DB changes (schema/RLS/functions/storage) MUST go through migrations in `supabase/migrations/`, applied to LOCAL DB first, pushed to prod only after verification. See `.claude/conventions.md` → Supabase / Database
 - **Map:** MapLibre GL JS with Swisstopo vector/WMTS tiles (free, no API key)
 - **Testing:** Vitest + happy-dom for unit/component tests. Playwright installed but no E2E config yet
 - **Linting:** ESLint `@antfu/eslint-config` (strict) + Prettier (no semicolons, single quotes, 100 char width)

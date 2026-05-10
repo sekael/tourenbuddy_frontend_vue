@@ -1,0 +1,18 @@
+# Local dev secrets for `wrangler dev`. Copy to .dev.vars and fill values.
+# .dev.vars is gitignored — never commit real secrets.
+
+# Must match SEND_EMAIL_HOOK_SECRET in supabase/.env. Format: "v1,whsec_<base64>".
+# Generate: echo "v1,whsec_$(openssl rand -base64 48 | tr -d '\n')"
+SEND_EMAIL_HOOK_SECRET=
+
+# Brevo transactional API key — Brevo dashboard → SMTP & API → API Keys tab.
+# (NOT the SMTP key used for SMTP relay.)
+BREVO_API_KEY=
+
+# Numeric Brevo template IDs — Transactional → Templates → template detail page.
+BREVO_TEMPLATE_EN=4
+BREVO_TEMPLATE_DE=3
+BREVO_TEMPLATE_FRIEND_RECEIVED_EN=6
+BREVO_TEMPLATE_FRIEND_RECEIVED_DE=5
+BREVO_TEMPLATE_FRIEND_RESPONDED_EN=8
+BREVO_TEMPLATE_FRIEND_RESPONDED_DE=7

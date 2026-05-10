@@ -49,7 +49,7 @@ export default {
     const webhookSignature = request.headers.get('webhook-signature') ?? ''
     const body = await request.text()
 
-    const wh = new Webhook(env.SEND_EMAIL_HOOK_SECRET)
+    const wh = new Webhook(env.SEND_EMAIL_HOOK_SECRET.replace(/^v1,/, ''))
     try {
       wh.verify(body, {
         'webhook-id': webhookId,
