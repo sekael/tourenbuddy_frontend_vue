@@ -38,14 +38,14 @@
 - [x] 7.1 Push branch; deploy to Cloudflare preview branch
 - [x] 7.2 Hit preview URL; in DevTools Network tab confirm `Cache-Control` per spec for `index.html`, `sw.js`, `/assets/*.js`, `/icons/*`
 - [x] 7.3 Before merge: also check current production `test.tourenbuddy.ch` `index.html` response headers — confirm CF default revalidates (so bootstrap cohort unsticks within one reload)
-- [ ] 7.4 Push a second preview deploy; with old tab still open confirm update prompt appears within one reload; clicking reload loads new version without manual site-data clear
-- [ ] 7.5 Two-tab test: accept update in tab A → tab B reloads via `controllerchange` listener on next focus
+- [x] 7.4 Push a second preview deploy; with old tab still open confirm update prompt appears within one reload; clicking reload loads new version without manual site-data clear
+- [x] 7.5 Two-tab test: accept update in tab A → tab B reloads via `controllerchange` listener on next focus
 
 ## 8. Finalize
 - [x] 8.1 `npx eslint . --fix` (zero warnings)
 - [x] 8.2 `npm run type-check`
 - [x] 8.3 `npm run test`
-- [ ] 8.4 Prompt user to commit. Suggested message:
+- [x] 8.4 Prompt user to commit. Suggested message:
   ```
   fix(pwa): wire SW update prompt and Cloudflare cache headers (#131)
 
@@ -55,4 +55,4 @@
   - public/_headers: no-cache for entry points, immutable for /assets/*
   - i18n keys for update prompt (en, de-CH)
   ```
-- [ ] 8.5 Prompt user to push branch and open PR against `main` referencing issue #131
+- [x] 8.5 Prompt user to push branch and open PR against `main` referencing issue #131
