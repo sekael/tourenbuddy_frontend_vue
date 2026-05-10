@@ -20,6 +20,7 @@ export default defineConfig({
     }),
     VitePWA({
       registerType: 'prompt',
+      injectRegister: false,
       includeAssets: ['apple-touch-icon.png', 'icons/icon-192.png', 'icons/icon-512.png'],
       manifest: {
         name: 'TourenBuddy',
@@ -45,6 +46,8 @@ export default defineConfig({
         ],
       },
       workbox: {
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         runtimeCaching: [

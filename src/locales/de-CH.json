@@ -14,6 +14,11 @@
         "message": "Installieren Sie TourenBuddy für die beste Erfahrung",
         "dismiss": "Nicht jetzt",
         "install": "Installieren"
+      },
+      "update": {
+        "message": "Eine neue Version ist verfügbar",
+        "action": "Neu laden",
+        "dismiss": "Später"
       }
     },
     "feedback": {
