@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.16.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.15.1...tourenbuddy-frontend-v0.16.0) (2026-05-10)
+
+
+### Features
+
+* Refactor supabase migrations add local database ([#132](https://github.com/sekael/tourenbuddy_frontend_vue/issues/132)) ([e102c49](https://github.com/sekael/tourenbuddy_frontend_vue/commit/e102c49ca29e5f2fc37d4a2d9df1f26ab88a0e87))
+
+
+### Bug Fixes
+
+* Github templates and current Supabase definitions ([#127](https://github.com/sekael/tourenbuddy_frontend_vue/issues/127)) ([5538100](https://github.com/sekael/tourenbuddy_frontend_vue/commit/55381005c9933be33476b46b5414361af22accc5))
+* Limit min zoom level ([#130](https://github.com/sekael/tourenbuddy_frontend_vue/issues/130)) ([17ef807](https://github.com/sekael/tourenbuddy_frontend_vue/commit/17ef807885b4302dd5daf8e44cff412b555e9030))
+
 ## [0.15.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.15.0...tourenbuddy-frontend-v0.15.1) (2026-05-08)
 
 
