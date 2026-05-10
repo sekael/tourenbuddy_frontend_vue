@@ -34,6 +34,21 @@
 - Scoped styles by default
 - Prefer native CSS (nesting, `:has()`, container queries) over preprocessors
 
+## Supabase / Database
+
+- IMPORTANT: ALL database changes (schema, RLS, functions, triggers, storage policies, buckets, extensions) MUST be applied to the LOCAL Supabase database FIRST — never edit productive DB directly
+- Workflow:
+  1. `supabase start` (local stack must be running)
+  2. Create migration: `supabase migration new <descriptive_name>` → edit generated file under `supabase/migrations/`
+  3. Apply locally: `supabase db reset` (re-runs all migrations from clean state) or `supabase migration up`
+  4. Verify locally (test feature against local DB), run `npm run test`
+  5. Push to prod ONLY after review: `supabase db push` (prompt user — never run unprompted)
+- Migration files: `supabase/migrations/<timestamp>_<name>.sql`, immutable once merged to `main` — fix forward with new migration
+- NEVER hand-edit prod schema via Supabase Studio/SQL editor — drifts from repo
+- `supabase/migrations/_archived/` contains pre-baseline patches — do not run, kept for history only
+- Baseline migration `20260101000000_initial_schema.sql` reflects prod schema at cutover; subsequent changes go in new timestamped files
+- App must run against local Supabase during development — point `VITE_SUPABASE_URL` to local stack URL (`http://127.0.0.1:54321`) in `.env.local`
+
 ## Internationalization
 
 - User-facing text MUST be added as parameterized text supporting `vue-i18n` library

@@ -9,3 +9,11 @@
 - Commits atomic — one logical change per commit
 - Never commit to `main`
 - Versioning automated by release-please — DO NOT MANUALLY edit version in package.json
+
+## Database Workflow
+
+- IMPORTANT: NEVER apply schema changes directly to productive Supabase. Local-first only.
+- Every DB change → new migration file in `supabase/migrations/<timestamp>_<name>.sql` via `supabase migration new <name>`
+- Verify locally with `supabase db reset` before commit
+- `supabase db push` to prod is a deploy step — prompt user, do not run unprompted
+- See `.claude/conventions.md` → Supabase / Database for full rules
