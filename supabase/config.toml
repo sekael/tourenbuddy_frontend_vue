@@ -271,6 +271,16 @@ max_frequency = "5s"
 # Force log out if the user has been inactive longer than the specified duration.
 # inactivity_timeout = "8h"
 
+# Send Email Hook — delegates auth emails (OTP, magic link, recovery, etc.) to a webhook.
+# Locally point at `wrangler dev` for services/email-hook (port 8787 by default).
+# host.docker.internal resolves to host machine from inside Supabase containers.
+# Disables built-in SMTP sending for auth emails — Brevo SMTP block above is bypassed
+# when this hook is enabled and reachable.
+[auth.hook.send_email]
+enabled = true
+uri = "http://host.docker.internal:8787/"
+secrets = "env(SEND_EMAIL_HOOK_SECRET)"
+
 # This hook runs before a new user is created and allows developers to reject the request based on the incoming user object.
 # [auth.hook.before_user_created]
 # enabled = true

@@ -121,7 +121,60 @@ By default, local Supabase captures all auth emails in Inbucket/Mailpit and disa
 Caveats:
 - `supabase db reset` wipes `auth.users` — every reset costs a fresh signup quota.
 - Brevo sender email must be verified before any mail is delivered.
-- Twilio messaging service must include an SMS-capable number for the recipient country.
+- Twilio Verify service must be configured for the recipient country (`+41` for Switzerland).
+
+### Send Email Hook (Cloudflare worker)
+
+Production sends auth emails via the Cloudflare worker in `services/email-hook/` — it picks a Brevo transactional template per locale (EN/DE) and submits via Brevo's API. Local Supabase delegates to this worker the same way once configured.
+
+`supabase/config.toml` already has the hook enabled at `http://host.docker.internal:8787/` (the host-network bridge from inside Supabase containers).
+
+1. Generate shared secret:
+
+   ```bash
+   echo "v1,whsec_$(openssl rand -base64 48 | tr -d '\n')"
+   ```
+
+   Paste the value into both:
+   - `supabase/.env` → `SEND_EMAIL_HOOK_SECRET=...`
+   - `services/email-hook/.dev.vars` → `SEND_EMAIL_HOOK_SECRET=...`
+
+2. Fill remaining values in `services/email-hook/.dev.vars` (template provided as `.dev.vars.example`):
+
+   ```env
+   BREVO_API_KEY=<Brevo transactional API key — API Keys tab, NOT SMTP key>
+   BREVO_TEMPLATE_EN=<numeric template ID for otp_en>
+   BREVO_TEMPLATE_DE=<numeric template ID for otp_de>
+   ```
+
+3. Run worker:
+
+   ```bash
+   cd services/email-hook
+   npm install
+   npx wrangler dev
+   ```
+
+   Listens on `http://127.0.0.1:8787`. Reachable from Supabase containers via `host.docker.internal:8787`.
+
+4. Restart Supabase so it picks up the hook config:
+
+   ```bash
+   supabase stop && supabase start
+   ```
+
+5. Verify:
+   - Sign up with a real email in the app.
+   - `services/email-hook` terminal shows incoming POST.
+   - `supabase logs auth` shows `send email hook` invocation.
+   - Email arrives via real Brevo using the per-locale template.
+
+**Bypass the hook (fall back to Inbucket/SMTP):** in `supabase/config.toml` set `enabled = false` under `[auth.hook.send_email]`, then `supabase stop && supabase start`. Use during fast iteration to avoid Brevo quota.
+
+**Caveats:**
+- If `wrangler dev` is not running while the hook is enabled, auth emails fail silently — the OTP is still created in DB but the user never receives it.
+- Worker uses real Brevo → real quota burn per test.
+- Brevo API key here is a transactional key (API Keys tab). Different from the SMTP key used for the SMTP relay path.
 
 ### Database changes
 
