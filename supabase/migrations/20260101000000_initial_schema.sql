@@ -1,5 +1,4 @@
-
-
+CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA extensions;
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
