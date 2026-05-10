@@ -90,6 +90,39 @@ Run a full Supabase stack on your machine — DB, Auth, Storage, Studio — inst
 
 **Stop stack:** `supabase stop`. **View logs:** `supabase logs <service>`. **Inbox for OTP/magic-link emails:** Inbucket at `http://127.0.0.1:54324`.
 
+### Real email + SMS delivery (optional)
+
+By default, local Supabase captures all auth emails in Inbucket/Mailpit and disables SMS. To make local behave like production — real OTP emails via Brevo, real SMS via Twilio — provide secrets through `supabase/.env`:
+
+1. Copy template:
+
+   ```bash
+   cp supabase/.env.example supabase/.env
+   ```
+
+2. Fill in values:
+   - **Brevo:** dashboard → SMTP & API → **SMTP tab**:
+     - `BREVO_SMTP_LOGIN`: the address shown under "Login" (typically your Brevo account email).
+     - `BREVO_SMTP_API_KEY`: under **SMTP Keys** click _Generate a new SMTP key_ — copy the value (only shown once). NOT a key from the separate "API Keys" tab; those are for the REST API and won't authenticate SMTP.
+     - `BREVO_SENDER_EMAIL`: verified sender address (Senders → add + verify domain or single sender).
+   - **Twilio:** Console → Account SID, Auth Token, Messaging Service SID with SMS-capable sender for `+41`.
+
+3. Restart stack so `supabase/config.toml` re-reads env:
+
+   ```bash
+   supabase stop
+   supabase start
+   ```
+
+`supabase/.env` is gitignored. Secrets are interpolated into `config.toml` via `env(VAR_NAME)` references in `[auth.email.smtp]` and `[auth.sms.twilio]`.
+
+**To revert to Inbucket-only:** delete `supabase/.env` (or set `enabled = false` under `[auth.email.smtp]` / `[auth.sms.twilio]`) and restart. Recommended for fast iteration — real-provider mode burns Brevo and Twilio quotas on every test.
+
+Caveats:
+- `supabase db reset` wipes `auth.users` — every reset costs a fresh signup quota.
+- Brevo sender email must be verified before any mail is delivered.
+- Twilio messaging service must include an SMS-capable number for the recipient country.
+
 ### Database changes
 
 All schema/RLS/storage changes go through migrations — never edit prod directly. See [.claude/conventions.md](./.claude/conventions.md#supabase--database).
