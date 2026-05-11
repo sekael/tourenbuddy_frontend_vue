@@ -94,6 +94,21 @@ VITE_NOTIFICATIONS_ENABLED=true
 
 > **The `VITE_` prefix is required for these** — Vite only exposes env vars with that prefix to client code. Do NOT add `VITE_` prefix to Worker secrets (step 3); those are read server-side without the prefix. `VITE_VAPID_PUBLIC_KEY` (frontend) and `VAPID_PUBLIC_KEY` (Worker) must hold the **same value** — they are the same keypair, just named per consumer convention.
 
+> **`VITE_NOTIFY_HOOK_URL` MUST include the `https://` scheme.** The frontend validates it via `z.string().url()`; a bare hostname like `tourenbuddy-email-hook.<account>.workers.dev` fails validation and the app blank-screens on boot. Always paste the full URL.
+
+### GitHub Actions secrets (for CI deploys)
+
+The CI workflows (`build-web-and-push.yml`, `deploy-preview.yml`) construct `.env` from GitHub Actions secrets at build time. Pages dashboard env vars are NOT used by these workflows. Set under **repo → Settings → Secrets and variables → Actions → Repository secrets**:
+
+| Secret name | Value | Notes |
+| --- | --- | --- |
+| `SUPABASE_URL` | `https://<project>.supabase.co` | Include `https://` scheme |
+| `SUPABASE_ANON_KEY` | publishable/anon key | |
+| `VAPID_PUBLIC_KEY` | VAPID publicKey | Same value as Worker secret |
+| `NOTIFY_HOOK_URL` | `https://tourenbuddy-email-hook.<account>.workers.dev` | **Include `https://` scheme — bare hostname fails URL validation** |
+| `CLOUDFLARE_API_TOKEN` | Pages:Edit-scoped token | For `wrangler pages deploy` |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account ID | |
+
 ## 6. Deploy
 
 ```sh

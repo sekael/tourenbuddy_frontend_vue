@@ -31,10 +31,13 @@ Access via `env` object from `core/constants/env.ts`, never `import.meta.env` di
 
 Set at **repo → Settings → Secrets and variables → Actions**:
 
-- `SUPABASE_URL`, `SUPABASE_ANON_KEY` — Supabase prod values (written into `.env` as `VITE_*`)
+- `SUPABASE_URL` — Supabase project URL **including `https://` scheme** (validated client-side via `z.string().url()`)
+- `SUPABASE_ANON_KEY` — Supabase anon/publishable key
 - `VAPID_PUBLIC_KEY` — VAPID publicKey (frontend; same value as Worker secret)
-- `NOTIFY_HOOK_URL` — Worker URL
+- `NOTIFY_HOOK_URL` — Worker URL **including `https://` scheme** (e.g. `https://tourenbuddy-email-hook.<account>.workers.dev`). Validated client-side via `z.string().url()`; bare hostnames fail validation and crash the app on boot.
 - `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` — for `wrangler pages deploy`
+
+> URL-typed secrets MUST include the protocol. `tourenbuddy-email-hook.workers.dev` ❌ → `https://tourenbuddy-email-hook.workers.dev` ✅
 
 ## Worker (`services/email-hook`)
 
