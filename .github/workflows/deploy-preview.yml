@@ -1,0 +1,78 @@
+name: Deploy Preview to Cloudflare Pages
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  deploy-preview:
+    name: Build and deploy preview
+    runs-on: ubuntu-latest
+    # Skip for forked PRs (no access to secrets)
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    concurrency:
+      group: preview-${{ github.head_ref }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Create Env File
+        run: |
+          echo "VITE_SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env
+          echo "VITE_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
+          echo "VITE_VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }}" >> .env
+          echo "VITE_NOTIFY_HOOK_URL=${{ secrets.NOTIFY_HOOK_URL }}" >> .env
+          echo "VITE_NOTIFICATIONS_ENABLED=true" >> .env
+
+      - name: Build Web
+        run: npm run build
+
+      - name: Sanitize branch name for Pages
+        id: branch
+        run: |
+          # Pages requires lowercase, alphanumeric + dashes, max 28 chars
+          slug=$(echo "${{ github.head_ref }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | cut -c1-28 | sed 's/-*$//')
+          echo "slug=$slug" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: '4'
+          command: pages deploy dist --project-name=tourenbuddy --branch=${{ steps.branch.outputs.slug }}
+
+      - name: Comment preview URL on PR
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: preview-deploy
+          message: |
+            ### 🚀 Preview deployment ready
+
+            **URL:** https://${{ steps.branch.outputs.slug }}.tourenbuddy.pages.dev
+
+            Connected to **production** Supabase, Worker, Brevo, and VAPID infrastructure. Test data lands in prod — use throwaway accounts and clean up after.
+
+            Latest commit: ${{ github.event.pull_request.head.sha }}
