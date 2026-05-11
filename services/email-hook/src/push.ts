@@ -40,22 +40,17 @@ export async function sendPushNotification(
     },
   }
 
-  let pushPayload
-  try {
-    pushPayload = await buildPushPayload(
-      { data: JSON.stringify(payload), options: { ttl: 60 * 60 * 24 } },
-      pushSubscription,
-      vapid,
-    )
-  }
-  catch (err) {
-    console.error('[push] buildPushPayload failed:', (err as Error).message)
-    throw err
-  }
+  const pushPayload = await buildPushPayload(
+    { data: JSON.stringify(payload), options: { ttl: 60 * 60 * 24 } },
+    pushSubscription,
+    vapid,
+  )
 
   const res = await fetch(subscription.endpoint, pushPayload)
-  const bodyText = res.ok ? '' : await res.text().catch(() => '')
-  console.log('[push] status', res.status, subscription.endpoint.slice(0, 80), bodyText.slice(0, 200))
+  if (!res.ok) {
+    const bodyText = await res.text().catch(() => '')
+    console.warn(`[push] ${res.status} ${subscription.endpoint.slice(0, 80)} ${bodyText.slice(0, 200)}`)
+  }
   return res.status
 }
 

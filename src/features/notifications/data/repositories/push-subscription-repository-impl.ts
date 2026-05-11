@@ -30,4 +30,14 @@ export class PushSubscriptionRepositoryImpl implements PushSubscriptionRepositor
     if (error)
       throw new Error(error.message)
   }
+
+  async removeAllForUser(userId: string): Promise<void> {
+    const { error } = await supabase
+      .from('push_subscriptions')
+      .delete()
+      .eq('user_id', userId)
+
+    if (error)
+      throw new Error(error.message)
+  }
 }

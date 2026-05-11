@@ -100,14 +100,14 @@ VITE_NOTIFICATIONS_ENABLED=true
 
 The CI workflows (`build-web-and-push.yml`, `deploy-preview.yml`) construct `.env` from GitHub Actions secrets at build time. Pages dashboard env vars are NOT used by these workflows. Set under **repo → Settings → Secrets and variables → Actions → Repository secrets**:
 
-| Secret name | Value | Notes |
-| --- | --- | --- |
-| `SUPABASE_URL` | `https://<project>.supabase.co` | Include `https://` scheme |
-| `SUPABASE_ANON_KEY` | publishable/anon key | |
-| `VAPID_PUBLIC_KEY` | VAPID publicKey | Same value as Worker secret |
-| `NOTIFY_HOOK_URL` | `https://tourenbuddy-email-hook.<account>.workers.dev` | **Include `https://` scheme — bare hostname fails URL validation** |
-| `CLOUDFLARE_API_TOKEN` | Pages:Edit-scoped token | For `wrangler pages deploy` |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account ID | |
+| Secret name             | Value                                                  | Notes                                                              |
+| ----------------------- | ------------------------------------------------------ | ------------------------------------------------------------------ |
+| `SUPABASE_URL`          | `https://<project>.supabase.co`                        | Include `https://` scheme                                          |
+| `SUPABASE_ANON_KEY`     | publishable/anon key                                   |                                                                    |
+| `VAPID_PUBLIC_KEY`      | VAPID publicKey                                        | Same value as Worker secret                                        |
+| `NOTIFY_HOOK_URL`       | `https://tourenbuddy-email-hook.<account>.workers.dev` | **Include `https://` scheme — bare hostname fails URL validation** |
+| `CLOUDFLARE_API_TOKEN`  | Pages:Edit-scoped token                                | For `wrangler pages deploy`                                        |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account ID                                  |                                                                    |
 
 ## 6. Deploy
 

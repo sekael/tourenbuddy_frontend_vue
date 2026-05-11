@@ -8,4 +8,5 @@ export interface PushSubscriptionData {
 export interface PushSubscriptionRepository {
   upsertSubscription: (userId: string, data: PushSubscriptionData) => Promise<void>
   removeSubscription: (endpoint: string) => Promise<void>
+  removeAllForUser: (userId: string) => Promise<void>
 }

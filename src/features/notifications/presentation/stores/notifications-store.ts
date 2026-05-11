@@ -66,7 +66,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
         refreshPermission()
       }
       else {
-        await unsubscribe()
+        await unsubscribe(userId)
       }
     }
     catch (err) {

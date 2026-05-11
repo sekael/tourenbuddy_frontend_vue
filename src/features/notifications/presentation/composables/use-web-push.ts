@@ -41,21 +41,25 @@ export function useWebPush() {
     }
   }
 
-  async function unsubscribe(): Promise<void> {
+  async function unsubscribe(userId: string): Promise<void> {
+    try {
+      await repository.removeAllForUser(userId)
+    }
+    catch (err) {
+      logger.error('Failed to remove push subscription rows', err)
+    }
+
     if (!('serviceWorker' in navigator))
       return
 
     try {
       const registration = await navigator.serviceWorker.ready
       const subscription = await registration.pushManager.getSubscription()
-      if (!subscription)
-        return
-
-      await repository.removeSubscription(subscription.endpoint)
-      await subscription.unsubscribe()
+      if (subscription)
+        await subscription.unsubscribe()
     }
     catch (err) {
-      logger.error('Failed to unsubscribe from push', err)
+      logger.error('Failed to unsubscribe browser from push', err)
     }
   }
 
