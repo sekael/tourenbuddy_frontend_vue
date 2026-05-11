@@ -54,6 +54,8 @@ function goToFriendRequests() {
 
 const viewState = ref<ViewState>('list')
 const selectedContact = ref<Contact | null>(null)
+const detailRef = ref<InstanceType<typeof ContactDetailView>>()
+const addFormRef = ref<InstanceType<typeof ContactForm>>()
 
 // Auto-open detail view when initialContactId is provided
 watch(
@@ -420,6 +422,7 @@ function onFormPhoneInput(phone: string) {
     <!-- Detail / edit view -->
     <div v-else-if="viewState === 'detail' && liveContact">
       <ContactDetailView
+        ref="detailRef"
         :contact="liveContact"
         :linked-friend-user-id="detailLinkedFriendUserId"
         @back="backToList"
@@ -428,6 +431,7 @@ function onFormPhoneInput(phone: string) {
       <ConnectPrompt
         v-if="detailViewMatchedUserId && liveContact && !isConnectDismissed(liveContact.id)"
         :matched-user-id="detailViewMatchedUserId"
+        :before-send="() => detailRef?.commitPendingEdits() ?? Promise.resolve()"
         class="detail-connect-prompt"
         @sent="liveContact && dismissConnect(liveContact.id)"
         @dismissed="liveContact && dismissConnect(liveContact.id)"
@@ -538,6 +542,7 @@ function onFormPhoneInput(phone: string) {
         </p>
 
         <ContactForm
+          ref="addFormRef"
           :submit-label="t('contacts.addDialog.title')"
           :is-loading="isAddLoading"
           @submit="handleAddSubmit"
@@ -547,6 +552,7 @@ function onFormPhoneInput(phone: string) {
         <ConnectPrompt
           v-if="manualPromptUserId && !manualPromptDismissed"
           :matched-user-id="manualPromptUserId"
+          :before-send="() => addFormRef?.submit() ?? Promise.resolve()"
           @sent="manualPromptDismissed = true"
           @dismissed="manualPromptDismissed = true"
         />

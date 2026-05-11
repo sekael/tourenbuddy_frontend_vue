@@ -40,6 +40,7 @@ const mockContact = {
       value: '+41 79 111 22 33',
       label: 'Mobile',
       isPrimary: true,
+      isValid: true,
     },
   ],
 }
@@ -53,51 +54,156 @@ function mountDetail(contact = mockContact, linkedFriendUserId: string | null = 
   })
 }
 
+async function enterEditMode(wrapper: ReturnType<typeof mountDetail>) {
+  await wrapper.find('.edit-btn').trigger('click')
+}
+
 describe('contactDetailView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  describe('name editing', () => {
-    it('should pre-fill name fields from contact prop', () => {
+  describe('view/edit mode toggle', () => {
+    it('should default to view mode showing read-only name spans', () => {
       const wrapper = mountDetail()
-      expect((wrapper.find('#dv-firstName').element as HTMLInputElement).value).toBe('Anna')
-      expect((wrapper.find('#dv-lastName').element as HTMLInputElement).value).toBe('Meier')
+      expect(wrapper.find('.edit-btn').exists()).toBe(true)
+      expect(wrapper.find('#dv-firstName').exists()).toBe(false)
+      expect(wrapper.find('.view-value').text()).toContain('Anna')
     })
 
-    it('should call updateContact store action and emit back when save name is clicked', async () => {
+    it('should enter edit mode exposing inputs when Edit is clicked', async () => {
+      const wrapper = mountDetail()
+      await enterEditMode(wrapper)
+      expect(wrapper.find('#dv-firstName').exists()).toBe(true)
+      expect((wrapper.find('#dv-firstName').element as HTMLInputElement).value).toBe('Anna')
+      expect(wrapper.find('#dv-lastName').exists()).toBe(true)
+    })
+
+    it('should revert dirty name input to original value when Cancel is clicked', async () => {
+      const wrapper = mountDetail()
+      await enterEditMode(wrapper)
+      await wrapper.find('#dv-firstName').setValue('Annika')
+      await wrapper.find('.form-actions .cancel-btn').trigger('click')
+
+      expect(wrapper.find('.edit-btn').exists()).toBe(true)
+      expect(wrapper.find('#dv-firstName').exists()).toBe(false)
+      // view-value shows original name again
+      expect(wrapper.text()).toContain('Anna')
+    })
+
+    it('should show add-method button and delete buttons only in edit mode', async () => {
+      const wrapper = mountDetail()
+      expect(wrapper.find('.add-method-btn').exists()).toBe(false)
+      expect(wrapper.find('.icon-btn--danger').exists()).toBe(false)
+
+      await enterEditMode(wrapper)
+      expect(wrapper.find('.add-method-btn').exists()).toBe(true)
+      expect(wrapper.find('.icon-btn--danger').exists()).toBe(true)
+    })
+
+    it('should make primary-phone star non-interactive in view mode', () => {
+      const wrapper = mountDetail()
+      // In view mode it renders as a span (not a button)
+      const star = wrapper.find('.primary-star')
+      expect(star.element.tagName.toLowerCase()).toBe('span')
+    })
+
+    it('should make primary-phone star interactive in edit mode', async () => {
+      const wrapper = mountDetail()
+      await enterEditMode(wrapper)
+      const star = wrapper.find('.primary-star')
+      expect(star.element.tagName.toLowerCase()).toBe('button')
+    })
+  })
+
+  describe('save all (edit mode)', () => {
+    it('should call updateContact and transition to view mode on success', async () => {
       const wrapper = mountDetail()
       const store = useContactsStore()
       vi.mocked(store.updateContact).mockResolvedValue(undefined as never)
 
-      const input = wrapper.find('#dv-firstName')
-      await input.setValue('Annika')
-      await wrapper.find('.save-btn').trigger('click')
-      await wrapper.vm.$nextTick()
+      await enterEditMode(wrapper)
+      await wrapper.find('#dv-firstName').setValue('Annika')
+      await wrapper.find('.form-actions .save-btn').trigger('click')
+      await flushPromises()
 
       expect(store.updateContact).toHaveBeenCalledWith('c-1', {
         firstName: 'Annika',
         lastName: 'Meier',
         displayName: null,
       })
-      expect(wrapper.emitted('back')).toHaveLength(1)
+      // After success, back to view mode
+      expect(wrapper.find('.edit-btn').exists()).toBe(true)
+      expect(wrapper.find('#dv-firstName').exists()).toBe(false)
     })
 
-    it('should show validation error when first name is cleared', async () => {
+    it('should stay in edit mode and show error when updateContact fails', async () => {
       const wrapper = mountDetail()
-      await wrapper.find('#dv-firstName').setValue('')
-      await wrapper.find('.save-btn').trigger('click')
+      const store = useContactsStore()
+      vi.mocked(store.updateContact).mockRejectedValue(new Error('DB error'))
 
-      expect(wrapper.find('.error-text').text()).toBe('contacts.detailView.firstNameRequired')
+      await enterEditMode(wrapper)
+      await wrapper.find('.form-actions .save-btn').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.find('#dv-firstName').exists()).toBe(true)
+      expect(wrapper.find('.error-text').exists()).toBe(true)
+    })
+
+    it('should show validation error and stay in edit mode when first name is empty', async () => {
+      const wrapper = mountDetail()
+      await enterEditMode(wrapper)
+      await wrapper.find('#dv-firstName').setValue('')
+      await wrapper.find('.form-actions .save-btn').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.find('#dv-firstName').exists()).toBe(true)
+      expect(wrapper.find('.error-text').exists()).toBe(true)
+    })
+  })
+
+  describe('commitPendingEdits', () => {
+    it('should resolve immediately when in view mode', async () => {
+      const wrapper = mountDetail()
+      const vm = wrapper.vm as InstanceType<typeof ContactDetailView>
+
+      await expect(vm.commitPendingEdits()).resolves.toBeUndefined()
+    })
+
+    it('should reject and stay in edit mode when a save fails', async () => {
+      const wrapper = mountDetail()
+      const store = useContactsStore()
+      vi.mocked(store.updateContact).mockRejectedValue(new Error('save failed'))
+
+      await enterEditMode(wrapper)
+      const vm = wrapper.vm as InstanceType<typeof ContactDetailView>
+
+      await expect(vm.commitPendingEdits()).rejects.toThrow()
+      await flushPromises()
+
+      expect(wrapper.find('#dv-firstName').exists()).toBe(true)
+    })
+
+    it('should resolve and return to view mode when all saves succeed', async () => {
+      const wrapper = mountDetail()
+      const store = useContactsStore()
+      vi.mocked(store.updateContact).mockResolvedValue(undefined as never)
+
+      await enterEditMode(wrapper)
+      const vm = wrapper.vm as InstanceType<typeof ContactDetailView>
+
+      await expect(vm.commitPendingEdits()).resolves.toBeUndefined()
+      await flushPromises()
+
+      expect(wrapper.find('.edit-btn').exists()).toBe(true)
     })
   })
 
   describe('contact methods', () => {
-    it('should display existing contact methods', () => {
+    it('should display existing contact methods in view mode', () => {
       const wrapper = mountDetail()
       expect(wrapper.find('.method-row').exists()).toBe(true)
-      const valueInput = wrapper.find('.method-fields .input-sm')
-      expect((valueInput.element as HTMLInputElement).value).toBe('+41 79 111 22 33')
+      expect(wrapper.find('.view-value').text()).toContain('Anna')
     })
 
     it('should show empty methods message when no methods', () => {
@@ -105,107 +211,81 @@ describe('contactDetailView', () => {
       expect(wrapper.find('.empty-methods').exists()).toBe(true)
     })
 
-    it('should call removeMethodFromContact when delete icon clicked', async () => {
+    it('should call removeMethodFromContact when delete icon clicked in edit mode', async () => {
       const wrapper = mountDetail()
       const store = useContactsStore()
 
+      await enterEditMode(wrapper)
       await wrapper.find('.icon-btn--danger').trigger('click')
       expect(store.removeMethodFromContact).toHaveBeenCalledWith('c-1', 'm-1')
     })
 
-    it('should show primary star button for phone methods', () => {
-      const wrapper = mountDetail()
-      expect(wrapper.find('.primary-star').exists()).toBe(true)
-    })
-
-    it('should call setPrimaryPhoneOnContact when non-primary star is clicked', async () => {
+    it('should call setPrimaryPhoneOnContact in edit mode when non-primary star clicked', async () => {
       const contactWithTwoPhones = {
         ...mockContact,
         contactMethods: [
-          {
-            id: 'm-1',
-            contactId: 'c-1',
-            methodType: 'phone' as const,
-            value: '+41 79 111 22 33',
-            label: null,
-            isPrimary: true,
-          },
-          {
-            id: 'm-2',
-            contactId: 'c-1',
-            methodType: 'phone' as const,
-            value: '+41 44 222 33 44',
-            label: null,
-            isPrimary: false,
-          },
+          { id: 'm-1', contactId: 'c-1', methodType: 'phone' as const, value: '+41 79 111 22 33', label: null, isPrimary: true, isValid: true },
+          { id: 'm-2', contactId: 'c-1', methodType: 'phone' as const, value: '+41 44 222 33 44', label: null, isPrimary: false, isValid: true },
         ],
       }
       const wrapper = mountDetail(contactWithTwoPhones)
       const store = useContactsStore()
       vi.mocked(store.setPrimaryPhoneOnContact).mockResolvedValue(undefined as never)
 
-      const stars = wrapper.findAll('.primary-star')
+      await enterEditMode(wrapper)
+      const stars = wrapper.findAll('button.primary-star')
       await stars[1]!.trigger('click')
 
       expect(store.setPrimaryPhoneOnContact).toHaveBeenCalledWith('c-1', 'm-2')
     })
 
-    it('should show error when setPrimaryPhoneOnContact fails', async () => {
+    it('should show error when setPrimaryPhoneOnContact fails in edit mode', async () => {
       const contactWithTwoPhones = {
         ...mockContact,
         contactMethods: [
-          {
-            id: 'm-1',
-            contactId: 'c-1',
-            methodType: 'phone' as const,
-            value: '+41 79 111 22 33',
-            label: null,
-            isPrimary: true,
-          },
-          {
-            id: 'm-2',
-            contactId: 'c-1',
-            methodType: 'phone' as const,
-            value: '+41 44 222 33 44',
-            label: null,
-            isPrimary: false,
-          },
+          { id: 'm-1', contactId: 'c-1', methodType: 'phone' as const, value: '+41 79 111 22 33', label: null, isPrimary: true, isValid: true },
+          { id: 'm-2', contactId: 'c-1', methodType: 'phone' as const, value: '+41 44 222 33 44', label: null, isPrimary: false, isValid: true },
         ],
       }
       const wrapper = mountDetail(contactWithTwoPhones)
       const store = useContactsStore()
       vi.mocked(store.setPrimaryPhoneOnContact).mockRejectedValue(new Error('RPC failed'))
 
-      const stars = wrapper.findAll('.primary-star')
+      await enterEditMode(wrapper)
+      const stars = wrapper.findAll('button.primary-star')
       await stars[1]!.trigger('click')
-      await wrapper.vm.$nextTick()
-      await wrapper.vm.$nextTick()
+      await flushPromises()
 
       expect(wrapper.find('.error-text').exists()).toBe(true)
     })
   })
 
   describe('add method', () => {
-    it('should show add method form when add button clicked', async () => {
+    it('should show add method form in edit mode after add button clicked', async () => {
       const wrapper = mountDetail()
+      await enterEditMode(wrapper)
       await wrapper.find('.add-method-btn').trigger('click')
       expect(wrapper.find('.add-method-form').exists()).toBe(true)
     })
 
     it('should show validation error if value is empty on add', async () => {
       const wrapper = mountDetail()
+      await enterEditMode(wrapper)
       await wrapper.find('.add-method-btn').trigger('click')
       await wrapper.find('.add-method-form .save-btn').trigger('click')
       expect(wrapper.find('.error-text').text()).toBe('contacts.detailView.valueRequired')
     })
 
-    it('should hide add method form when cancel clicked', async () => {
+    it('should discard add-method draft when Cancel is clicked from edit mode', async () => {
       const wrapper = mountDetail()
+      await enterEditMode(wrapper)
       await wrapper.find('.add-method-btn').trigger('click')
       expect(wrapper.find('.add-method-form').exists()).toBe(true)
 
-      await wrapper.find('.add-method-form .cancel-btn').trigger('click')
+      await wrapper.find('.form-actions .cancel-btn').trigger('click')
+      // Returned to view mode — add-method-form gone
       expect(wrapper.find('.add-method-form').exists()).toBe(false)
+      expect(wrapper.find('.edit-btn').exists()).toBe(true)
     })
   })
 
@@ -217,26 +297,42 @@ describe('contactDetailView', () => {
       expect(wrapper.find('.delete-confirm-btn').exists()).toBe(true)
     })
 
-    it('should hide confirmation when cancel clicked', async () => {
+    it('should hide confirmation when cancel clicked in delete section', async () => {
       const wrapper = mountDetail()
       await wrapper.find('.delete-btn').trigger('click')
-      await wrapper.find('.cancel-btn').trigger('click')
+      const deleteSection = wrapper.find('.section--danger')
+      await deleteSection.find('.cancel-btn').trigger('click')
 
       expect(wrapper.find('.delete-confirm-text').exists()).toBe(false)
       expect(wrapper.find('.delete-btn').exists()).toBe(true)
     })
 
-    it('should call deleteContact store action and emit deleted when confirmed', async () => {
+    it('should call deleteContact and emit deleted when confirmed', async () => {
       const wrapper = mountDetail()
       const store = useContactsStore()
       vi.mocked(store.deleteContact).mockResolvedValue(undefined)
 
       await wrapper.find('.delete-btn').trigger('click')
       await wrapper.find('.delete-confirm-btn').trigger('click')
-      await wrapper.vm.$nextTick()
+      await flushPromises()
 
       expect(store.deleteContact).toHaveBeenCalledWith('c-1')
       expect(wrapper.emitted('deleted')).toHaveLength(1)
+    })
+
+    it('does NOT delete contact when removeFriendship fails', async () => {
+      const wrapper = mountDetail(mockContact, 'user-friend')
+      const friendships = useFriendshipsStore()
+      const contacts = useContactsStore()
+      vi.mocked(friendships.removeFriendship).mockRejectedValue(new Error('rpc failed'))
+
+      await wrapper.find('.delete-btn').trigger('click')
+      await wrapper.find('.delete-confirm-btn').trigger('click')
+      await flushPromises()
+
+      expect(contacts.deleteContact).not.toHaveBeenCalled()
+      expect(wrapper.emitted('deleted')).toBeFalsy()
+      expect(wrapper.find('.error-text').exists()).toBe(true)
     })
   })
 
@@ -248,20 +344,20 @@ describe('contactDetailView', () => {
     })
   })
 
-  describe('linked-friendship deletion (edges)', () => {
+  describe('linked-friendship deletion', () => {
     it('does not render friend warning when contact is not linked to a friend', async () => {
       const wrapper = mountDetail(mockContact, null)
       await wrapper.find('.delete-btn').trigger('click')
       expect(wrapper.find('.delete-friend-warning').exists()).toBe(false)
     })
 
-    it('renders friend warning only when linked', async () => {
+    it('renders friend warning when contact is linked to a friend', async () => {
       const wrapper = mountDetail(mockContact, 'user-friend')
       await wrapper.find('.delete-btn').trigger('click')
       expect(wrapper.find('.delete-friend-warning').exists()).toBe(true)
     })
 
-    it('skips removeFriendship when no linked friend on confirm', async () => {
+    it('skips removeFriendship when no linked friend', async () => {
       const wrapper = mountDetail(mockContact, null)
       const friendships = useFriendshipsStore()
       const contacts = useContactsStore()
@@ -273,43 +369,6 @@ describe('contactDetailView', () => {
 
       expect(friendships.removeFriendship).not.toHaveBeenCalled()
       expect(contacts.deleteContact).toHaveBeenCalledWith('c-1')
-    })
-
-    it('does NOT delete contact when removeFriendship fails (atomic-ish)', async () => {
-      const wrapper = mountDetail(mockContact, 'user-friend')
-      const friendships = useFriendshipsStore()
-      const contacts = useContactsStore()
-      vi.mocked(friendships.removeFriendship).mockRejectedValue(new Error('rpc failed'))
-
-      await wrapper.find('.delete-btn').trigger('click')
-      await wrapper.find('.delete-confirm-btn').trigger('click')
-      await flushPromises()
-
-      expect(friendships.removeFriendship).toHaveBeenCalledWith('user-friend')
-      expect(contacts.deleteContact).not.toHaveBeenCalled()
-      expect(wrapper.emitted('deleted')).toBeFalsy()
-      expect(wrapper.find('.error-text').exists()).toBe(true)
-    })
-
-    it('removes friendship before deleting contact when both succeed', async () => {
-      // Edge: ordering matters because deleteContact may cascade delete the friendship row
-      // out from under removeFriendship and surface a confusing error.
-      const wrapper = mountDetail(mockContact, 'user-friend')
-      const friendships = useFriendshipsStore()
-      const contacts = useContactsStore()
-      const order: string[] = []
-      vi.mocked(friendships.removeFriendship).mockImplementation(async () => {
-        order.push('rm')
-      })
-      vi.mocked(contacts.deleteContact).mockImplementation(async () => {
-        order.push('del')
-      })
-
-      await wrapper.find('.delete-btn').trigger('click')
-      await wrapper.find('.delete-confirm-btn').trigger('click')
-      await flushPromises()
-
-      expect(order).toEqual(['rm', 'del'])
     })
   })
 })
