@@ -408,5 +408,19 @@
       "body": "Once verified, other verified TourenBuddy users who add this number to their contacts will know an account exists for it and can send a friend request. Your identity is not revealed beyond this. Unverified phones are never discoverable. You can deny any incoming request.",
       "acknowledge": "I understand, send code"
     }
+  },
+  "notifications": {
+    "sectionTitle": "Notifications",
+    "pushLabel": "Push notifications",
+    "pushDescription": "Receive alerts on this device",
+    "emailLabel": "Email notifications",
+    "emailDescription": "Receive alerts by email",
+    "typesLabel": "Alert me about",
+    "type": {
+      "friend_requests": "Friend requests"
+    },
+    "allOffDisclaimer": "You won't receive friend request notifications or other important updates. Enable at least one channel to stay informed.",
+    "installHint": "To enable push notifications, add TourenBuddy to your home screen first.",
+    "deniedHint": "Push notifications are blocked. Enable them in your browser or device settings."
   }
 }

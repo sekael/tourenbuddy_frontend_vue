@@ -22,3 +22,19 @@ head_sampling_rate = 1
 # SEND_EMAIL_HOOK_SECRET
 # BREVO_TEMPLATE_EN  (numeric ID of the Brevo OTP template in English)
 # BREVO_TEMPLATE_DE  (numeric ID of the Brevo OTP template in German)
+#
+# Notification secrets (see SETUP-NOTIFICATIONS.md):
+# SUPABASE_URL
+# SUPABASE_SERVICE_ROLE_KEY
+# VAPID_PUBLIC_KEY
+# VAPID_PRIVATE_KEY
+# VAPID_SUBJECT  (e.g. mailto:no-reply@tourenbuddy.ch)
+# BREVO_TEMPLATE_FRIEND_RECEIVED_EN  (numeric Brevo template ID)
+# BREVO_TEMPLATE_FRIEND_RECEIVED_DE
+# BREVO_TEMPLATE_FRIEND_RESPONDED_EN
+# BREVO_TEMPLATE_FRIEND_RESPONDED_DE
+#
+# Optional:
+# APP_URL  (used for push deep-links and email links.
+#           default if unset: https://test.tourenbuddy.ch
+#           override to https://tourenbuddy.ch (or www variant) when prod domain goes live)

@@ -91,13 +91,16 @@ INSERT INTO public.contacts (id, first_name, last_name, display_name, user_id) V
   ('aaaaaaaa-0000-0000-0000-000000000001', 'Jakob',   'Tester', 'Jakob Tester',
    '11111111-1111-1111-1111-111111111111'),
   ('aaaaaaaa-0000-0000-0000-000000000002', 'Patrick', 'Tester', 'Patrick Tester',
-   '22222222-2222-2222-2222-222222222222')
+   '22222222-2222-2222-2222-222222222222'),
+  ('aaaaaaaa-0000-0000-0000-000000000003', 'Patrick', 'Tester', 'Patrick Tester',
+   '33333333-3333-3333-3333-333333333333')
 ON CONFLICT (id) DO NOTHING;
 
 -- ----- public.contact_methods (phones with leading '+') ---------------------
 INSERT INTO public.contact_methods (contact_id, method_type, value, is_primary) VALUES
   ('aaaaaaaa-0000-0000-0000-000000000001', 'phone', '+41790000002', true),
-  ('aaaaaaaa-0000-0000-0000-000000000002', 'phone', '+41790000001', true)
+  ('aaaaaaaa-0000-0000-0000-000000000002', 'phone', '+41790000001', true),
+  ('aaaaaaaa-0000-0000-0000-000000000003', 'phone', '+41790000001', true)
 ON CONFLICT (contact_id, method_type, value) DO NOTHING;
 
 -- ----- public.friendships (Patrick ↔ Jakob) --------------------------------

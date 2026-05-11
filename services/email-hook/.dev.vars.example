@@ -1,5 +1,11 @@
 # Local dev secrets for `wrangler dev`. Copy to .dev.vars and fill values.
 # .dev.vars is gitignored — never commit real secrets.
+SUPABASE_URL=http://127.0.0.1:54321
+SUPABASE_SERVICE_ROLE_KEY=
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:dev@localhost
+NOTIFICATIONS_ENABLED=true
 
 # Must match SEND_EMAIL_HOOK_SECRET in supabase/.env. Format: "v1,whsec_<base64>".
 # Generate: echo "v1,whsec_$(openssl rand -base64 48 | tr -d '\n')"

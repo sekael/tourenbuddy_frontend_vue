@@ -43,7 +43,8 @@
   3. Apply locally: `supabase db reset` (re-runs all migrations from clean state) or `supabase migration up`
   4. Verify locally (test feature against local DB), run `npm run test`
   5. Push to prod ONLY after review: `supabase db push` (prompt user — never run unprompted)
-- Migration files: `supabase/migrations/<timestamp>_<name>.sql`, immutable once merged to `main` — fix forward with new migration
+- CRITICAL: NEVER edit any existing file under `supabase/migrations/` — migration history is immutable. This includes the baseline `20260101000000_initial_schema.sql`. Every DB change (schema, defaults, RLS, functions, triggers, storage, extensions) MUST go in a NEW migration file created via `supabase migration new <name>`.
+- Migration files: `supabase/migrations/<timestamp>_<name>.sql`, fix forward only — never alter history
 - NEVER hand-edit prod schema via Supabase Studio/SQL editor — drifts from repo
 - `supabase/migrations/_archived/` contains pre-baseline patches — do not run, kept for history only
 - Baseline migration `20260101000000_initial_schema.sql` reflects prod schema at cutover; subsequent changes go in new timestamped files

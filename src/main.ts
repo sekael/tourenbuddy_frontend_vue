@@ -5,6 +5,7 @@ import router, { setupRouterGuards } from './app/router'
 import { i18n, setupI18nLocaleWatcher } from './core/i18n'
 import { installZodErrorMap } from './core/i18n/zod-error-map'
 import { useAuthStore } from './features/auth/presentation/stores/auth-store'
+import { useNotificationsStore } from './features/notifications/presentation/stores/notifications-store'
 import { useUserProfileStore } from './features/user/presentation/stores/user-profile-store'
 import './app/theme/global.css'
 
@@ -27,13 +28,23 @@ async function bootstrap() {
     await profileStore.loadProfile()
   }
 
+  const notificationsStore = useNotificationsStore()
+  if (authStore.isAuthenticated) {
+    notificationsStore.ensurePushSubscription()
+  }
+
   // Reload profile when user logs in mid-session; clear on sign-out
   watch(
     () => authStore.isAuthenticated,
     async (isAuth) => {
-      if (isAuth)
+      if (isAuth) {
         await profileStore.loadProfile()
-      else profileStore.clear()
+        notificationsStore.ensurePushSubscription()
+      }
+      else {
+        profileStore.clear()
+        notificationsStore.clear()
+      }
     },
   )
 

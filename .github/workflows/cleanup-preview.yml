@@ -1,0 +1,82 @@
+name: Cleanup Preview Deployment
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  cleanup:
+    name: Delete preview deployments for merged branch
+    runs-on: ubuntu-latest
+    # Skip for forked PRs (no preview was created)
+    if: github.event.pull_request.head.repo.full_name == github.repository
+
+    env:
+      CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PROJECT: tourenbuddy
+
+    steps:
+      - name: Sanitize branch name for Pages
+        id: branch
+        run: |
+          slug=$(echo "${{ github.event.pull_request.head.ref }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | cut -c1-28 | sed 's/-*$//')
+          echo "slug=$slug" >> "$GITHUB_OUTPUT"
+
+      - name: Delete preview deployments for branch
+        run: |
+          set -euo pipefail
+          slug="${{ steps.branch.outputs.slug }}"
+          echo "Cleaning up preview deployments for branch slug: $slug"
+
+          api="https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/pages/projects/$PROJECT"
+
+          page=1
+          deleted=0
+          while :; do
+            resp=$(curl -sf -H "Authorization: Bearer $CF_API_TOKEN" \
+              "$api/deployments?env=preview&page=$page&per_page=25")
+
+            ids=$(echo "$resp" | jq -r --arg slug "$slug" \
+              '.result[] | select(.deployment_trigger.metadata.branch == $slug) | .id')
+
+            if [ -z "$ids" ]; then
+              # No matches on this page; check if more pages exist
+              total=$(echo "$resp" | jq -r '.result | length')
+              if [ "$total" -lt 25 ]; then
+                break
+              fi
+              page=$((page + 1))
+              continue
+            fi
+
+            for id in $ids; do
+              echo "Deleting deployment $id"
+              # force=true so the live alias for this branch is also removed
+              curl -sf -X DELETE \
+                -H "Authorization: Bearer $CF_API_TOKEN" \
+                "$api/deployments/$id?force=true" > /dev/null
+              deleted=$((deleted + 1))
+            done
+
+            page=$((page + 1))
+          done
+
+          echo "Total deployments deleted: $deleted"
+
+      - name: Update PR comment
+        if: github.event.pull_request.merged == true
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: preview-deploy
+          message: |
+            ### 🧹 Preview deployment cleaned up
+
+            Preview deployments for `${{ github.event.pull_request.head.ref }}` were removed from Cloudflare Pages after merge.

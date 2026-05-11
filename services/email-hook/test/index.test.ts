@@ -6,6 +6,15 @@ const VALID_ENV = {
   SEND_EMAIL_HOOK_SECRET: 'whsec_dGVzdHNlY3JldA==',
   BREVO_TEMPLATE_EN: '10',
   BREVO_TEMPLATE_DE: '20',
+  SUPABASE_URL: 'https://proj.supabase.co',
+  SUPABASE_SERVICE_ROLE_KEY: 'service-role-key',
+  VAPID_PUBLIC_KEY: 'vapid-pub',
+  VAPID_PRIVATE_KEY: 'vapid-priv',
+  VAPID_SUBJECT: 'mailto:no-reply@example.com',
+  BREVO_TEMPLATE_FRIEND_RECEIVED_EN: '30',
+  BREVO_TEMPLATE_FRIEND_RECEIVED_DE: '31',
+  BREVO_TEMPLATE_FRIEND_RESPONDED_EN: '32',
+  BREVO_TEMPLATE_FRIEND_RESPONDED_DE: '33',
 }
 
 const VALID_PAYLOAD = {
@@ -24,8 +33,8 @@ vi.mock('standardwebhooks', () => ({
   })),
 }))
 
-function makeRequest(body: unknown, headers: Record<string, string> = {}) {
-  return new Request('https://worker.example.com/', {
+function makeRequest(body: unknown, headers: Record<string, string> = {}, path = '/') {
+  return new Request(`https://worker.example.com${path}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -33,6 +42,17 @@ function makeRequest(body: unknown, headers: Record<string, string> = {}) {
       'webhook-timestamp': String(Math.floor(Date.now() / 1000)),
       'webhook-signature': 'v1,validsig',
       ...headers,
+    },
+    body: JSON.stringify(body),
+  })
+}
+
+function makeNotifyRequest(path: string, body: unknown, jwt = 'valid-jwt') {
+  return new Request(`https://worker.example.com${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${jwt}`,
     },
     body: JSON.stringify(body),
   })
@@ -132,5 +152,167 @@ describe('email-hook worker', () => {
     const req = new Request('https://worker.example.com/', { method: 'GET' })
     const response = await worker.fetch(req, VALID_ENV as never)
     expect(response.status).toBe(405)
+  })
+})
+
+describe('notify routes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('returns 401 when Authorization header is missing for received route', async () => {
+    const req = new Request('https://worker.example.com/notify/friend-request-received', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ friendshipId: 'abc' }),
+    })
+    // JWT verifier calls /auth/v1/user — mock to return 401
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response('', { status: 401 }))
+    const response = await worker.fetch(req, VALID_ENV as never)
+    expect(response.status).toBe(401)
+  })
+
+  it('returns 403 when caller is not the sender for received route', async () => {
+    globalThis.fetch = vi.fn()
+      // First call: JWT verify → returns user id = 'user-b'
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'user-b' }), { status: 200 }))
+      // Second call: fetch friendship → from_user_id = 'user-a' (not caller)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([{ id: 'f1', from_user_id: 'user-a', to_user_id: 'user-b' }]),
+          { status: 200 },
+        ),
+      )
+
+    const req = makeNotifyRequest('/notify/friend-request-received', { friendshipId: 'f1' })
+    const response = await worker.fetch(req, VALID_ENV as never)
+    expect(response.status).toBe(403)
+  })
+
+  it('returns 403 when caller is not the responder for responded route', async () => {
+    globalThis.fetch = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'user-a' }), { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([{ id: 'f1', from_user_id: 'user-a', to_user_id: 'user-b' }]),
+          { status: 200 },
+        ),
+      )
+
+    const req = makeNotifyRequest('/notify/friend-request-responded', { friendshipId: 'f1' })
+    const response = await worker.fetch(req, VALID_ENV as never)
+    expect(response.status).toBe(403)
+  })
+
+  it('does not dispatch when recipient has muted friend_requests', async () => {
+    globalThis.fetch = vi.fn()
+      // JWT verify → caller is sender
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'user-a' }), { status: 200 }))
+      // Fetch friendship
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([{ id: 'f1', from_user_id: 'user-a', to_user_id: 'user-b' }]),
+          { status: 200 },
+        ),
+      )
+      // Fetch recipient profile — muted friend_requests
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([{ id: 'user-b', notif_push_enabled: true, notif_email_enabled: true, notif_muted_types: ['friend_requests'], locale: 'en' }]),
+          { status: 200 },
+        ),
+      )
+      // Fetch actor display name
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ first_name: 'Alice', last_name: 'Smith' }]), { status: 200 }),
+      )
+      // Fetch recipient email
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: 'user-b', email: 'b@example.com' }), { status: 200 }),
+      )
+
+    const req = makeNotifyRequest('/notify/friend-request-received', { friendshipId: 'f1' })
+    const response = await worker.fetch(req, VALID_ENV as never)
+    expect(response.status).toBe(200)
+    // No Brevo or push call should occur (all calls are data fetches above)
+    const brevoCall = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
+      ([url]: [string]) => url === 'https://api.brevo.com/v3/smtp/email',
+    )
+    expect(brevoCall).toBeUndefined()
+  })
+
+  it('falls back to EN template when locale is unknown', async () => {
+    globalThis.fetch = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'user-a' }), { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([{ id: 'f1', from_user_id: 'user-a', to_user_id: 'user-b' }]),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([{ id: 'user-b', notif_push_enabled: false, notif_email_enabled: true, notif_muted_types: [], locale: 'fr' }]),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ first_name: 'Alice', last_name: null }]), { status: 200 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: 'user-b', email: 'b@example.com' }), { status: 200 }),
+      )
+      // Brevo call
+      .mockResolvedValueOnce(new Response('OK', { status: 200 }))
+
+    const req = makeNotifyRequest('/notify/friend-request-received', { friendshipId: 'f1' })
+    await worker.fetch(req, VALID_ENV as never)
+
+    const brevoCall = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
+      ([url]: [string]) => url === 'https://api.brevo.com/v3/smtp/email',
+    )
+    expect(brevoCall).toBeDefined()
+    const body = JSON.parse(brevoCall[1].body as string)
+    expect(body.templateId).toBe(30) // EN received template
+  })
+
+  it('responded route body does not expose accept/decline outcome', async () => {
+    // The responded route sends a generic "responded to your request" message
+    // Verify no accept/decline wording is sent to push or email
+    globalThis.fetch = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'user-b' }), { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([{ id: 'f1', from_user_id: 'user-a', to_user_id: 'user-b' }]),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([{ id: 'user-a', notif_push_enabled: false, notif_email_enabled: true, notif_muted_types: [], locale: 'en' }]),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ first_name: 'Bob', last_name: null }]), { status: 200 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: 'user-a', email: 'a@example.com' }), { status: 200 }),
+      )
+      .mockResolvedValueOnce(new Response('OK', { status: 200 }))
+
+    const req = makeNotifyRequest('/notify/friend-request-responded', { friendshipId: 'f1' })
+    await worker.fetch(req, VALID_ENV as never)
+
+    const brevoCall = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
+      ([url]: [string]) => url === 'https://api.brevo.com/v3/smtp/email',
+    )
+    const body = JSON.parse(brevoCall[1].body as string)
+    // Should use responded template, not received
+    expect(body.templateId).toBe(32) // EN responded template
+    // No accept/decline in the params (outcome is not passed to template)
+    const bodyStr = JSON.stringify(body).toLowerCase()
+    expect(bodyStr).not.toContain('accept')
+    expect(bodyStr).not.toContain('decline')
   })
 })
