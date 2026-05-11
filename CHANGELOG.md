@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.17.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.16.1...tourenbuddy-frontend-v0.17.0) (2026-05-11)
+
+
+### Features
+
+* Add cleanup job for merged pull requests ([8a0906d](https://github.com/sekael/tourenbuddy_frontend_vue/commit/8a0906ddcb9916ca0c090a8e17e3de99d727f913))
+* **notifications:** Friend request push and email notifications ([#112](https://github.com/sekael/tourenbuddy_frontend_vue/issues/112)) ([#120](https://github.com/sekael/tourenbuddy_frontend_vue/issues/120)) ([8a0906d](https://github.com/sekael/tourenbuddy_frontend_vue/commit/8a0906ddcb9916ca0c090a8e17e3de99d727f913))
+
+
+### Bug Fixes
+
+* **env:** Treat empty env strings as undefined; harden CI env injection ([8a0906d](https://github.com/sekael/tourenbuddy_frontend_vue/commit/8a0906ddcb9916ca0c090a8e17e3de99d727f913))
+* Make notifications work locally ([8a0906d](https://github.com/sekael/tourenbuddy_frontend_vue/commit/8a0906ddcb9916ca0c090a8e17e3de99d727f913))
+* Wrong pages namespace in domain ([8a0906d](https://github.com/sekael/tourenbuddy_frontend_vue/commit/8a0906ddcb9916ca0c090a8e17e3de99d727f913))
+
 ## [0.16.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.16.0...tourenbuddy-frontend-v0.16.1) (2026-05-10)
 
 
