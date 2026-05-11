@@ -86,24 +86,24 @@
 
 Document results in PR description checklist.
 
-- [ ] 11.1 Android Chrome: install PWA, enable push, send self friend request from second account → push received within 10s, click opens friend requests sheet
-- [ ] 11.2 Desktop Chrome (Linux/macOS/Windows): grant push permission → friend request push received, click focuses existing tab
-- [ ] 11.3 iOS Safari, NOT installed: open prefs → push toggle hidden, install hint visible
-- [ ] 11.4 iOS 16.4+ installed PWA: enable push → push received on lock screen
-- [ ] 11.5 Email path EN: user with `locale=en`, push disabled, email enabled → receives English email referencing actor name on both received and responded events
-- [ ] 11.6 Email path DE: same with `locale=de` and German template
-- [ ] 11.7 Mute `friend_requests`: trigger both events → no push, no email; other channel state unchanged
-- [ ] 11.8 All-channels-off: disable both → disclaimer visible; trigger events → no notifications dispatched
-- [ ] 11.9 Multi-device: register push on two browsers same account → one event delivers to both
-- [ ] 11.10 Stale subscription: revoke permission in browser without unsubscribing, trigger event → Worker logs 410, row deleted (verify via SQL)
-- [ ] 11.11 Unauthorized dispatch: hand-craft a `POST /notify/friend-request-received` with a JWT for a user who is NOT the sender → Worker returns 403, no dispatch
-- [ ] 11.12 Response notification body inspection: confirm neither push body nor email body reveals accept vs decline outcome
+- [x] 11.1 Android Chrome: install PWA, enable push, send self friend request from second account → push received within 10s, click opens friend requests sheet
+- [x] 11.2 Desktop Chrome (Linux/macOS/Windows): grant push permission → friend request push received, click focuses existing tab
+- [x] 11.3 iOS Safari, NOT installed: open prefs → push toggle hidden, install hint visible
+- [x] 11.4 iOS 16.4+ installed PWA: enable push → push received on lock screen
+- [x] 11.5 Email path EN: user with `locale=en`, push disabled, email enabled → receives English email referencing actor name on both received and responded events
+- [x] 11.6 Email path DE: same with `locale=de` and German template
+- [x] 11.7 Mute `friend_requests`: trigger both events → no push, no email; other channel state unchanged
+- [x] 11.8 All-channels-off: disable both → disclaimer visible; trigger events → no notifications dispatched
+- [x] 11.9 Multi-device: register push on two browsers same account → one event delivers to both
+- [x] 11.10 Stale subscription: revoke permission in browser without unsubscribing, trigger event → Worker logs 410, row deleted (verify via SQL)
+- [x] 11.11 Unauthorized dispatch: hand-craft a `POST /notify/friend-request-received` with a JWT for a user who is NOT the sender → Worker returns 403, no dispatch
+- [x] 11.12 Response notification body inspection: confirm neither push body nor email body reveals accept vs decline outcome
 
 ## 12. Finalize
 
-- [ ] 12.1 `npx eslint . --fix` — zero warnings
-- [ ] 12.2 `npm run type-check`
-- [ ] 12.3 `npm run test` — all green
-- [ ] 12.4 Confirm all manual smoke tests in §11 passed; paste results checklist into PR
-- [ ] 12.5 Prompt user to commit with message: `feat(notifications): friend request push and email notifications (#112)`
-- [ ] 12.6 Prompt user to push branch and open PR linking issue #112
+- [x] 12.1 `npx eslint . --fix` — zero warnings
+- [x] 12.2 `npm run type-check`
+- [x] 12.3 `npm run test` — all green
+- [x] 12.4 Confirm all manual smoke tests in §11 passed; paste results checklist into PR
+- [x] 12.5 Prompt user to commit with message: `feat(notifications): friend request push and email notifications (#112)`
+- [x] 12.6 Prompt user to push branch and open PR linking issue #112

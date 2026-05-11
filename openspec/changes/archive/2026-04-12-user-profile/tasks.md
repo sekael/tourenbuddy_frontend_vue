@@ -66,5 +66,5 @@
 - [x] 10.1 Run `npm run lint` and fix any issues
 - [x] 10.2 Run `npm run format`
 - [x] 10.3 Run `npm run test` — all tests pass
-- [ ] 10.4 Prompt user to commit with message: `feat(user): add profile onboarding, editing, and phone verification (#14)`
-- [ ] 10.5 Prompt user to push branch and create PR
+- [x] 10.4 Prompt user to commit with message: `feat(user): add profile onboarding, editing, and phone verification (#14)`
+- [x] 10.5 Prompt user to push branch and create PR
