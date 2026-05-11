@@ -1,6 +1,6 @@
 import type { Env } from './config'
 import { verifySupabaseJwt } from './auth'
-import { jsonResponse } from './config'
+import { jsonResponse, resolveLocale } from './config'
 import { sendFriendNotificationEmail } from './email'
 import { dispatchPushToUser } from './push'
 
@@ -94,6 +94,23 @@ async function fetchActorDisplayName(actorId: string, env: Env): Promise<string>
 const DEFAULT_APP_URL = 'https://test.tourenbuddy.ch'
 const FRIEND_REQUESTS_MUTE_TYPE = 'friend_requests'
 
+function pushTitleFor(event: 'received' | 'responded', locale: 'en' | 'de'): string {
+  if (locale === 'de')
+    return event === 'received' ? 'Neue Freundschaftsanfrage' : 'Antwort auf Freundschaftsanfrage'
+  return event === 'received' ? 'New friend request' : 'Friend request update'
+}
+
+function pushBodyFor(event: 'received' | 'responded', locale: 'en' | 'de', actorName: string): string {
+  if (locale === 'de') {
+    return event === 'received'
+      ? `${actorName} möchte sich mit dir verbinden.`
+      : `${actorName} hat auf deine Anfrage geantwortet.`
+  }
+  return event === 'received'
+    ? `${actorName} wants to connect.`
+    : `${actorName} responded to your request.`
+}
+
 async function dispatchToRecipient(
   recipientId: string,
   actorId: string,
@@ -115,11 +132,9 @@ async function dispatchToRecipient(
   if (recipientProfile.notif_muted_types.includes(FRIEND_REQUESTS_MUTE_TYPE))
     return
 
-  const pushTitle = event === 'received' ? 'New friend request' : 'Friend request update'
-  const pushBody
-    = event === 'received'
-      ? `${actorName} wants to connect.`
-      : `${actorName} responded to your request.`
+  const locale = resolveLocale(recipientProfile.locale)
+  const pushTitle = pushTitleFor(event, locale)
+  const pushBody = pushBodyFor(event, locale, actorName)
 
   const dispatchTasks: Promise<void>[] = []
 
