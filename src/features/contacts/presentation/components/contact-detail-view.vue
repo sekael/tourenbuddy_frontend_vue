@@ -2,6 +2,7 @@
 import type { Contact } from '@/features/contacts/domain/entities/contact'
 import type { ContactMethod } from '@/features/contacts/domain/entities/contact-method'
 import type { NewContactMethod } from '@/features/contacts/domain/repositories/contact-methods-repository'
+import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
@@ -20,9 +21,28 @@ const { t } = useI18n({ useScope: 'global' })
 
 const store = useContactsStore()
 const friendshipsStore = useFriendshipsStore()
+const { userIdToPhoneMap } = storeToRefs(friendshipsStore)
 
 const orderedPhones = computed(() => orderedPhoneMethods(props.contact))
 const setPrimaryError = ref<string | null>(null)
+
+const linkedMethodIds = computed<Set<string>>(() => {
+  if (!props.linkedFriendUserId)
+    return new Set()
+  const friendPhone = userIdToPhoneMap.value.get(props.linkedFriendUserId)
+  if (!friendPhone)
+    return new Set()
+  const result = new Set<string>()
+  for (const m of props.contact.contactMethods) {
+    if (m.methodType !== 'phone')
+      continue
+    const norm = normalizePhone(m.value)
+    const phone = norm.ok ? norm.e164 : m.value
+    if (phone === friendPhone)
+      result.add(m.id)
+  }
+  return result
+})
 
 // ── View/edit mode ───────────────────────────────────────────────────────────
 const mode = ref<'view' | 'edit'>('view')
@@ -46,9 +66,11 @@ const isSavingName = ref(false)
 watch(
   () => props.contact,
   (c) => {
-    firstName.value = c.firstName
-    lastName.value = c.lastName ?? ''
-    displayName.value = c.displayName ?? ''
+    if (mode.value === 'view') {
+      firstName.value = c.firstName
+      lastName.value = c.lastName ?? ''
+      displayName.value = c.displayName ?? ''
+    }
   },
 )
 
@@ -168,10 +190,48 @@ async function saveMethod(method: ContactMethod) {
   }
 }
 
-async function removeMethod(methodId: string) {
+interface MethodDeleteConfirm {
+  methodId: string
+  isFriendLinked: boolean
+}
+const methodDeleteConfirm = ref<MethodDeleteConfirm | null>(null)
+const isRemovingMethod = ref(false)
+const removeMethodError = ref<string | null>(null)
+
+function requestRemoveMethod(method: ContactMethod) {
+  removeMethodError.value = null
+  if (linkedMethodIds.value.has(method.id)) {
+    methodDeleteConfirm.value = { methodId: method.id, isFriendLinked: true }
+  }
+  else {
+    executeRemoveMethod(method.id)
+  }
+}
+
+async function executeRemoveMethod(methodId: string) {
   await store.removeMethodFromContact(props.contact.id, methodId)
   delete methodEdits.value[methodId]
   phoneFormatterCache.delete(methodId)
+}
+
+async function confirmRemoveMethod() {
+  const pending = methodDeleteConfirm.value
+  if (!pending)
+    return
+  isRemovingMethod.value = true
+  removeMethodError.value = null
+  try {
+    if (pending.isFriendLinked && props.linkedFriendUserId)
+      await friendshipsStore.removeFriendship(props.linkedFriendUserId)
+    await executeRemoveMethod(pending.methodId)
+    methodDeleteConfirm.value = null
+  }
+  catch (err) {
+    removeMethodError.value = err instanceof Error ? err.message : 'Failed to remove'
+  }
+  finally {
+    isRemovingMethod.value = false
+  }
 }
 
 async function setPrimaryPhone(method: ContactMethod) {
@@ -416,6 +476,31 @@ defineExpose({
         {{ setPrimaryError }}
       </p>
 
+      <p v-if="removeMethodError" class="error-text">
+        {{ removeMethodError }}
+      </p>
+
+      <!-- Method remove confirmation (friendship-linked phone) -->
+      <template v-if="methodDeleteConfirm">
+        <div class="method-delete-confirm">
+          <p class="delete-confirm-text">
+            {{ t('contacts.detailView.removeMethodConfirm') }}
+          </p>
+          <p v-if="methodDeleteConfirm.isFriendLinked" class="delete-friend-warning">
+            <span class="material-symbols-outlined warn-icon">warning</span>
+            {{ t('contacts.detailView.removeMethodFriendWarning') }}
+          </p>
+          <div class="delete-actions">
+            <button type="button" class="cancel-btn" :disabled="isRemovingMethod" @click="methodDeleteConfirm = null">
+              {{ t('contacts.detailView.cancelBtn') }}
+            </button>
+            <button type="button" class="delete-confirm-btn" :disabled="isRemovingMethod" @click="confirmRemoveMethod">
+              {{ isRemovingMethod ? t('contacts.detailView.removingMethodBtn') : t('contacts.detailView.removeBtn') }}
+            </button>
+          </div>
+        </div>
+      </template>
+
       <!-- Phone methods: ordered primary-first with star selector -->
       <div v-for="method in orderedPhones" :key="method.id" class="method-row">
         <!-- Primary star: interactive in edit mode, inert in view mode -->
@@ -478,7 +563,12 @@ defineExpose({
         </div>
 
         <div v-if="mode === 'edit'" class="method-actions">
-          <button type="button" class="icon-btn icon-btn--danger" @click="removeMethod(method.id)">
+          <button
+            type="button"
+            class="icon-btn icon-btn--danger"
+            :disabled="methodDeleteConfirm?.methodId === method.id"
+            @click="requestRemoveMethod(method)"
+          >
             <span class="material-symbols-outlined">delete</span>
           </button>
         </div>
@@ -520,7 +610,7 @@ defineExpose({
         </div>
 
         <div v-if="mode === 'edit'" class="method-actions">
-          <button type="button" class="icon-btn icon-btn--danger" @click="removeMethod(method.id)">
+          <button type="button" class="icon-btn icon-btn--danger" @click="requestRemoveMethod(method)">
             <span class="material-symbols-outlined">delete</span>
           </button>
         </div>
@@ -919,6 +1009,16 @@ button.primary-star:hover {
 
 .icon-btn .material-symbols-outlined {
   font-size: 18px;
+}
+
+.method-delete-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-error);
+  background-color: color-mix(in srgb, var(--color-error) 6%, transparent);
 }
 
 .add-method-btn {
