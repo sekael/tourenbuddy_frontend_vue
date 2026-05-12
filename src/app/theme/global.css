@@ -21,7 +21,9 @@ body {
   font-size: var(--font-size-base);
   line-height: var(--line-height-normal);
   color: var(--color-on-background);
-  background-color: var(--color-background);
+  /* Paints under iOS notch (status bar set to black-translucent in index.html).
+     Page roots paint their own surface on top; this only shows in the safe-area zones. */
+  background-color: var(--color-status-bar);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
