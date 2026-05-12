@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.17.0...tourenbuddy-frontend-v0.18.0) (2026-05-12)
+
+
+### Features
+
+* Contact detail edit mode ([#142](https://github.com/sekael/tourenbuddy_frontend_vue/issues/142)) ([3bcb135](https://github.com/sekael/tourenbuddy_frontend_vue/commit/3bcb135c996c270869edc449263d08a3e8e1098b))
+
 ## [0.17.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.16.1...tourenbuddy-frontend-v0.17.0) (2026-05-11)
 
 
