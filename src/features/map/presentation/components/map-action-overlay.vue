@@ -94,8 +94,8 @@ function closeMenu() {
 <style scoped>
 .overlay {
   position: absolute;
-  bottom: var(--spacing-3xl);
-  right: var(--spacing-lg);
+  bottom: calc(var(--spacing-3xl) + env(safe-area-inset-bottom, 0px));
+  right: calc(var(--spacing-lg) + env(safe-area-inset-right, 0px));
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
