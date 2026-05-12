@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.18.0...tourenbuddy-frontend-v0.18.1) (2026-05-12)
+
+
+### Bug Fixes
+
+* **map:** Respect dynamic viewport + safe-area on Android ([#125](https://github.com/sekael/tourenbuddy_frontend_vue/issues/125), [#141](https://github.com/sekael/tourenbuddy_frontend_vue/issues/141)) ([#144](https://github.com/sekael/tourenbuddy_frontend_vue/issues/144)) ([6871e60](https://github.com/sekael/tourenbuddy_frontend_vue/commit/6871e60483a9cd5d4e031194dc249e6de9793ba0))
+
 ## [0.18.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.17.0...tourenbuddy-frontend-v0.18.0) (2026-05-12)
 
 
