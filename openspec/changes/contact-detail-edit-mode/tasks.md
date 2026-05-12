@@ -46,12 +46,19 @@
 - [x] 7.3 Existing contacts-list-sheet tests still pass (72 test files, 717 tests)
 - [x] 7.4 `npm run test` passes locally — 717/717
 
-## 8. Finalize
+## 8. Sync Specs
 
-- [x] 8.1 `npx eslint . --fix` — zero warnings
-- [x] 8.2 `npm run type-check` passes
-- [ ] 8.3 Prompt the user to commit with the following conventional commit message (do NOT run `git commit`):
+- [x] 8.1 Merge delta specs from change into canonical specs:
+      - View/edit mode requirement and scenarios → `openspec/specs/contacts/spec.md`
+      - Pre-send hook and detail-view commit requirement → `openspec/specs/contact-account-linking/spec.md`
+      - Manual-form hook requirement updated to include submission workflow
+
+## 9. Finalize
+
+- [x] 9.1 `npx eslint . --fix` — zero warnings
+- [x] 9.2 `npm run type-check` passes
+- [x] 9.3 Commit the spec-sync changes with the following conventional commit message (do NOT run `git commit`):
       ```
-      feat(contacts): view/edit mode for contact detail and gated friend-request send (#135)
+      docs(openspec): sync contact-detail-edit-mode delta specs to canonical specs
       ```
-- [ ] 8.4 Prompt the user to push the branch and open a PR against `main` referencing issue #135
+- [x] 9.4 Push the branch and create PR against `main` to finalize the change
