@@ -117,7 +117,7 @@ function selectPrimary(index: number) {
   })
 }
 
-function submit(): void {
+function validateAndCollect(): FormData {
   error.value = null
 
   if (!firstName.value.trim()) {
@@ -158,15 +158,19 @@ function submit(): void {
     }
   })
 
-  emit('submit', {
+  return {
     firstName: firstName.value.trim(),
     lastName: lastName.value?.trim() || null,
     displayName: displayName.value?.trim() || null,
     phones,
-  })
+  }
 }
 
-defineExpose({ submit })
+function submit(): void {
+  emit('submit', validateAndCollect())
+}
+
+defineExpose({ submit, validateAndCollect })
 </script>
 
 <template>

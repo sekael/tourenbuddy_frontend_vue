@@ -197,24 +197,51 @@ function isDuplicate(first: string, last: string | null): boolean {
   )
 }
 
+async function persistNewContact(data: {
+  firstName: string
+  lastName: string | null
+  displayName: string | null
+  phones: PhoneEntry[]
+}): Promise<void> {
+  isAddLoading.value = true
+  addError.value = null
+  try {
+    await contactsStore.addContact(data.firstName, data.lastName, data.displayName, data.phones)
+  }
+  catch (err) {
+    addError.value = err instanceof Error ? err.message : t('contacts.addDialog.addError')
+    throw err
+  }
+  finally {
+    isAddLoading.value = false
+  }
+}
+
 async function handleAddSubmit(data: {
   firstName: string
   lastName: string | null
   displayName: string | null
   phones: PhoneEntry[]
 }) {
-  isAddLoading.value = true
-  addError.value = null
   try {
-    await contactsStore.addContact(data.firstName, data.lastName, data.displayName, data.phones)
+    await persistNewContact(data)
     backToList()
   }
-  catch (err) {
-    addError.value = err instanceof Error ? err.message : t('contacts.addDialog.addError')
+  catch {
+    // persistNewContact already populated addError
   }
-  finally {
-    isAddLoading.value = false
-  }
+}
+
+async function commitAddFormForConnect(): Promise<void> {
+  if (!addFormRef.value)
+    return
+  const data = addFormRef.value.validateAndCollect()
+  await persistNewContact(data)
+}
+
+function handleAddConnectSent() {
+  manualPromptDismissed.value = true
+  backToList()
 }
 
 async function processImportedContacts(
@@ -552,8 +579,8 @@ function onFormPhoneInput(phone: string) {
         <ConnectPrompt
           v-if="manualPromptUserId && !manualPromptDismissed"
           :matched-user-id="manualPromptUserId"
-          :before-send="() => addFormRef?.submit() ?? Promise.resolve()"
-          @sent="manualPromptDismissed = true"
+          :before-send="commitAddFormForConnect"
+          @sent="handleAddConnectSent"
           @dismissed="manualPromptDismissed = true"
         />
       </div>
