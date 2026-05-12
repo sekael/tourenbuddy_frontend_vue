@@ -191,10 +191,18 @@
       "labelExamplePlaceholder": "Bezeichnung (optional, z. B. Mobil)",
       "addingBtn": "Wird hinzugefügt...",
       "addBtn": "Hinzufügen",
+      "editBtn": "Bearbeiten",
+      "cancelBtn": "Abbrechen",
+      "saveBtn": "Speichern",
+      "saveFailed": "Änderungen konnten nicht gespeichert werden",
       "deleteConfirm": "Kontakt löschen?",
       "deleteFriendWarning": "Dieser Kontakt ist mit einem TourenBuddy-Freund verknüpft. Das Löschen entfernt auch die Freundschaftsverbindung.",
       "deleteBtn": "Kontakt löschen",
-      "deletingBtn": "Wird gelöscht..."
+      "deletingBtn": "Wird gelöscht...",
+      "removeMethodConfirm": "Kontaktmethode entfernen?",
+      "removeMethodFriendWarning": "Diese Telefonnummer ist mit einem TourenBuddy-Freund verknüpft. Das Entfernen beendet auch die Freundschaftsverbindung.",
+      "removeBtn": "Entfernen",
+      "removingMethodBtn": "Wird entfernt..."
     },
     "actionMenu": {
       "noMethods": "Keine Kontaktmethode verfügbar. Bearbeiten Sie den Kontakt, um eine hinzuzufügen.",

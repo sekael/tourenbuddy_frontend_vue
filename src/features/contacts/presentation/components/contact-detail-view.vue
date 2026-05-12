@@ -2,6 +2,7 @@
 import type { Contact } from '@/features/contacts/domain/entities/contact'
 import type { ContactMethod } from '@/features/contacts/domain/entities/contact-method'
 import type { NewContactMethod } from '@/features/contacts/domain/repositories/contact-methods-repository'
+import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
@@ -20,9 +21,40 @@ const { t } = useI18n({ useScope: 'global' })
 
 const store = useContactsStore()
 const friendshipsStore = useFriendshipsStore()
+const { userIdToPhoneMap } = storeToRefs(friendshipsStore)
 
 const orderedPhones = computed(() => orderedPhoneMethods(props.contact))
 const setPrimaryError = ref<string | null>(null)
+
+const linkedMethodIds = computed<Set<string>>(() => {
+  if (!props.linkedFriendUserId)
+    return new Set()
+  const friendPhone = userIdToPhoneMap.value.get(props.linkedFriendUserId)
+  if (!friendPhone)
+    return new Set()
+  const result = new Set<string>()
+  for (const m of props.contact.contactMethods) {
+    if (m.methodType !== 'phone')
+      continue
+    const norm = normalizePhone(m.value)
+    const phone = norm.ok ? norm.e164 : m.value
+    if (phone === friendPhone)
+      result.add(m.id)
+  }
+  return result
+})
+
+// ── View/edit mode ───────────────────────────────────────────────────────────
+const mode = ref<'view' | 'edit'>('view')
+const isSaving = ref(false)
+const saveError = ref<string | null>(null)
+
+function enterEditMode() {
+  saveError.value = null
+  mode.value = 'edit'
+}
+
+// cancelEdit is defined after its dependencies (name refs, methodEdits, addMethod refs)
 
 // ── Name edit state ──────────────────────────────────────────────────────────
 const firstName = ref(props.contact.firstName)
@@ -34,17 +66,19 @@ const isSavingName = ref(false)
 watch(
   () => props.contact,
   (c) => {
-    firstName.value = c.firstName
-    lastName.value = c.lastName ?? ''
-    displayName.value = c.displayName ?? ''
+    if (mode.value === 'view') {
+      firstName.value = c.firstName
+      lastName.value = c.lastName ?? ''
+      displayName.value = c.displayName ?? ''
+    }
   },
 )
 
-async function saveName() {
+async function saveNameInternal() {
   nameError.value = null
   if (!firstName.value.trim()) {
     nameError.value = t('contacts.detailView.firstNameRequired')
-    return
+    throw new Error(t('contacts.detailView.firstNameRequired'))
   }
   isSavingName.value = true
   try {
@@ -53,10 +87,10 @@ async function saveName() {
       lastName: lastName.value.trim() || null,
       displayName: displayName.value.trim() || null,
     })
-    emit('back')
   }
   catch (err) {
     nameError.value = err instanceof Error ? err.message : 'Failed to save'
+    throw err
   }
   finally {
     isSavingName.value = false
@@ -156,10 +190,48 @@ async function saveMethod(method: ContactMethod) {
   }
 }
 
-async function removeMethod(methodId: string) {
+interface MethodDeleteConfirm {
+  methodId: string
+  isFriendLinked: boolean
+}
+const methodDeleteConfirm = ref<MethodDeleteConfirm | null>(null)
+const isRemovingMethod = ref(false)
+const removeMethodError = ref<string | null>(null)
+
+function requestRemoveMethod(method: ContactMethod) {
+  removeMethodError.value = null
+  if (linkedMethodIds.value.has(method.id)) {
+    methodDeleteConfirm.value = { methodId: method.id, isFriendLinked: true }
+  }
+  else {
+    executeRemoveMethod(method.id)
+  }
+}
+
+async function executeRemoveMethod(methodId: string) {
   await store.removeMethodFromContact(props.contact.id, methodId)
   delete methodEdits.value[methodId]
   phoneFormatterCache.delete(methodId)
+}
+
+async function confirmRemoveMethod() {
+  const pending = methodDeleteConfirm.value
+  if (!pending)
+    return
+  isRemovingMethod.value = true
+  removeMethodError.value = null
+  try {
+    if (pending.isFriendLinked && props.linkedFriendUserId)
+      await friendshipsStore.removeFriendship(props.linkedFriendUserId)
+    await executeRemoveMethod(pending.methodId)
+    methodDeleteConfirm.value = null
+  }
+  catch (err) {
+    removeMethodError.value = err instanceof Error ? err.message : 'Failed to remove'
+  }
+  finally {
+    isRemovingMethod.value = false
+  }
 }
 
 async function setPrimaryPhone(method: ContactMethod) {
@@ -230,6 +302,57 @@ async function confirmAddMethod() {
   }
 }
 
+// ── Cancel edit (after all its dependencies: name, methodEdits, addMethod refs) ──
+function cancelEdit() {
+  firstName.value = props.contact.firstName
+  lastName.value = props.contact.lastName ?? ''
+  displayName.value = props.contact.displayName ?? ''
+  nameError.value = null
+  for (const m of props.contact.contactMethods) {
+    methodEdits.value[m.id] = {
+      value: methodDisplayValue(m),
+      label: m.label ?? '',
+      saving: false,
+      error: null,
+    }
+  }
+  showAddMethod.value = false
+  newMethodValue.value = ''
+  newMethodLabel.value = ''
+  addMethodError.value = null
+  saveError.value = null
+  mode.value = 'view'
+}
+
+// ── Save all (form-level) ────────────────────────────────────────────────────
+async function saveAll(): Promise<boolean> {
+  isSaving.value = true
+  saveError.value = null
+  try {
+    for (const method of props.contact.contactMethods) {
+      await saveMethod(method)
+    }
+    if (showAddMethod.value && newMethodValue.value.trim()) {
+      await confirmAddMethod()
+    }
+    await saveNameInternal()
+    const hasMethodError = Object.values(methodEdits.value).some(e => e.error)
+    if (hasMethodError || addMethodError.value) {
+      saveError.value = t('contacts.detailView.saveFailed')
+      return false
+    }
+    mode.value = 'view'
+    return true
+  }
+  catch (err) {
+    saveError.value = err instanceof Error ? err.message : t('contacts.detailView.saveFailed')
+    return false
+  }
+  finally {
+    isSaving.value = false
+  }
+}
+
 // ── Delete ───────────────────────────────────────────────────────────────────
 const deleteState = ref<'idle' | 'confirm' | 'loading'>('idle')
 const deleteError = ref<string | null>(null)
@@ -248,6 +371,16 @@ async function confirmDelete() {
     deleteState.value = 'idle'
   }
 }
+
+defineExpose({
+  commitPendingEdits: async () => {
+    if (mode.value === 'view')
+      return
+    const ok = await saveAll()
+    if (!ok)
+      throw new Error(saveError.value ?? t('contacts.detailView.saveFailed'))
+  },
+})
 </script>
 
 <template>
@@ -258,9 +391,12 @@ async function confirmDelete() {
         <span class="material-symbols-outlined">arrow_back</span>
       </button>
       <span class="detail-title">{{ t('contacts.detailView.title') }}</span>
+      <button v-if="mode === 'view'" type="button" class="edit-btn" @click="enterEditMode">
+        {{ t('contacts.detailView.editBtn') }}
+      </button>
     </div>
 
-    <!-- Name fields -->
+    <!-- Name section -->
     <section class="section">
       <h3 class="section-label">
         {{ t('contacts.detailView.nameSection') }}
@@ -268,47 +404,62 @@ async function confirmDelete() {
           <span class="material-symbols-outlined detail-friend-icon">group</span>
         </BaseTooltip>
       </h3>
-      <div class="field">
-        <label class="label" for="dv-firstName">{{ t('contacts.form.firstNameLabel') }}<span class="required">*</span></label>
-        <input
-          id="dv-firstName"
-          v-model="firstName"
-          class="input"
-          type="text"
-          maxlength="50"
-          :placeholder="t('contacts.form.firstNamePlaceholder')"
-        >
-      </div>
-      <div class="field">
-        <label class="label" for="dv-lastName">{{ t('contacts.form.lastNameLabel') }}</label>
-        <input
-          id="dv-lastName"
-          v-model="lastName"
-          class="input"
-          type="text"
-          maxlength="50"
-          :placeholder="t('contacts.form.lastNamePlaceholder')"
-        >
-      </div>
-      <div class="field">
-        <label class="label" for="dv-displayName">{{ t('contacts.form.displayNameLabel') }}</label>
-        <input
-          id="dv-displayName"
-          v-model="displayName"
-          class="input"
-          type="text"
-          maxlength="50"
-          :placeholder="t('contacts.form.displayNamePlaceholder')"
-        >
-      </div>
-      <p v-if="nameError" class="error-text">
-        {{ nameError }}
-      </p>
-      <button type="button" class="save-btn" :disabled="isSavingName" @click="saveName">
-        {{
-          isSavingName ? t('contacts.detailView.savingBtn') : t('contacts.detailView.saveNameBtn')
-        }}
-      </button>
+
+      <!-- View mode: read-only -->
+      <template v-if="mode === 'view'">
+        <div class="view-row">
+          <span class="view-label">{{ t('contacts.form.firstNameLabel') }}</span>
+          <span class="view-value">{{ contact.firstName }}</span>
+        </div>
+        <div v-if="contact.lastName" class="view-row">
+          <span class="view-label">{{ t('contacts.form.lastNameLabel') }}</span>
+          <span class="view-value">{{ contact.lastName }}</span>
+        </div>
+        <div v-if="contact.displayName" class="view-row">
+          <span class="view-label">{{ t('contacts.form.displayNameLabel') }}</span>
+          <span class="view-value">{{ contact.displayName }}</span>
+        </div>
+      </template>
+
+      <!-- Edit mode: inputs -->
+      <template v-else>
+        <div class="field">
+          <label class="label" for="dv-firstName">{{ t('contacts.form.firstNameLabel') }}<span class="required">*</span></label>
+          <input
+            id="dv-firstName"
+            v-model="firstName"
+            class="input"
+            type="text"
+            maxlength="50"
+            :placeholder="t('contacts.form.firstNamePlaceholder')"
+          >
+        </div>
+        <div class="field">
+          <label class="label" for="dv-lastName">{{ t('contacts.form.lastNameLabel') }}</label>
+          <input
+            id="dv-lastName"
+            v-model="lastName"
+            class="input"
+            type="text"
+            maxlength="50"
+            :placeholder="t('contacts.form.lastNamePlaceholder')"
+          >
+        </div>
+        <div class="field">
+          <label class="label" for="dv-displayName">{{ t('contacts.form.displayNameLabel') }}</label>
+          <input
+            id="dv-displayName"
+            v-model="displayName"
+            class="input"
+            type="text"
+            maxlength="50"
+            :placeholder="t('contacts.form.displayNamePlaceholder')"
+          >
+        </div>
+        <p v-if="nameError" class="error-text">
+          {{ nameError }}
+        </p>
+      </template>
     </section>
 
     <!-- Contact methods -->
@@ -325,9 +476,36 @@ async function confirmDelete() {
         {{ setPrimaryError }}
       </p>
 
+      <p v-if="removeMethodError" class="error-text">
+        {{ removeMethodError }}
+      </p>
+
+      <!-- Method remove confirmation (friendship-linked phone) -->
+      <template v-if="methodDeleteConfirm">
+        <div class="method-delete-confirm">
+          <p class="delete-confirm-text">
+            {{ t('contacts.detailView.removeMethodConfirm') }}
+          </p>
+          <p v-if="methodDeleteConfirm.isFriendLinked" class="delete-friend-warning">
+            <span class="material-symbols-outlined warn-icon">warning</span>
+            {{ t('contacts.detailView.removeMethodFriendWarning') }}
+          </p>
+          <div class="delete-actions">
+            <button type="button" class="cancel-btn" :disabled="isRemovingMethod" @click="methodDeleteConfirm = null">
+              {{ t('contacts.detailView.cancelBtn') }}
+            </button>
+            <button type="button" class="delete-confirm-btn" :disabled="isRemovingMethod" @click="confirmRemoveMethod">
+              {{ isRemovingMethod ? t('contacts.detailView.removingMethodBtn') : t('contacts.detailView.removeBtn') }}
+            </button>
+          </div>
+        </div>
+      </template>
+
       <!-- Phone methods: ordered primary-first with star selector -->
       <div v-for="method in orderedPhones" :key="method.id" class="method-row">
+        <!-- Primary star: interactive in edit mode, inert in view mode -->
         <button
+          v-if="mode === 'edit'"
           type="button"
           class="primary-star"
           :class="{ 'primary-star--selected': method.isPrimary }"
@@ -341,10 +519,26 @@ async function confirmDelete() {
             <span class="material-symbols-outlined">star</span>
           </BaseTooltip>
         </button>
+        <span
+          v-else
+          class="primary-star"
+          :class="{ 'primary-star--selected': method.isPrimary }"
+        >
+          <span class="material-symbols-outlined">star</span>
+        </span>
+
         <div class="method-type-badge">
           <span class="material-symbols-outlined">phone</span>
         </div>
-        <div class="method-fields">
+
+        <!-- View mode: read-only -->
+        <div v-if="mode === 'view'" class="method-fields">
+          <span class="view-value">{{ methodDisplayValue(method) }}</span>
+          <span v-if="method.label" class="view-label-sm">{{ method.label }}</span>
+        </div>
+
+        <!-- Edit mode: inputs -->
+        <div v-else class="method-fields">
           <p v-if="!method.isValid" class="invalid-phone-hint">
             <span class="material-symbols-outlined warn-icon">warning</span>
             {{ t('contacts.detailView.invalidPhoneHint') }}
@@ -367,16 +561,14 @@ async function confirmDelete() {
             {{ getMethodEdit(method).error }}
           </p>
         </div>
-        <div class="method-actions">
+
+        <div v-if="mode === 'edit'" class="method-actions">
           <button
             type="button"
-            class="icon-btn"
-            :disabled="getMethodEdit(method).saving"
-            @click="saveMethod(method)"
+            class="icon-btn icon-btn--danger"
+            :disabled="methodDeleteConfirm?.methodId === method.id"
+            @click="requestRemoveMethod(method)"
           >
-            <span class="material-symbols-outlined">check</span>
-          </button>
-          <button type="button" class="icon-btn icon-btn--danger" @click="removeMethod(method.id)">
             <span class="material-symbols-outlined">delete</span>
           </button>
         </div>
@@ -391,7 +583,15 @@ async function confirmDelete() {
         <div class="method-type-badge">
           <span class="material-symbols-outlined">mail</span>
         </div>
-        <div class="method-fields">
+
+        <!-- View mode: read-only -->
+        <div v-if="mode === 'view'" class="method-fields">
+          <span class="view-value">{{ method.value }}</span>
+          <span v-if="method.label" class="view-label-sm">{{ method.label }}</span>
+        </div>
+
+        <!-- Edit mode: inputs -->
+        <div v-else class="method-fields">
           <input
             v-model="getMethodEdit(method).value"
             class="input input-sm"
@@ -408,88 +608,98 @@ async function confirmDelete() {
             {{ getMethodEdit(method).error }}
           </p>
         </div>
-        <div class="method-actions">
-          <button
-            type="button"
-            class="icon-btn"
-            :disabled="getMethodEdit(method).saving"
-            @click="saveMethod(method)"
-          >
-            <span class="material-symbols-outlined">check</span>
-          </button>
-          <button type="button" class="icon-btn icon-btn--danger" @click="removeMethod(method.id)">
+
+        <div v-if="mode === 'edit'" class="method-actions">
+          <button type="button" class="icon-btn icon-btn--danger" @click="requestRemoveMethod(method)">
             <span class="material-symbols-outlined">delete</span>
           </button>
         </div>
       </div>
 
-      <!-- Add method form -->
-      <div v-if="showAddMethod" class="add-method-form">
-        <div class="type-selector">
-          <button
-            type="button"
-            class="type-btn"
-            :class="{ 'type-btn--active': newMethodType === 'phone' }"
-            @click="newMethodType = 'phone'"
+      <!-- Add method form (edit mode only) -->
+      <template v-if="mode === 'edit'">
+        <div v-if="showAddMethod" class="add-method-form">
+          <div class="type-selector">
+            <button
+              type="button"
+              class="type-btn"
+              :class="{ 'type-btn--active': newMethodType === 'phone' }"
+              @click="newMethodType = 'phone'"
+            >
+              <span class="material-symbols-outlined">phone</span>
+              {{ t('contacts.detailView.phoneTypeBtn') }}
+            </button>
+            <button
+              type="button"
+              class="type-btn"
+              :class="{ 'type-btn--active': newMethodType === 'email' }"
+              @click="newMethodType = 'email'"
+            >
+              <span class="material-symbols-outlined">mail</span>
+              {{ t('contacts.detailView.emailTypeBtn') }}
+            </button>
+          </div>
+          <input
+            v-if="newMethodType === 'phone'"
+            :value="newMethodPhoneFormatted"
+            class="input"
+            type="tel"
+            :placeholder="t('contacts.detailView.phonePlaceholder')"
+            @input="onNewMethodPhoneInput"
           >
-            <span class="material-symbols-outlined">phone</span>
-            {{ t('contacts.detailView.phoneTypeBtn') }}
-          </button>
-          <button
-            type="button"
-            class="type-btn"
-            :class="{ 'type-btn--active': newMethodType === 'email' }"
-            @click="newMethodType = 'email'"
+          <input
+            v-else
+            v-model="newMethodValue"
+            class="input"
+            type="email"
+            :placeholder="t('contacts.detailView.emailPlaceholder')"
           >
-            <span class="material-symbols-outlined">mail</span>
-            {{ t('contacts.detailView.emailTypeBtn') }}
-          </button>
+          <input
+            v-model="newMethodLabel"
+            class="input"
+            type="text"
+            :placeholder="t('contacts.detailView.labelExamplePlaceholder')"
+          >
+          <p v-if="addMethodError" class="error-text">
+            {{ addMethodError }}
+          </p>
+          <div class="add-method-actions">
+            <button type="button" class="cancel-btn" @click="cancelAddMethod">
+              {{ t('contacts.shared.cancelBtn') }}
+            </button>
+            <button
+              type="button"
+              class="save-btn"
+              :disabled="isAddingMethod"
+              @click="confirmAddMethod"
+            >
+              {{
+                isAddingMethod ? t('contacts.detailView.addingBtn') : t('contacts.detailView.addBtn')
+              }}
+            </button>
+          </div>
         </div>
-        <input
-          v-if="newMethodType === 'phone'"
-          :value="newMethodPhoneFormatted"
-          class="input"
-          type="tel"
-          :placeholder="t('contacts.detailView.phonePlaceholder')"
-          @input="onNewMethodPhoneInput"
-        >
-        <input
-          v-else
-          v-model="newMethodValue"
-          class="input"
-          type="email"
-          :placeholder="t('contacts.detailView.emailPlaceholder')"
-        >
-        <input
-          v-model="newMethodLabel"
-          class="input"
-          type="text"
-          :placeholder="t('contacts.detailView.labelExamplePlaceholder')"
-        >
-        <p v-if="addMethodError" class="error-text">
-          {{ addMethodError }}
-        </p>
-        <div class="add-method-actions">
-          <button type="button" class="cancel-btn" @click="cancelAddMethod">
-            {{ t('contacts.shared.cancelBtn') }}
-          </button>
-          <button
-            type="button"
-            class="save-btn"
-            :disabled="isAddingMethod"
-            @click="confirmAddMethod"
-          >
-            {{
-              isAddingMethod ? t('contacts.detailView.addingBtn') : t('contacts.detailView.addBtn')
-            }}
-          </button>
-        </div>
-      </div>
 
-      <button v-else type="button" class="add-method-btn" @click="openAddMethod">
-        <span class="material-symbols-outlined">add</span>
-        {{ t('contacts.detailView.addMethodBtn') }}
-      </button>
+        <button v-else type="button" class="add-method-btn" @click="openAddMethod">
+          <span class="material-symbols-outlined">add</span>
+          {{ t('contacts.detailView.addMethodBtn') }}
+        </button>
+      </template>
+    </section>
+
+    <!-- Form-level Save / Cancel (edit mode only) -->
+    <section v-if="mode === 'edit'" class="section section--actions">
+      <p v-if="saveError" class="error-text">
+        {{ saveError }}
+      </p>
+      <div class="form-actions">
+        <button type="button" class="cancel-btn" :disabled="isSaving" @click="cancelEdit">
+          {{ t('contacts.detailView.cancelBtn') }}
+        </button>
+        <button type="button" class="save-btn" :disabled="isSaving" @click="saveAll">
+          {{ isSaving ? t('contacts.detailView.savingBtn') : t('contacts.detailView.saveBtn') }}
+        </button>
+      </div>
     </section>
 
     <!-- Delete -->
@@ -566,6 +776,21 @@ async function confirmDelete() {
 .detail-title {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
+  flex: 1;
+}
+
+.edit-btn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--color-outline-variant);
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  transition: background-color 0.15s;
+}
+
+.edit-btn:hover {
+  background-color: color-mix(in srgb, var(--color-primary) 8%, transparent);
 }
 
 .detail-friend-icon {
@@ -594,6 +819,27 @@ async function confirmDelete() {
   color: var(--color-on-surface-variant);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.view-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.view-label {
+  font-size: var(--font-size-xs, 11px);
+  color: var(--color-on-surface-variant);
+}
+
+.view-value {
+  font-size: var(--font-size-base);
+  color: var(--color-on-surface);
+}
+
+.view-label-sm {
+  font-size: var(--font-size-xs, 11px);
+  color: var(--color-on-surface-variant);
 }
 
 .field {
@@ -705,7 +951,7 @@ async function confirmDelete() {
   font-variation-settings: 'FILL' 1;
 }
 
-.primary-star:hover {
+button.primary-star:hover {
   color: var(--color-primary);
 }
 
@@ -763,6 +1009,16 @@ async function confirmDelete() {
 
 .icon-btn .material-symbols-outlined {
   font-size: 18px;
+}
+
+.method-delete-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-error);
+  background-color: color-mix(in srgb, var(--color-error) 6%, transparent);
 }
 
 .add-method-btn {
@@ -824,6 +1080,16 @@ async function confirmDelete() {
 }
 
 .add-method-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
+}
+
+.section--actions {
+  border-bottom: 1px solid var(--color-outline-variant);
+}
+
+.form-actions {
   display: flex;
   gap: var(--spacing-sm);
   justify-content: flex-end;

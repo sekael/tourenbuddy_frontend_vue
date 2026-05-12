@@ -54,6 +54,8 @@ function goToFriendRequests() {
 
 const viewState = ref<ViewState>('list')
 const selectedContact = ref<Contact | null>(null)
+const detailRef = ref<InstanceType<typeof ContactDetailView>>()
+const addFormRef = ref<InstanceType<typeof ContactForm>>()
 
 // Auto-open detail view when initialContactId is provided
 watch(
@@ -195,24 +197,51 @@ function isDuplicate(first: string, last: string | null): boolean {
   )
 }
 
+async function persistNewContact(data: {
+  firstName: string
+  lastName: string | null
+  displayName: string | null
+  phones: PhoneEntry[]
+}): Promise<void> {
+  isAddLoading.value = true
+  addError.value = null
+  try {
+    await contactsStore.addContact(data.firstName, data.lastName, data.displayName, data.phones)
+  }
+  catch (err) {
+    addError.value = err instanceof Error ? err.message : t('contacts.addDialog.addError')
+    throw err
+  }
+  finally {
+    isAddLoading.value = false
+  }
+}
+
 async function handleAddSubmit(data: {
   firstName: string
   lastName: string | null
   displayName: string | null
   phones: PhoneEntry[]
 }) {
-  isAddLoading.value = true
-  addError.value = null
   try {
-    await contactsStore.addContact(data.firstName, data.lastName, data.displayName, data.phones)
+    await persistNewContact(data)
     backToList()
   }
-  catch (err) {
-    addError.value = err instanceof Error ? err.message : t('contacts.addDialog.addError')
+  catch {
+    // persistNewContact already populated addError
   }
-  finally {
-    isAddLoading.value = false
-  }
+}
+
+async function commitAddFormForConnect(): Promise<void> {
+  if (!addFormRef.value)
+    return
+  const data = addFormRef.value.validateAndCollect()
+  await persistNewContact(data)
+}
+
+function handleAddConnectSent() {
+  manualPromptDismissed.value = true
+  backToList()
 }
 
 async function processImportedContacts(
@@ -420,6 +449,7 @@ function onFormPhoneInput(phone: string) {
     <!-- Detail / edit view -->
     <div v-else-if="viewState === 'detail' && liveContact">
       <ContactDetailView
+        ref="detailRef"
         :contact="liveContact"
         :linked-friend-user-id="detailLinkedFriendUserId"
         @back="backToList"
@@ -428,6 +458,7 @@ function onFormPhoneInput(phone: string) {
       <ConnectPrompt
         v-if="detailViewMatchedUserId && liveContact && !isConnectDismissed(liveContact.id)"
         :matched-user-id="detailViewMatchedUserId"
+        :before-send="() => detailRef?.commitPendingEdits() ?? Promise.resolve()"
         class="detail-connect-prompt"
         @sent="liveContact && dismissConnect(liveContact.id)"
         @dismissed="liveContact && dismissConnect(liveContact.id)"
@@ -538,6 +569,7 @@ function onFormPhoneInput(phone: string) {
         </p>
 
         <ContactForm
+          ref="addFormRef"
           :submit-label="t('contacts.addDialog.title')"
           :is-loading="isAddLoading"
           @submit="handleAddSubmit"
@@ -547,7 +579,8 @@ function onFormPhoneInput(phone: string) {
         <ConnectPrompt
           v-if="manualPromptUserId && !manualPromptDismissed"
           :matched-user-id="manualPromptUserId"
-          @sent="manualPromptDismissed = true"
+          :before-send="commitAddFormForConnect"
+          @sent="handleAddConnectSent"
           @dismissed="manualPromptDismissed = true"
         />
       </div>

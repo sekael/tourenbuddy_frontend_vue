@@ -191,10 +191,18 @@
       "labelExamplePlaceholder": "Label (optional, e.g. Mobile)",
       "addingBtn": "Adding...",
       "addBtn": "Add",
+      "editBtn": "Edit",
+      "cancelBtn": "Cancel",
+      "saveBtn": "Save",
+      "saveFailed": "Could not save changes",
       "deleteConfirm": "Delete this contact?",
       "deleteFriendWarning": "This contact is linked to a TourenBuddy friend. Deleting it will also remove your friendship connection.",
       "deleteBtn": "Delete contact",
-      "deletingBtn": "Deleting..."
+      "deletingBtn": "Deleting...",
+      "removeMethodConfirm": "Remove this contact method?",
+      "removeMethodFriendWarning": "This phone number is linked to a TourenBuddy friend. Removing it will also terminate the friendship connection.",
+      "removeBtn": "Remove",
+      "removingMethodBtn": "Removing..."
     },
     "actionMenu": {
       "noMethods": "No contact method available. Edit contact to add one.",

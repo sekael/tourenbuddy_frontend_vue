@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 
-const props = defineProps<{ matchedUserId: string }>()
+const props = defineProps<{ matchedUserId: string, beforeSend?: () => Promise<void> }>()
 const emit = defineEmits<{ sent: [], dismissed: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
@@ -17,6 +17,8 @@ async function handleSend() {
   state.value = 'sending'
   errorMsg.value = null
   try {
+    if (props.beforeSend)
+      await props.beforeSend()
     await store.sendRequest(props.matchedUserId)
     state.value = 'sent'
     emit('sent')

@@ -117,12 +117,12 @@ function selectPrimary(index: number) {
   })
 }
 
-function handleSubmit() {
+function validateAndCollect(): FormData {
   error.value = null
 
   if (!firstName.value.trim()) {
     error.value = t('contacts.form.firstNameRequired')
-    return
+    throw new Error(t('contacts.form.firstNameRequired'))
   }
 
   const nonEmpty = phoneRows.value.filter(r => r.value.trim())
@@ -139,13 +139,13 @@ function handleSubmit() {
     }
   }
   if (hasPhoneError)
-    return
+    throw new Error(t('contacts.form.invalidPhone'))
 
   if (nonEmpty.length > 1) {
     const primaryCount = nonEmpty.filter(r => r.isPrimary).length
     if (primaryCount !== 1) {
       error.value = t('contacts.form.primaryPhoneRequired')
-      return
+      throw new Error(t('contacts.form.primaryPhoneRequired'))
     }
   }
 
@@ -158,17 +158,23 @@ function handleSubmit() {
     }
   })
 
-  emit('submit', {
+  return {
     firstName: firstName.value.trim(),
     lastName: lastName.value?.trim() || null,
     displayName: displayName.value?.trim() || null,
     phones,
-  })
+  }
 }
+
+function submit(): void {
+  emit('submit', validateAndCollect())
+}
+
+defineExpose({ submit, validateAndCollect })
 </script>
 
 <template>
-  <form class="form" @submit.prevent="handleSubmit">
+  <form class="form" @submit.prevent="submit">
     <div class="field">
       <label class="label" for="cf-firstName">{{ t('contacts.form.firstNameLabel') }} <span class="required">*</span></label>
       <input
