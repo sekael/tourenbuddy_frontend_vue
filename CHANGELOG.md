@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.19.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.18.1...tourenbuddy-frontend-v0.19.0) (2026-05-18)
+
+
+### Features
+
+* **notifications:** Compact mobile push unavailable notice ([#151](https://github.com/sekael/tourenbuddy_frontend_vue/issues/151)) ([#154](https://github.com/sekael/tourenbuddy_frontend_vue/issues/154)) ([dd5cb02](https://github.com/sekael/tourenbuddy_frontend_vue/commit/dd5cb020cd54104c24d9edadb5f811ea1a1439b1))
+
+
+### Bug Fixes
+
+* Graceful duplicate phone import ([#156](https://github.com/sekael/tourenbuddy_frontend_vue/issues/156)) ([384aaef](https://github.com/sekael/tourenbuddy_frontend_vue/commit/384aaef11a9edbf87668959e33b9e2311f735bcf))
+* **tours:** Wrap point-row action buttons to stay within section bounds ([#152](https://github.com/sekael/tourenbuddy_frontend_vue/issues/152)) ([595cdc3](https://github.com/sekael/tourenbuddy_frontend_vue/commit/595cdc326ea6f9a652144b2a9f44385a20363311))
+
 ## [0.18.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.18.0...tourenbuddy-frontend-v0.18.1) (2026-05-12)
 
 
