@@ -26,9 +26,9 @@ vi.mock('@/features/friendships/data/repositories/friendship-repository-impl', (
   })),
 }))
 
-function mountPrompt(beforeSend?: () => Promise<void>) {
+function mountPrompt(opts: { beforeSend?: () => Promise<void>, showDismiss?: boolean } = {}) {
   return mount(ConnectPrompt, {
-    props: { matchedUserId: 'user-42', ...(beforeSend ? { beforeSend } : {}) },
+    props: { matchedUserId: 'user-42', ...opts },
     global: {
       plugins: [createTestingPinia({ createSpy: vi.fn, stubActions: true })],
     },
@@ -38,13 +38,35 @@ function mountPrompt(beforeSend?: () => Promise<void>) {
 describe('connectPrompt', () => {
   beforeEach(() => vi.clearAllMocks())
 
+  describe('showDismiss prop', () => {
+    it('should render dismiss button when showDismiss is omitted', () => {
+      const wrapper = mountPrompt()
+      expect(wrapper.find('.btn-secondary').exists()).toBe(true)
+    })
+
+    it('should render dismiss button when showDismiss is true', () => {
+      const wrapper = mountPrompt({ showDismiss: true })
+      expect(wrapper.find('.btn-secondary').exists()).toBe(true)
+    })
+
+    it('should NOT render dismiss button when showDismiss is false', () => {
+      const wrapper = mountPrompt({ showDismiss: false })
+      expect(wrapper.find('.btn-secondary').exists()).toBe(false)
+    })
+
+    it('should still render send button when showDismiss is false', () => {
+      const wrapper = mountPrompt({ showDismiss: false })
+      expect(wrapper.find('.btn-primary').exists()).toBe(true)
+    })
+  })
+
   describe('beforeSend hook', () => {
     it('should await beforeSend before calling sendRequest when hook resolves', async () => {
       const callOrder: string[] = []
       const beforeSend = vi.fn(async () => {
         callOrder.push('hook')
       })
-      const wrapper = mountPrompt(beforeSend)
+      const wrapper = mountPrompt({ beforeSend })
       const store = useFriendshipsStore()
       vi.mocked(store.sendRequest).mockImplementation(async () => {
         callOrder.push('send')
@@ -59,7 +81,7 @@ describe('connectPrompt', () => {
 
     it('should NOT call sendRequest when beforeSend rejects', async () => {
       const beforeSend = vi.fn().mockRejectedValue(new Error('Save failed'))
-      const wrapper = mountPrompt(beforeSend)
+      const wrapper = mountPrompt({ beforeSend })
       const store = useFriendshipsStore()
 
       await wrapper.find('.btn-primary').trigger('click')
@@ -71,7 +93,7 @@ describe('connectPrompt', () => {
 
     it('should leave buttons interactive after beforeSend rejects for retry', async () => {
       const beforeSend = vi.fn().mockRejectedValue(new Error('oops'))
-      const wrapper = mountPrompt(beforeSend)
+      const wrapper = mountPrompt({ beforeSend })
 
       await wrapper.find('.btn-primary').trigger('click')
       await flushPromises()
@@ -104,6 +126,38 @@ describe('connectPrompt', () => {
       await flushPromises()
 
       expect(wrapper.find('.error-text').text()).toBe('network error')
+    })
+  })
+
+  describe('beforeDismiss hook', () => {
+    it('should await beforeDismiss before emitting dismissed when hook resolves', async () => {
+      const beforeDismiss = vi.fn().mockResolvedValue(undefined)
+      const wrapper = mountPrompt({ beforeDismiss })
+
+      await wrapper.find('.btn-secondary').trigger('click')
+      await flushPromises()
+
+      expect(beforeDismiss).toHaveBeenCalled()
+      expect(wrapper.emitted('dismissed')).toHaveLength(1)
+    })
+
+    it('should NOT emit dismissed when beforeDismiss rejects', async () => {
+      const beforeDismiss = vi.fn().mockRejectedValue(new Error('save failed'))
+      const wrapper = mountPrompt({ beforeDismiss })
+
+      await wrapper.find('.btn-secondary').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.emitted('dismissed')).toBeFalsy()
+      expect(wrapper.find('.error-text').text()).toBe('save failed')
+    })
+
+    it('should emit dismissed immediately when no beforeDismiss prop provided', async () => {
+      const wrapper = mountPrompt()
+
+      await wrapper.find('.btn-secondary').trigger('click')
+
+      expect(wrapper.emitted('dismissed')).toHaveLength(1)
     })
   })
 })

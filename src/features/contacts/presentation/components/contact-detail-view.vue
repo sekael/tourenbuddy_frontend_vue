@@ -373,6 +373,7 @@ async function confirmDelete() {
 }
 
 defineExpose({
+  mode,
   commitPendingEdits: async () => {
     if (mode.value === 'view')
       return

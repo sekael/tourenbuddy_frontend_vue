@@ -3,7 +3,14 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 
-const props = defineProps<{ matchedUserId: string, beforeSend?: () => Promise<void> }>()
+const props = withDefaults(defineProps<{
+  matchedUserId: string
+  beforeSend?: () => Promise<void>
+  beforeDismiss?: () => Promise<void>
+  showDismiss?: boolean
+}>(), {
+  showDismiss: true,
+})
 const emit = defineEmits<{ sent: [], dismissed: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
@@ -29,8 +36,21 @@ async function handleSend() {
   }
 }
 
-function handleDismiss() {
-  emit('dismissed')
+async function handleDismiss() {
+  if (!props.beforeDismiss) {
+    emit('dismissed')
+    return
+  }
+  state.value = 'sending'
+  errorMsg.value = null
+  try {
+    await props.beforeDismiss()
+    emit('dismissed')
+  }
+  catch (err) {
+    state.value = 'error'
+    errorMsg.value = err instanceof Error ? err.message : t('friendships.justSaveContact')
+  }
 }
 </script>
 
@@ -57,12 +77,13 @@ function handleDismiss() {
       </div>
       <div class="prompt-actions">
         <button
+          v-if="props.showDismiss"
           type="button"
           class="btn btn-secondary"
           :disabled="state === 'sending'"
           @click="handleDismiss"
         >
-          {{ t('friendships.justSaveContact') }}
+          {{ state === 'sending' ? '…' : t('friendships.justSaveContact') }}
         </button>
         <button
           type="button"
