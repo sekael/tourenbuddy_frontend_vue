@@ -394,7 +394,7 @@
   "friendships": {
     "prompt": {
       "title": "Diese Nummer gehört einem TourenBuddy – als Freunde vernetzen?",
-      "securityNote": "Deine Identität wird nicht preisgegeben. Das Senden einer Anfrage informiert den TourenBuddy, dass Du seine Nummer haben. Er kann die Anfrage ohne Begründung ablehnen. Freundschaften können nicht gelöscht werden."
+      "securityNote": "Das Senden einer Freundschaftsanfrage macht deine Telefonnummer, Vor- und Nachname sichtbar für die Empfänger. Deine Anfrage kann abgelehnt werden."
     },
     "sendRequest": "Anfrage senden",
     "justSaveContact": "Nur speichern",

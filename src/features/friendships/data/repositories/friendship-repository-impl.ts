@@ -128,6 +128,16 @@ export class FriendshipRepositoryImpl implements FriendshipRepository {
     return (rows ?? []).map(r => ({ userId: r.user_id, phone: r.phone }))
   }
 
+  async getNamesByUserIds(userIds: string[]): Promise<Array<{ userId: string, firstName: string | null, lastName: string | null }>> {
+    if (userIds.length === 0)
+      return []
+    const { data, error } = await supabase.rpc('get_user_names_by_ids', { p_user_ids: userIds })
+    if (error)
+      throw new Error(error.message)
+    const rows = data as Array<{ user_id: string, first_name: string | null, last_name: string | null }> | null
+    return (rows ?? []).map(r => ({ userId: r.user_id, firstName: r.first_name, lastName: r.last_name }))
+  }
+
   async removeFriendship(otherUserId: string): Promise<void> {
     const { error } = await supabase.rpc('remove_friendship', { p_other_user_id: otherUserId })
     if (error)

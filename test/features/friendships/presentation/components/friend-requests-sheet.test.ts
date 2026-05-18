@@ -37,7 +37,8 @@ interface MountOpts {
   outgoing?: ReturnType<typeof makeRequest>[]
   isLoading?: boolean
   userIdToPhoneMap?: Map<string, string>
-  contacts?: Array<{ id: string, contactMethods: Array<{ methodType: string, value: string }> }>
+  userIdToNamesMap?: Map<string, { firstName: string | null, lastName: string | null }>
+  contacts?: Array<{ id: string, firstName?: string, lastName?: string, contactMethods: Array<{ methodType: string, value: string }> }>
 }
 
 function mountSheet(opts: MountOpts = {}) {
@@ -52,6 +53,7 @@ function mountSheet(opts: MountOpts = {}) {
         isLoading: opts.isLoading ?? false,
         error: null,
         userIdToPhoneMap: opts.userIdToPhoneMap ?? new Map(),
+        userIdToNamesMap: opts.userIdToNamesMap ?? new Map(),
       },
       contacts: { contacts: opts.contacts ?? [], isLoading: false, error: null },
     },
@@ -92,6 +94,58 @@ describe('friendRequestsSheet (edges only)', () => {
     })
   })
 
+  describe('incoming row display name', () => {
+    const PHONE = '+41791234567'
+
+    it('renders phone-only when no profile name in map', () => {
+      const { wrapper } = mountSheet({
+        incoming: [makeRequest({ id: 'req-1', fromUserId: 'user-other', toUserId: 'user-me' })],
+        userIdToPhoneMap: new Map([['user-other', PHONE]]),
+        userIdToNamesMap: new Map([['user-other', { firstName: null, lastName: null }]]),
+      })
+      expect(wrapper.find('.request-phone-sub').exists()).toBe(false)
+      expect(wrapper.find('.request-user').text()).toContain('+41')
+    })
+
+    it('renders name primary and phone secondary when name resolved', () => {
+      const { wrapper } = mountSheet({
+        incoming: [makeRequest({ id: 'req-1', fromUserId: 'user-other', toUserId: 'user-me' })],
+        userIdToPhoneMap: new Map([['user-other', PHONE]]),
+        userIdToNamesMap: new Map([['user-other', { firstName: 'Ada', lastName: 'Lovelace' }]]),
+      })
+      expect(wrapper.find('.request-user').text()).toBe('Ada Lovelace')
+      expect(wrapper.find('.request-phone-sub').exists()).toBe(true)
+    })
+  })
+
+  describe('outgoing row display name', () => {
+    const PHONE = '+41791234567'
+
+    it('renders phone-only when no local contact matches', () => {
+      const { wrapper } = mountSheet({
+        outgoing: [makeRequest({ id: 'req-2', fromUserId: 'user-me', toUserId: 'user-other' })],
+        userIdToPhoneMap: new Map([['user-other', PHONE]]),
+        contacts: [],
+      })
+      expect(wrapper.find('.request-phone-sub').exists()).toBe(false)
+    })
+
+    it('renders local contact name primary and phone secondary when match found', () => {
+      const { wrapper } = mountSheet({
+        outgoing: [makeRequest({ id: 'req-2', fromUserId: 'user-me', toUserId: 'user-other' })],
+        userIdToPhoneMap: new Map([['user-other', PHONE]]),
+        contacts: [{
+          id: 'c-1',
+          firstName: 'Bob',
+          lastName: 'Stewart',
+          contactMethods: [{ methodType: 'phone', value: PHONE }],
+        }],
+      })
+      expect(wrapper.find('.request-user').text()).toBe('Bob Stewart')
+      expect(wrapper.find('.request-phone-sub').exists()).toBe(true)
+    })
+  })
+
   describe('error handling shows snackbar', () => {
     it('accept failure surfaces snackbar instead of throwing', async () => {
       const { wrapper, friendships } = mountSheet({
@@ -127,7 +181,7 @@ describe('friendRequestsSheet (edges only)', () => {
   describe('auto-create contact on accept', () => {
     const PHONE = '+41791234567'
 
-    it('skips addContact when sender phone is not in map (cannot derive display name)', async () => {
+    it('skips addContact when sender phone is not in map', async () => {
       const { wrapper, friendships, contacts } = mountSheet({
         incoming: [makeRequest({ id: 'req-1', fromUserId: 'user-other', toUserId: 'user-me' })],
         userIdToPhoneMap: new Map(),
@@ -159,6 +213,37 @@ describe('friendRequestsSheet (edges only)', () => {
       await triggerAccept(wrapper)
       await flushPromises()
       expect(contacts.addContact).not.toHaveBeenCalled()
+    })
+
+    it('addContact called with profile name when RPC returns first name', async () => {
+      const { wrapper, friendships, contacts } = mountSheet({
+        incoming: [makeRequest({ id: 'req-1', fromUserId: 'user-other', toUserId: 'user-me' })],
+        userIdToPhoneMap: new Map([['user-other', PHONE]]),
+        userIdToNamesMap: new Map([['user-other', { firstName: 'Ada', lastName: 'Lovelace' }]]),
+      })
+      vi.mocked(friendships.accept).mockResolvedValue(undefined)
+      vi.mocked(friendships.getNamesByUserIds).mockResolvedValue(undefined)
+      await triggerAccept(wrapper)
+      await flushPromises()
+      expect(contacts.addContact).toHaveBeenCalledWith('Ada', 'Lovelace', null, [{ value: PHONE, isPrimary: true }])
+    })
+
+    it('addContact falls back to formatted phone when profile first name is null', async () => {
+      const { wrapper, friendships, contacts } = mountSheet({
+        incoming: [makeRequest({ id: 'req-1', fromUserId: 'user-other', toUserId: 'user-me' })],
+        userIdToPhoneMap: new Map([['user-other', PHONE]]),
+        userIdToNamesMap: new Map([['user-other', { firstName: null, lastName: null }]]),
+      })
+      vi.mocked(friendships.accept).mockResolvedValue(undefined)
+      vi.mocked(friendships.getNamesByUserIds).mockResolvedValue(undefined)
+      await triggerAccept(wrapper)
+      await flushPromises()
+      expect(contacts.addContact).toHaveBeenCalledWith(
+        expect.stringContaining('+41'),
+        null,
+        null,
+        [{ value: PHONE, isPrimary: true }],
+      )
     })
   })
 })
