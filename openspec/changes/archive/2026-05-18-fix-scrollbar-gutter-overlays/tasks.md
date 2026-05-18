@@ -17,16 +17,16 @@
 
 ## 5. Manual Verification
 
-- [ ] 5.1 Open user profile sheet on mobile viewport (DevTools) — scroll, confirm scrollbar does not overlap any text/button/toggle.
-- [ ] 5.2 Repeat on desktop viewport (DialogWindow path).
-- [ ] 5.3 Verify tour info sheet (long content) on mobile + desktop.
-- [ ] 5.4 Verify contacts side drawer (long list) on desktop.
-- [ ] 5.5 Confirm no horizontal layout shift when content transitions from non-scrollable to scrollable on desktop.
+- [x] 5.1 Open user profile sheet on mobile viewport (DevTools) — scroll, confirm scrollbar does not overlap any text/button/toggle.
+- [x] 5.2 Repeat on desktop viewport (DialogWindow path).
+- [x] 5.3 Verify tour info sheet (long content) on mobile + desktop.
+- [x] 5.4 Verify contacts side drawer (long list) on desktop.
+- [x] 5.5 Confirm no horizontal layout shift when content transitions from non-scrollable to scrollable on desktop.
 
 ## 6. Finalize
 
 - [x] 6.1 Run `npx eslint . --fix` — zero warnings.
 - [x] 6.2 Run `npm run type-check`.
 - [x] 6.3 Run `npm run test`.
-- [ ] 6.4 Prompt user to commit with conventional message: `fix(ui): reserve scrollbar gutter in overlays so scrollbar never overlaps content (#155)`.
-- [ ] 6.5 Prompt user to push branch and open PR against `main`, linking issue #155.
+- [x] 6.4 Prompt user to commit with conventional message: `fix(ui): reserve scrollbar gutter in overlays so scrollbar never overlaps content (#155)`.
+- [x] 6.5 Prompt user to push branch and open PR against `main`, linking issue #155.
