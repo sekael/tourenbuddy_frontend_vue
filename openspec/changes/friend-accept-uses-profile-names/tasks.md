@@ -52,6 +52,6 @@
 - [x] 7.1 Run `npx eslint . --fix` — must end with zero warnings
 - [x] 7.2 Run `npm run type-check`
 - [x] 7.3 Run `npm run test` — all green
-- [ ] 7.4 Prompt user to commit with conventional commit message:
+- [x] 7.4 Prompt user to commit with conventional commit message:
       `feat(friendships): use profile first/last name when accepting request (#162)`
-- [ ] 7.5 Prompt user to push branch and open PR against `main`; PR body references issue #162 and notes the new migration requires `supabase db push` at deploy time
+- [x] 7.5 Prompt user to push branch and open PR against `main`; PR body references issue #162 and notes the new migration requires `supabase db push` at deploy time
