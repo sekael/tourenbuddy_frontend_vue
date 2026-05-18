@@ -5,6 +5,7 @@ import { useGpxCache } from '@/features/map/presentation/composables/use-gpx-cac
 import { TOUR_TYPE_TRACK_COLORS } from '@/features/tours/data/models/tour-type'
 import { parseGpxFile } from '@/features/tours/data/services/gpx-parser'
 import { getSignedUrl } from '@/features/tours/data/services/gpx-storage-service'
+import { TOUR_LAYER_IDS } from './tours-marker-layer'
 
 const GPX_SOURCE_ID = 'gpx-track'
 const GPX_LAYER_ID = 'gpx-track-line'
@@ -29,20 +30,24 @@ export function useGpxTrackLayer(map: MapLibreMap) {
       data: EMPTY_GEOJSON,
     })
 
-    map.addLayer({
-      id: GPX_LAYER_ID,
-      type: 'line',
-      source: GPX_SOURCE_ID,
-      layout: {
-        'line-join': 'round',
-        'line-cap': 'round',
+    const beforeId = TOUR_LAYER_IDS.find(id => map.getLayer(id))
+    map.addLayer(
+      {
+        id: GPX_LAYER_ID,
+        type: 'line',
+        source: GPX_SOURCE_ID,
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round',
+        },
+        paint: {
+          'line-color': buildColorExpression(),
+          'line-width': 3,
+          'line-opacity': 0.85,
+        },
       },
-      paint: {
-        'line-color': buildColorExpression(),
-        'line-width': 3,
-        'line-opacity': 0.85,
-      },
-    })
+      beforeId,
+    )
   }
 
   function clearTrack() {
