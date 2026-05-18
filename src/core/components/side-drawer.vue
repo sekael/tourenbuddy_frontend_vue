@@ -182,13 +182,25 @@ const isDesktop = useIsDesktop()
 
 .drawer-content {
   overflow-y: auto;
-  padding: var(--spacing-lg) var(--spacing-xl);
+  padding: var(--spacing-lg) var(--spacing-xs) var(--spacing-lg) var(--spacing-xl);
   flex: 1;
   min-height: 0;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-outline-variant) transparent;
   opacity: 1;
   transition:
     opacity 0.18s ease-out,
     padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.drawer-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.drawer-content::-webkit-scrollbar-thumb {
+  background-color: var(--color-outline-variant);
+  border-radius: 3px;
 }
 
 .drawer-footer {

@@ -439,7 +439,20 @@ const sheetStyle = computed(() => {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  padding-right: var(--spacing-xs);
   padding-bottom: var(--spacing-md);
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-outline-variant) transparent;
+}
+
+.content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.content::-webkit-scrollbar-thumb {
+  background-color: var(--color-outline-variant);
+  border-radius: 3px;
 }
 
 .footer {
