@@ -428,6 +428,7 @@
       "friend_requests": "Friend requests"
     },
     "allOffDisclaimer": "You won't receive friend request notifications or other important updates. Enable at least one channel to stay informed.",
+    "pushUnavailable": "Not available",
     "installHint": "To enable push notifications, add TourenBuddy to your home screen first.",
     "deniedHint": "Push notifications are blocked. Enable them in your browser or device settings."
   }

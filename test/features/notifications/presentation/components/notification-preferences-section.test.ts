@@ -10,7 +10,7 @@ vi.mock('@/features/notifications/presentation/composables/use-notification-capa
   useNotificationCapability: vi.fn(),
 }))
 
-function mountComponent(prefsOverride = {}) {
+function mountComponent(prefsOverride = {}, storeOverride: Record<string, unknown> = {}) {
   const pinia = createTestingPinia({
     createSpy: vi.fn,
     initialState: {
@@ -24,6 +24,7 @@ function mountComponent(prefsOverride = {}) {
         pushPermission: 'default',
         isLoading: false,
         error: null,
+        ...storeOverride,
       },
     },
   })
@@ -57,14 +58,40 @@ describe('notificationPreferencesSection', () => {
     expect(wrapper.text()).not.toContain('notifications.allOffDisclaimer')
   })
 
-  it('should show install hint when requiresPwaInstall is true', () => {
+  it('should show compact unavailable badge when requiresPwaInstall is true', () => {
     vi.mocked(useNotificationCapability).mockReturnValue({
       pushSupported: ref(false),
       requiresPwaInstall: ref(true),
     })
 
     const wrapper = mountComponent()
-    expect(wrapper.text()).toContain('notifications.installHint')
+
+    expect(wrapper.find('.unavailable').exists()).toBe(true)
+    expect(wrapper.find('.unavailable__label').text()).toBe('notifications.pushUnavailable')
+    const infoBtn = wrapper.find('.unavailable__info')
+    expect(infoBtn.exists()).toBe(true)
+    expect(infoBtn.attributes('aria-label')).toBe('notifications.installHint')
+    expect(infoBtn.classes()).not.toContain('unavailable__info--warning')
+    expect(wrapper.find('input[type="checkbox"][data-push]').exists()).toBe(false)
+  })
+
+  it('should show compact unavailable warning badge when push permission is denied', () => {
+    const wrapper = mountComponent({}, { pushPermission: 'denied' })
+
+    expect(wrapper.find('.unavailable').exists()).toBe(true)
+    expect(wrapper.find('.unavailable__label').text()).toBe('notifications.pushUnavailable')
+    const infoBtn = wrapper.find('.unavailable__info')
+    expect(infoBtn.exists()).toBe(true)
+    expect(infoBtn.attributes('aria-label')).toBe('notifications.deniedHint')
+    expect(infoBtn.classes()).toContain('unavailable__info--warning')
+  })
+
+  it('should render push toggle when push is supported and not denied', () => {
+    const wrapper = mountComponent()
+
+    const checkboxes = wrapper.findAll('input[type="checkbox"]')
+    expect(checkboxes.length).toBeGreaterThanOrEqual(1)
+    expect(wrapper.find('.unavailable').exists()).toBe(false)
   })
 
   it('should render friend_requests type toggle label', () => {
