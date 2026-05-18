@@ -1,20 +1,5 @@
 ## ADDED Requirements
 
-### Requirement: ConnectPrompt dismiss button visibility
-The `ConnectPrompt` component SHALL accept a boolean `show-dismiss` prop (default `true`) that controls whether the secondary "Save contact only" / dismiss button is rendered. When `show-dismiss` is `false`, only the primary "Send friend request" button SHALL be rendered.
-
-#### Scenario: Saved contact detail view, not editing
-- **WHEN** `ConnectPrompt` is rendered in the contact detail view for an already-saved contact whose detail view is in `mode === 'view'`
-- **THEN** `show-dismiss` is `false` and only the "Send friend request" button is visible
-
-#### Scenario: Saved contact detail view, editing
-- **WHEN** `ConnectPrompt` is rendered in the contact detail view and the detail view enters `mode === 'edit'`
-- **THEN** `show-dismiss` becomes `true` and both buttons are visible so the user can either commit pending edits without sending a request or commit edits and send the request
-
-#### Scenario: Add-contact and import flows preserve default
-- **WHEN** `ConnectPrompt` is rendered without an explicit `show-dismiss` prop (manual add form, vCard import results)
-- **THEN** both the dismiss and send buttons are visible, matching prior behavior
-
 ### Requirement: Resolve friend names via get_user_names_by_ids RPC
 The system SHALL expose a Supabase RPC `public.get_user_names_by_ids(p_user_ids uuid[])` returning `(user_id, first_name, last_name)` rows from `public.user_profile`. The function SHALL be SECURITY DEFINER with `search_path = ''`. It MUST disclose a row only when the caller has a confirmed phone AND at least one of:
 - A row in `public.friendships` links caller and target in either direction, OR
@@ -102,35 +87,21 @@ After `friendships-store.accept(requestId)` resolves successfully, the friend-re
 - **WHEN** the user already has a contact whose contact methods include the requester's phone
 - **THEN** the accept flow does NOT call `addContact`
 
+## MODIFIED Requirements
+
 ### Requirement: Notify on friend request created
 After a friendship row is successfully inserted via the send-request flow, the friendships store SHALL invoke the notifications dispatch for `friend_request_received` targeting the recipient. The send-request UI (`connect-prompt.vue`) SHALL display a security note that informs the sender that (a) their identity is not revealed beyond account existence, (b) the recipient may deny without stating a reason, (c) friendships cannot be deleted, AND (d) the sender's first and last name will become visible to the recipient once the request is accepted.
-
-#### Scenario: Successful send
-- **WHEN** the user sends a friend request and the insert succeeds
-- **THEN** the store calls the notifications Worker `/notify/friend-request-received` with the new `friendshipId` and continues regardless of the dispatch result
-
-#### Scenario: Insert fails
-- **WHEN** the insert fails
-- **THEN** no notification dispatch is attempted
 
 #### Scenario: Send-request UI shows name-visibility disclosure
 - **WHEN** the user opens the connect-prompt
 - **THEN** the rendered security note includes a sentence stating the sender's first and last name will be visible to the recipient after acceptance
 
+#### Scenario: Friend request inserted
+- **WHEN** `sendRequest` resolves with a created request
+- **THEN** the store invokes `notifyFriendRequestReceived(created.id)`
+
 ### Requirement: Notify on friend request responded
-After the recipient accepts or declines a friend request, the friendships store SHALL invoke the notifications dispatch for `friend_request_responded` targeting the original sender. The accept-confirmation UI SHALL warn the recipient that accepted friendships cannot be deleted directly and require deleting the linked contact. The accept-confirmation UI MUST NOT disclose any identity attribute of the requester beyond what is already visible in the inbox (i.e., the requester's phone number).
-
-#### Scenario: Accept
-- **WHEN** the recipient accepts the request and the update succeeds
-- **THEN** the store calls `/notify/friend-request-responded` with the `friendshipId`
-
-#### Scenario: Decline
-- **WHEN** the recipient declines the request and the update succeeds
-- **THEN** the store calls `/notify/friend-request-responded` with the `friendshipId`
-
-#### Scenario: Update fails
-- **WHEN** the update fails
-- **THEN** no notification dispatch is attempted
+When the friendships store's `accept` or `deny` action resolves successfully against the repository, it SHALL invoke the notifications dispatch for `friend_request_responded` keyed by the responded request id. The accept-confirmation UI SHALL warn the recipient that accepted friendships cannot be deleted directly and require deleting the linked contact. The accept-confirmation UI MUST NOT disclose any identity attribute of the requester beyond what is already visible in the inbox (i.e., the requester's phone number).
 
 #### Scenario: Accept resolves
 - **WHEN** `accept(requestId)` completes successfully

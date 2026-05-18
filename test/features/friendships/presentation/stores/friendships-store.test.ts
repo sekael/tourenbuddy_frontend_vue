@@ -14,6 +14,7 @@ const { mockRepo, mockCurrentUser } = vi.hoisted(() => ({
     findUserByPhone: vi.fn(),
     findUsersByPhones: vi.fn(),
     findPhonesByUserIds: vi.fn(),
+    getNamesByUserIds: vi.fn(),
     removeFriendship: vi.fn(),
   },
   mockCurrentUser: {
@@ -184,6 +185,36 @@ describe('useFriendshipsStore (errors + edges only)', () => {
       mockRepo.listIncoming.mockRejectedValue(new Error('boom'))
       const store = await verifiedStore()
       expect(store.error).toBe('boom')
+    })
+  })
+
+  describe('getNamesByUserIds', () => {
+    it('skips RPC when caller not phone-verified', async () => {
+      await unverifiedStore().getNamesByUserIds(['user-a'])
+      expect(mockRepo.getNamesByUserIds).not.toHaveBeenCalled()
+    })
+
+    it('skips RPC when all ids already cached', async () => {
+      const store = await verifiedStore()
+      store.userIdToNamesMap = new Map([['user-a', { firstName: 'Ada', lastName: null }]])
+      await store.getNamesByUserIds(['user-a'])
+      expect(mockRepo.getNamesByUserIds).not.toHaveBeenCalled()
+    })
+
+    it('merges results into userIdToNamesMap', async () => {
+      mockRepo.getNamesByUserIds.mockResolvedValue([
+        { userId: 'user-a', firstName: 'Ada', lastName: 'Lovelace' },
+      ])
+      const store = await verifiedStore()
+      await store.getNamesByUserIds(['user-a'])
+      expect(store.userIdToNamesMap.get('user-a')).toEqual({ firstName: 'Ada', lastName: 'Lovelace' })
+    })
+
+    it('clear() resets userIdToNamesMap', async () => {
+      const store = await verifiedStore()
+      store.userIdToNamesMap = new Map([['user-a', { firstName: 'Ada', lastName: null }]])
+      store.clear()
+      expect(store.userIdToNamesMap.size).toBe(0)
     })
   })
 

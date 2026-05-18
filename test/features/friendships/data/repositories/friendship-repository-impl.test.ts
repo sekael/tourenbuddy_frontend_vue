@@ -122,6 +122,28 @@ describe('friendshipRepositoryImpl (errors + edges only)', () => {
     })
   })
 
+  describe('getNamesByUserIds', () => {
+    it('short-circuits without RPC call on empty input', async () => {
+      const result = await repo.getNamesByUserIds([])
+      expect(result).toEqual([])
+      expect(mockRpc).not.toHaveBeenCalled()
+    })
+
+    it('throws when RPC errors', async () => {
+      mockRpc.mockResolvedValue({ data: null, error: { message: 'RPC error' } })
+      await expect(repo.getNamesByUserIds(['user-a'])).rejects.toThrow('RPC error')
+    })
+
+    it('maps snake_case to camelCase and handles null names', async () => {
+      mockRpc.mockResolvedValue({
+        data: [{ user_id: 'user-a', first_name: 'Ada', last_name: null }],
+        error: null,
+      })
+      const result = await repo.getNamesByUserIds(['user-a'])
+      expect(result).toEqual([{ userId: 'user-a', firstName: 'Ada', lastName: null }])
+    })
+  })
+
   describe('removeFriendship', () => {
     it('throws when remove_friendship RPC errors (e.g. no such friendship)', async () => {
       mockRpc.mockResolvedValue({ data: null, error: { message: 'no friendship found' } })

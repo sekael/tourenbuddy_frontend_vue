@@ -4,10 +4,11 @@
 -- Runs automatically on `supabase db reset` (configured via [db.seed] in
 -- config.toml). NEVER pushed to production by `supabase db push`.
 --
--- Three test users with verified phone numbers so friendship features work:
+-- Four test users with verified phone numbers so friendship features work:
 --   Patrick (patrick@tourenbuddy.ch / +41790000001) — friends with Jakob
 --   Jakob   (jakob@tourenbuddy.ch   / +41790000002) — friends with Patrick
 --   Reni    (reni@tourenbuddy.ch    / +41790000003) — pending friend req → Patrick
+--   Selim   (selim@tourenbuddy.ch   / +41790000004) — no profile name set
 --
 -- Login locally via OTP code "123456" (see [auth.sms.test_otp] and
 -- [auth.email.test_otp] in supabase/config.toml).
@@ -54,6 +55,16 @@ INSERT INTO auth.users (
    '41790000003', now(),
    '{"provider":"email","providers":["email","phone"]}'::jsonb,
    '{"first_name":"Reni","last_name":"Tester"}'::jsonb,
+   now(), now(), '', '', '', ''),
+  ('44444444-4444-4444-4444-444444444444',
+   '00000000-0000-0000-0000-000000000000',
+   'authenticated', 'authenticated',
+   'selim@tourenbuddy.ch',
+   crypt('test-password-123', gen_salt('bf')),
+   now(),
+   '41790000004', now(),
+   '{"provider":"email","providers":["email","phone"]}'::jsonb,
+   '{}'::jsonb,
    now(), now(), '', '', '', '')
 ON CONFLICT (id) DO NOTHING;
 
@@ -74,6 +85,10 @@ INSERT INTO auth.identities (
   ('33333333-3333-3333-3333-333333333333',
    '33333333-3333-3333-3333-333333333333',
    jsonb_build_object('sub','33333333-3333-3333-3333-333333333333','email','reni@tourenbuddy.ch','email_verified',true,'phone_verified',true),
+   'email', now(), now(), now()),
+  ('44444444-4444-4444-4444-444444444444',
+   '44444444-4444-4444-4444-444444444444',
+   jsonb_build_object('sub','44444444-4444-4444-4444-444444444444','email','selim@tourenbuddy.ch','email_verified',true,'phone_verified',true),
    'email', now(), now(), now())
 ON CONFLICT (provider, provider_id) DO NOTHING;
 
@@ -82,7 +97,8 @@ INSERT INTO public.user_profile (id, first_name, last_name, locale)
 VALUES
   ('11111111-1111-1111-1111-111111111111', 'Patrick', 'Tester', 'de-CH'),
   ('22222222-2222-2222-2222-222222222222', 'Jakob',   'Tester', 'de-CH'),
-  ('33333333-3333-3333-3333-333333333333', 'Reni',    'Tester', 'de-CH')
+  ('33333333-3333-3333-3333-333333333333', 'Reni',    'Tester', 'de-CH'),
+  ('44444444-4444-4444-4444-444444444444', null,      null,     'de-CH')
 ON CONFLICT (id) DO NOTHING;
 
 -- ----- public.contacts ------------------------------------------------------

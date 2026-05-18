@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { FriendRequest } from '@/features/friendships/data/models/friendship-schemas'
 import { storeToRefs } from 'pinia'
 import { onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -12,7 +13,7 @@ const emit = defineEmits<{ close: [], back: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 const store = useFriendshipsStore()
-const { incomingRequests, outgoingRequests, isLoading, userIdToPhoneMap } = storeToRefs(store)
+const { incomingRequests, outgoingRequests, isLoading, userIdToPhoneMap, userIdToNamesMap } = storeToRefs(store)
 const contactsStore = useContactsStore()
 const { contacts } = storeToRefs(contactsStore)
 const snackbar = useSnackbar()
@@ -22,16 +23,38 @@ function phoneFor(userId: string): string {
   return e164 ? formatPhoneForDisplay(e164) : userId
 }
 
-async function resolveRequestPhones() {
-  const ids = [
+function displayNameFor(req: FriendRequest, direction: 'incoming' | 'outgoing'): string | null {
+  if (direction === 'incoming') {
+    const entry = userIdToNamesMap.value.get(req.fromUserId)
+    if (!entry)
+      return null
+    const name = `${entry.firstName ?? ''} ${entry.lastName ?? ''}`.trim()
+    return name || null
+  }
+  // outgoing: use sender's local contact matched by recipient phone
+  const phone = userIdToPhoneMap.value.get(req.toUserId)
+  if (!phone)
+    return null
+  const contact = contacts.value.find(c =>
+    c.contactMethods.some(m => m.methodType === 'phone' && m.value === phone),
+  )
+  if (!contact)
+    return null
+  const name = `${contact.firstName ?? ''} ${contact.lastName ?? ''}`.trim()
+  return name || null
+}
+
+async function resolveRequestInfo() {
+  const phoneIds = [
     ...incomingRequests.value.map(r => r.fromUserId),
     ...outgoingRequests.value.map(r => r.toUserId),
   ]
-  await store.findPhonesByUserIds([...new Set(ids)])
+  await store.findPhonesByUserIds([...new Set(phoneIds)])
+  await store.getNamesByUserIds([...new Set(incomingRequests.value.map(r => r.fromUserId))])
 }
 
-onMounted(resolveRequestPhones)
-watch([incomingRequests, outgoingRequests], resolveRequestPhones)
+onMounted(resolveRequestInfo)
+watch([incomingRequests, outgoingRequests], resolveRequestInfo)
 
 async function maybeCreateContactForFriend(userId: string) {
   const phone = userIdToPhoneMap.value.get(userId)
@@ -42,8 +65,18 @@ async function maybeCreateContactForFriend(userId: string) {
   )
   if (alreadyExists)
     return
+
+  const namesEntry = userIdToNamesMap.value.get(userId)
+  const firstName = namesEntry?.firstName?.trim()
+  const lastName = namesEntry?.lastName?.trim() || null
   const displayPhone = formatPhoneForDisplay(phone) || phone
-  await contactsStore.addContact(displayPhone, null, null, [{ value: phone, isPrimary: true }])
+
+  if (firstName) {
+    await contactsStore.addContact(firstName, lastName, null, [{ value: phone, isPrimary: true }])
+  }
+  else {
+    await contactsStore.addContact(displayPhone, null, null, [{ value: phone, isPrimary: true }])
+  }
   snackbar.show(t('friendships.contactCreated'))
 }
 
@@ -63,8 +96,10 @@ async function handleAccept(requestId: string) {
   isAccepting.value = true
   try {
     await store.accept(requestId)
-    if (req)
+    if (req) {
+      await store.getNamesByUserIds([req.fromUserId])
       await maybeCreateContactForFriend(req.fromUserId)
+    }
     confirmingRequestId.value = null
   }
   catch {
@@ -157,7 +192,13 @@ async function handleCancel(requestId: string) {
               <template v-else>
                 <div class="request-info">
                   <span class="material-symbols-outlined request-icon">person</span>
-                  <span class="request-user">{{ phoneFor(req.fromUserId) }}</span>
+                  <div class="request-user-block">
+                    <template v-if="displayNameFor(req, 'incoming')">
+                      <span class="request-user">{{ displayNameFor(req, 'incoming') }}</span>
+                      <span class="request-phone-sub">{{ phoneFor(req.fromUserId) }}</span>
+                    </template>
+                    <span v-else class="request-user">{{ phoneFor(req.fromUserId) }}</span>
+                  </div>
                 </div>
                 <div class="request-actions">
                   <button
@@ -193,7 +234,13 @@ async function handleCancel(requestId: string) {
             <li v-for="req in outgoingRequests" :key="req.id" class="request-row">
               <div class="request-info">
                 <span class="material-symbols-outlined request-icon">person</span>
-                <span class="request-user">{{ phoneFor(req.toUserId) }}</span>
+                <div class="request-user-block">
+                  <template v-if="displayNameFor(req, 'outgoing')">
+                    <span class="request-user">{{ displayNameFor(req, 'outgoing') }}</span>
+                    <span class="request-phone-sub">{{ phoneFor(req.toUserId) }}</span>
+                  </template>
+                  <span v-else class="request-user">{{ phoneFor(req.toUserId) }}</span>
+                </div>
               </div>
               <button
                 type="button"
@@ -297,12 +344,23 @@ async function handleCancel(requestId: string) {
   flex-shrink: 0;
 }
 
+.request-user-block {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .request-user {
   font-size: var(--font-size-sm);
   color: var(--color-on-surface);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.request-phone-sub {
+  font-size: var(--font-size-xs, 11px);
+  color: var(--color-on-surface-variant);
 }
 
 .request-actions {

@@ -394,7 +394,7 @@
   "friendships": {
     "prompt": {
       "title": "This phone belongs to a TourenBuddy — connect as friends?",
-      "securityNote": "Your identity is not revealed beyond account existence. Sending a request notifies them that you have their number. They may deny your request without stating a reason. Friendships cannot be deleted."
+      "securityNote": "Sending a friend request reveals your identity to the recipient, including your phone number, first and last name. The recipient may deny your request."
     },
     "sendRequest": "Send request",
     "justSaveContact": "Save contact only",

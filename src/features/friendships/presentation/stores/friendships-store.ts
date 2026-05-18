@@ -23,6 +23,8 @@ export const useFriendshipsStore = defineStore('friendships', () => {
   const error = ref<string | null>(null)
   /** userId → E.164 phone, populated by all phone-lookup RPCs. */
   const userIdToPhoneMap = ref(new Map<string, string>())
+  /** userId → profile name, populated by get_user_names_by_ids RPC. */
+  const userIdToNamesMap = ref(new Map<string, { firstName: string | null, lastName: string | null }>())
 
   /** Set of user IDs that are confirmed friends with the caller. */
   const friendUserIds = computed<Set<string>>(() => {
@@ -209,6 +211,25 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     }
   }
 
+  async function getNamesByUserIds(ids: string[]): Promise<void> {
+    if (!isPhoneVerified.value || ids.length === 0)
+      return
+    const missing = ids.filter(id => !userIdToNamesMap.value.has(id))
+    if (missing.length === 0)
+      return
+    try {
+      const results = await repository.getNamesByUserIds(missing)
+      if (results.length > 0) {
+        const next = new Map(userIdToNamesMap.value)
+        for (const r of results) next.set(r.userId, { firstName: r.firstName, lastName: r.lastName })
+        userIdToNamesMap.value = next
+      }
+    }
+    catch (err) {
+      logger.error('getNamesByUserIds failed', err)
+    }
+  }
+
   async function removeFriendship(otherUserId: string): Promise<void> {
     const uid = authStore.currentUser?.id
     if (!uid)
@@ -235,6 +256,7 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     outgoingRequests.value = []
     friendships.value = []
     userIdToPhoneMap.value = new Map()
+    userIdToNamesMap.value = new Map()
     error.value = null
   }
 
@@ -266,9 +288,11 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     deny,
     cancel,
     userIdToPhoneMap,
+    userIdToNamesMap,
     findUserByPhone,
     findUsersByPhones,
     findPhonesByUserIds,
+    getNamesByUserIds,
     removeFriendship,
     clear,
   }
