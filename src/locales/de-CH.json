@@ -428,6 +428,7 @@
       "friend_requests": "Freundschaftsanfragen"
     },
     "allOffDisclaimer": "Sie erhalten keine Benachrichtigungen über Freundschaftsanfragen oder andere wichtige Ereignisse. Aktivieren Sie mindestens einen Kanal, um informiert zu bleiben.",
+    "pushUnavailable": "Nicht verfügbar",
     "installHint": "Um Push-Benachrichtigungen zu aktivieren, fügen Sie TourenBuddy zuerst zum Home-Bildschirm hinzu.",
     "deniedHint": "Push-Benachrichtigungen sind blockiert. Aktivieren Sie sie in den Browser- oder Geräteeinstellungen."
   }

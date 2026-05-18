@@ -3,6 +3,7 @@ import type { NotificationType } from '../../domain/entities/notification-prefer
 import { storeToRefs } from 'pinia'
 import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { ALL_NOTIFICATION_TYPES } from '../../domain/entities/notification-preferences'
 import { useNotificationCapability } from '../composables/use-notification-capability'
 import { useNotificationsStore } from '../stores/notifications-store'
@@ -51,11 +52,29 @@ onMounted(() => {
       <ul class="rows">
         <li class="row">
           <span class="row-label">{{ t('notifications.pushLabel') }}</span>
-          <span v-if="requiresPwaInstall" class="row-hint">
-            {{ t('notifications.installHint') }}
+          <span v-if="requiresPwaInstall" class="unavailable">
+            <span class="unavailable__label">{{ t('notifications.pushUnavailable') }}</span>
+            <BaseTooltip :text="t('notifications.installHint')">
+              <button
+                type="button"
+                class="unavailable__info"
+                :aria-label="t('notifications.installHint')"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">info</span>
+              </button>
+            </BaseTooltip>
           </span>
-          <span v-else-if="pushDenied" class="row-hint row-hint--warning">
-            {{ t('notifications.deniedHint') }}
+          <span v-else-if="pushDenied" class="unavailable">
+            <span class="unavailable__label">{{ t('notifications.pushUnavailable') }}</span>
+            <BaseTooltip :text="t('notifications.deniedHint')">
+              <button
+                type="button"
+                class="unavailable__info unavailable__info--warning"
+                :aria-label="t('notifications.deniedHint')"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">info</span>
+              </button>
+            </BaseTooltip>
           </span>
           <label v-else-if="pushSupported" class="switch">
             <input
@@ -148,16 +167,37 @@ onMounted(() => {
   min-width: 0;
 }
 
-.row-hint {
-  font-size: var(--font-size-xs);
-  color: var(--color-on-surface-variant);
-  text-align: right;
-  max-width: 60%;
-  line-height: 1.35;
+.unavailable {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xxs);
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
-.row-hint--warning {
+.unavailable__label {
+  font-size: var(--font-size-xs);
+  color: var(--color-on-surface-variant);
+}
+
+.unavailable__info {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--color-on-surface-variant);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.unavailable__info--warning {
   color: var(--color-error);
+}
+
+.unavailable__info .material-symbols-outlined {
+  font-size: 16px;
 }
 
 .types-block {
