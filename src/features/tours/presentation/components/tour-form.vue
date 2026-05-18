@@ -949,6 +949,8 @@ function handleSubmit() {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+  flex-wrap: wrap;
+  row-gap: var(--spacing-xs);
 }
 
 .point-coords {
