@@ -24,10 +24,10 @@
 ## 6. Finalize
 
 - [x] 6.1 `npx eslint . --fix` and `npm run type-check` — zero warnings/errors
-- [ ] 6.2 Prompt user to commit with message:
+- [x] 6.2 Prompt user to commit with message:
   ```
   fix(friendships): hide save-only btn on saved contact connect prompt
 
   Closes #158
   ```
-- [ ] 6.3 Prompt user to push branch and open PR against `main` referencing issue #158
+- [x] 6.3 Prompt user to push branch and open PR against `main` referencing issue #158
