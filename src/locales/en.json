@@ -121,9 +121,7 @@
   },
   "contacts": {
     "errors": {
-      "duplicateMethod": "This phone number is already saved for this contact.",
-      "noValidPhone": "No valid phone number for {name} — contact skipped.",
-      "someInvalidPhonesDiscarded": "Discarded {count} invalid phone number(s) for {name}."
+      "duplicateMethod": "This phone number is already saved for this contact."
     },
     "list": {
       "title": "Contacts",

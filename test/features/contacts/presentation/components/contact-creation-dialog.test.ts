@@ -104,6 +104,7 @@ describe('contact-creation-dialog import branches', () => {
     expect(addContactSpy).not.toHaveBeenCalled()
     expect(vm.importResults).toHaveLength(1)
     expect(vm.importResults[0].status).toBe('skipped')
+    expect(vm.importResults[0].rawPhoneNumbers).toEqual(['ext. 1234'])
   })
 
   it('someInvalidPhonesDiscarded branch: phones>0 raw>0 → contact imported', async () => {
@@ -129,5 +130,6 @@ describe('contact-creation-dialog import branches', () => {
       'import',
     )
     expect(vm.importResults[0].status).toBe('imported')
+    expect(vm.importResults[0].rawPhoneNumbers).toEqual(['ext. 5678'])
   })
 })

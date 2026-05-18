@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Contact } from '@/features/contacts/domain/entities/contact'
+import type { ImportResult, ParsedImportItem } from '@/features/contacts/presentation/composables/use-contact-import'
 import type { PhoneEntry } from '@/features/contacts/presentation/stores/contacts-store'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
@@ -14,6 +15,7 @@ import {
   resolveFullName,
 } from '@/features/contacts/domain/entities/contact'
 import { useContactFriendshipMap } from '@/features/contacts/presentation/composables/use-contact-friendship-map'
+import { useContactImport } from '@/features/contacts/presentation/composables/use-contact-import'
 import { useContactPicker } from '@/features/contacts/presentation/composables/use-contact-picker'
 import { useVCardImport } from '@/features/contacts/presentation/composables/use-vcard-import'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
@@ -96,17 +98,9 @@ watch(liveContact, (contact) => {
 })
 
 // ── Add contact state ────────────────────────────────────────────────────────
-interface ImportResult {
-  firstName: string
-  lastName: string | null
-  primaryPhone: string | null
-  extraPhoneCount: number
-  rawPhoneNumbers: string[]
-  status: 'imported' | 'skipped'
-}
-
 const { isSupported: isContactPickerSupported, pickContacts } = useContactPicker()
 const { parseVCardFile } = useVCardImport()
+const { importContacts } = useContactImport()
 
 const addViewState = ref<'form' | 'import-results'>('form')
 const importResults = ref<ImportResult[]>([])
@@ -189,14 +183,6 @@ function handleClose() {
   emit('close')
 }
 
-function isDuplicate(first: string, last: string | null): boolean {
-  return contacts.value.some(
-    c =>
-      c.firstName.toLowerCase() === first.toLowerCase()
-      && (c.lastName ?? '').toLowerCase() === (last ?? '').toLowerCase(),
-  )
-}
-
 async function persistNewContact(data: {
   firstName: string
   lastName: string | null
@@ -244,40 +230,8 @@ function handleAddConnectSent() {
   backToList()
 }
 
-async function processImportedContacts(
-  items: Array<{
-    firstName: string
-    lastName: string | null
-    phones: PhoneEntry[]
-    rawPhoneNumbers?: string[]
-  }>,
-) {
-  const results: ImportResult[] = []
-  for (const item of items) {
-    const primaryPhone
-      = item.phones.find(p => p.isPrimary)?.value ?? item.phones[0]?.value ?? null
-    const rawPhoneNumbers = item.rawPhoneNumbers ?? []
-    if (isDuplicate(item.firstName, item.lastName)) {
-      results.push({
-        firstName: item.firstName,
-        lastName: item.lastName,
-        primaryPhone,
-        extraPhoneCount: Math.max(0, item.phones.length - 1),
-        rawPhoneNumbers,
-        status: 'skipped',
-      })
-      continue
-    }
-    await contactsStore.addContact(item.firstName, item.lastName, null, item.phones, 'import')
-    results.push({
-      firstName: item.firstName,
-      lastName: item.lastName,
-      primaryPhone,
-      extraPhoneCount: Math.max(0, item.phones.length - 1),
-      rawPhoneNumbers,
-      status: 'imported',
-    })
-  }
+async function processImportedContacts(items: ParsedImportItem[]) {
+  const results = await importContacts(items)
   importResults.value = results
   addViewState.value = 'import-results'
 

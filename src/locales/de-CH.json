@@ -121,9 +121,7 @@
   },
   "contacts": {
     "errors": {
-      "duplicateMethod": "Diese Telefonnummer ist für diesen Kontakt bereits gespeichert.",
-      "noValidPhone": "Keine gültige Telefonnummer für {name} – Kontakt übersprungen.",
-      "someInvalidPhonesDiscarded": "{count} ungültige Telefonnummer(n) für {name} wurden verworfen."
+      "duplicateMethod": "Diese Telefonnummer ist für diesen Kontakt bereits gespeichert."
     },
     "list": {
       "title": "Kontakte",

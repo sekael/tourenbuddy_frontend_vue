@@ -1,12 +1,11 @@
 <script setup lang="ts">
+import type { ImportResult, ParsedImportItem } from '@/features/contacts/presentation/composables/use-contact-import'
 import type { PhoneEntry } from '@/features/contacts/presentation/stores/contacts-store'
-import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
-import ErrorSnackbar from '@/core/components/error-snackbar.vue'
-import { useSnackbar } from '@/core/composables/use-snackbar'
 import { DuplicateContactMethodError } from '@/core/exceptions'
+import { useContactImport } from '@/features/contacts/presentation/composables/use-contact-import'
 import { useContactPicker } from '@/features/contacts/presentation/composables/use-contact-picker'
 import { useVCardImport } from '@/features/contacts/presentation/composables/use-vcard-import'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
@@ -15,22 +14,12 @@ import ContactForm from './contact-form.vue'
 const emit = defineEmits<{ close: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
-const { snackbar, show: showSnackbar, dismiss: dismissSnackbar } = useSnackbar()
-
-interface ImportResult {
-  firstName: string
-  lastName: string | null
-  primaryPhone: string | null
-  extraPhoneCount: number
-  rawPhoneNumbers: string[]
-  status: 'imported' | 'skipped'
-}
 
 const contactsStore = useContactsStore()
-const { contacts } = storeToRefs(contactsStore)
 
 const { isSupported: isContactPickerSupported, pickContacts } = useContactPicker()
 const { parseVCardFile } = useVCardImport()
+const { importContacts } = useContactImport()
 
 // View state
 const viewState = ref<'form' | 'import-results'>('form')
@@ -40,14 +29,6 @@ const error = ref<string | null>(null)
 const isLoading = ref(false)
 
 const fileInput = ref<HTMLInputElement | null>(null)
-
-function isDuplicate(first: string, last: string | null): boolean {
-  return contacts.value.some(
-    c =>
-      c.firstName.toLowerCase() === first.toLowerCase()
-      && (c.lastName ?? '').toLowerCase() === (last ?? '').toLowerCase(),
-  )
-}
 
 function switchToForm() {
   viewState.value = 'form'
@@ -77,66 +58,8 @@ async function handleSubmit(data: {
   }
 }
 
-async function processImportedContacts(
-  items: Array<{
-    firstName: string
-    lastName: string | null
-    phones: PhoneEntry[]
-    rawPhoneNumbers?: string[]
-  }>,
-) {
-  const results: ImportResult[] = []
-
-  for (const item of items) {
-    const phones = item.phones
-    const rawPhoneNumbers = item.rawPhoneNumbers ?? []
-    const primaryPhone = phones.find(p => p.isPrimary)?.value ?? phones[0]?.value ?? null
-
-    if (isDuplicate(item.firstName, item.lastName)) {
-      results.push({
-        firstName: item.firstName,
-        lastName: item.lastName,
-        primaryPhone,
-        extraPhoneCount: Math.max(0, phones.length - 1),
-        rawPhoneNumbers,
-        status: 'skipped',
-      })
-      continue
-    }
-
-    // No parseable phones but had TEL entries → skip with error
-    if (phones.length === 0 && rawPhoneNumbers.length > 0) {
-      showSnackbar(t('contacts.errors.noValidPhone', { name: item.firstName }))
-      results.push({
-        firstName: item.firstName,
-        lastName: item.lastName,
-        primaryPhone: null,
-        extraPhoneCount: 0,
-        rawPhoneNumbers,
-        status: 'skipped',
-      })
-      continue
-    }
-
-    // Has valid phones but also invalid ones → import valid, notify discarded
-    if (phones.length > 0 && rawPhoneNumbers.length > 0) {
-      showSnackbar(
-        t('contacts.errors.someInvalidPhonesDiscarded', { name: item.firstName, count: rawPhoneNumbers.length }),
-      )
-    }
-
-    await contactsStore.addContact(item.firstName, item.lastName, null, phones, 'import')
-    results.push({
-      firstName: item.firstName,
-      lastName: item.lastName,
-      primaryPhone,
-      extraPhoneCount: Math.max(0, phones.length - 1),
-      rawPhoneNumbers,
-      status: 'imported',
-    })
-  }
-
-  importResults.value = results
+async function processImportedContacts(items: ParsedImportItem[]) {
+  importResults.value = await importContacts(items)
   viewState.value = 'import-results'
 }
 
@@ -287,8 +210,6 @@ async function handleFileChange(event: Event) {
       />
     </div>
   </BottomSheet>
-
-  <ErrorSnackbar :message="snackbar.message" :visible="snackbar.visible" @dismiss="dismissSnackbar" />
 </template>
 
 <style scoped>
