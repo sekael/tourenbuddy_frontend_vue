@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.19.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.19.0...tourenbuddy-frontend-v0.19.1) (2026-05-18)
+
+
+### Bug Fixes
+
+* **friendships:** Hide save-only btn on saved contact connect prompt, save changes when saving contact only ([#161](https://github.com/sekael/tourenbuddy_frontend_vue/issues/161)) ([32d10d3](https://github.com/sekael/tourenbuddy_frontend_vue/commit/32d10d389dbbedaf2b155322c5d1a942219473dd))
+* **ui:** Reserve scrollbar gutter in overlays so scrollbar never overlaps content ([#159](https://github.com/sekael/tourenbuddy_frontend_vue/issues/159)) ([119a8ee](https://github.com/sekael/tourenbuddy_frontend_vue/commit/119a8ee54dbc6581a1c4d86ed7ee3dfc1b0cbc3a))
+
 ## [0.19.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.18.1...tourenbuddy-frontend-v0.19.0) (2026-05-18)
 
 
