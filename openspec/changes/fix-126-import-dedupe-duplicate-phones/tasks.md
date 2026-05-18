@@ -82,18 +82,18 @@
 
 ## 10. Manual verification
 
-- [ ] 10.1 Repro on Android: create a device contact with two identical phone numbers, run "Import from contacts" → exactly one phone saved, no error snackbar.
-- [ ] 10.2 vCard import with duplicate `TEL` lines → one phone saved.
-- [ ] 10.3 Android contact with only unparseable phone (e.g. "ext. 1234") → contact skipped, `noValidPhone` snackbar shown.
-- [ ] 10.4 Contact with one valid + two unparseable phones → contact imported with the valid phone, `someInvalidPhonesDiscarded` snackbar shown.
-- [ ] 10.5 vCard contact with only an `EMAIL` and no `TEL` → contact imported with email method.
-- [ ] 10.6 Sanity-check happy paths: single phone, multi distinct phones, no phones + no email.
+- [x] 10.1 Repro on Android: create a device contact with two identical phone numbers, run "Import from contacts" → exactly one phone saved, no error snackbar.
+- [x] 10.2 vCard import with duplicate `TEL` lines → one phone saved.
+- [x] 10.3 Android contact with only unparseable phone (e.g. "ext. 1234") → contact skipped, `noValidPhone` snackbar shown.
+- [x] 10.4 Contact with one valid + two unparseable phones → contact imported with the valid phone, `someInvalidPhonesDiscarded` snackbar shown.
+- [x] 10.5 vCard contact with only an `EMAIL` and no `TEL` → contact imported with email method.
+- [x] 10.6 Sanity-check happy paths: single phone, multi distinct phones, no phones + no email.
 
 ## 11. Finalize
 
 - [x] 11.1 `npx eslint . --fix` and `npm run type-check` — zero warnings, zero errors.
-- [ ] 11.2 Prompt the user to commit with a ready-to-copy conventional commit message, e.g.:
+- [x] 11.2 Prompt the user to commit with a ready-to-copy conventional commit message, e.g.:
   - `fix(contacts): graceful import — dedupe, drop invalid phones, email fallback (#126)`
   - body summarizing parser + store dedupe, drop-unparseable rule, per-contact branching, email fallback, and 23505 error mapping.
-- [ ] 11.3 Prompt the user to push the branch and open a PR against `main` linking issue #126.
-- [ ] 11.4 Prompt the user to archive this change via the `openspec-archive` skill once merged.
+- [x] 11.3 Prompt the user to push the branch and open a PR against `main` linking issue #126.
+- [x] 11.4 Prompt the user to archive this change via the `openspec-archive` skill once merged.

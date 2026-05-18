@@ -139,7 +139,7 @@
       "noMatchesTitle": "No contacts match your search.",
       "clearFiltersBtn": "Clear filters",
       "searchPlaceholder": "Search contacts…",
-      "invalidPhoneWarning": "Couldn't add invalid phone number"
+      "invalidPhoneWarning": "Could not add invalid phone number"
     },
     "form": {
       "firstNameLabel": "First Name",
