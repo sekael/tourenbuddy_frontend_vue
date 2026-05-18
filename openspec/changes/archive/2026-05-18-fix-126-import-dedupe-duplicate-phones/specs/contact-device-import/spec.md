@@ -190,7 +190,7 @@ The `useContactPicker` composable SHALL provide a `pickContacts()` method that o
 
 #### Scenario: User selects a contact with multiple phones
 
-- **WHEN** the user selects a contact whose device record has two phone numbers
+- **WHEN** the user selects a contact whose device record has two parseable phone numbers
 - **THEN** the composable SHALL return that contact with two `phones` entries, the first having `isPrimary: true` and the second `isPrimary: false`
 
 #### Scenario: User selects a contact with one parseable phone
@@ -213,61 +213,26 @@ The `useContactPicker` composable SHALL provide a `pickContacts()` method that o
 - **WHEN** the user dismisses the native contact picker without selecting
 - **THEN** the composable SHALL return an empty array
 
-### Requirement: Importing via Contact Picker
+### Requirement: Imported phones array shape
 
-The contact creation dialog SHALL display import options based on platform capabilities and commit every imported phone per contact.
+The vCard parser and Contact Picker composable SHALL each return, per contact, a `phones` array where every entry has `value: string` (canonical international form — entries whose raw value could not be normalized SHALL NOT appear here), `label: string | null`, and `isPrimary: boolean`. Exactly one entry in a non-empty `phones` array SHALL have `isPrimary = true`. A `phones` entry's `value` SHALL never be a raw unparseable string; such values live in the separate `rawPhoneNumbers` array.
 
-#### Scenario: Importing via Contact Picker
+#### Scenario: Single-phone contact
 
-- **WHEN** the user taps "Import from contacts" and selects device contacts
-- **THEN** the app SHALL create a TourenBuddy contact for each selected contact, insert one `contact_methods` phone row per entry in the contact's `phones` array, and display a snackbar confirming the count
+- **WHEN** an imported contact has exactly one parseable phone
+- **THEN** the `phones` array SHALL contain one entry with `isPrimary: true`
 
-#### Scenario: Importing via vCard file
+#### Scenario: Multi-phone contact
 
-- **WHEN** the user taps "Import from file" and selects a `.vcf` file
-- **THEN** the app SHALL parse the file, create a TourenBuddy contact for each vCard entry with one `contact_methods` phone row per phone in `phones`, and display a snackbar confirming the count
+- **WHEN** an imported contact has two or more parseable phones
+- **THEN** the `phones` array SHALL contain one entry per parseable phone with exactly one having `isPrimary: true`
 
-#### Scenario: Import with duplicate prevention
+#### Scenario: Contact with no phones
 
-- **WHEN** an imported contact (from either method) matches an existing TourenBuddy contact by first name AND last name (case-insensitive)
-- **THEN** the import SHALL skip that contact and the snackbar SHALL indicate how many were skipped
+- **WHEN** an imported contact has no phones
+- **THEN** the `phones` array SHALL be empty
 
-### Requirement: Import results surface unparseable phones
+#### Scenario: Contact with only unparseable phones
 
-The contact creation dialog SHALL distinguish imported contacts whose primary phone could not be normalized so the user knows which entries to fix. When a contact has multiple phones, the import-results row SHALL show the primary phone inline and the remaining phones collapsed behind a "+N more" indicator.
-
-#### Scenario: Import-results row for unparseable primary phone
-
-- **WHEN** the import-results view renders a row whose primary phone `value` is non-null but does not match the canonical international format
-- **THEN** the row SHALL display a visible "couldn't parse" indicator next to the phone number (e.g. an info icon or muted label) so the user can open the contact and fix it
-
-#### Scenario: Import-results row for canonical primary phone
-
-- **WHEN** the import-results view renders a row whose primary phone `value` is in canonical international format (or the contact has no phones)
-- **THEN** no "couldn't parse" indicator SHALL be shown
-
-#### Scenario: Import-results row collapses secondary phones
-
-- **WHEN** an imported contact has more than one phone
-- **THEN** the import-results row SHALL display only the primary phone inline and a "+N more" indicator where N is the count of remaining phones
-
-## ADDED Requirements
-
-### Requirement: Import results integrate connect prompt
-
-The import-results component SHALL, after parsing vCard or device-picker contacts, batch-call `useFriendshipsStore().findUsersByPhones(uniquePhones)` once for the union of unique normalized phone values across all parsed rows. Each result row whose phones include a matched verified user (excluding the caller) SHALL render the inline connect prompt defined by the `contact-account-linking` capability. Importing the contact and sending the friend request SHALL be independent operations — neither blocks the other.
-
-#### Scenario: Import-results renders prompts
-
-- **WHEN** the import results render and a parsed row's phone matches a verified user other than the caller
-- **THEN** the row SHALL render the connect prompt with "Send request" and "Just save contact" actions
-
-#### Scenario: Import succeeds when request fails
-
-- **WHEN** the user taps "Send request" and the friend-request RPC fails
-- **THEN** the contact import SHALL still complete on user confirmation AND a snackbar SHALL surface the request failure
-
-#### Scenario: Discovery suppressed when caller unverified
-
-- **WHEN** the calling user does not have `phone_confirmed_at` set
-- **THEN** no batch discovery call SHALL be made and no prompts SHALL render in import results
+- **WHEN** an imported contact's only `tel`/`TEL` values fail normalization
+- **THEN** the `phones` array SHALL be empty AND those values SHALL be present in `rawPhoneNumbers`

@@ -1,5 +1,6 @@
 import type { ParsedName } from '@/features/contacts/core/utils/parse-contact-name'
 import { normalizePhone } from '@/core/utils/phone-normalize'
+import { dedupePhones, dedupeRawPhones } from '@/features/contacts/core/utils/dedupe'
 import { parseContactName } from '@/features/contacts/core/utils/parse-contact-name'
 
 export interface PickedPhone {
@@ -42,7 +43,11 @@ export function useContactPicker() {
             rawPhoneNumbers.push(trimmed)
           }
         }
-        return { ...parsed, phones, rawPhoneNumbers }
+        return {
+          ...parsed,
+          phones: dedupePhones(phones),
+          rawPhoneNumbers: dedupeRawPhones(rawPhoneNumbers),
+        }
       })
     }
     catch {

@@ -1,5 +1,6 @@
 import type { ParsedName } from '@/features/contacts/core/utils/parse-contact-name'
 import { normalizePhone } from '@/core/utils/phone-normalize'
+import { dedupePhones, dedupeRawPhones } from '@/features/contacts/core/utils/dedupe'
 import { parseContactName } from '@/features/contacts/core/utils/parse-contact-name'
 
 export interface VCardPhone {
@@ -121,7 +122,7 @@ export function parseVCardText(text: string): VCardContact[] {
     if (rawPhones.length === 0)
       return { firstName: firstName || 'Unknown', lastName, phones: [], rawPhoneNumbers: [] }
 
-    // Normalize phones; skip unparseable ones (collect raw values separately)
+    // Normalize phones; route unparseable values to rawPhoneNumbers only
     interface ParsedPhone {
       value: string
       label: string | null
@@ -152,48 +153,52 @@ export function parseVCardText(text: string): VCardContact[] {
       }
     }
 
-    if (parsedPhones.length === 0)
-      return { firstName: firstName || 'Unknown', lastName, phones: [], rawPhoneNumbers }
+    // Dedupe before primary-resolution so PREF/CELL/HOME/WORK runs on a unique set
+    const dedupedPhones = dedupePhones(parsedPhones)
+    const dedupedRaw = dedupeRawPhones(rawPhoneNumbers)
+
+    if (dedupedPhones.length === 0)
+      return { firstName: firstName || 'Unknown', lastName, phones: [], rawPhoneNumbers: dedupedRaw }
 
     // Determine primary using PREF markers then type priority
-    const v4PrefCandidates = parsedPhones
+    const v4PrefCandidates = dedupedPhones
       .filter(p => p.prefV4 !== null)
       .sort((a, b) => a.prefV4! - b.prefV4!)
-    const v3PrefIdx = parsedPhones.findIndex(p => p.hasPrefV3)
+    const v3PrefIdx = dedupedPhones.findIndex(p => p.hasPrefV3)
 
     let primaryParsedIdx = -1
     if (v4PrefCandidates.length > 0) {
-      primaryParsedIdx = parsedPhones.indexOf(v4PrefCandidates[0]!)
+      primaryParsedIdx = dedupedPhones.indexOf(v4PrefCandidates[0]!)
     }
     else if (v3PrefIdx !== -1) {
       primaryParsedIdx = v3PrefIdx
     }
 
     if (primaryParsedIdx === -1) {
-      const cellIdx = parsedPhones.findIndex(p => p.types.includes('CELL'))
+      const cellIdx = dedupedPhones.findIndex(p => p.types.includes('CELL'))
       if (cellIdx !== -1)
         primaryParsedIdx = cellIdx
     }
     if (primaryParsedIdx === -1) {
-      const homeIdx = parsedPhones.findIndex(p => p.types.includes('HOME'))
+      const homeIdx = dedupedPhones.findIndex(p => p.types.includes('HOME'))
       if (homeIdx !== -1)
         primaryParsedIdx = homeIdx
     }
     if (primaryParsedIdx === -1) {
-      const workIdx = parsedPhones.findIndex(p => p.types.includes('WORK'))
+      const workIdx = dedupedPhones.findIndex(p => p.types.includes('WORK'))
       if (workIdx !== -1)
         primaryParsedIdx = workIdx
     }
     if (primaryParsedIdx === -1)
       primaryParsedIdx = 0
 
-    const phones: VCardPhone[] = parsedPhones.map((p, i) => ({
+    const phones: VCardPhone[] = dedupedPhones.map((p, i) => ({
       value: p.value,
       label: p.label,
       isPrimary: i === primaryParsedIdx,
     }))
 
-    return { firstName: firstName || 'Unknown', lastName, phones, rawPhoneNumbers }
+    return { firstName: firstName || 'Unknown', lastName, phones, rawPhoneNumbers: dedupedRaw }
   })
 }
 

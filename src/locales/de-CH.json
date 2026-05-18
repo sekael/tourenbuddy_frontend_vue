@@ -120,6 +120,9 @@
     }
   },
   "contacts": {
+    "errors": {
+      "duplicateMethod": "Diese Telefonnummer ist für diesen Kontakt bereits gespeichert."
+    },
     "list": {
       "title": "Kontakte",
       "addBtn": "Kontakt hinzufügen",

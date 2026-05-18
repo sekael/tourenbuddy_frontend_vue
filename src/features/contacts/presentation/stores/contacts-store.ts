@@ -6,6 +6,7 @@ import { ref } from 'vue'
 import { useLogger } from '@/core/logging/use-logger'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
+import { dedupePhones } from '@/features/contacts/core/utils/dedupe'
 import { ContactMethodsRepositoryImpl } from '@/features/contacts/data/repositories/contact-methods-repository-impl'
 import { ContactsRepositoryImpl } from '@/features/contacts/data/repositories/contacts-repository-impl'
 
@@ -85,6 +86,13 @@ export const useContactsStore = defineStore('contacts', () => {
       return
 
     let phoneList = phones ?? []
+
+    // Dedupe by value before any further processing (belt-and-suspenders)
+    const beforeDedupeCount = phoneList.length
+    phoneList = dedupePhones(phoneList)
+    if (phoneList.length < beforeDedupeCount) {
+      logger.debug(`addContact: collapsed ${beforeDedupeCount - phoneList.length} duplicate phone(s) for "${firstName}"`)
+    }
 
     if (phoneList.length > 1) {
       if (source === 'import') {

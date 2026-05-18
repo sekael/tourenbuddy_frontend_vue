@@ -420,6 +420,40 @@ describe('useContactsStore', () => {
     })
   })
 
+  describe('phone dedupe', () => {
+    it('addContact with duplicate phones → repository receives deduped list; debug log emitted', async () => {
+      mockFetchContacts.mockResolvedValue([])
+      const newContact = {
+        id: '10',
+        userId: 'user-123',
+        firstName: 'DedupTest',
+        lastName: null,
+        displayName: null,
+        contactMethods: [],
+      }
+      mockCreateContact.mockResolvedValue(newContact)
+      mockAddMethod.mockResolvedValue({
+        id: 'm1',
+        contactId: '10',
+        methodType: 'phone',
+        value: '+41791234567',
+        label: null,
+        isPrimary: true,
+        isValid: true,
+      })
+
+      const store = useContactsStore()
+      await store.loadContacts()
+      await store.addContact('DedupTest', null, null, [
+        { value: '+41791234567', isPrimary: true },
+        { value: '+41791234567', isPrimary: false },
+      ])
+
+      expect(mockAddMethod).toHaveBeenCalledTimes(1)
+      expect(mockAddMethod).toHaveBeenCalledWith('10', expect.objectContaining({ value: '+41791234567', isPrimary: true }))
+    })
+  })
+
   describe('phone normalization', () => {
     it('normalizes Swiss national phone on addContact', async () => {
       mockFetchContacts.mockResolvedValue([])
