@@ -397,7 +397,7 @@
       "securityNote": "Your identity is not revealed beyond account existence. Sending a request notifies them that you have their number. They may deny your request without stating a reason. Friendships cannot be deleted."
     },
     "sendRequest": "Send request",
-    "justSaveContact": "Just save contact",
+    "justSaveContact": "Save contact only",
     "requestSent": "Request sent",
     "learnMore": "Learn more",
     "inboxEmpty": "No pending friend requests.",
