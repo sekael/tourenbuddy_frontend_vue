@@ -83,7 +83,7 @@ jobs:
           message: |
             ### 🚀 Preview deployment ready
 
-            **URL:** https://${{ steps.branch.outputs.slug }}.tourenbuddy.pages.dev
+            **URL:** https://${{ steps.branch.outputs.slug }}.touringbuddy.pages.dev
 
             Connected to **production** Supabase, Worker, Brevo, and VAPID infrastructure. Test data lands in prod — use throwaway accounts and clean up after.
 
