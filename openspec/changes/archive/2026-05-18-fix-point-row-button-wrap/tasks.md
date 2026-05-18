@@ -23,5 +23,5 @@
 ## 5. Finalize
 
 - [x] 5.1 `npx eslint . --fix` — zero warnings
-- [ ] 5.2 Prompt user to commit with conventional commit message: `fix(tours): wrap point-row action buttons to stay within section bounds (#149)`
-- [ ] 5.3 Prompt user to push branch and open PR linking issue #149; include before/after screenshots on iPhone-sized viewport and the audit result from 3.3
+- [x] 5.2 Prompt user to commit with conventional commit message: `fix(tours): wrap point-row action buttons to stay within section bounds (#149)`
+- [x] 5.3 Prompt user to push branch and open PR linking issue #149; include before/after screenshots on iPhone-sized viewport and the audit result from 3.3
