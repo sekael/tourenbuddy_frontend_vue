@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.19.1...tourenbuddy-frontend-v0.20.0) (2026-05-18)
+
+
+### Features
+
+* Friend accept uses profile names ([#163](https://github.com/sekael/tourenbuddy_frontend_vue/issues/163)) ([f943d69](https://github.com/sekael/tourenbuddy_frontend_vue/commit/f943d69bd2a736b5658712e0633e8285dc3cd04c))
+
 ## [0.19.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.19.0...tourenbuddy-frontend-v0.19.1) (2026-05-18)
 
 
