@@ -1,5 +1,6 @@
 import type { ParsedName } from '@/features/contacts/core/utils/parse-contact-name'
 import { normalizePhone } from '@/core/utils/phone-normalize'
+import { dedupeEmails, dedupePhones, dedupeRawPhones } from '@/features/contacts/core/utils/dedupe'
 import { parseContactName } from '@/features/contacts/core/utils/parse-contact-name'
 
 export interface PickedPhone {
@@ -11,6 +12,7 @@ export interface PickedPhone {
 export interface PickedContact extends ParsedName {
   phones: PickedPhone[]
   rawPhoneNumbers: string[]
+  emails: string[]
 }
 
 /** Returns whether the Contact Picker API is available (Android Chrome/Edge). */
@@ -24,8 +26,8 @@ export function useContactPicker() {
 
     try {
       // @ts-expect-error Contact Picker API not in TypeScript DOM lib yet
-      const contacts = await navigator.contacts.select(['name', 'tel'], { multiple: true })
-      return (contacts as Array<{ name: string[], tel: string[] }>).map((entry) => {
+      const contacts = await navigator.contacts.select(['name', 'tel', 'email'], { multiple: true })
+      return (contacts as Array<{ name: string[], tel: string[], email: string[] }>).map((entry) => {
         const fullName = entry.name[0] ?? ''
         const parsed = parseContactName(fullName)
         const phones: PickedPhone[] = []
@@ -42,7 +44,13 @@ export function useContactPicker() {
             rawPhoneNumbers.push(trimmed)
           }
         }
-        return { ...parsed, phones, rawPhoneNumbers }
+        const emails = dedupeEmails(entry.email ?? [])
+        return {
+          ...parsed,
+          phones: dedupePhones(phones),
+          rawPhoneNumbers: dedupeRawPhones(rawPhoneNumbers),
+          emails,
+        }
       })
     }
     catch {

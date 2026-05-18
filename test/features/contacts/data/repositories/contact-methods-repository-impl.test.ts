@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { DuplicateContactMethodError } from '@/core/exceptions'
 import { ContactMethodsRepositoryImpl } from '@/features/contacts/data/repositories/contact-methods-repository-impl'
 
 vi.mock('@/core/utils/supabase', () => ({
@@ -56,6 +57,53 @@ describe('contactMethodsRepositoryImpl', () => {
       ).rejects.toThrow('Invalid phone number')
 
       expect(supabase.from).not.toHaveBeenCalled()
+    })
+
+    it('23505 on contact_methods_unique_per_contact maps to DuplicateContactMethodError', async () => {
+      const { supabase } = await import('@/core/utils/supabase')
+      const mockChain = {
+        select: vi.fn(() => ({
+          single: vi.fn(() =>
+            Promise.resolve({
+              data: null,
+              error: {
+                code: '23505',
+                message: 'duplicate key value violates unique constraint "contact_methods_unique_per_contact"',
+              },
+            }),
+          ),
+        })),
+      }
+      vi.mocked(supabase.from).mockReturnValue({
+        insert: vi.fn(() => mockChain),
+      } as ReturnType<typeof supabase.from>)
+
+      const repo = new ContactMethodsRepositoryImpl()
+      await expect(
+        repo.addMethod('c-1', { methodType: 'phone', value: '+41791234567', isPrimary: true }),
+      ).rejects.toThrow(DuplicateContactMethodError)
+    })
+
+    it('non-23505 errors pass through unchanged', async () => {
+      const { supabase } = await import('@/core/utils/supabase')
+      const mockChain = {
+        select: vi.fn(() => ({
+          single: vi.fn(() =>
+            Promise.resolve({
+              data: null,
+              error: { code: '42501', message: 'permission denied' },
+            }),
+          ),
+        })),
+      }
+      vi.mocked(supabase.from).mockReturnValue({
+        insert: vi.fn(() => mockChain),
+      } as ReturnType<typeof supabase.from>)
+
+      const repo = new ContactMethodsRepositoryImpl()
+      const err = await repo.addMethod('c-1', { methodType: 'phone', value: '+41791234567', isPrimary: true }).catch(e => e)
+      expect(err).not.toBeInstanceOf(DuplicateContactMethodError)
+      expect(err.message).toBe('permission denied')
     })
 
     it('should pass email value through without validation', async () => {

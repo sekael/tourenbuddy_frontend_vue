@@ -120,6 +120,11 @@
     }
   },
   "contacts": {
+    "errors": {
+      "duplicateMethod": "This phone number is already saved for this contact.",
+      "noValidPhone": "No valid phone number for {name} — contact skipped.",
+      "someInvalidPhonesDiscarded": "Discarded {count} invalid phone number(s) for {name}."
+    },
     "list": {
       "title": "Contacts",
       "addBtn": "Add contact",

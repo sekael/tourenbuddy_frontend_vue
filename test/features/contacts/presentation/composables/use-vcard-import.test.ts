@@ -260,6 +260,100 @@ END:VCARD`
   })
 })
 
+describe('deduplication and email extraction', () => {
+  it('two identical TEL lines collapse to one entry', () => {
+    const vcard = `BEGIN:VCARD
+VERSION:3.0
+FN:Dup
+TEL;TYPE=CELL:+41 79 123 45 67
+TEL;TYPE=CELL:+41 79 123 45 67
+END:VCARD`
+    const result = parseVCardText(vcard)
+    expect(result[0]!.phones).toHaveLength(1)
+    expect(result[0]!.phones[0]!.value).toBe('+41791234567')
+  })
+
+  it('two TEL lines normalizing to same E.164 collapse with first non-null label preserved', () => {
+    const vcard = `BEGIN:VCARD
+VERSION:3.0
+FN:Label Merge
+TEL;TYPE=CELL:+41791234567
+TEL:079 123 45 67
+END:VCARD`
+    const result = parseVCardText(vcard)
+    expect(result[0]!.phones).toHaveLength(1)
+    expect(result[0]!.phones[0]!.label).toBe('Mobile')
+  })
+
+  it('pREF on a duplicate copy is preserved post-dedupe', () => {
+    const vcard = `BEGIN:VCARD
+VERSION:3.0
+FN:Pref Dup
+TEL;TYPE=HOME:+41 44 222 33 44
+TEL;TYPE=HOME,PREF:+41 44 222 33 44
+END:VCARD`
+    const result = parseVCardText(vcard)
+    expect(result[0]!.phones).toHaveLength(1)
+    expect(result[0]!.phones[0]!.isPrimary).toBe(true)
+  })
+
+  it('duplicate rawPhoneNumbers collapse case-insensitively', () => {
+    const vcard = `BEGIN:VCARD
+VERSION:3.0
+FN:Raw Dup
+TEL:ext. 1234
+TEL:EXT. 1234
+END:VCARD`
+    const result = parseVCardText(vcard)
+    expect(result[0]!.rawPhoneNumbers).toHaveLength(1)
+    expect(result[0]!.rawPhoneNumbers[0]).toBe('ext. 1234')
+  })
+
+  it('unparseable TEL not in phones, present in rawPhoneNumbers', () => {
+    const vcard = `BEGIN:VCARD
+VERSION:3.0
+FN:Bad Phone
+TEL:not-a-number
+END:VCARD`
+    const result = parseVCardText(vcard)
+    expect(result[0]!.phones).toHaveLength(0)
+    expect(result[0]!.rawPhoneNumbers).toEqual(['not-a-number'])
+  })
+
+  it('eMAIL lines extracted, deduped lowercase, malformed values dropped', () => {
+    const vcard = `BEGIN:VCARD
+VERSION:3.0
+FN:Email Test
+EMAIL:Alice@Example.com
+EMAIL:alice@example.com
+EMAIL:not-an-email
+EMAIL:bob@example.com
+END:VCARD`
+    const result = parseVCardText(vcard)
+    expect(result[0]!.emails).toEqual(['alice@example.com', 'bob@example.com'])
+  })
+
+  it('distinct phones not collapsed', () => {
+    const vcard = `BEGIN:VCARD
+VERSION:3.0
+FN:Multi
+TEL;TYPE=CELL:+41 79 123 45 67
+TEL;TYPE=HOME:+41 44 222 33 44
+END:VCARD`
+    const result = parseVCardText(vcard)
+    expect(result[0]!.phones).toHaveLength(2)
+  })
+
+  it('no TEL entry returns empty emails array when no EMAIL present', () => {
+    const vcard = `BEGIN:VCARD
+VERSION:3.0
+FN:No Contact Info
+END:VCARD`
+    const result = parseVCardText(vcard)
+    expect(result[0]!.emails).toEqual([])
+  })
+})
+
 describe('useVCardImport', () => {
   function makeFile(content: string, name = 'contacts.vcf') {
     return new File([content], name, { type: 'text/vcard' })

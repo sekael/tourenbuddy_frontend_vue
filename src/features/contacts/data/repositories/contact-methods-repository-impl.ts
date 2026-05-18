@@ -3,9 +3,16 @@ import type {
   ContactMethodsRepository,
   NewContactMethod,
 } from '@/features/contacts/domain/repositories/contact-methods-repository'
+import { DuplicateContactMethodError } from '@/core/exceptions'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import { supabase } from '@/core/utils/supabase'
 import { contactMethodRowSchema } from '@/features/contacts/data/models/contact-method-schema'
+
+function mapMethodInsertError(error: { code: string, message: string }): Error {
+  if (error.code === '23505' && error.message.includes('contact_methods_unique_per_contact'))
+    return new DuplicateContactMethodError()
+  return new Error(error.message)
+}
 
 function resolvePhoneValue(raw: string): string {
   const result = normalizePhone(raw)
@@ -31,7 +38,7 @@ export class ContactMethodsRepositoryImpl implements ContactMethodsRepository {
       .single()
 
     if (error)
-      throw new Error(error.message)
+      throw mapMethodInsertError(error)
 
     return contactMethodRowSchema.parse(data)
   }

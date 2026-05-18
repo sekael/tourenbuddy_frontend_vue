@@ -47,3 +47,13 @@ export class FriendshipExistsError extends Error {
     this.name = 'FriendshipExistsError'
   }
 }
+
+/** Thrown when a contact method insert violates the unique constraint (contact_methods_unique_per_contact). */
+export class DuplicateContactMethodError extends Error {
+  readonly i18nKey = 'contacts.errors.duplicateMethod'
+
+  constructor(message = 'This contact method is already saved for this contact') {
+    super(message)
+    this.name = 'DuplicateContactMethodError'
+  }
+}

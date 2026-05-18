@@ -4,6 +4,9 @@ import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
+import ErrorSnackbar from '@/core/components/error-snackbar.vue'
+import { useSnackbar } from '@/core/composables/use-snackbar'
+import { DuplicateContactMethodError } from '@/core/exceptions'
 import { useContactPicker } from '@/features/contacts/presentation/composables/use-contact-picker'
 import { useVCardImport } from '@/features/contacts/presentation/composables/use-vcard-import'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
@@ -12,6 +15,7 @@ import ContactForm from './contact-form.vue'
 const emit = defineEmits<{ close: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
+const { snackbar, show: showSnackbar, dismiss: dismissSnackbar } = useSnackbar()
 
 interface ImportResult {
   firstName: string
@@ -63,7 +67,10 @@ async function handleSubmit(data: {
     emit('close')
   }
   catch (err) {
-    error.value = err instanceof Error ? err.message : t('contacts.addDialog.addError')
+    if (err instanceof DuplicateContactMethodError)
+      error.value = t(err.i18nKey)
+    else
+      error.value = err instanceof Error ? err.message : t('contacts.addDialog.addError')
   }
   finally {
     isLoading.value = false
@@ -76,31 +83,59 @@ async function processImportedContacts(
     lastName: string | null
     phones: PhoneEntry[]
     rawPhoneNumbers?: string[]
+    emails?: string[]
   }>,
 ) {
   const results: ImportResult[] = []
 
   for (const item of items) {
-    const primaryPhone
-      = item.phones.find(p => p.isPrimary)?.value ?? item.phones[0]?.value ?? null
+    const phones = item.phones
     const rawPhoneNumbers = item.rawPhoneNumbers ?? []
+    const emails = item.emails ?? []
+    const primaryPhone = phones.find(p => p.isPrimary)?.value ?? phones[0]?.value ?? null
+
     if (isDuplicate(item.firstName, item.lastName)) {
       results.push({
         firstName: item.firstName,
         lastName: item.lastName,
         primaryPhone,
-        extraPhoneCount: Math.max(0, item.phones.length - 1),
+        extraPhoneCount: Math.max(0, phones.length - 1),
         rawPhoneNumbers,
         status: 'skipped',
       })
       continue
     }
-    await contactsStore.addContact(item.firstName, item.lastName, null, item.phones, 'import')
+
+    // No parseable phones but had TEL entries → skip with error
+    if (phones.length === 0 && rawPhoneNumbers.length > 0) {
+      showSnackbar(t('contacts.errors.noValidPhone', { name: item.firstName }))
+      results.push({
+        firstName: item.firstName,
+        lastName: item.lastName,
+        primaryPhone: null,
+        extraPhoneCount: 0,
+        rawPhoneNumbers,
+        status: 'skipped',
+      })
+      continue
+    }
+
+    // Has valid phones but also invalid ones → import valid, notify discarded
+    if (phones.length > 0 && rawPhoneNumbers.length > 0) {
+      showSnackbar(
+        t('contacts.errors.someInvalidPhonesDiscarded', { name: item.firstName, count: rawPhoneNumbers.length }),
+      )
+    }
+
+    // phones=0, raw=0, emails>0 → email-only import
+    // phones=0, raw=0, emails=0 → name-only import
+    // phones>0 → normal import
+    await contactsStore.addContact(item.firstName, item.lastName, null, phones, 'import', emails)
     results.push({
       firstName: item.firstName,
       lastName: item.lastName,
       primaryPhone,
-      extraPhoneCount: Math.max(0, item.phones.length - 1),
+      extraPhoneCount: Math.max(0, phones.length - 1),
       rawPhoneNumbers,
       status: 'imported',
     })
@@ -257,6 +292,8 @@ async function handleFileChange(event: Event) {
       />
     </div>
   </BottomSheet>
+
+  <ErrorSnackbar :message="snackbar.message" :visible="snackbar.visible" @dismiss="dismissSnackbar" />
 </template>
 
 <style scoped>
