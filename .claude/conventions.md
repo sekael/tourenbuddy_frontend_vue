@@ -2,6 +2,7 @@
 
 ## General
 
+- Keep code concise, better solutions use as much as needed, as little as possible code to implement feature 
 - `<script setup lang="ts">` for all components
 - `defineProps<{ title: string }>()` type-only syntax
 - File names: `kebab-case.vue` / `kebab-case.ts`. Types: `PascalCase`
