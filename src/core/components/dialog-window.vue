@@ -191,9 +191,10 @@ function handleBackdropClick() {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  padding: var(--spacing-lg) var(--spacing-xl) var(--spacing-xl);
+  padding: var(--spacing-lg) var(--spacing-xs) var(--spacing-xl) var(--spacing-xl);
   flex: 1;
   min-height: 0;
+  scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: var(--color-outline-variant) transparent;
   opacity: 1;
