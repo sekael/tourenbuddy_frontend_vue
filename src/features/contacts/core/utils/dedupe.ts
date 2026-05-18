@@ -36,18 +36,3 @@ export function dedupeRawPhones(values: string[]): string[] {
   }
   return result
 }
-
-/** Normalize, dedupe, and validate email strings. Returns lowercased values in first-seen order. */
-export function dedupeEmails(values: string[]): string[] {
-  const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/
-  const seen = new Set<string>()
-  const result: string[] = []
-  for (const v of values) {
-    const normalized = v.trim().toLowerCase()
-    if (normalized && emailRegex.test(normalized) && !seen.has(normalized)) {
-      seen.add(normalized)
-      result.push(normalized)
-    }
-  }
-  return result
-}

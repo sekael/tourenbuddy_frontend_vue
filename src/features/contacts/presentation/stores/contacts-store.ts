@@ -6,7 +6,7 @@ import { ref } from 'vue'
 import { useLogger } from '@/core/logging/use-logger'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
-import { dedupeEmails, dedupePhones } from '@/features/contacts/core/utils/dedupe'
+import { dedupePhones } from '@/features/contacts/core/utils/dedupe'
 import { ContactMethodsRepositoryImpl } from '@/features/contacts/data/repositories/contact-methods-repository-impl'
 import { ContactsRepositoryImpl } from '@/features/contacts/data/repositories/contacts-repository-impl'
 
@@ -80,7 +80,6 @@ export const useContactsStore = defineStore('contacts', () => {
     displayName?: string | null,
     phones?: PhoneEntry[],
     source: 'manual' | 'import' = 'manual',
-    emails?: string[],
   ) {
     const userId = authStore.currentUser?.id
     if (!userId)
@@ -143,18 +142,6 @@ export const useContactsStore = defineStore('contacts', () => {
         value: phone.value,
         label: phone.label,
         isPrimary: phone.isPrimary,
-      })
-      contact.contactMethods.push(method)
-    }
-
-    // Insert emails (defense-in-depth dedupe)
-    const dedupedEmails = dedupeEmails(emails ?? [])
-    for (let i = 0; i < dedupedEmails.length; i++) {
-      const method = await contactMethodsRepository.addMethod(contact.id, {
-        methodType: 'email',
-        value: dedupedEmails[i]!,
-        label: null,
-        isPrimary: i === 0,
       })
       contact.contactMethods.push(method)
     }

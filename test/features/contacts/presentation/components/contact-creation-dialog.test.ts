@@ -98,7 +98,6 @@ describe('contact-creation-dialog import branches', () => {
         lastName: null,
         phones: [],
         rawPhoneNumbers: ['ext. 1234'],
-        emails: [],
       },
     ])
 
@@ -119,7 +118,6 @@ describe('contact-creation-dialog import branches', () => {
         lastName: null,
         phones: [{ value: '+41791234567', label: null, isPrimary: true }],
         rawPhoneNumbers: ['ext. 5678'],
-        emails: [],
       },
     ])
 
@@ -129,28 +127,7 @@ describe('contact-creation-dialog import branches', () => {
       null,
       [{ value: '+41791234567', label: null, isPrimary: true }],
       'import',
-      [],
     )
-    expect(vm.importResults[0].status).toBe('imported')
-  })
-
-  it('email-only fallback: phones=0 raw=0 emails>0 → addContact called with emails', async () => {
-    const wrapper = mountDialog()
-    const store = useContactsStore()
-    const addContactSpy = vi.spyOn(store, 'addContact').mockResolvedValue(undefined)
-
-    const vm = wrapper.vm as any
-    await vm.processImportedContacts([
-      {
-        firstName: 'EmailOnly',
-        lastName: null,
-        phones: [],
-        rawPhoneNumbers: [],
-        emails: ['test@example.com'],
-      },
-    ])
-
-    expect(addContactSpy).toHaveBeenCalledWith('EmailOnly', null, null, [], 'import', ['test@example.com'])
     expect(vm.importResults[0].status).toBe('imported')
   })
 })

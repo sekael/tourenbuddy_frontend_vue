@@ -8,9 +8,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
  */
 
 async function loadPickerWithMockedApi(
-  entries: Array<{ name: string[], tel: string[], email: string[] }>,
+  entries: Array<{ name: string[], tel: string[] }>,
 ) {
-  // Stub globals before the module evaluates the const
   Object.defineProperty(globalThis, 'navigator', {
     value: {
       ...globalThis.navigator,
@@ -26,7 +25,6 @@ async function loadPickerWithMockedApi(
     configurable: true,
     writable: true,
   })
-  // Force fresh module evaluation so isContactPickerSupported re-reads globals
   vi.resetModules()
   return import('@/features/contacts/presentation/composables/use-contact-picker')
 }
@@ -39,11 +37,7 @@ describe('useContactPicker', () => {
 
   it('duplicate tel values collapse with isPrimary: true retained', async () => {
     const { useContactPicker } = await loadPickerWithMockedApi([
-      {
-        name: ['Test User'],
-        tel: ['+41 79 123 45 67', '+41791234567'],
-        email: [],
-      },
+      { name: ['Test User'], tel: ['+41 79 123 45 67', '+41791234567'] },
     ])
     const { pickContacts } = useContactPicker()
     const result = await pickContacts()
@@ -54,29 +48,12 @@ describe('useContactPicker', () => {
 
   it('unparseable tel goes to rawPhoneNumbers, not phones', async () => {
     const { useContactPicker } = await loadPickerWithMockedApi([
-      {
-        name: ['Test User'],
-        tel: ['ext. 1234'],
-        email: [],
-      },
+      { name: ['Test User'], tel: ['ext. 1234'] },
     ])
     const { pickContacts } = useContactPicker()
     const result = await pickContacts()
     expect(result[0]!.phones).toHaveLength(0)
     expect(result[0]!.rawPhoneNumbers).toEqual(['ext. 1234'])
-  })
-
-  it('emails returned and deduped lowercase', async () => {
-    const { useContactPicker } = await loadPickerWithMockedApi([
-      {
-        name: ['Test User'],
-        tel: [],
-        email: ['Alice@Example.com', 'alice@example.com', 'bob@example.com'],
-      },
-    ])
-    const { pickContacts } = useContactPicker()
-    const result = await pickContacts()
-    expect(result[0]!.emails).toEqual(['alice@example.com', 'bob@example.com'])
   })
 
   it('returns empty array on API error (cancel)', async () => {

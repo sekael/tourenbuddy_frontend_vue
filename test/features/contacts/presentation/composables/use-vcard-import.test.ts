@@ -320,19 +320,6 @@ END:VCARD`
     expect(result[0]!.rawPhoneNumbers).toEqual(['not-a-number'])
   })
 
-  it('eMAIL lines extracted, deduped lowercase, malformed values dropped', () => {
-    const vcard = `BEGIN:VCARD
-VERSION:3.0
-FN:Email Test
-EMAIL:Alice@Example.com
-EMAIL:alice@example.com
-EMAIL:not-an-email
-EMAIL:bob@example.com
-END:VCARD`
-    const result = parseVCardText(vcard)
-    expect(result[0]!.emails).toEqual(['alice@example.com', 'bob@example.com'])
-  })
-
   it('distinct phones not collapsed', () => {
     const vcard = `BEGIN:VCARD
 VERSION:3.0
@@ -342,15 +329,6 @@ TEL;TYPE=HOME:+41 44 222 33 44
 END:VCARD`
     const result = parseVCardText(vcard)
     expect(result[0]!.phones).toHaveLength(2)
-  })
-
-  it('no TEL entry returns empty emails array when no EMAIL present', () => {
-    const vcard = `BEGIN:VCARD
-VERSION:3.0
-FN:No Contact Info
-END:VCARD`
-    const result = parseVCardText(vcard)
-    expect(result[0]!.emails).toEqual([])
   })
 })
 

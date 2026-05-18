@@ -83,7 +83,6 @@ async function processImportedContacts(
     lastName: string | null
     phones: PhoneEntry[]
     rawPhoneNumbers?: string[]
-    emails?: string[]
   }>,
 ) {
   const results: ImportResult[] = []
@@ -91,7 +90,6 @@ async function processImportedContacts(
   for (const item of items) {
     const phones = item.phones
     const rawPhoneNumbers = item.rawPhoneNumbers ?? []
-    const emails = item.emails ?? []
     const primaryPhone = phones.find(p => p.isPrimary)?.value ?? phones[0]?.value ?? null
 
     if (isDuplicate(item.firstName, item.lastName)) {
@@ -127,10 +125,7 @@ async function processImportedContacts(
       )
     }
 
-    // phones=0, raw=0, emails>0 → email-only import
-    // phones=0, raw=0, emails=0 → name-only import
-    // phones>0 → normal import
-    await contactsStore.addContact(item.firstName, item.lastName, null, phones, 'import', emails)
+    await contactsStore.addContact(item.firstName, item.lastName, null, phones, 'import')
     results.push({
       firstName: item.firstName,
       lastName: item.lastName,

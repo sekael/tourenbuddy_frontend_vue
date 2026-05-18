@@ -420,7 +420,7 @@ describe('useContactsStore', () => {
     })
   })
 
-  describe('dedupe and emails', () => {
+  describe('phone dedupe', () => {
     it('addContact with duplicate phones → repository receives deduped list; debug log emitted', async () => {
       mockFetchContacts.mockResolvedValue([])
       const newContact = {
@@ -451,83 +451,6 @@ describe('useContactsStore', () => {
 
       expect(mockAddMethod).toHaveBeenCalledTimes(1)
       expect(mockAddMethod).toHaveBeenCalledWith('10', expect.objectContaining({ value: '+41791234567', isPrimary: true }))
-    })
-
-    it('addContact with emails-only → only email methods inserted, first marked primary', async () => {
-      mockFetchContacts.mockResolvedValue([])
-      const newContact = {
-        id: '11',
-        userId: 'user-123',
-        firstName: 'EmailOnly',
-        lastName: null,
-        displayName: null,
-        contactMethods: [],
-      }
-      mockCreateContact.mockResolvedValue(newContact)
-      mockAddMethod.mockResolvedValueOnce({
-        id: 'em1',
-        contactId: '11',
-        methodType: 'email',
-        value: 'test@example.com',
-        label: null,
-        isPrimary: true,
-        isValid: true,
-      })
-
-      const store = useContactsStore()
-      await store.loadContacts()
-      await store.addContact('EmailOnly', null, null, [], 'import', ['test@example.com'])
-
-      expect(mockAddMethod).toHaveBeenCalledWith('11', {
-        methodType: 'email',
-        value: 'test@example.com',
-        label: null,
-        isPrimary: true,
-      })
-    })
-
-    it('addContact with phones + emails → both inserted; primary of each type set', async () => {
-      mockFetchContacts.mockResolvedValue([])
-      const newContact = {
-        id: '12',
-        userId: 'user-123',
-        firstName: 'Mixed',
-        lastName: null,
-        displayName: null,
-        contactMethods: [],
-      }
-      mockCreateContact.mockResolvedValue(newContact)
-      mockAddMethod.mockResolvedValue({ id: 'x', contactId: '12', methodType: 'phone', value: '+41791234567', label: null, isPrimary: true, isValid: true })
-
-      const store = useContactsStore()
-      await store.loadContacts()
-      await store.addContact('Mixed', null, null, [{ value: '+41791234567', isPrimary: true }], 'import', ['a@b.com', 'c@d.com'])
-
-      expect(mockAddMethod).toHaveBeenCalledTimes(3)
-      expect(mockAddMethod).toHaveBeenCalledWith('12', expect.objectContaining({ methodType: 'email', value: 'a@b.com', isPrimary: true }))
-      expect(mockAddMethod).toHaveBeenCalledWith('12', expect.objectContaining({ methodType: 'email', value: 'c@d.com', isPrimary: false }))
-    })
-
-    it('cross-methodType identical value strings NOT collapsed', async () => {
-      mockFetchContacts.mockResolvedValue([])
-      const newContact = {
-        id: '13',
-        userId: 'user-123',
-        firstName: 'CrossType',
-        lastName: null,
-        displayName: null,
-        contactMethods: [],
-      }
-      mockCreateContact.mockResolvedValue(newContact)
-      mockAddMethod.mockResolvedValue({ id: 'x', contactId: '13', methodType: 'phone', value: 'test', label: null, isPrimary: true, isValid: true })
-
-      const store = useContactsStore()
-      await store.loadContacts()
-      // Phone and email with same string: phone dedupes by value, but email is separate
-      await store.addContact('CrossType', null, null, [{ value: '+41791234567', isPrimary: true }], 'import', ['test@example.com'])
-
-      // Both phone and email should be inserted (2 calls)
-      expect(mockAddMethod).toHaveBeenCalledTimes(2)
     })
   })
 

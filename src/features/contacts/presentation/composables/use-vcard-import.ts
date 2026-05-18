@@ -1,6 +1,6 @@
 import type { ParsedName } from '@/features/contacts/core/utils/parse-contact-name'
 import { normalizePhone } from '@/core/utils/phone-normalize'
-import { dedupeEmails, dedupePhones, dedupeRawPhones } from '@/features/contacts/core/utils/dedupe'
+import { dedupePhones, dedupeRawPhones } from '@/features/contacts/core/utils/dedupe'
 import { parseContactName } from '@/features/contacts/core/utils/parse-contact-name'
 
 export interface VCardPhone {
@@ -12,7 +12,6 @@ export interface VCardPhone {
 export interface VCardContact extends ParsedName {
   phones: VCardPhone[]
   rawPhoneNumbers: string[]
-  emails: string[]
 }
 
 function parseTelTypes(params: string): string[] {
@@ -120,17 +119,8 @@ export function parseVCardText(text: string): VCardContact[] {
       })
     }
 
-    // Extract EMAIL entries
-    const emailValues: string[] = []
-    for (const m of content.matchAll(/^EMAIL(?:;[^:]*)?:([^\r\n]*)/gim)) {
-      const raw = m[1]!.trim()
-      if (raw)
-        emailValues.push(raw)
-    }
-    const emails = dedupeEmails(emailValues)
-
     if (rawPhones.length === 0)
-      return { firstName: firstName || 'Unknown', lastName, phones: [], rawPhoneNumbers: [], emails }
+      return { firstName: firstName || 'Unknown', lastName, phones: [], rawPhoneNumbers: [] }
 
     // Normalize phones; route unparseable values to rawPhoneNumbers only
     interface ParsedPhone {
@@ -168,7 +158,7 @@ export function parseVCardText(text: string): VCardContact[] {
     const dedupedRaw = dedupeRawPhones(rawPhoneNumbers)
 
     if (dedupedPhones.length === 0)
-      return { firstName: firstName || 'Unknown', lastName, phones: [], rawPhoneNumbers: dedupedRaw, emails }
+      return { firstName: firstName || 'Unknown', lastName, phones: [], rawPhoneNumbers: dedupedRaw }
 
     // Determine primary using PREF markers then type priority
     const v4PrefCandidates = dedupedPhones
@@ -208,7 +198,7 @@ export function parseVCardText(text: string): VCardContact[] {
       isPrimary: i === primaryParsedIdx,
     }))
 
-    return { firstName: firstName || 'Unknown', lastName, phones, rawPhoneNumbers: dedupedRaw, emails }
+    return { firstName: firstName || 'Unknown', lastName, phones, rawPhoneNumbers: dedupedRaw }
   })
 }
 
