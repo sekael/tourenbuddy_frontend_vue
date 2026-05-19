@@ -424,7 +424,8 @@
     "verificationNotice": {
       "title": "Phone discoverability notice",
       "body": "Once verified, other verified TourenBuddy users who add this number to their contacts will know an account exists for it and can send a friend request. Your identity is not revealed beyond this. Unverified phones are never discoverable. You can deny any incoming request.",
-      "acknowledge": "I understand, send code"
+      "acknowledge": "I understand the conditions on phone discoverability.",
+      "sendCodeBtn": "Send verification code"
     }
   },
   "notifications": {

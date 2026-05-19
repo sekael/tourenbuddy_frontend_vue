@@ -52,6 +52,6 @@
 - [x] 8.1 `npx eslint . --fix` (zero warnings)
 - [x] 8.2 `npm run type-check`
 - [x] 8.3 `npm run test` — all passing
-- [ ] 8.4 Prompt user to commit with conventional commit message: `feat(user): allow deleting phone number with reverify disclaimer (#157)` (body: rationale + migration note)
-- [ ] 8.5 Prompt user to push branch and open PR against `main`; PR body references #157 and lists the new migration
-- [ ] 8.6 Prompt user to run `supabase db push` only after PR review/merge
+- [x] 8.4 Prompt user to commit with conventional commit message: `feat(user): allow deleting phone number with reverify disclaimer (#157)` (body: rationale + migration note)
+- [x] 8.5 Prompt user to push branch and open PR against `main`; PR body references #157 and lists the new migration
+- [x] 8.6 Prompt user to run `supabase db push` only after PR review/merge

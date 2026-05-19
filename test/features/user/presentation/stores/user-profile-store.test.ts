@@ -24,19 +24,21 @@ vi.mock('@/features/user/data/repositories/user-profile-repository-impl', () => 
   })),
 }))
 
+const mockRefreshCurrentUser = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+
 vi.mock('@/features/auth/presentation/stores/auth-store', () => ({
   useAuthStore: vi.fn().mockReturnValue({
     get currentUser() {
       return mockCurrentUser.value
     },
+    refreshCurrentUser: mockRefreshCurrentUser,
   }),
 }))
 
-const { mockUpdateUser, mockVerifyOtp, mockRpc, mockRefreshSession } = vi.hoisted(() => ({
+const { mockUpdateUser, mockVerifyOtp, mockRpc } = vi.hoisted(() => ({
   mockUpdateUser: vi.fn().mockResolvedValue({ error: null }),
   mockVerifyOtp: vi.fn().mockResolvedValue({ error: null }),
   mockRpc: vi.fn().mockResolvedValue({ data: null, error: null }),
-  mockRefreshSession: vi.fn().mockResolvedValue({ data: null, error: null }),
 }))
 
 vi.mock('@/core/utils/supabase', () => ({
@@ -44,7 +46,6 @@ vi.mock('@/core/utils/supabase', () => ({
     auth: {
       updateUser: mockUpdateUser,
       verifyOtp: mockVerifyOtp,
-      refreshSession: mockRefreshSession,
     },
     rpc: mockRpc,
   },
@@ -278,37 +279,34 @@ describe('useUserProfileStore', () => {
     })
   })
 
-  describe('sendPhoneVerification pre-check', () => {
-    it('throws PhoneAlreadyRegisteredError when pre-check returns another user UUID', async () => {
-      mockCurrentUser.value = {
-        id: 'user-123',
-        email: 'test@example.com',
-        phone: '+41791234567',
-        phone_confirmed_at: '2024-01-01T00:00:00Z',
-      }
-      mockRpc.mockResolvedValueOnce({ data: 'other-user-456', error: null })
+  describe('checkPhoneAvailability', () => {
+    it('throws PhoneAlreadyRegisteredError when is_phone_registered returns true', async () => {
+      mockRpc.mockResolvedValueOnce({ data: true, error: null })
 
       const store = useUserProfileStore()
-      await expect(store.sendPhoneVerification('+41791234567')).rejects.toBeInstanceOf(
+      await expect(store.checkPhoneAvailability('+41791234567')).rejects.toBeInstanceOf(
         PhoneAlreadyRegisteredError,
       )
       expect(mockUpdateUser).not.toHaveBeenCalled()
     })
 
-    it('proceeds to updateUser when pre-check returns own UUID', async () => {
-      mockCurrentUser.value = {
-        id: 'user-123',
-        email: 'test@example.com',
-        phone: '+41791234567',
-        phone_confirmed_at: '2024-01-01T00:00:00Z',
-      }
-      mockRpc.mockResolvedValueOnce({ data: 'user-123', error: null })
+    it('resolves when is_phone_registered returns false', async () => {
+      mockRpc.mockResolvedValueOnce({ data: false, error: null })
 
       const store = useUserProfileStore()
-      await store.sendPhoneVerification('+41791234567')
-      expect(mockUpdateUser).toHaveBeenCalledWith({ phone: '+41791234567' })
+      await expect(store.checkPhoneAvailability('+41791234567')).resolves.toBeUndefined()
     })
 
+    it('runs RPC even when caller is not phone-verified', async () => {
+      mockRpc.mockResolvedValueOnce({ data: false, error: null })
+
+      const store = useUserProfileStore()
+      await store.checkPhoneAvailability('+41791234567')
+      expect(mockRpc).toHaveBeenCalledWith('is_phone_registered', { p_phone: '+41791234567' })
+    })
+  })
+
+  describe('sendPhoneVerification fallback', () => {
     it('throws PhoneAlreadyRegisteredError when updateUser returns already-registered error', async () => {
       mockUpdateUser.mockResolvedValueOnce({ error: { message: 'User already registered' } })
 
@@ -334,7 +332,7 @@ describe('useUserProfileStore', () => {
       await store.deletePhone()
 
       expect(store.error).toBe('DB error')
-      expect(mockRefreshSession).not.toHaveBeenCalled()
+      expect(mockRefreshCurrentUser).not.toHaveBeenCalled()
     })
 
     it('calls refreshSession on success and clears error', async () => {
@@ -344,7 +342,7 @@ describe('useUserProfileStore', () => {
       await store.deletePhone()
 
       expect(store.error).toBeNull()
-      expect(mockRefreshSession).toHaveBeenCalled()
+      expect(mockRefreshCurrentUser).toHaveBeenCalled()
     })
   })
 })

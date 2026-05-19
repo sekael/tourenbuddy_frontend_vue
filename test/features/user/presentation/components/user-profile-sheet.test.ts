@@ -3,10 +3,11 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import UserProfileSheet from '@/features/user/presentation/components/user-profile-sheet.vue'
 
-const { mockUpdateProfile, mockSendPhoneVerification, mockDeletePhone, mockSignOut, mockFullProfile, mockStoreError } = vi.hoisted(
+const { mockUpdateProfile, mockSendPhoneVerification, mockCheckPhoneAvailability, mockDeletePhone, mockSignOut, mockFullProfile, mockStoreError } = vi.hoisted(
   () => ({
     mockUpdateProfile: vi.fn(),
     mockSendPhoneVerification: vi.fn(),
+    mockCheckPhoneAvailability: vi.fn().mockResolvedValue(undefined),
     mockDeletePhone: vi.fn().mockResolvedValue(undefined),
     mockSignOut: vi.fn(),
     mockFullProfile: {
@@ -38,6 +39,7 @@ vi.mock('@/features/user/presentation/stores/user-profile-store', () => ({
     },
     updateProfile: mockUpdateProfile,
     sendPhoneVerification: mockSendPhoneVerification,
+    checkPhoneAvailability: mockCheckPhoneAvailability,
     deletePhone: mockDeletePhone,
     clear: vi.fn(),
   }),
@@ -124,6 +126,7 @@ describe('userProfileSheet', () => {
     mockLocale.value = 'en'
     mockStoreError.value = null
     mockDeletePhone.mockResolvedValue(undefined)
+    mockCheckPhoneAvailability.mockResolvedValue(undefined)
     mockFullProfile.value = {
       id: 'user-123',
       firstName: 'Max',

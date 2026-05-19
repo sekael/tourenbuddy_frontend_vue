@@ -95,7 +95,9 @@ async function handleSave() {
     const phoneChanged = phone !== (full.value?.phoneNumber ?? '')
 
     if (phoneChanged && phone) {
-      // Show discoverability notice before sending OTP
+      // Pre-check availability so user isn't shown the discoverability notice
+      // for a number that will be rejected as already registered.
+      await userProfileStore.checkPhoneAvailability(phone)
       pendingPhoneForNotice.value = phone
       isEditing.value = false
       showVerificationNotice.value = true
@@ -105,10 +107,15 @@ async function handleSave() {
     }
   }
   catch (err) {
-    editError.value
-      = err instanceof InvalidPhoneNumberError || err instanceof Error
-        ? (err as Error).message
-        : t('user.profile.saveFailed')
+    if (err instanceof PhoneAlreadyRegisteredError) {
+      editError.value = t('user.phoneVerification.alreadyRegisteredError')
+    }
+    else {
+      editError.value
+        = err instanceof InvalidPhoneNumberError || err instanceof Error
+          ? (err as Error).message
+          : t('user.profile.saveFailed')
+    }
   }
   finally {
     isSaving.value = false
@@ -227,8 +234,10 @@ async function handleSignOut() {
         <hr class="divider">
 
         <!-- Language selector -->
-        <div class="language-row">
-          <label class="label">{{ t('user.profile.languageLabel') }}</label>
+        <section class="language-section">
+          <h3 class="section-title">
+            {{ t('user.profile.languageLabel') }}
+          </h3>
           <div class="language-options">
             <button
               v-for="loc in SUPPORTED_LOCALES"
@@ -241,7 +250,7 @@ async function handleSignOut() {
               {{ loc.label }}
             </button>
           </div>
-        </div>
+        </section>
 
         <hr class="divider">
 
@@ -460,10 +469,18 @@ async function handleSignOut() {
   color: var(--color-primary);
 }
 
-.language-row {
+.language-section {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: var(--spacing-sm);
+}
+
+.section-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-on-surface-variant);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .language-options {
@@ -476,8 +493,8 @@ async function handleSignOut() {
   padding: var(--spacing-xs) var(--spacing-md);
   border: 1.5px solid var(--color-outline-variant);
   border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
-  color: var(--color-on-surface-variant);
+  font-size: var(--font-size-base);
+  color: var(--color-on-surface);
   transition:
     border-color 0.15s,
     color 0.15s;

@@ -117,17 +117,22 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     }
   }
 
-  async function sendPhoneVerification(phone: string) {
+  async function checkPhoneAvailability(phone: string) {
     const normalizeResult = normalizePhone(phone)
     if (!normalizeResult.ok)
       throw new InvalidPhoneNumberError()
     const e164 = normalizeResult.e164
 
-    if (authStore.currentUser?.phone_confirmed_at) {
-      const { data: ownerId } = await supabase.rpc('find_user_by_phone', { p_phone: e164 })
-      if (ownerId && ownerId !== authStore.currentUser.id)
-        throw new PhoneAlreadyRegisteredError()
-    }
+    const { data: taken } = await supabase.rpc('is_phone_registered', { p_phone: e164 })
+    if (taken)
+      throw new PhoneAlreadyRegisteredError()
+  }
+
+  async function sendPhoneVerification(phone: string) {
+    const normalizeResult = normalizePhone(phone)
+    if (!normalizeResult.ok)
+      throw new InvalidPhoneNumberError()
+    const e164 = normalizeResult.e164
 
     const { error: updateError } = await supabase.auth.updateUser({ phone: e164 })
     if (updateError) {
@@ -144,7 +149,7 @@ export const useUserProfileStore = defineStore('userProfile', () => {
       error.value = rpcError.message
       return
     }
-    await supabase.auth.refreshSession()
+    await authStore.refreshCurrentUser()
   }
 
   async function verifyPhone(phone: string, token: string) {
@@ -180,6 +185,7 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     loadProfile,
     updateProfile,
     setLocale,
+    checkPhoneAvailability,
     sendPhoneVerification,
     verifyPhone,
     deletePhone,

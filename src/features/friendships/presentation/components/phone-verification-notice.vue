@@ -37,7 +37,7 @@ const acknowledged = ref(false)
             :disabled="!acknowledged"
             @click="emit('acknowledged')"
           >
-            {{ t('friendships.verificationNotice.acknowledge') }}
+            {{ t('friendships.verificationNotice.sendCodeBtn') }}
           </button>
         </div>
       </AdaptiveOverlay>
