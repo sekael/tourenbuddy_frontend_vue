@@ -100,6 +100,7 @@ vi.mock('@/features/friendships/presentation/stores/friendships-store', () => ({
     error: { value: null },
     fetchAll: vi.fn(),
     clear: vi.fn(),
+    currentUserHasAnyRelationship: vi.fn().mockReturnValue({ hasPending: false, hasFriendship: false }),
   }),
 }))
 

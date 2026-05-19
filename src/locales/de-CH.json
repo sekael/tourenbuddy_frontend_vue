@@ -93,7 +93,10 @@
       "removePhoneDisclaimer": "Ihre Telefonnummer wird entfernt. Wenn Sie diese Nummer erneut hinzufügen, müssen Sie sie erneut verifizieren.",
       "removePhoneConfirmBtn": "Entfernen",
       "removePhoneCancelBtn": "Abbrechen",
-      "removePhoneFailed": "Telefonnummer konnte nicht entfernt werden"
+      "removePhoneFailed": "Telefonnummer konnte nicht entfernt werden",
+      "removePhonePendingWarning": "Sie haben offene Freundschaftsanfragen. Das Entfernen Ihrer Telefonnummer bricht alle offenen Anfragen ab.",
+      "removePhoneFriendshipWarning": "Sie haben aktive Freundschaften. Das Entfernen Ihrer Telefonnummer entfernt alle Freundschaftsverbindungen.",
+      "removePhoneBothWarning": "Sie haben aktive Freundschaften und offene Anfragen. Das Entfernen Ihrer Telefonnummer entfernt alle Freundschaftsverbindungen und bricht alle Anfragen ab."
     },
     "phoneVerification": {
       "title": "Telefon verifizieren",
@@ -207,10 +210,14 @@
       "saveFailed": "Änderungen konnten nicht gespeichert werden",
       "deleteConfirm": "Kontakt löschen?",
       "deleteFriendWarning": "Dieser Kontakt ist mit einem TourenBuddy-Freund verknüpft. Das Löschen entfernt auch die Freundschaftsverbindung.",
+      "deletePendingWarning": "Sie haben eine offene Freundschaftsanfrage mit diesem Kontakt. Das Löschen bricht die offene Anfrage ab.",
+      "deleteFriendAndPendingWarning": "Dieser Kontakt ist mit einem TourenBuddy-Freund verknüpft. Das Löschen entfernt die Freundschaftsverbindung und bricht die offene Anfrage ab.",
       "deleteBtn": "Kontakt löschen",
       "deletingBtn": "Wird gelöscht...",
       "removeMethodConfirm": "Kontaktmethode entfernen?",
       "removeMethodFriendWarning": "Diese Telefonnummer ist mit einem TourenBuddy-Freund verknüpft. Das Entfernen beendet auch die Freundschaftsverbindung.",
+      "removeMethodPendingWarning": "Diese Telefonnummer ist mit einer offenen Freundschaftsanfrage verknüpft. Das Entfernen bricht die offene Anfrage ab.",
+      "removeMethodFriendAndPendingWarning": "Diese Telefonnummer ist mit einem TourenBuddy-Freund und einer offenen Anfrage verknüpft. Das Entfernen beendet die Freundschaft und bricht die Anfrage ab.",
       "removeBtn": "Entfernen",
       "removingMethodBtn": "Wird entfernt..."
     },
