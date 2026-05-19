@@ -3,10 +3,12 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import UserProfileSheet from '@/features/user/presentation/components/user-profile-sheet.vue'
 
-const { mockUpdateProfile, mockSendPhoneVerification, mockSignOut, mockFullProfile } = vi.hoisted(
+const { mockUpdateProfile, mockSendPhoneVerification, mockCheckPhoneAvailability, mockDeletePhone, mockSignOut, mockFullProfile, mockStoreError } = vi.hoisted(
   () => ({
     mockUpdateProfile: vi.fn(),
     mockSendPhoneVerification: vi.fn(),
+    mockCheckPhoneAvailability: vi.fn().mockResolvedValue(undefined),
+    mockDeletePhone: vi.fn().mockResolvedValue(undefined),
     mockSignOut: vi.fn(),
     mockFullProfile: {
       value: {
@@ -18,6 +20,7 @@ const { mockUpdateProfile, mockSendPhoneVerification, mockSignOut, mockFullProfi
         phoneVerified: false,
       },
     },
+    mockStoreError: { value: null as string | null },
   }),
 )
 
@@ -31,8 +34,13 @@ vi.mock('@/features/user/presentation/stores/user-profile-store', () => ({
     get fullProfile() {
       return mockFullProfile.value
     },
+    get error() {
+      return mockStoreError.value
+    },
     updateProfile: mockUpdateProfile,
     sendPhoneVerification: mockSendPhoneVerification,
+    checkPhoneAvailability: mockCheckPhoneAvailability,
+    deletePhone: mockDeletePhone,
     clear: vi.fn(),
   }),
 }))
@@ -116,6 +124,9 @@ describe('userProfileSheet', () => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
     mockLocale.value = 'en'
+    mockStoreError.value = null
+    mockDeletePhone.mockResolvedValue(undefined)
+    mockCheckPhoneAvailability.mockResolvedValue(undefined)
     mockFullProfile.value = {
       id: 'user-123',
       firstName: 'Max',
@@ -204,6 +215,36 @@ describe('userProfileSheet', () => {
     await wrapper.find('.ack-btn').trigger('click')
     await vi.waitFor(() => expect(mockSendPhoneVerification).toHaveBeenCalledWith('+41791234567'))
     expect(wrapper.find('.phone-verification-stub').exists()).toBe(true)
+  })
+
+  describe('remove phone', () => {
+    it('verified phone: tapping remove shows inline confirmation with disclaimer', async () => {
+      mockFullProfile.value = {
+        ...mockFullProfile.value,
+        phoneNumber: '+41791234567',
+        phoneVerified: true,
+      }
+      const wrapper = mount(UserProfileSheet)
+      await wrapper.find('.edit-btn').trigger('click')
+      await wrapper.find('.remove-phone-btn').trigger('click')
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('.remove-phone-confirm').exists()).toBe(true)
+      expect(wrapper.text()).toContain('user.profile.removePhoneDisclaimer')
+      expect(mockDeletePhone).not.toHaveBeenCalled()
+    })
+
+    it('unverified phone: tapping remove calls deletePhone directly without overlay', async () => {
+      mockFullProfile.value = {
+        ...mockFullProfile.value,
+        phoneNumber: '+41791234567',
+        phoneVerified: false,
+      }
+      const wrapper = mount(UserProfileSheet)
+      await wrapper.find('.edit-btn').trigger('click')
+      await wrapper.find('.remove-phone-btn').trigger('click')
+      await vi.waitFor(() => expect(mockDeletePhone).toHaveBeenCalled())
+      expect(wrapper.text()).not.toContain('user.profile.removePhoneDisclaimer')
+    })
   })
 
   describe('language selector', () => {

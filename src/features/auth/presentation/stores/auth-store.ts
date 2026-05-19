@@ -45,6 +45,12 @@ export const useAuthStore = defineStore('auth', () => {
       throw error
   }
 
+  /** Refetch the user record without touching the refresh token. */
+  async function refreshCurrentUser() {
+    const { data } = await supabase.auth.getUser()
+    currentUser.value = data.user ?? currentUser.value
+  }
+
   async function signOut() {
     const { error } = await supabase.auth.signOut()
     if (error)
@@ -59,6 +65,7 @@ export const useAuthStore = defineStore('auth', () => {
     initialize,
     sendEmailOtp,
     verifyOtp,
+    refreshCurrentUser,
     signOut,
   }
 })

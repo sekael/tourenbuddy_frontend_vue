@@ -5,7 +5,7 @@ import { useRouter } from 'vue-router'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
-import { InvalidPhoneNumberError } from '@/core/exceptions'
+import { InvalidPhoneNumberError, PhoneAlreadyRegisteredError } from '@/core/exceptions'
 import { SUPPORTED_LOCALES } from '@/core/i18n/supported'
 import { formatPhoneForDisplay } from '@/core/utils/phone-normalize'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
@@ -37,6 +37,8 @@ const isSaving = ref(false)
 
 const showPhoneVerification = ref(false)
 const showVerificationNotice = ref(false)
+const showRemovePhoneConfirm = ref(false)
+const isRemovingPhone = ref(false)
 const pendingPhone = ref('')
 const pendingPhoneForNotice = ref('')
 
@@ -93,7 +95,9 @@ async function handleSave() {
     const phoneChanged = phone !== (full.value?.phoneNumber ?? '')
 
     if (phoneChanged && phone) {
-      // Show discoverability notice before sending OTP
+      // Pre-check availability so user isn't shown the discoverability notice
+      // for a number that will be rejected as already registered.
+      await userProfileStore.checkPhoneAvailability(phone)
       pendingPhoneForNotice.value = phone
       isEditing.value = false
       showVerificationNotice.value = true
@@ -103,10 +107,15 @@ async function handleSave() {
     }
   }
   catch (err) {
-    editError.value
-      = err instanceof InvalidPhoneNumberError || err instanceof Error
-        ? (err as Error).message
-        : t('user.profile.saveFailed')
+    if (err instanceof PhoneAlreadyRegisteredError) {
+      editError.value = t('user.phoneVerification.alreadyRegisteredError')
+    }
+    else {
+      editError.value
+        = err instanceof InvalidPhoneNumberError || err instanceof Error
+          ? (err as Error).message
+          : t('user.profile.saveFailed')
+    }
   }
   finally {
     isSaving.value = false
@@ -134,10 +143,15 @@ async function handleNoticeAcknowledged() {
     showPhoneVerification.value = true
   }
   catch (err) {
-    editError.value
-      = err instanceof InvalidPhoneNumberError || err instanceof Error
-        ? (err as Error).message
-        : 'Failed to send verification code'
+    if (err instanceof PhoneAlreadyRegisteredError) {
+      editError.value = t('user.phoneVerification.alreadyRegisteredError')
+    }
+    else {
+      editError.value
+        = err instanceof InvalidPhoneNumberError || err instanceof Error
+          ? (err as Error).message
+          : t('user.profile.saveFailed')
+    }
     isEditing.value = true
   }
   finally {
@@ -147,6 +161,28 @@ async function handleNoticeAcknowledged() {
 
 function handleNoticeClose() {
   showVerificationNotice.value = false
+}
+
+async function handleRemovePhone() {
+  if (full.value?.phoneVerified) {
+    showRemovePhoneConfirm.value = true
+  }
+  else {
+    await executeDeletePhone()
+  }
+}
+
+async function executeDeletePhone() {
+  isRemovingPhone.value = true
+  await userProfileStore.deletePhone()
+  isRemovingPhone.value = false
+  if (!userProfileStore.error) {
+    showRemovePhoneConfirm.value = false
+    isEditing.value = false
+  }
+  else {
+    editError.value = t('user.profile.removePhoneFailed')
+  }
 }
 
 async function handleSignOut() {
@@ -195,9 +231,13 @@ async function handleSignOut() {
           </button>
         </div>
 
+        <hr class="divider">
+
         <!-- Language selector -->
-        <div class="language-row">
-          <label class="label">{{ t('user.profile.languageLabel') }}</label>
+        <section class="language-section">
+          <h3 class="section-title">
+            {{ t('user.profile.languageLabel') }}
+          </h3>
           <div class="language-options">
             <button
               v-for="loc in SUPPORTED_LOCALES"
@@ -210,7 +250,7 @@ async function handleSignOut() {
               {{ loc.label }}
             </button>
           </div>
-        </div>
+        </section>
 
         <hr class="divider">
 
@@ -259,15 +299,54 @@ async function handleSignOut() {
           <div class="field">
             <label for="edit-phone" class="label">{{ t('user.shared.phoneLabel') }}
               <span class="optional">{{ t('user.shared.optional') }}</span></label>
-            <input
-              id="edit-phone"
-              :value="editPhoneFormatted"
-              type="tel"
-              class="input"
-              :placeholder="t('user.shared.phonePlaceholder')"
-              autocomplete="tel"
-              @input="onEditPhoneInput"
-            >
+            <div class="phone-input-row">
+              <input
+                id="edit-phone"
+                :value="editPhoneFormatted"
+                type="tel"
+                class="input"
+                :placeholder="t('user.shared.phonePlaceholder')"
+                autocomplete="tel"
+                @input="onEditPhoneInput"
+              >
+              <BaseTooltip v-if="full?.phoneNumber" :text="t('user.profile.removePhoneBtn')">
+                <button
+                  type="button"
+                  class="remove-phone-btn"
+                  :disabled="isRemovingPhone || showRemovePhoneConfirm"
+                  :aria-label="t('user.profile.removePhoneBtn')"
+                  @click="handleRemovePhone"
+                >
+                  <span class="material-symbols-outlined">delete</span>
+                </button>
+              </BaseTooltip>
+            </div>
+          </div>
+
+          <!-- Inline remove-phone confirmation (verified only) -->
+          <div v-if="showRemovePhoneConfirm" class="remove-phone-confirm">
+            <p class="remove-phone-disclaimer">
+              <span class="material-symbols-outlined warn-icon">warning</span>
+              {{ t('user.profile.removePhoneDisclaimer') }}
+            </p>
+            <div class="remove-phone-actions">
+              <button
+                type="button"
+                class="cancel-btn"
+                :disabled="isRemovingPhone"
+                @click="showRemovePhoneConfirm = false"
+              >
+                {{ t('user.profile.removePhoneCancelBtn') }}
+              </button>
+              <button
+                type="button"
+                class="remove-confirm-btn"
+                :disabled="isRemovingPhone"
+                @click="executeDeletePhone"
+              >
+                {{ t('user.profile.removePhoneConfirmBtn') }}
+              </button>
+            </div>
           </div>
 
           <p v-if="editError" class="error-text">
@@ -349,6 +428,8 @@ async function handleSignOut() {
   align-items: center;
   gap: var(--spacing-sm);
   min-height: 24px;
+  /* Avatar width is 48px */
+  padding-left: calc(48px + var(--spacing-md));
 }
 
 .phone-icon {
@@ -388,10 +469,18 @@ async function handleSignOut() {
   color: var(--color-primary);
 }
 
-.language-row {
+.language-section {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: var(--spacing-sm);
+}
+
+.section-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-on-surface-variant);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .language-options {
@@ -404,8 +493,8 @@ async function handleSignOut() {
   padding: var(--spacing-xs) var(--spacing-md);
   border: 1.5px solid var(--color-outline-variant);
   border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
-  color: var(--color-on-surface-variant);
+  font-size: var(--font-size-base);
+  color: var(--color-on-surface);
   transition:
     border-color 0.15s,
     color 0.15s;
@@ -550,6 +639,99 @@ async function handleSignOut() {
 }
 
 .save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.phone-input-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--spacing-sm);
+}
+
+.phone-input-row .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.phone-input-row :deep(.tooltip-wrapper) {
+  align-self: stretch;
+}
+
+.remove-phone-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  height: 100%;
+  padding: 0 var(--spacing-md);
+  border: 1.5px solid var(--color-error);
+  border-radius: var(--radius-sm);
+  color: white;
+  background-color: var(--color-error);
+  transition: opacity 0.2s;
+}
+
+.remove-phone-btn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.remove-phone-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.remove-phone-btn .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.remove-phone-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-error-container);
+}
+
+.remove-phone-disclaimer {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface);
+  line-height: 1.5;
+}
+
+.remove-phone-disclaimer .warn-icon {
+  font-size: 18px;
+  color: var(--color-error);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.remove-phone-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.remove-confirm-btn {
+  flex: 1;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--color-error);
+  color: white;
+  border-radius: 12px;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  transition: opacity 0.2s;
+}
+
+.remove-phone-confirm .cancel-btn {
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.remove-confirm-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }

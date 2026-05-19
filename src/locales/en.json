@@ -87,7 +87,13 @@
       "signOutBtn": "Sign out",
       "nameRequired": "First and last name are required",
       "saveFailed": "Failed to save profile",
-      "languageLabel": "Language"
+      "languageLabel": "Language",
+      "removePhoneBtn": "Remove phone number",
+      "removePhoneConfirmTitle": "Remove phone number",
+      "removePhoneDisclaimer": "Your phone number will be removed. If you add this number again, you will need to verify it once more.",
+      "removePhoneConfirmBtn": "Remove",
+      "removePhoneCancelBtn": "Cancel",
+      "removePhoneFailed": "Failed to remove phone number"
     },
     "phoneVerification": {
       "title": "Verify your phone",
@@ -103,7 +109,8 @@
       "resendCountdown": "Resend in",
       "sendingBtn": "Sending...",
       "resendBtn": "Resend code",
-      "verifiedMsg": "Phone verified!"
+      "verifiedMsg": "Phone verified!",
+      "alreadyRegisteredError": "This phone number is already registered on TourenBuddy. If you believe you have another account with this number, contact feedback{'@'}tourenbuddy.ch."
     },
     "shared": {
       "firstNameLabel": "First name",
@@ -417,7 +424,8 @@
     "verificationNotice": {
       "title": "Phone discoverability notice",
       "body": "Once verified, other verified TourenBuddy users who add this number to their contacts will know an account exists for it and can send a friend request. Your identity is not revealed beyond this. Unverified phones are never discoverable. You can deny any incoming request.",
-      "acknowledge": "I understand, send code"
+      "acknowledge": "I understand the conditions on phone discoverability.",
+      "sendCodeBtn": "Send verification code"
     }
   },
   "notifications": {

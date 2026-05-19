@@ -87,7 +87,13 @@
       "signOutBtn": "Abmelden",
       "nameRequired": "Vor- und Nachname sind erforderlich",
       "saveFailed": "Profil konnte nicht gespeichert werden",
-      "languageLabel": "Sprache"
+      "languageLabel": "Sprache",
+      "removePhoneBtn": "Telefonnummer entfernen",
+      "removePhoneConfirmTitle": "Telefonnummer entfernen",
+      "removePhoneDisclaimer": "Ihre Telefonnummer wird entfernt. Wenn Sie diese Nummer erneut hinzufügen, müssen Sie sie erneut verifizieren.",
+      "removePhoneConfirmBtn": "Entfernen",
+      "removePhoneCancelBtn": "Abbrechen",
+      "removePhoneFailed": "Telefonnummer konnte nicht entfernt werden"
     },
     "phoneVerification": {
       "title": "Telefon verifizieren",
@@ -103,7 +109,8 @@
       "resendCountdown": "Erneut senden in",
       "sendingBtn": "Wird gesendet...",
       "resendBtn": "Code erneut senden",
-      "verifiedMsg": "Telefon verifiziert!"
+      "verifiedMsg": "Telefon verifiziert!",
+      "alreadyRegisteredError": "Diese Telefonnummer ist bereits bei TourenBuddy registriert. Besitzt du ein weiteres TourenBuddy Profil? Bei Fragen erreichst du uns unter feedback{'@'}tourenbuddy.ch."
     },
     "shared": {
       "firstNameLabel": "Vorname",
@@ -417,7 +424,8 @@
     "verificationNotice": {
       "title": "Hinweis zur Auffindbarkeit",
       "body": "Nach der Verifizierung können andere verifizierte TourenBuddy-Nutzer, die diese Nummer in ihren Kontakten haben, erkennen, dass ein Konto für diese Nummer existiert, und eine Freundschaftsanfrage senden. Ihre Identität wird dabei nicht preisgegeben. Unverifizierte Nummern sind nie auffindbar. Sie können jede eingehende Anfrage ohne Begründung und ohne Konsequenzen ablehnen. Freundschaften können in Zukunft widerrufen werden.",
-      "acknowledge": "Ich verstehe, Code senden"
+      "acknowledge": "Ich verstehe die Bedingungen zur Auffindbarkeit der Telefonnummer.",
+      "sendCodeBtn": "Verifizierungscode senden"
     }
   },
   "notifications": {

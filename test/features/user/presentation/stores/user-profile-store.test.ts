@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { InvalidPhoneNumberError } from '@/core/exceptions'
+import { InvalidPhoneNumberError, PhoneAlreadyRegisteredError } from '@/core/exceptions'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
 const { mockGetUserById, mockUpsertProfile } = vi.hoisted(() => ({
@@ -24,17 +24,21 @@ vi.mock('@/features/user/data/repositories/user-profile-repository-impl', () => 
   })),
 }))
 
+const mockRefreshCurrentUser = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+
 vi.mock('@/features/auth/presentation/stores/auth-store', () => ({
   useAuthStore: vi.fn().mockReturnValue({
     get currentUser() {
       return mockCurrentUser.value
     },
+    refreshCurrentUser: mockRefreshCurrentUser,
   }),
 }))
 
-const { mockUpdateUser, mockVerifyOtp } = vi.hoisted(() => ({
+const { mockUpdateUser, mockVerifyOtp, mockRpc } = vi.hoisted(() => ({
   mockUpdateUser: vi.fn().mockResolvedValue({ error: null }),
   mockVerifyOtp: vi.fn().mockResolvedValue({ error: null }),
+  mockRpc: vi.fn().mockResolvedValue({ data: null, error: null }),
 }))
 
 vi.mock('@/core/utils/supabase', () => ({
@@ -43,6 +47,7 @@ vi.mock('@/core/utils/supabase', () => ({
       updateUser: mockUpdateUser,
       verifyOtp: mockVerifyOtp,
     },
+    rpc: mockRpc,
   },
 }))
 
@@ -271,6 +276,73 @@ describe('useUserProfileStore', () => {
       const store = useUserProfileStore()
       await store.verifyPhone('+41 79 123 45 67', '123456')
       expect(mockVerifyOtp).toHaveBeenCalledWith(expect.objectContaining({ phone: '+41791234567' }))
+    })
+  })
+
+  describe('checkPhoneAvailability', () => {
+    it('throws PhoneAlreadyRegisteredError when is_phone_registered returns true', async () => {
+      mockRpc.mockResolvedValueOnce({ data: true, error: null })
+
+      const store = useUserProfileStore()
+      await expect(store.checkPhoneAvailability('+41791234567')).rejects.toBeInstanceOf(
+        PhoneAlreadyRegisteredError,
+      )
+      expect(mockUpdateUser).not.toHaveBeenCalled()
+    })
+
+    it('resolves when is_phone_registered returns false', async () => {
+      mockRpc.mockResolvedValueOnce({ data: false, error: null })
+
+      const store = useUserProfileStore()
+      await expect(store.checkPhoneAvailability('+41791234567')).resolves.toBeUndefined()
+    })
+
+    it('runs RPC even when caller is not phone-verified', async () => {
+      mockRpc.mockResolvedValueOnce({ data: false, error: null })
+
+      const store = useUserProfileStore()
+      await store.checkPhoneAvailability('+41791234567')
+      expect(mockRpc).toHaveBeenCalledWith('is_phone_registered', { p_phone: '+41791234567' })
+    })
+  })
+
+  describe('sendPhoneVerification fallback', () => {
+    it('throws PhoneAlreadyRegisteredError when updateUser returns already-registered error', async () => {
+      mockUpdateUser.mockResolvedValueOnce({ error: { message: 'User already registered' } })
+
+      const store = useUserProfileStore()
+      await expect(store.sendPhoneVerification('+41791234567')).rejects.toBeInstanceOf(
+        PhoneAlreadyRegisteredError,
+      )
+    })
+
+    it('propagates unrelated updateUser error unchanged', async () => {
+      mockUpdateUser.mockResolvedValueOnce({ error: { message: 'Rate limit exceeded' } })
+
+      const store = useUserProfileStore()
+      await expect(store.sendPhoneVerification('+41791234567')).rejects.toThrow('Rate limit exceeded')
+    })
+  })
+
+  describe('deletePhone', () => {
+    it('propagates RPC error to store.error', async () => {
+      mockRpc.mockResolvedValueOnce({ data: null, error: { message: 'DB error' } })
+
+      const store = useUserProfileStore()
+      await store.deletePhone()
+
+      expect(store.error).toBe('DB error')
+      expect(mockRefreshCurrentUser).not.toHaveBeenCalled()
+    })
+
+    it('calls refreshSession on success and clears error', async () => {
+      mockRpc.mockResolvedValueOnce({ data: null, error: null })
+
+      const store = useUserProfileStore()
+      await store.deletePhone()
+
+      expect(store.error).toBeNull()
+      expect(mockRefreshCurrentUser).toHaveBeenCalled()
     })
   })
 })

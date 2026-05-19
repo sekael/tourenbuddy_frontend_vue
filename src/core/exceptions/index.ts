@@ -48,6 +48,8 @@ export class FriendshipExistsError extends Error {
   }
 }
 
+export { PhoneAlreadyRegisteredError } from './phone-already-registered-error'
+
 /** Thrown when a contact method insert violates the unique constraint (contact_methods_unique_per_contact). */
 export class DuplicateContactMethodError extends Error {
   readonly i18nKey = 'contacts.errors.duplicateMethod'

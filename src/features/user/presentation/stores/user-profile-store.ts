@@ -3,7 +3,7 @@ import type { FullUserProfile } from '@/features/user/domain/entities/full-user-
 import type { UserProfile } from '@/features/user/domain/entities/user-profile'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { InvalidPhoneNumberError } from '@/core/exceptions'
+import { InvalidPhoneNumberError, PhoneAlreadyRegisteredError } from '@/core/exceptions'
 import { useLogger } from '@/core/logging/use-logger'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import { supabase } from '@/core/utils/supabase'
@@ -117,13 +117,39 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     }
   }
 
+  async function checkPhoneAvailability(phone: string) {
+    const normalizeResult = normalizePhone(phone)
+    if (!normalizeResult.ok)
+      throw new InvalidPhoneNumberError()
+    const e164 = normalizeResult.e164
+
+    const { data: taken } = await supabase.rpc('is_phone_registered', { p_phone: e164 })
+    if (taken)
+      throw new PhoneAlreadyRegisteredError()
+  }
+
   async function sendPhoneVerification(phone: string) {
     const normalizeResult = normalizePhone(phone)
     if (!normalizeResult.ok)
       throw new InvalidPhoneNumberError()
-    const { error: updateError } = await supabase.auth.updateUser({ phone: normalizeResult.e164 })
-    if (updateError)
+    const e164 = normalizeResult.e164
+
+    const { error: updateError } = await supabase.auth.updateUser({ phone: e164 })
+    if (updateError) {
+      if (/already|exists|registered|in use/i.test(updateError.message))
+        throw new PhoneAlreadyRegisteredError()
       throw new Error(updateError.message)
+    }
+  }
+
+  async function deletePhone() {
+    error.value = null
+    const { error: rpcError } = await supabase.rpc('delete_own_phone')
+    if (rpcError) {
+      error.value = rpcError.message
+      return
+    }
+    await authStore.refreshCurrentUser()
   }
 
   async function verifyPhone(phone: string, token: string) {
@@ -159,8 +185,10 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     loadProfile,
     updateProfile,
     setLocale,
+    checkPhoneAvailability,
     sendPhoneVerification,
     verifyPhone,
+    deletePhone,
     skipOnboarding,
     clear,
   }
