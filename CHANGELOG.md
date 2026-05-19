@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.21.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.20.0...tourenbuddy-frontend-v0.21.0) (2026-05-19)
+
+
+### Features
+
+* **user:** Allow deleting phone number with reverify disclaimer ([#157](https://github.com/sekael/tourenbuddy_frontend_vue/issues/157)) ([#167](https://github.com/sekael/tourenbuddy_frontend_vue/issues/167)) ([ec72b0f](https://github.com/sekael/tourenbuddy_frontend_vue/commit/ec72b0fad5e61ee34fff9769f6635addb7df9827))
+
+
+### Bug Fixes
+
+* **map:** Render GPX track below tour markers ([#124](https://github.com/sekael/tourenbuddy_frontend_vue/issues/124)) ([#165](https://github.com/sekael/tourenbuddy_frontend_vue/issues/165)) ([a0b940d](https://github.com/sekael/tourenbuddy_frontend_vue/commit/a0b940d1a148d04443a1ee261df77ad06d25c28c))
+
 ## [0.20.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.19.1...tourenbuddy-frontend-v0.20.0) (2026-05-18)
 
 
