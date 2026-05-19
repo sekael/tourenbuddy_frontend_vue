@@ -3,7 +3,7 @@ import type { FullUserProfile } from '@/features/user/domain/entities/full-user-
 import type { UserProfile } from '@/features/user/domain/entities/user-profile'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { InvalidPhoneNumberError } from '@/core/exceptions'
+import { InvalidPhoneNumberError, PhoneAlreadyRegisteredError } from '@/core/exceptions'
 import { useLogger } from '@/core/logging/use-logger'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import { supabase } from '@/core/utils/supabase'
@@ -121,9 +121,30 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     const normalizeResult = normalizePhone(phone)
     if (!normalizeResult.ok)
       throw new InvalidPhoneNumberError()
-    const { error: updateError } = await supabase.auth.updateUser({ phone: normalizeResult.e164 })
-    if (updateError)
+    const e164 = normalizeResult.e164
+
+    if (authStore.currentUser?.phone_confirmed_at) {
+      const { data: ownerId } = await supabase.rpc('find_user_by_phone', { p_phone: e164 })
+      if (ownerId && ownerId !== authStore.currentUser.id)
+        throw new PhoneAlreadyRegisteredError()
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser({ phone: e164 })
+    if (updateError) {
+      if (/already|exists|registered|in use/i.test(updateError.message))
+        throw new PhoneAlreadyRegisteredError()
       throw new Error(updateError.message)
+    }
+  }
+
+  async function deletePhone() {
+    error.value = null
+    const { error: rpcError } = await supabase.rpc('delete_own_phone')
+    if (rpcError) {
+      error.value = rpcError.message
+      return
+    }
+    await supabase.auth.refreshSession()
   }
 
   async function verifyPhone(phone: string, token: string) {
@@ -161,6 +182,7 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     setLocale,
     sendPhoneVerification,
     verifyPhone,
+    deletePhone,
     skipOnboarding,
     clear,
   }

@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { InvalidPhoneNumberError } from '@/core/exceptions'
+import { InvalidPhoneNumberError, PhoneAlreadyRegisteredError } from '@/core/exceptions'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
 const { mockGetUserById, mockUpsertProfile } = vi.hoisted(() => ({
@@ -32,9 +32,11 @@ vi.mock('@/features/auth/presentation/stores/auth-store', () => ({
   }),
 }))
 
-const { mockUpdateUser, mockVerifyOtp } = vi.hoisted(() => ({
+const { mockUpdateUser, mockVerifyOtp, mockRpc, mockRefreshSession } = vi.hoisted(() => ({
   mockUpdateUser: vi.fn().mockResolvedValue({ error: null }),
   mockVerifyOtp: vi.fn().mockResolvedValue({ error: null }),
+  mockRpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+  mockRefreshSession: vi.fn().mockResolvedValue({ data: null, error: null }),
 }))
 
 vi.mock('@/core/utils/supabase', () => ({
@@ -42,7 +44,9 @@ vi.mock('@/core/utils/supabase', () => ({
     auth: {
       updateUser: mockUpdateUser,
       verifyOtp: mockVerifyOtp,
+      refreshSession: mockRefreshSession,
     },
+    rpc: mockRpc,
   },
 }))
 
@@ -271,6 +275,76 @@ describe('useUserProfileStore', () => {
       const store = useUserProfileStore()
       await store.verifyPhone('+41 79 123 45 67', '123456')
       expect(mockVerifyOtp).toHaveBeenCalledWith(expect.objectContaining({ phone: '+41791234567' }))
+    })
+  })
+
+  describe('sendPhoneVerification pre-check', () => {
+    it('throws PhoneAlreadyRegisteredError when pre-check returns another user UUID', async () => {
+      mockCurrentUser.value = {
+        id: 'user-123',
+        email: 'test@example.com',
+        phone: '+41791234567',
+        phone_confirmed_at: '2024-01-01T00:00:00Z',
+      }
+      mockRpc.mockResolvedValueOnce({ data: 'other-user-456', error: null })
+
+      const store = useUserProfileStore()
+      await expect(store.sendPhoneVerification('+41791234567')).rejects.toBeInstanceOf(
+        PhoneAlreadyRegisteredError,
+      )
+      expect(mockUpdateUser).not.toHaveBeenCalled()
+    })
+
+    it('proceeds to updateUser when pre-check returns own UUID', async () => {
+      mockCurrentUser.value = {
+        id: 'user-123',
+        email: 'test@example.com',
+        phone: '+41791234567',
+        phone_confirmed_at: '2024-01-01T00:00:00Z',
+      }
+      mockRpc.mockResolvedValueOnce({ data: 'user-123', error: null })
+
+      const store = useUserProfileStore()
+      await store.sendPhoneVerification('+41791234567')
+      expect(mockUpdateUser).toHaveBeenCalledWith({ phone: '+41791234567' })
+    })
+
+    it('throws PhoneAlreadyRegisteredError when updateUser returns already-registered error', async () => {
+      mockUpdateUser.mockResolvedValueOnce({ error: { message: 'User already registered' } })
+
+      const store = useUserProfileStore()
+      await expect(store.sendPhoneVerification('+41791234567')).rejects.toBeInstanceOf(
+        PhoneAlreadyRegisteredError,
+      )
+    })
+
+    it('propagates unrelated updateUser error unchanged', async () => {
+      mockUpdateUser.mockResolvedValueOnce({ error: { message: 'Rate limit exceeded' } })
+
+      const store = useUserProfileStore()
+      await expect(store.sendPhoneVerification('+41791234567')).rejects.toThrow('Rate limit exceeded')
+    })
+  })
+
+  describe('deletePhone', () => {
+    it('propagates RPC error to store.error', async () => {
+      mockRpc.mockResolvedValueOnce({ data: null, error: { message: 'DB error' } })
+
+      const store = useUserProfileStore()
+      await store.deletePhone()
+
+      expect(store.error).toBe('DB error')
+      expect(mockRefreshSession).not.toHaveBeenCalled()
+    })
+
+    it('calls refreshSession on success and clears error', async () => {
+      mockRpc.mockResolvedValueOnce({ data: null, error: null })
+
+      const store = useUserProfileStore()
+      await store.deletePhone()
+
+      expect(store.error).toBeNull()
+      expect(mockRefreshSession).toHaveBeenCalled()
     })
   })
 })
