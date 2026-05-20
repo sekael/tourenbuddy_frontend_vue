@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { FriendRequest } from '@/features/friendships/data/models/friendship-schemas'
 import { storeToRefs } from 'pinia'
-import { onMounted, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import { useSnackbar } from '@/core/composables/use-snackbar'
@@ -53,8 +53,16 @@ async function resolveRequestInfo() {
   await store.getNamesByUserIds([...new Set(incomingRequests.value.map(r => r.fromUserId))])
 }
 
-onMounted(resolveRequestInfo)
-watch([incomingRequests, outgoingRequests], resolveRequestInfo)
+// Refetch friend requests whenever the sheet mounts or the contacts list changes
+// (deleting a contact triggers a DB cleanup of pending requests via trigger).
+watch(
+  contacts,
+  async () => {
+    await store.fetchAll()
+  },
+  { immediate: true },
+)
+watch([incomingRequests, outgoingRequests], resolveRequestInfo, { immediate: true })
 
 async function maybeCreateContactForFriend(userId: string) {
   const phone = userIdToPhoneMap.value.get(userId)

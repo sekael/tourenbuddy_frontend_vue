@@ -40,7 +40,7 @@
   },
   "auth": {
     "home": {
-      "subtitle": "Planen Sie Ihre Outdoor-Touren mit Sicherheit",
+      "subtitle": "Plane Outdoor-Abenteuer mit Freunden",
       "getStartedBtn": "Loslegen"
     },
     "emailEntry": {
@@ -62,10 +62,10 @@
       "inputLabel": "Anmeldecode",
       "inputPlaceholder": "123456",
       "verifyBtn": "Bestätigen",
-      "verifyError": "Ungültiger oder abgelaufener Code. Bitte versuchen Sie es erneut.",
+      "verifyError": "Ungültiger oder abgelaufener Code. Bitte versuche es erneut.",
       "resendBtn": "Code erneut senden",
-      "resendSuccess": "Code erneut gesendet! Prüfen Sie Ihre E-Mails.",
-      "resendError": "Code konnte nicht erneut gesendet werden. Bitte versuchen Sie es erneut.",
+      "resendSuccess": "Code erneut gesendet! Prüfe Deine E-Mails.",
+      "resendError": "Code konnte nicht erneut gesendet werden. Bitte versuche es erneut.",
       "backBtn": "Zurück"
     }
   },
@@ -90,21 +90,21 @@
       "languageLabel": "Sprache",
       "removePhoneBtn": "Telefonnummer entfernen",
       "removePhoneConfirmTitle": "Telefonnummer entfernen",
-      "removePhoneDisclaimer": "Ihre Telefonnummer wird entfernt. Wenn Sie diese Nummer erneut hinzufügen, müssen Sie sie erneut verifizieren.",
+      "removePhoneDisclaimer": "Deine Telefonnummer wird entfernt. Wenn Du diese Nummer erneut hinzufügst, musst Du sie erneut verifizieren.",
       "removePhoneConfirmBtn": "Entfernen",
       "removePhoneCancelBtn": "Abbrechen",
       "removePhoneFailed": "Telefonnummer konnte nicht entfernt werden",
-      "removePhonePendingWarning": "Sie haben offene Freundschaftsanfragen. Das Entfernen Ihrer Telefonnummer bricht alle offenen Anfragen ab.",
-      "removePhoneFriendshipWarning": "Sie haben aktive Freundschaften. Das Entfernen Ihrer Telefonnummer entfernt alle Freundschaftsverbindungen.",
-      "removePhoneBothWarning": "Sie haben aktive Freundschaften und offene Anfragen. Das Entfernen Ihrer Telefonnummer entfernt alle Freundschaftsverbindungen und bricht alle Anfragen ab."
+      "removePhonePendingWarning": "Du hast offene Freundschaftsanfragen. Das Entfernen Deiner Telefonnummer bricht alle offenen Anfragen ab.",
+      "removePhoneFriendshipWarning": "Du hast aktive Freundschaften. Das Entfernen Deiner Telefonnummer entfernt alle Freundschaftsverbindungen.",
+      "removePhoneBothWarning": "Du hast aktive Freundschaften und offene Anfragen. Das Entfernen Deiner Telefonnummer entfernt alle Freundschaftsverbindungen und bricht alle Anfragen ab."
     },
     "phoneVerification": {
       "title": "Telefon verifizieren",
       "subtitlePrefix": "Wir haben einen Code gesendet an",
       "codeLabel": "Bestätigungscode",
       "codePlaceholder": "000000",
-      "incompleteCode": "Bitte geben Sie den vollständigen 6-stelligen Code ein",
-      "invalidCode": "Ungültiger Code. Bitte versuchen Sie es erneut.",
+      "incompleteCode": "Bitte gebe den vollständigen 6-stelligen Code ein",
+      "invalidCode": "Ungültiger Code. Bitte versuche es erneut.",
       "resendSuccess": "Code erneut gesendet!",
       "verifyingBtn": "Wird überprüft...",
       "verifyBtn": "Verifizieren",
@@ -113,7 +113,7 @@
       "sendingBtn": "Wird gesendet...",
       "resendBtn": "Code erneut senden",
       "verifiedMsg": "Telefon verifiziert!",
-      "alreadyRegisteredError": "Diese Telefonnummer ist bereits bei TourenBuddy registriert. Besitzt du ein weiteres TourenBuddy Profil? Bei Fragen erreichst du uns unter feedback{'@'}tourenbuddy.ch."
+      "alreadyRegisteredError": "Diese Telefonnummer ist bereits von einem TourenBuddy registriert worden. Besitzt du ein weiteres TourenBuddy Profil? Bei Fragen erreichst du uns unter feedback{'@'}tourenbuddy.ch."
     },
     "shared": {
       "firstNameLabel": "Vorname",
@@ -143,7 +143,7 @@
       "skippedLabel": "übersprungen",
       "addManuallyBtn": "Kontakt manuell hinzufügen",
       "emptyTitle": "Noch keine Kontakte.",
-      "emptySubtitle": "Fügen Sie Kontakte hinzu, um sie als Tourpartner zu verwenden.",
+      "emptySubtitle": "Füge Kontakte hinzu, um sie als Tourpartner zu verwenden.",
       "noMatchesTitle": "Keine Kontakte gefunden.",
       "clearFiltersBtn": "Filter zurücksetzen",
       "searchPlaceholder": "Kontakte suchen…",
@@ -210,7 +210,7 @@
       "saveFailed": "Änderungen konnten nicht gespeichert werden",
       "deleteConfirm": "Kontakt löschen?",
       "deleteFriendWarning": "Dieser Kontakt ist mit einem TourenBuddy-Freund verknüpft. Das Löschen entfernt auch die Freundschaftsverbindung.",
-      "deletePendingWarning": "Sie haben eine offene Freundschaftsanfrage mit diesem Kontakt. Das Löschen bricht die offene Anfrage ab.",
+      "deletePendingWarning": "Du hast eine offene Freundschaftsanfrage an diesen Kontakt. Das Löschen bricht die offene Anfrage ab.",
       "deleteFriendAndPendingWarning": "Dieser Kontakt ist mit einem TourenBuddy-Freund verknüpft. Das Löschen entfernt die Freundschaftsverbindung und bricht die offene Anfrage ab.",
       "deleteBtn": "Kontakt löschen",
       "deletingBtn": "Wird gelöscht...",
@@ -415,13 +415,13 @@
     "requestSent": "Anfrage gesendet",
     "learnMore": "Mehr erfahren",
     "inboxEmpty": "Keine ausstehenden Freundschaftsanfragen.",
-    "inboxDenyRightsNote": "Sie können jede Anfrage ohne Begründung ablehnen. Eine Ablehnung hat keine Konsequenzen und gibt Ihre Identität nicht preis.",
+    "inboxDenyRightsNote": "Du kannst jede Anfrage ohne Begründung ablehnen. Eine Ablehnung hat keine Konsequenzen und gibt Deine Identität nicht preis.",
     "accept": "Annehmen",
     "deny": "Ablehnen",
     "cancel": "Abbrechen",
     "requestFrom": "Anfrage von",
     "requestTo": "Anfrage an",
-    "verifyPhoneHint": "Verifizieren Sie Ihre Telefonnummer, um sich mit anderen Nutzern zu vernetzen.",
+    "verifyPhoneHint": "Verifiziere Deine Telefonnummer, um dich mit anderen Nutzern zu vernetzen.",
     "friendsListLink": "Freundschaftsanfragen",
     "contactCreated": "Kontakt für neuen Freund erstellt",
     "tooltip": "Freund auf TourenBuddy",

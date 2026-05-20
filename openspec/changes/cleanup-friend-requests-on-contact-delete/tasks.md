@@ -61,7 +61,7 @@
 - [x] 6.1 `npx eslint . --fix` — zero warnings
 - [x] 6.2 `npm run type-check`
 - [x] 6.3 `npm run test` — all green
-- [ ] 6.4 Prompt user to commit (do NOT run `git commit`). Suggested message: `feat(friendships): auto-cleanup friendships and pending requests on link break (#143)`
-- [ ] 6.5 Prompt user to push branch and open PR; reference issue #143
-- [ ] 6.6 After merge & verification on preview, prompt user to run `supabase db push` to apply migration to prod
-- [ ] 6.7 Prompt user to archive this change via `/opsx:archive`
+- [x] 6.4 Prompt user to commit (do NOT run `git commit`). Suggested message: `feat(friendships): auto-cleanup friendships and pending requests on link break (#143)`
+- [x] 6.5 Prompt user to push branch and open PR; reference issue #143
+- [x] 6.6 After merge & verification on preview, prompt user to run `supabase db push` to apply migration to prod
+- [x] 6.7 Prompt user to archive this change via `/opsx:archive`
