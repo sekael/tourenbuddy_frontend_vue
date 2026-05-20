@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.22.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.21.0...tourenbuddy-frontend-v0.22.0) (2026-05-20)
+
+
+### Features
+
+* Cleanup friendships on link break ([#170](https://github.com/sekael/tourenbuddy_frontend_vue/issues/170)) ([5b493a9](https://github.com/sekael/tourenbuddy_frontend_vue/commit/5b493a94b98c6e0b51d54495b9ef913b69b8a714))
+* Friendships realtime sync ([#175](https://github.com/sekael/tourenbuddy_frontend_vue/issues/175)) ([c491749](https://github.com/sekael/tourenbuddy_frontend_vue/commit/c49174928c7a7dbd11309a781dd51efb03bad22a))
+* **i18n:** Use Du-form in German locale ([#173](https://github.com/sekael/tourenbuddy_frontend_vue/issues/173)) ([28534af](https://github.com/sekael/tourenbuddy_frontend_vue/commit/28534afb83c0ad390391f32b674b889761915f89))
+
 ## [0.21.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.20.0...tourenbuddy-frontend-v0.21.0) (2026-05-19)
 
 
