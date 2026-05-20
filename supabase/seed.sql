@@ -4,11 +4,19 @@
 -- Runs automatically on `supabase db reset` (configured via [db.seed] in
 -- config.toml). NEVER pushed to production by `supabase db push`.
 --
--- Four test users with verified phone numbers so friendship features work:
---   Patrick (patrick@tourenbuddy.ch / +41790000001) — friends with Jakob
+-- Five test users with verified phone numbers so friendship features work:
+--   Patrick (patrick@tourenbuddy.ch / +41790000001) — friends with Jakob; friends with Selim
 --   Jakob   (jakob@tourenbuddy.ch   / +41790000002) — friends with Patrick
---   Reni    (reni@tourenbuddy.ch    / +41790000003) — pending friend req → Patrick
---   Selim   (selim@tourenbuddy.ch   / +41790000004) — no profile name set
+--   Reni    (reni@tourenbuddy.ch    / +41790000003) — pending friend req → Patrick; pending friend req → Selim
+--   Selim   (selim@tourenbuddy.ch   / +41790000004) — no profile name set; friends with Patrick;
+--                                                    pending friend req → Anna; pending incoming from Reni
+--   Anna    (anna@tourenbuddy.ch    / +41790000005) — pending incoming from Selim
+--
+-- The Selim/Anna/Reni triplet exercises friendship+request cleanup paths:
+--   • deleting Selim's "Patrick" contact (or its phone) → removes Selim↔Patrick friendship
+--   • deleting Selim's "Anna" contact (or its phone) → cancels Selim→Anna pending (outgoing)
+--   • deleting Selim's "Reni" contact (or its phone) → denies Reni→Selim pending (incoming)
+--   • delete_own_phone() on Selim → all three cleaned in one transaction
 --
 -- Login locally via OTP code "123456" (see [auth.sms.test_otp] and
 -- [auth.email.test_otp] in supabase/config.toml).
@@ -65,6 +73,16 @@ INSERT INTO auth.users (
    '41790000004', now(),
    '{"provider":"email","providers":["email","phone"]}'::jsonb,
    '{}'::jsonb,
+   now(), now(), '', '', '', ''),
+  ('55555555-5555-5555-5555-555555555555',
+   '00000000-0000-0000-0000-000000000000',
+   'authenticated', 'authenticated',
+   'anna@tourenbuddy.ch',
+   crypt('test-password-123', gen_salt('bf')),
+   now(),
+   '41790000005', now(),
+   '{"provider":"email","providers":["email","phone"]}'::jsonb,
+   '{"first_name":"Anna","last_name":"Tester"}'::jsonb,
    now(), now(), '', '', '', '')
 ON CONFLICT (id) DO NOTHING;
 
@@ -89,6 +107,10 @@ INSERT INTO auth.identities (
   ('44444444-4444-4444-4444-444444444444',
    '44444444-4444-4444-4444-444444444444',
    jsonb_build_object('sub','44444444-4444-4444-4444-444444444444','email','selim@tourenbuddy.ch','email_verified',true,'phone_verified',true),
+   'email', now(), now(), now()),
+  ('55555555-5555-5555-5555-555555555555',
+   '55555555-5555-5555-5555-555555555555',
+   jsonb_build_object('sub','55555555-5555-5555-5555-555555555555','email','anna@tourenbuddy.ch','email_verified',true,'phone_verified',true),
    'email', now(), now(), now())
 ON CONFLICT (provider, provider_id) DO NOTHING;
 
@@ -98,7 +120,8 @@ VALUES
   ('11111111-1111-1111-1111-111111111111', 'Patrick', 'Tester', 'de-CH'),
   ('22222222-2222-2222-2222-222222222222', 'Jakob',   'Tester', 'de-CH'),
   ('33333333-3333-3333-3333-333333333333', 'Reni',    'Tester', 'de-CH'),
-  ('44444444-4444-4444-4444-444444444444', null,      null,     'de-CH')
+  ('44444444-4444-4444-4444-444444444444', null,      null,     'de-CH'),
+  ('55555555-5555-5555-5555-555555555555', 'Anna',    'Tester', 'de-CH')
 ON CONFLICT (id) DO NOTHING;
 
 -- ----- public.contacts ------------------------------------------------------
@@ -109,33 +132,56 @@ INSERT INTO public.contacts (id, first_name, last_name, display_name, user_id) V
   ('aaaaaaaa-0000-0000-0000-000000000002', 'Patrick', 'Tester', 'Patrick Tester',
    '22222222-2222-2222-2222-222222222222'),
   ('aaaaaaaa-0000-0000-0000-000000000003', 'Patrick', 'Tester', 'Patrick Tester',
-   '33333333-3333-3333-3333-333333333333')
+   '33333333-3333-3333-3333-333333333333'),
+  -- Selim's contacts cover all three cleanup paths (friendship, outgoing pending, incoming pending).
+  ('aaaaaaaa-0000-0000-0000-000000000004', 'Patrick', 'Tester', 'Patrick Tester',
+   '44444444-4444-4444-4444-444444444444'),
+  ('aaaaaaaa-0000-0000-0000-000000000005', 'Anna',    'Tester', 'Anna Tester',
+   '44444444-4444-4444-4444-444444444444'),
+  ('aaaaaaaa-0000-0000-0000-000000000006', 'Reni',    'Tester', 'Reni Tester',
+   '44444444-4444-4444-4444-444444444444')
 ON CONFLICT (id) DO NOTHING;
 
 -- ----- public.contact_methods (phones with leading '+') ---------------------
 INSERT INTO public.contact_methods (contact_id, method_type, value, is_primary) VALUES
   ('aaaaaaaa-0000-0000-0000-000000000001', 'phone', '+41790000002', true),
   ('aaaaaaaa-0000-0000-0000-000000000002', 'phone', '+41790000001', true),
-  ('aaaaaaaa-0000-0000-0000-000000000003', 'phone', '+41790000001', true)
+  ('aaaaaaaa-0000-0000-0000-000000000003', 'phone', '+41790000001', true),
+  ('aaaaaaaa-0000-0000-0000-000000000004', 'phone', '+41790000001', true),
+  ('aaaaaaaa-0000-0000-0000-000000000005', 'phone', '+41790000005', true),
+  ('aaaaaaaa-0000-0000-0000-000000000006', 'phone', '+41790000003', true)
 ON CONFLICT (contact_id, method_type, value) DO NOTHING;
 
--- ----- public.friendships (Patrick ↔ Jakob) --------------------------------
+-- ----- public.friendships ---------------------------------------------------
+-- Patrick ↔ Jakob (long-standing). Patrick ↔ Selim (exercises Selim's friendship-cleanup paths).
 INSERT INTO public.friendships (request_user_id, response_user_id, created_at)
-VALUES (
-  '11111111-1111-1111-1111-111111111111',
-  '22222222-2222-2222-2222-222222222222',
-  now()
-)
+VALUES
+  ('11111111-1111-1111-1111-111111111111',
+   '22222222-2222-2222-2222-222222222222',
+   now()),
+  ('11111111-1111-1111-1111-111111111111',
+   '44444444-4444-4444-4444-444444444444',
+   now())
 ON CONFLICT DO NOTHING;
 
--- ----- public.friend_requests (Reni → Patrick, pending) --------------------
+-- ----- public.friend_requests (pending) ------------------------------------
+-- Reni → Patrick: existing scenario.
+-- Selim → Anna: outgoing pending from Selim's perspective (cancelled when Selim deletes contact "Anna").
+-- Reni → Selim: incoming pending from Selim's perspective (denied when Selim deletes contact "Reni").
 INSERT INTO public.friend_requests (id, from_user_id, to_user_id, status, created_at)
-VALUES (
-  'bbbbbbbb-0000-0000-0000-000000000001',
-  '33333333-3333-3333-3333-333333333333',
-  '11111111-1111-1111-1111-111111111111',
-  'pending', now()
-)
+VALUES
+  ('bbbbbbbb-0000-0000-0000-000000000001',
+   '33333333-3333-3333-3333-333333333333',
+   '11111111-1111-1111-1111-111111111111',
+   'pending', now()),
+  ('bbbbbbbb-0000-0000-0000-000000000002',
+   '44444444-4444-4444-4444-444444444444',
+   '55555555-5555-5555-5555-555555555555',
+   'pending', now()),
+  ('bbbbbbbb-0000-0000-0000-000000000003',
+   '33333333-3333-3333-3333-333333333333',
+   '44444444-4444-4444-4444-444444444444',
+   'pending', now())
 ON CONFLICT (id) DO NOTHING;
 
 -- ----- public.tours ---------------------------------------------------------

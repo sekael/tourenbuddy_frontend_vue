@@ -40,7 +40,7 @@
   },
   "auth": {
     "home": {
-      "subtitle": "Plan your outdoor tours with confidence",
+      "subtitle": "Plan outdoor adventures with friends",
       "getStartedBtn": "Get Started"
     },
     "emailEntry": {
@@ -93,7 +93,10 @@
       "removePhoneDisclaimer": "Your phone number will be removed. If you add this number again, you will need to verify it once more.",
       "removePhoneConfirmBtn": "Remove",
       "removePhoneCancelBtn": "Cancel",
-      "removePhoneFailed": "Failed to remove phone number"
+      "removePhoneFailed": "Failed to remove phone number",
+      "removePhonePendingWarning": "You have pending friend requests. Removing your phone number will cancel all pending requests.",
+      "removePhoneFriendshipWarning": "You have active friendships. Removing your phone number will remove all friendship connections.",
+      "removePhoneBothWarning": "You have active friendships and pending friend requests. Removing your phone number will remove all friendship connections and cancel all pending requests."
     },
     "phoneVerification": {
       "title": "Verify your phone",
@@ -207,10 +210,14 @@
       "saveFailed": "Could not save changes",
       "deleteConfirm": "Delete this contact?",
       "deleteFriendWarning": "This contact is linked to a TourenBuddy friend. Deleting it will also remove your friendship connection.",
+      "deletePendingWarning": "You have a pending friend request with this contact. Deleting it will cancel the pending request.",
+      "deleteFriendAndPendingWarning": "This contact is linked to a TourenBuddy friend. Deleting it will remove your friendship connection and cancel the pending request.",
       "deleteBtn": "Delete contact",
       "deletingBtn": "Deleting...",
       "removeMethodConfirm": "Remove this contact method?",
       "removeMethodFriendWarning": "This phone number is linked to a TourenBuddy friend. Removing it will also terminate the friendship connection.",
+      "removeMethodPendingWarning": "You have a pending friend request linked to this phone number. Removing it will cancel the pending request.",
+      "removeMethodFriendAndPendingWarning": "This phone number is linked to a TourenBuddy friend and has a pending request. Removing it will terminate the friendship and cancel the pending request.",
       "removeBtn": "Remove",
       "removingMethodBtn": "Removing..."
     },

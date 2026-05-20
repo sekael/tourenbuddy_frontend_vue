@@ -11,6 +11,7 @@ import { formatPhoneForDisplay } from '@/core/utils/phone-normalize'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import PhoneVerificationNotice from '@/features/friendships/presentation/components/phone-verification-notice.vue'
+import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useLocaleStore } from '@/features/i18n/presentation/stores/use-locale-store'
 import NotificationPreferencesSection from '@/features/notifications/presentation/components/notification-preferences-section.vue'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
@@ -26,6 +27,7 @@ const userProfileStore = useUserProfileStore()
 const contactsStore = useContactsStore()
 const toursStore = useToursStore()
 const localeStore = useLocaleStore()
+const friendshipsStore = useFriendshipsStore()
 
 const isEditing = ref(false)
 const editFirstName = ref('')
@@ -41,6 +43,7 @@ const showRemovePhoneConfirm = ref(false)
 const isRemovingPhone = ref(false)
 const pendingPhone = ref('')
 const pendingPhoneForNotice = ref('')
+const removePhoneRelationships = ref<{ hasPending: boolean, hasFriendship: boolean } | null>(null)
 
 const full = computed(() => userProfileStore.fullProfile)
 
@@ -165,6 +168,7 @@ function handleNoticeClose() {
 
 async function handleRemovePhone() {
   if (full.value?.phoneVerified) {
+    removePhoneRelationships.value = friendshipsStore.currentUserHasAnyRelationship()
     showRemovePhoneConfirm.value = true
   }
   else {
@@ -328,6 +332,21 @@ async function handleSignOut() {
             <p class="remove-phone-disclaimer">
               <span class="material-symbols-outlined warn-icon">warning</span>
               {{ t('user.profile.removePhoneDisclaimer') }}
+            </p>
+            <p
+              v-if="removePhoneRelationships?.hasFriendship && removePhoneRelationships?.hasPending"
+              class="remove-phone-disclaimer"
+            >
+              <span class="material-symbols-outlined warn-icon">warning</span>
+              {{ t('user.profile.removePhoneBothWarning') }}
+            </p>
+            <p v-else-if="removePhoneRelationships?.hasFriendship" class="remove-phone-disclaimer">
+              <span class="material-symbols-outlined warn-icon">warning</span>
+              {{ t('user.profile.removePhoneFriendshipWarning') }}
+            </p>
+            <p v-else-if="removePhoneRelationships?.hasPending" class="remove-phone-disclaimer">
+              <span class="material-symbols-outlined warn-icon">warning</span>
+              {{ t('user.profile.removePhonePendingWarning') }}
             </p>
             <div class="remove-phone-actions">
               <button

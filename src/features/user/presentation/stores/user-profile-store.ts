@@ -8,6 +8,7 @@ import { useLogger } from '@/core/logging/use-logger'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import { supabase } from '@/core/utils/supabase'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
+import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { UserProfileRepositoryImpl } from '@/features/user/data/repositories/user-profile-repository-impl'
 
 const repository = new UserProfileRepositoryImpl()
@@ -150,6 +151,9 @@ export const useUserProfileStore = defineStore('userProfile', () => {
       return
     }
     await authStore.refreshCurrentUser()
+    // DB trigger removed all friendships + pending requests for this user.
+    // Clear friendships store so badges and lists reflect the empty state immediately.
+    useFriendshipsStore().clear()
   }
 
   async function verifyPhone(phone: string, token: string) {

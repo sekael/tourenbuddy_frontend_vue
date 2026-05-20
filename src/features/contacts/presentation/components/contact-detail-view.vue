@@ -192,19 +192,33 @@ async function saveMethod(method: ContactMethod) {
 
 interface MethodDeleteConfirm {
   methodId: string
-  isFriendLinked: boolean
+  linkedUserId: string | null
+  hasPending: boolean
+  hasFriendship: boolean
 }
 const methodDeleteConfirm = ref<MethodDeleteConfirm | null>(null)
 const isRemovingMethod = ref(false)
 const removeMethodError = ref<string | null>(null)
 
-function requestRemoveMethod(method: ContactMethod) {
+async function requestRemoveMethod(method: ContactMethod) {
   removeMethodError.value = null
-  if (linkedMethodIds.value.has(method.id)) {
-    methodDeleteConfirm.value = { methodId: method.id, isFriendLinked: true }
-  }
-  else {
+  if (method.methodType !== 'phone') {
     executeRemoveMethod(method.id)
+    return
+  }
+  const rel = await store.relationshipsForPhone(method.value)
+  const hasPending = rel?.hasPending ?? false
+  const hasFriendship = rel?.hasFriendship ?? false
+  const linkedUserId = rel?.userId ?? (linkedMethodIds.value.has(method.id) ? props.linkedFriendUserId ?? null : null)
+  if (!hasPending && !hasFriendship && !linkedMethodIds.value.has(method.id)) {
+    executeRemoveMethod(method.id)
+    return
+  }
+  methodDeleteConfirm.value = {
+    methodId: method.id,
+    linkedUserId,
+    hasPending,
+    hasFriendship: hasFriendship || linkedMethodIds.value.has(method.id),
   }
 }
 
@@ -221,8 +235,8 @@ async function confirmRemoveMethod() {
   isRemovingMethod.value = true
   removeMethodError.value = null
   try {
-    if (pending.isFriendLinked && props.linkedFriendUserId)
-      await friendshipsStore.removeFriendship(props.linkedFriendUserId)
+    if (pending.hasFriendship && pending.linkedUserId)
+      await friendshipsStore.removeFriendship(pending.linkedUserId)
     await executeRemoveMethod(pending.methodId)
     methodDeleteConfirm.value = null
   }
@@ -356,6 +370,12 @@ async function saveAll(): Promise<boolean> {
 // ── Delete ───────────────────────────────────────────────────────────────────
 const deleteState = ref<'idle' | 'confirm' | 'loading'>('idle')
 const deleteError = ref<string | null>(null)
+const contactRelationships = ref<{ hasPending: boolean, hasFriendship: boolean } | null>(null)
+
+async function requestDelete() {
+  deleteState.value = 'confirm'
+  contactRelationships.value = (await store.relationshipsForContact(props.contact.id)) ?? null
+}
 
 async function confirmDelete() {
   deleteError.value = null
@@ -481,15 +501,26 @@ defineExpose({
         {{ removeMethodError }}
       </p>
 
-      <!-- Method remove confirmation (friendship-linked phone) -->
+      <!-- Method remove confirmation (friendship-linked or pending-linked phone) -->
       <template v-if="methodDeleteConfirm">
         <div class="method-delete-confirm">
           <p class="delete-confirm-text">
             {{ t('contacts.detailView.removeMethodConfirm') }}
           </p>
-          <p v-if="methodDeleteConfirm.isFriendLinked" class="delete-friend-warning">
+          <p
+            v-if="methodDeleteConfirm.hasFriendship && methodDeleteConfirm.hasPending"
+            class="delete-friend-warning"
+          >
+            <span class="material-symbols-outlined warn-icon">warning</span>
+            {{ t('contacts.detailView.removeMethodFriendAndPendingWarning') }}
+          </p>
+          <p v-else-if="methodDeleteConfirm.hasFriendship" class="delete-friend-warning">
             <span class="material-symbols-outlined warn-icon">warning</span>
             {{ t('contacts.detailView.removeMethodFriendWarning') }}
+          </p>
+          <p v-else-if="methodDeleteConfirm.hasPending" class="delete-friend-warning">
+            <span class="material-symbols-outlined warn-icon">warning</span>
+            {{ t('contacts.detailView.removeMethodPendingWarning') }}
           </p>
           <div class="delete-actions">
             <button type="button" class="cancel-btn" :disabled="isRemovingMethod" @click="methodDeleteConfirm = null">
@@ -713,9 +744,20 @@ defineExpose({
         <p class="delete-confirm-text">
           {{ t('contacts.detailView.deleteConfirm') }}
         </p>
-        <p v-if="linkedFriendUserId" class="delete-friend-warning">
+        <p
+          v-if="contactRelationships?.hasFriendship && contactRelationships?.hasPending"
+          class="delete-friend-warning"
+        >
+          <span class="material-symbols-outlined warn-icon">warning</span>
+          {{ t('contacts.detailView.deleteFriendAndPendingWarning') }}
+        </p>
+        <p v-else-if="contactRelationships?.hasFriendship || linkedFriendUserId" class="delete-friend-warning">
           <span class="material-symbols-outlined warn-icon">warning</span>
           {{ t('contacts.detailView.deleteFriendWarning') }}
+        </p>
+        <p v-else-if="contactRelationships?.hasPending" class="delete-friend-warning">
+          <span class="material-symbols-outlined warn-icon">warning</span>
+          {{ t('contacts.detailView.deletePendingWarning') }}
         </p>
         <div class="delete-actions">
           <button type="button" class="cancel-btn" @click="deleteState = 'idle'">
@@ -732,7 +774,7 @@ defineExpose({
         type="button"
         class="delete-btn"
         :disabled="deleteState === 'loading'"
-        @click="deleteState = 'confirm'"
+        @click="requestDelete"
       >
         <span class="material-symbols-outlined">person_remove</span>
         {{

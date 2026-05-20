@@ -34,6 +34,21 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     return new Set(friendships.value.map(f => (f.requestUserId === uid ? f.responseUserId : f.requestUserId)))
   })
 
+  /** Set of user IDs with whom the caller has a pending friend request (either direction). */
+  const pendingRequestUserIds = computed<Set<string>>(() => {
+    const ids = new Set<string>()
+    for (const r of incomingRequests.value) ids.add(r.fromUserId)
+    for (const r of outgoingRequests.value) ids.add(r.toUserId)
+    return ids
+  })
+
+  function currentUserHasAnyRelationship(): { hasPending: boolean, hasFriendship: boolean } {
+    return {
+      hasPending: incomingRequests.value.length > 0 || outgoingRequests.value.length > 0,
+      hasFriendship: friendships.value.length > 0,
+    }
+  }
+
   /** Whether the current user has a verified phone (drives friendship UX gates). */
   const isPhoneVerified = computed(() => authStore.currentUser?.phone_confirmed_at != null)
 
@@ -281,7 +296,9 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     isLoading,
     error,
     friendUserIds,
+    pendingRequestUserIds,
     isPhoneVerified,
+    currentUserHasAnyRelationship,
     fetchAll,
     sendRequest,
     accept,

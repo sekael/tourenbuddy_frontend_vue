@@ -9,6 +9,7 @@ import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { dedupePhones } from '@/features/contacts/core/utils/dedupe'
 import { ContactMethodsRepositoryImpl } from '@/features/contacts/data/repositories/contact-methods-repository-impl'
 import { ContactsRepositoryImpl } from '@/features/contacts/data/repositories/contacts-repository-impl'
+import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 
 export interface PhoneEntry {
   value: string
@@ -292,6 +293,46 @@ export const useContactsStore = defineStore('contacts', () => {
     }
   }
 
+  async function relationshipsForContact(contactId: string): Promise<{ hasPending: boolean, hasFriendship: boolean }> {
+    const contact = contacts.value.find(c => c.id === contactId)
+    if (!contact)
+      return { hasPending: false, hasFriendship: false }
+
+    const phones = contact.contactMethods
+      .filter(m => m.methodType === 'phone')
+      .map(m => m.value)
+
+    if (phones.length === 0)
+      return { hasPending: false, hasFriendship: false }
+
+    const friendshipsStore = useFriendshipsStore()
+    const results = await friendshipsStore.findUsersByPhones(phones)
+
+    let hasPending = false
+    let hasFriendship = false
+    for (const r of results) {
+      if (friendshipsStore.friendUserIds.has(r.userId))
+        hasFriendship = true
+      if (friendshipsStore.pendingRequestUserIds.has(r.userId))
+        hasPending = true
+    }
+
+    return { hasPending, hasFriendship }
+  }
+
+  async function relationshipsForPhone(phone: string): Promise<{ hasPending: boolean, hasFriendship: boolean, userId: string | null }> {
+    const friendshipsStore = useFriendshipsStore()
+    const userId = await friendshipsStore.findUserByPhone(phone)
+    if (!userId)
+      return { hasPending: false, hasFriendship: false, userId: null }
+
+    return {
+      hasPending: friendshipsStore.pendingRequestUserIds.has(userId),
+      hasFriendship: friendshipsStore.friendUserIds.has(userId),
+      userId,
+    }
+  }
+
   function clear() {
     contacts.value = []
     error.value = null
@@ -309,6 +350,8 @@ export const useContactsStore = defineStore('contacts', () => {
     updateMethodOnContact,
     setPrimaryPhoneOnContact,
     removeMethodFromContact,
+    relationshipsForContact,
+    relationshipsForPhone,
     clear,
   }
 })
