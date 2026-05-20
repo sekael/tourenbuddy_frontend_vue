@@ -37,6 +37,18 @@ vi.mock('@/core/logging/use-logger', () => ({
   useLogger: () => ({ error: vi.fn(), info: vi.fn(), warn: vi.fn() }),
 }))
 
+vi.mock('@/core/realtime/use-realtime-subscription', () => ({
+  useRealtimeSubscription: vi.fn().mockImplementation((opts: { onSubscribed?: () => void }) => {
+    opts.onSubscribed?.()
+    return { status: { value: 'SUBSCRIBED' }, stop: vi.fn() }
+  }),
+}))
+
+vi.mock('@/features/notifications/data/notify-dispatch', () => ({
+  notifyFriendRequestReceived: vi.fn(),
+  notifyFriendRequestResponded: vi.fn(),
+}))
+
 async function verifiedStore() {
   mockCurrentUser.value = { id: 'user-me', phone_confirmed_at: '2024-01-01T00:00:00Z' }
   const store = useFriendshipsStore()

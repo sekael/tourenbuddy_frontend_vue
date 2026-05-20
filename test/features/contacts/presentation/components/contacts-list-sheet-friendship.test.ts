@@ -62,6 +62,18 @@ vi.mock('@/features/friendships/data/repositories/friendship-repository-impl', (
     findUsersByPhones: mockFindUsersByPhones,
   })),
 }))
+vi.mock('@/core/realtime/use-realtime-subscription', () => ({
+  useRealtimeSubscription: vi.fn().mockImplementation((opts: { onSubscribed?: () => void }) => {
+    opts.onSubscribed?.()
+    return { status: { value: 'SUBSCRIBED' }, stop: vi.fn() }
+  }),
+}))
+
+vi.mock('@/features/notifications/data/notify-dispatch', () => ({
+  notifyFriendRequestReceived: vi.fn(),
+  notifyFriendRequestResponded: vi.fn(),
+}))
+
 vi.mock('@/features/contacts/data/repositories/contacts-repository-impl', () => ({
   ContactsRepositoryImpl: vi.fn(() => ({
     fetchContacts: vi.fn().mockResolvedValue([]),

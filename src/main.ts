@@ -44,6 +44,11 @@ async function bootstrap() {
       else {
         profileStore.clear()
         notificationsStore.clear()
+        // Force redirect to home when session ends (e.g., sign-out in another tab).
+        // Router guards only fire on navigation, so a reactive watcher is needed
+        // to evict stale auth-only views.
+        if (router.currentRoute.value.meta.requiresAuth)
+          await router.push({ name: 'home' })
       }
     },
   )

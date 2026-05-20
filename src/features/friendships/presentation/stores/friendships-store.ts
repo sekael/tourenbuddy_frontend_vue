@@ -6,9 +6,12 @@ import type { FriendshipRepository } from '@/features/friendships/domain/reposit
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useLogger } from '@/core/logging/use-logger'
+import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { FriendshipRepositoryImpl } from '@/features/friendships/data/repositories/friendship-repository-impl'
 import { notifyFriendRequestReceived, notifyFriendRequestResponded } from '@/features/notifications/data/notify-dispatch'
+
+type FriendRequestVM = FriendRequest & { _optimistic?: boolean }
 
 const repository: FriendshipRepository = new FriendshipRepositoryImpl()
 
@@ -16,8 +19,8 @@ export const useFriendshipsStore = defineStore('friendships', () => {
   const logger = useLogger('FriendshipsStore')
   const authStore = useAuthStore()
 
-  const incomingRequests = ref<FriendRequest[]>([])
-  const outgoingRequests = ref<FriendRequest[]>([])
+  const incomingRequests = ref<FriendRequestVM[]>([])
+  const outgoingRequests = ref<FriendRequestVM[]>([])
   const friendships = ref<Friendship[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
@@ -52,6 +55,21 @@ export const useFriendshipsStore = defineStore('friendships', () => {
   /** Whether the current user has a verified phone (drives friendship UX gates). */
   const isPhoneVerified = computed(() => authStore.currentUser?.phone_confirmed_at != null)
 
+  /**
+   * Reconcile server rows with current local list:
+   * - Drop in-flight optimistic rows whose (fromUserId, toUserId) pair now exists on server
+   * - Keep in-flight optimistic rows not yet confirmed by server
+   * - Always include all server rows
+   */
+  function reconcileRequests(serverRows: FriendRequest[], current: FriendRequestVM[]): FriendRequestVM[] {
+    const serverPairs = new Set(serverRows.map(r => `${r.fromUserId}:${r.toUserId}`))
+    const serverIds = new Set(serverRows.map(r => r.id))
+    const survivingOptimistic = current.filter(
+      r => r._optimistic && !serverPairs.has(`${r.fromUserId}:${r.toUserId}`) && !serverIds.has(r.id),
+    )
+    return [...serverRows, ...survivingOptimistic]
+  }
+
   async function fetchAll() {
     if (!authStore.isAuthenticated || !isPhoneVerified.value)
       return
@@ -60,14 +78,23 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     error.value = null
     try {
       const [allRequests, fships] = await Promise.all([
-        // listIncoming returns all pending requests visible to caller (sender or recipient via RLS)
         repository.listIncoming(),
         repository.listFriendships(),
       ])
       const uid = authStore.currentUser!.id
-      incomingRequests.value = allRequests.filter(r => r.toUserId === uid)
-      outgoingRequests.value = allRequests.filter(r => r.fromUserId === uid)
-      friendships.value = fships
+      const serverIncoming = allRequests.filter(r => r.toUserId === uid)
+      const serverOutgoing = allRequests.filter(r => r.fromUserId === uid)
+      incomingRequests.value = reconcileRequests(serverIncoming, incomingRequests.value)
+      outgoingRequests.value = reconcileRequests(serverOutgoing, outgoingRequests.value)
+      // Dedupe friendships by composite PK (request_user_id, response_user_id)
+      const seen = new Set<string>()
+      friendships.value = fships.filter((f) => {
+        const key = `${f.requestUserId}:${f.responseUserId}`
+        if (seen.has(key))
+          return false
+        seen.add(key)
+        return true
+      })
     }
     catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load friendships'
@@ -78,25 +105,47 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     }
   }
 
+  function debounce(fn: () => void, ms: number) {
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const debounced = () => {
+      if (timer !== null)
+        clearTimeout(timer)
+      timer = setTimeout(() => {
+        timer = null
+        fn()
+      }, ms)
+    }
+    debounced.cancel = () => {
+      if (timer !== null) {
+        clearTimeout(timer)
+        timer = null
+      }
+    }
+    return debounced
+  }
+
+  const scheduleRefetch = debounce(fetchAll, 150)
+
   async function sendRequest(toUserId: string): Promise<FriendRequest | null> {
     if (!isPhoneVerified.value)
       return null
 
     // Optimistic: add placeholder outgoing request
     const tempId = crypto.randomUUID()
-    const optimistic: FriendRequest = {
+    const optimistic: FriendRequestVM = {
       id: tempId,
       fromUserId: authStore.currentUser!.id,
       toUserId,
       status: 'pending',
       createdAt: new Date().toISOString(),
       respondedAt: null,
+      _optimistic: true,
     }
     outgoingRequests.value = [...outgoingRequests.value, optimistic]
 
     try {
       const created = await repository.sendRequest(toUserId)
-      outgoingRequests.value = outgoingRequests.value.filter(r => r.id !== tempId).concat(created)
+      outgoingRequests.value = outgoingRequests.value.filter(r => r.id !== tempId && r.id !== created.id).concat(created)
       notifyFriendRequestReceived(created.id)
       return created
     }
@@ -267,6 +316,7 @@ export const useFriendshipsStore = defineStore('friendships', () => {
   }
 
   function clear() {
+    scheduleRefetch.cancel()
     incomingRequests.value = []
     outgoingRequests.value = []
     friendships.value = []
@@ -275,18 +325,37 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     error.value = null
   }
 
-  // Auto-fetch when authenticated + phone verified; clear on sign-out
-  watch(
-    [() => authStore.isAuthenticated, isPhoneVerified],
-    ([authed, verified]) => {
-      if (authed && verified) {
-        fetchAll()
-      }
-      else if (!authed) {
-        clear()
-      }
+  const channelKey = computed(() => {
+    const uid = authStore.currentUser?.id
+    return authStore.isAuthenticated && isPhoneVerified.value && uid ? `friendships-${uid}` : null
+  })
+  const realtimeEnabled = computed(() => authStore.isAuthenticated && isPhoneVerified.value)
+
+  useRealtimeSubscription({
+    key: () => channelKey.value,
+    enabled: () => realtimeEnabled.value,
+    bindings: () => {
+      const uid = authStore.currentUser?.id
+      if (!uid)
+        return []
+      return [
+        { event: '*', table: 'friend_requests', filter: `to_user_id=eq.${uid}` },
+        { event: '*', table: 'friend_requests', filter: `from_user_id=eq.${uid}` },
+        { event: '*', table: 'friendships', filter: `request_user_id=eq.${uid}` },
+        { event: '*', table: 'friendships', filter: `response_user_id=eq.${uid}` },
+      ]
     },
-    { immediate: true },
+    onChange: scheduleRefetch,
+    onSubscribed: () => fetchAll(),
+  })
+
+  // Clear local state on sign-out (channel teardown handled by primitive)
+  watch(
+    () => authStore.isAuthenticated,
+    (authed) => {
+      if (!authed)
+        clear()
+    },
   )
 
   return {
