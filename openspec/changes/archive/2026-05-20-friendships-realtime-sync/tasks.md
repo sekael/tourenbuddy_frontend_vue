@@ -8,13 +8,13 @@
 - [x] 2.2 In the new file: `alter table public.friend_requests replica identity full;` and `alter table public.friendships replica identity full;` (future-proofs filters on non-PK columns for DELETE / UPDATE events)
 - [x] 2.3 In the same file, add `public.friend_requests` and `public.friendships` to publication `supabase_realtime` (idempotent via `do $$ … exception when duplicate_object then null; end $$;`)
 - [x] 2.4 `supabase db reset` locally; verify (a) both tables in `supabase_realtime` (`select * from pg_publication_tables where pubname = 'supabase_realtime';`) and (b) `relreplident = 'f'` for both (`select relname, relreplident from pg_class where relname in ('friend_requests','friendships');`)
-- [ ] 2.5 Manual smoke test: open two browser sessions against local Supabase; sending a request from A triggers an INSERT event observed via Supabase JS subscribe in B's devtools; deleting a friendship row (via contact-delete on A) triggers a DELETE event in B with full old-row payload
+- [x] 2.5 Manual smoke test: open two browser sessions against local Supabase; sending a request from A triggers an INSERT event observed via Supabase JS subscribe in B's devtools; deleting a friendship row (via contact-delete on A) triggers a DELETE event in B with full old-row payload
 
 ## 2a. Auth: Local-Scope Sign-Out
 
 - [x] 2a.1 In `src/features/auth/presentation/stores/auth-store.ts`, change `signOut()` to call `supabase.auth.signOut({ scope: 'local' })` (was default global)
 - [x] 2a.2 Add unit test: `signOut` passes `{ scope: 'local' }` to `supabase.auth.signOut` (spy)
-- [ ] 2a.3 Manual two-device test: sign in on Device A and Device B → sign out on A → confirm B remains signed in until refresh-token expiry / explicit sign-out
+- [x] 2a.3 Manual two-device test: sign in on Device A and Device B → sign out on A → confirm B remains signed in until refresh-token expiry / explicit sign-out
 
 ## 3. Core Primitive: `useRealtimeSubscription`
 
@@ -51,17 +51,17 @@
 
 ## 6. Manual Verification
 
-- [ ] 6.1 Two-session test (#136): session A sends request → session B sees it appear in incoming list and menu badge without reload
-- [ ] 6.2 Session B accepts → session A sees outgoing status update without reload
-- [ ] 6.3 Two-session test (#138): A and B are friends with each other as contacts → A deletes the contact for B in session A → session B's contact-list friendship icon for A disappears without reload
-- [ ] 6.4 Notifications regression: verify push and email still dispatch on send / accept / deny (no double-sends across tabs)
-- [ ] 6.5 Sign-out scope: sign in on two tabs of same browser AND a second device → sign out on Tab A → Tab B signs out automatically; the second device stays signed in
+- [x] 6.1 Two-session test (#136): session A sends request → session B sees it appear in incoming list and menu badge without reload
+- [x] 6.2 Session B accepts → session A sees outgoing status update without reload
+- [x] 6.3 Two-session test (#138): A and B are friends with each other as contacts → A deletes the contact for B in session A → session B's contact-list friendship icon for A disappears without reload
+- [x] 6.4 Notifications regression: verify push and email still dispatch on send / accept / deny (no double-sends across tabs)
+- [x] 6.5 Sign-out scope: sign in on two tabs of same browser AND a second device → sign out on Tab A → Tab B signs out automatically; the second device stays signed in
 
 ## 7. Finalize
 
 - [x] 7.1 `npx eslint . --fix` (zero warnings)
 - [x] 7.2 `npm run type-check`
-- [ ] 7.3 Prompt user to commit with conventional commit message — suggested:
+- [x] 7.3 Prompt user to commit with conventional commit message — suggested:
   ```
   feat(friendships): realtime sync of friend_requests and friendships (#136, #138)
 
@@ -70,6 +70,6 @@
   refetch on event. Enable supabase_realtime publication membership via
   migration. Notification dispatch unchanged.
   ```
-- [ ] 7.4 Prompt user to push branch and open PR against `main`; link issues #136 and #138 in PR body
-- [ ] 7.5 Prompt user to `supabase db push` after PR review (per project rules — never run unprompted)
-- [ ] 7.6 After merge, prompt user to archive change with `openspec-archive`
+- [x] 7.4 Prompt user to push branch and open PR against `main`; link issues #136 and #138 in PR body
+- [x] 7.5 Prompt user to `supabase db push` after PR review (per project rules — never run unprompted)
+- [x] 7.6 After merge, prompt user to archive change with `openspec-archive`
