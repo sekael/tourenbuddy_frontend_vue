@@ -2,14 +2,18 @@
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import FeedbackSheet from '@/core/components/feedback-sheet.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
+import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import ContactsListSheet from '@/features/contacts/presentation/components/contacts-list-sheet.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import FriendRequestsSheet from '@/features/friendships/presentation/components/friend-requests-sheet.vue'
 import LocationPicker from '@/features/map/presentation/components/location-picker.vue'
 import MapActionOverlay from '@/features/map/presentation/components/map-action-overlay.vue'
+import TourActionBar from '@/features/map/presentation/components/tour-action-bar.vue'
 import TourenbuddyMap from '@/features/map/presentation/components/tourenbuddy-map.vue'
+import { computeBarState } from '@/features/map/presentation/composables/compute-bar-state'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { getElevation } from '@/features/tours/data/services/swisstopo-elevation-service'
 import { suggestTourName } from '@/features/tours/data/services/swisstopo-name-service'
@@ -31,16 +35,21 @@ type OverlayName
     | 'tour-creation'
     | 'friend-requests'
 
+const { t } = useI18n({ useScope: 'global' })
+
 const mapStore = useMapStore()
 const toursStore = useToursStore()
 const contactsStore = useContactsStore()
 const userProfileStore = useUserProfileStore()
+const authStore = useAuthStore()
 const isDesktop = useIsDesktop()
 
 const { isPickingLocation, selectedTourId } = storeToRefs(mapStore)
 const { tours } = storeToRefs(toursStore)
+const { isAuthenticated } = storeToRefs(authStore)
 
 const mapRef = ref<InstanceType<typeof TourenbuddyMap> | null>(null)
+const mapOverlayRef = ref<InstanceType<typeof MapActionOverlay> | null>(null)
 const mapBearing = ref(0)
 
 // Single source of truth for which overlay is open (at most one at a time)
@@ -65,6 +74,19 @@ const showTourCreationDialog = computed(
       && activeOverlay.value === null),
 )
 const showFriendRequests = computed(() => activeOverlay.value === 'friend-requests')
+
+const barState = computed(() =>
+  computeBarState({
+    activeOverlay: activeOverlay.value,
+    isPickingLocation: isPickingLocation.value,
+    speedDialOpen: mapOverlayRef.value?.isOpen?.value ?? false,
+    isAuthenticated: isAuthenticated.value,
+  }),
+)
+
+const addTourTooltip = computed(() =>
+  isAuthenticated.value ? undefined : t('map.overlay.signInToAddToursTooltip'),
+)
 
 // Pre-fill values for the creation dialog (from Swisstopo lookups & secondary picks)
 const dialogInitialElevation = ref<number | null>(null)
@@ -362,6 +384,35 @@ function handleMapBackgroundClick() {
   closeOverlay()
 }
 
+function dismissActive() {
+  closeOverlay()
+  mapOverlayRef.value?.closeMenu()
+}
+
+function handleBarTours() {
+  if (barState.value.toursAction === 'dismiss') {
+    dismissActive()
+    return
+  }
+  openOverlay('tours')
+}
+
+function handleBarAddTour() {
+  if (barState.value.addTourAction === 'dismiss') {
+    dismissActive()
+    return
+  }
+  if (barState.value.addTourAction === 'pick') {
+    mapStore.selectTour(null)
+    mapStore.setPickingLocation(true)
+  }
+}
+
+function handleListSheetAddTour() {
+  closeOverlay()
+  mapStore.setPickingLocation(true)
+}
+
 async function handleTourCreated(
   draft: TourDraft,
   gpxFile: File | null,
@@ -393,12 +444,23 @@ function handleDialogClose() {
     />
 
     <MapActionOverlay
+      ref="mapOverlayRef"
       :bearing="mapBearing"
+      :overlay-active="activeOverlay !== null"
       @open-feedback="openOverlay('feedback')"
       @open-profile="openOverlay('profile')"
       @open-contacts="openOverlay('contacts')"
-      @open-tours="openOverlay('tours')"
       @reset-bearing="handleResetBearing"
+      @dismiss-overlay="closeOverlay"
+    />
+
+    <TourActionBar
+      :visible="barState.visible"
+      :tours-disabled="barState.toursAction === 'dismiss'"
+      :add-tour-disabled="barState.addTourAction === 'dismiss' || barState.addTourAction === 'disabled'"
+      :add-tour-tooltip="addTourTooltip"
+      @tours="handleBarTours"
+      @add-tour="handleBarAddTour"
     />
 
     <LocationPicker
@@ -450,7 +512,11 @@ function handleDialogClose() {
         <FriendRequestsSheet @close="closeOverlay" @back="openOverlay('contacts')" />
       </div>
       <div v-else-if="showToursList" key="tours" class="sheet-container">
-        <TourListSheet @close="closeOverlay" @select-tour="handleTourSelectedFromList" />
+        <TourListSheet
+          @close="closeOverlay"
+          @select-tour="handleTourSelectedFromList"
+          @add-tour="handleListSheetAddTour"
+        />
       </div>
       <div v-else-if="showTourCreationDialog" key="tour-creation" class="sheet-container">
         <TourCreationDialog

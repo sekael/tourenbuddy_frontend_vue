@@ -56,6 +56,7 @@ const isDesktop = useIsDesktop()
         {{ props.title }}
       </h2>
       <div v-else class="title-spacer" />
+      <slot name="header-actions" />
       <button
         v-if="!props.collapsed"
         type="button"

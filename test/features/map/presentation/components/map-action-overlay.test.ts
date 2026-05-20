@@ -5,21 +5,23 @@ import MapActionOverlay from '@/features/map/presentation/components/map-action-
 
 function mountOverlay(
   options: {
-    isAuthenticated?: boolean
     isPickingLocation?: boolean
     incomingRequests?: Array<{ id: string, status: string }>
     bearing?: number
+    overlayActive?: boolean
   } = {},
 ) {
   return mount(MapActionOverlay, {
-    props: { bearing: options.bearing ?? 0 },
+    props: {
+      bearing: options.bearing ?? 0,
+      overlayActive: options.overlayActive ?? false,
+    },
     global: {
       plugins: [
         createTestingPinia({
           createSpy: vi.fn,
           stubActions: false,
           initialState: {
-            auth: { isAuthenticated: options.isAuthenticated ?? true },
             map: { isPickingLocation: options.isPickingLocation ?? false, currentStyleIndex: 0 },
             friendships: { incomingRequests: options.incomingRequests ?? [] },
           },
@@ -140,22 +142,21 @@ describe('mapActionOverlay', () => {
     })
   })
 
-  describe('add-tour item', () => {
-    it('should be disabled when not authenticated', async () => {
-      const wrapper = mountOverlay({ isAuthenticated: false })
+  describe('menu contents', () => {
+    it('should not contain tours entry in speed dial', async () => {
+      const wrapper = mountOverlay()
       await wrapper.find('[aria-haspopup="menu"]').trigger('click')
       const buttons = wrapper.findAll('[role="menuitem"]')
-      const addTourBtn = buttons.find(b => b.text().includes('map.overlay.addTour'))
-      expect(addTourBtn?.attributes('disabled')).toBeDefined()
+      const toursBtn = buttons.find(b => b.text().includes('map.overlay.tours'))
+      expect(toursBtn).toBeUndefined()
     })
 
-    it('should not start picking when disabled add-tour clicked', async () => {
-      const wrapper = mountOverlay({ isAuthenticated: false })
+    it('should not contain add-tour entry in speed dial', async () => {
+      const wrapper = mountOverlay()
       await wrapper.find('[aria-haspopup="menu"]').trigger('click')
       const buttons = wrapper.findAll('[role="menuitem"]')
       const addTourBtn = buttons.find(b => b.text().includes('map.overlay.addTour'))
-      await addTourBtn?.trigger('click')
-      expect(wrapper.find('.overlay').exists()).toBe(true)
+      expect(addTourBtn).toBeUndefined()
     })
   })
 
@@ -191,16 +192,6 @@ describe('mapActionOverlay', () => {
   })
 
   describe('menu item events', () => {
-    it('should emit openTours and close menu when tours item clicked', async () => {
-      const wrapper = mountOverlay()
-      await wrapper.find('[aria-haspopup="menu"]').trigger('click')
-      const buttons = wrapper.findAll('[role="menuitem"]')
-      const toursBtn = buttons.find(b => b.text().includes('map.overlay.tours'))
-      await toursBtn?.trigger('click')
-      expect(wrapper.emitted('openTours')).toHaveLength(1)
-      expect(wrapper.find('[role="menu"]').exists()).toBe(false)
-    })
-
     it('should emit openContacts and close menu when contacts item clicked', async () => {
       const wrapper = mountOverlay()
       await wrapper.find('[aria-haspopup="menu"]').trigger('click')
@@ -227,6 +218,20 @@ describe('mapActionOverlay', () => {
       const feedbackBtn = buttons.find(b => b.text().includes('map.overlay.feedback'))
       await feedbackBtn?.trigger('click')
       expect(wrapper.emitted('openFeedback')).toHaveLength(1)
+    })
+  })
+
+  describe('overlayActive', () => {
+    it('should emit dismissOverlay and not open menu when overlay is active', async () => {
+      const wrapper = mountOverlay({ overlayActive: true })
+      await wrapper.find('[aria-haspopup="menu"]').trigger('click')
+      expect(wrapper.emitted('dismissOverlay')).toHaveLength(1)
+      expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+    })
+
+    it('should apply disabled class to trigger when overlay is active', () => {
+      const wrapper = mountOverlay({ overlayActive: true })
+      expect(wrapper.find('.trigger--overlay-active').exists()).toBe(true)
     })
   })
 

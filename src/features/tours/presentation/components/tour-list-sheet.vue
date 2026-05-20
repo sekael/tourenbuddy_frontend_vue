@@ -5,17 +5,22 @@ import type { CompletionFilter } from '@/features/tours/presentation/composables
 import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseTooltip from '@/core/components/base-tooltip.vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
+import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useTourFilters } from '@/features/tours/presentation/composables/use-tour-filters'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import TourFiltersPanel from './tour-filters-panel.vue'
 import TourListRow from './tour-list-row.vue'
 
-const emit = defineEmits<{ close: [], selectTour: [id: string] }>()
+const emit = defineEmits<{ close: [], selectTour: [id: string], addTour: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
+
+const authStore = useAuthStore()
+const { isAuthenticated } = storeToRefs(authStore)
 
 const toursStore = useToursStore()
 const { tours, isLoading } = storeToRefs(toursStore)
@@ -35,6 +40,30 @@ function handleRowClick(tourId: string) {
     :title="t('tours.list.title')"
     @close="emit('close')"
   >
+    <template #header-actions>
+      <BaseTooltip
+        v-if="!isAuthenticated"
+        :text="t('map.overlay.signInToAddToursTooltip')"
+      >
+        <button
+          class="header-add-btn"
+          :disabled="!isAuthenticated"
+          :aria-label="t('tours.list.addTourAriaLabel')"
+          @click="emit('addTour')"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">add_location_alt</span>
+        </button>
+      </BaseTooltip>
+      <button
+        v-else
+        class="header-add-btn"
+        :aria-label="t('tours.list.addTourAriaLabel')"
+        @click="emit('addTour')"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">add_location_alt</span>
+      </button>
+    </template>
+
     <div class="list-view">
       <div class="search-row">
         <span class="material-symbols-outlined search-icon">search</span>
@@ -220,5 +249,25 @@ function handleRowClick(tourId: string) {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.header-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--color-on-surface-variant);
+  transition: background-color 0.15s;
+}
+
+.header-add-btn:hover:not(:disabled) {
+  background-color: var(--color-surface-variant);
+}
+
+.header-add-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 </style>

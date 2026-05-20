@@ -7,14 +7,17 @@ import MapBaseMapPanel from './map-base-map-panel.vue'
 import MapSpeedDialMenu from './map-speed-dial-menu.vue'
 import SpeedDialTrigger from './speed-dial-trigger.vue'
 
-const props = defineProps<{ bearing?: number }>()
+const props = defineProps<{
+  bearing?: number
+  overlayActive?: boolean
+}>()
 
 const emit = defineEmits<{
   openProfile: []
   openContacts: []
-  openTours: []
   openFeedback: []
   resetBearing: []
+  dismissOverlay: []
 }>()
 
 const { t } = useI18n({ useScope: 'global' })
@@ -34,6 +37,10 @@ const iconRotation = computed(() => -(props.bearing ?? 0))
 const showCompass = computed(() => Math.abs(props.bearing ?? 0) > 0.5)
 
 async function toggleMenu() {
+  if (props.overlayActive) {
+    emit('dismissOverlay')
+    return
+  }
   if (isOpen.value) {
     view.value = 'closed'
   }
@@ -46,6 +53,8 @@ async function toggleMenu() {
 function closeMenu() {
   view.value = 'closed'
 }
+
+defineExpose({ isOpen, closeMenu })
 </script>
 
 <template>
@@ -86,6 +95,7 @@ function closeMenu() {
       :has-badge="pendingIncomingCount > 0"
       :title-open="t('map.overlay.menuClose')"
       :title-closed="t('map.overlay.menuOpen')"
+      :class="{ 'trigger--overlay-active': overlayActive }"
       @toggle="toggleMenu"
     />
   </div>
@@ -156,6 +166,11 @@ function closeMenu() {
 .panel-leave-to {
   opacity: 0;
   transform: translateY(8px) scale(0.97);
+}
+
+:deep(.trigger--overlay-active .fab) {
+  opacity: 0.45;
+  cursor: default;
 }
 
 @media (orientation: landscape) and (max-height: 500px) {
