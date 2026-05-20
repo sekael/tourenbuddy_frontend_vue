@@ -117,6 +117,13 @@ describe('useAuthStore', () => {
     expect(store.isAuthenticated).toBe(false)
   })
 
+  it('should call signOut with scope local', async () => {
+    const { supabase } = await import('@/core/utils/supabase')
+    const store = useAuthStore()
+    await store.signOut()
+    expect(supabase.auth.signOut).toHaveBeenCalledWith({ scope: 'local' })
+  })
+
   it('should not clear tb.locale from localStorage on sign out', async () => {
     localStorage.setItem('tb.locale', 'de-CH')
     const store = useAuthStore()

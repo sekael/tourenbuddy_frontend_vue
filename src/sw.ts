@@ -52,6 +52,9 @@ registerRoute(
 )
 
 // Push notification handler
+// SEPARATION INVARIANT: this handler ONLY calls showNotification.
+// It MUST NOT postMessage, fetch app routes, or mutate store state.
+// Realtime (postgres_changes) handles in-app UI sync; push handles OS notifications only.
 self.addEventListener('push', (event) => {
   interface PushData {
     title?: string
@@ -82,6 +85,8 @@ self.addEventListener('push', (event) => {
 })
 
 // Notification click handler
+// SEPARATION INVARIANT: this handler ONLY does focus/navigate/openWindow.
+// It MUST NOT postMessage store mutations or trigger any Realtime/fetch side effects.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
 
