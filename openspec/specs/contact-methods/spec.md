@@ -1,23 +1,28 @@
 ## ADDED Requirements
 
-### Requirement: Dedupe phones on contact creation
+### Requirement: Delete-phone confirmation warns about friendship and pending-request side effects
 
-The contacts store's `createContact` action SHALL deduplicate its incoming `phones` argument by `(methodType, value)` before issuing repository inserts, mirroring the database `UNIQUE (contact_id, method_type, value)` constraint. The merge SHALL OR the `isPrimary` flags across collapsed entries and SHALL keep the first non-null `label` in input order. The deduplicated list SHALL preserve the relative order of first occurrences. The store SHALL emit a `debug`-level log line via `useLogger` whenever it collapses one or more entries so duplicate-emitting callers surface in development consoles.
+When the user initiates deletion of a phone `contact_method`, the confirmation UI MUST detect whether the phone value resolves to a registered user with whom (a) a pending `friend_requests` row and/or (b) a `friendships` row exists with the contact owner. If either applies, the confirmation MUST display a localized warning identifying the side effect (pending request cancellation, friendship removal, or both).
 
-#### Scenario: createContact called with duplicate phones
+#### Scenario: Warning shown for linked phone with pending request
+- **WHEN** the user opens the delete-phone confirmation for a phone whose value resolves to a registered user with a pending friend request (and no friendship)
+- **THEN** the confirmation displays the localized "pending friend request will be cancelled" warning
 
-- **WHEN** `createContact` is called with `phones: [{ value: '+41 79 123 45 67', label: null, isPrimary: true }, { value: '+41 79 123 45 67', label: 'Mobile', isPrimary: false }]`
-- **THEN** the repository SHALL receive exactly one phone with `value: '+41 79 123 45 67'`, `label: 'Mobile'` (first non-null), and `isPrimary: true`
+#### Scenario: Warning shown for linked phone with existing friendship
+- **WHEN** the user opens the delete-phone confirmation for a phone whose value resolves to a registered user with an existing friendship (and no pending request)
+- **THEN** the confirmation displays the localized "existing friendship will be removed" warning
 
-#### Scenario: createContact preserves distinct phones
+#### Scenario: Warning shown when both exist
+- **WHEN** both a pending request and a friendship exist for the linked user
+- **THEN** the confirmation displays the localized combined warning
 
-- **WHEN** `createContact` is called with two phones whose `value` differ
-- **THEN** the repository SHALL receive both phones unchanged in order
+#### Scenario: No warning for unlinked or unrelated phone
+- **WHEN** the phone value does not resolve to a registered user, or resolves but no pending request and no friendship exist
+- **THEN** the confirmation does not show the relationship warning
 
-#### Scenario: createContact dedupe across methodType boundaries
-
-- **WHEN** `createContact` would insert both a `phone` and an `email` method with identical `value` strings
-- **THEN** both methods SHALL be inserted because the dedupe key includes `methodType`
+#### Scenario: Confirming the delete performs cleanup
+- **WHEN** the user confirms phone-method deletion for which the warning was displayed
+- **THEN** the phone method is deleted and the database removes the friendship and/or terminates the pending request (per the `friendships` capability)
 
 ### Requirement: addContact accepts emails for import flows
 

@@ -1,141 +1,56 @@
 ## ADDED Requirements
 
-### Requirement: ConnectPrompt dismiss button visibility
-The `ConnectPrompt` component SHALL accept a boolean `show-dismiss` prop (default `true`) that controls whether the secondary "Save contact only" / dismiss button is rendered. When `show-dismiss` is `false`, only the primary "Send friend request" button SHALL be rendered.
+### Requirement: Friendship requires both parties to retain the linking verified phone
 
-#### Scenario: Saved contact detail view, not editing
-- **WHEN** `ConnectPrompt` is rendered in the contact detail view for an already-saved contact whose detail view is in `mode === 'view'`
-- **THEN** `show-dismiss` is `false` and only the "Send friend request" button is visible
+A `friendships(A, B)` row is only valid while BOTH parties satisfy all of:
+- each party has a verified phone in `auth.users` (`phone_confirmed_at IS NOT NULL`);
+- each party has the other in their `contacts` via a `contact_methods` row of `method_type = 'phone'` whose value resolves to the other party's verified phone.
 
-#### Scenario: Saved contact detail view, editing
-- **WHEN** `ConnectPrompt` is rendered in the contact detail view and the detail view enters `mode === 'edit'`
-- **THEN** `show-dismiss` becomes `true` and both buttons are visible so the user can either commit pending edits without sending a request or commit edits and send the request
+When any of these conditions ceases to hold due to an actor's action (deleting a contact, deleting the linking phone `contact_method`, or deleting their own verified phone), the system MUST remove the `friendships` row.
 
-#### Scenario: Add-contact and import flows preserve default
-- **WHEN** `ConnectPrompt` is rendered without an explicit `show-dismiss` prop (manual add form, vCard import results)
-- **THEN** both the dismiss and send buttons are visible, matching prior behavior
+#### Scenario: Friendship deleted when contact removed
+- **WHEN** user A deletes a contact whose phone resolves to user B, and a `friendships(A, B)` row exists
+- **THEN** that `friendships` row is deleted in the same transaction as the contact delete
 
-### Requirement: Resolve friend names via get_user_names_by_ids RPC
-The system SHALL expose a Supabase RPC `public.get_user_names_by_ids(p_user_ids uuid[])` returning `(user_id, first_name, last_name)` rows from `public.user_profile`. The function SHALL be SECURITY DEFINER with `search_path = ''`. It MUST disclose a row only when the caller has a confirmed phone AND at least one of:
-- A row in `public.friendships` links caller and target in either direction, OR
-- A row in `public.friend_requests` with `status = 'pending'`, `from_user_id = target`, `to_user_id = caller` (i.e., caller is the recipient of a pending request from target).
+#### Scenario: Friendship deleted when linking phone removed
+- **WHEN** user A deletes a phone `contact_method` whose value resolves to user B, and a `friendships(A, B)` row exists
+- **THEN** that `friendships` row is deleted in the same transaction as the contact_method delete
 
-Pending requests in the other direction (caller is sender) MUST NOT disclose the target's name. EXECUTE SHALL be granted to `authenticated`.
+#### Scenario: Friendships deleted when user removes own verified phone
+- **WHEN** user A invokes `delete_own_phone()` and `friendships` rows exist with A as `request_user_id` or `response_user_id`
+- **THEN** all such `friendships` rows are deleted in the same transaction
 
-#### Scenario: Caller is confirmed friend of target
-- **WHEN** an authenticated, phone-verified user calls `get_user_names_by_ids([friend_id])` and a `friendships` row links them
-- **THEN** the RPC returns one row with that friend's `first_name` and `last_name` from `user_profile`
+### Requirement: Pending friend_requests terminated at every break-point
 
-#### Scenario: Caller is recipient of pending request from target
-- **WHEN** the caller has a pending `friend_requests` row where `from_user_id = target` and `to_user_id = caller`
-- **THEN** the RPC returns the target's name row
+For each of the three break-points (contact delete, linking-phone delete, own-phone delete), the system MUST terminate pending `friend_requests` between the actor and every affected peer:
+- Row with `from_user_id = actor` → `status = 'cancelled'`, `responded_at = now()`.
+- Row with `to_user_id = actor` → `status = 'denied'`, `responded_at = now()`.
+- Rows with `status` other than `'pending'` MUST NOT be modified.
 
-#### Scenario: Caller is sender of pending request to target
-- **WHEN** the caller has a pending `friend_requests` row where `from_user_id = caller` and `to_user_id = target` and no friendship exists
-- **THEN** the RPC returns no row for that target
+#### Scenario: Outgoing pending cancelled when contact deleted
+- **WHEN** user A deletes a contact whose phone resolves to user B and a pending row exists with `from_user_id = A, to_user_id = B`
+- **THEN** the row's status becomes `'cancelled'` with `responded_at` set, in the same transaction
 
-#### Scenario: Caller is not phone-verified
-- **WHEN** an authenticated user without `phone_confirmed_at` calls the RPC
-- **THEN** the RPC returns zero rows regardless of the requested IDs
+#### Scenario: Incoming pending denied when contact deleted
+- **WHEN** user A deletes a contact whose phone resolves to user B and a pending row exists with `from_user_id = B, to_user_id = A`
+- **THEN** the row's status becomes `'denied'` with `responded_at` set, in the same transaction
 
-#### Scenario: Target profile has null first_name
-- **WHEN** the caller is a confirmed friend of a target whose `user_profile.first_name` is null
-- **THEN** the RPC returns a row with `first_name = null`, `last_name` as stored
+#### Scenario: Pending request terminated when linking phone removed
+- **WHEN** user A deletes a phone `contact_method` whose value resolves to user B and a pending row exists between A and B
+- **THEN** the pending row is terminated using the cancelled/denied rule based on direction
 
-### Requirement: Friend-request inbox displays name with phone
-The friend-requests inbox SHALL render each request row with the counterparty's display name on the primary line and the counterparty's phone number on a secondary line styled in a lighter color (smaller font + `--color-on-surface-variant`) so the user can cross-check the number.
+#### Scenario: All caller-side pending requests terminated on own-phone delete
+- **WHEN** user A invokes `delete_own_phone()` and pending `friend_requests` rows exist with A as `from_user_id` or `to_user_id`
+- **THEN** every such row is terminated (cancelled if A was sender, denied if A was recipient)
 
-For incoming requests, the display name SHALL be derived from `userIdToNamesMap` (populated via `get_user_names_by_ids`), joining first and last name with a single space and trimming. When the resolved name is null or empty, the row SHALL fall back to rendering the formatted phone as the primary line and omit the secondary line to avoid duplication.
+#### Scenario: Non-pending requests untouched
+- **WHEN** any break-point fires and a `friend_requests` row between the actor and peer has `status` in `{accepted, denied, cancelled}`
+- **THEN** that row is not modified by the cleanup logic
 
-For outgoing requests, the display name SHALL be derived from the caller's local contacts: any contact whose `contactMethods` include the recipient's phone supplies its `firstName` (+ ` lastName` when present) as the primary line. When no local contact matches, the row SHALL fall back to rendering the formatted phone as the primary line and omit the secondary line.
+### Requirement: Re-establishing the link allows new friend requests
 
-#### Scenario: Incoming row with resolved profile name
-- **WHEN** `userIdToNamesMap` contains `{firstName: "Ada", lastName: "Lovelace"}` for the requester
-- **THEN** the row renders "Ada Lovelace" on the primary line and the formatted phone on a lighter secondary line
+After automatic termination, the partial unique index on pending pairs MUST NOT block re-sending a new friend request between the same two users once the actor restores the link (re-adds the contact, re-adds the phone, or re-verifies their own phone).
 
-#### Scenario: Incoming row with null profile name
-- **WHEN** the RPC returned `{firstName: null, lastName: null}` for the requester
-- **THEN** the row renders the formatted phone on the primary line and no secondary line
-
-#### Scenario: Outgoing row with matching local contact
-- **WHEN** the sender's `contacts` store contains a contact whose contact methods include the recipient's phone with name "Bob Stewart"
-- **THEN** the row renders "Bob Stewart" on the primary line and the formatted phone on a lighter secondary line
-
-#### Scenario: Outgoing row without matching local contact
-- **WHEN** no local contact matches the recipient's phone
-- **THEN** the row renders the formatted phone on the primary line and no secondary line
-
-### Requirement: Friendship repository exposes getNamesByUserIds
-The `FriendshipRepository` interface and its Supabase implementation SHALL expose `getNamesByUserIds(userIds: string[]): Promise<Array<{ userId: string, firstName: string | null, lastName: string | null }>>`. The implementation SHALL short-circuit and return `[]` when the input array is empty, and SHALL throw on RPC error.
-
-#### Scenario: Empty input
-- **WHEN** `getNamesByUserIds([])` is invoked
-- **THEN** the repository returns `[]` without calling Supabase
-
-#### Scenario: RPC returns error
-- **WHEN** `supabase.rpc('get_user_names_by_ids', ...)` resolves with an `error`
-- **THEN** the repository throws the error
-
-### Requirement: Friendships store caches resolved names
-The friendships Pinia store SHALL expose a `userIdToNamesMap` reactive `Map<string, { firstName: string | null, lastName: string | null }>` and a `getNamesByUserIds(ids)` action that populates the map from the RPC. The action SHALL skip the network call when no input IDs are missing from the map and when the caller is not phone-verified.
-
-#### Scenario: All requested ids already cached
-- **WHEN** every requested ID is already a key in `userIdToNamesMap`
-- **THEN** the store SHALL NOT call the repository
-
-#### Scenario: Caller not phone-verified
-- **WHEN** the current user lacks `phone_confirmed_at` and `getNamesByUserIds` is invoked
-- **THEN** the store returns without calling the repository
-
-### Requirement: Accept flow creates contact with profile name
-After `friendships-store.accept(requestId)` resolves successfully, the friend-requests inbox SHALL resolve the requester's first/last name via `getNamesByUserIds` and create the auto-contact via `contactsStore.addContact(firstName, lastName, null, [{ value: phone, isPrimary: true }])`. When the resolved `firstName` is null or empty after trimming, the inbox SHALL fall back to the formatted phone as `firstName` and `null` as `lastName`. When a contact already has the phone in its contact methods, no new contact SHALL be created.
-
-#### Scenario: Profile has first and last name
-- **WHEN** accept resolves and the RPC returns `{ firstName: "Ada", lastName: "Lovelace" }`
-- **THEN** `addContact` is called with `("Ada", "Lovelace", null, [{ value: phone, isPrimary: true }])`
-
-#### Scenario: Profile first_name is null
-- **WHEN** the RPC returns `{ firstName: null, lastName: null }`
-- **THEN** `addContact` is called with `(formattedPhone, null, null, [{ value: phone, isPrimary: true }])`
-
-#### Scenario: Contact for phone already exists
-- **WHEN** the user already has a contact whose contact methods include the requester's phone
-- **THEN** the accept flow does NOT call `addContact`
-
-### Requirement: Notify on friend request created
-After a friendship row is successfully inserted via the send-request flow, the friendships store SHALL invoke the notifications dispatch for `friend_request_received` targeting the recipient. The send-request UI (`connect-prompt.vue`) SHALL display a security note that informs the sender that (a) their identity is not revealed beyond account existence, (b) the recipient may deny without stating a reason, (c) friendships cannot be deleted, AND (d) the sender's first and last name will become visible to the recipient once the request is accepted.
-
-#### Scenario: Successful send
-- **WHEN** the user sends a friend request and the insert succeeds
-- **THEN** the store calls the notifications Worker `/notify/friend-request-received` with the new `friendshipId` and continues regardless of the dispatch result
-
-#### Scenario: Insert fails
-- **WHEN** the insert fails
-- **THEN** no notification dispatch is attempted
-
-#### Scenario: Send-request UI shows name-visibility disclosure
-- **WHEN** the user opens the connect-prompt
-- **THEN** the rendered security note includes a sentence stating the sender's first and last name will be visible to the recipient after acceptance
-
-### Requirement: Notify on friend request responded
-After the recipient accepts or declines a friend request, the friendships store SHALL invoke the notifications dispatch for `friend_request_responded` targeting the original sender. The accept-confirmation UI SHALL warn the recipient that accepted friendships cannot be deleted directly and require deleting the linked contact. The accept-confirmation UI MUST NOT disclose any identity attribute of the requester beyond what is already visible in the inbox (i.e., the requester's phone number).
-
-#### Scenario: Accept
-- **WHEN** the recipient accepts the request and the update succeeds
-- **THEN** the store calls `/notify/friend-request-responded` with the `friendshipId`
-
-#### Scenario: Decline
-- **WHEN** the recipient declines the request and the update succeeds
-- **THEN** the store calls `/notify/friend-request-responded` with the `friendshipId`
-
-#### Scenario: Update fails
-- **WHEN** the update fails
-- **THEN** no notification dispatch is attempted
-
-#### Scenario: Accept resolves
-- **WHEN** `accept(requestId)` completes successfully
-- **THEN** the store invokes `notifyFriendRequestResponded(requestId)`
-
-#### Scenario: Deny resolves
-- **WHEN** `deny(requestId)` completes successfully
-- **THEN** the store invokes `notifyFriendRequestResponded(requestId)`
+#### Scenario: Re-adding contact allows new pending request
+- **WHEN** a pending row was auto-cancelled by contact deletion, then the actor re-adds the contact and triggers a new friend request to the same user
+- **THEN** insertion of the new pending row succeeds (terminal-status rows do not collide with the pending-only unique index)

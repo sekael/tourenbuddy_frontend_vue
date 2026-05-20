@@ -1,138 +1,28 @@
 ## ADDED Requirements
 
-### Requirement: Primary phone highlighted with star icon
+### Requirement: Delete-contact confirmation warns about friendship and pending-request side effects
 
-Any UI element that renders one or more phone methods of a contact (contacts list row subtitle, contact detail phone rows, contact chip, import-results row) SHALL highlight the primary phone with a filled Material Symbols `star` icon adjacent to the phone value. Non-primary phones SHALL NOT display the star icon. In form controls where the user picks the primary, the primary selector SHALL use a `star` glyph (filled when selected, outlined when not) so the picker matches the read-only highlight.
+When the user initiates contact deletion, the confirmation UI MUST detect whether deleting that contact will (a) cancel any pending `friend_requests` and/or (b) remove any existing `friendships` row between the current user and any registered user linked through the contact's phone `contact_methods`. If either applies, the confirmation dialog MUST display a localized warning identifying the side effect (pending request cancellation, friendship removal, or both).
 
-#### Scenario: Primary phone shows filled star
+#### Scenario: Warning shown when pending request exists
+- **WHEN** the user opens the delete-contact confirmation for a contact whose phone resolves to a registered user with a pending friend request between the parties (and no friendship)
+- **THEN** the confirmation dialog displays the localized "pending friend request will be cancelled" warning in addition to the standard delete message
 
-- **WHEN** a phone method with `isPrimary: true` is rendered in any surface
-- **THEN** a filled `star` Material Symbols icon SHALL appear adjacent to the phone value
+#### Scenario: Warning shown when friendship exists
+- **WHEN** the user opens the delete-contact confirmation for a contact whose phone resolves to a registered user with an existing friendship (and no pending request)
+- **THEN** the confirmation dialog displays the localized "existing friendship will be removed" warning in addition to the standard delete message
 
-#### Scenario: Non-primary phone has no star
+#### Scenario: Warning shown when both exist
+- **WHEN** both a pending request and a friendship exist for the contact's linked user
+- **THEN** the confirmation dialog displays the localized combined warning
 
-- **WHEN** a phone method with `isPrimary: false` is rendered
-- **THEN** no star icon SHALL appear on that row
+#### Scenario: No warning when no relationship
+- **WHEN** the contact's phones do not resolve to a registered user, or resolve but no pending request and no friendship exist
+- **THEN** the confirmation dialog shows only the standard delete message, with no relationship warning
 
-#### Scenario: Primary selector uses star icon
-
-- **WHEN** the contact form or contact detail view renders the primary-selection control on a phone row
-- **THEN** the control SHALL display a `star` icon — filled when that row is the selected primary, outlined when it is not
-
-### Requirement: Phone methods rendered primary-first
-
-Anywhere the app renders a contact's phone methods — contact list subtitle, contact chip, contact detail view, import-results row — the primary phone SHALL be shown first. A shared helper `orderedPhoneMethods(contact)` SHALL return phone methods with the primary first and the remaining in insertion order.
-
-#### Scenario: Detail view lists primary phone first
-
-- **WHEN** a contact with three phone methods is opened in the detail view
-- **THEN** the phone method with `isPrimary: true` SHALL render at the top of the phones list
-
-#### Scenario: List subtitle uses primary phone
-
-- **WHEN** the contacts list renders a row for a contact with multiple phones
-- **THEN** the subtitle SHALL show the primary phone's value
-
-### Requirement: Manual contact form supports multiple phones
-
-The contact creation form SHALL render a dynamic list of phone rows (value + optional label + primary radio). Users SHALL be able to add and remove phone rows. When more than one phone row has a non-empty value, exactly one row SHALL be selected as primary before the form can be submitted. When only one phone row has a non-empty value, that row SHALL be treated as primary implicitly.
-
-#### Scenario: Add a second phone row
-
-- **WHEN** the user taps "Add phone" in the contact creation form
-- **THEN** a new empty phone row SHALL appear with a primary radio unselected
-
-#### Scenario: Submit with two phones and no primary selected
-
-- **WHEN** the user submits the form with two non-empty phone rows and no primary radio selected
-- **THEN** the form SHALL display a validation error and SHALL NOT submit
-
-#### Scenario: Submit with two phones and a primary selected
-
-- **WHEN** the user submits the form with two non-empty phone rows and one marked primary
-- **THEN** `contactsStore.addContact` SHALL be called with both phones and the selected one flagged `isPrimary: true`
-
-#### Scenario: Submit with a single phone row
-
-- **WHEN** the user submits the form with only one non-empty phone row
-- **THEN** that phone SHALL be submitted with `isPrimary: true` regardless of the primary radio state
-
-#### Scenario: Remove a phone row
-
-- **WHEN** the user taps the remove action on a phone row in the form
-- **THEN** the row SHALL be removed; if the removed row was the selected primary and other rows remain, the primary radio SHALL reset to the first remaining row
-
-### Requirement: Contact detail view has view and edit modes
-
-The contact detail view SHALL default to a read-only view mode that displays name, every contact method (with primary-phone highlighting), and the friendship icon if applicable, mirroring the view/edit pattern used by `tour-info-sheet`. The view mode SHALL expose an Edit action that switches the view into edit mode.
-
-Edit mode SHALL aggregate the editable fields — first name, last name, display name, each contact-method value/label row, the primary-phone selector, and the add-new-method sub-form — into a single editable form with one Save and one Cancel control. The per-row inline save buttons SHALL NOT appear in edit mode.
-
-Save SHALL persist every dirty field. If any persistence call fails, the view SHALL remain in edit mode and SHALL surface the failure as a field-level error (for the failing row) or a form-level error (for the name block / add-method block). Cancel SHALL revert all pending values to the contact's currently persisted state and return the view to view mode.
-
-#### Scenario: View mode is the default
-
-- **WHEN** a contact is opened from the contacts list
-- **THEN** the detail view SHALL render in view mode with read-only name, methods, and friendship icon, and SHALL display an Edit action
-
-#### Scenario: Edit action enters edit mode
-
-- **WHEN** the user activates Edit
-- **THEN** the view SHALL switch to edit mode exposing input controls for name fields, each contact-method row, the primary selector, and the add-method sub-form, plus Save and Cancel actions
-
-#### Scenario: Save persists every dirty field
-
-- **WHEN** the user has changed name fields and/or one or more contact methods and activates Save
-- **THEN** the view SHALL invoke the store actions that persist each changed field, and on success SHALL return to view mode displaying the persisted data
-
-#### Scenario: Save fails — stay in edit mode
-
-- **WHEN** the user activates Save and at least one persistence call fails
-- **THEN** the view SHALL stay in edit mode, SHALL surface the failure inline next to the offending field (or as a form-level error if not field-attributable), and SHALL NOT discard the user's pending input
-
-#### Scenario: Cancel reverts pending edits
-
-- **WHEN** the user activates Cancel after typing into one or more fields
-- **THEN** all input controls SHALL revert to the contact's last persisted values and the view SHALL return to view mode
-
-#### Scenario: Add-method draft discarded on cancel
-
-- **WHEN** the user has typed into the add-method sub-form and then activates Cancel
-- **THEN** the draft method SHALL be discarded and SHALL NOT be persisted
-
-### Requirement: Contact detail view primary phone selection
-
-The contact detail view SHALL render every phone method with a primary indicator. In view mode the primary indicator SHALL be read-only. In edit mode the primary indicator SHALL be an interactive selector; selecting a non-primary phone as primary SHALL be applied as part of the single Save action so the store updates the invariant and the view re-renders with the new primary first.
-
-#### Scenario: Toggle primary between two existing phones — success
-
-- **WHEN** the contact has two phone methods and, in edit mode, the user selects the currently non-primary phone's primary control and activates Save
-- **THEN** the store SHALL call `setPrimaryPhone(contactId, newPrimaryId)` and, after the repository call succeeds, the selected phone SHALL have `isPrimary: true` while the other has `isPrimary: false`
-
-#### Scenario: Toggle primary fails — stay in edit mode
-
-- **WHEN** the user selects a non-primary phone as primary in edit mode and the `setPrimaryPhone` repository call rejects during Save
-- **THEN** the view SHALL stay in edit mode, the previously primary phone SHALL remain primary in the store and in the DB, and the failure SHALL be surfaced inline
-
-#### Scenario: Add a new phone — default not primary when primary exists
-
-- **WHEN** the user adds a phone method to a contact that already has a primary phone
-- **THEN** the new phone SHALL be inserted with `isPrimary: false` and the existing primary SHALL remain
-
-#### Scenario: Add the first phone — auto primary
-
-- **WHEN** the user adds a phone method to a contact with zero existing phones
-- **THEN** the new phone SHALL be inserted with `isPrimary: true`
-
-#### Scenario: Remove the current primary phone
-
-- **WHEN** the user removes the phone method currently marked primary and other phone methods remain
-- **THEN** the store SHALL mark the next remaining phone (by insertion order) as primary via `setPrimaryPhone`
-
-#### Scenario: Primary selector inert in view mode
-
-- **WHEN** the detail view is in view mode
-- **THEN** the primary indicator SHALL be visually present but SHALL NOT respond to taps and SHALL NOT call `setPrimaryPhone`
+#### Scenario: Confirming the delete performs cleanup
+- **WHEN** the user confirms deletion of a contact for which the warning was displayed
+- **THEN** the contact is deleted and the database removes the corresponding `friendships` row(s) and/or terminates pending `friend_requests` (per the `friendships` capability)
 
 ## MODIFIED Requirements
 

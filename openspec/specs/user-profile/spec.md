@@ -1,48 +1,41 @@
 ## ADDED Requirements
 
-### Requirement: User can remove phone number from profile
+### Requirement: Own-phone deletion cascades to friendships and pending friend requests
 
-The profile edit form SHALL expose a "Remove phone number" action that, when invoked, deletes the user's phone number from the auth user record (`auth.users.phone` and `phone_confirmed_at` cleared) and removes the corresponding `auth.identities` row with `provider='phone'`, so the same number can subsequently be verified by another user.
+`public.delete_own_phone()` MUST, in the same transaction in which it clears `auth.users.phone` / `phone_confirmed_at` for the caller, also:
+- DELETE every `friendships` row where the caller is `request_user_id` or `response_user_id`;
+- UPDATE every `friend_requests` row with `status = 'pending'` where the caller is `from_user_id` to `status = 'cancelled', responded_at = now()`;
+- UPDATE every `friend_requests` row with `status = 'pending'` where the caller is `to_user_id` to `status = 'denied', responded_at = now()`.
 
-The action SHALL be invokable via a SECURITY DEFINER RPC `delete_own_phone()` operating strictly on `auth.uid()`.
+Rows with `status` other than `'pending'` MUST NOT be modified.
 
-#### Scenario: Verified phone — confirmation with disclaimer
+#### Scenario: Own-phone delete removes all caller friendships
+- **WHEN** the caller invokes `delete_own_phone()` while having one or more `friendships` rows
+- **THEN** every such `friendships` row is deleted in the same transaction
 
-- **WHEN** the user opens profile edit and the current phone is verified (`phone_confirmed_at` is not null)
-- **AND** taps "Remove phone number"
-- **THEN** a confirmation overlay SHALL be rendered with a disclaimer that re-adding the number will require reverification
-- **AND** the deletion SHALL only execute after the user confirms
+#### Scenario: Own-phone delete terminates caller pending requests
+- **WHEN** the caller invokes `delete_own_phone()` while having pending `friend_requests` rows in either direction
+- **THEN** every such pending row is terminated using the cancelled (sender) / denied (recipient) rule
 
-#### Scenario: Unverified phone — immediate deletion, no disclaimer
+#### Scenario: Non-pending requests survive own-phone delete
+- **WHEN** the caller has historical `friend_requests` rows with status `denied` or `cancelled`
+- **THEN** those rows are not modified
 
-- **WHEN** the user opens profile edit and the current phone is unverified
-- **AND** taps "Remove phone number"
-- **THEN** the deletion SHALL execute immediately without rendering the reverification disclaimer
+### Requirement: Delete-own-phone confirmation warns about friendship and pending-request side effects
 
-#### Scenario: Auth records cleared
+The user profile UI MUST extend the existing delete-own-phone confirmation (reverify disclaimer) with an additional localized warning when the caller has at least one existing `friendships` row and/or at least one pending `friend_requests` row at the time the dialog opens. The warning MUST identify the side effect (friendships will be removed, pending requests will be cancelled, or both).
 
-- **WHEN** `delete_own_phone()` completes successfully
-- **THEN** `auth.users.phone` and `auth.users.phone_confirmed_at` for the caller SHALL be `NULL`
-- **AND** no `auth.identities` row with `provider='phone'` SHALL remain for the caller
-- **AND** the reactive `fullProfile` SHALL reflect `phoneNumber: null` and `phoneVerified: false` without requiring a page reload
+#### Scenario: Warning shown when relationships exist
+- **WHEN** the user opens the delete-own-phone confirmation while having any friendship or pending request
+- **THEN** the confirmation dialog displays the localized side-effect warning in addition to the existing reverify disclaimer
 
-#### Scenario: Number reusable by another user after deletion
+#### Scenario: No relationship warning when none exist
+- **WHEN** the user opens the delete-own-phone confirmation while having no friendships and no pending requests
+- **THEN** only the existing reverify disclaimer is shown
 
-- **WHEN** user A deletes their verified phone via this flow
-- **AND** user B subsequently verifies the same E.164 number
-- **THEN** user B's verification SHALL succeed without an "already registered" conflict
-
-#### Scenario: Responsive presentation
-
-- **WHEN** the confirmation overlay is rendered on a mobile viewport
-- **THEN** it SHALL appear as a bottom sheet (via existing `AdaptiveOverlay`)
-- **WHEN** rendered on desktop
-- **THEN** it SHALL appear as a centered dialog
-
-#### Scenario: RPC failure surfaces error
-
-- **WHEN** the RPC returns an error
-- **THEN** the store's `error` ref SHALL be set, the phone SHALL remain unchanged, and a localized failure message SHALL be displayed in the form
+#### Scenario: Confirming the delete performs cleanup
+- **WHEN** the user confirms own-phone deletion for which the relationship warning was displayed
+- **THEN** `delete_own_phone()` is invoked and the database performs friendship deletion and pending-request termination as specified
 
 ### Requirement: Notification preference fields on user profile
 The user profile SHALL persist notification channel toggles and a list of muted notification types.
