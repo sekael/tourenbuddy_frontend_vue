@@ -11,7 +11,7 @@
   "core": {
     "pwa": {
       "banner": {
-        "message": "Installieren Sie TourenBuddy für die beste Erfahrung",
+        "message": "Installiere TourenBuddy für die beste Erfahrung",
         "dismiss": "Nicht jetzt",
         "install": "Installieren"
       },
@@ -26,8 +26,8 @@
         "title": "Feedback",
         "openBugReport": "Einen Bug auf GitHub melden",
         "openIssue": "Feedback auf GitHub geben",
-        "noGitHub": "Kein GitHub-Konto? Schreiben Sie uns an",
-        "errorOpening": "GitHub-Seite konnte nicht geöffnet werden. Bitte senden Sie uns eine E-Mail an {email}"
+        "noGitHub": "Kein GitHub-Konto? Schreib uns an",
+        "errorOpening": "GitHub-Seite konnte nicht geöffnet werden. Bitte sende uns eine E-Mail an {email}"
       }
     },
     "drawer": {
@@ -45,12 +45,12 @@
     },
     "emailEntry": {
       "title": "E-Mail-Adresse eingeben",
-      "subtitle": "Wir senden Ihnen einen Anmeldecode",
+      "subtitle": "Wir senden Dir einen Anmeldecode",
       "emailLabel": "E-Mail-Adresse",
-      "emailPlaceholder": "sie{'@'}beispiel.ch",
-      "invalidEmail": "Bitte geben Sie eine gültige E-Mail-Adresse ein",
+      "emailPlaceholder": "du{'@'}tourenbuddy.ch",
+      "invalidEmail": "Bitte gib eine gültige E-Mail-Adresse ein",
       "sendCodeBtn": "Code senden",
-      "sendError": "Code konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
+      "sendError": "Code konnte nicht gesendet werden. Bitte versuche es erneut."
     },
     "shared": {
       "sendingBtn": "Wird gesendet...",
@@ -72,7 +72,7 @@
   "user": {
     "onboarding": {
       "title": "Profil einrichten",
-      "subtitle": "Ein vollständiges Profil hilft Ihren Tourpartnern, Sie zu erkennen und zu kontaktieren. Sie können dies jederzeit aktualisieren.",
+      "subtitle": "Ein vollständiges Profil hilft Deinen Tourpartnern, Dich zu erkennen und zu kontaktieren. Du kannst dies jederzeit aktualisieren.",
       "firstNameRequired": "Vorname ist erforderlich",
       "lastNameRequired": "Nachname ist erforderlich",
       "continueBtn": "Weiter",
@@ -143,7 +143,7 @@
       "skippedLabel": "übersprungen",
       "addManuallyBtn": "Kontakt manuell hinzufügen",
       "emptyTitle": "Noch keine Kontakte.",
-      "emptySubtitle": "Füge Kontakte hinzu, um sie als Tourpartner zu verwenden.",
+      "emptySubtitle": "Füge Kontakte hinzu, um sie als Tourpartner hinzufügen.",
       "noMatchesTitle": "Keine Kontakte gefunden.",
       "clearFiltersBtn": "Filter zurücksetzen",
       "searchPlaceholder": "Kontakte suchen…",
@@ -165,7 +165,7 @@
       "labelPlaceholder": "Bezeichnung (z. B. Mobil)",
       "removePhoneTooltip": "Telefon entfernen",
       "addPhoneBtn": "Telefon hinzufügen",
-      "primaryPhoneRequired": "Wählen Sie ein Haupttelefon aus, wenn mehrere Telefonnummern eingetragen sind"
+      "primaryPhoneRequired": "Wähle ein Haupttelefon aus, wenn mehrere Telefonnummern eingetragen sind"
     },
     "addDialog": {
       "title": "Kontakt hinzufügen",
@@ -190,7 +190,7 @@
       "noMethods": "Noch keine Kontaktmethoden.",
       "primaryPhoneTooltip": "Haupttelefon",
       "setAsPrimaryTooltip": "Als Haupttelefon festlegen",
-      "invalidPhoneHint": "Ungültige Nummer — geben Sie eine gültige Nummer ein",
+      "invalidPhoneHint": "Ungültige Nummer — gib eine gültige Nummer ein",
       "phonePlaceholder": "+41 79 012 34 56",
       "labelPlaceholder": "Bezeichnung (optional)",
       "invalidPhone": "Ungültige Telefonnummer",
@@ -222,7 +222,7 @@
       "removingMethodBtn": "Wird entfernt..."
     },
     "actionMenu": {
-      "noMethods": "Keine Kontaktmethode verfügbar. Bearbeiten Sie den Kontakt, um eine hinzuzufügen.",
+      "noMethods": "Keine Kontaktmethode verfügbar. Bearbeite den Kontakt, um eine hinzuzufügen.",
       "editBtn": "Kontakt bearbeiten"
     },
     "groupSms": {
@@ -245,7 +245,7 @@
       "filtersBtn": "Filter",
       "loading": "Wird geladen…",
       "emptyTitle": "Noch keine Touren.",
-      "emptySubtitle": "Erstellen Sie eine auf der Karte.",
+      "emptySubtitle": "Erstelle eine auf der Karte.",
       "noMatchesTitle": "Keine Touren gefunden.",
       "clearFiltersBtn": "Filter zurücksetzen"
     },
@@ -426,11 +426,11 @@
     "contactCreated": "Kontakt für neuen Freund erstellt",
     "tooltip": "Freund auf TourenBuddy",
     "acceptConfirm": "Diese Freundschaftsanfrage annehmen?",
-    "acceptWarning": "Angenommene Freundschaften können nicht gelöscht werden. Um diesen Freund zu entfernen, müssen Sie den verknüpften Kontakt löschen.",
+    "acceptWarning": "Angenommene Freundschaften können nicht gelöscht werden. Um diesen Freund zu entfernen, musst Du den verknüpften Kontakt löschen.",
     "acceptingBtn": "Wird angenommen...",
     "verificationNotice": {
       "title": "Hinweis zur Auffindbarkeit",
-      "body": "Nach der Verifizierung können andere verifizierte TourenBuddy-Nutzer, die diese Nummer in ihren Kontakten haben, erkennen, dass ein Konto für diese Nummer existiert, und eine Freundschaftsanfrage senden. Ihre Identität wird dabei nicht preisgegeben. Unverifizierte Nummern sind nie auffindbar. Sie können jede eingehende Anfrage ohne Begründung und ohne Konsequenzen ablehnen. Freundschaften können in Zukunft widerrufen werden.",
+      "body": "Nach der Verifizierung können andere verifizierte TourenBuddy-Nutzer, die diese Nummer in ihren Kontakten haben, erkennen, dass ein Konto für diese Nummer existiert, und eine Freundschaftsanfrage senden. Deine Identität wird dabei nicht preisgegeben. Unverifizierte Nummern sind nie auffindbar. Du kannst jede eingehende Anfrage ohne Begründung und ohne Konsequenzen ablehnen. Freundschaften können in Zukunft widerrufen werden.",
       "acknowledge": "Ich verstehe die Bedingungen zur Auffindbarkeit der Telefonnummer.",
       "sendCodeBtn": "Verifizierungscode senden"
     }
@@ -445,9 +445,9 @@
     "type": {
       "friend_requests": "Freundschaftsanfragen"
     },
-    "allOffDisclaimer": "Sie erhalten keine Benachrichtigungen über Freundschaftsanfragen oder andere wichtige Ereignisse. Aktivieren Sie mindestens einen Kanal, um informiert zu bleiben.",
+    "allOffDisclaimer": "Du erhältst keine Benachrichtigungen über Freundschaftsanfragen oder andere wichtige Ereignisse. Aktiviere mindestens einen Kanal, um informiert zu bleiben.",
     "pushUnavailable": "Nicht verfügbar",
-    "installHint": "Um Push-Benachrichtigungen zu aktivieren, fügen Sie TourenBuddy zuerst zum Home-Bildschirm hinzu.",
-    "deniedHint": "Push-Benachrichtigungen sind blockiert. Aktivieren Sie sie in den Browser- oder Geräteeinstellungen."
+    "installHint": "Um Push-Benachrichtigungen zu aktivieren, füge TourenBuddy zuerst zum Home-Bildschirm hinzu.",
+    "deniedHint": "Push-Benachrichtigungen sind blockiert. Aktiviere sie in den Browser- oder Geräteeinstellungen."
   }
 }
