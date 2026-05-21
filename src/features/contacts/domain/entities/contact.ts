@@ -23,14 +23,6 @@ export function getPrimaryPhone(contact: Contact): string | null {
 }
 
 /**
- * Returns the first+last name string for a contact (subtitle beneath the display name).
- * Only meaningful to show when displayName is also set.
- */
-export function resolveFullName(contact: Contact): string {
-  return contact.lastName ? `${contact.firstName} ${contact.lastName}` : contact.firstName
-}
-
-/**
  * Returns the human-readable display form for a phone number (e.g. "+41 79 123 45 67").
  * Falls back to trimmed original when unparseable.
  */

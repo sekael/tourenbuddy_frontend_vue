@@ -12,7 +12,6 @@ import {
   formatPhoneDisplay,
   getPrimaryPhone,
   resolveContactName,
-  resolveFullName,
 } from '@/features/contacts/domain/entities/contact'
 import { useContactFriendshipMap } from '@/features/contacts/presentation/composables/use-contact-friendship-map'
 import { useContactImport } from '@/features/contacts/presentation/composables/use-contact-import'
@@ -389,10 +388,7 @@ function onFormPhoneInput(phone: string) {
                 <span class="material-symbols-outlined friend-icon">group</span>
               </BaseTooltip>
             </span>
-            <span v-if="contact.displayName" class="contact-subtitle">
-              {{ resolveFullName(contact) }}
-            </span>
-            <span v-else-if="getPrimaryPhone(contact)" class="contact-subtitle">
+            <span v-if="getPrimaryPhone(contact)" class="contact-subtitle">
               {{ formatPhoneDisplay(getPrimaryPhone(contact)!) }}
             </span>
           </div>
