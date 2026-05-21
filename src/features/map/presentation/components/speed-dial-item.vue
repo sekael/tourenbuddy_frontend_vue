@@ -92,20 +92,13 @@ defineEmits<{ select: [] }>()
 }
 
 @media (orientation: landscape) and (max-height: 500px) {
+  /* Arc layout: icon-only; tooltip via aria-label/title. */
   .item-row {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .item-row:hover:not(:disabled) {
-    transform: translateX(-1px);
+    gap: 0;
   }
 
   .label-chip {
-    writing-mode: vertical-rl;
-    transform: rotate(180deg);
-    width: fit-content;
-    padding: var(--spacing-sm) var(--spacing-xxs);
+    display: none;
   }
 }
 </style>

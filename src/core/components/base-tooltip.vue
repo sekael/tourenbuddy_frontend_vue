@@ -4,6 +4,7 @@ import { useIsTouch } from '../composables/use-is-touch'
 
 const props = defineProps<{
   text: string
+  disabled?: boolean
 }>()
 
 const isTouch = useIsTouch()
@@ -50,6 +51,8 @@ function computePosition() {
 }
 
 function showTooltip() {
+  if (props.disabled)
+    return
   computePosition()
   visible.value = true
 }

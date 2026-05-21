@@ -80,9 +80,43 @@ defineExpose({ focusFirst })
 }
 
 @media (orientation: landscape) and (max-height: 500px) {
+  /* Quarter-circle arc layout around the speed-dial trigger (bottom-right).
+     Items positioned absolutely; trigger anchor = menu's bottom-right corner.
+     Radius 100px, item half-size 24px. */
   .menu {
-    flex-direction: row;
-    align-items: flex-end;
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 150px;
+    height: 150px;
+    display: block;
+  }
+
+  .menu > :deep(.item-row) {
+    position: absolute;
+  }
+
+  /* 4 items at θ = 0°, 30°, 60°, 90° from vertical (up → left).
+     Anchor: each item's icon-fab right edge aligns with arc x; bottom likewise.
+     +24px shift on both axes keeps the icon fully inside trigger's safe corner. */
+  .menu > :deep(.item-row:nth-child(1)) {
+    right: 0;
+    bottom: 100px;
+  }
+
+  .menu > :deep(.item-row:nth-child(2)) {
+    right: 50px;
+    bottom: 86px;
+  }
+
+  .menu > :deep(.item-row:nth-child(3)) {
+    right: 86px;
+    bottom: 50px;
+  }
+
+  .menu > :deep(.item-row:nth-child(4)) {
+    right: 100px;
+    bottom: 0;
   }
 }
 

@@ -2,7 +2,6 @@ import type { SpeedDialMenuItem } from '../components/map-speed-dial-menu.vue'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 
@@ -11,16 +10,13 @@ export type OverlayView = 'closed' | 'menu' | 'base-map'
 export function useMapOverlay(emit: {
   (e: 'openProfile'): void
   (e: 'openContacts'): void
-  (e: 'openTours'): void
   (e: 'openFeedback'): void
 }) {
   const { t } = useI18n({ useScope: 'global' })
 
   const mapStore = useMapStore()
-  const authStore = useAuthStore()
   const friendshipsStore = useFriendshipsStore()
   const { isPickingLocation, currentStyleIndex } = storeToRefs(mapStore)
-  const { isAuthenticated } = storeToRefs(authStore)
   const { incomingRequests } = storeToRefs(friendshipsStore)
 
   const view = ref<OverlayView>('closed')
@@ -56,34 +52,10 @@ export function useMapOverlay(emit: {
       badge: pendingIncomingCount.value,
       tooltip: t('map.overlay.contactsTooltip'),
     },
-    {
-      id: 'tours',
-      icon: 'location_on',
-      label: t('map.overlay.tours'),
-      tooltip: t('map.overlay.toursTooltip'),
-    },
-    {
-      id: 'add-tour',
-      icon: 'add_location_alt',
-      label: t('map.overlay.addTour'),
-      disabled: !isAuthenticated.value,
-      tooltip: isAuthenticated.value
-        ? t('map.overlay.addTourTooltip')
-        : t('map.overlay.signInToAddToursTooltip'),
-    },
   ])
 
   function onMenuSelect(id: string) {
-    if (id === 'add-tour') {
-      view.value = 'closed'
-      mapStore.selectTour(null)
-      mapStore.setPickingLocation(true)
-    }
-    else if (id === 'tours') {
-      view.value = 'closed'
-      emit('openTours')
-    }
-    else if (id === 'contacts') {
+    if (id === 'contacts') {
       view.value = 'closed'
       emit('openContacts')
     }

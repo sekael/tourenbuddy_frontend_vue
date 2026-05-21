@@ -46,6 +46,7 @@ function mountSheet(
   options: {
     tours?: typeof mockTours
     isLoading?: boolean
+    isAuthenticated?: boolean
   } = {},
 ) {
   return mount(TourListSheet, {
@@ -62,6 +63,7 @@ function mountSheet(
             },
             contacts: { contacts: [], isLoading: false, error: null },
             map: { selectedTourId: null, isPickingLocation: false },
+            auth: { currentUser: (options.isAuthenticated ?? true) ? { id: 'u-1' } : null },
           },
         }),
       ],
@@ -134,6 +136,25 @@ describe('tourListSheet', () => {
       await wrapper.findAll('.tour-row')[0]!.trigger('click')
       expect(wrapper.emitted('selectTour')).toHaveLength(1)
       expect(wrapper.emitted('selectTour')![0]).toEqual(['t-1'])
+    })
+  })
+
+  describe('header add-tour button', () => {
+    it('should render the header add-tour button when authenticated', () => {
+      const wrapper = mountSheet({ isAuthenticated: true })
+      expect(wrapper.find('.header-add-btn').exists()).toBe(true)
+    })
+
+    it('should render header button enabled when authenticated (click enabled = can emit)', () => {
+      const wrapper = mountSheet({ isAuthenticated: true })
+      const btn = wrapper.find('.header-add-btn')
+      expect(btn.exists()).toBe(true)
+      expect(btn.attributes('disabled')).toBeUndefined()
+    })
+
+    it('should render header button disabled when unauthenticated', () => {
+      const wrapper = mountSheet({ isAuthenticated: false })
+      expect(wrapper.find('.header-add-btn').attributes('disabled')).toBeDefined()
     })
   })
 

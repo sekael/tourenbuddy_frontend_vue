@@ -241,6 +241,7 @@
   "tours": {
     "list": {
       "title": "Tours",
+      "addTourAriaLabel": "Add tour",
       "searchPlaceholder": "Search tours…",
       "filtersBtn": "Filters",
       "loading": "Loading…",
@@ -373,13 +374,17 @@
     }
   },
   "map": {
+    "actionBar": {
+      "myTours": "My Tours",
+      "addTourAriaLabel": "Add tour"
+    },
     "overlay": {
       "compassTooltip": "Orient map north",
       "feedbackTooltip": "Feedback",
       "profileTooltip": "Profile",
       "contactsTooltip": "Contacts",
       "toursTooltip": "Tours",
-      "addTourTooltip": "Add tour location",
+      "addTourTooltip": "Add tour",
       "signInToAddToursTooltip": "Sign in to add tours",
       "menuOpen": "Menu",
       "menuClose": "Close menu",

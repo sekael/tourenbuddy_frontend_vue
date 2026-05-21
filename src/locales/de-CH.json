@@ -241,6 +241,7 @@
   "tours": {
     "list": {
       "title": "Touren",
+      "addTourAriaLabel": "Tour hinzufügen",
       "searchPlaceholder": "Touren suchen…",
       "filtersBtn": "Filter",
       "loading": "Wird geladen…",
@@ -373,13 +374,17 @@
     }
   },
   "map": {
+    "actionBar": {
+      "myTours": "Meine Touren",
+      "addTourAriaLabel": "Tour hinzufügen"
+    },
     "overlay": {
       "compassTooltip": "Karte nach Norden ausrichten",
       "feedbackTooltip": "Feedback",
       "profileTooltip": "Profil",
       "contactsTooltip": "Kontakte",
       "toursTooltip": "Touren",
-      "addTourTooltip": "Tourstandort hinzufügen",
+      "addTourTooltip": "Tour hinzufügen",
       "signInToAddToursTooltip": "Anmelden, um Touren hinzuzufügen",
       "menuOpen": "Menü",
       "menuClose": "Menü schliessen",
