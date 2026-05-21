@@ -93,7 +93,7 @@ describe('contactsListSheet', () => {
       expect(wrapper.find('.contact-phone').exists()).toBe(false)
     })
 
-    it('should display first+last name as subtitle when displayName is set', () => {
+    it('should display phone as subtitle when displayName is set', () => {
       const contactsWithDisplayName = [
         {
           id: '1',
@@ -101,7 +101,16 @@ describe('contactsListSheet', () => {
           firstName: 'Anna',
           lastName: 'Meier',
           displayName: 'Annie',
-          contactMethods: [],
+          contactMethods: [
+            {
+              id: 'm-1',
+              contactId: '1',
+              methodType: 'phone',
+              value: '+41 79 111 22 33',
+              label: null,
+              isPrimary: true,
+            },
+          ],
         },
       ]
       const wrapper = mount(ContactsListSheet, {
@@ -123,7 +132,21 @@ describe('contactsListSheet', () => {
       })
       const row = wrapper.find('.contact-row')
       expect(row.find('.contact-name').text()).toBe('Annie')
-      expect(row.find('.contact-subtitle').text()).toBe('Anna Meier')
+      expect(row.find('.contact-subtitle').text()).toBe('+41 79 111 22 33')
+    })
+
+    it('should display phone as subtitle when only firstName is set', () => {
+      const wrapper = mountSheet()
+      const rows = wrapper.findAll('.contact-row')
+      // Anna Meier (firstName + lastName, phone present)
+      expect(rows[0]!.find('.contact-subtitle').text()).toBe('+41 79 111 22 33')
+    })
+
+    it('should hide subtitle when contact has no phone', () => {
+      const wrapper = mountSheet()
+      const rows = wrapper.findAll('.contact-row')
+      // Bob (no lastName, no phone)
+      expect(rows[1]!.find('.contact-subtitle').exists()).toBe(false)
     })
 
     it('should show empty state when no contacts', () => {
