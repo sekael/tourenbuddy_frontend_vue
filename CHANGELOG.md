@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.23.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.22.0...tourenbuddy-frontend-v0.23.0) (2026-05-21)
+
+
+### Features
+
+* Always visible tour actions ([#178](https://github.com/sekael/tourenbuddy_frontend_vue/issues/178)) ([f0ce3fa](https://github.com/sekael/tourenbuddy_frontend_vue/commit/f0ce3fa0c4d84be451a82553e7deebe99138dabf))
+
+
+### Bug Fixes
+
+* **ci:** Pin add-to-project to v2.0.0 ([#181](https://github.com/sekael/tourenbuddy_frontend_vue/issues/181)) ([c5281e9](https://github.com/sekael/tourenbuddy_frontend_vue/commit/c5281e9c9858ea15390685ffa6a6a4d282692748))
+* **contacts:** Show phone instead of full name in list subtitle ([#171](https://github.com/sekael/tourenbuddy_frontend_vue/issues/171)) ([#180](https://github.com/sekael/tourenbuddy_frontend_vue/issues/180)) ([4a40d11](https://github.com/sekael/tourenbuddy_frontend_vue/commit/4a40d11ba8548bc9ddfe9f4d722a6a0f2645048f))
+
 ## [0.22.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.21.0...tourenbuddy-frontend-v0.22.0) (2026-05-20)
 
 
