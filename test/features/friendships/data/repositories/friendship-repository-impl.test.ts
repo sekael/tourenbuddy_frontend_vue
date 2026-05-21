@@ -21,25 +21,22 @@ describe('friendshipRepositoryImpl (errors + edges only)', () => {
   })
 
   describe('sendRequest', () => {
-    it('throws RLS message when policy blocks insert', async () => {
-      mockFrom.mockReturnValue(
-        stubFrom({ error: { message: 'new row violates row-level security policy' } }),
-      )
-      await expect(repo.sendRequest('user-b')).rejects.toThrow('row-level security')
+    it('maps blocked_by_target RPC error to BlockedBySenderError', async () => {
+      mockRpc.mockResolvedValue({ data: null, error: { message: 'blocked_by_target' } })
+      const { BlockedBySenderError } = await import('@/core/exceptions')
+      await expect(repo.sendRequest('user-b')).rejects.toBeInstanceOf(BlockedBySenderError)
     })
 
-    it('zod-rejects when DB row is missing required fields (e.g. malformed id)', async () => {
-      mockFrom.mockReturnValue(
-        stubFrom({
-          data: {
-            id: 'not-a-uuid',
-            from_user_id: 'x',
-            to_user_id: 'y',
-            status: 'pending',
-            created_at: '',
-          },
-        }),
-      )
+    it('throws generic Error on other RPC errors', async () => {
+      mockRpc.mockResolvedValue({ data: null, error: { message: 'some rpc error' } })
+      await expect(repo.sendRequest('user-b')).rejects.toThrow('some rpc error')
+    })
+
+    it('zod-rejects when RPC row is missing required fields', async () => {
+      mockRpc.mockResolvedValue({
+        data: { id: 'not-a-uuid', from_user_id: 'x', to_user_id: 'y', status: 'pending', created_at: '' },
+        error: null,
+      })
       await expect(repo.sendRequest('user-b')).rejects.toThrow()
     })
   })

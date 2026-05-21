@@ -11,6 +11,18 @@ vi.mock('@/core/logging/use-logger', () => ({
 vi.mock('@/features/auth/presentation/stores/auth-store', () => ({
   useAuthStore: vi.fn().mockReturnValue({ currentUser: null, isAuthenticated: false }),
 }))
+vi.mock('@/features/friendships/data/repositories/user-block-repository-impl', () => ({
+  UserBlockRepositoryImpl: vi.fn().mockImplementation(() => ({
+    listActive: vi.fn().mockResolvedValue([]),
+    isBlockedBy: vi.fn().mockResolvedValue(false),
+    block: vi.fn(),
+    unblock: vi.fn(),
+    report: vi.fn(),
+  })),
+}))
+vi.mock('@/core/realtime/use-realtime-subscription', () => ({
+  useRealtimeSubscription: vi.fn().mockReturnValue({ status: { value: 'idle' }, stop: vi.fn() }),
+}))
 vi.mock('@/features/friendships/data/repositories/friendship-repository-impl', () => ({
   FriendshipRepositoryImpl: vi.fn().mockImplementation(() => ({
     sendRequest: vi.fn(),
@@ -88,7 +100,7 @@ describe('connectPrompt', () => {
       await flushPromises()
 
       expect(store.sendRequest).not.toHaveBeenCalled()
-      expect(wrapper.find('.error-text').text()).toBe('Save failed')
+      expect(wrapper.find('.error-text').text()).toBe('blocks.snackbar.sendRequestFailed')
     })
 
     it('should leave buttons interactive after beforeSend rejects for retry', async () => {
@@ -125,7 +137,7 @@ describe('connectPrompt', () => {
       await wrapper.find('.btn-primary').trigger('click')
       await flushPromises()
 
-      expect(wrapper.find('.error-text').text()).toBe('network error')
+      expect(wrapper.find('.error-text').text()).toBe('blocks.snackbar.sendRequestFailed')
     })
   })
 

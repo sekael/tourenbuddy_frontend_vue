@@ -440,6 +440,33 @@
       "sendCodeBtn": "Send verification code"
     }
   },
+  "blocks": {
+    "tabLabel": "Blocked",
+    "blockAction": "Block",
+    "unblockAction": "Unblock",
+    "emptyState": "You haven't blocked anyone.",
+    "blockedSince": "Blocked since {date}",
+    "confirm": {
+      "title": "Block this user?",
+      "bodyWithFriend": "This will remove your friendship and prevent this user from sending you friend requests.",
+      "bodyWithoutFriend": "This will prevent this user from sending you friend requests.",
+      "cooldownNotice": "You will only be able to unblock this user after 48 hours.",
+      "reportToggle": "Also report this user",
+      "reportPlaceholder": "Optional: describe the issue (max 1000 characters)",
+      "cancelBtn": "Cancel",
+      "confirmBtn": "Block"
+    },
+    "snackbar": {
+      "blockSuccess": "User blocked",
+      "unblockSuccess": "User unblocked",
+      "reportSuccess": "Report submitted",
+      "cooldownError": "Cannot unblock yet — available again in {hours} h",
+      "sendRequestFailed": "Could not send request"
+    },
+    "cooldown": {
+      "remaining": "Available again in {hours} h"
+    }
+  },
   "notifications": {
     "sectionTitle": "Notifications",
     "pushLabel": "Push notifications",

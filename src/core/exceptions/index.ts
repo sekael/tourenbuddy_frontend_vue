@@ -50,6 +50,41 @@ export class FriendshipExistsError extends Error {
 
 export { PhoneAlreadyRegisteredError } from './phone-already-registered-error'
 
+/** Thrown when unblock_user is called but 48h cooldown since last_blocked_at has not elapsed. */
+export class BlockCooldownError extends Error {
+  readonly remainingSeconds: number
+
+  constructor(remainingSeconds: number) {
+    super('blocks.cooldown.active')
+    this.name = 'BlockCooldownError'
+    this.remainingSeconds = remainingSeconds
+  }
+}
+
+/** Thrown when block_user is called but target is already actively blocked. Treated as silent success. */
+export class BlockAlreadyExistsError extends Error {
+  constructor() {
+    super('blocks.alreadyBlocked')
+    this.name = 'BlockAlreadyExistsError'
+  }
+}
+
+/** Thrown when unblock_user is called but no active block row exists. Treated as silent success. */
+export class NotBlockedError extends Error {
+  constructor() {
+    super('blocks.notBlocked')
+    this.name = 'NotBlockedError'
+  }
+}
+
+/** Thrown when send_friend_request RPC indicates the target has blocked the caller. */
+export class BlockedBySenderError extends Error {
+  constructor() {
+    super('blocks.blockedBySender')
+    this.name = 'BlockedBySenderError'
+  }
+}
+
 /** Thrown when a contact method insert violates the unique constraint (contact_methods_unique_per_contact). */
 export class DuplicateContactMethodError extends Error {
   readonly i18nKey = 'contacts.errors.duplicateMethod'
