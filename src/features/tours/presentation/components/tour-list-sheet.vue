@@ -258,12 +258,14 @@ function handleRowClick(tourId: string) {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  color: var(--color-on-surface-variant);
+  color: var(--color-on-surface);
+  border: 1.5px solid var(--color-on-surface);
+  background-color: var(--color-surface-variant);
   transition: background-color 0.15s;
 }
 
 .header-add-btn:hover:not(:disabled) {
-  background-color: var(--color-surface-variant);
+  background-color: color-mix(in srgb, var(--color-surface-variant) 70%, var(--color-on-surface));
 }
 
 .header-add-btn:disabled {

@@ -54,9 +54,10 @@ describe('tourActionBar', () => {
     expect(addBtn.attributes('aria-label')).toBeTruthy()
   })
 
-  it('should pass addTourTooltip to the BaseTooltip component', () => {
+  it('should pass addTourTooltip to the add-tour BaseTooltip', () => {
     const wrapper = mountBar({ addTourTooltip: 'Sign in to add tours' })
-    const tooltip = wrapper.findComponent({ name: 'BaseTooltip' })
-    expect(tooltip.props('text')).toBe('Sign in to add tours')
+    const tooltips = wrapper.findAllComponents({ name: 'BaseTooltip' })
+    const addTooltip = tooltips[tooltips.length - 1]
+    expect(addTooltip?.props('text')).toBe('Sign in to add tours')
   })
 })

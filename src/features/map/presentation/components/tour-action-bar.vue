@@ -17,15 +17,17 @@ const { t } = useI18n({ useScope: 'global' })
 <template>
   <Transition name="pill">
     <div v-if="visible" class="pill" role="group">
-      <button
-        class="segment segment--tours"
-        :disabled="toursDisabled"
-        :aria-disabled="toursDisabled"
-        @click="emit('tours')"
-      >
-        <span class="material-symbols-outlined" aria-hidden="true">location_on</span>
-        <span class="segment-label">{{ t('map.actionBar.myTours') }}</span>
-      </button>
+      <BaseTooltip :text="t('map.actionBar.myTours')">
+        <button
+          class="segment segment--tours"
+          :disabled="toursDisabled"
+          :aria-disabled="toursDisabled"
+          @click="emit('tours')"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">location_on</span>
+          <span class="segment-label">{{ t('map.actionBar.myTours') }}</span>
+        </button>
+      </BaseTooltip>
 
       <div class="divider" aria-hidden="true" />
 

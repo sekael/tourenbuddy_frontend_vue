@@ -292,6 +292,10 @@ async function handleLocationConfirmed(location: { lng: number, lat: number }) {
     return
   }
 
+  // Immediately hide the pill bar for the entire tour-creation flow — prevents
+  // flickering during the async Swisstopo lookups between pick and dialog open.
+  activeOverlay.value = 'tour-creation'
+
   if (pendingPickType.value === 'start') {
     dialogInitialStartPoint.value = location
     const [elevation, name] = await Promise.all([getElevation(location), suggestTourName(location)])
