@@ -62,18 +62,18 @@
 
 ## 9. Manual verification
 
-- [ ] 9.1 `npm run dev` — verify on a mobile viewport (≤599px): bar bottom-center, two buttons, Add tour triggers pick → creation dialog flow
-- [ ] 9.2 Verify on a desktop viewport (≥600px): bar bottom-center, Tours opens side drawer, bar hides while drawer open; add-tour button appears at top of the list and starts creation flow
-- [ ] 9.3 Open feedback / profile / contacts — confirm bar remains visible but buttons disabled, speed-dial trigger disabled
-- [ ] 9.4 Pick a goal location — confirm bar hidden while picker active, restored on cancel
-- [ ] 9.5 Confirm speed-dial menu no longer lists Tours / Add tour entries
+- [x] 9.1 `npm run dev` — verify on a mobile viewport (≤599px): bar bottom-center, two buttons, Add tour triggers pick → creation dialog flow
+- [x] 9.2 Verify on a desktop viewport (≥600px): bar bottom-center, Tours opens side drawer, bar hides while drawer open; add-tour button appears at top of the list and starts creation flow
+- [x] 9.3 Open feedback / profile / contacts — confirm bar remains visible but buttons disabled, speed-dial trigger disabled
+- [x] 9.4 Pick a goal location — confirm bar hidden while picker active, restored on cancel
+- [x] 9.5 Confirm speed-dial menu no longer lists Tours / Add tour entries
 
 ## 10. Finalize
 
 - [x] 10.1 Run `npx eslint . --fix` (zero warnings)
 - [x] 10.2 Run `npm run type-check`
 - [x] 10.3 Run `npm run test`
-- [ ] 10.4 Prompt user to commit with this conventional commit message:
+- [x] 10.4 Prompt user to commit with this conventional commit message:
 
       ```
       feat(map): always-visible tour action bar (#169)
@@ -84,4 +84,4 @@
       open. Add an add-tour button at the top of the tour list sheet.
       ```
 
-- [ ] 10.5 Prompt user to push branch and open a PR against `main`, referencing issue #169
+- [x] 10.5 Prompt user to push branch and open a PR against `main`, referencing issue #169

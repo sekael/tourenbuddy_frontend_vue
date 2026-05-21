@@ -167,32 +167,38 @@ The map SHALL support a location-picking mode where a crosshair overlay appears 
 
 ### Requirement: Map action overlay with FABs
 
-The map page SHALL display floating action buttons for: base map style picker, user profile, add contact, and add location.
+The map page SHALL display floating action buttons in the bottom-right speed dial for: base map style picker, user profile, contacts, and feedback. The previously top-level Tours and Add-tour FABs SHALL NOT be part of the speed dial — they are owned by the persistent bottom-center tour action bar. The speed-dial trigger SHALL be disabled while any overlay is active (`activeOverlay !== null`).
 
 #### Scenario: Style picker button
 
-- **WHEN** the user clicks the style picker FAB
-- **THEN** a popup menu SHALL appear listing available map styles with a checkmark on the active one
+- **WHEN** the user clicks the style picker entry in the speed-dial menu
+- **THEN** a popup panel SHALL appear listing available map styles with a checkmark on the active one
 
 #### Scenario: User profile button
 
-- **WHEN** the user clicks the profile FAB
+- **WHEN** the user clicks the profile entry in the speed-dial menu
 - **THEN** the user profile sheet SHALL open
 
-#### Scenario: Add contact button
+#### Scenario: Contacts button
 
-- **WHEN** the user clicks the add contact FAB
-- **THEN** the contact creation dialog SHALL open
+- **WHEN** the user clicks the contacts entry in the speed-dial menu
+- **THEN** the contacts list sheet SHALL open
 
-#### Scenario: Add location button
+#### Scenario: Speed-dial does not expose Tours or Add tour
 
-- **WHEN** the user clicks the add location FAB
-- **THEN** the map SHALL enter location picker mode
+- **WHEN** the user opens the speed-dial menu
+- **THEN** the menu SHALL NOT contain a Tours entry or an Add-tour entry
 
-#### Scenario: Buttons hidden during location picking
+#### Scenario: Speed-dial trigger hidden during location picking
 
-- **WHEN** the map is in location picker mode
-- **THEN** all action overlay FABs SHALL be hidden
+- **WHEN** `mapStore.isPickingLocation === true`
+- **THEN** the speed-dial trigger and its menu SHALL be hidden (existing behaviour)
+
+#### Scenario: Speed-dial trigger disabled when an overlay is open
+
+- **WHEN** any overlay is active (`activeOverlay !== null`) and `mapStore.isPickingLocation === false`
+- **THEN** the speed-dial trigger SHALL render in a disabled state
+- **AND** clicking it SHALL NOT open the menu
 
 ### Requirement: Map store manages map state
 
@@ -213,33 +219,14 @@ A Pinia store (`useMapStore`) SHALL manage map-related state: `isPickingLocation
 - **WHEN** `setStyleIndex(index)` is called
 - **THEN** the store SHALL update `currentStyleIndex` and trigger a map style reload
 
-### Requirement: Map action overlay exposes a Tours FAB
-
-`MapActionOverlay` SHALL render a floating action button labeled "Tours" using the Material Symbols `location_on` icon, positioned between the Contacts FAB (`group` icon) and the New Tour FAB (`add_location_alt` icon). The button SHALL emit an `open-tours` event when activated. The button SHALL be disabled while `mapStore.isPickingLocation` is `true` and SHALL be hidden under the same conditions the rest of the action overlay is hidden.
-
-#### Scenario: Tours FAB is rendered between Contacts and New Tour
-
-- **WHEN** `MapActionOverlay` is rendered with a signed-in user and `isPickingLocation === false`
-- **THEN** the DOM order of the action FABs SHALL place the Tours FAB immediately after the Contacts FAB and immediately before the New Tour FAB
-
-#### Scenario: Tours FAB emits open-tours
-
-- **WHEN** the user activates the Tours FAB
-- **THEN** `MapActionOverlay` SHALL emit an `open-tours` event with no payload
-
-#### Scenario: Tours FAB hidden during location picking
-
-- **WHEN** `mapStore.isPickingLocation` becomes `true`
-- **THEN** the Tours FAB SHALL be hidden together with the rest of `MapActionOverlay`
-
 ### Requirement: Map page registers the tours overlay
 
 `map-page.vue` SHALL extend its `OverlayName` union with `'tours'` and SHALL mount `TourListSheet` inside the same unified overlay container that hosts the other single-active overlays. Opening the tours overlay SHALL follow the existing single-active policy so that any other open overlay (contacts, profile, feedback, tour, tour-creation) closes when the tours overlay opens.
 
 #### Scenario: Open tours overlay closes other overlays
 
-- **WHEN** a different overlay is active and `MapActionOverlay` emits `open-tours`
-- **THEN** `map-page.vue` SHALL set `activeOverlay` to `'tours'`, causing the previously active overlay to unmount
+- **WHEN** the tour action bar's My Tours segment is activated
+- **THEN** `map-page.vue` SHALL set `activeOverlay` to `'tours'`, causing any previously active overlay to unmount
 - **AND** `TourListSheet` SHALL mount
 
 #### Scenario: Tour list close resets overlay state
@@ -257,7 +244,7 @@ A Pinia store (`useMapStore`) SHALL manage map-related state: `isPickingLocation
 
 ### Requirement: Map action overlay icons
 
-The map action overlay SHALL display FABs with Material Symbols icons: `map` for base map picker, `person` for profile, `person_add` for add contact, and `add_location_alt` for add tour. FABs SHALL use glassmorphism styling (semi-transparent background with backdrop blur) for visual separation from map content.
+The speed-dial action overlay SHALL display FABs with Material Symbols icons: `map` for base map picker, `person` for profile, `group` for contacts, and `feedback` for feedback. FABs SHALL use glassmorphism styling (semi-transparent background with backdrop blur) for visual separation from map content.
 
 #### Scenario: FABs display Material Symbols
 
@@ -303,7 +290,7 @@ The map action overlay SHALL render a Feedback floating action button and SHALL 
 #### Scenario: Feedback FAB rendered
 
 - **WHEN** the map action overlay is mounted and the user is not currently picking a location
-- **THEN** a Feedback FAB SHALL be rendered alongside the existing profile, contact, and add-tour FABs
+- **THEN** a Feedback FAB SHALL be rendered alongside the existing profile and contacts FABs
 
 #### Scenario: Feedback FAB emits event
 
