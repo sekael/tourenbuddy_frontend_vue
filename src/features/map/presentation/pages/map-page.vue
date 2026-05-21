@@ -463,6 +463,7 @@ function handleDialogClose() {
       :tours-disabled="barState.toursAction === 'dismiss'"
       :add-tour-disabled="barState.addTourAction === 'dismiss' || barState.addTourAction === 'disabled'"
       :add-tour-tooltip="addTourTooltip"
+      :dismiss-mode="barState.toursAction === 'dismiss'"
       @tours="handleBarTours"
       @add-tour="handleBarAddTour"
     />

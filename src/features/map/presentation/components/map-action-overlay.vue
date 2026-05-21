@@ -174,15 +174,18 @@ defineExpose({ isOpen, closeMenu })
 }
 
 @media (orientation: landscape) and (max-height: 500px) {
+  /* Menu fans as a quarter-circle arc around the trigger so it doesn't overlap
+     the bottom-center tour action pill. Trigger stays at bottom-right. */
   .overlay {
-    flex-direction: row;
+    flex-direction: column;
     align-items: flex-end;
   }
 
   .panel-enter-from,
   .panel-leave-to {
     opacity: 0;
-    transform: translateX(8px) scale(0.97);
+    transform: scale(0.85);
+    transform-origin: bottom right;
   }
 }
 </style>

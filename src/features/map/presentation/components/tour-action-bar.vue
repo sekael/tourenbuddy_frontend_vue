@@ -7,6 +7,10 @@ defineProps<{
   toursDisabled: boolean
   addTourDisabled: boolean
   addTourTooltip?: string
+  // True when the bar is in dismiss-first mode (a non-tour overlay is open) —
+  // suppresses tooltips so the user isn't told about an action that, when
+  // tapped, would just close the open dialog.
+  dismissMode?: boolean
 }>()
 
 const emit = defineEmits<{ tours: [], addTour: [] }>()
@@ -17,7 +21,7 @@ const { t } = useI18n({ useScope: 'global' })
 <template>
   <Transition name="pill">
     <div v-if="visible" class="pill" role="group">
-      <BaseTooltip :text="t('map.actionBar.myTours')">
+      <BaseTooltip :text="t('map.actionBar.myTours')" :disabled="dismissMode">
         <button
           class="segment segment--tours"
           :disabled="toursDisabled"
@@ -31,7 +35,10 @@ const { t } = useI18n({ useScope: 'global' })
 
       <div class="divider" aria-hidden="true" />
 
-      <BaseTooltip :text="addTourTooltip ?? t('map.overlay.addTourTooltip')">
+      <BaseTooltip
+        :text="addTourTooltip ?? t('map.overlay.addTourTooltip')"
+        :disabled="dismissMode"
+      >
         <button
           class="segment segment--add"
           :disabled="addTourDisabled"
