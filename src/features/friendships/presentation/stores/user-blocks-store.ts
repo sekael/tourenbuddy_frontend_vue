@@ -3,6 +3,7 @@ import type {
   BlockedBySenderError,
 } from '@/core/exceptions'
 import type { UserBlock } from '@/features/friendships/data/models/user-block-schemas'
+import type { BlockedUserInfo } from '@/features/friendships/domain/repositories/user-block-repository'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import {
@@ -13,6 +14,7 @@ import { useLogger } from '@/core/logging/use-logger'
 import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { UserBlockRepositoryImpl } from '@/features/friendships/data/repositories/user-block-repository-impl'
+import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 
 const CACHE_TTL_MS = 5 * 60 * 1000
 
@@ -28,12 +30,22 @@ export const useUserBlocksStore = defineStore('userBlocks', () => {
   const authStore = useAuthStore()
 
   const blocks = ref<UserBlock[]>([])
+  const blockedUserInfo = ref(new Map<string, BlockedUserInfo>())
   const loading = ref(false)
   const error = ref<string | null>(null)
   const isBlockedByCache = ref(new Map<string, CacheEntry>())
 
   const activeBlocks = computed(() => blocks.value.filter(b => b.unblockedAt === null))
   const blockedUserIds = computed(() => new Set(activeBlocks.value.map(b => b.blockedUserId)))
+  const blockedPhones = computed<Set<string>>(() => {
+    const result = new Set<string>()
+    for (const id of blockedUserIds.value) {
+      const phone = blockedUserInfo.value.get(id)?.phone
+      if (phone)
+        result.add(phone)
+    }
+    return result
+  })
 
   function invalidateIsBlockedByCache(userId?: string) {
     if (userId) {
@@ -52,7 +64,14 @@ export const useUserBlocksStore = defineStore('userBlocks', () => {
     loading.value = true
     error.value = null
     try {
-      blocks.value = await repository.listActive()
+      const [rows, infos] = await Promise.all([
+        repository.listActive(),
+        repository.listBlockedUsers(),
+      ])
+      blocks.value = rows
+      const nextInfo = new Map<string, BlockedUserInfo>()
+      for (const info of infos) nextInfo.set(info.userId, info)
+      blockedUserInfo.value = nextInfo
     }
     catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load blocks'
@@ -68,6 +87,9 @@ export const useUserBlocksStore = defineStore('userBlocks', () => {
       await repository.block(userId)
       await fetchBlocks()
       invalidateIsBlockedByCache(userId)
+      // block_user cascades a friendship delete + friend_request status update.
+      // Realtime should propagate but is racy/lossy across reconnects, so refresh explicitly.
+      await useFriendshipsStore().fetchAll()
     }
     catch (err) {
       if (err instanceof BlockAlreadyExistsError)
@@ -124,6 +146,7 @@ export const useUserBlocksStore = defineStore('userBlocks', () => {
 
   function clear() {
     blocks.value = []
+    blockedUserInfo.value = new Map()
     error.value = null
     isBlockedByCache.value = new Map()
   }
@@ -178,6 +201,8 @@ export const useUserBlocksStore = defineStore('userBlocks', () => {
     blocks,
     activeBlocks,
     blockedUserIds,
+    blockedUserInfo,
+    blockedPhones,
     loading,
     error,
     isBlockedByCache,

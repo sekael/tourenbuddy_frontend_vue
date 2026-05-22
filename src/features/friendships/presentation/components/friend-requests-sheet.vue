@@ -21,6 +21,7 @@ const contactsStore = useContactsStore()
 const { contacts } = storeToRefs(contactsStore)
 const snackbar = useSnackbar()
 const blocksStore = useUserBlocksStore()
+const { blockedUserIds } = storeToRefs(blocksStore)
 
 type Tab = 'pending' | 'blocked'
 const activeTab = ref<Tab>('pending')
@@ -223,7 +224,14 @@ async function handleCancel(requestId: string) {
 
             <ul v-else class="request-list">
               <li v-for="req in incomingRequests" :key="req.id" class="request-row">
-                <template v-if="confirmingRequestId === req.id">
+                <template v-if="blockingRequest?.id === req.id">
+                  <BlockConfirmDialog
+                    :has-friendship="false"
+                    @cancel="cancelBlock"
+                    @confirm="handleBlockConfirm"
+                  />
+                </template>
+                <template v-else-if="confirmingRequestId === req.id">
                   <div class="confirm-content">
                     <p class="confirm-text">
                       {{ t('friendships.acceptConfirm') }}
@@ -265,6 +273,7 @@ async function handleCancel(requestId: string) {
                   </div>
                   <div class="request-actions">
                     <button
+                      v-if="!blockedUserIds.has(req.fromUserId)"
                       type="button"
                       class="action-btn action-btn--block"
                       @click="startBlock(req)"
@@ -329,13 +338,6 @@ async function handleCancel(requestId: string) {
         <BlockedList />
       </template>
     </div>
-
-    <BlockConfirmDialog
-      v-if="blockingRequest"
-      :has-friendship="false"
-      @cancel="cancelBlock"
-      @confirm="handleBlockConfirm"
-    />
   </AdaptiveOverlay>
 </template>
 
@@ -437,13 +439,14 @@ async function handleCancel(requestId: string) {
 
 .request-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-md);
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--spacing-sm);
   padding: var(--spacing-md);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-outline-variant);
   background-color: var(--color-surface);
+  container-type: inline-size;
 }
 
 .request-info {
@@ -479,9 +482,16 @@ async function handleCancel(requestId: string) {
 }
 
 .request-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: var(--spacing-sm);
-  flex-shrink: 0;
+  width: 100%;
+}
+
+@container (min-width: 340px) {
+  .request-actions {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
 }
 
 .action-btn {
@@ -491,6 +501,7 @@ async function handleCancel(requestId: string) {
   font-weight: var(--font-weight-medium);
   transition: background-color 0.15s;
   white-space: nowrap;
+  width: 100%;
 }
 
 .action-btn--accept {

@@ -1,5 +1,5 @@
 import type { UserBlock } from '@/features/friendships/data/models/user-block-schemas'
-import type { UserBlockRepository } from '@/features/friendships/domain/repositories/user-block-repository'
+import type { BlockedUserInfo, UserBlockRepository } from '@/features/friendships/domain/repositories/user-block-repository'
 import {
   BlockAlreadyExistsError,
   BlockCooldownError,
@@ -31,6 +31,18 @@ function mapRpcError(message: string, detail?: string | null): Error {
 }
 
 export class UserBlockRepositoryImpl implements UserBlockRepository {
+  async listBlockedUsers(): Promise<BlockedUserInfo[]> {
+    const { data, error } = await supabase.rpc('list_blocked_users')
+    if (error)
+      throw new Error(error.message)
+    return ((data ?? []) as Array<Record<string, unknown>>).map(r => ({
+      userId: r.user_id as string,
+      phone: (r.phone as string | null) ?? null,
+      firstName: (r.first_name as string | null) ?? null,
+      lastName: (r.last_name as string | null) ?? null,
+    }))
+  }
+
   async listActive(): Promise<UserBlock[]> {
     const { data, error } = await supabase
       .from('user_blocks')

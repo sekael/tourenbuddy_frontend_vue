@@ -71,10 +71,171 @@
 - [x] 9.3 Component test for `blocked-list.vue`: empty state, active rows rendered, Unblock disabled within cooldown showing hours, Unblock enabled after cooldown calls store
 - [x] 9.4 Component test for `block-confirm-dialog.vue`: with-friendship vs without-friendship copy, report toggle, confirm calls store actions in correct order
 - [x] 9.5 Component test for Block buttons on pending-request rows and friend detail trigger dialog with correct props
-- [ ] 9.6 Discovery filter integration test (against local Supabase): for `find_users_by_phones`, `find_phones_by_user_ids`, `get_user_names_by_ids` verify bidirectional filter omits blocked party; for `find_user_by_phone` and `is_phone_registered` verify they still return data (exempt); verify self-match unaffected on the filtered three
-- [ ] 9.7 Cascade integration test: block from existing-friendship state — verify friendship deleted, pending requests terminated per direction, block row inserted, all-or-nothing on simulated failure
-- [ ] 9.7b Concurrency test: open two transactions, one calling `block_user(B)` and one calling `send_friend_request(A)` interleaved — verify advisory lock serializes and end-state has no orphan pending row alongside an active block
-- [ ] 9.8 Cooldown integration test: block, unblock within 48h fails; advance time past 48h, unblock succeeds; immediate re-block succeeds (no re-block cooldown)
+- [ ] 9.6 Discovery filter integration test (against local Supabase):
+
+  **Setup** — open `supabase/studio` or run via psql (`psql postgresql://postgres:postgres@127.0.0.1:54322/postgres`). Create two test users A and B (use `supabase/seed.sql` patterns or insert directly into `auth.users`). Register phone numbers for both via `public.users` table. Insert an active block: `INSERT INTO public.user_blocks (blocker_user_id, blocked_user_id) VALUES ('<A>', '<B>');`
+
+  **find_users_by_phones** — call as user A, pass B's phone number:
+  ```sql
+  SET LOCAL role = authenticated;
+  SET LOCAL request.jwt.claims = '{"sub":"<A-uuid>"}';
+  SELECT * FROM public.find_users_by_phones(ARRAY['<B-phone>']);
+  -- expect: 0 rows (B blocked by A, bidirectional)
+  ```
+  Repeat call as user B passing A's phone — also 0 rows (A blocked B).
+
+  **find_phones_by_user_ids** — call as user A, pass `ARRAY['<B-uuid>']`:
+  ```sql
+  SELECT * FROM public.find_phones_by_user_ids(ARRAY['<B-uuid>'::uuid]);
+  -- expect: 0 rows
+  ```
+
+  **get_user_names_by_ids** — call as user A, pass `ARRAY['<B-uuid>']`:
+  ```sql
+  SELECT * FROM public.get_user_names_by_ids(ARRAY['<B-uuid>'::uuid]);
+  -- expect: 0 rows
+  ```
+
+  **Exempt RPCs (must still return data)**:
+  ```sql
+  SELECT * FROM public.find_user_by_phone('<B-phone>');
+  -- expect: row returned (no block filter)
+  SELECT public.is_phone_registered('<B-phone>');
+  -- expect: true
+  ```
+
+  **Self-match unaffected** — call `find_users_by_phones` as user A passing A's own phone:
+  ```sql
+  SELECT * FROM public.find_users_by_phones(ARRAY['<A-phone>']);
+  -- expect: 1 row (self never blocked)
+  ```
+
+  **Cleanup**: `DELETE FROM public.user_blocks WHERE blocker_user_id = '<A>';`
+
+- [ ] 9.7 Cascade integration test: block from existing-friendship state.
+
+  **Setup** — ensure users A and B have an active friendship row in `public.friendships`. Also insert a pending friend request from A to B in `public.friend_requests` (status = 'pending').
+
+  **Block action** — call `block_user` as user A targeting B:
+  ```sql
+  SET LOCAL role = authenticated;
+  SET LOCAL request.jwt.claims = '{"sub":"<A-uuid>"}';
+  SELECT public.block_user('<B-uuid>'::uuid);
+  ```
+
+  **Verify cascade**:
+  ```sql
+  -- friendship removed
+  SELECT * FROM public.friendships
+  WHERE (request_user_id = '<A>' AND response_user_id = '<B>')
+     OR (request_user_id = '<B>' AND response_user_id = '<A>');
+  -- expect: 0 rows
+
+  -- pending requests terminated (both directions)
+  SELECT * FROM public.friend_requests
+  WHERE (from_user_id = '<A>' AND to_user_id = '<B>')
+     OR (from_user_id = '<B>' AND to_user_id = '<A>');
+  -- expect: 0 rows (or status = 'declined', depending on terminate helper behavior)
+
+  -- block row inserted
+  SELECT * FROM public.user_blocks
+  WHERE blocker_user_id = '<A>' AND blocked_user_id = '<B>'
+    AND unblocked_at IS NULL;
+  -- expect: 1 row
+  ```
+
+  **All-or-nothing** — to verify atomicity, wrap a block call in a transaction and ROLLBACK, then check none of the above side-effects persisted:
+  ```sql
+  BEGIN;
+  SET LOCAL role = authenticated;
+  SET LOCAL request.jwt.claims = '{"sub":"<A-uuid>"}';
+  SELECT public.block_user('<B-uuid>'::uuid);
+  ROLLBACK;
+  -- all three queries above should now return original state
+  ```
+
+- [ ] 9.7b Concurrency test: advisory lock serializes `block_user` + `send_friend_request`.
+
+  **Setup** — users A and B, no block, no friendship, no pending request.
+
+  Open **two psql sessions** (two terminal tabs). In session 1:
+  ```sql
+  BEGIN;
+  SET LOCAL role = authenticated;
+  SET LOCAL request.jwt.claims = '{"sub":"<A-uuid>"}';
+  SELECT public.block_user('<B-uuid>'::uuid);
+  -- DO NOT COMMIT YET — leave transaction open
+  ```
+
+  Immediately in session 2 (before session 1 commits):
+  ```sql
+  BEGIN;
+  SET LOCAL role = authenticated;
+  SET LOCAL request.jwt.claims = '{"sub":"<B-uuid>"}';
+  SELECT public.send_friend_request('<A-uuid>'::uuid);
+  -- expect: blocks waiting on advisory lock until session 1 commits
+  ```
+
+  Commit session 1: `COMMIT;`
+
+  Session 2 should now unblock and raise `blocked_by_target` (SQLSTATE P0001), not succeed.
+
+  **Verify end-state**:
+  ```sql
+  -- no pending request row alongside active block
+  SELECT * FROM public.friend_requests
+  WHERE from_user_id = '<B>' AND to_user_id = '<A>' AND status = 'pending';
+  -- expect: 0 rows
+
+  SELECT * FROM public.user_blocks
+  WHERE blocker_user_id = '<A>' AND blocked_user_id = '<B>' AND unblocked_at IS NULL;
+  -- expect: 1 row
+  ```
+
+- [ ] 9.8 Cooldown integration test.
+
+  **Setup** — users A and B, no prior block.
+
+  **Block**:
+  ```sql
+  SET LOCAL role = authenticated;
+  SET LOCAL request.jwt.claims = '{"sub":"<A-uuid>"}';
+  SELECT public.block_user('<B-uuid>'::uuid);
+  -- expect: success
+  ```
+
+  **Unblock within 48h — must fail**:
+  ```sql
+  SELECT public.unblock_user('<B-uuid>'::uuid);
+  -- expect: raises cooldown_active with remaining seconds in DETAIL
+  ```
+
+  **Advance time past 48h** — update `last_blocked_at` directly (local DB only):
+  ```sql
+  UPDATE public.user_blocks
+  SET last_blocked_at = now() - interval '49 hours'
+  WHERE blocker_user_id = '<A>' AND blocked_user_id = '<B>';
+  ```
+
+  **Unblock now — must succeed**:
+  ```sql
+  SELECT public.unblock_user('<B-uuid>'::uuid);
+  -- expect: success, unblocked_at IS NOT NULL
+  SELECT unblocked_at FROM public.user_blocks
+  WHERE blocker_user_id = '<A>' AND blocked_user_id = '<B>';
+  -- expect: recent timestamp
+  ```
+
+  **Immediate re-block — must succeed (no re-block cooldown)**:
+  ```sql
+  SELECT public.block_user('<B-uuid>'::uuid);
+  -- expect: success (upsert flips unblocked_at back to NULL, updates last_blocked_at)
+  SELECT unblocked_at, last_blocked_at FROM public.user_blocks
+  WHERE blocker_user_id = '<A>' AND blocked_user_id = '<B>';
+  -- expect: unblocked_at IS NULL, last_blocked_at ≈ now()
+  ```
+
+  **Cleanup**: `DELETE FROM public.user_blocks WHERE blocker_user_id = '<A>';`
 - [x] 9.9 Run `npm run test` — all pass
 
 ## 10. Finalize
@@ -82,5 +243,5 @@
 - [x] 10.1 Run `npx eslint . --fix` (zero warnings)
 - [x] 10.2 Run `npm run type-check` (zero errors)
 - [ ] 10.3 Manual smoke locally: full social cut verified (friend req rejected, discovery RPCs return no rows for blocker, existing friendship removed on block, unblock + re-block cooldown shows correct hours)
-- [ ] 10.4 Prompt user to commit with ready-to-copy conventional commit message: `feat(friendships): user blocking with full social cut, cooldown, and reporting (#174)`
-- [ ] 10.5 Prompt user to push branch and open PR; remind user to run `supabase db push` as a separate deploy step after merge
+- [x] 10.4 Prompt user to commit with ready-to-copy conventional commit message: `feat(friendships): user blocking with full social cut, cooldown, and reporting (#174)`
+- [x] 10.5 Prompt user to push branch and open PR; remind user to run `supabase db push` as a separate deploy step after merge

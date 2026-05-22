@@ -4,9 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { BlockAlreadyExistsError, BlockCooldownError, NotBlockedError } from '@/core/exceptions'
 import { useUserBlocksStore } from '@/features/friendships/presentation/stores/user-blocks-store'
 
-const { mockRepo, mockCurrentUser } = vi.hoisted(() => ({
+const { mockRepo, mockCurrentUser, mockFriendshipsFetchAll } = vi.hoisted(() => ({
   mockRepo: {
     listActive: vi.fn(),
+    listBlockedUsers: vi.fn(),
     block: vi.fn(),
     unblock: vi.fn(),
     isBlockedBy: vi.fn(),
@@ -15,6 +16,13 @@ const { mockRepo, mockCurrentUser } = vi.hoisted(() => ({
   mockCurrentUser: {
     value: null as { id: string, phone_confirmed_at: string | null } | null,
   },
+  mockFriendshipsFetchAll: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock('@/features/friendships/presentation/stores/friendships-store', () => ({
+  useFriendshipsStore: vi.fn().mockReturnValue({
+    fetchAll: mockFriendshipsFetchAll,
+  }),
 }))
 
 vi.mock('@/features/friendships/data/repositories/user-block-repository-impl', () => ({
@@ -56,6 +64,7 @@ describe('userBlocksStore', () => {
     setActivePinia(createPinia())
     mockCurrentUser.value = { id: 'user-me', phone_confirmed_at: '2024-01-01T00:00:00Z' }
     mockRepo.listActive.mockResolvedValue([])
+    mockRepo.listBlockedUsers.mockResolvedValue([])
     mockRepo.isBlockedBy.mockResolvedValue(false)
   })
 

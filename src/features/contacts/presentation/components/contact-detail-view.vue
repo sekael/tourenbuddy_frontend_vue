@@ -26,9 +26,24 @@ const store = useContactsStore()
 const friendshipsStore = useFriendshipsStore()
 const { userIdToPhoneMap, friendUserIds } = storeToRefs(friendshipsStore)
 const blocksStore = useUserBlocksStore()
+const { blockedPhones, blockedUserIds } = storeToRefs(blocksStore)
 const snackbar = useSnackbar()
 
 const blockConfirmOpen = ref(false)
+
+const isContactBlocked = computed(() => {
+  if (props.linkedFriendUserId && blockedUserIds.value.has(props.linkedFriendUserId))
+    return true
+  for (const m of props.contact.contactMethods) {
+    if (m.methodType !== 'phone')
+      continue
+    const norm = normalizePhone(m.value)
+    const phone = norm.ok ? norm.e164 : m.value
+    if (blockedPhones.value.has(phone))
+      return true
+  }
+  return false
+})
 
 function openBlockConfirm() {
   blockConfirmOpen.value = true
@@ -453,8 +468,11 @@ defineExpose({
     <section class="section">
       <h3 class="section-label">
         {{ t('contacts.detailView.nameSection') }}
-        <BaseTooltip v-if="linkedFriendUserId" :text="t('friendships.tooltip')">
+        <BaseTooltip v-if="linkedFriendUserId && !isContactBlocked" :text="t('friendships.tooltip')">
           <span class="material-symbols-outlined detail-friend-icon">group</span>
+        </BaseTooltip>
+        <BaseTooltip v-if="isContactBlocked" :text="t('blocks.tooltip')">
+          <span class="material-symbols-outlined detail-blocked-icon">block</span>
         </BaseTooltip>
       </h3>
 
@@ -768,7 +786,14 @@ defineExpose({
 
     <!-- Danger section -->
     <section class="section section--danger">
+      <BlockConfirmDialog
+        v-if="blockConfirmOpen && linkedFriendUserId && !isContactBlocked"
+        :has-friendship="friendUserIds.has(linkedFriendUserId)"
+        @cancel="cancelBlock"
+        @confirm="handleBlockConfirm"
+      />
       <button
+        v-else-if="linkedFriendUserId && !isContactBlocked"
         type="button"
         class="block-btn"
         @click="openBlockConfirm"
@@ -826,13 +851,6 @@ defineExpose({
       </button>
     </section>
   </div>
-
-  <BlockConfirmDialog
-    v-if="blockConfirmOpen && linkedFriendUserId"
-    :has-friendship="friendUserIds.has(linkedFriendUserId)"
-    @cancel="cancelBlock"
-    @confirm="handleBlockConfirm"
-  />
 </template>
 
 <style scoped>
@@ -887,6 +905,11 @@ defineExpose({
 .detail-friend-icon {
   font-size: 20px;
   color: #f97316;
+}
+
+.detail-blocked-icon {
+  font-size: 20px;
+  color: var(--color-error, #dc2626);
 }
 
 .section {

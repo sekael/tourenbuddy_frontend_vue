@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import type { UserBlock } from '@/features/friendships/data/models/user-block-schemas'
+import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSnackbar } from '@/core/composables/use-snackbar'
 import { BlockCooldownError } from '@/core/exceptions'
-import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
+import { formatPhoneForDisplay } from '@/core/utils/phone-normalize'
+import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useUserBlocksStore } from '@/features/friendships/presentation/stores/user-blocks-store'
 
 const { t } = useI18n({ useScope: 'global' })
 const store = useUserBlocksStore()
-const friendsStore = useFriendshipsStore()
+const contactsStore = useContactsStore()
+const { contacts } = storeToRefs(contactsStore)
 const snackbar = useSnackbar()
 
 const activeBlocks = computed(() => store.activeBlocks)
@@ -25,14 +28,25 @@ function isInCooldown(block: UserBlock): boolean {
 }
 
 function displayName(block: UserBlock): string {
-  const names = friendsStore.userIdToNamesMap.get(block.blockedUserId)
-  if (names) {
-    const name = `${names.firstName ?? ''} ${names.lastName ?? ''}`.trim()
-    if (name)
-      return name
+  const info = store.blockedUserInfo.get(block.blockedUserId)
+  const phone = info?.phone ?? null
+
+  if (phone) {
+    const contact = contacts.value.find(c =>
+      c.contactMethods.some(m => m.methodType === 'phone' && m.value === phone),
+    )
+    if (contact) {
+      const name = `${contact.firstName ?? ''} ${contact.lastName ?? ''}`.trim()
+      if (name)
+        return name
+    }
   }
-  const phone = friendsStore.userIdToPhoneMap.get(block.blockedUserId)
-  return phone ?? block.blockedUserId
+
+  const profileName = `${info?.firstName ?? ''} ${info?.lastName ?? ''}`.trim()
+  if (profileName)
+    return profileName
+
+  return phone ? (formatPhoneForDisplay(phone) || phone) : '—'
 }
 
 function blockedSinceLabel(block: UserBlock): string {

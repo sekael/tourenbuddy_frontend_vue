@@ -444,6 +444,7 @@
     "tabLabel": "Blocked",
     "blockAction": "Block",
     "unblockAction": "Unblock",
+    "tooltip": "Blocked",
     "emptyState": "You haven't blocked anyone.",
     "blockedSince": "Blocked since {date}",
     "confirm": {

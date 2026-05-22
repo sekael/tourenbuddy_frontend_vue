@@ -22,86 +22,71 @@ function handleConfirm() {
 </script>
 
 <template>
-  <div class="dialog-backdrop" @click.self="emit('cancel')">
-    <div class="dialog" role="dialog" aria-modal="true">
-      <h2 class="dialog-title">
-        {{ t('blocks.confirm.title') }}
-      </h2>
+  <div class="inline-confirm" role="group" :aria-label="t('blocks.confirm.title')">
+    <p class="confirm-title">
+      {{ t('blocks.confirm.title') }}
+    </p>
 
-      <p class="dialog-body">
-        {{ props.hasFriendship ? t('blocks.confirm.bodyWithFriend') : t('blocks.confirm.bodyWithoutFriend') }}
-      </p>
+    <p class="confirm-body">
+      {{ props.hasFriendship ? t('blocks.confirm.bodyWithFriend') : t('blocks.confirm.bodyWithoutFriend') }}
+    </p>
 
-      <p class="cooldown-notice">
-        <span class="material-symbols-outlined notice-icon">schedule</span>
-        {{ t('blocks.confirm.cooldownNotice') }}
-      </p>
+    <p class="cooldown-notice">
+      <span class="material-symbols-outlined notice-icon">schedule</span>
+      {{ t('blocks.confirm.cooldownNotice') }}
+    </p>
 
-      <label class="report-toggle">
-        <input v-model="reportEnabled" type="checkbox">
-        {{ t('blocks.confirm.reportToggle') }}
-      </label>
+    <label class="report-toggle">
+      <input v-model="reportEnabled" type="checkbox">
+      {{ t('blocks.confirm.reportToggle') }}
+    </label>
 
-      <textarea
-        v-if="reportEnabled"
-        v-model="reportReason"
-        class="report-input"
-        :placeholder="t('blocks.confirm.reportPlaceholder')"
-        maxlength="1000"
-        rows="3"
-      />
+    <textarea
+      v-if="reportEnabled"
+      v-model="reportReason"
+      class="report-input"
+      :placeholder="t('blocks.confirm.reportPlaceholder')"
+      maxlength="1000"
+      rows="3"
+    />
 
-      <div class="dialog-actions">
-        <button
-          type="button"
-          class="btn btn--cancel"
-          @click="emit('cancel')"
-        >
-          {{ t('blocks.confirm.cancelBtn') }}
-        </button>
-        <button
-          type="button"
-          class="btn btn--confirm"
-          @click="handleConfirm"
-        >
-          {{ t('blocks.confirm.confirmBtn') }}
-        </button>
-      </div>
+    <div class="confirm-actions">
+      <button
+        type="button"
+        class="btn btn--cancel"
+        @click="emit('cancel')"
+      >
+        {{ t('blocks.confirm.cancelBtn') }}
+      </button>
+      <button
+        type="button"
+        class="btn btn--confirm"
+        @click="handleConfirm"
+      >
+        {{ t('blocks.confirm.confirmBtn') }}
+      </button>
     </div>
   </div>
 </template>
 
 <style scoped>
-.dialog-backdrop {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  padding: var(--spacing-md);
-}
-
-.dialog {
-  background-color: var(--color-surface);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-xl);
-  max-width: 420px;
-  width: 100%;
+.inline-confirm {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
-  box-shadow: var(--shadow-lg);
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-error, #dc2626);
+  background-color: color-mix(in srgb, var(--color-error, #dc2626) 6%, transparent);
 }
 
-.dialog-title {
-  font-size: var(--font-size-md);
+.confirm-title {
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-on-surface);
+  color: var(--color-error, #dc2626);
 }
 
-.dialog-body {
+.confirm-body {
   font-size: var(--font-size-sm);
   color: var(--color-on-surface-variant);
   line-height: 1.5;
@@ -140,16 +125,16 @@ function handleConfirm() {
   padding: var(--spacing-sm);
   font-size: var(--font-size-sm);
   color: var(--color-on-surface);
-  background-color: var(--color-surface-variant);
+  background-color: var(--color-surface);
   resize: vertical;
   width: 100%;
 }
 
-.dialog-actions {
+.confirm-actions {
   display: flex;
   gap: var(--spacing-sm);
   justify-content: flex-end;
-  margin-top: var(--spacing-sm);
+  flex-wrap: wrap;
 }
 
 .btn {
@@ -171,10 +156,11 @@ function handleConfirm() {
 
 .btn--confirm {
   border: 1.5px solid var(--color-error, #dc2626);
-  color: var(--color-error, #dc2626);
+  background-color: var(--color-error, #dc2626);
+  color: white;
 }
 
 .btn--confirm:hover {
-  background-color: color-mix(in srgb, var(--color-error, #dc2626) 10%, transparent);
+  opacity: 0.9;
 }
 </style>
