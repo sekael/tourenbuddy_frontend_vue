@@ -52,11 +52,11 @@ Cooldown clock (only one direction):
 ### Decision: RLS on `user_blocks`
 
 - SELECT: `auth.uid() = blocker_user_id` (blocker sees only own rows; blocked users never see they were blocked).
-- INSERT / UPDATE / DELETE: not granted directly — all writes go through SECURITY INVOKER RPCs (`block_user`, `unblock_user`) which centralize cooldown enforcement and cascade logic. This avoids any path where a client can bypass cooldown by direct DML.
+- INSERT / UPDATE / DELETE: not granted directly — all writes go through SECURITY DEFINER RPCs (`block_user`, `unblock_user`) which centralize cooldown enforcement and cascade logic. DEFINER is required because no INSERT/UPDATE/DELETE policies exist on `user_blocks` (intentionally — writes are RPC-only), so an INVOKER-mode RPC's own writes would be RLS-rejected. Authorization is preserved inside each RPC body via `auth.uid()` checks: the inserted row uses `blocker_user_id = auth.uid()` and lookups are qualified by the caller. The same reasoning applies to `report_user` writing `abuse_reports`. This avoids any path where a client can bypass cooldown by direct DML.
 
 **Alternative considered:** allow direct INSERT/UPDATE with policy-level cooldown predicate. Rejected — cooldown logic in RLS predicates is harder to read and harder to surface remaining time to the client. RPC bodies are clearer.
 
-### Decision: `block_user(target uuid)` RPC — single atomic cascade (SECURITY INVOKER)
+### Decision: `block_user(target uuid)` RPC — single atomic cascade (SECURITY DEFINER)
 
 PL/pgSQL body (sketch):
 
@@ -79,11 +79,11 @@ PL/pgSQL body (sketch):
 --     first_blocked_at preserved by NOT updating it
 ```
 
-Wrapped in a single transaction (PL/pgSQL function bodies are implicitly transactional with their caller). The helper is SECURITY DEFINER but accepts the actor as a parameter — `block_user` always passes `auth.uid()`, so no privilege escalation. `block_user` itself is SECURITY INVOKER so RLS still applies to the block-row write.
+Wrapped in a single transaction (PL/pgSQL function bodies are implicitly transactional with their caller). The helper is SECURITY DEFINER but accepts the actor as a parameter — `block_user` always passes `auth.uid()`, so no privilege escalation. `block_user` itself is SECURITY DEFINER (see RLS decision above) and consistently authorizes via `auth.uid()` checks inside the body.
 
 Errors raised as `RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'cooldown_active', DETAIL = '<seconds>'` so the client can parse and localize.
 
-### Decision: `unblock_user(target uuid)` RPC — SECURITY INVOKER
+### Decision: `unblock_user(target uuid)` RPC — SECURITY DEFINER
 
 Body:
 1. Fetch active row `(auth.uid(), target)` — raise if none.
@@ -187,7 +187,7 @@ UNIQUE (reporter_user_id, reported_user_id)
 
 Both identity columns are nullable with `ON DELETE SET NULL` so account deletion (GDPR erasure) anonymizes the audit row rather than dropping it. `reason` capped at 1000 chars to prevent large-payload abuse. The UNIQUE constraint enforces at most one report per (reporter, target) pair; `report_user` RPC uses `INSERT ... ON CONFLICT (reporter_user_id, reported_user_id) DO UPDATE SET reason = EXCLUDED.reason, created_at = now()` so legitimate "update reason" use cases work while preventing audit-table flood. Postgres treats NULLs as distinct in unique indexes — anonymized rows (reporter_user_id IS NULL) coexist without colliding.
 
-RLS: INSERT allowed when `auth.uid() = reporter_user_id`; SELECT denied to all `authenticated` (table is admin-only at the Postgres role level). `report_user(target uuid, reason text) returns void` RPC SECURITY INVOKER simply inserts.
+RLS: writes go only through the `report_user` RPC; SELECT denied to all `authenticated` (table is admin-only at the Postgres role level). `report_user(target uuid, reason text) returns void` is SECURITY DEFINER for the same reason as `block_user` / `unblock_user`: no INSERT policy is granted to authenticated, so an INVOKER-mode RPC's INSERT would be RLS-rejected. The RPC sets `reporter_user_id = auth.uid()` explicitly, so authorization is preserved.
 
 No triggers, no fan-out, no admin tool, no notification. Explicitly documented in code and migration comments to prevent later assumptions.
 
@@ -198,11 +198,36 @@ No triggers, no fan-out, no admin tool, no notification. Explicitly documented i
 - `data/models/user-block-schemas.ts` — Zod schema for row (with `unblocked_at` nullable), inferred type.
 - `data/models/abuse-report-schemas.ts` — minimal schema for the report payload.
 - `domain/entities/user-block.ts`, `abuse-report.ts` — type re-exports.
-- `domain/repositories/user-block-repository.ts` — interface: `listActive()`, `block(targetUserId)`, `unblock(targetUserId)`, `isBlockedBy(targetUserId)`, `report(targetUserId, reason)`.
+- `domain/repositories/user-block-repository.ts` — interface: `listActive()`, `listBlockedUsers()`, `block(targetUserId)`, `unblock(targetUserId)`, `isBlockedBy(targetUserId)`, `report(targetUserId, reason)`.
 - `data/repositories/user-block-repository-impl.ts` — Supabase impl mapping RPC errors to typed exceptions (`BlockCooldownError`, `BlockAlreadyExistsError`).
-- `presentation/stores/user-blocks-store.ts` — Pinia composition store with state, realtime channel lifecycle, `isBlockedBy` cache (per-target boolean, 5-minute TTL, invalidated on auth change and on visibility-change).
+- `presentation/stores/user-blocks-store.ts` — Pinia composition store with state, realtime channel lifecycle, `isBlockedBy` cache (per-target boolean, 5-minute TTL, invalidated on auth change and on visibility-change), plus `blockedUserInfo` map (userId → phone + names) and `blockedPhones` derived Set for UI consumers.
 - `presentation/components/blocked-list.vue` — Blocked tab content.
-- `presentation/components/block-confirm-dialog.vue` — confirmation dialog including unfriend warning + optional "Also report" toggle + reason input.
+- `presentation/components/block-confirm-dialog.vue` — **inline** confirmation panel (not a modal) including unfriend warning + optional "Also report" toggle + reason input. Inline placement matches the existing delete-confirmation pattern (e.g. contact removal) so block confirmations have a consistent UX across mobile and desktop.
+
+### Decision: `list_blocked_users()` RPC — identity resolution for blocker's own blocks (SECURITY DEFINER)
+
+Discovery RPCs (`find_users_by_phones`, `find_phones_by_user_ids`, `get_user_names_by_ids`) filter bidirectionally on active blocks, so a blocker cannot resolve phone or name for users they themselves have blocked. The UI still needs to display these identities — for the Blocked tab, for the blocked-status badge on contact rows, and to hide stale "send friend request" affordances. Rather than weakening the bidirectional discovery filter, expose a dedicated SECURITY DEFINER RPC:
+
+```sql
+list_blocked_users() returns table (user_id uuid, phone text, first_name text, last_name text)
+```
+
+Returns one row per user the caller has actively blocked (`blocker_user_id = auth.uid() AND unblocked_at IS NULL`), joined to `auth.users` for phone and `public.user_profile` for names. No parameters — the result set is scoped to the caller. `REVOKE ALL FROM PUBLIC; GRANT EXECUTE TO authenticated;`.
+
+The store calls this in lockstep with `listActive()` on every `fetchBlocks` (initial load, realtime change, post-block, post-unblock).
+
+### Decision: Block visibility on contacts (badge + button hiding)
+
+The user-blocks store exposes a derived `blockedPhones: Set<string>` (E.164) built from `blockedUserInfo`. UI surfaces consume this to:
+
+- **Contact list and contact detail**: render a red `block` icon next to the contact name when any of the contact's phone methods (normalized to E.164) is in `blockedPhones`. Same `BaseTooltip` + icon pattern as the friend badge — different color (`--color-error`).
+- **Contact detail Block action**: hide the Block button and inline confirm panel entirely when the contact resolves to a blocked user (by `linkedFriendUserId` ∈ `blockedUserIds` OR any contact phone ∈ `blockedPhones`).
+- **Pending request rows**: hide the Block button on a row whose sender is already in `blockedUserIds`.
+- **Connect-prompt (send-friend-request affordance)**: hide whenever EITHER `is_blocked_by(target)` is true (target blocked caller) OR `target ∈ blockedUserIds` (caller blocked target). Reactivity through `blockedUserIds` ensures the prompt disappears immediately after the user confirms a block, without remount.
+
+### Decision: Friendships-store refresh as defensive backup after `block_user`
+
+`block_user` cascades `friendships` DELETE + `friend_requests` UPDATE inside the same transaction. The friendships-store subscribes to realtime on both tables and should auto-refresh, but realtime delivery is racy and lossy (reconnect windows, missed events). After a successful `block` call, the user-blocks-store explicitly invokes `useFriendshipsStore().fetchAll()` so the pending-request row disappears from the UI synchronously with the block confirmation — independent of whether the realtime event lands.
 
 ### Decision: Sender-side cache TTL 5 minutes + multi-signal invalidation
 
@@ -238,20 +263,24 @@ Single key for the cooldown message, e.g. `blocks.cooldown.remaining` = "Availab
 ## Migration Plan
 
 1. `supabase migration new add_user_blocks_and_reporting`.
-2. Migration content (single file):
+2. Migration content (initial file `20260521141737_add_user_blocks_and_reporting.sql`):
    - `user_blocks` table + CHECK + indexes.
    - `abuse_reports` table.
-   - RLS on both tables.
-   - Functions: `is_blocked_by`, `block_user`, `unblock_user`, `report_user`.
+   - RLS on both tables (SELECT only; writes are RPC-mediated).
+   - Functions: `is_blocked_by`, `block_user`, `unblock_user`, `report_user`, `send_friend_request`.
    - DROP + CREATE the `friend_requests` INSERT policy with the new block predicate.
-   - REPLACE all five discovery RPC bodies with block-filtered versions (CREATE OR REPLACE FUNCTION — argument signatures unchanged).
-   - Add `user_blocks` to `supabase_realtime` publication.
-3. `supabase db reset` locally; verify schema + policies + each RPC.
-4. Implement client code + tests.
-5. `npm run test && npx eslint . --fix && npm run type-check`.
-6. Manual smoke locally exercising all cascade variants + cooldown.
-7. Prompt user to `supabase db push` to prod (not run unprompted).
-8. Deploy frontend via existing release-please flow.
+   - REPLACE three discovery RPC bodies (`find_users_by_phones`, `find_phones_by_user_ids`, `get_user_names_by_ids`) with bidirectionally block-filtered versions (CREATE OR REPLACE FUNCTION — argument signatures unchanged). `find_user_by_phone` + `is_phone_registered` exempt.
+   - Add `user_blocks` to `supabase_realtime` publication with `REPLICA IDENTITY FULL`.
+3. Follow-up migrations (additive, fix-forward — never edit prior files):
+   - `20260522045948_block_user_security_definer.sql`: convert `block_user` and `unblock_user` from SECURITY INVOKER to SECURITY DEFINER (RLS rejected the in-RPC INSERT/UPDATE because no INSERT/UPDATE policies are granted on `user_blocks`).
+   - `20260522052725_list_blocked_users.sql`: add `list_blocked_users()` RPC for the blocker to resolve identity (phone + names) of their own blocked users, which the bidirectional discovery filter intentionally hides elsewhere.
+   - `20260522054514_report_user_security_definer.sql`: convert `report_user` from SECURITY INVOKER to SECURITY DEFINER for the same RLS reason.
+4. `supabase db reset` locally; verify schema + policies + each RPC.
+5. Implement client code + tests.
+6. `npm run test && npx eslint . --fix && npm run type-check`.
+7. Manual smoke locally exercising all cascade variants + cooldown.
+8. Prompt user to `supabase db push` to prod (not run unprompted).
+9. Deploy frontend via existing release-please flow.
 
 **Rollback:** new migration is additive plus policy/function replacements. Forward-fix preferred; a rollback migration would restore the prior INSERT policy on `friend_requests` and the prior discovery RPC bodies, and drop the new tables/functions.
 

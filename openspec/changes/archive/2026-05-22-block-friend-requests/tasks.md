@@ -71,7 +71,7 @@
 - [x] 9.3 Component test for `blocked-list.vue`: empty state, active rows rendered, Unblock disabled within cooldown showing hours, Unblock enabled after cooldown calls store
 - [x] 9.4 Component test for `block-confirm-dialog.vue`: with-friendship vs without-friendship copy, report toggle, confirm calls store actions in correct order
 - [x] 9.5 Component test for Block buttons on pending-request rows and friend detail trigger dialog with correct props
-- [ ] 9.6 Discovery filter integration test (against local Supabase):
+- [x] 9.6 Discovery filter integration test (against local Supabase):
 
   **Setup** — open `supabase/studio` or run via psql (`psql postgresql://postgres:postgres@127.0.0.1:54322/postgres`). Create two test users A and B (use `supabase/seed.sql` patterns or insert directly into `auth.users`). Register phone numbers for both via `public.users` table. Insert an active block: `INSERT INTO public.user_blocks (blocker_user_id, blocked_user_id) VALUES ('<A>', '<B>');`
 
@@ -112,7 +112,7 @@
 
   **Cleanup**: `DELETE FROM public.user_blocks WHERE blocker_user_id = '<A>';`
 
-- [ ] 9.7 Cascade integration test: block from existing-friendship state.
+- [x] 9.7 Cascade integration test: block from existing-friendship state.
 
   **Setup** — ensure users A and B have an active friendship row in `public.friendships`. Also insert a pending friend request from A to B in `public.friend_requests` (status = 'pending').
 
@@ -192,7 +192,7 @@
   -- expect: 1 row
   ```
 
-- [ ] 9.8 Cooldown integration test.
+- [x] 9.8 Cooldown integration test.
 
   **Setup** — users A and B, no prior block.
 
@@ -242,6 +242,6 @@
 
 - [x] 10.1 Run `npx eslint . --fix` (zero warnings)
 - [x] 10.2 Run `npm run type-check` (zero errors)
-- [ ] 10.3 Manual smoke locally: full social cut verified (friend req rejected, discovery RPCs return no rows for blocker, existing friendship removed on block, unblock + re-block cooldown shows correct hours)
+- [x] 10.3 Manual smoke locally: full social cut verified (friend req rejected, discovery RPCs return no rows for blocker, existing friendship removed on block, unblock + re-block cooldown shows correct hours)
 - [x] 10.4 Prompt user to commit with ready-to-copy conventional commit message: `feat(friendships): user blocking with full social cut, cooldown, and reporting (#174)`
 - [x] 10.5 Prompt user to push branch and open PR; remind user to run `supabase db push` as a separate deploy step after merge

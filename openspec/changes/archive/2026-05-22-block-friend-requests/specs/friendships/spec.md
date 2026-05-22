@@ -16,6 +16,10 @@ Sending a friend request SHALL go through the `send_friend_request(p_to_user_id 
 - **WHEN** user A's client evaluates a send-request affordance toward user B and `is_blocked_by(B)` returns true
 - **THEN** the affordance is not rendered
 
+#### Scenario: Client hides affordance when caller has blocked target
+- **WHEN** user A's client evaluates a send-request affordance toward user B and `B ∈ user-blocks-store.blockedUserIds`
+- **THEN** the affordance is not rendered (sending a friend request to someone the caller has blocked is suppressed reactively, immediately after the block confirmation)
+
 #### Scenario: Client invalidates cache on typed rejection
 - **WHEN** the RPC raises `blocked_by_target` for target B
 - **THEN** the client sets `isBlockedByCache[B] = true`, hides the affordance in the current view, and shows a generic failure snackbar (does not disclose the block reason)

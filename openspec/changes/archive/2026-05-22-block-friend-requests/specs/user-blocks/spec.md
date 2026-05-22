@@ -48,16 +48,32 @@ The system SHALL allow an authenticated user (the blocker) to record a block aga
 - **WHEN** any step of the `block_user` cascade fails
 - **THEN** no changes are persisted (neither the block row, nor the friendship deletion, nor the request termination)
 
-### Requirement: Sender-side affordance hide via boolean RPC
+### Requirement: Send-friend-request affordance hidden in both block directions
 
-The system SHALL expose `is_blocked_by(target_user_id uuid) returns boolean` as a SECURITY DEFINER function returning true iff `(target_user_id, auth.uid())` is an active block. The function MUST NOT leak any other information. Clients SHALL hide the "send friend request" affordance toward targets for which the RPC returns true.
+The system SHALL expose `is_blocked_by(target_user_id uuid) returns boolean` as a SECURITY DEFINER function returning true iff `(target_user_id, auth.uid())` is an active block. The function MUST NOT leak any other information. Clients SHALL hide the "send friend request" affordance toward target B whenever EITHER condition holds:
+1. `is_blocked_by(B)` returns true (B blocked A — server-side cannot deliver the request anyway).
+2. `B ∈ user-blocks-store.blockedUserIds` for caller A (A blocked B — sending to someone A blocked is nonsensical, and the discovery RPCs already hide B from A's lookups).
 
-#### Scenario: Affordance hidden when blocked
+Condition 2 MUST be reactive: when A confirms a block from contact detail or any other surface, the affordance MUST disappear immediately on the current view without a remount or re-fetch.
+
+#### Scenario: Affordance hidden when caller is blocked by target
 - **WHEN** user A's UI evaluates a send-request affordance toward user B and `is_blocked_by(B)` returns true
 - **THEN** the affordance is not rendered
 
+#### Scenario: Affordance hidden when caller has blocked target
+- **WHEN** user A's UI evaluates a send-request affordance toward user B and `B ∈ user-blocks-store.blockedUserIds`
+- **THEN** the affordance is not rendered
+
+#### Scenario: Affordance disappears immediately after caller blocks target
+- **WHEN** user A confirms Block on user B from any surface (pending request, contact detail) and the `block_user(B)` RPC succeeds
+- **THEN** any visible send-friend-request affordance toward B on the same view is removed reactively (no remount, no manual refresh)
+
+#### Scenario: Affordance returns after unblock
+- **WHEN** user A successfully invokes `unblock_user(B)` (cooldown elapsed) and `is_blocked_by(B)` returns false
+- **THEN** the affordance renders again subject to existing friend-request rules
+
 #### Scenario: Affordance visible when not blocked
-- **WHEN** `is_blocked_by(B)` returns false
+- **WHEN** `is_blocked_by(B)` returns false and `B ∉ blockedUserIds`
 - **THEN** the affordance renders subject to existing friend-request rules
 
 #### Scenario: RPC leaks nothing beyond the queried pair
@@ -125,14 +141,22 @@ The client SHALL expose Block actions from:
 - An existing friend in friend / contact detail.
 - Contact detail for any contact that has resolved to a registered user via contact-account-linking.
 
-The Block affordance MUST be hidden when the contact has no resolved registered user (no `target_user_id` available). Block from an existing friend MUST present a confirmation dialog warning the user that the friendship will be removed.
+The Block affordance MUST be hidden when:
+- the contact has no resolved registered user (no `target_user_id` available), OR
+- the contact is already actively blocked by the caller (resolved either via `linkedFriendUserId ∈ blockedUserIds` or via any contact phone ∈ `blockedPhones`).
+
+Block from an existing friend MUST present a confirmation dialog warning the user that the friendship will be removed. The confirmation dialog SHALL be rendered **inline** within the surface that triggered it (mirroring the existing delete-confirmation pattern used for contact removal) — never as a modal overlay — and the same component / placement SHALL be used on mobile and desktop.
 
 #### Scenario: Block hidden for unlinked contact
 - **WHEN** the contact detail renders for a contact whose phone has not resolved to a registered user
 - **THEN** the Block action is not rendered
 
-#### Scenario: Block visible once contact linkage exists
-- **WHEN** the contact detail renders for a contact whose phone has resolved to a registered user (linkage present)
+#### Scenario: Block hidden when target is already blocked
+- **WHEN** any Block entry point (pending request row, contact detail) renders for a target that the caller is currently actively blocking
+- **THEN** the Block button and any inline block-confirm panel are not rendered
+
+#### Scenario: Block visible once contact linkage exists and target not yet blocked
+- **WHEN** the contact detail renders for a contact whose phone has resolved to a registered user (linkage present) and the contact is not actively blocked
 - **THEN** the Block action is rendered
 
 #### Scenario: Block from pending incoming request
@@ -141,7 +165,7 @@ The Block affordance MUST be hidden when the contact has no resolved registered 
 
 #### Scenario: Block from existing friend prompts confirmation
 - **WHEN** user A taps Block on user B's friend / contact detail and `friendships(A, B)` exists
-- **THEN** a localized confirmation dialog warns that the friendship will be removed and offers Cancel + Confirm
+- **THEN** a localized confirmation panel renders inline (not as a modal) warning that the friendship will be removed and offering Cancel + Confirm
 
 #### Scenario: Confirm runs atomic cascade
 - **WHEN** user A confirms the dialog
@@ -149,7 +173,15 @@ The Block affordance MUST be hidden when the contact has no resolved registered 
 
 ### Requirement: Blocked tab in friend requests sheet
 
-The friend requests sheet SHALL include a "Blocked" tab alongside the pending requests tab. The tab SHALL list each user the current user has actively blocked (active = `unblocked_at IS NULL`), with display name, avatar, blocked-since timestamp, and an Unblock button. The button SHALL be disabled with a localized cooldown notice while within 48 hours of `last_blocked_at`.
+The friend requests sheet SHALL include a "Blocked" tab alongside the pending requests tab. The tab SHALL list each user the current user has actively blocked (active = `unblocked_at IS NULL`), with a display label, blocked-since timestamp, and an Unblock button. The button SHALL be disabled with a localized cooldown notice while within 48 hours of `last_blocked_at`.
+
+The display label MUST resolve via the following fallback chain (first non-empty wins):
+1. The locally saved contact name (first + last) whose phone matches the blocked user's phone.
+2. The blocked user's profile name (`first_name` + `last_name`) from `list_blocked_users()`.
+3. The blocked user's phone formatted for display.
+4. A neutral placeholder (e.g. `—`) — but only if no phone is available.
+
+User IDs (UUIDs) MUST NEVER be shown as the display label.
 
 #### Scenario: Active blocks shown, inactive omitted
 - **WHEN** the Blocked tab renders for user A
@@ -159,9 +191,75 @@ The friend requests sheet SHALL include a "Blocked" tab alongside the pending re
 - **WHEN** user A has no active blocks
 - **THEN** the Blocked tab shows a localized empty-state message
 
+#### Scenario: Display label uses local contact name when available
+- **WHEN** the Blocked tab renders a row for user B whose phone matches a locally saved contact with a name
+- **THEN** the row's label is the saved contact's first + last name
+
+#### Scenario: Display label falls back to profile name then phone
+- **WHEN** no local contact matches user B's phone but `list_blocked_users()` returned a profile name for B
+- **THEN** the row's label is the profile name; if no profile name is available, the row's label is the formatted phone number
+
+#### Scenario: UUID never displayed
+- **WHEN** the Blocked tab renders any row
+- **THEN** the user UUID is never used as the display label, regardless of fallback chain state
+
 #### Scenario: Unblock removes entry live
 - **WHEN** the user clicks Unblock for entry B (cooldown elapsed) and the RPC succeeds
 - **THEN** the row disappears from the Blocked tab without manual reload
+
+### Requirement: Identity resolution for blocker's own blocks
+
+The system SHALL expose `list_blocked_users() returns table (user_id uuid, phone text, first_name text, last_name text)` as a SECURITY DEFINER RPC returning one row per user the caller is currently actively blocking. The RPC is the single sanctioned path for the blocker to resolve identity of their own blocked users, since `find_users_by_phones`, `find_phones_by_user_ids`, and `get_user_names_by_ids` filter blocked users out bidirectionally.
+
+The RPC MUST be scoped strictly to the caller: it MUST NOT return rows for blocks where `blocker_user_id <> auth.uid()`, and it MUST NOT return rows where `unblocked_at IS NOT NULL`. The store MUST call this RPC alongside `listActive()` on every fetch (initial load, post-block, post-unblock, realtime change) and MUST expose the results as `blockedUserInfo: Map<userId, { phone, firstName, lastName }>` and a derived `blockedPhones: Set<string>` for UI consumers.
+
+#### Scenario: RPC returns the caller's own active blocks
+- **WHEN** user A invokes `list_blocked_users()` and has active blocks against users B and C (but C was unblocked)
+- **THEN** the result contains exactly one row identifying B with their phone (formatted as E.164 with leading `+`) and profile names if present; C is omitted
+
+#### Scenario: RPC scoped strictly to caller
+- **WHEN** user A invokes `list_blocked_users()`
+- **THEN** no rows are returned for blocks whose `blocker_user_id` is anyone other than A
+
+#### Scenario: Store exposes derived blockedPhones set
+- **WHEN** `fetchBlocks` completes successfully
+- **THEN** `blockedPhones` contains the E.164 phone for every active block whose `phone` is non-null
+
+### Requirement: Blocked-status badge on every contact reference
+
+The system SHALL display a visual blocked-status indicator (red `block` material symbol with a localized tooltip) anywhere a blocked contact is referenced in the UI. The indicator MUST appear:
+- next to the contact name in the contact list, in place of (or alongside) the friend badge,
+- next to the contact name in the contact detail view's name section, mirroring the friend-icon placement.
+
+Membership is derived from `blockedPhones` (any contact phone normalized to E.164 that matches an entry) OR from `blockedUserIds` (when a `linkedFriendUserId` is known). The indicator MUST update reactively as the user-blocks-store state changes (block, unblock, realtime sync) — no remount or manual refresh.
+
+#### Scenario: Blocked badge appears on contact list row
+- **WHEN** the contact list renders a contact whose primary or any other phone matches a row in `blockedPhones`
+- **THEN** a red `block` icon with the localized tooltip is rendered next to the contact name
+
+#### Scenario: Blocked badge appears on contact detail
+- **WHEN** the contact detail renders for a contact resolved to a blocked user
+- **THEN** the same red `block` icon is rendered next to the contact name in the name section
+
+#### Scenario: Badge appears live after blocking
+- **WHEN** the user successfully blocks a contact and remains on the same view
+- **THEN** the badge appears on the contact's row / detail without a manual refresh
+
+#### Scenario: Badge disappears live after unblocking
+- **WHEN** the user successfully unblocks a contact and remains on the same view
+- **THEN** the badge disappears without a manual refresh
+
+### Requirement: Pending request and friendship state refreshed synchronously after block
+
+After `block_user(B)` succeeds, the client MUST refresh the friendships-store (`fetchAll`) explicitly, in addition to relying on Supabase Realtime events for `friendships` DELETE and `friend_requests` UPDATE. The explicit refresh guarantees the UI removes any pending request rows and ends any friendship affordances synchronously with the block confirmation, even if a realtime event is delayed or dropped (reconnect, missed message).
+
+#### Scenario: Pending incoming request removed without realtime
+- **WHEN** user A blocks user B (whose pending friend request was incoming to A) and the realtime event for the `friend_requests` UPDATE has not yet arrived
+- **THEN** the pending request row is removed from the friend-requests sheet immediately upon block success, driven by the explicit `fetchAll` call
+
+#### Scenario: Friendship removed without realtime
+- **WHEN** user A blocks user B while a friendship exists and the realtime event for the `friendships` DELETE has not yet arrived
+- **THEN** any friendship-derived UI (e.g. friend badge, friend lists) reflects the removal immediately upon block success
 
 ### Requirement: Realtime synchronization of own block list
 
@@ -193,7 +291,7 @@ Active `user_blocks` rows MUST NOT be auto-deleted or set inactive by contact de
 
 ### Requirement: Abuse reporting captured but no moderation pipeline
 
-The system SHALL provide a `report_user(target_user_id uuid, reason text)` RPC that inserts a row into `public.abuse_reports(reporter_user_id, reported_user_id, reason, created_at)`. The Block UI SHALL offer an optional "Also report this user" toggle / paired action. Inserts are subject to RLS such that the reporter writes only their own rows. There is **no admin tool, no automated action, no notification to moderators** — the table is a capture-only audit log for future moderation work.
+The system SHALL provide a `report_user(target_user_id uuid, reason text)` SECURITY DEFINER RPC that inserts a row into `public.abuse_reports(reporter_user_id, reported_user_id, reason, created_at)`. The Block UI SHALL offer an optional "Also report this user" toggle / paired action. The RPC explicitly sets `reporter_user_id = auth.uid()` to preserve authorization (writes go only through this RPC; no INSERT policy is granted on `abuse_reports`). There is **no admin tool, no automated action, no notification to moderators** — the table is a capture-only audit log for future moderation work, tracked by a separate GitHub issue.
 
 #### Scenario: Report inserted
 - **WHEN** user A invokes `report_user(B, "spam")` for the first time
