@@ -266,17 +266,17 @@ async function handleCancel(requestId: string) {
                   <div class="request-actions">
                     <button
                       type="button"
-                      class="action-btn action-btn--deny"
-                      @click="handleDeny(req.id)"
-                    >
-                      {{ t('friendships.deny') }}
-                    </button>
-                    <button
-                      type="button"
                       class="action-btn action-btn--block"
                       @click="startBlock(req)"
                     >
                       {{ t('blocks.blockAction') }}
+                    </button>
+                    <button
+                      type="button"
+                      class="action-btn action-btn--deny"
+                      @click="handleDeny(req.id)"
+                    >
+                      {{ t('friendships.deny') }}
                     </button>
                     <button
                       type="button"

@@ -766,8 +766,8 @@ defineExpose({
       </div>
     </section>
 
-    <!-- Block (view mode, registered user only) -->
-    <section v-if="mode === 'view' && linkedFriendUserId" class="section section--block">
+    <!-- Danger section -->
+    <section class="section section--danger">
       <button
         type="button"
         class="block-btn"
@@ -776,10 +776,7 @@ defineExpose({
         <span class="material-symbols-outlined">block</span>
         {{ t('blocks.blockAction') }}
       </button>
-    </section>
 
-    <!-- Delete -->
-    <section class="section section--danger">
       <p v-if="deleteError" class="error-text">
         {{ deleteError }}
       </p>
@@ -1200,11 +1197,6 @@ button.primary-star:hover {
 
 .cancel-btn:hover {
   background-color: var(--color-surface-variant);
-}
-
-.section--block {
-  border-bottom: 1px solid var(--color-outline-variant);
-  padding-bottom: var(--spacing-md);
 }
 
 .block-btn {
