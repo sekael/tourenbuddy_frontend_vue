@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.23.0...tourenbuddy-frontend-v0.23.1) (2026-05-23)
+
+
+### Bug Fixes
+
+* Extend page backgrounds under iOS notch and Android gesture bar ([#188](https://github.com/sekael/tourenbuddy_frontend_vue/issues/188)) ([7d67fca](https://github.com/sekael/tourenbuddy_frontend_vue/commit/7d67fcad295131a7953b0a797bfa94fe973e7446))
+
 ## [0.23.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.22.0...tourenbuddy-frontend-v0.23.0) (2026-05-21)
 
 
