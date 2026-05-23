@@ -546,7 +546,7 @@ function handleDialogClose() {
 .map-page {
   position: relative;
   width: 100%;
-  height: 100vh;
+  height: -webkit-fill-available;
   height: 100dvh;
   overflow: hidden;
 }

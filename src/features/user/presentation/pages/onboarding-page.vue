@@ -224,8 +224,10 @@ function handleNoticeClose() {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  padding: var(--spacing-xl);
+  min-height: -webkit-fill-available;
+  min-height: 100dvh;
+  padding: calc(var(--spacing-xl) + env(safe-area-inset-top, 0px)) var(--spacing-xl)
+    calc(var(--spacing-xl) + env(safe-area-inset-bottom, 0px));
   background-color: var(--color-background);
 }
 
