@@ -49,8 +49,8 @@
 
 ## 8. Finalize
 
-- [ ] 8.1 `npx eslint . --fix` and `npm run type-check` clean.
-- [ ] 8.2 Prompt user to commit with conventional commit message:
+- [x] 8.1 `npx eslint . --fix` and `npm run type-check` clean.
+- [x] 8.2 Prompt user to commit with conventional commit message:
   ```
   fix(pwa): extend page backgrounds under iOS notch and Android gesture bar (#176)
 
@@ -58,5 +58,26 @@
   background. Interactive overlays apply env(safe-area-inset-bottom) so touch
   targets stay clear of the home indicator. Closes #176.
   ```
-- [ ] 8.3 Prompt user to push branch and open PR against `main` referencing #176; PR description includes the manual test plan from §7 as a checklist for the reviewer.
+- [x] 8.3 Prompt user to push branch and open PR against `main` referencing #176; PR description includes the manual test plan from §7 as a checklist for the reviewer.
 - [ ] 8.4 After merge, prompt user to run `openspec-archive` skill to archive this change.
+
+## 9. Follow-up: 100lvh swap (issue #176 round 2)
+
+After first merge, iOS PWA still showed light band below pill/sheets on iPhone 15. Root cause: `100dvh` in iOS standalone PWA excludes safe-area zones, so page roots stopped above the home-indicator gesture bar and `html` background leaked through.
+
+- [x] 9.1 `#app` in `src/app/theme/global.css`: `min-height: 100dvh` → `100lvh` (largest viewport always covers safe-area zones with `viewport-fit=cover`).
+- [x] 9.2 `.map-page` in `src/features/map/presentation/pages/map-page.vue`: `height: 100dvh` → `100lvh`.
+- [x] 9.3 Form page roots (`home-page`, `email-entry-page`, `verify-otp-page`, `onboarding-page`): `min-height: 100dvh` → `100lvh`. `-webkit-fill-available` fallback retained for old iOS.
+- [x] 9.4 `npx eslint . --fix`, `npm run type-check`, `npm run test` — clean (838 tests pass).
+- [ ] 9.5 Manual verify on iPhone 15 PWA: map tiles reach physical bottom under gesture bar; pill stays above; bottom sheets sit flush at viewport bottom with content above indicator.
+- [ ] 9.6 Commit:
+  ```
+  fix(pwa): use 100lvh so page backgrounds cover iOS home indicator zone (#176)
+
+  100dvh excludes safe-area zones in iOS standalone PWA, leaving a light band
+  under map tiles and below bottom sheets on iPhone 15. Switch page roots to
+  100lvh (largest viewport, includes safe areas with viewport-fit=cover).
+  Floating controls keep env(safe-area-inset-bottom) padding to clear the home
+  indicator.
+  ```
+- [ ] 9.7 Push and open PR / push to existing branch `feat/176-pwa-status-bar-fade`.

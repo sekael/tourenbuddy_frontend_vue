@@ -36,7 +36,7 @@ const { t } = useI18n({ useScope: 'global' })
   align-items: center;
   justify-content: center;
   min-height: -webkit-fill-available;
-  min-height: 100dvh;
+  min-height: 100lvh;
   /* No top padding — background image fills edge-to-edge including notch zone.
      Inner .content handles notch clearance via padding-top. */
   padding: 0 var(--spacing-xl) calc(var(--spacing-xl) + env(safe-area-inset-bottom, 0px));

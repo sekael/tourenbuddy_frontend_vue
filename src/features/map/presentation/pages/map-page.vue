@@ -547,7 +547,7 @@ function handleDialogClose() {
   position: relative;
   width: 100%;
   height: -webkit-fill-available;
-  height: 100dvh;
+  height: 100lvh;
   overflow: hidden;
 }
 
