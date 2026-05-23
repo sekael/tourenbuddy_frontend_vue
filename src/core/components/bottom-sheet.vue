@@ -441,7 +441,8 @@ const sheetStyle = computed(() => {
   min-height: 0;
   overflow-y: auto;
   padding-right: var(--spacing-xs);
-  padding-bottom: var(--spacing-md);
+  /* Home indicator clearance: last list item stays reachable above gesture bar */
+  padding-bottom: calc(var(--spacing-md) + env(safe-area-inset-bottom, 0px));
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: var(--color-outline-variant) transparent;
@@ -459,6 +460,6 @@ const sheetStyle = computed(() => {
 .footer {
   flex-shrink: 0;
   border-top: 1px solid var(--color-outline-variant);
-  padding: var(--spacing-sm) 0 var(--spacing-xl);
+  padding: var(--spacing-sm) 0 calc(var(--spacing-xl) + env(safe-area-inset-bottom, 0px));
 }
 </style>

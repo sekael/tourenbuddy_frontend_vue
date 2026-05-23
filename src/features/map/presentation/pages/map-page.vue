@@ -546,13 +546,16 @@ function handleDialogClose() {
 .map-page {
   position: relative;
   width: 100%;
-  height: 100vh;
-  height: 100dvh;
+  height: -webkit-fill-available;
+  height: 100lvh;
   overflow: hidden;
 }
 
 .sheet-container {
-  position: absolute;
+  /* fixed (not absolute) so sheets anchor to the visual viewport bottom in
+     mobile browsers — sits above Android system nav and Brave bottom chrome,
+     not behind it where page-root 100lvh extends. */
+  position: fixed;
   bottom: 0;
   left: 0;
   right: 0;

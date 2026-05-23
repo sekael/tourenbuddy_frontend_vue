@@ -10,10 +10,14 @@
 }
 
 html,
-body,
-#app {
+body {
   height: 100%;
   width: 100%;
+}
+
+html {
+  /* Neutral fallback visible during route transitions before page root mounts. */
+  background-color: var(--color-background);
 }
 
 body {
@@ -21,11 +25,18 @@ body {
   font-size: var(--font-size-base);
   line-height: var(--line-height-normal);
   color: var(--color-on-background);
-  /* Paints under iOS notch (status bar set to black-translucent in index.html).
-     Page roots paint their own surface on top; this only shows in the safe-area zones. */
-  background-color: var(--color-status-bar);
+  /* Pages own their safe areas — body must not paint a brand color band. */
+  background-color: transparent;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Page roots inherit this floor so any route without explicit root sizing still
+   fills the largest viewport — `lvh` always includes safe-area zones under
+   `viewport-fit=cover`, while `dvh` excludes them in iOS standalone PWA. */
+#app {
+  min-height: -webkit-fill-available;
+  min-height: 100lvh;
 }
 
 button {

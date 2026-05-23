@@ -49,6 +49,7 @@ onMounted(() => {
   })
 
   map.value = mapInstance
+  window.visualViewport?.addEventListener('resize', onVisualViewportResize)
 
   mapInstance.on('load', async () => {
     markerLayer = useToursMarkerLayer(
@@ -76,7 +77,14 @@ onMounted(() => {
   })
 })
 
+// Resize canvas when the visual viewport changes (virtual keyboard open/close,
+// or dynamic-viewport height recalculation on iOS PWA).
+function onVisualViewportResize() {
+  mapInstance?.resize()
+}
+
 onUnmounted(() => {
+  window.visualViewport?.removeEventListener('resize', onVisualViewportResize)
   markerLayer?.cleanup()
   mapInstance?.remove()
   mapInstance = null

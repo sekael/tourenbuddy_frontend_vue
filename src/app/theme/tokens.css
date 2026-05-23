@@ -46,9 +46,6 @@
   --color-fab-on-surface: #ffffff;
   --color-fab-border: rgba(255, 255, 255, 0.25);
 
-  /* Status / notch fallback — lighter than FAB so iOS white status text stays legible */
-  --color-status-bar: #2563eb;
-
   /* Safe-area insets (iOS notch, Android nav bar, home indicator) */
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
