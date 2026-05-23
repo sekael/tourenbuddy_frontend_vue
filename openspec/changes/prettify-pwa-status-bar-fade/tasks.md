@@ -38,14 +38,14 @@
 
 ## 7. Verification (manual — required per issue)
 
-- [ ] 7.1 **iOS PWA install**: add to Home Screen on iPhone with notch (iOS 16+). Open home page → background image extends edge-to-edge, no blue band. Status-bar text legible over image.
-- [ ] 7.2 **iOS PWA map**: navigate to map → Swisstopo tiles render under notch and under home indicator. Map action bar buttons clearly above home indicator.
-- [ ] 7.3 **iOS PWA short content**: open a page with content that doesn't fill viewport (e.g. email-entry) → background is page surface color, not blue, all the way to top edge.
-- [ ] 7.4 **Android PWA**: install on Android (Chrome → Install app). With gesture nav enabled, verify map action bar and any FAB are not covered by the gesture indicator. Background image / map tiles reach top edge.
-- [ ] 7.5 **Desktop browser**: verify no visual regression (safe-area insets are 0; layout unchanged).
-- [ ] 7.6 **In-browser iOS Safari (not installed)**: confirm graceful behaviour — pages still look fine, no broken bands.
-- [ ] 7.7 **Scroll behaviour**: scroll home/map → no jumping or background gap re-appearing at top.
-- [ ] 7.8 **Rotate device**: portrait → landscape on iOS PWA → safe-area on the left/right (landscape notch side) is filled by page background, content stays inside safe-area.
+- [x] 7.1 **iOS PWA install**: add to Home Screen on iPhone with notch (iOS 16+). Open home page → background image extends edge-to-edge, no blue band. Status-bar text legible over image.
+- [x] 7.2 **iOS PWA map**: navigate to map → Swisstopo tiles render under notch and under home indicator. Map action bar buttons clearly above home indicator.
+- [x] 7.3 **iOS PWA short content**: open a page with content that doesn't fill viewport (e.g. email-entry) → background is page surface color, not blue, all the way to top edge.
+- [x] 7.4 **Android PWA**: install on Android (Chrome → Install app). With gesture nav enabled, verify map action bar and any FAB are not covered by the gesture indicator. Background image / map tiles reach top edge.
+- [x] 7.5 **Desktop browser**: verify no visual regression (safe-area insets are 0; layout unchanged).
+- [x] 7.6 **In-browser iOS Safari (not installed)**: confirm graceful behaviour — pages still look fine, no broken bands.
+- [x] 7.7 **Scroll behaviour**: scroll home/map → no jumping or background gap re-appearing at top.
+- [x] 7.8 **Rotate device**: portrait → landscape on iOS PWA → safe-area on the left/right (landscape notch side) is filled by page background, content stays inside safe-area.
 
 ## 8. Finalize
 
@@ -59,7 +59,7 @@
   targets stay clear of the home indicator. Closes #176.
   ```
 - [x] 8.3 Prompt user to push branch and open PR against `main` referencing #176; PR description includes the manual test plan from §7 as a checklist for the reviewer.
-- [ ] 8.4 After merge, prompt user to run `openspec-archive` skill to archive this change.
+- [x] 8.4 After merge, prompt user to run `openspec-archive` skill to archive this change.
 
 ## 9. Follow-up: 100lvh swap (issue #176 round 2)
 
@@ -69,8 +69,8 @@ After first merge, iOS PWA still showed light band below pill/sheets on iPhone 1
 - [x] 9.2 `.map-page` in `src/features/map/presentation/pages/map-page.vue`: `height: 100dvh` → `100lvh`.
 - [x] 9.3 Form page roots (`home-page`, `email-entry-page`, `verify-otp-page`, `onboarding-page`): `min-height: 100dvh` → `100lvh`. `-webkit-fill-available` fallback retained for old iOS.
 - [x] 9.4 `npx eslint . --fix`, `npm run type-check`, `npm run test` — clean (838 tests pass).
-- [ ] 9.5 Manual verify on iPhone 15 PWA: map tiles reach physical bottom under gesture bar; pill stays above; bottom sheets sit flush at viewport bottom with content above indicator.
-- [ ] 9.6 Commit:
+- [x] 9.5 Manual verify on iPhone 15 PWA: map tiles reach physical bottom under gesture bar; pill stays above; bottom sheets sit flush at viewport bottom with content above indicator.
+- [x] 9.6 Commit:
   ```
   fix(pwa): use 100lvh so page backgrounds cover iOS home indicator zone (#176)
 
@@ -80,4 +80,4 @@ After first merge, iOS PWA still showed light band below pill/sheets on iPhone 1
   Floating controls keep env(safe-area-inset-bottom) padding to clear the home
   indicator.
   ```
-- [ ] 9.7 Push and open PR / push to existing branch `feat/176-pwa-status-bar-fade`.
+- [x] 9.7 Push and open PR / push to existing branch `feat/176-pwa-status-bar-fade`.

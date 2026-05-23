@@ -55,7 +55,10 @@ const { t } = useI18n({ useScope: 'global' })
 
 <style scoped>
 .pill {
-  position: absolute;
+  /* fixed (not absolute) so position tracks the visual viewport in mobile
+     browsers — keeps the pill above Android system nav and Brave/Chrome bottom
+     chrome, not buried under page-root 100lvh. */
+  position: fixed;
   bottom: calc(var(--spacing-3xl) + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);

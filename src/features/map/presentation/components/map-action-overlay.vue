@@ -103,7 +103,10 @@ defineExpose({ isOpen, closeMenu })
 
 <style scoped>
 .overlay {
-  position: absolute;
+  /* fixed (not absolute) so position tracks the visual viewport in mobile
+     browsers — keeps the speed-dial above Android system nav and Brave/Chrome
+     bottom chrome, not buried under page-root 100lvh. */
+  position: fixed;
   bottom: calc(var(--spacing-3xl) + env(safe-area-inset-bottom, 0px));
   right: calc(var(--spacing-lg) + env(safe-area-inset-right, 0px));
   display: flex;

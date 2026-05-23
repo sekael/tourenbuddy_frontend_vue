@@ -68,8 +68,10 @@ function handleConfirm() {
 }
 
 .actions {
-  position: absolute;
-  bottom: var(--spacing-lg);
+  /* fixed so actions stay above Android system nav and Brave bottom chrome
+     (parent .location-picker is absolute inside page-root 100lvh). */
+  position: fixed;
+  bottom: calc(var(--spacing-lg) + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
