@@ -48,10 +48,10 @@
 
 ## 7. Finalize
 
-- [ ] 7.1 `npx eslint . --fix` — zero warnings.
-- [ ] 7.2 `npm run type-check` — passes.
-- [ ] 7.3 `npm run test` — passes.
-- [ ] 7.4 Prompt user to commit. Suggested message:
+- [x] 7.1 `npx eslint . --fix` — zero warnings.
+- [x] 7.2 `npm run type-check` — passes.
+- [x] 7.3 `npm run test` — 906/906 pass.
+- [x] 7.4 Prompt user to commit. Suggested message:
       ```
       feat(tours): add Supabase Realtime sync for tours and attachments
 
@@ -65,6 +65,6 @@
 
       Closes #189
       ```
-- [ ] 7.5 Prompt user to `git push -u origin feat/189-tours-realtime` and open a PR against `main`.
-- [ ] 7.6 Prompt user to `supabase db push` against prod *only after* PR approval.
-- [ ] 7.7 After merge, prompt user to archive this change with `/opsx:archive`.
+- [x] 7.5 Prompt user to `git push -u origin feat/189-tours-realtime` and open a PR against `main`.
+- [x] 7.6 Prompt user to `supabase db push` against prod *only after* PR approval.
+- [x] 7.7 After merge, prompt user to archive this change with `/opsx:archive`.
