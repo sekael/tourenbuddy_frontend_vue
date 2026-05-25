@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.24.0...tourenbuddy-frontend-v0.25.0) (2026-05-25)
+
+
+### Features
+
+* **tours:** Add image and PDF attachments ([#177](https://github.com/sekael/tourenbuddy_frontend_vue/issues/177)) ([#191](https://github.com/sekael/tourenbuddy_frontend_vue/issues/191)) ([bd24ad0](https://github.com/sekael/tourenbuddy_frontend_vue/commit/bd24ad06ea74d1cbf285be38a12a778de971d2a6))
+
 ## [0.24.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.23.1...tourenbuddy-frontend-v0.24.0) (2026-05-25)
 
 
