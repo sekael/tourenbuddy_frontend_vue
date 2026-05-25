@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
+import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment';
+import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store';
+import { computed, onMounted, ref, watch } from 'vue';
 
 const props = defineProps<{
   tourId: string
@@ -25,18 +25,59 @@ onMounted(() => {
 })
 
 // Fetch thumbnail signed URLs whenever attachment list changes
-watch(attachments, async (list) => {
-  for (const att of list) {
-    if (att.mimeType !== 'application/pdf' && !thumbnailUrls.value[att.id]) {
+watch(
+  attachments,
+  async (list) => {
+    for (const att of list) {
+      if (thumbnailUrls.value[att.id]) continue
       try {
-        thumbnailUrls.value[att.id] = await store.getViewUrl(att.storagePath)
-      }
-      catch {
+        const url = await store.getViewUrl(att.storagePath)
+        if (att.mimeType === 'application/pdf')
+          thumbnailUrls.value[att.id] = await renderPdfThumbnail(url)
+        else thumbnailUrls.value[att.id] = url
+      } catch {
         // Thumbnail load failure is non-critical
       }
     }
+  },
+  { immediate: true },
+)
+
+interface PdfViewport {
+  width: number
+  height: number
+}
+interface PdfPage {
+  getViewport: (opts: { scale: number }) => PdfViewport
+  render: (opts: { canvasContext: CanvasRenderingContext2D; viewport: PdfViewport }) => {
+    promise: Promise<void>
   }
-}, { immediate: true })
+}
+interface PdfDocument {
+  getPage: (n: number) => Promise<PdfPage>
+}
+
+async function renderPdfThumbnail(url: string): Promise<string> {
+  const pdfjsLib = await import('pdfjs-dist')
+  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.min.mjs',
+    import.meta.url,
+  ).href
+
+  const doc = (await pdfjsLib.getDocument(url).promise) as unknown as PdfDocument
+  const page = await doc.getPage(1)
+  const natural = page.getViewport({ scale: 1 })
+  const scale = 160 / Math.min(natural.width, natural.height)
+  const viewport = page.getViewport({ scale })
+
+  const canvas = document.createElement('canvas')
+  canvas.width = viewport.width
+  canvas.height = viewport.height
+  const ctx = canvas.getContext('2d')!
+  await page.render({ canvasContext: ctx, viewport }).promise
+
+  return canvas.toDataURL('image/png')
+}
 
 function openAt(index: number) {
   emit('openViewer', attachments.value, index)
@@ -54,12 +95,14 @@ function openAt(index: number) {
     >
       <div class="strip__thumb">
         <img
-          v-if="att.mimeType !== 'application/pdf' && thumbnailUrls[att.id]"
+          v-if="thumbnailUrls[att.id]"
           :src="thumbnailUrls[att.id]"
           :alt="att.originalFilename"
           class="strip__img"
-        >
-        <span v-else class="material-symbols-outlined strip__pdf-icon" aria-hidden="true">picture_as_pdf</span>
+        />
+        <span v-else class="material-symbols-outlined strip__pdf-icon" aria-hidden="true">
+          {{ att.mimeType === 'application/pdf' ? 'picture_as_pdf' : 'image' }}
+        </span>
       </div>
       <span class="strip__label">{{ att.originalFilename }}</span>
     </button>
