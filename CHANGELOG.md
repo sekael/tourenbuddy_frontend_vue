@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.23.1...tourenbuddy-frontend-v0.24.0) (2026-05-25)
+
+
+### Features
+
+* Block users ([#184](https://github.com/sekael/tourenbuddy_frontend_vue/issues/184)) ([39aabf1](https://github.com/sekael/tourenbuddy_frontend_vue/commit/39aabf1f94ae40c75ae062ddd62093d8611d8b48))
+
 ## [0.23.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.23.0...tourenbuddy-frontend-v0.23.1) (2026-05-23)
 
 
