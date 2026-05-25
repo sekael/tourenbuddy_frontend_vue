@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Tour list page with filtering, sorting, and quick navigation to tour detail or map view.
+
+## Requirements
 
 ### Requirement: Tours list overlay
 

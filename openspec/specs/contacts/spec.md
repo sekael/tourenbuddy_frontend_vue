@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+CRUD for personal contacts the user manages locally and links to tours and friend requests.
+
+## Requirements
 
 ### Requirement: Delete-contact confirmation warns about friendship and pending-request side effects
 

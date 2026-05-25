@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Format phone numbers for display using libphonenumber-js with Swiss default region.
+
+## Requirements
 
 ### Requirement: Canonical phone validation and normalization utility
 

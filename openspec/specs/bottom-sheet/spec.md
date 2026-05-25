@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Mobile-optimized modal surface that slides up from the bottom edge, supporting drag-to-dismiss and snap heights.
+
+## Requirements
 
 ### Requirement: Bottom sheet renders header, content, optional footer
 

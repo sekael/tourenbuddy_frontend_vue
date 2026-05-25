@@ -1,4 +1,8 @@
-## MODIFIED Requirements
+## Purpose
+
+Phone-number handling on contacts: parsing, formatting, and normalization to E.164 with Swiss default region.
+
+## Requirements
 
 ### Requirement: Phone action links
 

@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+User-facing strings are localized via vue-i18n with per-locale JSON catalogs (English and Swiss German).
+
+## Requirements
 
 ### Requirement: Supported locales registry
 

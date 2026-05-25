@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Installable Progressive Web App with offline-capable shell, manifest, service worker, and runtime tile caching.
+
+## Requirements
 
 ### Requirement: Service worker push handler
 The service worker SHALL handle `push` events by displaying a notification with the title and body provided by the Worker payload.

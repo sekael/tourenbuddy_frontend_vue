@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Per-tour group chat between the owner and invited contacts/friends, with realtime delivery and notifications.
+
+## Requirements
 
 ### Requirement: Group SMS row on tour info sheet
 

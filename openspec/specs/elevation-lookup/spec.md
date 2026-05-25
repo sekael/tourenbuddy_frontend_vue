@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Resolve elevation in meters for a coordinate via the Swisstopo elevation API.
+
+## Requirements
 
 ### Requirement: WGS84 to LV95 coordinate transformation
 

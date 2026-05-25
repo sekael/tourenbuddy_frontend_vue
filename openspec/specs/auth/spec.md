@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Email-based OTP authentication: users sign in by receiving a 6-digit code via email and verifying it, with no passwords stored.
+
+## Requirements
 
 ### Requirement: OTP verification page verifies the code
 

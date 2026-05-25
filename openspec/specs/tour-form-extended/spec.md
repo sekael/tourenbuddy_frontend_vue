@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Tour creation and edit form with the extended field set, validation, and Swiss-topo-aware coordinate input.
+
+## Requirements
 
 ### Requirement: Pick-type label in collapsed overlay header
 

@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Push and email notifications for friend requests, tour invites, and group messages, gated by user preferences.
+
+## Requirements
 
 ### Requirement: Notification preference channels
 The system SHALL allow each user to independently enable or disable push and email notification channels, and to mute specific notification types from a defined, extensible set. v1 defines exactly one type, `friend_requests`, covering both received and responded events.

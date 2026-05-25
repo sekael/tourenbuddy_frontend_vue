@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Shared visual language: design tokens (spacing, radius, shadows, colors), typography, iconography, and base component styling.
+
+## Requirements
 
 ### Requirement: Blueish-grey color palette tokens
 

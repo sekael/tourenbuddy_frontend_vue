@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Attach images and PDFs to tours, stored in Supabase Storage with signed-URL retrieval and per-tour access control.
+
+## Requirements
 
 ### Requirement: Per-tour attachment storage
 

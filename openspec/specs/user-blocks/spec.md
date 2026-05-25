@@ -1,3 +1,7 @@
+## Purpose
+
+Block another user to prevent friend requests, messages, and discovery between the two accounts.
+
 ## Requirements
 
 ### Requirement: Users can block any other user persistently

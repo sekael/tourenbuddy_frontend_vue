@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Guided first-run flow to capture the minimum profile data required to use the app (display name, locale, phone).
+
+## Requirements
 
 ### Requirement: Onboarding page for first-time users
 

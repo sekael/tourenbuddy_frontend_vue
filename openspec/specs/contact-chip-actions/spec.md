@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Inline action chips on contact rows for quick calling, messaging, emailing, and editing without entering the detail view.
+
+## Requirements
 
 ### Requirement: Contact chip action mode
 

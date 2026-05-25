@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Link a saved contact to a TourenBuddy user account so contact information stays in sync with the linked user's profile.
+
+## Requirements
 
 ### Requirement: Connect prompt gates send on pre-send hook
 
