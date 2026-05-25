@@ -32,16 +32,16 @@
 
 ## 6. Manual verification
 
-- [ ] 6.1 `npm run dev`, open viewer on desktop — close button + dots positioned normally (no visible shift since insets resolve to 0).
-- [ ] 6.2 iOS PWA (added to home screen) via preview deploy: confirm close button clears status bar AND swipe-down closes viewer AND swipe-up does NOT close.
-- [ ] 6.3 Android PWA (added to home screen) via preview deploy: same verifications as 6.2 — close button visible above status bar, swipe-down closes, swipe-up no-op.
-- [ ] 6.4 Confirm horizontal navigation still works on both touch platforms.
+- [x] 6.1 `npm run dev`, open viewer on desktop — close button + dots positioned normally (no visible shift since insets resolve to 0).
+- [x] 6.2 iOS PWA (added to home screen) via preview deploy: confirm close button clears status bar AND swipe-down closes viewer AND swipe-up does NOT close.
+- [x] 6.3 Android PWA (added to home screen) via preview deploy: same verifications as 6.2 — close button visible above status bar, swipe-down closes, swipe-up no-op.
+- [x] 6.4 Confirm horizontal navigation still works on both touch platforms.
 
 ## 7. Finalize
 
 - [x] 7.1 Run `npx eslint . --fix`; ensure zero warnings (`npx eslint .`).
 - [x] 7.2 Run `npm run type-check`.
-- [ ] 7.3 Prompt user to commit with conventional message:
+- [x] 7.3 Prompt user to commit with conventional message:
   ```
   fix(tours): close PWA image viewer reliably on iOS and Android (#194)
 
@@ -50,4 +50,4 @@
   - Honor safe-area-inset-left/right on side nav arrows for landscape
   - Add swipe-down-to-close gesture matching native Photos UX
   ```
-- [ ] 7.4 Prompt user to push branch and open PR against `main`.
+- [x] 7.4 Prompt user to push branch and open PR against `main`.
