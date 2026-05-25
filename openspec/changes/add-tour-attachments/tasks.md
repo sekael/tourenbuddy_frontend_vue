@@ -50,13 +50,13 @@
 
 - [x] 8.1 Run `npm run test` — all 855 pass
 - [x] 8.2 Run `npm run type-check` — clean
-- [ ] 8.3 Manual local verify: CREATE tour with 3 staged files → submit → files appear; EDIT tour → add 2 more → reorder → delete one (confirm dialog) → open viewer → flip between image+PDF → download → reload page, state intact
-- [ ] 8.4 Manual local verify rejections: 6th upload blocked, batch of 4 when 2 slots left blocked, oversize file blocked, `.gif` blocked, HEIC blocked with dedicated message, signed-URL expiry path (artificially drop TTL or wait)
-- [ ] 8.5 Manual local verify abort: stage 2 files in create form → close form without submitting → no rows in `tour_attachments`, no objects in `tour-attachments` bucket
+- [x] 8.3 Manual local verify: CREATE tour with 3 staged files → submit → files appear; EDIT tour → add 2 more → reorder → delete one (confirm dialog) → open viewer → flip between image+PDF → download → reload page, state intact
+- [x] 8.4 Manual local verify rejections: 6th upload blocked, batch of 4 when 2 slots left blocked, oversize file blocked, `.gif` blocked, HEIC blocked with dedicated message, signed-URL expiry path (artificially drop TTL or wait)
+- [x] 8.5 Manual local verify abort: stage 2 files in create form → close form without submitting → no rows in `tour_attachments`, no objects in `tour-attachments` bucket
 
 ## 9. Finalize
 
 - [x] 9.1 Run `npx eslint . --fix` (zero warnings required by CI)
-- [ ] 9.2 Prompt user to commit with ready-to-copy message: `feat(tours): add image and PDF attachments (#177)`
-- [ ] 9.3 Prompt user to push branch and open PR against `main` referencing #177
-- [ ] 9.4 After PR merge: prompt user to run `supabase db push` to apply the migration to prod
+- [x] 9.2 Prompt user to commit with ready-to-copy message: `feat(tours): add image and PDF attachments (#177)`
+- [x] 9.3 Prompt user to push branch and open PR against `main` referencing #177
+- [x] 9.4 After PR merge: prompt user to run `supabase db push` to apply the migration to prod
