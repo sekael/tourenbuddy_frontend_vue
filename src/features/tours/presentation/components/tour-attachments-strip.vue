@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment';
-import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store';
-import { computed, onMounted, ref, watch } from 'vue';
+import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 
 const props = defineProps<{
   tourId: string
@@ -29,13 +29,15 @@ watch(
   attachments,
   async (list) => {
     for (const att of list) {
-      if (thumbnailUrls.value[att.id]) continue
+      if (thumbnailUrls.value[att.id])
+        continue
       try {
         const url = await store.getViewUrl(att.storagePath)
         if (att.mimeType === 'application/pdf')
           thumbnailUrls.value[att.id] = await renderPdfThumbnail(url)
         else thumbnailUrls.value[att.id] = url
-      } catch {
+      }
+      catch {
         // Thumbnail load failure is non-critical
       }
     }
@@ -49,7 +51,7 @@ interface PdfViewport {
 }
 interface PdfPage {
   getViewport: (opts: { scale: number }) => PdfViewport
-  render: (opts: { canvasContext: CanvasRenderingContext2D; viewport: PdfViewport }) => {
+  render: (opts: { canvasContext: CanvasRenderingContext2D, viewport: PdfViewport }) => {
     promise: Promise<void>
   }
 }
@@ -99,7 +101,7 @@ function openAt(index: number) {
           :src="thumbnailUrls[att.id]"
           :alt="att.originalFilename"
           class="strip__img"
-        />
+        >
         <span v-else class="material-symbols-outlined strip__pdf-icon" aria-hidden="true">
           {{ att.mimeType === 'application/pdf' ? 'picture_as_pdf' : 'image' }}
         </span>
