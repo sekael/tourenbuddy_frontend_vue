@@ -128,6 +128,8 @@ function mountSheet(
         TourForm: TourFormStub,
         ContactChip: ContactChipStub,
         ContactActionMenu: ContactActionMenuStub,
+        TourAttachmentsStrip: { template: '<div />' },
+        TourAttachmentViewer: { template: '<div />' },
       },
     },
   })
@@ -358,6 +360,8 @@ describe('tourInfoSheet', () => {
             TourForm: TourFormStub,
             ContactChip: ContactChipStub,
             ContactActionMenu: ContactActionMenuStub,
+            TourAttachmentsStrip: { template: '<div />' },
+            TourAttachmentViewer: { template: '<div />' },
           },
         },
       })

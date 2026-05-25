@@ -2,7 +2,7 @@
 import { ExpirationPlugin } from 'workbox-expiration'
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
 import { registerRoute } from 'workbox-routing'
-import { CacheFirst, StaleWhileRevalidate } from 'workbox-strategies'
+import { CacheFirst, NetworkOnly, StaleWhileRevalidate } from 'workbox-strategies'
 
 declare const self: ServiceWorkerGlobalScope
 
@@ -49,6 +49,12 @@ registerRoute(
     cacheName: 'tour-gpx-files',
     plugins: [new ExpirationPlugin({ maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 30 })],
   }),
+)
+
+// Tour attachments — signed URLs are short-lived; MUST NOT be cached
+registerRoute(
+  ({ url }) => /\/storage\/v1\/object\/(?:sign\/)?tour-attachments\//i.test(url.pathname),
+  new NetworkOnly(),
 )
 
 // Push notification handler

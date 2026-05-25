@@ -21,6 +21,7 @@ import { isSameGoal } from '@/features/tours/domain/distance'
 import TourCreationDialog from '@/features/tours/presentation/components/tour-creation-dialog.vue'
 import TourInfoSheet from '@/features/tours/presentation/components/tour-info-sheet.vue'
 import TourListSheet from '@/features/tours/presentation/components/tour-list-sheet.vue'
+import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import UserProfileSheet from '@/features/user/presentation/components/user-profile-sheet.vue'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
@@ -39,6 +40,7 @@ const { t } = useI18n({ useScope: 'global' })
 
 const mapStore = useMapStore()
 const toursStore = useToursStore()
+const attachmentsStore = useTourAttachmentsStore()
 const contactsStore = useContactsStore()
 const userProfileStore = useUserProfileStore()
 const authStore = useAuthStore()
@@ -422,6 +424,7 @@ async function handleTourCreated(
   gpxFile: File | null,
   _gpxRemoved: boolean,
   preUploadedTourId: string | null = null,
+  draftId: string = '',
 ) {
   if (!pendingLocation.value)
     return
@@ -430,8 +433,12 @@ async function handleTourCreated(
   closeOverlay()
 
   const newId = await toursStore.createTourFromDraft(draft, goal, gpxFile, preUploadedTourId)
-  if (newId)
+  if (newId) {
     mapStore.selectTour(newId)
+    // Upload staged attachments now that the tour row exists
+    if (draftId)
+      await attachmentsStore.commitStaged(draftId, newId)
+  }
 }
 
 function handleDialogClose() {
@@ -533,7 +540,7 @@ function handleDialogClose() {
           :initial-end-point-meta="dialogInitialEndPointMeta"
           :initial-goal="pendingLocation"
           :active-pick-type="pendingPickType"
-          @confirm="(d, f, r, tid) => handleTourCreated(d, f, r, tid)"
+          @confirm="(d, f, r, tid, did) => handleTourCreated(d, f, r, tid, did)"
           @close="handleDialogClose"
           @pick-point="handlePickPoint"
         />

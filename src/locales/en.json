@@ -371,6 +371,25 @@
       "goalTitle": "Tour Goal",
       "startTitle": "Start Point",
       "endTitle": "End Point"
+    },
+    "attachments": {
+      "add": "Add file",
+      "delete": "Delete",
+      "deleteConfirm": {
+        "title": "Delete attachment?",
+        "body": "This file will be permanently removed and cannot be recovered."
+      },
+      "limitReached": "Maximum of 5 files per tour reached.",
+      "limitRemaining": "Only {remaining} more file(s) may be added; you selected {selected}.",
+      "invalidType": "File type not supported. Allowed: PNG, JPEG, PDF.",
+      "heicUnsupported": "HEIC is not supported. Please share your photo as JPEG.",
+      "tooLarge": "File exceeds the 10 MB limit.",
+      "download": "Download",
+      "viewer": {
+        "next": "Next",
+        "previous": "Previous",
+        "page": "Page {page} of {total}"
+      }
     }
   },
   "map": {

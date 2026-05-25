@@ -33,6 +33,7 @@ const emit = defineEmits<{
     gpxFile: File | null,
     gpxRemoved: boolean,
     preUploadedTourId: string | null,
+    draftId: string,
   ]
   close: []
   pickPoint: [type: 'start' | 'end' | 'goal']
@@ -62,12 +63,13 @@ function handleSubmit(
   gpxFile: File | null,
   gpxRemoved: boolean,
   preUploadedTourId: string | null,
+  draftId: string,
 ) {
   if (mapStore.isPickingLocation) {
     log.debug('Ignoring create submit while location picker is active')
     return
   }
-  emit('confirm', draft, gpxFile, gpxRemoved, preUploadedTourId)
+  emit('confirm', draft, gpxFile, gpxRemoved, preUploadedTourId, draftId)
 }
 
 function handlePickPoint(type: 'start' | 'end' | 'goal') {
@@ -88,7 +90,7 @@ function handlePickPoint(type: 'start' | 'end' | 'goal') {
       :initial-start-point-meta="initialStartPointMeta"
       :initial-end-point-meta="initialEndPointMeta"
       :disabled="isPicking"
-      @submit="(d, f, r, tid) => handleSubmit(d, f, r, tid)"
+      @submit="(d, f, r, tid, did) => handleSubmit(d, f, r, tid, did)"
       @cancel="emit('close')"
       @pick-point="handlePickPoint"
     />

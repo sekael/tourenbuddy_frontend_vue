@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
+import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
 import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -16,6 +17,8 @@ import { useContactsStore } from '@/features/contacts/presentation/stores/contac
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { TOUR_TYPE_I18N_KEYS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
 import { downloadOriginal } from '@/features/tours/data/services/gpx-storage-service'
+import TourAttachmentViewer from '@/features/tours/presentation/components/tour-attachment-viewer.vue'
+import TourAttachmentsStrip from '@/features/tours/presentation/components/tour-attachments-strip.vue'
 import TourForm from '@/features/tours/presentation/components/tour-form.vue'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
@@ -164,6 +167,17 @@ async function handleDownloadGpx() {
 // ── Completion toggle ────────────────────────────────────────────────────────
 async function toggleCompleted() {
   await toursStore.setCompleted(props.tour.id, !props.tour.completed)
+}
+
+// ── Attachment viewer ────────────────────────────────────────────────────────
+const viewerAttachments = ref<TourAttachment[]>([])
+const viewerStartIndex = ref(0)
+const viewerOpen = ref(false)
+
+function openViewer(attachments: TourAttachment[], startIndex: number) {
+  viewerAttachments.value = attachments
+  viewerStartIndex.value = startIndex
+  viewerOpen.value = true
 }
 
 // ── Delete ───────────────────────────────────────────────────────────────────
@@ -322,6 +336,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         :allow-goal-edit="true"
         :current-goal="pendingGoal"
         :initial-draft="tour"
+        :tour-id="tour.id"
         :initial-elevation="pendingElevation"
         :initial-name="pendingSuggestedName"
         :initial-start-point="pendingStartPoint"
@@ -491,6 +506,12 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           </button>
         </div>
 
+        <!-- Attachments strip -->
+        <TourAttachmentsStrip
+          :tour-id="tour.id"
+          @open-viewer="openViewer"
+        />
+
         <!-- Partners -->
         <div v-if="partners.length > 0" class="detail-row align-start">
           <BaseTooltip :text="t('tours.infoSheet.iconTooltipPartners')">
@@ -584,6 +605,14 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         </p>
       </div>
     </template>
+
+    <!-- Attachment viewer uses Teleport internally; placing here keeps single root -->
+    <TourAttachmentViewer
+      v-if="viewerOpen"
+      :attachments="viewerAttachments"
+      :start-index="viewerStartIndex"
+      @close="viewerOpen = false"
+    />
   </component>
 </template>
 

@@ -2,8 +2,10 @@
 import type { Season } from '@/features/tours/data/models/season'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
+import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
 import { storeToRefs } from 'pinia'
-import { ref, watch } from 'vue'
+import { v4 as uuidv4 } from 'uuid'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
@@ -21,6 +23,8 @@ import {
   parseGpxFile,
 } from '@/features/tours/data/services/gpx-parser'
 import { removeGpx, uploadGpx } from '@/features/tours/data/services/gpx-storage-service'
+import TourAttachmentsPicker from '@/features/tours/presentation/components/tour-attachments-picker.vue'
+import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 
 const props = defineProps<{
   /** Label for the submit button. */
@@ -45,6 +49,8 @@ const props = defineProps<{
   initialEndPointMeta?: { name: string | null, elevation: number | null } | null
   /** When true, disable all inputs and buttons — used while location picker is active. */
   disabled?: boolean
+  /** Tour ID — only required in edit mode; used by the attachments picker. */
+  tourId?: string
 }>()
 
 const emit = defineEmits<{
@@ -53,6 +59,7 @@ const emit = defineEmits<{
     gpxFile: File | null,
     gpxRemoved: boolean,
     preUploadedTourId: string | null,
+    draftId: string,
   ]
   cancel: []
   pickPoint: [type: 'start' | 'end' | 'goal']
@@ -118,6 +125,44 @@ const pendingGpxKey = ref<string | null>(null)
 const pendingTourId = ref<string | null>(null)
 const isUploadingGpx = ref(false)
 const wasCancelledDuringUpload = ref(false)
+
+// ── Attachments (create-flow staging / edit-flow direct) ─────────────────────
+const attachmentsStore = useTourAttachmentsStore()
+/** Stable draft ID for create-flow staging. Used as key in stagedByDraft. */
+const draftId = props.initialDraft ? null : uuidv4()
+/** Staged files (create-flow) or persisted attachments (edit-flow). */
+const attachments = computed<TourAttachment[]>(() => {
+  if (draftId) {
+    // Create mode — staged in memory as File objects; mirror as pseudo-attachment list
+    return (attachmentsStore.stagedByDraft[draftId] ?? []).map((f, i) => ({
+      id: `staged-${i}`,
+      tourId: '',
+      userId: '',
+      storagePath: '',
+      mimeType: f.type as TourAttachment['mimeType'],
+      sizeBytes: f.size,
+      originalFilename: f.name,
+      sortOrder: i,
+      createdAt: new Date(),
+    }))
+  }
+  // Edit mode — persisted attachments from store
+  if (props.tourId) {
+    return attachmentsStore.attachmentsByTour[props.tourId] ?? []
+  }
+  return []
+})
+
+// Load attachments for edit mode
+watch(
+  () => props.tourId,
+  (id) => {
+    if (id && !attachmentsStore.attachmentsByTour[id]) {
+      attachmentsStore.load(id)
+    }
+  },
+  { immediate: true },
+)
 
 // Sync individual prop updates from parent (create mode post-pick callbacks).
 watch(
@@ -274,6 +319,9 @@ function handleCancel() {
     removeGpx(pendingGpxKey.value).catch(() => {})
     pendingGpxKey.value = null
   }
+  // Clear any staged attachment files so no orphans remain
+  if (draftId)
+    attachmentsStore.clearStaged(draftId)
   emit('cancel')
 }
 
@@ -346,7 +394,7 @@ function handleSubmit() {
     equipment: equipment.value.trim() || null,
     notes: notes.value.trim() || null,
   }
-  emit('submit', draft, null, gpxRemoved.value, preUploadedTourId)
+  emit('submit', draft, null, gpxRemoved.value, preUploadedTourId, draftId ?? '')
 }
 </script>
 
@@ -680,6 +728,15 @@ function handleSubmit() {
           <p v-if="gpxError" class="gpx-error">
             {{ gpxError }}
           </p>
+        </div>
+
+        <!-- SECTION: Attachments -->
+        <div class="section">
+          <TourAttachmentsPicker
+            :tour-id="tourId"
+            :draft-id="draftId ?? undefined"
+            :attachments="attachments"
+          />
         </div>
       </div>
       <!-- end scroll-body -->
