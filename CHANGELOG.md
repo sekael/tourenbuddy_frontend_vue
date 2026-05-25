@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.26.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.25.0...tourenbuddy-frontend-v0.26.0) (2026-05-25)
+
+
+### Features
+
+* **tours:** Add Supabase Realtime sync for tours and attachments ([#195](https://github.com/sekael/tourenbuddy_frontend_vue/issues/195)) ([3f4d432](https://github.com/sekael/tourenbuddy_frontend_vue/commit/3f4d4324aa81115d6536d4d6f1aaf0c801eea1eb))
+
+
+### Bug Fixes
+
+* **tours:** Close PWA image viewer reliably on iOS and Android ([#194](https://github.com/sekael/tourenbuddy_frontend_vue/issues/194)) ([#197](https://github.com/sekael/tourenbuddy_frontend_vue/issues/197)) ([3e40fdc](https://github.com/sekael/tourenbuddy_frontend_vue/commit/3e40fdc3a91dd85199f91dcdb8ba4e21bc9ca386))
+
 ## [0.25.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.24.0...tourenbuddy-frontend-v0.25.0) (2026-05-25)
 
 
