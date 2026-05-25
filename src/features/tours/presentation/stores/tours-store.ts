@@ -1,8 +1,9 @@
 import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 import { defineStore } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useLogger } from '@/core/logging/use-logger'
+import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { ToursRepositoryImpl } from '@/features/tours/data/repositories/tours-repository-impl'
@@ -42,6 +43,25 @@ export const useToursStore = defineStore('tours', () => {
           : t,
       )
     })
+  })
+
+  const channelKey = computed(() => {
+    const uid = authStore.currentUser?.id
+    return authStore.isAuthenticated && uid ? `tours-${uid}` : null
+  })
+  const realtimeEnabled = computed(() => authStore.isAuthenticated)
+
+  useRealtimeSubscription({
+    key: () => channelKey.value,
+    enabled: () => realtimeEnabled.value,
+    bindings: () => {
+      const uid = authStore.currentUser?.id
+      if (!uid)
+        return []
+      return [{ event: '*', table: 'tours', filter: `user_id=eq.${uid}` }]
+    },
+    onChange: loadTours,
+    onSubscribed: () => loadTours(),
   })
 
   async function loadTours() {
@@ -155,7 +175,6 @@ export const useToursStore = defineStore('tours', () => {
     if (!tour)
       return
 
-    const previous = tour.completed
     tours.value = tours.value.map(t => (t.id === tourId ? { ...t, completed } : t))
     logger.debug('setCompleted', { tourId, completed })
 
@@ -163,9 +182,9 @@ export const useToursStore = defineStore('tours', () => {
       await repository.patchCompleted(tourId, completed)
     }
     catch (err) {
-      tours.value = tours.value.map(t => (t.id === tourId ? { ...t, completed: previous } : t))
       error.value = err instanceof Error ? err.message : 'Failed to update tour'
-      logger.error('setCompleted failed, rolled back', err)
+      logger.error('setCompleted failed, resyncing from server', err)
+      await loadTours()
     }
   }
 

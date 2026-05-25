@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 
 const props = defineProps<{
@@ -22,6 +22,10 @@ onMounted(() => {
   if (!store.attachmentsByTour[props.tourId]) {
     store.load(props.tourId)
   }
+})
+
+onUnmounted(() => {
+  store.clearCurrent()
 })
 
 // Fetch thumbnail signed URLs whenever attachment list changes
