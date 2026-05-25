@@ -294,7 +294,8 @@
       "gpxUploading": "Wird hochgeladen…",
       "gpxUploadFailed": "Upload fehlgeschlagen. Nochmals versuchen.",
       "gpxRetry": "Nochmals",
-      "gpxExistingTrack": "Bestehender Track"
+      "gpxExistingTrack": "Bestehender Track",
+      "attachmentsSectionLabel": "Anhänge"
     },
     "creation": {
       "title": "Neue Tour",

@@ -58,12 +58,16 @@ function cancelDelete() {
 }
 
 // ── Drag-to-reorder ────────────────────────────────────────────────────────────
-function onDragStart(index: number) {
+function onDragStart(index: number, event: DragEvent) {
   dragFrom.value = index
+  if (event.dataTransfer)
+    event.dataTransfer.effectAllowed = 'move'
 }
 
 function onDragOver(event: DragEvent) {
   event.preventDefault()
+  if (event.dataTransfer)
+    event.dataTransfer.dropEffect = 'move'
 }
 
 async function onDrop(toIndex: number) {
@@ -71,13 +75,16 @@ async function onDrop(toIndex: number) {
   dragFrom.value = null
   if (from === null || from === toIndex)
     return
-  if (!props.tourId)
-    return // reorder only for persisted tours
 
-  const reordered = [...props.attachments]
-  const [moved] = reordered.splice(from, 1)
-  reordered.splice(toIndex, 0, moved)
-  await store.reorder(props.tourId, reordered.map(a => a.id))
+  if (props.draftId) {
+    store.stageReorder(props.draftId, from, toIndex)
+  }
+  else if (props.tourId) {
+    const reordered = [...props.attachments]
+    const [moved] = reordered.splice(from, 1)
+    reordered.splice(toIndex, 0, moved)
+    await store.reorder(props.tourId, reordered.map(a => a.id))
+  }
 }
 </script>
 
@@ -94,42 +101,60 @@ async function onDrop(toIndex: number) {
         v-for="(attachment, index) in attachments"
         :key="attachment.id"
         class="picker__item"
-        draggable="true"
-        @dragstart="onDragStart(index)"
+        :class="{ 'picker__item--confirm': confirmDeleteTarget?.id === attachment.id }"
+        :draggable="confirmDeleteTarget === null"
+        @dragstart="onDragStart(index, $event)"
         @dragover="onDragOver"
         @drop="onDrop(index)"
       >
-        <span class="material-symbols-outlined picker__drag-handle" aria-hidden="true">drag_indicator</span>
-        <span class="material-symbols-outlined picker__file-icon" aria-hidden="true">
-          {{ attachment.mimeType === 'application/pdf' ? 'picture_as_pdf' : 'image' }}
-        </span>
-        <span class="picker__filename">{{ attachment.originalFilename }}</span>
-        <button
-          type="button"
-          class="picker__delete-btn"
-          :aria-label="t('tours.attachments.delete')"
-          @click="requestDelete(attachment)"
-        >
-          <span class="material-symbols-outlined" aria-hidden="true">delete</span>
-        </button>
+        <!-- Inline delete confirm state -->
+        <template v-if="confirmDeleteTarget?.id === attachment.id">
+          <span class="picker__filename">{{ attachment.originalFilename }}</span>
+          <div class="picker__confirm-actions">
+            <button type="button" class="picker__cancel-btn" @click="cancelDelete">
+              {{ t('tours.infoSheet.cancelBtn') }}
+            </button>
+            <button type="button" class="picker__confirm-delete-btn" @click="confirmDelete">
+              {{ t('tours.attachments.delete') }}
+            </button>
+          </div>
+        </template>
+
+        <!-- Normal state -->
+        <template v-else>
+          <span class="material-symbols-outlined picker__drag-handle" aria-hidden="true">drag_indicator</span>
+          <span class="material-symbols-outlined picker__file-icon" aria-hidden="true">
+            {{ attachment.mimeType === 'application/pdf' ? 'picture_as_pdf' : 'image' }}
+          </span>
+          <span class="picker__filename">{{ attachment.originalFilename }}</span>
+          <button
+            type="button"
+            class="picker__delete-btn"
+            :aria-label="t('tours.attachments.delete')"
+            @click="requestDelete(attachment)"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+          </button>
+        </template>
       </li>
     </ul>
 
-    <!-- Add button -->
-    <button
-      v-if="attachments.length < 5"
-      type="button"
-      class="picker__add-btn"
-      :disabled="loading"
-      @click="openFilePicker"
-    >
-      <span class="material-symbols-outlined" aria-hidden="true">attach_file</span>
-      {{ t('tours.attachments.add') }}
-    </button>
-
-    <p v-else class="picker__limit-reached">
-      {{ t('tours.attachments.limitReached') }}
-    </p>
+    <!-- Add button / upload spinner -->
+    <div class="picker__add-row">
+      <span v-if="loading" class="picker__spinner" />
+      <button
+        v-else-if="attachments.length < 5"
+        type="button"
+        class="picker__add-btn"
+        @click="openFilePicker"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">attach_file</span>
+        {{ t('tours.attachments.add') }}
+      </button>
+      <p v-else class="picker__limit-reached">
+        {{ t('tours.attachments.limitReached') }}
+      </p>
+    </div>
 
     <input
       ref="fileInput"
@@ -139,35 +164,6 @@ async function onDrop(toIndex: number) {
       class="picker__hidden-input"
       @change="onFilesSelected"
     >
-
-    <!-- Delete confirm dialog -->
-    <Teleport to="body">
-      <div
-        v-if="confirmDeleteTarget"
-        class="confirm-backdrop"
-        role="dialog"
-        aria-modal="true"
-        :aria-label="t('tours.attachments.deleteConfirm.title')"
-        @click.self="cancelDelete"
-      >
-        <div class="confirm-card">
-          <p class="confirm-title">
-            {{ t('tours.attachments.deleteConfirm.title') }}
-          </p>
-          <p class="confirm-body">
-            {{ t('tours.attachments.deleteConfirm.body') }}
-          </p>
-          <div class="confirm-actions">
-            <button type="button" class="confirm-cancel" @click="cancelDelete">
-              {{ t('tours.infoSheet.cancelBtn') }}
-            </button>
-            <button type="button" class="confirm-delete" @click="confirmDelete">
-              {{ t('tours.attachments.delete') }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
   </div>
 </template>
 
@@ -199,6 +195,12 @@ async function onDrop(toIndex: number) {
   border-radius: var(--radius-md);
   background: var(--color-surface-variant);
   cursor: grab;
+  min-height: 40px;
+}
+
+.picker__item--confirm {
+  cursor: default;
+  border-color: var(--color-error);
 }
 
 .picker__drag-handle,
@@ -230,26 +232,35 @@ async function onDrop(toIndex: number) {
   color: var(--color-error);
 }
 
-.picker__add-btn {
+.picker__add-row {
   display: flex;
   align-items: center;
+  min-height: 36px;
+}
+
+.picker__add-btn {
+  display: inline-flex;
+  align-items: center;
   gap: var(--spacing-xs);
-  align-self: flex-start;
-  padding: var(--spacing-xs) var(--spacing-md);
-  border: 1px dashed var(--color-outline-variant);
-  border-radius: var(--radius-md);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1.5px solid var(--color-outline-variant);
+  border-radius: var(--radius-sm);
   font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
+  background: transparent;
+  white-space: nowrap;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.picker__add-btn:hover {
+  border-color: var(--color-primary);
   color: var(--color-primary);
-  transition: background-color 0.15s;
 }
 
-.picker__add-btn:hover:not(:disabled) {
-  background-color: var(--color-surface-variant);
-}
-
-.picker__add-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.picker__add-btn .material-symbols-outlined {
+  font-size: 16px;
 }
 
 .picker__limit-reached {
@@ -257,61 +268,60 @@ async function onDrop(toIndex: number) {
   color: var(--color-on-surface-variant);
 }
 
+.picker__spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-outline-variant);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: picker-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes picker-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .picker__hidden-input {
   display: none;
 }
 
-/* Confirm dialog */
-.confirm-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.35);
+/* Inline delete confirm */
+.picker__confirm-actions {
   display: flex;
   align-items: center;
-  justify-content: center;
-  z-index: 60;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
-.confirm-card {
-  background: var(--color-background);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-xl);
-  max-width: 360px;
-  width: calc(100% - var(--spacing-xl) * 2);
-  box-shadow: var(--shadow-lg);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-}
-
-.confirm-title {
-  font-weight: var(--font-weight-semibold);
-  font-size: var(--font-size-lg);
-}
-
-.confirm-body {
-  font-size: var(--font-size-sm);
+.picker__cancel-btn {
+  padding: var(--spacing-xxs) var(--spacing-sm);
+  border-radius: 10px;
+  border: 1px solid var(--color-outline-variant);
   color: var(--color-on-surface-variant);
-}
-
-.confirm-actions {
-  display: flex;
-  gap: var(--spacing-sm);
-  justify-content: flex-end;
-}
-
-.confirm-cancel {
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
+  transition: background-color 0.15s;
 }
 
-.confirm-delete {
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-md);
+.picker__cancel-btn:hover {
+  background-color: var(--color-surface-variant);
+}
+
+.picker__confirm-delete-btn {
+  padding: var(--spacing-xxs) var(--spacing-sm);
+  border-radius: 10px;
+  background-color: var(--color-error);
+  color: white;
   font-size: var(--font-size-sm);
-  background: var(--color-error);
-  color: var(--color-on-error);
   font-weight: var(--font-weight-medium);
+  transition: opacity 0.15s;
+}
+
+.picker__confirm-delete-btn:hover {
+  opacity: 0.85;
 }
 </style>

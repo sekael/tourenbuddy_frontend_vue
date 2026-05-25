@@ -203,6 +203,16 @@ export const useTourAttachmentsStore = defineStore('tourAttachments', () => {
     delete stagedByDraft.value[draftId]
   }
 
+  /** Reorder staged files for create-flow by moving item at fromIndex to toIndex. */
+  function stageReorder(draftId: string, fromIndex: number, toIndex: number) {
+    const staged = [...(stagedByDraft.value[draftId] ?? [])]
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || toIndex >= staged.length)
+      return
+    const [moved] = staged.splice(fromIndex, 1)
+    staged.splice(toIndex, 0, moved)
+    stagedByDraft.value[draftId] = staged
+  }
+
   function errorMessage(e: AttachmentError): string {
     switch (e.code) {
       case 'heic_unsupported':
@@ -233,6 +243,7 @@ export const useTourAttachmentsStore = defineStore('tourAttachments', () => {
     getViewUrl,
     getDownloadUrl,
     clearStaged,
+    stageReorder,
     // Exported for tests
     validateBatch,
     ALLOWED_MIME_TYPES,

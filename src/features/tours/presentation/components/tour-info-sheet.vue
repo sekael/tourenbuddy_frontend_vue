@@ -20,6 +20,7 @@ import { downloadOriginal } from '@/features/tours/data/services/gpx-storage-ser
 import TourAttachmentViewer from '@/features/tours/presentation/components/tour-attachment-viewer.vue'
 import TourAttachmentsStrip from '@/features/tours/presentation/components/tour-attachments-strip.vue'
 import TourForm from '@/features/tours/presentation/components/tour-form.vue'
+import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
 const props = defineProps<{
@@ -53,6 +54,7 @@ const contactsStore = useContactsStore()
 const toursStore = useToursStore()
 const mapStore = useMapStore()
 const authStore = useAuthStore()
+const attachmentsStore = useTourAttachmentsStore()
 const { contacts } = storeToRefs(contactsStore)
 const { isPickingLocation } = storeToRefs(mapStore)
 const { currentUser } = storeToRefs(authStore)
@@ -65,6 +67,8 @@ const isOwner = computed(() => !!currentUser.value && currentUser.value.id === p
 
 // ── View/edit mode ───────────────────────────────────────────────────────────
 const mode = ref<'view' | 'edit'>('view')
+/** IDs of attachments that existed when edit mode was entered — used for cancel rollback. */
+const editBaseAttachmentIds = ref<Set<string>>(new Set())
 
 // Pending goal/points during edit — updated reactively via editPickedPoint prop
 const pendingGoal = ref<{ lng: number, lat: number }>({ ...props.tour.goal })
@@ -84,11 +88,21 @@ function enterEditMode() {
   pendingSuggestedName.value = null
   pendingStartPointMeta.value = null
   pendingEndPointMeta.value = null
+  // Snapshot attachment IDs before edit so cancel can rollback newly added ones
+  editBaseAttachmentIds.value = new Set(
+    (attachmentsStore.attachmentsByTour[props.tour.id] ?? []).map(a => a.id),
+  )
   mode.value = 'edit'
   emit('editModeChange', true)
 }
 
-function cancelEdit() {
+async function cancelEdit() {
+  // Remove any attachments added during this edit session
+  const current = attachmentsStore.attachmentsByTour[props.tour.id] ?? []
+  const toRemove = current.filter(a => !editBaseAttachmentIds.value.has(a.id))
+  for (const att of toRemove) {
+    await attachmentsStore.remove(att)
+  }
   mode.value = 'view'
   emit('editModeChange', false)
 }

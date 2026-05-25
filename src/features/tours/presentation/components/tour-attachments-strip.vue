@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 
 const props = defineProps<{
@@ -13,15 +13,21 @@ const emit = defineEmits<{
 
 const store = useTourAttachmentsStore()
 
-const attachments = ref<TourAttachment[]>([])
+/** Reactive: updates instantly when commitStaged or add() populates the store. */
+const attachments = computed<TourAttachment[]>(() => store.attachmentsByTour[props.tourId] ?? [])
 const thumbnailUrls = ref<Record<string, string>>({})
 
-onMounted(async () => {
-  await store.load(props.tourId)
-  attachments.value = store.attachmentsByTour[props.tourId] ?? []
-  // Load thumbnail URLs for images only
-  for (const att of attachments.value) {
-    if (att.mimeType !== 'application/pdf') {
+onMounted(() => {
+  // Populate store if not already loaded (e.g. view-only open without edit)
+  if (!store.attachmentsByTour[props.tourId]) {
+    store.load(props.tourId)
+  }
+})
+
+// Fetch thumbnail signed URLs whenever attachment list changes
+watch(attachments, async (list) => {
+  for (const att of list) {
+    if (att.mimeType !== 'application/pdf' && !thumbnailUrls.value[att.id]) {
       try {
         thumbnailUrls.value[att.id] = await store.getViewUrl(att.storagePath)
       }
@@ -30,7 +36,7 @@ onMounted(async () => {
       }
     }
   }
-})
+}, { immediate: true })
 
 function openAt(index: number) {
   emit('openViewer', attachments.value, index)

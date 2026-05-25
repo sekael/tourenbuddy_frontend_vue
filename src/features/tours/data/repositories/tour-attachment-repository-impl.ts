@@ -86,8 +86,8 @@ export class SupabaseTourAttachmentRepository implements TourAttachmentRepositor
 
   async reorder(tourId: string, orderedIds: string[]): Promise<void> {
     const { error } = await supabase.rpc('update_attachment_order', {
-      tour_id: tourId,
-      ordered_ids: orderedIds,
+      p_tour_id: tourId,
+      p_ordered_ids: orderedIds,
     })
 
     if (error)

@@ -732,6 +732,9 @@ function handleSubmit() {
 
         <!-- SECTION: Attachments -->
         <div class="section">
+          <p class="section-label">
+            {{ t('tours.form.attachmentsSectionLabel') }}
+          </p>
           <TourAttachmentsPicker
             :tour-id="tourId"
             :draft-id="draftId ?? undefined"
