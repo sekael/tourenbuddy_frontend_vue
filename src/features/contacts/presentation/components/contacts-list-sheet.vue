@@ -21,6 +21,7 @@ import { useContactsStore } from '@/features/contacts/presentation/stores/contac
 import ConnectPrompt from '@/features/friendships/presentation/components/connect-prompt.vue'
 import { useDismissedConnectPrompts } from '@/features/friendships/presentation/composables/use-dismissed-connect-prompts'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
+import { useUserBlocksStore } from '@/features/friendships/presentation/stores/user-blocks-store'
 import ContactDetailView from './contact-detail-view.vue'
 import ContactForm from './contact-form.vue'
 
@@ -116,6 +117,26 @@ const importRowMatches = ref<string[][]>([])
 
 // Reactive phone→userId map + friend icon derivation (reacts to friendship changes)
 const { contactFriendIds: friendContactIds, phoneToUserIdMap } = useContactFriendshipMap(contacts)
+
+// Blocked contact derivation: contact phones intersected with user-blocks-store's blockedPhones
+const blocksStore = useUserBlocksStore()
+const { blockedPhones } = storeToRefs(blocksStore)
+const blockedContactIds = computed<Set<string>>(() => {
+  const result = new Set<string>()
+  if (blockedPhones.value.size === 0)
+    return result
+  for (const contact of contacts.value) {
+    for (const method of contact.contactMethods.filter(m => m.methodType === 'phone')) {
+      const norm = normalizePhone(method.value)
+      const phone = norm.ok ? norm.e164 : method.value
+      if (blockedPhones.value.has(phone)) {
+        result.add(contact.id)
+        break
+      }
+    }
+  }
+  return result
+})
 
 // ── Linked friend for detail view (drives delete disclaimer) ─────────────────
 const detailLinkedFriendUserId = computed<string | null>(() => {
@@ -384,8 +405,11 @@ function onFormPhoneInput(phone: string) {
           <div class="contact-info">
             <span class="contact-name-row">
               <span class="contact-name">{{ resolveContactName(contact) }}</span>
-              <BaseTooltip v-if="friendContactIds.has(contact.id)" :text="t('friendships.tooltip')">
+              <BaseTooltip v-if="friendContactIds.has(contact.id) && !blockedContactIds.has(contact.id)" :text="t('friendships.tooltip')">
                 <span class="material-symbols-outlined friend-icon">group</span>
+              </BaseTooltip>
+              <BaseTooltip v-if="blockedContactIds.has(contact.id)" :text="t('blocks.tooltip')">
+                <span class="material-symbols-outlined blocked-icon">block</span>
               </BaseTooltip>
             </span>
             <span v-if="getPrimaryPhone(contact)" class="contact-subtitle">
@@ -706,6 +730,12 @@ function onFormPhoneInput(phone: string) {
 .friend-icon {
   font-size: 16px;
   color: #f97316;
+  flex-shrink: 0;
+}
+
+.blocked-icon {
+  font-size: 16px;
+  color: var(--color-error, #dc2626);
   flex-shrink: 0;
 }
 

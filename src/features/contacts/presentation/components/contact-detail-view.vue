@@ -7,11 +7,14 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
+import { useSnackbar } from '@/core/composables/use-snackbar'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import { orderedPhoneMethods } from '@/features/contacts/core/utils/order-phone-methods'
 import { formatPhoneDisplay } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
+import BlockConfirmDialog from '@/features/friendships/presentation/components/block-confirm-dialog.vue'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
+import { useUserBlocksStore } from '@/features/friendships/presentation/stores/user-blocks-store'
 
 const props = defineProps<{ contact: Contact, linkedFriendUserId?: string | null }>()
 
@@ -21,7 +24,51 @@ const { t } = useI18n({ useScope: 'global' })
 
 const store = useContactsStore()
 const friendshipsStore = useFriendshipsStore()
-const { userIdToPhoneMap } = storeToRefs(friendshipsStore)
+const { userIdToPhoneMap, friendUserIds } = storeToRefs(friendshipsStore)
+const blocksStore = useUserBlocksStore()
+const { blockedPhones, blockedUserIds } = storeToRefs(blocksStore)
+const snackbar = useSnackbar()
+
+const blockConfirmOpen = ref(false)
+
+const isContactBlocked = computed(() => {
+  if (props.linkedFriendUserId && blockedUserIds.value.has(props.linkedFriendUserId))
+    return true
+  for (const m of props.contact.contactMethods) {
+    if (m.methodType !== 'phone')
+      continue
+    const norm = normalizePhone(m.value)
+    const phone = norm.ok ? norm.e164 : m.value
+    if (blockedPhones.value.has(phone))
+      return true
+  }
+  return false
+})
+
+function openBlockConfirm() {
+  blockConfirmOpen.value = true
+}
+
+function cancelBlock() {
+  blockConfirmOpen.value = false
+}
+
+async function handleBlockConfirm(reportReason: string | null) {
+  if (!props.linkedFriendUserId)
+    return
+  blockConfirmOpen.value = false
+  try {
+    await blocksStore.block(props.linkedFriendUserId)
+    snackbar.show(t('blocks.snackbar.blockSuccess'))
+    if (reportReason !== null) {
+      await blocksStore.report(props.linkedFriendUserId, reportReason)
+      snackbar.show(t('blocks.snackbar.reportSuccess'))
+    }
+  }
+  catch {
+    snackbar.show(t('blocks.snackbar.sendRequestFailed'))
+  }
+}
 
 const orderedPhones = computed(() => orderedPhoneMethods(props.contact))
 const setPrimaryError = ref<string | null>(null)
@@ -421,8 +468,11 @@ defineExpose({
     <section class="section">
       <h3 class="section-label">
         {{ t('contacts.detailView.nameSection') }}
-        <BaseTooltip v-if="linkedFriendUserId" :text="t('friendships.tooltip')">
+        <BaseTooltip v-if="linkedFriendUserId && !isContactBlocked" :text="t('friendships.tooltip')">
           <span class="material-symbols-outlined detail-friend-icon">group</span>
+        </BaseTooltip>
+        <BaseTooltip v-if="isContactBlocked" :text="t('blocks.tooltip')">
+          <span class="material-symbols-outlined detail-blocked-icon">block</span>
         </BaseTooltip>
       </h3>
 
@@ -734,8 +784,24 @@ defineExpose({
       </div>
     </section>
 
-    <!-- Delete -->
+    <!-- Danger section -->
     <section class="section section--danger">
+      <BlockConfirmDialog
+        v-if="blockConfirmOpen && linkedFriendUserId && !isContactBlocked"
+        :has-friendship="friendUserIds.has(linkedFriendUserId)"
+        @cancel="cancelBlock"
+        @confirm="handleBlockConfirm"
+      />
+      <button
+        v-else-if="linkedFriendUserId && !isContactBlocked"
+        type="button"
+        class="block-btn"
+        @click="openBlockConfirm"
+      >
+        <span class="material-symbols-outlined">block</span>
+        {{ t('blocks.blockAction') }}
+      </button>
+
       <p v-if="deleteError" class="error-text">
         {{ deleteError }}
       </p>
@@ -839,6 +905,11 @@ defineExpose({
 .detail-friend-icon {
   font-size: 20px;
   color: #f97316;
+}
+
+.detail-blocked-icon {
+  font-size: 20px;
+  color: var(--color-error, #dc2626);
 }
 
 .section {
@@ -1149,6 +1220,27 @@ button.primary-star:hover {
 
 .cancel-btn:hover {
   background-color: var(--color-surface-variant);
+}
+
+.block-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1.5px solid color-mix(in srgb, var(--color-error, #dc2626) 60%, transparent);
+  color: var(--color-error, #dc2626);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  transition: background-color 0.15s;
+}
+
+.block-btn:hover {
+  background-color: color-mix(in srgb, var(--color-error, #dc2626) 8%, transparent);
+}
+
+.block-btn .material-symbols-outlined {
+  font-size: 18px;
 }
 
 .section--danger {

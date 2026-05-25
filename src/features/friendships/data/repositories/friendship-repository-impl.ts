@@ -3,6 +3,7 @@ import type {
   Friendship,
 } from '@/features/friendships/data/models/friendship-schemas'
 import type { FriendshipRepository } from '@/features/friendships/domain/repositories/friendship-repository'
+import { BlockedBySenderError } from '@/core/exceptions'
 import { supabase } from '@/core/utils/supabase'
 import {
   friendRequestSchema,
@@ -31,13 +32,12 @@ function mapFriendship(row: Record<string, unknown>): Friendship {
 
 export class FriendshipRepositoryImpl implements FriendshipRepository {
   async sendRequest(toUserId: string): Promise<FriendRequest> {
-    const { data, error } = await supabase
-      .from('friend_requests')
-      .insert({ to_user_id: toUserId })
-      .select()
-      .single()
-    if (error)
+    const { data, error } = await supabase.rpc('send_friend_request', { p_to_user_id: toUserId })
+    if (error) {
+      if (error.message === 'blocked_by_target')
+        throw new BlockedBySenderError()
       throw new Error(error.message)
+    }
     return mapRequest(data as Record<string, unknown>)
   }
 

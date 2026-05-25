@@ -440,6 +440,34 @@
       "sendCodeBtn": "Verifizierungscode senden"
     }
   },
+  "blocks": {
+    "tabLabel": "Blockiert",
+    "blockAction": "Blockieren",
+    "unblockAction": "Entsperren",
+    "tooltip": "Blockiert",
+    "emptyState": "Du hast niemanden blockiert.",
+    "blockedSince": "Blockiert seit {date}",
+    "confirm": {
+      "title": "Diese Person blockieren?",
+      "bodyWithFriend": "Damit wird die Freundschaft aufgehoben und diese Person kann Dir keine Freundschaftsanfragen mehr senden.",
+      "bodyWithoutFriend": "Damit kann diese Person Dir keine Freundschaftsanfragen mehr senden.",
+      "cooldownNotice": "Du kannst diese Person erst nach 48 Stunden wieder entsperren.",
+      "reportToggle": "Diese Person auch melden",
+      "reportPlaceholder": "Optional: Beschreibe das Problem (max. 1000 Zeichen)",
+      "cancelBtn": "Abbrechen",
+      "confirmBtn": "Blockieren"
+    },
+    "snackbar": {
+      "blockSuccess": "Person blockiert",
+      "unblockSuccess": "Person entsperrt",
+      "reportSuccess": "Meldung eingereicht",
+      "cooldownError": "Entsperren noch nicht möglich – verfügbar in {hours} h",
+      "sendRequestFailed": "Anfrage konnte nicht gesendet werden"
+    },
+    "cooldown": {
+      "remaining": "Verfügbar in {hours} h"
+    }
+  },
   "notifications": {
     "sectionTitle": "Benachrichtigungen",
     "pushLabel": "Push-Benachrichtigungen",

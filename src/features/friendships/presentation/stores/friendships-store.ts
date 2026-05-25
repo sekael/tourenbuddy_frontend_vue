@@ -5,10 +5,12 @@ import type {
 import type { FriendshipRepository } from '@/features/friendships/domain/repositories/friendship-repository'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { BlockedBySenderError } from '@/core/exceptions'
 import { useLogger } from '@/core/logging/use-logger'
 import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { FriendshipRepositoryImpl } from '@/features/friendships/data/repositories/friendship-repository-impl'
+import { useUserBlocksStore } from '@/features/friendships/presentation/stores/user-blocks-store'
 import { notifyFriendRequestReceived, notifyFriendRequestResponded } from '@/features/notifications/data/notify-dispatch'
 
 type FriendRequestVM = FriendRequest & { _optimistic?: boolean }
@@ -151,6 +153,9 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     }
     catch (err) {
       outgoingRequests.value = outgoingRequests.value.filter(r => r.id !== tempId)
+      if (err instanceof BlockedBySenderError) {
+        useUserBlocksStore().handleSendRejectedByBlock(toUserId)
+      }
       logger.error('Failed to send friend request', err)
       throw err
     }

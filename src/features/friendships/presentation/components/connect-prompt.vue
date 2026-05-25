@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { storeToRefs } from 'pinia'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
+import { useUserBlocksStore } from '@/features/friendships/presentation/stores/user-blocks-store'
 
 const props = withDefaults(defineProps<{
   matchedUserId: string
@@ -15,10 +17,19 @@ const emit = defineEmits<{ sent: [], dismissed: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 const store = useFriendshipsStore()
+const blocksStore = useUserBlocksStore()
+const { blockedUserIds } = storeToRefs(blocksStore)
 
 type State = 'idle' | 'sending' | 'sent' | 'error'
 const state = ref<State>('idle')
 const errorMsg = ref<string | null>(null)
+const isBlockedByTarget = ref(false)
+const isBlockedByMe = computed(() => blockedUserIds.value.has(props.matchedUserId))
+const isHidden = computed(() => isBlockedByTarget.value || isBlockedByMe.value)
+
+onMounted(async () => {
+  isBlockedByTarget.value = await blocksStore.isBlockedBy(props.matchedUserId)
+})
 
 async function handleSend() {
   state.value = 'sending'
@@ -30,9 +41,10 @@ async function handleSend() {
     state.value = 'sent'
     emit('sent')
   }
-  catch (err) {
+  catch {
     state.value = 'error'
-    errorMsg.value = err instanceof Error ? err.message : t('friendships.sendRequest')
+    isBlockedByTarget.value = blocksStore.isBlockedByCache.get(props.matchedUserId)?.value ?? false
+    errorMsg.value = t('blocks.snackbar.sendRequestFailed')
   }
 }
 
@@ -55,7 +67,7 @@ async function handleDismiss() {
 </script>
 
 <template>
-  <div class="connect-prompt">
+  <div v-if="!isHidden" class="connect-prompt">
     <template v-if="state === 'sent'">
       <p class="sent-msg">
         <span class="material-symbols-outlined sent-icon">check_circle</span>
