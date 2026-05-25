@@ -203,6 +203,13 @@ watch(selectedTourId, (id) => {
   }
 })
 
+// Deselect when a realtime refetch removes the selected tour from the list
+watch(selectedTour, (tour) => {
+  if (!tour && selectedTourId.value !== null) {
+    mapStore.selectTour(null)
+  }
+})
+
 onMounted(async () => {
   await Promise.all([
     toursStore.loadTours(),

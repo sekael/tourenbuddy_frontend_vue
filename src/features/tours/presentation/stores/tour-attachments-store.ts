@@ -1,9 +1,10 @@
 import type { AllowedMimeType } from '@/features/tours/data/models/tour-attachment'
 import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useLogger } from '@/core/logging/use-logger'
+import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import {
   ALLOWED_MIME_TYPES,
@@ -32,8 +33,40 @@ export const useTourAttachmentsStore = defineStore('tourAttachments', () => {
   const stagedByDraft = ref<Record<string, File[]>>({})
   const loading = ref(false)
   const error = ref<string | null>(null)
+  /** Tracks which tour's attachments are currently loaded (for realtime refetch targeting). */
+  const currentTourId = ref<string | null>(null)
+
+  const channelKey = computed(() => {
+    const uid = authStore.currentUser?.id
+    return authStore.isAuthenticated && uid ? `tour-attachments-${uid}` : null
+  })
+
+  useRealtimeSubscription({
+    key: () => channelKey.value,
+    enabled: () => authStore.isAuthenticated,
+    bindings: () => {
+      const uid = authStore.currentUser?.id
+      if (!uid)
+        return []
+      return [{ event: '*', table: 'tour_attachments', filter: `user_id=eq.${uid}` }]
+    },
+    onChange: () => {
+      if (!currentTourId.value)
+        return
+      load(currentTourId.value)
+    },
+  })
+
+  watch(
+    () => authStore.isAuthenticated,
+    (authed) => {
+      if (!authed)
+        clear()
+    },
+  )
 
   async function load(tourId: string) {
+    currentTourId.value = tourId
     loading.value = true
     error.value = null
     try {
@@ -46,6 +79,10 @@ export const useTourAttachmentsStore = defineStore('tourAttachments', () => {
     finally {
       loading.value = false
     }
+  }
+
+  function clearCurrent() {
+    currentTourId.value = null
   }
 
   /**
@@ -199,6 +236,13 @@ export const useTourAttachmentsStore = defineStore('tourAttachments', () => {
     return repository.getDownloadUrl(storagePath, originalFilename)
   }
 
+  function clear() {
+    attachmentsByTour.value = {}
+    stagedByDraft.value = {}
+    currentTourId.value = null
+    error.value = null
+  }
+
   function clearStaged(draftId: string) {
     delete stagedByDraft.value[draftId]
   }
@@ -234,6 +278,7 @@ export const useTourAttachmentsStore = defineStore('tourAttachments', () => {
     stagedByDraft,
     loading,
     error,
+    currentTourId,
     load,
     stage,
     add,
@@ -242,6 +287,8 @@ export const useTourAttachmentsStore = defineStore('tourAttachments', () => {
     reorder,
     getViewUrl,
     getDownloadUrl,
+    clear,
+    clearCurrent,
     clearStaged,
     stageReorder,
     // Exported for tests

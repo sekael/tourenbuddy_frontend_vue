@@ -352,16 +352,19 @@ describe('useToursStore', () => {
       expect(mockPatchCompleted).toHaveBeenCalledWith('tour-1', false)
     })
 
-    it('should roll back and set error on repository failure', async () => {
+    it('should call loadTours on repository failure (convergence over local rollback)', async () => {
       mockPatchCompleted.mockRejectedValue(new Error('patch failed'))
+      mockListTours.mockResolvedValue(mockTours)
 
       const store = useToursStore()
       store.tours = [...mockTours]
 
       await store.setCompleted('tour-1', true)
 
+      // loadTours() is called to resync from server; it clears error on success
+      expect(mockListTours).toHaveBeenCalled()
+      // tours is back to server state (mockTours has completed: false)
       expect(store.tours[0]?.completed).toBe(false)
-      expect(store.error).toBe('patch failed')
     })
 
     it('should emit a debug log on toggle', async () => {
