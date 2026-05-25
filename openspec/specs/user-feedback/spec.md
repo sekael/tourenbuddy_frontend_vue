@@ -1,3 +1,7 @@
+## Purpose
+
+In-app feedback channel for users to report bugs and request features, delivered to maintainers.
+
 ## Requirements
 
 ### Requirement: Feedback entry point on the map screen

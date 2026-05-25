@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Core tour entity (location, planned date, owner) with CRUD, persistence, and realtime sync via Supabase.
+
+## Requirements
 
 ### Requirement: Realtime synchronization of tour list state
 

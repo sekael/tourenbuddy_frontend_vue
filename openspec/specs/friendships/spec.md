@@ -1,8 +1,12 @@
-## ADDED Requirements
+## Purpose
+
+Mutual friend connections between users via request, accept, and cleanup flows that drive tour sharing visibility.
+
+## Requirements
 
 ### Requirement: Friendship requires both parties to retain the linking verified phone
 
-A `friendships(A, B)` row is only valid while BOTH parties satisfy all of:
+A `friendships(A, B)` row SHALL only exist while BOTH parties satisfy all of:
 - each party has a verified phone in `auth.users` (`phone_confirmed_at IS NOT NULL`);
 - each party has the other in their `contacts` via a `contact_methods` row of `method_type = 'phone'` whose value resolves to the other party's verified phone.
 

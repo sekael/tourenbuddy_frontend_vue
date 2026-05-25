@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Mark a tour as completed, record completion metadata, and surface a completed state in lists and detail views.
+
+## Requirements
 
 ### Requirement: Tour completion persistence
 

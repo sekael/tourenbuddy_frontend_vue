@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Per-contact methods (phone numbers, email addresses) with labels, normalization, and primary-method selection.
+
+## Requirements
 
 ### Requirement: Delete-phone confirmation warns about friendship and pending-request side effects
 

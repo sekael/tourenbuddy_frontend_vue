@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Centered modal dialog used on desktop for confirmations, forms, and destructive-action prompts.
+
+## Requirements
 
 ### Requirement: DialogWindow renders as centered modal on desktop
 

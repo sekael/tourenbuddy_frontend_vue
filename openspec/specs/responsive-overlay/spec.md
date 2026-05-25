@@ -1,4 +1,8 @@
-## MODIFIED Requirements
+## Purpose
+
+Overlay component that renders as a bottom sheet on mobile and a centered dialog on desktop based on viewport size.
+
+## Requirements
 
 ### Requirement: Single active overlay at any time
 

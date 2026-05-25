@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Tour info sheet that surfaces extended tour fields, attachments, and participants in a read-friendly layout.
+
+## Requirements
 
 ### Requirement: Start and end point metadata display
 

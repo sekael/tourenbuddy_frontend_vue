@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+User profile fields (display name, locale, phone, avatar) with edit flows and validation.
+
+## Requirements
 
 ### Requirement: Own-phone deletion cascades to friendships and pending friend requests
 

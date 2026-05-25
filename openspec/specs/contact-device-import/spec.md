@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Import contacts from the device address book via the Contact Picker API or vCard upload, mapping fields to the app's contact schema.
+
+## Requirements
 
 ### Requirement: Dedupe identical phones during import
 

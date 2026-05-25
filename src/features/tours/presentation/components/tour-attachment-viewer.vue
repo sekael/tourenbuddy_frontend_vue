@@ -158,23 +158,35 @@ async function pdfNextPage() {
 }
 
 // ── Swipe ──────────────────────────────────────────────────────────────────────
+const NAV_THRESHOLD = 40
+const CLOSE_THRESHOLD = 80
+
 const touchStartX = ref<number | null>(null)
+const touchStartY = ref<number | null>(null)
 
 function onTouchStart(e: TouchEvent) {
   touchStartX.value = e.touches[0].clientX
+  touchStartY.value = e.touches[0].clientY
 }
 
 function onTouchEnd(e: TouchEvent) {
-  if (touchStartX.value === null)
+  if (touchStartX.value === null || touchStartY.value === null)
     return
   const dx = e.changedTouches[0].clientX - touchStartX.value
+  const dy = e.changedTouches[0].clientY - touchStartY.value
   touchStartX.value = null
-  if (Math.abs(dx) < 40)
+  touchStartY.value = null
+
+  if (dy > 0 && dy > Math.abs(dx) && dy >= CLOSE_THRESHOLD) {
+    emit('close')
     return
-  if (dx < 0)
-    next()
-  else
-    prev()
+  }
+  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) >= NAV_THRESHOLD) {
+    if (dx < 0)
+      next()
+    else
+      prev()
+  }
 }
 
 // ── Keyboard ───────────────────────────────────────────────────────────────────
@@ -311,7 +323,9 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-md) var(--spacing-lg);
+  padding: calc(var(--spacing-md) + env(safe-area-inset-top, 0px))
+    calc(var(--spacing-lg) + env(safe-area-inset-right, 0px)) var(--spacing-md)
+    calc(var(--spacing-lg) + env(safe-area-inset-left, 0px));
   flex-shrink: 0;
   gap: var(--spacing-sm);
 }
@@ -409,7 +423,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  padding: var(--spacing-xs) 0;
+  padding: var(--spacing-xs) 0 calc(var(--spacing-xs) + env(safe-area-inset-bottom, 0px));
   flex-shrink: 0;
 }
 
@@ -440,17 +454,17 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 }
 
 .viewer__nav--prev {
-  left: var(--spacing-sm);
+  left: calc(var(--spacing-sm) + env(safe-area-inset-left, 0px));
 }
 .viewer__nav--next {
-  right: var(--spacing-sm);
+  right: calc(var(--spacing-sm) + env(safe-area-inset-right, 0px));
 }
 
 .viewer__dots {
   display: flex;
   justify-content: center;
   gap: 6px;
-  padding: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-sm) calc(var(--spacing-sm) + env(safe-area-inset-bottom, 0px));
   flex-shrink: 0;
 }
 

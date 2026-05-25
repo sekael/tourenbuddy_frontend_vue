@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Always-visible action bar inside the tour detail view exposing primary tour actions.
+
+## Requirements
 
 ### Requirement: Persistent bottom-center tour action bar
 

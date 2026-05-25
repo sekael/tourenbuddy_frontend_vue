@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+MapLibre GL JS map with Swisstopo vector and WMTS layers, marker layers for tours, and bidirectional camera sync with the store.
+
+## Requirements
 
 ### Requirement: MapLibre GL JS map with Swisstopo tiles
 

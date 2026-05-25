@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Extended tour entity fields beyond the baseline (e.g., difficulty, duration estimate, description) and their persistence.
+
+## Requirements
 
 ### Requirement: Tour type enum
 

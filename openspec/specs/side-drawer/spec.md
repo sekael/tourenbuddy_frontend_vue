@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Slide-out navigation and account drawer anchored to the side of the viewport.
+
+## Requirements
 
 ### Requirement: SideDrawer component renders as a right-edge panel
 

@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Suggest a tour name based on the selected map location using Swisstopo reverse-geocoding.
+
+## Requirements
 
 ### Requirement: Name suggestion service
 

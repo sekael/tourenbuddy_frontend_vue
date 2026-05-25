@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Baseline Vue 3 + TypeScript + Vite project structure, build pipeline, linting, and testing setup.
+
+## Requirements
 
 ### Requirement: Project initializes with Vite and TypeScript
 

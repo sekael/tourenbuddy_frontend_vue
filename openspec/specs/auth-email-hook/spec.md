@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Cloudflare Worker that sends transactional auth and notification emails via a provider on behalf of the app.
+
+## Requirements
 
 ### Requirement: Notification dispatch routes
 The Worker SHALL expose two additional routes that send friend-request notifications via Brevo email and Web Push, in addition to the existing Supabase email hook.

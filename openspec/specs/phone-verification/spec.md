@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Verify ownership of a phone number on the user profile via a one-time SMS code.
+
+## Requirements
 
 ### Requirement: Phone number update via Supabase auth
 
@@ -99,7 +103,7 @@ A blue checkmark icon SHALL be displayed next to phone numbers that are verified
 
 ### Requirement: Twilio and Supabase SMS setup
 
-Phone verification requires manual configuration of Twilio (SMS provider) and Supabase Phone Auth provider before the feature can function.
+Phone verification SHALL require manual configuration of Twilio (SMS provider) and Supabase Phone Auth provider before the feature can function.
 
 #### Scenario: Twilio account setup
 
