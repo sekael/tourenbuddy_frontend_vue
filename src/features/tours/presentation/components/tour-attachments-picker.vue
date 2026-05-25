@@ -1,0 +1,327 @@
+<script setup lang="ts">
+import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
+import { storeToRefs } from 'pinia'
+import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
+
+const props = defineProps<{
+  /** tourId for edit-flow; undefined during create-flow (use draftId). */
+  tourId?: string
+  /** draftId for create-flow staging. */
+  draftId?: string
+  attachments: TourAttachment[]
+}>()
+
+const { t } = useI18n({ useScope: 'global' })
+const store = useTourAttachmentsStore()
+const { loading, error } = storeToRefs(store)
+
+const fileInput = ref<HTMLInputElement | null>(null)
+const confirmDeleteTarget = ref<TourAttachment | null>(null)
+const dragFrom = ref<number | null>(null)
+
+function openFilePicker() {
+  fileInput.value?.click()
+}
+
+async function onFilesSelected(event: Event) {
+  const input = event.target as HTMLInputElement
+  const files = Array.from(input.files ?? [])
+  input.value = '' // reset so same file can be re-selected after rejection
+
+  if (!files.length)
+    return
+
+  if (props.draftId) {
+    store.stage(props.draftId, files)
+  }
+  else if (props.tourId) {
+    await store.add(props.tourId, files)
+  }
+}
+
+function requestDelete(attachment: TourAttachment) {
+  confirmDeleteTarget.value = attachment
+}
+
+async function confirmDelete() {
+  const target = confirmDeleteTarget.value
+  confirmDeleteTarget.value = null
+  if (!target)
+    return
+  await store.remove(target)
+}
+
+function cancelDelete() {
+  confirmDeleteTarget.value = null
+}
+
+// ── Drag-to-reorder ────────────────────────────────────────────────────────────
+function onDragStart(index: number, event: DragEvent) {
+  dragFrom.value = index
+  if (event.dataTransfer)
+    event.dataTransfer.effectAllowed = 'move'
+}
+
+function onDragOver(event: DragEvent) {
+  event.preventDefault()
+  if (event.dataTransfer)
+    event.dataTransfer.dropEffect = 'move'
+}
+
+async function onDrop(toIndex: number) {
+  const from = dragFrom.value
+  dragFrom.value = null
+  if (from === null || from === toIndex)
+    return
+
+  if (props.draftId) {
+    store.stageReorder(props.draftId, from, toIndex)
+  }
+  else if (props.tourId) {
+    const reordered = [...props.attachments]
+    const [moved] = reordered.splice(from, 1)
+    reordered.splice(toIndex, 0, moved)
+    await store.reorder(props.tourId, reordered.map(a => a.id))
+  }
+}
+</script>
+
+<template>
+  <div class="picker">
+    <!-- Error banner -->
+    <p v-if="error" class="picker__error" role="alert">
+      {{ error }}
+    </p>
+
+    <!-- Attachment list -->
+    <ul v-if="attachments.length" class="picker__list">
+      <li
+        v-for="(attachment, index) in attachments"
+        :key="attachment.id"
+        class="picker__item"
+        :class="{ 'picker__item--confirm': confirmDeleteTarget?.id === attachment.id }"
+        :draggable="confirmDeleteTarget === null"
+        @dragstart="onDragStart(index, $event)"
+        @dragover="onDragOver"
+        @drop="onDrop(index)"
+      >
+        <!-- Inline delete confirm state -->
+        <template v-if="confirmDeleteTarget?.id === attachment.id">
+          <span class="picker__filename">{{ attachment.originalFilename }}</span>
+          <div class="picker__confirm-actions">
+            <button type="button" class="picker__cancel-btn" @click="cancelDelete">
+              {{ t('tours.infoSheet.cancelBtn') }}
+            </button>
+            <button type="button" class="picker__confirm-delete-btn" @click="confirmDelete">
+              {{ t('tours.attachments.delete') }}
+            </button>
+          </div>
+        </template>
+
+        <!-- Normal state -->
+        <template v-else>
+          <span class="material-symbols-outlined picker__drag-handle" aria-hidden="true">drag_indicator</span>
+          <span class="material-symbols-outlined picker__file-icon" aria-hidden="true">
+            {{ attachment.mimeType === 'application/pdf' ? 'picture_as_pdf' : 'image' }}
+          </span>
+          <span class="picker__filename">{{ attachment.originalFilename }}</span>
+          <button
+            type="button"
+            class="picker__delete-btn"
+            :aria-label="t('tours.attachments.delete')"
+            @click="requestDelete(attachment)"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+          </button>
+        </template>
+      </li>
+    </ul>
+
+    <!-- Add button / upload spinner -->
+    <div class="picker__add-row">
+      <span v-if="loading" class="picker__spinner" />
+      <button
+        v-else-if="attachments.length < 5"
+        type="button"
+        class="picker__add-btn"
+        @click="openFilePicker"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">attach_file</span>
+        {{ t('tours.attachments.add') }}
+      </button>
+      <p v-else class="picker__limit-reached">
+        {{ t('tours.attachments.limitReached') }}
+      </p>
+    </div>
+
+    <input
+      ref="fileInput"
+      type="file"
+      multiple
+      accept="image/png,image/jpeg,application/pdf"
+      class="picker__hidden-input"
+      @change="onFilesSelected"
+    >
+  </div>
+</template>
+
+<style scoped>
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.picker__error {
+  color: var(--color-error);
+  font-size: var(--font-size-sm);
+}
+
+.picker__list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs);
+}
+
+.picker__item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-variant);
+  cursor: grab;
+  min-height: 40px;
+}
+
+.picker__item--confirm {
+  cursor: default;
+  border-color: var(--color-error);
+}
+
+.picker__drag-handle,
+.picker__file-icon {
+  color: var(--color-on-surface-variant);
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.picker__filename {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker__delete-btn {
+  color: var(--color-on-surface-variant);
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-xxs);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.picker__delete-btn:hover {
+  color: var(--color-error);
+}
+
+.picker__add-row {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+}
+
+.picker__add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1.5px solid var(--color-outline-variant);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
+  background: transparent;
+  white-space: nowrap;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.picker__add-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.picker__add-btn .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.picker__limit-reached {
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
+}
+
+.picker__spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-outline-variant);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: picker-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes picker-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.picker__hidden-input {
+  display: none;
+}
+
+/* Inline delete confirm */
+.picker__confirm-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.picker__cancel-btn {
+  padding: var(--spacing-xxs) var(--spacing-sm);
+  border-radius: 10px;
+  border: 1px solid var(--color-outline-variant);
+  color: var(--color-on-surface-variant);
+  font-size: var(--font-size-sm);
+  transition: background-color 0.15s;
+}
+
+.picker__cancel-btn:hover {
+  background-color: var(--color-surface-variant);
+}
+
+.picker__confirm-delete-btn {
+  padding: var(--spacing-xxs) var(--spacing-sm);
+  border-radius: 10px;
+  background-color: var(--color-error);
+  color: white;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  transition: opacity 0.15s;
+}
+
+.picker__confirm-delete-btn:hover {
+  opacity: 0.85;
+}
+</style>

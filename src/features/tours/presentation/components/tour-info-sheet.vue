@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
+import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
 import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -16,7 +17,10 @@ import { useContactsStore } from '@/features/contacts/presentation/stores/contac
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { TOUR_TYPE_I18N_KEYS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
 import { downloadOriginal } from '@/features/tours/data/services/gpx-storage-service'
+import TourAttachmentViewer from '@/features/tours/presentation/components/tour-attachment-viewer.vue'
+import TourAttachmentsStrip from '@/features/tours/presentation/components/tour-attachments-strip.vue'
 import TourForm from '@/features/tours/presentation/components/tour-form.vue'
+import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
 const props = defineProps<{
@@ -50,6 +54,7 @@ const contactsStore = useContactsStore()
 const toursStore = useToursStore()
 const mapStore = useMapStore()
 const authStore = useAuthStore()
+const attachmentsStore = useTourAttachmentsStore()
 const { contacts } = storeToRefs(contactsStore)
 const { isPickingLocation } = storeToRefs(mapStore)
 const { currentUser } = storeToRefs(authStore)
@@ -62,6 +67,8 @@ const isOwner = computed(() => !!currentUser.value && currentUser.value.id === p
 
 // ── View/edit mode ───────────────────────────────────────────────────────────
 const mode = ref<'view' | 'edit'>('view')
+/** IDs of attachments that existed when edit mode was entered — used for cancel rollback. */
+const editBaseAttachmentIds = ref<Set<string>>(new Set())
 
 // Pending goal/points during edit — updated reactively via editPickedPoint prop
 const pendingGoal = ref<{ lng: number, lat: number }>({ ...props.tour.goal })
@@ -81,11 +88,21 @@ function enterEditMode() {
   pendingSuggestedName.value = null
   pendingStartPointMeta.value = null
   pendingEndPointMeta.value = null
+  // Snapshot attachment IDs before edit so cancel can rollback newly added ones
+  editBaseAttachmentIds.value = new Set(
+    (attachmentsStore.attachmentsByTour[props.tour.id] ?? []).map(a => a.id),
+  )
   mode.value = 'edit'
   emit('editModeChange', true)
 }
 
-function cancelEdit() {
+async function cancelEdit() {
+  // Remove any attachments added during this edit session
+  const current = attachmentsStore.attachmentsByTour[props.tour.id] ?? []
+  const toRemove = current.filter(a => !editBaseAttachmentIds.value.has(a.id))
+  for (const att of toRemove) {
+    await attachmentsStore.remove(att)
+  }
   mode.value = 'view'
   emit('editModeChange', false)
 }
@@ -164,6 +181,17 @@ async function handleDownloadGpx() {
 // ── Completion toggle ────────────────────────────────────────────────────────
 async function toggleCompleted() {
   await toursStore.setCompleted(props.tour.id, !props.tour.completed)
+}
+
+// ── Attachment viewer ────────────────────────────────────────────────────────
+const viewerAttachments = ref<TourAttachment[]>([])
+const viewerStartIndex = ref(0)
+const viewerOpen = ref(false)
+
+function openViewer(attachments: TourAttachment[], startIndex: number) {
+  viewerAttachments.value = attachments
+  viewerStartIndex.value = startIndex
+  viewerOpen.value = true
 }
 
 // ── Delete ───────────────────────────────────────────────────────────────────
@@ -322,6 +350,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         :allow-goal-edit="true"
         :current-goal="pendingGoal"
         :initial-draft="tour"
+        :tour-id="tour.id"
         :initial-elevation="pendingElevation"
         :initial-name="pendingSuggestedName"
         :initial-start-point="pendingStartPoint"
@@ -491,6 +520,12 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           </button>
         </div>
 
+        <!-- Attachments strip -->
+        <TourAttachmentsStrip
+          :tour-id="tour.id"
+          @open-viewer="openViewer"
+        />
+
         <!-- Partners -->
         <div v-if="partners.length > 0" class="detail-row align-start">
           <BaseTooltip :text="t('tours.infoSheet.iconTooltipPartners')">
@@ -584,6 +619,14 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         </p>
       </div>
     </template>
+
+    <!-- Attachment viewer uses Teleport internally; placing here keeps single root -->
+    <TourAttachmentViewer
+      v-if="viewerOpen"
+      :attachments="viewerAttachments"
+      :start-index="viewerStartIndex"
+      @close="viewerOpen = false"
+    />
   </component>
 </template>
 
