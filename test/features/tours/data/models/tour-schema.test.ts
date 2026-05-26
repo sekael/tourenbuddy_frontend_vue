@@ -11,15 +11,15 @@ const baseRow = {
   partner_ids: [],
 }
 
-describe('tourSchema invariant: no partner snapshots', () => {
-  it('should contain partnerIds but no partner name or phone fields', () => {
+describe('tourSchema invariant: no owner address-book snapshots', () => {
+  it('should carry partnerIds and registered-user partnerNames, never owner contact data', () => {
     const shape = tourSchema.shape
+    // Owner path: contact ids. Friend path: server-resolved registered-user names.
     expect(shape).toHaveProperty('partnerIds')
-    expect(shape).not.toHaveProperty('partnerNames')
+    expect(shape).toHaveProperty('partnerNames')
+    // The owner's private address book must never be projected into a tour.
     expect(shape).not.toHaveProperty('partnerPhones')
     expect(shape).not.toHaveProperty('partners')
-    expect(shape).not.toHaveProperty('partnerFirstNames')
-    expect(shape).not.toHaveProperty('partnerLastNames')
     expect(shape).not.toHaveProperty('partnerDisplayNames')
     expect(shape).not.toHaveProperty('partnerContactMethods')
   })

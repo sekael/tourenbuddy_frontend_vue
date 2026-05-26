@@ -2,6 +2,7 @@ import type { z } from 'zod'
 import type { Season } from '@/features/tours/data/models/season'
 import type { tourSchema } from '@/features/tours/data/models/tour-schema'
 import type { TourType } from '@/features/tours/data/models/tour-type'
+import type { Visibility } from '@/features/tours/data/models/visibility'
 
 /** Domain entity for a tour. */
 export type Tour = z.infer<typeof tourSchema>
@@ -25,6 +26,8 @@ export interface TourDraft {
   equipment: string | null
   notes: string | null
   completed?: boolean
+  /** Owner-chosen visibility. Defaults to `friends` server-side when omitted. */
+  visibility?: Visibility
 }
 
 /** Converts a tour to a GeoJSON Feature for MapLibre rendering. */

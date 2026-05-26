@@ -1,4 +1,5 @@
 import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
+import type { Visibility } from '@/features/tours/data/models/visibility'
 import { defineStore } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
 import { computed, ref, watch } from 'vue'
@@ -17,16 +18,20 @@ export const useToursStore = defineStore('tours', () => {
   const contactsStore = useContactsStore()
 
   const tours = ref<Tour[]>([])
+  const friendTours = ref<Tour[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
   watch(
     () => authStore.isAuthenticated,
     (authed, wasAuthed) => {
-      if (authed && !wasAuthed)
+      if (authed && !wasAuthed) {
         loadTours()
-      else if (!authed && wasAuthed)
+        loadFriendTours()
+      }
+      else if (!authed && wasAuthed) {
         clear()
+      }
     },
   )
 
@@ -85,6 +90,20 @@ export const useToursStore = defineStore('tours', () => {
     }
   }
 
+  // Friend tours are a separate collection. Realtime sync is deferred (issue #198);
+  // callers refetch on demand (e.g. opening the Friends list tab or the map).
+  async function loadFriendTours() {
+    if (!authStore.currentUser?.id)
+      return
+
+    try {
+      friendTours.value = await repository.listFriendTours()
+    }
+    catch (err) {
+      logger.error('Failed to load friend tours', err)
+    }
+  }
+
   async function createTourFromDraft(
     draft: TourDraft,
     goal: { lng: number, lat: number },
@@ -97,6 +116,10 @@ export const useToursStore = defineStore('tours', () => {
 
     const id = preUploadedTourId ?? uuidv4()
     await repository.createTourWithPartners(id, draft, goal)
+
+    // Tours default to 'friends' server-side; only a non-default choice needs a write.
+    if (draft.visibility && draft.visibility !== 'friends')
+      await repository.patchVisibility(id, draft.visibility)
 
     if (gpxFile) {
       try {
@@ -188,6 +211,24 @@ export const useToursStore = defineStore('tours', () => {
     }
   }
 
+  async function setVisibility(tourId: string, visibility: Visibility) {
+    const tour = tours.value.find(t => t.id === tourId)
+    if (!tour)
+      return
+
+    const previous = tour.visibility
+    tours.value = tours.value.map(t => (t.id === tourId ? { ...t, visibility } : t))
+
+    try {
+      await repository.patchVisibility(tourId, visibility)
+    }
+    catch (err) {
+      tours.value = tours.value.map(t => (t.id === tourId ? { ...t, visibility: previous } : t))
+      error.value = err instanceof Error ? err.message : 'Failed to update visibility'
+      logger.error('setVisibility failed', err)
+    }
+  }
+
   async function deleteTour(id: string) {
     const tour = tours.value.find(t => t.id === id)
     await repository.deleteTour(id)
@@ -204,17 +245,21 @@ export const useToursStore = defineStore('tours', () => {
 
   function clear() {
     tours.value = []
+    friendTours.value = []
     error.value = null
   }
 
   return {
     tours,
+    friendTours,
     isLoading,
     error,
     loadTours,
+    loadFriendTours,
     createTourFromDraft,
     updateTour,
     setCompleted,
+    setVisibility,
     deleteTour,
     clear,
   }
