@@ -93,10 +93,15 @@ async function loadFriendIcon(map: MapLibreMap): Promise<boolean> {
   if (map.hasImage(FRIEND_ICON_ID))
     return true
 
+  // Logical (CSS-px) size of the icon; the 0..28 viewBox holds the glyph geometry.
   const size = 28
-  // Two-person glyph in white — marks a friend's tour inside the marker.
+  // Rasterize at 4× and register with a matching pixelRatio so the texture carries
+  // 4× the detail while still measuring 28 logical px — crisp on hi-DPI / when scaled.
+  const scale = 4
+  const render = size * scale
+  // Two-person glyph — marks a friend's tour inside the marker.
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 28 28" fill="white">
+    <svg xmlns="http://www.w3.org/2000/svg" width="${render}" height="${render}" viewBox="0 0 28 28" fill="white">
       <circle cx="10" cy="9" r="3.5" />
       <path d="M4 21c0-3.3 2.7-6 6-6s6 2.7 6 6z" />
       <circle cx="19" cy="10" r="3" />
@@ -108,11 +113,13 @@ async function loadFriendIcon(map: MapLibreMap): Promise<boolean> {
   const url = URL.createObjectURL(blob)
 
   return new Promise((resolve) => {
-    const img = new Image(size, size)
+    const img = new Image(render, render)
     img.onload = () => {
       URL.revokeObjectURL(url)
       try {
-        map.addImage(FRIEND_ICON_ID, img, { sdf: false })
+        // SDF so the layer can tint it per tour type via `icon-color`; the SVG's
+        // own white fill is ignored — only its alpha silhouette is used.
+        map.addImage(FRIEND_ICON_ID, img, { sdf: true, pixelRatio: scale })
         resolve(true)
       }
       catch {
@@ -577,6 +584,33 @@ export function useToursMarkerLayer(
       },
     })
 
+    // Friend indicator is added BEFORE the completion check so the check (added
+    // last below) stacks on top — completion must read above everything else.
+    const friendIconLoaded = await loadFriendIcon(map)
+    if (friendIconLoaded) {
+      // Friendship indicator is centered in the marker and sized to nearly fill
+      // it (28px icon × 0.8 ≈ 22px inside a 28px circle → even ~3px padding).
+      // Tinted a lighter shade of the tour-type colour so the white completion
+      // check stays legible on top of it for completed friend tours.
+      map.addLayer({
+        id: FRIEND_LAYER_ID,
+        type: 'symbol',
+        source: SOURCE_ID,
+        filter: ['in', ['get', 'id'], ['literal', []]],
+        layout: {
+          'icon-image': FRIEND_ICON_ID,
+          'icon-size': 0.8,
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+        },
+        paint: {
+          'icon-color': PREVIEW_COLOR_EXPR,
+          'icon-opacity': 1,
+          'icon-opacity-transition': { duration: 200 },
+        },
+      })
+    }
+
     const iconLoaded = await loadCheckIcon(map)
     if (iconLoaded) {
       map.addLayer({
@@ -587,29 +621,6 @@ export function useToursMarkerLayer(
         layout: {
           'icon-image': CHECK_ICON_ID,
           'icon-size': 0.65,
-          'icon-allow-overlap': true,
-          'icon-ignore-placement': true,
-        },
-        paint: {
-          'icon-opacity': 1,
-          'icon-opacity-transition': { duration: 200 },
-        },
-      })
-    }
-
-    const friendIconLoaded = await loadFriendIcon(map)
-    if (friendIconLoaded) {
-      // Friendship indicator sits at the lower part of the marker so it does not
-      // collide with the completion check (centered) on completed friend tours.
-      map.addLayer({
-        id: FRIEND_LAYER_ID,
-        type: 'symbol',
-        source: SOURCE_ID,
-        filter: ['in', ['get', 'id'], ['literal', []]],
-        layout: {
-          'icon-image': FRIEND_ICON_ID,
-          'icon-size': 0.5,
-          'icon-offset': [0, 12],
           'icon-allow-overlap': true,
           'icon-ignore-placement': true,
         },

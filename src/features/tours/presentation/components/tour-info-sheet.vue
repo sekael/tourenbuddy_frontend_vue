@@ -251,6 +251,22 @@ const formattedDate = computed(() => {
 
 const partners = computed(() => contacts.value.filter(c => props.tour.partnerIds.includes(c.id)))
 
+// Friend tours surface partners as registered-user profile names (the viewer is
+// not in the owner's address book and never sees raw contacts), so render them
+// read-only — no contact action menu, no group SMS. Populated only when the
+// viewer is a partner; gated to [] otherwise by friend_tours_view.
+const friendPartnerNames = computed(() =>
+  props.tour.isFriendTour
+    ? (props.tour.partnerNames ?? [])
+        .map(p =>
+          p.userId === currentUser.value?.id
+            ? t('tours.infoSheet.partnerSelf')
+            : [p.firstName, p.lastName].filter(Boolean).join(' ').trim(),
+        )
+        .filter(Boolean)
+    : [],
+)
+
 // ── Contact action menu ──────────────────────────────────────────────────────
 const activeMenuContactId = ref<string | null>(null)
 const activeMenuContact = computed(() =>
@@ -401,12 +417,12 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           @click="toggleVisibility"
         >
           <span class="material-symbols-outlined">
-            {{ tour.visibility === 'private' ? 'lock' : 'group' }}
+            {{ tour.visibility === 'private' ? 'group' : 'lock' }}
           </span>
           {{
             tour.visibility === 'private'
-              ? t('tours.infoSheet.visibilityPrivate')
-              : t('tours.infoSheet.visibilityFriends')
+              ? t('tours.infoSheet.visibilityMakeFriends')
+              : t('tours.infoSheet.visibilityMakePrivate')
           }}
         </button>
 
@@ -577,6 +593,23 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
               <span class="material-symbols-outlined">sms</span>
               {{ t('tours.infoSheet.messageAll') }}
             </button>
+          </div>
+        </div>
+
+        <!-- Partners on a friend's tour (read-only registered-user names) -->
+        <div
+          v-if="tour.isFriendTour && friendPartnerNames.length > 0"
+          class="detail-row"
+        >
+          <BaseTooltip :text="t('tours.infoSheet.iconTooltipPartners')">
+            <span class="detail-icon material-symbols-outlined">group</span>
+          </BaseTooltip>
+          <div class="partner-chips">
+            <span
+              v-for="(name, i) in friendPartnerNames"
+              :key="i"
+              class="friend-partner-chip"
+            >{{ name }}</span>
           </div>
         </div>
 
@@ -886,6 +919,14 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-xs);
+}
+
+.friend-partner-chip {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  background-color: var(--color-surface-variant);
+  color: var(--color-on-surface);
 }
 
 .group-sms-btn {

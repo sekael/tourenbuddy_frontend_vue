@@ -254,8 +254,7 @@
       "friendsEmptyTitle": "No friend tours yet.",
       "friendsEmptySubtitle": "Tours your friends share will appear here.",
       "ownedByLabel": "by {name}",
-      "aFriend": "a friend",
-      "limitedInfo": "Limited info"
+      "aFriend": "a friend"
     },
     "duplicate": {
       "title": "Tour already here",
@@ -328,12 +327,13 @@
       "unnamedTour": "Unnamed tour",
       "completedBtn": "Completed",
       "completeTourBtn": "Complete Tour",
-      "visibilityFriends": "Visible to friends",
-      "visibilityPrivate": "Private",
+      "visibilityMakePrivate": "Make tour private",
+      "visibilityMakeFriends": "Make visible to friends",
       "roundTrip": "Round trip",
       "oneWayToGoalIndicator": "One-way to goal",
       "gpxTrackAvailable": "Track available",
       "messageAll": "Message all",
+      "partnerSelf": "Me",
       "editBtn": "Edit",
       "deleteConfirmText": "Delete this tour?",
       "cancelBtn": "Cancel",

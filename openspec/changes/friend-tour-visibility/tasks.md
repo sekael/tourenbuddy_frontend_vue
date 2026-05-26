@@ -48,9 +48,9 @@
 
 ## 8. Frontend: friend tours on the map
 
-- [x] 8.1 Include partner-friend tours in the map marker source alongside owned tours (`mapTours` computed in `tourenbuddy-map.vue`; selection resolves friend tours in both map + map-page)
-- [x] 8.2 Add friendship indicator inside friend-tour markers (`FRIEND_LAYER_ID` symbol layer, offset below the completion check); clustering unchanged (same source/array)
-- [x] 8.3 Ensure non-partner friend tours are excluded from the map (`friendTours.filter(t => t.isPartner)`)
+- [x] 8.1 Include friend tours in the map marker source alongside owned tours (`mapTours` computed in `tourenbuddy-map.vue`; selection resolves friend tours in both map + map-page)
+- [x] 8.2 Add friendship indicator inside friend-tour markers (`FRIEND_LAYER_ID` symbol layer, centered + tinted; completion check stacks above); clustering unchanged (same source/array)
+- [x] 8.3 Show ALL readable friend tours on the map — partner and non-partner alike (per user follow-up; gated detail still applies when a non-partner tour is opened)
 
 ## 9. Tour collision handling
 
@@ -91,6 +91,6 @@
 ## 14. Finalize
 
 - [x] 14.1 Run `npx eslint . --fix` (zero warnings) — clean across repo
-- [ ] 14.2 Prompt user to push to prod DB (`supabase db push`) after review — do not run unprompted
-- [ ] 14.3 Prompt user to commit (message below)
-- [ ] 14.4 Prompt user to push branch and open a PR to `main`
+- [x] 14.2 Prompt user to push to prod DB (`supabase db push`) after review — do not run unprompted
+- [x] 14.3 Prompt user to commit (message below)
+- [x] 14.4 Prompt user to push branch and open a PR to `main`

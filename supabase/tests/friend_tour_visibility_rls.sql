@@ -50,7 +50,7 @@ end $$;
 do $$
 declare r record;
 begin
-  select is_partner, planned_date into r
+  select is_partner, planned_date, partner_names into r
   from public.friend_tours_view where id = 'cccccccc-0000-0000-0000-000000000002';
   if not r.is_partner then
     raise exception '4.3b FAIL: Jakob should be a partner on tour ...02';
@@ -58,7 +58,11 @@ begin
   if r.planned_date is null then
     raise exception '4.3b FAIL: partner friend must see planned_date';
   end if;
-  raise notice '4.3b OK: partner friend sees ungated detail';
+  -- Regression guard: partner roster must resolve to profile names, not [].
+  if json_array_length(r.partner_names) = 0 then
+    raise exception '4.3b FAIL: partner friend must see partner_names, got empty';
+  end if;
+  raise notice '4.3b OK: partner friend sees ungated detail + partner names';
 end $$;
 
 -- 4.3c — Non-partner friend (Jakob on tour ...01) gets gated columns.

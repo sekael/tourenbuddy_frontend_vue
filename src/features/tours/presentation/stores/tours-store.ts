@@ -37,6 +37,14 @@ export const useToursStore = defineStore('tours', () => {
     },
   )
 
+  // The store is created lazily (first view that uses it), often after auth has
+  // already been restored at bootstrap — so the watcher above never sees the
+  // false→true transition. Owned tours still arrive via the realtime channel's
+  // onSubscribed reload; friend tours have no such trigger, so kick their initial
+  // load here when the session is already live.
+  if (authStore.isAuthenticated)
+    void loadFriendTours()
+
   contactsStore.$onAction(({ name, args, after }) => {
     if (name !== 'deleteContact')
       return

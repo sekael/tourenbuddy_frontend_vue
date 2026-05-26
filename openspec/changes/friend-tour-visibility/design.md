@@ -9,7 +9,7 @@ This change broadens tour reads to friends, adds a per-tour `visibility` setting
 **Goals:**
 - Per-tour `private`/`friends` visibility, owner-controlled, default `friends`.
 - Friends read each other's `friends`-visible tours; private tours stay owner-only.
-- Non-partner friend viewers get `partner_ids`, `planned_date`, `gpx_filepath` withheld.
+- Non-partner friend viewers get partner names, `planned_date`, `gpx_filepath` withheld (raw `partner_ids` are never exposed to any friend).
 - Friend partners notified on shared-tour create/edit/delete, honoring existing prefs.
 - A relation model that also serves the future `public` visibility state.
 
@@ -32,11 +32,13 @@ Partner-as-user is resolved live: `tour_partners → contacts → contact_method
 - *Alternative rejected:* `tour_participant_users(tour_id, user_id)` link table maintained by triggers — faster reads but four mutation points to keep consistent for a benefit only the gating layer needs.
 
 ### 2a. Partners shown to friends are registered users, by name
-`partner_ids` are the owner's private contact UUIDs — meaningless and unresolvable in a friend's address book, and the owner's non-registered contacts must not leak. So the friend-read view does NOT return `partner_ids`; it returns the **registered-user partners** resolved from each partner contact's phone, surfaced as profile names (via `get_user_names_by_ids`). Non-registered address-book contacts are omitted entirely. The owner's own view keeps rendering partners from their address book unchanged.
+`partner_ids` are the owner's private contact UUIDs — meaningless and unresolvable in a friend's address book, and the owner's non-registered contacts must not leak. So the friend-read view does NOT return `partner_ids`; it returns the **registered-user partners** resolved from each partner contact's phone, surfaced as profile names. Non-registered address-book contacts are omitted entirely. The owner's own view keeps rendering partners from their address book unchanged.
 - *Why:* the existing `tour-info-sheet` resolves `partnerIds` against the *viewer's* contacts store, which is empty for a friend's tour; and exposing raw owner contact names would leak private address-book data.
+- *Resolver choice:* names come from a **tour-scoped** `SECURITY DEFINER` resolver `tour_partner_names(tour_id)` that self-authorizes (caller must be a partner on a `friends`-visible tour they are a friend of the owner on) and then returns the whole roster. It deliberately does **not** reuse `get_user_names_by_ids` — that one is **caller-relationship-scoped** (returns only profiles the *caller* is friends with, and excludes the caller), which wrongly filtered every co-partner out, since co-partners are friends of the *owner*, not each other. `get_user_names_by_ids` remains in use for its intended friend-name lookups (friend requests, owner labels).
+- *Self label:* the viewer's own entry in the roster is rendered as "Me" (i18n `tours.infoSheet.partnerSelf`) in both the info sheet and the list row, rather than their own name.
 
-### 2b. GPX access enforced at the storage layer
-The `tour-gpx` bucket is owner-only (`split_part(name,'/',1) = auth.uid()`), so gating `gpx_filepath` in the view is insufficient — the object download itself is blocked. Add a storage `SELECT` policy permitting a partner-friend (friendship + `visibility='friends'` + partner via the same helper) to read the object; non-partner friends and private tours stay blocked at storage.
+### 2b. GPX + attachment access enforced at the storage layer
+The `tour-gpx` and `tour-attachments` buckets are owner-only (`split_part(name,'/',1) = auth.uid()`), so gating paths in the view is insufficient — the object fetch itself is blocked. Add a storage `SELECT` policy on each bucket permitting a partner-friend (friendship + `visibility='friends'` + partner via the same helper) to read the object; non-partner friends and private tours stay blocked at storage. Attachments additionally need a partner-friend `SELECT` policy on the `tour_attachments` **metadata table** (otherwise the strip queries zero rows and never reaches storage); attachment writes stay owner-only.
 
 ### 3. Friend reads go through a `security_invoker` view/RPC
 The existing `tours_view` is owned by `postgres` with no `security_invoker` set, so it does **not** reliably enforce base-table RLS. Friend reads MUST run with the caller's privileges so the new friend RLS policy filters rows. Decision: expose friend tours through a `security_invoker = true` view (or `security definer` RPC that itself re-checks friendship), applying column gating in SQL using `tour_partner_user_ids()` and `auth.uid()`. Own-tour reads stay on their current path.
@@ -81,11 +83,15 @@ A 100m goal-collision radius defines "same objective", computed client-side with
 
 ## Migration Plan
 
-1. Migration A: add `tours.visibility` column + check constraint (default `friends`).
-2. Migration B: friend `SELECT` policies on `tours` and `tour_partners` (friendship AND `visibility='friends'`); `tour_partner_user_ids()` `security definer` helper; friend-read view/RPC with column gating and `security_invoker`.
-3. Apply locally via `supabase db reset`, verify with RLS tests, then `supabase db push` (prompted, not unprompted).
-4. Frontend + Worker + i18n shipped together; Worker `tour-changed` endpoint + Brevo template env vars added to both the GitHub Actions env step and repo secrets.
-- *Rollback:* drop friend policies/view (reads revert to owner-only); column can remain harmlessly. Worker endpoint is additive.
+Four migrations land in order (all applied locally via `supabase db reset`, verified with the RLS test script, then `supabase db push` — prompted, never unprompted):
+
+1. `…_add_tours_visibility`: `tours.visibility` column + check constraint (default `friends`); expose in `tours_view`.
+2. `…_friend_tour_read_access`: friend `SELECT` policy on `tours` (friendship AND `visibility='friends'`); `tour_partner_user_ids()` `security definer` helper; `friend_tours_view` (`security_invoker`) with column gating; `tour-gpx` partner-friend storage policy. (No `tour_partners` friend policy — the view resolves partners via the helper and never returns raw `contact_id`s.)
+3. `…_fix_friend_tour_partner_names`: tour-scoped `tour_partner_names()` resolver; recreate `friend_tours_view` to use it (the original `get_user_names_by_ids` was caller-scoped and returned no names).
+4. `…_friend_attachment_access`: partner-friend `SELECT` policies on `tour_attachments` (table) and the `tour-attachments` storage bucket.
+
+Frontend + Worker + i18n ship together; Worker `tour-changed` / `tour-interest` endpoints + Brevo template env vars added to the Worker secrets (via `wrangler`) and frontend `VITE_*` to the GitHub Actions env step + repo secrets.
+- *Rollback:* drop friend policies/views (reads revert to owner-only); the `visibility` column can remain harmlessly. Worker endpoints are additive.
 
 ## Open Questions
 

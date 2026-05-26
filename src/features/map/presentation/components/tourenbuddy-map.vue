@@ -34,14 +34,13 @@ defineExpose({ map })
 let markerLayer: ReturnType<typeof useToursMarkerLayer> | null = null
 let gpxLayer: ReturnType<typeof useGpxTrackLayer> | null = null
 
-// The map shows the user's own tours plus friend tours they are a partner on;
-// non-partner friend tours stay in the Friends list only, never on the map. A
-// partner-friend tour colliding (within 100m) with an owned tour is suppressed —
-// owned tours take precedence — but stays untouched in the Friends list.
+// The map shows the user's own tours plus ALL friend tours (partner and
+// non-partner alike) — every tour a friend shares gets a marker. A friend tour
+// colliding (within 100m) with an owned tour is suppressed — owned tours take
+// precedence — but stays untouched in the Friends list.
 const mapTours = computed(() => {
-  const partnerFriendTours = friendTours.value.filter(t => t.isPartner)
-  const shadowed = friendTourIdsShadowedByOwned(tours.value, partnerFriendTours)
-  return [...tours.value, ...partnerFriendTours.filter(t => !shadowed.has(t.id))]
+  const shadowed = friendTourIdsShadowedByOwned(tours.value, friendTours.value)
+  return [...tours.value, ...friendTours.value.filter(t => !shadowed.has(t.id))]
 })
 
 const selectedTour = computed(

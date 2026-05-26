@@ -39,6 +39,14 @@ const tabStates: Record<TourTab, ReturnType<typeof createFilterState>> = {
   friends: createFilterState(),
 }
 
+// The selected tab is module-level too, so returning to the list from a tour
+// detail view (which remounts TourListSheet) restores the tab last viewed.
+const activeTourTab = ref<TourTab>('owned')
+
+export function useActiveTourTab() {
+  return activeTourTab
+}
+
 export function useTourFilters(tab: TourTab = 'owned') {
   const { searchQuery, filters } = tabStates[tab]
   const toursStore = useToursStore()

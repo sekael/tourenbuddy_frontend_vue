@@ -2,6 +2,7 @@
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { resolveContactName } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
@@ -12,6 +13,7 @@ const emit = defineEmits<{ click: [] }>()
 const { t } = useI18n({ useScope: 'global' })
 const contactsStore = useContactsStore()
 const friendshipsStore = useFriendshipsStore()
+const authStore = useAuthStore()
 
 const displayName = computed(() => props.tour.name ?? t('tours.infoSheet.unnamedTour'))
 
@@ -33,7 +35,11 @@ const ownerLabel = computed(() => {
 
 const partnerSubtitle = computed(() => {
   const names = props.tour.isFriendTour
-    ? (props.tour.partnerNames ?? []).map(p => joinName(p.firstName, p.lastName))
+    ? (props.tour.partnerNames ?? []).map(p =>
+        p.userId === authStore.currentUser?.id
+          ? t('tours.infoSheet.partnerSelf')
+          : joinName(p.firstName, p.lastName),
+      )
     : props.tour.partnerIds.map((id) => {
         const contact = contactsStore.contacts.find(c => c.id === id)
         return contact ? resolveContactName(contact) : null
@@ -41,8 +47,6 @@ const partnerSubtitle = computed(() => {
   const joined = names.filter(Boolean).join(', ')
   return joined || null
 })
-
-const isGated = computed(() => props.tour.isFriendTour && props.tour.isPartner === false)
 </script>
 
 <template>
@@ -55,10 +59,6 @@ const isGated = computed(() => props.tour.isFriendTour && props.tour.isPartner =
       <span class="tour-name">{{ displayName }}</span>
       <span v-if="ownerLabel" class="tour-owner">{{ ownerLabel }}</span>
       <span v-if="partnerSubtitle" class="tour-subtitle">{{ partnerSubtitle }}</span>
-      <span v-else-if="isGated" class="tour-gated">
-        <span class="material-symbols-outlined gated-icon">lock</span>
-        {{ t('tours.list.limitedInfo') }}
-      </span>
     </div>
     <span class="material-symbols-outlined row-arrow">chevron_right</span>
   </li>
@@ -111,18 +111,6 @@ const isGated = computed(() => props.tour.isFriendTour && props.tour.isPartner =
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.tour-gated {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  font-size: var(--font-size-sm);
-  color: var(--color-on-surface-variant);
-}
-
-.gated-icon {
-  font-size: 14px;
 }
 
 .tour-info {

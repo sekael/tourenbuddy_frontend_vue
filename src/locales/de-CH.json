@@ -254,8 +254,7 @@
       "friendsEmptyTitle": "Noch keine Touren von Freunden.",
       "friendsEmptySubtitle": "Touren, die deine Freunde teilen, erscheinen hier.",
       "ownedByLabel": "von {name}",
-      "aFriend": "einem Freund",
-      "limitedInfo": "Eingeschränkte Infos"
+      "aFriend": "einem Freund"
     },
     "duplicate": {
       "title": "Tour bereits vorhanden",
@@ -328,12 +327,13 @@
       "unnamedTour": "Unbenannte Tour",
       "completedBtn": "Abgeschlossen",
       "completeTourBtn": "Tour abschliessen",
-      "visibilityFriends": "Für Freunde sichtbar",
-      "visibilityPrivate": "Privat",
+      "visibilityMakePrivate": "Tour privat machen",
+      "visibilityMakeFriends": "Für Freunde sichtbar machen",
       "roundTrip": "Rundtour",
       "oneWayToGoalIndicator": "Einfache Tour zum Ziel",
       "gpxTrackAvailable": "Track verfügbar",
       "messageAll": "Alle anschreiben",
+      "partnerSelf": "Ich",
       "editBtn": "Bearbeiten",
       "deleteConfirmText": "Diese Tour löschen?",
       "cancelBtn": "Abbrechen",

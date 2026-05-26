@@ -78,17 +78,30 @@ never contact rows, so no private contact data reaches the caller. The view comp
 A friend never sees the owner's raw `contact_id`s (meaningless in their address book,
 and the owner's non-registered contacts must not leak). The view returns
 `partner_names` — the **registered-user** partners resolved to profile names via
-`get_user_names_by_ids` — and omits non-registered contacts. The owner's own view
+`tour_partner_names(tour_id)` — and omits non-registered contacts. The owner's own view
 (`tours_view`) is unchanged.
 
-### GPX files
+`tour_partner_names` is a **tour-scoped** `SECURITY DEFINER` resolver: it self-authorizes
+(caller must be a partner on a `friends`-visible tour they are a friend of the owner on),
+then returns the whole partner roster. It deliberately does **not** reuse the
+friend-name lookup `get_user_names_by_ids`, which is **caller-relationship-scoped** —
+that one only returns profiles the _caller_ is friends with and excludes the caller
+itself. Tour co-partners are friends of the **owner**, not necessarily of each other,
+so the caller-scoped predicate wrongly filtered the entire roster (the original bug).
 
-The `tour-gpx` bucket is otherwise owner-only
+### GPX files & attachments
+
+The `tour-gpx` and `tour-attachments` buckets are otherwise owner-only
 (`split_part(name, '/', 1) = auth.uid()`). Gating `gpx_filepath` in the view is not
-enough — the object download itself is blocked. A storage `SELECT` policy lets a
-**partner-friend** of a `friends`-visible tour download the track (same friendship +
+enough — the object fetch itself is blocked. A storage `SELECT` policy on each bucket
+lets a **partner-friend** of a `friends`-visible tour read the blobs (same friendship +
 partner check), while non-partner friends and private tours stay blocked at the
 storage layer.
+
+Attachments add one extra layer: the `tour_attachments` **metadata rows** are themselves
+RLS-guarded (originally owner-only), so a partner-friend also needs a table `SELECT`
+policy with the same predicate — otherwise the strip queries zero rows and never even
+reaches storage. Writes (insert/update/delete + reorder) stay owner-only; friends read.
 
 ## Read-decision flow
 

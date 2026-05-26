@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Season } from '@/features/tours/data/models/season'
 import type { TourType } from '@/features/tours/data/models/tour-type'
-import type { CompletionFilter, TourTab } from '@/features/tours/presentation/composables/use-tour-filters'
+import type { CompletionFilter } from '@/features/tours/presentation/composables/use-tour-filters'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -11,7 +11,7 @@ import SideDrawer from '@/core/components/side-drawer.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
-import { useTourFilters } from '@/features/tours/presentation/composables/use-tour-filters'
+import { useActiveTourTab, useTourFilters } from '@/features/tours/presentation/composables/use-tour-filters'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import TourFiltersPanel from './tour-filters-panel.vue'
 import TourListRow from './tour-list-row.vue'
@@ -30,7 +30,7 @@ const isDesktop = useIsDesktop()
 
 // Owned and Friends are separate, no merged list. Each tab keeps its own
 // persistent search + filters via the namespaced composable.
-const activeTab = ref<TourTab>('owned')
+const activeTab = useActiveTourTab()
 const owned = useTourFilters('owned')
 const friends = useTourFilters('friends')
 const active = computed(() => (activeTab.value === 'friends' ? friends : owned))

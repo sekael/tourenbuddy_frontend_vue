@@ -39,15 +39,15 @@ A user SHALL be able to read a tour they do not own only when an accepted friend
 - **THEN** B can no longer read A's tours
 
 ### Requirement: Non-partner detail gating
-When a friend who is NOT a marked partner on a tour reads it, the system SHALL withhold `partner_ids`, `planned_date`, and `gpx_filepath` (returned as null/empty). Partner status SHALL be derived live by resolving the tour's partner contacts to registered users (tour_partners → contacts → contact_methods phone → registered user), without a materialized link table. Owners and partner-friends SHALL receive the full, ungated tour.
+The friend-read view SHALL never expose the owner's raw `partner_ids`. When a friend who is NOT a marked partner on a tour reads it, the system SHALL additionally withhold the partner **names**, `planned_date`, and `gpx_filepath` (returned as empty/null). Partner status SHALL be derived live by resolving the tour's partner contacts to registered users (tour_partners → contacts → contact_methods phone → registered user), without a materialized link table. Owners and partner-friends SHALL receive the full, ungated tour.
 
 #### Scenario: Non-partner friend sees gated fields
 - **WHEN** friend B reads owner A's `friends`-visible tour on which B is not a partner
-- **THEN** the returned row has `partner_ids` empty, `planned_date` null, and `gpx_filepath` null, while name/location/type remain visible
+- **THEN** the returned row has empty partner names, `planned_date` null, and `gpx_filepath` null, while name/location/type remain visible
 
 #### Scenario: Partner friend sees full detail
 - **WHEN** friend B reads a tour on which B is a marked partner (B's verified phone matches a partner contact)
-- **THEN** the returned row includes `partner_ids`, `planned_date`, and `gpx_filepath`
+- **THEN** the returned row includes the partner names, `planned_date`, and `gpx_filepath`
 
 #### Scenario: Owner read is never gated
 - **WHEN** owner A reads their own tour
@@ -55,44 +55,58 @@ When a friend who is NOT a marked partner on a tour reads it, the system SHALL w
 
 #### Scenario: Partner contact phone removed downgrades detail
 - **WHEN** the partner contact linking friend B to a tour loses its matching phone
-- **THEN** B is no longer resolved as a partner and subsequent reads gate `partner_ids`, `planned_date`, and `gpx_filepath`
+- **THEN** B is no longer resolved as a partner and subsequent reads gate the partner names, `planned_date`, and `gpx_filepath`
 
 ### Requirement: Partner representation for friend viewers
 For a friend viewer, partners on a tour SHALL be represented as registered-user profile names (resolved from each partner contact's verified phone), never as the owner's raw contact IDs. The owner's non-registered address-book contacts SHALL NOT be exposed to friends. The owner's own view SHALL continue to render partners from their address book unchanged.
+
+The partner roster SHALL be resolved by a tour-scoped resolver that returns the **full** set of registered partners once the viewer is authorized as a partner-friend of the tour — it SHALL NOT be filtered by whether the viewer is individually friends with each co-partner (co-partners are friends of the owner, not necessarily of each other). The viewer's own entry in the roster SHALL be displayed as "Me" rather than their profile name.
 
 #### Scenario: Friend sees registered partners by name
 - **WHEN** a partner-friend reads a tour whose partners include registered users and non-registered address-book contacts
 - **THEN** only the registered users are returned, by profile name, and the non-registered contacts are omitted
 
+#### Scenario: Co-partner the viewer does not personally know is still shown
+- **WHEN** a partner-friend reads a tour whose roster includes another registered partner they are not personally friends with
+- **THEN** that co-partner is still returned by profile name (the roster is not gated by the viewer's own friendships)
+
+#### Scenario: Viewer's own roster entry is labelled "Me"
+- **WHEN** a partner-friend reads a tour they are themselves a partner on
+- **THEN** their own entry in the partner roster is displayed as "Me" instead of their first and last name
+
 #### Scenario: Owner view unchanged
 - **WHEN** the owner views their own tour
 - **THEN** partners render from the owner's address book exactly as before
 
-### Requirement: GPX file access for partner friends
-GPX track files SHALL be downloadable by a partner-friend of the owner when the tour is `friends`-visible, and SHALL remain blocked for non-partner friends and for private tours. Access SHALL be enforced at the storage layer (not only by gating the path in the read view).
+### Requirement: GPX and attachment file access for partner friends
+GPX track files **and tour attachments** SHALL be readable by a partner-friend of the owner when the tour is `friends`-visible, and SHALL remain blocked for non-partner friends and for private tours. Access SHALL be enforced at the storage layer (not only by gating the path in the read view); attachment **metadata rows** (`tour_attachments`) SHALL likewise be readable by partner-friends while writes stay owner-only.
 
 #### Scenario: Partner friend downloads the GPX
 - **WHEN** a partner-friend requests the GPX object of a friends-visible tour they are a partner on
 - **THEN** the storage policy permits the download
 
-#### Scenario: Non-partner friend blocked from GPX
-- **WHEN** a non-partner friend requests the GPX object of a friends-visible tour
-- **THEN** the storage policy denies the download
+#### Scenario: Partner friend reads attachments
+- **WHEN** a partner-friend opens a friends-visible tour they are a partner on
+- **THEN** the `tour_attachments` rows and their storage objects are readable, so attachments render
 
-#### Scenario: Private tour GPX blocked
-- **WHEN** any non-owner requests the GPX object of a private tour
-- **THEN** the storage policy denies the download
+#### Scenario: Non-partner friend blocked from GPX and attachments
+- **WHEN** a non-partner friend requests the GPX object or attachment rows/objects of a friends-visible tour
+- **THEN** the storage policy and table RLS deny access
+
+#### Scenario: Private tour files blocked
+- **WHEN** any non-owner requests the GPX object or attachments of a private tour
+- **THEN** the storage policy and table RLS deny access
 
 ### Requirement: Friend tours on the map
-The map SHALL display, in addition to the user's own tours, friend tours on which the user is a marked partner. Such friend markers SHALL carry a friendship indicator within the marker, participate in clustering, and otherwise behave like owned-tour markers. Friend tours where the user is not a partner SHALL NOT appear on the map.
+The map SHALL display, in addition to the user's own tours, **all** friend tours the user is permitted to read — both those the user is a marked partner on and those they are not. Such friend markers SHALL carry a friendship indicator within the marker, participate in clustering, and otherwise behave like owned-tour markers.
 
 #### Scenario: Partner friend tour rendered with indicator
 - **WHEN** the map loads and the user is a partner on a friend's `friends`-visible tour
 - **THEN** the tour appears as a marker with a friendship indicator and is included in clustering
 
-#### Scenario: Non-partner friend tour absent from map
+#### Scenario: Non-partner friend tour also rendered
 - **WHEN** a friend has a `friends`-visible tour on which the user is not a partner
-- **THEN** that tour does not appear on the map
+- **THEN** the tour still appears on the map as a friend marker (gated detail applies only when the tour is opened)
 
 ### Requirement: Owned and friends list tabs
 The tour list ("My Tours") SHALL default to owned tours and SHALL present two separate tabs — Owned and Friends — with no merged list. Search and filtering SHALL operate independently within each tab. The Friends tab SHALL list all friend tours the user is permitted to read, with non-partner tours shown in gated form.
@@ -108,3 +122,7 @@ The tour list ("My Tours") SHALL default to owned tours and SHALL present two se
 #### Scenario: Search scoped to active tab
 - **WHEN** the user enters a search term while the Friends tab is active
 - **THEN** only friend tours are filtered and owned tours are unaffected
+
+#### Scenario: Active tab remembered across detail navigation
+- **WHEN** the user opens a tour from the Friends tab, views its detail, then returns to the list
+- **THEN** the Friends tab is restored (the last-viewed tab persists for the session), not reset to Owned
