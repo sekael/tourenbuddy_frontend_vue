@@ -43,6 +43,7 @@ export function tourToGeoJsonFeature(tour: Tour): GeoJSON.Feature<GeoJSON.Point>
       id: tour.id,
       tourType: tour.tourType ?? null,
       completed: tour.completed,
+      isFriendTour: tour.isFriendTour ?? false,
     },
   }
 }

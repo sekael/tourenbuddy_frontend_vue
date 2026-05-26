@@ -26,8 +26,10 @@ export const TOUR_LAYER_IDS = ['tours-circles', 'tours-circles-selected'] as con
 const LAYER_ID = TOUR_LAYER_IDS[0]
 const SELECTED_LAYER_ID = TOUR_LAYER_IDS[1]
 const CHECK_LAYER_ID = 'tours-completed-check'
+const FRIEND_LAYER_ID = 'tours-friend-indicator'
 const PREVIEW_LAYER_ID = 'tours-preview-circle'
 const CHECK_ICON_ID = 'tour-check-icon'
+const FRIEND_ICON_ID = 'tour-friend-icon'
 
 export const SPIDERFY_CIRCLE_RADIUS_PX = 32
 export const SPIDERFY_SPIRAL_THRESHOLD = 8
@@ -73,6 +75,44 @@ async function loadCheckIcon(map: MapLibreMap): Promise<boolean> {
       URL.revokeObjectURL(url)
       try {
         map.addImage(CHECK_ICON_ID, img, { sdf: false })
+        resolve(true)
+      }
+      catch {
+        resolve(false)
+      }
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve(false)
+    }
+    img.src = url
+  })
+}
+
+async function loadFriendIcon(map: MapLibreMap): Promise<boolean> {
+  if (map.hasImage(FRIEND_ICON_ID))
+    return true
+
+  const size = 28
+  // Two-person glyph in white — marks a friend's tour inside the marker.
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 28 28" fill="white">
+      <circle cx="10" cy="9" r="3.5" />
+      <path d="M4 21c0-3.3 2.7-6 6-6s6 2.7 6 6z" />
+      <circle cx="19" cy="10" r="3" />
+      <path d="M19 14c2.8 0 5 2.2 5 5h-6.2c.2-.6.2-1.2.2-1.8 0-1.2-.3-2.3-.8-3.2z" />
+    </svg>
+  `.trim()
+
+  const blob = new Blob([svg], { type: 'image/svg+xml' })
+  const url = URL.createObjectURL(blob)
+
+  return new Promise((resolve) => {
+    const img = new Image(size, size)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      try {
+        map.addImage(FRIEND_ICON_ID, img, { sdf: false })
         resolve(true)
       }
       catch {
@@ -213,6 +253,14 @@ export function useToursMarkerLayer(
         'all',
         inVisible,
         ['==', ['get', 'completed'], true],
+      ] as ExpressionSpecification)
+    }
+
+    if (map.getLayer(FRIEND_LAYER_ID)) {
+      map.setFilter(FRIEND_LAYER_ID, [
+        'all',
+        inVisible,
+        ['==', ['get', 'isFriendTour'], true],
       ] as ExpressionSpecification)
     }
   }
@@ -539,6 +587,29 @@ export function useToursMarkerLayer(
         layout: {
           'icon-image': CHECK_ICON_ID,
           'icon-size': 0.65,
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+        },
+        paint: {
+          'icon-opacity': 1,
+          'icon-opacity-transition': { duration: 200 },
+        },
+      })
+    }
+
+    const friendIconLoaded = await loadFriendIcon(map)
+    if (friendIconLoaded) {
+      // Friendship indicator sits at the lower part of the marker so it does not
+      // collide with the completion check (centered) on completed friend tours.
+      map.addLayer({
+        id: FRIEND_LAYER_ID,
+        type: 'symbol',
+        source: SOURCE_ID,
+        filter: ['in', ['get', 'id'], ['literal', []]],
+        layout: {
+          'icon-image': FRIEND_ICON_ID,
+          'icon-size': 0.5,
+          'icon-offset': [0, 12],
           'icon-allow-overlap': true,
           'icon-ignore-placement': true,
         },

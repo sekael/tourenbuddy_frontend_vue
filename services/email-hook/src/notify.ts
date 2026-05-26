@@ -1,7 +1,7 @@
 import type { Env } from './config'
 import { verifySupabaseJwt } from './auth'
 import { jsonResponse, resolveLocale } from './config'
-import { sendFriendNotificationEmail } from './email'
+import { sendFriendNotificationEmail, sendTourNotificationEmail } from './email'
 import { dispatchPushToUser } from './push'
 
 interface FriendRequestRow {
@@ -227,4 +227,270 @@ export async function handleFriendRequestReceived(request: Request, env: Env): P
 
 export async function handleFriendRequestResponded(request: Request, env: Env): Promise<Response> {
   return handle(request, env, 'responded')
+}
+
+// ── Shared-tour notifications ────────────────────────────────────────────────
+
+interface TourRow {
+  id: string
+  user_id: string
+  visibility: string
+  name: string | null
+}
+
+type TourChangeAction = 'created' | 'updated' | 'deleted'
+
+async function fetchTour(tourId: string, env: Env): Promise<TourRow | null> {
+  const res = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/tours?id=eq.${encodeURIComponent(tourId)}&select=id,user_id,visibility,name`,
+    {
+      headers: {
+        apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+    },
+  )
+  if (!res.ok)
+    return null
+  const rows = (await res.json()) as TourRow[]
+  return rows[0] ?? null
+}
+
+/** Resolve the tour's partner contacts to registered user ids via the DB helper. */
+async function resolveTourPartnerUserIds(tourId: string, env: Env): Promise<string[]> {
+  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/tour_partner_user_ids`, {
+    method: 'POST',
+    headers: {
+      'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
+      'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ p_tour_id: tourId }),
+  })
+  if (!res.ok)
+    return []
+  return (await res.json()) as string[]
+}
+
+/** The set of user ids the given user has an accepted friendship with. */
+async function fetchFriendUserIds(userId: string, env: Env): Promise<Set<string>> {
+  const enc = encodeURIComponent(userId)
+  const res = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/friendships?or=(request_user_id.eq.${enc},response_user_id.eq.${enc})&select=request_user_id,response_user_id`,
+    {
+      headers: {
+        apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+    },
+  )
+  if (!res.ok)
+    return new Set()
+  const rows = (await res.json()) as Array<{ request_user_id: string, response_user_id: string }>
+  const ids = new Set<string>()
+  for (const r of rows)
+    ids.add(r.request_user_id === userId ? r.response_user_id : r.request_user_id)
+  return ids
+}
+
+function tourPushTitle(type: 'tour_updates' | 'tour_interest', action: string, locale: 'en' | 'de'): string {
+  if (type === 'tour_interest')
+    return locale === 'de' ? 'Interesse an deiner Tour' : 'Interest in your tour'
+  if (locale === 'de') {
+    return action === 'created'
+      ? 'Neue geteilte Tour'
+      : action === 'deleted'
+        ? 'Geteilte Tour entfernt'
+        : 'Geteilte Tour aktualisiert'
+  }
+  return action === 'created'
+    ? 'New shared tour'
+    : action === 'deleted'
+      ? 'Shared tour removed'
+      : 'Shared tour updated'
+}
+
+function tourPushBody(
+  type: 'tour_updates' | 'tour_interest',
+  action: string,
+  locale: 'en' | 'de',
+  actorName: string,
+  tourName: string,
+): string {
+  const tour = tourName || (locale === 'de' ? 'eine Tour' : 'a tour')
+  if (type === 'tour_interest') {
+    return locale === 'de'
+      ? `${actorName} interessiert sich für «${tour}».`
+      : `${actorName} is interested in “${tour}”.`
+  }
+  if (locale === 'de') {
+    return action === 'created'
+      ? `${actorName} hat «${tour}» mit dir geteilt.`
+      : action === 'deleted'
+        ? `${actorName} hat «${tour}» entfernt.`
+        : `${actorName} hat «${tour}» aktualisiert.`
+  }
+  return action === 'created'
+    ? `${actorName} shared “${tour}” with you.`
+    : action === 'deleted'
+      ? `${actorName} removed “${tour}”.`
+      : `${actorName} updated “${tour}”.`
+}
+
+async function dispatchTourNotification(
+  recipientId: string,
+  actorId: string,
+  opts: { type: 'tour_updates' | 'tour_interest', action: string, tourName: string },
+  env: Env,
+): Promise<void> {
+  const [recipientProfile, actorName, recipientEmail] = await Promise.all([
+    fetchUserProfile(recipientId, env),
+    fetchActorDisplayName(actorId, env),
+    fetchUserEmail(recipientId, env),
+  ])
+
+  if (!recipientProfile)
+    return
+  if (recipientProfile.notif_muted_types.includes(opts.type))
+    return
+
+  const appUrl = env.APP_URL || DEFAULT_APP_URL
+  const locale = resolveLocale(recipientProfile.locale)
+  const pushTitle = tourPushTitle(opts.type, opts.action, locale)
+  const pushBody = tourPushBody(opts.type, opts.action, locale, actorName, opts.tourName)
+
+  const tasks: Promise<void>[] = []
+
+  if (recipientProfile.notif_push_enabled) {
+    tasks.push(
+      dispatchPushToUser(recipientId, { title: pushTitle, body: pushBody, url: `${appUrl}/?tours=1` }, env),
+    )
+  }
+
+  if (recipientProfile.notif_email_enabled && recipientEmail) {
+    tasks.push(
+      sendTourNotificationEmail(
+        {
+          toEmail: recipientEmail,
+          locale: recipientProfile.locale,
+          type: opts.type,
+          action: opts.action,
+          actorName,
+          tourName: opts.tourName,
+          appUrl,
+        },
+        env,
+      ),
+    )
+  }
+
+  await Promise.all(tasks)
+}
+
+/**
+ * Notify friend partners that a shared tour changed. Caller MUST be the tour owner.
+ * Recipients = tour partner users ∩ owner's friends, minus the actor. Private tours
+ * notify no one. Note: for 'deleted', resolution is best-effort — the client fires
+ * before deleting the row, but the row may already be gone (returns 404).
+ */
+export async function handleTourChanged(request: Request, env: Env): Promise<Response> {
+  const missing = missingConfigKeys(env)
+  if (missing.length > 0)
+    return jsonResponse(500, { error: 'missing_configuration', missing })
+
+  const callerId = await verifySupabaseJwt(request, env)
+  if (!callerId)
+    return jsonResponse(401, { error: 'unauthorized' })
+
+  let body: { tourId?: string, action?: TourChangeAction }
+  try {
+    body = (await request.json()) as { tourId?: string, action?: TourChangeAction }
+  }
+  catch {
+    return jsonResponse(400, { error: 'invalid_json' })
+  }
+
+  if (!body.tourId || !body.action)
+    return jsonResponse(400, { error: 'missing_fields' })
+
+  const tour = await fetchTour(body.tourId, env)
+  if (!tour)
+    return jsonResponse(404, { error: 'tour_not_found' })
+  if (tour.user_id !== callerId)
+    return jsonResponse(403, { error: 'forbidden' })
+  if (tour.visibility !== 'friends')
+    return jsonResponse(200, { skipped: 'private' })
+
+  const [partnerIds, friendIds] = await Promise.all([
+    resolveTourPartnerUserIds(tour.id, env),
+    fetchFriendUserIds(tour.user_id, env),
+  ])
+  const recipients = partnerIds.filter(id => friendIds.has(id) && id !== callerId)
+
+  try {
+    await Promise.all(
+      recipients.map(r =>
+        dispatchTourNotification(r, callerId, { type: 'tour_updates', action: body.action!, tourName: tour.name ?? '' }, env),
+      ),
+    )
+  }
+  catch (err) {
+    console.error('[notify/tour-changed] dispatch failed:', err)
+    return jsonResponse(500, { error: 'dispatch_failed', message: (err as Error).message })
+  }
+
+  return jsonResponse(200, { notified: recipients.length })
+}
+
+/**
+ * Notify a tour's owner that the caller is interested in it (declined a duplicate
+ * save). Authorized by an accepted friendship between caller and owner AND the tour
+ * being friends-visible. Collision/partner status is NOT re-verified (UX trigger).
+ */
+export async function handleTourInterest(request: Request, env: Env): Promise<Response> {
+  const missing = missingConfigKeys(env)
+  if (missing.length > 0)
+    return jsonResponse(500, { error: 'missing_configuration', missing })
+
+  const callerId = await verifySupabaseJwt(request, env)
+  if (!callerId)
+    return jsonResponse(401, { error: 'unauthorized' })
+
+  let body: { tourId?: string }
+  try {
+    body = (await request.json()) as { tourId?: string }
+  }
+  catch {
+    return jsonResponse(400, { error: 'invalid_json' })
+  }
+
+  if (!body.tourId)
+    return jsonResponse(400, { error: 'missing_fields' })
+
+  const tour = await fetchTour(body.tourId, env)
+  if (!tour)
+    return jsonResponse(404, { error: 'tour_not_found' })
+  if (tour.visibility !== 'friends')
+    return jsonResponse(403, { error: 'forbidden' })
+  if (tour.user_id === callerId)
+    return jsonResponse(400, { error: 'own_tour' })
+
+  const friendIds = await fetchFriendUserIds(callerId, env)
+  if (!friendIds.has(tour.user_id))
+    return jsonResponse(403, { error: 'forbidden' })
+
+  try {
+    await dispatchTourNotification(
+      tour.user_id,
+      callerId,
+      { type: 'tour_interest', action: 'interest', tourName: tour.name ?? '' },
+      env,
+    )
+  }
+  catch (err) {
+    console.error('[notify/tour-interest] dispatch failed:', err)
+    return jsonResponse(500, { error: 'dispatch_failed', message: (err as Error).message })
+  }
+
+  return jsonResponse(200)
 }

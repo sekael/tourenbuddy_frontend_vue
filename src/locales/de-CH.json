@@ -248,7 +248,22 @@
       "emptyTitle": "Noch keine Touren.",
       "emptySubtitle": "Erstelle eine auf der Karte.",
       "noMatchesTitle": "Keine Touren gefunden.",
-      "clearFiltersBtn": "Filter zurücksetzen"
+      "clearFiltersBtn": "Filter zurücksetzen",
+      "tabOwned": "Meine Touren",
+      "tabFriends": "Freunde",
+      "friendsEmptyTitle": "Noch keine Touren von Freunden.",
+      "friendsEmptySubtitle": "Touren, die deine Freunde teilen, erscheinen hier.",
+      "ownedByLabel": "von {name}",
+      "aFriend": "einem Freund",
+      "limitedInfo": "Eingeschränkte Infos"
+    },
+    "duplicate": {
+      "title": "Tour bereits vorhanden",
+      "body": "{owner} hat hier bereits eine Tour «{tour}», und du bist als Partner markiert.",
+      "hint": "Speichere trotzdem deine eigene Kopie oder zeige stattdessen dein Interesse.",
+      "confirmBtn": "Eigene Kopie speichern",
+      "declineBtn": "Nur Interesse zeigen",
+      "cancelBtn": "Abbrechen"
     },
     "form": {
       "nameLabel": "Tourname",
@@ -269,6 +284,11 @@
       "pointNameLabel": "Name",
       "pointElevationLabel": "Höhe (m)",
       "partnersLabel": "Tourenpartner",
+      "visibilityLabel": "Sichtbarkeit",
+      "visibilityFriends": "Freunde",
+      "visibilityPrivate": "Privat",
+      "visibilityFriendsHint": "Freunde sehen diese Tour. Markierte Partner sehen alle Details.",
+      "visibilityPrivateHint": "Nur du siehst diese Tour – verborgen vor allen, auch markierten Partnern.",
       "activityLabel": "Aktivitätstyp",
       "seasonLabel": "Saison",
       "gpxTooLarge": "Datei zu gross (max. 2 MB)",
@@ -308,6 +328,8 @@
       "unnamedTour": "Unbenannte Tour",
       "completedBtn": "Abgeschlossen",
       "completeTourBtn": "Tour abschliessen",
+      "visibilityFriends": "Für Freunde sichtbar",
+      "visibilityPrivate": "Privat",
       "roundTrip": "Rundtour",
       "oneWayToGoalIndicator": "Einfache Tour zum Ziel",
       "gpxTrackAvailable": "Track verfügbar",
@@ -496,7 +518,9 @@
     "emailDescription": "Benachrichtigungen per E-Mail erhalten",
     "typesLabel": "Benachrichtige mich über",
     "type": {
-      "friend_requests": "Freundschaftsanfragen"
+      "friend_requests": "Freundschaftsanfragen",
+      "tour_updates": "Änderungen an geteilten Touren",
+      "tour_interest": "Interesse an deinen Touren"
     },
     "allOffDisclaimer": "Du erhältst keine Benachrichtigungen über Freundschaftsanfragen oder andere wichtige Ereignisse. Aktiviere mindestens einen Kanal, um informiert zu bleiben.",
     "pushUnavailable": "Nicht verfügbar",

@@ -1,5 +1,5 @@
-import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 import type { Visibility } from '@/features/tours/data/models/visibility'
+import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 
 /** Abstract repository interface for tour data operations. */
 export interface ToursRepository {

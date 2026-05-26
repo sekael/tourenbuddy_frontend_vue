@@ -1,5 +1,5 @@
-import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 import type { Visibility } from '@/features/tours/data/models/visibility'
+import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 import { defineStore } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
 import { computed, ref, watch } from 'vue'
@@ -7,8 +7,10 @@ import { useLogger } from '@/core/logging/use-logger'
 import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
+import { notifyTourChanged } from '@/features/notifications/data/notify-dispatch'
 import { ToursRepositoryImpl } from '@/features/tours/data/repositories/tours-repository-impl'
 import { removeGpx } from '@/features/tours/data/services/gpx-storage-service'
+import { isMeaningfulTourChange, isShareableTour } from '@/features/tours/domain/tour-notifications'
 
 const repository = new ToursRepositoryImpl()
 
@@ -132,6 +134,11 @@ export const useToursStore = defineStore('tours', () => {
     }
 
     await loadTours()
+
+    // Notify friend partners of the new shared tour (Worker filters to actual friends).
+    if (isShareableTour(draft.visibility, draft.partnerIds))
+      notifyTourChanged(id, 'created')
+
     return id
   }
 
@@ -146,6 +153,10 @@ export const useToursStore = defineStore('tours', () => {
 
     try {
       await repository.updateTour(id, draft, goal)
+      // update_tour_full intentionally leaves visibility untouched; persist it separately
+      // so an edit through the form still applies a visibility change.
+      if (draft.visibility && draft.visibility !== existing?.visibility)
+        await repository.patchVisibility(id, draft.visibility)
     }
     catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update tour'
@@ -187,10 +198,20 @@ export const useToursStore = defineStore('tours', () => {
             endPointElevation: draft.endPointElevation ?? null,
             equipment: draft.equipment,
             notes: draft.notes,
+            visibility: draft.visibility ?? existing.visibility,
             goal,
           }
         : t,
     )
+
+    // Notify friend partners only on a partner-facing change to a shareable tour.
+    const effectiveVisibility = draft.visibility ?? existing.visibility
+    if (
+      isShareableTour(effectiveVisibility, draft.partnerIds)
+      && isMeaningfulTourChange(existing, draft, { goal, gpxFilepath: newFilepath ?? null })
+    ) {
+      notifyTourChanged(id, 'updated')
+    }
   }
 
   async function setCompleted(tourId: string, completed: boolean) {
@@ -203,6 +224,9 @@ export const useToursStore = defineStore('tours', () => {
 
     try {
       await repository.patchCompleted(tourId, completed)
+      // Completion flip is a partner-facing change.
+      if (isShareableTour(tour.visibility, tour.partnerIds))
+        notifyTourChanged(tourId, 'updated')
     }
     catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update tour'
@@ -231,6 +255,10 @@ export const useToursStore = defineStore('tours', () => {
 
   async function deleteTour(id: string) {
     const tour = tours.value.find(t => t.id === id)
+    // Dispatch BEFORE deleting so the Worker can still resolve the tour's partners
+    // server-side (it reads the row). Fire-and-forget; the delete proceeds regardless.
+    if (tour && isShareableTour(tour.visibility, tour.partnerIds))
+      notifyTourChanged(id, 'deleted')
     await repository.deleteTour(id)
     if (tour?.gpxFilepath) {
       try {

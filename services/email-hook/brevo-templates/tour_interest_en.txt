@@ -1,0 +1,14 @@
+Subject: {{ params.actorName }} is interested in your tour on TourenBuddy
+
+Hi there,
+
+{{ params.actorName }} is interested in your tour "{{ params.tourName }}".
+
+Reach out to plan it together.
+
+View your tours:
+{{ params.appUrl }}/?tours=1
+
+---
+You received this email because notifications are enabled for your TourenBuddy account.
+Manage them in your profile settings.

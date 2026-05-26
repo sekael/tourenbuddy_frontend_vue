@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TourDraft } from '@/features/tours/domain/entities/tour'
+import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -15,9 +15,12 @@ import TourActionBar from '@/features/map/presentation/components/tour-action-ba
 import TourenbuddyMap from '@/features/map/presentation/components/tourenbuddy-map.vue'
 import { computeBarState } from '@/features/map/presentation/composables/compute-bar-state'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
+import { notifyTourInterest } from '@/features/notifications/data/notify-dispatch'
 import { getElevation } from '@/features/tours/data/services/swisstopo-elevation-service'
 import { suggestTourName } from '@/features/tours/data/services/swisstopo-name-service'
+import { findCollidingPartnerTour } from '@/features/tours/domain/collision'
 import { isSameGoal } from '@/features/tours/domain/distance'
+import DuplicateTourDialog from '@/features/tours/presentation/components/duplicate-tour-dialog.vue'
 import TourCreationDialog from '@/features/tours/presentation/components/tour-creation-dialog.vue'
 import TourInfoSheet from '@/features/tours/presentation/components/tour-info-sheet.vue'
 import TourListSheet from '@/features/tours/presentation/components/tour-list-sheet.vue'
@@ -47,7 +50,7 @@ const authStore = useAuthStore()
 const isDesktop = useIsDesktop()
 
 const { isPickingLocation, selectedTourId } = storeToRefs(mapStore)
-const { tours } = storeToRefs(toursStore)
+const { tours, friendTours } = storeToRefs(toursStore)
 const { isAuthenticated } = storeToRefs(authStore)
 
 const mapRef = ref<InstanceType<typeof TourenbuddyMap> | null>(null)
@@ -102,8 +105,14 @@ const dialogInitialEndPointMeta = ref<{ name: string | null, elevation: number |
   null,
 )
 
-// Derived reactively from store so it updates immediately when tours are mutated
-const selectedTour = computed(() => tours.value.find(t => t.id === selectedTourId.value) ?? null)
+// Derived reactively from store so it updates immediately when tours are mutated.
+// Search friend tours too — a friend marker (partner tours) can be selected on the map.
+const selectedTour = computed(
+  () =>
+    tours.value.find(t => t.id === selectedTourId.value)
+    ?? friendTours.value.find(t => t.id === selectedTourId.value)
+    ?? null,
+)
 const sheetContainerRef = ref<HTMLElement | null>(null)
 
 // Whether the current location pick was triggered from the info sheet edit mode
@@ -426,6 +435,19 @@ function handleListSheetAddTour() {
   mapStore.setPickingLocation(true)
 }
 
+interface PendingCreate {
+  draft: TourDraft
+  goal: { lng: number, lat: number }
+  gpxFile: File | null
+  preUploadedTourId: string | null
+  draftId: string
+  collidingTour: Tour
+}
+
+// Set when a new tour collides with a friend tour the user partners on — the
+// duplicate-save prompt holds the create until the user confirms or declines.
+const pendingDuplicate = ref<PendingCreate | null>(null)
+
 async function handleTourCreated(
   draft: TourDraft,
   gpxFile: File | null,
@@ -439,6 +461,23 @@ async function handleTourCreated(
   const goal = pendingLocation.value
   closeOverlay()
 
+  // Colliding with a friend tour the user is a partner on → prompt before saving.
+  const collidingTour = findCollidingPartnerTour(goal, friendTours.value)
+  if (collidingTour) {
+    pendingDuplicate.value = { draft, goal, gpxFile, preUploadedTourId, draftId, collidingTour }
+    return
+  }
+
+  await performCreate(draft, goal, gpxFile, preUploadedTourId, draftId)
+}
+
+async function performCreate(
+  draft: TourDraft,
+  goal: { lng: number, lat: number },
+  gpxFile: File | null,
+  preUploadedTourId: string | null,
+  draftId: string,
+) {
   const newId = await toursStore.createTourFromDraft(draft, goal, gpxFile, preUploadedTourId)
   if (newId) {
     mapStore.selectTour(newId)
@@ -446,6 +485,27 @@ async function handleTourCreated(
     if (draftId)
       await attachmentsStore.commitStaged(draftId, newId)
   }
+}
+
+function handleDuplicateConfirm() {
+  const p = pendingDuplicate.value
+  if (!p)
+    return
+  pendingDuplicate.value = null
+  performCreate(p.draft, p.goal, p.gpxFile, p.preUploadedTourId, p.draftId)
+}
+
+function handleDuplicateDecline() {
+  const p = pendingDuplicate.value
+  if (!p)
+    return
+  // Don't save; signal interest to the colliding tour's owner instead.
+  notifyTourInterest(p.collidingTour.id)
+  pendingDuplicate.value = null
+}
+
+function handleDuplicateCancel() {
+  pendingDuplicate.value = null
 }
 
 function handleDialogClose() {
@@ -553,6 +613,14 @@ function handleDialogClose() {
         />
       </div>
     </Transition>
+
+    <DuplicateTourDialog
+      v-if="pendingDuplicate"
+      :colliding-tour="pendingDuplicate.collidingTour"
+      @confirm="handleDuplicateConfirm"
+      @decline="handleDuplicateDecline"
+      @cancel="handleDuplicateCancel"
+    />
   </div>
 </template>
 

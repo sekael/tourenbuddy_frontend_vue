@@ -183,6 +183,12 @@ async function toggleCompleted() {
   await toursStore.setCompleted(props.tour.id, !props.tour.completed)
 }
 
+// ── Visibility toggle (owner only) ──────────────────────────────────────────
+async function toggleVisibility() {
+  const next = props.tour.visibility === 'private' ? 'friends' : 'private'
+  await toursStore.setVisibility(props.tour.id, next)
+}
+
 // ── Attachment viewer ────────────────────────────────────────────────────────
 const viewerAttachments = ref<TourAttachment[]>([])
 const viewerStartIndex = ref(0)
@@ -382,6 +388,25 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
             tour.completed
               ? t('tours.infoSheet.completedBtn')
               : t('tours.infoSheet.completeTourBtn')
+          }}
+        </button>
+
+        <!-- Visibility toggle (owner only) -->
+        <button
+          v-if="isOwner"
+          type="button"
+          class="visibility-toggle action-btn"
+          :class="{ 'visibility-toggle--private': tour.visibility === 'private' }"
+          :aria-pressed="tour.visibility === 'private'"
+          @click="toggleVisibility"
+        >
+          <span class="material-symbols-outlined">
+            {{ tour.visibility === 'private' ? 'lock' : 'group' }}
+          </span>
+          {{
+            tour.visibility === 'private'
+              ? t('tours.infoSheet.visibilityPrivate')
+              : t('tours.infoSheet.visibilityFriends')
           }}
         </button>
 
@@ -741,6 +766,15 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 }
 
 .completion-toggle--done:hover {
+  background-color: transparent;
+}
+
+.visibility-toggle--private {
+  border-color: var(--color-on-surface-variant);
+  color: var(--color-on-surface-variant);
+}
+
+.visibility-toggle--private:hover {
   background-color: transparent;
 }
 

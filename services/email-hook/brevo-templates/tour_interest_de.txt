@@ -1,0 +1,14 @@
+Subject: {{ params.actorName }} interessiert sich für deine Tour auf TourenBuddy
+
+Hallo,
+
+{{ params.actorName }} interessiert sich für deine Tour "{{ params.tourName }}".
+
+Meldet euch, um sie gemeinsam zu planen.
+
+Tour ansehen:
+{{ params.appUrl }}/?tours=1
+
+---
+Du erhältst diese E-Mail, weil Benachrichtigungen für dein TourenBuddy-Konto aktiviert sind.
+Verwalte sie in deinen Profileinstellungen.

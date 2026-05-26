@@ -333,3 +333,10 @@ The app uses **email OTP** via Supabase:
 3. Enter code in app to authenticate
 
 Phone numbers are verified separately. In production via Twilio Verify; locally seeded test users come pre-verified, and `[auth.sms.test_otp]` (fixed code `123456`) short-circuits the verification flow if re-triggered.
+
+## Friendships & tour visibility
+
+Verified-phone users befriend each other and share tours. Who can read which tour,
+how much of it is exposed (per-tour `private`/`friends` visibility + non-partner
+detail gating), the two-layer authorization model, and the shared-tour notifications
+are documented in **[docs/friendships-and-tour-visibility.md](docs/friendships-and-tour-visibility.md)**.
