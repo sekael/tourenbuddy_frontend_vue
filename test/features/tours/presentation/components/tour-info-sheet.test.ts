@@ -566,4 +566,43 @@ describe('tourInfoSheet', () => {
       await expect(btn.trigger('click')).resolves.not.toThrow()
     })
   })
+
+  describe('unresolved partner pill (friend tour)', () => {
+    it('renders the "and X more" pill when unresolvedPartnerCount > 0', () => {
+      const wrapper = mountSheet(
+        {
+          isFriendTour: true,
+          partnerNames: [{ userId: 'u-9', firstName: 'Ana', lastName: 'B' }],
+          unresolvedPartnerCount: 2,
+        },
+        'user-2',
+      )
+      expect(wrapper.find('.friend-partner-chip--more').exists()).toBe(true)
+    })
+
+    it('renders the pill even when no partner names resolve (all unresolvable)', () => {
+      const wrapper = mountSheet(
+        { isFriendTour: true, partnerNames: [], unresolvedPartnerCount: 3 },
+        'user-2',
+      )
+      expect(wrapper.find('.friend-partner-chip--more').exists()).toBe(true)
+    })
+
+    it('does not render the pill when unresolvedPartnerCount is 0', () => {
+      const wrapper = mountSheet(
+        {
+          isFriendTour: true,
+          partnerNames: [{ userId: 'u-9', firstName: 'Ana', lastName: 'B' }],
+          unresolvedPartnerCount: 0,
+        },
+        'user-2',
+      )
+      expect(wrapper.find('.friend-partner-chip--more').exists()).toBe(false)
+    })
+
+    it('never renders the pill on the owner\'s own tour', () => {
+      const wrapper = mountSheet({ isFriendTour: false, unresolvedPartnerCount: 4 }, 'user-1')
+      expect(wrapper.find('.friend-partner-chip--more').exists()).toBe(false)
+    })
+  })
 })

@@ -100,6 +100,8 @@ export const tourSchema = z.object({
   isPartner: z.boolean().optional(),
   /** Friend-tour only: partners as registered-user names (owner contacts never exposed). */
   partnerNames: z.array(partnerNameSchema).optional(),
+  /** Friend-tour only: count of partner contacts that resolve to no registered user. */
+  unresolvedPartnerCount: z.number().int().nonnegative().optional(),
 })
 
 /**
@@ -133,6 +135,7 @@ export const friendTourRowSchema = z
     completed: z.boolean().default(false),
     is_partner: z.boolean().default(false),
     partner_names: z.array(partnerNameSchema).default([]),
+    unresolved_partner_count: z.number().int().nonnegative().default(0),
     visibility: visibilitySchema.default('friends'),
   })
   .transform(row => ({
@@ -164,4 +167,5 @@ export const friendTourRowSchema = z
     isFriendTour: true,
     isPartner: row.is_partner,
     partnerNames: row.partner_names,
+    unresolvedPartnerCount: row.unresolved_partner_count,
   }))

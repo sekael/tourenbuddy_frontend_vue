@@ -267,6 +267,13 @@ const friendPartnerNames = computed(() =>
     : [],
 )
 
+// Partner contacts the owner added that resolve to no registered user — surfaced
+// to partner-viewers only (0 otherwise, gated server-side) as a single generic
+// "and X more" pill so the roster's true size is hinted without leaking identity.
+const unresolvedPartnerCount = computed(() =>
+  props.tour.isFriendTour ? (props.tour.unresolvedPartnerCount ?? 0) : 0,
+)
+
 // ── Contact action menu ──────────────────────────────────────────────────────
 const activeMenuContactId = ref<string | null>(null)
 const activeMenuContact = computed(() =>
@@ -600,7 +607,10 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         </div>
 
         <!-- Partners on a friend's tour (read-only registered-user names) -->
-        <div v-if="tour.isFriendTour && friendPartnerNames.length > 0" class="detail-row">
+        <div
+          v-if="tour.isFriendTour && (friendPartnerNames.length > 0 || unresolvedPartnerCount > 0)"
+          class="detail-row"
+        >
           <BaseTooltip :text="t('tours.infoSheet.iconTooltipPartners')">
             <span class="detail-icon material-symbols-outlined">group</span>
           </BaseTooltip>
@@ -608,6 +618,12 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
             <span v-for="(name, i) in friendPartnerNames" :key="i" class="friend-partner-chip">{{
               name
             }}</span>
+            <span
+              v-if="unresolvedPartnerCount > 0"
+              class="friend-partner-chip friend-partner-chip--more"
+            >
+              {{ t('tours.infoSheet.morePartners', { count: unresolvedPartnerCount }) }}
+            </span>
           </div>
         </div>
 
@@ -934,6 +950,13 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   font-size: var(--font-size-sm);
   background-color: var(--color-surface-variant);
   color: var(--color-on-surface);
+}
+
+.friend-partner-chip--more {
+  background-color: transparent;
+  border: 1px dashed var(--color-outline-variant);
+  color: var(--color-on-surface-variant);
+  font-style: italic;
 }
 
 .group-sms-btn {

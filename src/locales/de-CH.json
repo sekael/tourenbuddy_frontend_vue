@@ -334,6 +334,7 @@
       "gpxTrackAvailable": "Track verfügbar",
       "messageAll": "Alle anschreiben",
       "partnerSelf": "Ich",
+      "morePartners": "und {count} weitere",
       "editBtn": "Bearbeiten",
       "deleteConfirmText": "Diese Tour löschen?",
       "cancelBtn": "Abbrechen",
