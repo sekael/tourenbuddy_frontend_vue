@@ -6,7 +6,10 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { SWISSTOPO_STYLES } from '@/features/map/data/swisstopo-styles'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
-import { friendTourIdsShadowedByOwned } from '@/features/tours/domain/collision'
+import {
+  friendTourIdsShadowedByOwned,
+  ownedTourIdsShadowedByFriends,
+} from '@/features/tours/domain/collision'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import { useGpxTrackLayer } from './gpx-track-layer'
 import { TOUR_LAYER_IDS, useToursMarkerLayer } from './tours-marker-layer'
@@ -40,7 +43,24 @@ let gpxLayer: ReturnType<typeof useGpxTrackLayer> | null = null
 // precedence — but stays untouched in the Friends list.
 const mapTours = computed(() => {
   const shadowed = friendTourIdsShadowedByOwned(tours.value, friendTours.value)
-  return [...tours.value, ...friendTours.value.filter(t => !shadowed.has(t.id))]
+  const hiddenOwned = new Set<string>()
+
+  // When a friend tour is the active selection, it overrides owned precedence at
+  // its location: un-shadow it AND hide the owned tour(s) it collides with, so
+  // only the friend marker + GPX show (no co-located cluster) until deselected.
+  const selectedFriend = selectedTourId.value
+    ? friendTours.value.find(t => t.id === selectedTourId.value)
+    : undefined
+  if (selectedFriend) {
+    shadowed.delete(selectedFriend.id)
+    for (const id of ownedTourIdsShadowedByFriends(tours.value, [selectedFriend]))
+      hiddenOwned.add(id)
+  }
+
+  return [
+    ...tours.value.filter(t => !hiddenOwned.has(t.id)),
+    ...friendTours.value.filter(t => !shadowed.has(t.id)),
+  ]
 })
 
 const selectedTour = computed(
@@ -66,7 +86,9 @@ onMounted(() => {
   mapInstance.on('load', async () => {
     markerLayer = useToursMarkerLayer(
       mapInstance!,
-      (tourId) => { emit('tourClicked', tourId) },
+      (tourId) => {
+        emit('tourClicked', tourId)
+      },
       count => t('map.cluster.label', { count }),
       () => t('map.cluster.spiderfyHint'),
     )

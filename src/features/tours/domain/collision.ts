@@ -33,3 +33,22 @@ export function friendTourIdsShadowedByOwned(ownedTours: Tour[], friendTours: To
   }
   return shadowed
 }
+
+/**
+ * Inverse of {@link friendTourIdsShadowedByOwned}: ids of owned tours that
+ * collide (within 100m) with any of the given friend tours. The map calls this
+ * scoped to the *selected* friend tour only — a friend tour opened from the list
+ * temporarily overrides owned precedence at its location, so the colliding owned
+ * marker is hidden (avoids a co-located cluster) until the friend tour is closed.
+ */
+export function ownedTourIdsShadowedByFriends(
+  ownedTours: Tour[],
+  friendTours: Tour[],
+): Set<string> {
+  const shadowed = new Set<string>()
+  for (const owned of ownedTours) {
+    if (friendTours.some(friend => isSameGoal(friend.goal, owned.goal, COLLISION_RADIUS_M)))
+      shadowed.add(owned.id)
+  }
+  return shadowed
+}

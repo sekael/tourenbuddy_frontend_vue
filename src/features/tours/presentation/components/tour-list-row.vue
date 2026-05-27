@@ -2,7 +2,6 @@
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { resolveContactName } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
@@ -13,7 +12,6 @@ const emit = defineEmits<{ click: [] }>()
 const { t } = useI18n({ useScope: 'global' })
 const contactsStore = useContactsStore()
 const friendshipsStore = useFriendshipsStore()
-const authStore = useAuthStore()
 
 const displayName = computed(() => props.tour.name ?? t('tours.infoSheet.unnamedTour'))
 
@@ -33,17 +31,15 @@ const ownerLabel = computed(() => {
   return t('tours.list.ownedByLabel', { name: name || t('tours.list.aFriend') })
 })
 
+// Friend-tour rows show only the goal name + owner ("by X"); partners stay
+// hidden in the list (privacy + clutter). Own tours still list their partners.
 const partnerSubtitle = computed(() => {
-  const names = props.tour.isFriendTour
-    ? (props.tour.partnerNames ?? []).map(p =>
-        p.userId === authStore.currentUser?.id
-          ? t('tours.infoSheet.partnerSelf')
-          : joinName(p.firstName, p.lastName),
-      )
-    : props.tour.partnerIds.map((id) => {
-        const contact = contactsStore.contacts.find(c => c.id === id)
-        return contact ? resolveContactName(contact) : null
-      })
+  if (props.tour.isFriendTour)
+    return null
+  const names = props.tour.partnerIds.map((id) => {
+    const contact = contactsStore.contacts.find(c => c.id === id)
+    return contact ? resolveContactName(contact) : null
+  })
   const joined = names.filter(Boolean).join(', ')
   return joined || null
 })

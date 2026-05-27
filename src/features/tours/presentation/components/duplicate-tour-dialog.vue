@@ -176,4 +176,34 @@ const tourName = computed(() => props.collidingTour.name ?? t('tours.infoSheet.u
 .confirm-btn:hover {
   opacity: 0.85;
 }
+
+/* Mobile (< desktop breakpoint): present as a bottom sheet, not a centered
+   dialog window — no dialog windows on phone screens. */
+@media (max-width: 599.98px) {
+  .dialog-backdrop {
+    align-items: flex-end;
+  }
+
+  .dialog-card {
+    max-width: none;
+    max-height: 90dvh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    animation: sheet-enter 0.25s cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+
+  .dialog-footer {
+    padding-bottom: calc(var(--spacing-md) + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@keyframes sheet-enter {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 </style>

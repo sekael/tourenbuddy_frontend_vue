@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   findCollidingPartnerTour,
   friendTourIdsShadowedByOwned,
+  ownedTourIdsShadowedByFriends,
 } from '@/features/tours/domain/collision'
 
 // Sertig (~46.73, 9.86). ~120m north is outside the 100m radius; ~50m is inside.
@@ -68,5 +69,24 @@ describe('friendTourIdsShadowedByOwned', () => {
     const owned = [friendTour({ id: 'o1', isFriendTour: false, goal: GOAL })]
     const friends = [friendTour({ id: 'f1', goal: FAR })]
     expect(friendTourIdsShadowedByOwned(owned, friends).size).toBe(0)
+  })
+})
+
+describe('ownedTourIdsShadowedByFriends', () => {
+  it('shadows an owned tour colliding with a (selected) friend tour', () => {
+    const owned = [friendTour({ id: 'o1', isFriendTour: false, goal: GOAL })]
+    const friends = [friendTour({ id: 'f1', goal: NEAR })]
+    expect(ownedTourIdsShadowedByFriends(owned, friends).has('o1')).toBe(true)
+  })
+
+  it('does not shadow an owned tour far from every friend tour', () => {
+    const owned = [friendTour({ id: 'o1', isFriendTour: false, goal: GOAL })]
+    const friends = [friendTour({ id: 'f1', goal: FAR })]
+    expect(ownedTourIdsShadowedByFriends(owned, friends).size).toBe(0)
+  })
+
+  it('returns an empty set when no friend tours are given', () => {
+    const owned = [friendTour({ id: 'o1', isFriendTour: false, goal: GOAL })]
+    expect(ownedTourIdsShadowedByFriends(owned, []).size).toBe(0)
   })
 })

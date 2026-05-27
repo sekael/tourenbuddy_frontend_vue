@@ -1,9 +1,4 @@
 <script setup lang="ts">
-import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
-import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
-import { storeToRefs } from 'pinia'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
@@ -17,18 +12,23 @@ import { useContactsStore } from '@/features/contacts/presentation/stores/contac
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { TOUR_TYPE_I18N_KEYS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
 import { downloadOriginal } from '@/features/tours/data/services/gpx-storage-service'
+import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
+import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
 import TourAttachmentViewer from '@/features/tours/presentation/components/tour-attachment-viewer.vue'
 import TourAttachmentsStrip from '@/features/tours/presentation/components/tour-attachments-strip.vue'
 import TourForm from '@/features/tours/presentation/components/tour-form.vue'
 import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
+import { storeToRefs } from 'pinia'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
   tour: Tour
   /** Set by map-page after a location pick triggered from this sheet. Reset to null via pointConsumed. */
   editPickedPoint?: {
     type: 'start' | 'end' | 'goal'
-    location: { lng: number, lat: number }
+    location: { lng: number; lat: number }
     elevation?: number | null
     suggestedName?: string | null
   } | null
@@ -71,14 +71,14 @@ const mode = ref<'view' | 'edit'>('view')
 const editBaseAttachmentIds = ref<Set<string>>(new Set())
 
 // Pending goal/points during edit — updated reactively via editPickedPoint prop
-const pendingGoal = ref<{ lng: number, lat: number }>({ ...props.tour.goal })
-const pendingStartPoint = ref<{ lng: number, lat: number } | null>(null)
-const pendingEndPoint = ref<{ lng: number, lat: number } | null>(null)
+const pendingGoal = ref<{ lng: number; lat: number }>({ ...props.tour.goal })
+const pendingStartPoint = ref<{ lng: number; lat: number } | null>(null)
+const pendingEndPoint = ref<{ lng: number; lat: number } | null>(null)
 // Elevation/name updated from Swisstopo after a goal re-pick in edit mode
 const pendingElevation = ref<number | null>(null)
 const pendingSuggestedName = ref<string | null>(null)
-const pendingStartPointMeta = ref<{ name: string | null, elevation: number | null } | null>(null)
-const pendingEndPointMeta = ref<{ name: string | null, elevation: number | null } | null>(null)
+const pendingStartPointMeta = ref<{ name: string | null; elevation: number | null } | null>(null)
+const pendingEndPointMeta = ref<{ name: string | null; elevation: number | null } | null>(null)
 
 function enterEditMode() {
   pendingGoal.value = { ...props.tour.goal }
@@ -90,7 +90,7 @@ function enterEditMode() {
   pendingEndPointMeta.value = null
   // Snapshot attachment IDs before edit so cancel can rollback newly added ones
   editBaseAttachmentIds.value = new Set(
-    (attachmentsStore.attachmentsByTour[props.tour.id] ?? []).map(a => a.id),
+    (attachmentsStore.attachmentsByTour[props.tour.id] ?? []).map((a) => a.id),
   )
   mode.value = 'edit'
   emit('editModeChange', true)
@@ -99,7 +99,7 @@ function enterEditMode() {
 async function cancelEdit() {
   // Remove any attachments added during this edit session
   const current = attachmentsStore.attachmentsByTour[props.tour.id] ?? []
-  const toRemove = current.filter(a => !editBaseAttachmentIds.value.has(a.id))
+  const toRemove = current.filter((a) => !editBaseAttachmentIds.value.has(a.id))
   for (const att of toRemove) {
     await attachmentsStore.remove(att)
   }
@@ -110,29 +110,25 @@ async function cancelEdit() {
 // Sheet dismissed (map background click, close button, tour deleted, etc.) while
 // edit mode is still active: notify parent so preview marker is cleaned up.
 onBeforeUnmount(() => {
-  if (mode.value === 'edit')
-    emit('editModeChange', false)
+  if (mode.value === 'edit') emit('editModeChange', false)
 })
 
 // Reactive handoff from map-page after a location pick in edit mode
 watch(
   () => props.editPickedPoint,
   (pick) => {
-    if (!pick)
-      return
+    if (!pick) return
     if (pick.type === 'goal') {
       pendingGoal.value = pick.location
       pendingElevation.value = pick.elevation ?? null
       pendingSuggestedName.value = pick.suggestedName ?? null
-    }
-    else if (pick.type === 'start') {
+    } else if (pick.type === 'start') {
       pendingStartPoint.value = pick.location
       pendingStartPointMeta.value = {
         name: pick.suggestedName ?? null,
         elevation: pick.elevation ?? null,
       }
-    }
-    else {
+    } else {
       pendingEndPoint.value = pick.location
       pendingEndPointMeta.value = {
         name: pick.suggestedName ?? null,
@@ -158,22 +154,18 @@ async function handleEditSubmit(draft: TourDraft, _gpxFile: File | null, gpxRemo
     await toursStore.updateTour(props.tour.id, draft, pendingGoal.value, gpxRemoved)
     mode.value = 'view'
     emit('editModeChange', false)
-  }
-  catch (err) {
+  } catch (err) {
     saveError.value = err instanceof Error ? err.message : t('tours.infoSheet.saveFailed')
-  }
-  finally {
+  } finally {
     isSaving.value = false
   }
 }
 
 async function handleDownloadGpx() {
-  if (!props.tour.gpxFilepath)
-    return
+  if (!props.tour.gpxFilepath) return
   try {
     await downloadOriginal(props.tour.gpxFilepath, `${props.tour.name ?? 'track'}.gpx`)
-  }
-  catch (err) {
+  } catch (err) {
     log.error('GPX download failed', err)
   }
 }
@@ -210,8 +202,7 @@ async function confirmDelete() {
   try {
     await toursStore.deleteTour(props.tour.id)
     emit('close')
-  }
-  catch (err) {
+  } catch (err) {
     deleteError.value = err instanceof Error ? err.message : t('tours.infoSheet.deleteFailed')
     deleteState.value = 'idle'
   }
@@ -228,10 +219,8 @@ const displayName = computed(() => props.tour.name ?? t('tours.infoSheet.unnamed
 const sheetCollapsed = computed(() => isPicking.value && mode.value === 'edit')
 const sheetTitle = computed(() => {
   if (sheetCollapsed.value) {
-    if (props.activePickType === 'start')
-      return t('tours.picker.startTitle')
-    if (props.activePickType === 'end')
-      return t('tours.picker.endTitle')
+    if (props.activePickType === 'start') return t('tours.picker.startTitle')
+    if (props.activePickType === 'end') return t('tours.picker.endTitle')
     return t('tours.picker.goalTitle')
   }
   return mode.value === 'edit'
@@ -240,8 +229,7 @@ const sheetTitle = computed(() => {
 })
 
 const formattedDate = computed(() => {
-  if (!props.tour.plannedDate)
-    return null
+  if (!props.tour.plannedDate) return null
   return new Intl.DateTimeFormat(locale.value, {
     year: 'numeric',
     month: 'long',
@@ -249,7 +237,7 @@ const formattedDate = computed(() => {
   }).format(props.tour.plannedDate)
 })
 
-const partners = computed(() => contacts.value.filter(c => props.tour.partnerIds.includes(c.id)))
+const partners = computed(() => contacts.value.filter((c) => props.tour.partnerIds.includes(c.id)))
 
 // Friend tours surface partners as registered-user profile names (the viewer is
 // not in the owner's address book and never sees raw contacts), so render them
@@ -258,7 +246,7 @@ const partners = computed(() => contacts.value.filter(c => props.tour.partnerIds
 const friendPartnerNames = computed(() =>
   props.tour.isFriendTour
     ? (props.tour.partnerNames ?? [])
-        .map(p =>
+        .map((p) =>
           p.userId === currentUser.value?.id
             ? t('tours.infoSheet.partnerSelf')
             : [p.firstName, p.lastName].filter(Boolean).join(' ').trim(),
@@ -271,7 +259,7 @@ const friendPartnerNames = computed(() =>
 const activeMenuContactId = ref<string | null>(null)
 const activeMenuContact = computed(() =>
   activeMenuContactId.value
-    ? (partners.value.find(c => c.id === activeMenuContactId.value) ?? null)
+    ? (partners.value.find((c) => c.id === activeMenuContactId.value) ?? null)
     : null,
 )
 const activeChipRect = ref<DOMRect | null>(null)
@@ -300,30 +288,25 @@ const coordinates = computed(
 )
 
 const formattedElevation = computed(() => {
-  if (props.tour.elevation == null)
-    return null
+  if (props.tour.elevation == null) return null
   return `${new Intl.NumberFormat(locale.value, { maximumFractionDigits: 0 }).format(props.tour.elevation)} m`
 })
 
 const startPointText = computed(() => {
-  if (!props.tour.startPoint)
-    return null
+  if (!props.tour.startPoint) return null
   return `${props.tour.startPoint.lat.toFixed(4)}°N, ${props.tour.startPoint.lng.toFixed(4)}°E`
 })
 
 const endPointText = computed(() => {
-  if (!props.tour.endPoint)
-    return null
+  if (!props.tour.endPoint) return null
   return `${props.tour.endPoint.lat.toFixed(4)}°N, ${props.tour.endPoint.lng.toFixed(4)}°E`
 })
 
 const isRoundTrip = computed(() => {
   const s = props.tour.startPoint
   const e = props.tour.endPoint
-  if (!s)
-    return false
-  if (!e)
-    return false
+  if (!s) return false
+  if (!e) return false
   return s.lng === e.lng && s.lat === e.lat
 })
 
@@ -332,9 +315,9 @@ const isOneWayToGoal = computed(() => {
 })
 
 /** Auto-link URLs in plain text: returns array of segments {text, url?}. */
-function linkifyText(text: string): Array<{ text: string, url?: string }> {
+function linkifyText(text: string): Array<{ text: string; url?: string }> {
   const urlPattern = /https?:\/\/[^\s<>[\]{}|\\^`"]+/g
-  const segments: Array<{ text: string, url?: string }> = []
+  const segments: Array<{ text: string; url?: string }> = []
   let lastIndex = 0
   for (let match = urlPattern.exec(text); match !== null; match = urlPattern.exec(text)) {
     if (match.index > lastIndex) {
@@ -412,12 +395,16 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           v-if="isOwner"
           type="button"
           class="visibility-toggle action-btn"
-          :class="{ 'visibility-toggle--private': tour.visibility === 'private' }"
+          :class="
+            tour.visibility === 'private'
+              ? 'visibility-toggle--private'
+              : 'visibility-toggle--friends'
+          "
           :aria-pressed="tour.visibility === 'private'"
           @click="toggleVisibility"
         >
           <span class="material-symbols-outlined">
-            {{ tour.visibility === 'private' ? 'group' : 'lock' }}
+            {{ tour.visibility === 'private' ? 'lock' : 'group' }}
           </span>
           {{
             tour.visibility === 'private'
@@ -429,7 +416,9 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         <!-- Tour type -->
         <div v-if="tour.tourType" class="detail-row">
           <BaseTooltip :text="t('tours.infoSheet.iconTooltipType')">
-            <span class="detail-icon material-symbols-outlined">{{ TOUR_TYPE_ICONS[tour.tourType] }}</span>
+            <span class="detail-icon material-symbols-outlined">{{
+              TOUR_TYPE_ICONS[tour.tourType]
+            }}</span>
           </BaseTooltip>
           <span>{{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[tour.tourType]}` as any) }}</span>
         </div>
@@ -522,7 +511,8 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
                 target="_blank"
                 rel="noopener noreferrer"
                 class="description-link"
-              >{{ segment.text }}</a>
+                >{{ segment.text }}</a
+              >
               <template v-else>
                 {{ segment.text }}
               </template>
@@ -562,13 +552,10 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         </div>
 
         <!-- Attachments strip -->
-        <TourAttachmentsStrip
-          :tour-id="tour.id"
-          @open-viewer="openViewer"
-        />
+        <TourAttachmentsStrip :tour-id="tour.id" @open-viewer="openViewer" />
 
         <!-- Partners -->
-        <div v-if="partners.length > 0" class="detail-row align-start">
+        <div v-if="partners.length > 0" class="detail-row">
           <BaseTooltip :text="t('tours.infoSheet.iconTooltipPartners')">
             <span class="detail-icon material-symbols-outlined">group</span>
           </BaseTooltip>
@@ -597,19 +584,14 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         </div>
 
         <!-- Partners on a friend's tour (read-only registered-user names) -->
-        <div
-          v-if="tour.isFriendTour && friendPartnerNames.length > 0"
-          class="detail-row"
-        >
+        <div v-if="tour.isFriendTour && friendPartnerNames.length > 0" class="detail-row">
           <BaseTooltip :text="t('tours.infoSheet.iconTooltipPartners')">
             <span class="detail-icon material-symbols-outlined">group</span>
           </BaseTooltip>
           <div class="partner-chips">
-            <span
-              v-for="(name, i) in friendPartnerNames"
-              :key="i"
-              class="friend-partner-chip"
-            >{{ name }}</span>
+            <span v-for="(name, i) in friendPartnerNames" :key="i" class="friend-partner-chip">{{
+              name
+            }}</span>
           </div>
         </div>
 
@@ -802,9 +784,18 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   background-color: transparent;
 }
 
+.visibility-toggle--friends {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.visibility-toggle--friends:hover {
+  background-color: transparent;
+}
+
 .visibility-toggle--private {
-  border-color: var(--color-on-surface-variant);
-  color: var(--color-on-surface-variant);
+  border-color: var(--color-error);
+  color: var(--color-error);
 }
 
 .visibility-toggle--private:hover {
