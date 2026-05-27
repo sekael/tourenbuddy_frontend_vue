@@ -37,19 +37,21 @@ defineExpose({ map })
 let markerLayer: ReturnType<typeof useToursMarkerLayer> | null = null
 let gpxLayer: ReturnType<typeof useGpxTrackLayer> | null = null
 
-// The map shows the user's own tours plus ALL friend tours (partner and
-// non-partner alike) — every tour a friend shares gets a marker. A friend tour
-// colliding (within 100m) with an owned tour is suppressed — owned tours take
-// precedence — but stays untouched in the Friends list.
+// The map shows the user's own tours plus only the friend tours the user is a
+// partner on — non-partner friend tours never get a marker (the Friends list
+// still shows every shared tour). A partner friend tour colliding (within 100m)
+// with an owned tour is suppressed — owned tours take precedence.
 const mapTours = computed(() => {
-  const shadowed = friendTourIdsShadowedByOwned(tours.value, friendTours.value)
+  const partnerFriendTours = friendTours.value.filter(t => t.isPartner === true)
+  const shadowed = friendTourIdsShadowedByOwned(tours.value, partnerFriendTours)
   const hiddenOwned = new Set<string>()
 
-  // When a friend tour is the active selection, it overrides owned precedence at
-  // its location: un-shadow it AND hide the owned tour(s) it collides with, so
-  // only the friend marker + GPX show (no co-located cluster) until deselected.
+  // When a partner friend tour is the active selection, it overrides owned
+  // precedence at its location: un-shadow it AND hide the owned tour(s) it
+  // collides with, so only the friend marker + GPX show (no co-located cluster)
+  // until deselected.
   const selectedFriend = selectedTourId.value
-    ? friendTours.value.find(t => t.id === selectedTourId.value)
+    ? partnerFriendTours.find(t => t.id === selectedTourId.value)
     : undefined
   if (selectedFriend) {
     shadowed.delete(selectedFriend.id)
@@ -59,7 +61,7 @@ const mapTours = computed(() => {
 
   return [
     ...tours.value.filter(t => !hiddenOwned.has(t.id)),
-    ...friendTours.value.filter(t => !shadowed.has(t.id)),
+    ...partnerFriendTours.filter(t => !shadowed.has(t.id)),
   ]
 })
 
