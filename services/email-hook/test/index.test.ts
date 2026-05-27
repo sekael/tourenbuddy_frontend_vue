@@ -276,6 +276,72 @@ describe('notify routes', () => {
     expect(body.templateId).toBe(30) // EN received template
   })
 
+  it('tour-changed deleted: excludes a partner who is not the caller\'s friend', async () => {
+    // Authz boundary: partnerContactIds resolve to two users, but only one is a
+    // friend of the caller. The non-friend must be filtered out (recipients ∩ friends).
+    globalThis.fetch = vi.fn()
+      // JWT verify → caller is the owner
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'owner' }), { status: 200 }))
+      // resolveUsersByContactIds RPC → two partner users
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(['user-friend', 'user-stranger']), { status: 200 }),
+      )
+      // fetchFriendUserIds → owner is only friends with user-friend
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([{ request_user_id: 'owner', response_user_id: 'user-friend' }]),
+          { status: 200 },
+        ),
+      )
+      // dispatch to user-friend: profile (push+email off → no outbound sends)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([{ id: 'user-friend', notif_push_enabled: false, notif_email_enabled: false, notif_muted_types: [], locale: 'en' }]),
+          { status: 200 },
+        ),
+      )
+      // actor display name
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ first_name: 'Owner', last_name: null }]), { status: 200 }),
+      )
+      // recipient email
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: 'user-friend', email: 'f@example.com' }), { status: 200 }),
+      )
+
+    const req = makeNotifyRequest('/notify/tour-changed', {
+      action: 'deleted',
+      partnerContactIds: ['c1', 'c2'],
+      tourName: 'Gfroren Hora',
+    })
+    const response = await worker.fetch(req, VALID_ENV as never)
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ notified: 1 })
+    // The stranger must never have been resolved to a profile fetch (filtered pre-dispatch).
+    const touchedStranger = (fetch as ReturnType<typeof vi.fn>).mock.calls.some(
+      ([url]: [string]) => url.includes('user-stranger'),
+    )
+    expect(touchedStranger).toBe(false)
+  })
+
+  it('tour-changed deleted: no partner contact ids → skipped, nothing dispatched', async () => {
+    globalThis.fetch = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'owner' }), { status: 200 }))
+
+    const req = makeNotifyRequest('/notify/tour-changed', {
+      action: 'deleted',
+      partnerContactIds: [],
+      tourName: 'Solo Tour',
+    })
+    const response = await worker.fetch(req, VALID_ENV as never)
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ skipped: 'no_partners' })
+    // Only the JWT verify fetch occurred — no resolution, no dispatch.
+    expect((fetch as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(1)
+  })
+
   it('responded route body does not expose accept/decline outcome', async () => {
     // The responded route sends a generic "responded to your request" message
     // Verify no accept/decline wording is sent to push or email

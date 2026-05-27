@@ -49,13 +49,25 @@ export function notifyFriendRequestResponded(friendshipId: string): void {
 export type TourChangeAction = 'created' | 'updated' | 'deleted'
 
 /**
- * Fire-and-forget: notify friend partners that a shared tour changed. The Worker
- * resolves recipients (tour partner users ∩ owner's friends, minus the actor),
- * so the client only sends the tour id + action.
+ * Fire-and-forget: notify friend partners that a shared tour was created/updated.
+ * The Worker resolves recipients (tour partner users ∩ owner's friends, minus the
+ * actor) by reading the still-live tour row, so the client only sends id + action.
  */
-export function notifyTourChanged(tourId: string, action: TourChangeAction): void {
+export function notifyTourChanged(tourId: string, action: Exclude<TourChangeAction, 'deleted'>): void {
   postToWorker('/notify/tour-changed', { tourId, action }).catch((err) => {
     logger.warn('notifyTourChanged failed', err)
+  })
+}
+
+/**
+ * Fire-and-forget: notify friend partners that a shared tour was deleted. Fired AFTER
+ * the row is gone, so the tour can no longer be read; the client passes the partner
+ * contact ids it cached pre-delete and the Worker re-resolves recipients from the
+ * surviving contact_methods/friendships (see users_by_contact_ids migration).
+ */
+export function notifyTourDeleted(partnerContactIds: string[], tourName: string): void {
+  postToWorker('/notify/tour-changed', { action: 'deleted', partnerContactIds, tourName }).catch((err) => {
+    logger.warn('notifyTourDeleted failed', err)
   })
 }
 

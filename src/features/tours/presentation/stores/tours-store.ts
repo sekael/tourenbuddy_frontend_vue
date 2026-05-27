@@ -7,7 +7,7 @@ import { useLogger } from '@/core/logging/use-logger'
 import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
-import { notifyTourChanged } from '@/features/notifications/data/notify-dispatch'
+import { notifyTourChanged, notifyTourDeleted } from '@/features/notifications/data/notify-dispatch'
 import { ToursRepositoryImpl } from '@/features/tours/data/repositories/tours-repository-impl'
 import { removeGpx } from '@/features/tours/data/services/gpx-storage-service'
 import { isMeaningfulTourChange, isShareableTour } from '@/features/tours/domain/tour-notifications'
@@ -263,11 +263,14 @@ export const useToursStore = defineStore('tours', () => {
 
   async function deleteTour(id: string) {
     const tour = tours.value.find(t => t.id === id)
-    // Dispatch BEFORE deleting so the Worker can still resolve the tour's partners
-    // server-side (it reads the row). Fire-and-forget; the delete proceeds regardless.
-    if (tour && isShareableTour(tour.visibility, tour.partnerIds))
-      notifyTourChanged(id, 'deleted')
+    // Cache what the notification needs BEFORE the row (and its tour_partners) are
+    // gone; dispatch only AFTER a confirmed delete so a failed delete sends nothing.
+    const shouldNotify = !!tour && isShareableTour(tour.visibility, tour.partnerIds)
+    const partnerContactIds = tour?.partnerIds ?? []
+    const tourName = tour?.name ?? ''
     await repository.deleteTour(id)
+    if (shouldNotify)
+      notifyTourDeleted(partnerContactIds, tourName)
     if (tour?.gpxFilepath) {
       try {
         await removeGpx(tour.gpxFilepath)
