@@ -1,5 +1,5 @@
-import { verifySupabaseJwt } from './auth'
 import type { Env } from './config'
+import { verifySupabaseJwt } from './auth'
 import { jsonResponse, resolveLocale } from './config'
 import { sendFriendNotificationEmail, sendTourNotificationEmail } from './email'
 import { dispatchPushToUser } from './push'
@@ -33,7 +33,8 @@ async function fetchFriendRequest(requestId: string, env: Env): Promise<FriendRe
       },
     },
   )
-  if (!res.ok) return null
+  if (!res.ok)
+    return null
   const rows = (await res.json()) as FriendRequestRow[]
   return rows[0] ?? null
 }
@@ -48,7 +49,8 @@ async function fetchUserProfile(userId: string, env: Env): Promise<UserProfileRo
       },
     },
   )
-  if (!res.ok) return null
+  if (!res.ok)
+    return null
   const rows = (await res.json()) as UserProfileRow[]
   return rows[0] ?? null
 }
@@ -60,7 +62,8 @@ async function fetchUserEmail(userId: string, env: Env): Promise<string | null> 
       Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
     },
   })
-  if (!res.ok) return null
+  if (!res.ok)
+    return null
   const user = (await res.json()) as AuthUserRow
   return user.email ?? null
 }
@@ -75,10 +78,12 @@ async function fetchActorDisplayName(actorId: string, env: Env): Promise<string>
       },
     },
   )
-  if (!res.ok) return 'Someone'
-  const rows = (await res.json()) as Array<{ first_name: string | null; last_name: string | null }>
+  if (!res.ok)
+    return 'Someone'
+  const rows = (await res.json()) as Array<{ first_name: string | null, last_name: string | null }>
   const row = rows[0]
-  if (!row) return 'Someone'
+  if (!row)
+    return 'Someone'
   const name = [row.first_name, row.last_name].filter(Boolean).join(' ')
   return name || 'Someone'
 }
@@ -119,12 +124,14 @@ async function dispatchToRecipient(
     fetchUserEmail(recipientId, env),
   ])
 
-  if (!recipientProfile) return
+  if (!recipientProfile)
+    return
 
   const appUrl = env.APP_URL || DEFAULT_APP_URL
 
   // Check if type is muted
-  if (recipientProfile.notif_muted_types.includes(FRIEND_REQUESTS_MUTE_TYPE)) return
+  if (recipientProfile.notif_muted_types.includes(FRIEND_REQUESTS_MUTE_TYPE))
+    return
 
   const locale = resolveLocale(recipientProfile.locale)
   const pushTitle = pushTitleFor(event, locale)
@@ -168,7 +175,7 @@ function missingConfigKeys(env: Env): string[] {
     'VAPID_PRIVATE_KEY',
     'VAPID_SUBJECT',
   ]
-  return required.filter((k) => !env[k])
+  return required.filter(k => !env[k])
 }
 
 async function handle(
@@ -183,30 +190,36 @@ async function handle(
   }
 
   const callerId = await verifySupabaseJwt(request, env)
-  if (!callerId) return jsonResponse(401, { error: 'unauthorized' })
+  if (!callerId)
+    return jsonResponse(401, { error: 'unauthorized' })
 
   let body: { friendshipId?: string }
   try {
     body = (await request.json()) as { friendshipId?: string }
-  } catch {
+  }
+  catch {
     return jsonResponse(400, { error: 'invalid_json' })
   }
 
   const requestId = body.friendshipId
-  if (!requestId) return jsonResponse(400, { error: 'missing_request_id' })
+  if (!requestId)
+    return jsonResponse(400, { error: 'missing_request_id' })
 
   const friendRequest = await fetchFriendRequest(requestId, env)
-  if (!friendRequest) return jsonResponse(404, { error: 'friend_request_not_found' })
+  if (!friendRequest)
+    return jsonResponse(404, { error: 'friend_request_not_found' })
 
-  const expectedCaller =
-    event === 'received' ? friendRequest.from_user_id : friendRequest.to_user_id
-  if (expectedCaller !== callerId) return jsonResponse(403, { error: 'forbidden' })
+  const expectedCaller
+    = event === 'received' ? friendRequest.from_user_id : friendRequest.to_user_id
+  if (expectedCaller !== callerId)
+    return jsonResponse(403, { error: 'forbidden' })
 
   const recipientId = event === 'received' ? friendRequest.to_user_id : friendRequest.from_user_id
 
   try {
     await dispatchToRecipient(recipientId, callerId, event, env)
-  } catch (err) {
+  }
+  catch (err) {
     console.error(`[notify/${event}] dispatch failed:`, err)
     return jsonResponse(500, { error: 'dispatch_failed', message: (err as Error).message })
   }
@@ -243,7 +256,8 @@ async function fetchTour(tourId: string, env: Env): Promise<TourRow | null> {
       },
     },
   )
-  if (!res.ok) return null
+  if (!res.ok)
+    return null
   const rows = (await res.json()) as TourRow[]
   return rows[0] ?? null
 }
@@ -253,13 +267,14 @@ async function resolveTourPartnerUserIds(tourId: string, env: Env): Promise<stri
   const res = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/tour_partner_user_ids`, {
     method: 'POST',
     headers: {
-      apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+      'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
+      'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ p_tour_id: tourId }),
   })
-  if (!res.ok) return []
+  if (!res.ok)
+    return []
   return (await res.json()) as string[]
 }
 
@@ -269,17 +284,19 @@ async function resolveTourPartnerUserIds(tourId: string, env: Env): Promise<stri
  * resolveTourPartnerUserIds but keyed on contact ids that outlive the tour.
  */
 async function resolveUsersByContactIds(contactIds: string[], env: Env): Promise<string[]> {
-  if (contactIds.length === 0) return []
+  if (contactIds.length === 0)
+    return []
   const res = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/users_by_contact_ids`, {
     method: 'POST',
     headers: {
-      apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+      'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
+      'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ p_contact_ids: contactIds }),
   })
-  if (!res.ok) return []
+  if (!res.ok)
+    return []
   return (await res.json()) as string[]
 }
 
@@ -295,8 +312,9 @@ async function fetchFriendUserIds(userId: string, env: Env): Promise<Set<string>
       },
     },
   )
-  if (!res.ok) return new Set()
-  const rows = (await res.json()) as Array<{ request_user_id: string; response_user_id: string }>
+  if (!res.ok)
+    return new Set()
+  const rows = (await res.json()) as Array<{ request_user_id: string, response_user_id: string }>
   const ids = new Set<string>()
   for (const r of rows)
     ids.add(r.request_user_id === userId ? r.response_user_id : r.request_user_id)
@@ -354,7 +372,7 @@ function tourPushBody(
 async function dispatchTourNotification(
   recipientId: string,
   actorId: string,
-  opts: { type: 'tour_updates' | 'tour_interest'; action: string; tourName: string },
+  opts: { type: 'tour_updates' | 'tour_interest', action: string, tourName: string },
   env: Env,
 ): Promise<void> {
   const [recipientProfile, actorName, recipientEmail] = await Promise.all([
@@ -363,8 +381,10 @@ async function dispatchTourNotification(
     fetchUserEmail(recipientId, env),
   ])
 
-  if (!recipientProfile) return
-  if (recipientProfile.notif_muted_types.includes(opts.type)) return
+  if (!recipientProfile)
+    return
+  if (recipientProfile.notif_muted_types.includes(opts.type))
+    return
 
   const appUrl = env.APP_URL || DEFAULT_APP_URL
   const locale = resolveLocale(recipientProfile.locale)
@@ -411,10 +431,12 @@ async function dispatchTourNotification(
  */
 export async function handleTourChanged(request: Request, env: Env): Promise<Response> {
   const missing = missingConfigKeys(env)
-  if (missing.length > 0) return jsonResponse(500, { error: 'missing_configuration', missing })
+  if (missing.length > 0)
+    return jsonResponse(500, { error: 'missing_configuration', missing })
 
   const callerId = await verifySupabaseJwt(request, env)
-  if (!callerId) return jsonResponse(401, { error: 'unauthorized' })
+  if (!callerId)
+    return jsonResponse(401, { error: 'unauthorized' })
 
   let body: {
     tourId?: string
@@ -424,32 +446,39 @@ export async function handleTourChanged(request: Request, env: Env): Promise<Res
   }
   try {
     body = (await request.json()) as typeof body
-  } catch {
+  }
+  catch {
     return jsonResponse(400, { error: 'invalid_json' })
   }
 
-  if (!body.action) return jsonResponse(400, { error: 'missing_fields' })
+  if (!body.action)
+    return jsonResponse(400, { error: 'missing_fields' })
 
   // 'deleted' can't read the tour (it's gone) — resolve from the cached partner
   // contact ids the client sent. Created/updated still resolve off the live row.
-  if (body.action === 'deleted') return handleTourDeleted(body, callerId, env)
+  if (body.action === 'deleted')
+    return handleTourDeleted(body, callerId, env)
 
-  if (!body.tourId) return jsonResponse(400, { error: 'missing_fields' })
+  if (!body.tourId)
+    return jsonResponse(400, { error: 'missing_fields' })
 
   const tour = await fetchTour(body.tourId, env)
-  if (!tour) return jsonResponse(404, { error: 'tour_not_found' })
-  if (tour.user_id !== callerId) return jsonResponse(403, { error: 'forbidden' })
-  if (tour.visibility !== 'friends') return jsonResponse(200, { skipped: 'private' })
+  if (!tour)
+    return jsonResponse(404, { error: 'tour_not_found' })
+  if (tour.user_id !== callerId)
+    return jsonResponse(403, { error: 'forbidden' })
+  if (tour.visibility !== 'friends')
+    return jsonResponse(200, { skipped: 'private' })
 
   const [partnerIds, friendIds] = await Promise.all([
     resolveTourPartnerUserIds(tour.id, env),
     fetchFriendUserIds(tour.user_id, env),
   ])
-  const recipients = partnerIds.filter((id) => friendIds.has(id) && id !== callerId)
+  const recipients = partnerIds.filter(id => friendIds.has(id) && id !== callerId)
 
   try {
     await Promise.all(
-      recipients.map((r) =>
+      recipients.map(r =>
         dispatchTourNotification(
           r,
           callerId,
@@ -458,7 +487,8 @@ export async function handleTourChanged(request: Request, env: Env): Promise<Res
         ),
       ),
     )
-  } catch (err) {
+  }
+  catch (err) {
     console.error('[notify/tour-changed] dispatch failed:', err)
     return jsonResponse(500, { error: 'dispatch_failed', message: (err as Error).message })
   }
@@ -473,7 +503,7 @@ export async function handleTourChanged(request: Request, env: Env): Promise<Res
  * client: the blast radius is bounded by the caller's own friendships.
  */
 async function handleTourDeleted(
-  body: { partnerContactIds?: string[]; tourName?: string },
+  body: { partnerContactIds?: string[], tourName?: string },
   callerId: string,
   env: Env,
 ): Promise<Response> {
@@ -486,11 +516,11 @@ async function handleTourDeleted(
     fetchFriendUserIds(callerId, env),
   ])
 
-  const recipients = partnerIds.filter((id) => friendIds.has(id) && id !== callerId)
+  const recipients = partnerIds.filter(id => friendIds.has(id) && id !== callerId)
 
   try {
     await Promise.all(
-      recipients.map((r) =>
+      recipients.map(r =>
         dispatchTourNotification(
           r,
           callerId,
@@ -499,7 +529,8 @@ async function handleTourDeleted(
         ),
       ),
     )
-  } catch (err) {
+  }
+  catch (err) {
     console.error('[notify/tour-changed] dispatch failed:', err)
     return jsonResponse(500, { error: 'dispatch_failed', message: (err as Error).message })
   }
@@ -514,27 +545,35 @@ async function handleTourDeleted(
  */
 export async function handleTourInterest(request: Request, env: Env): Promise<Response> {
   const missing = missingConfigKeys(env)
-  if (missing.length > 0) return jsonResponse(500, { error: 'missing_configuration', missing })
+  if (missing.length > 0)
+    return jsonResponse(500, { error: 'missing_configuration', missing })
 
   const callerId = await verifySupabaseJwt(request, env)
-  if (!callerId) return jsonResponse(401, { error: 'unauthorized' })
+  if (!callerId)
+    return jsonResponse(401, { error: 'unauthorized' })
 
   let body: { tourId?: string }
   try {
     body = (await request.json()) as { tourId?: string }
-  } catch {
+  }
+  catch {
     return jsonResponse(400, { error: 'invalid_json' })
   }
 
-  if (!body.tourId) return jsonResponse(400, { error: 'missing_fields' })
+  if (!body.tourId)
+    return jsonResponse(400, { error: 'missing_fields' })
 
   const tour = await fetchTour(body.tourId, env)
-  if (!tour) return jsonResponse(404, { error: 'tour_not_found' })
-  if (tour.visibility !== 'friends') return jsonResponse(403, { error: 'forbidden' })
-  if (tour.user_id === callerId) return jsonResponse(400, { error: 'own_tour' })
+  if (!tour)
+    return jsonResponse(404, { error: 'tour_not_found' })
+  if (tour.visibility !== 'friends')
+    return jsonResponse(403, { error: 'forbidden' })
+  if (tour.user_id === callerId)
+    return jsonResponse(400, { error: 'own_tour' })
 
   const friendIds = await fetchFriendUserIds(callerId, env)
-  if (!friendIds.has(tour.user_id)) return jsonResponse(403, { error: 'forbidden' })
+  if (!friendIds.has(tour.user_id))
+    return jsonResponse(403, { error: 'forbidden' })
 
   try {
     await dispatchTourNotification(
@@ -543,7 +582,8 @@ export async function handleTourInterest(request: Request, env: Env): Promise<Re
       { type: 'tour_interest', action: 'interest', tourName: tour.name ?? '' },
       env,
     )
-  } catch (err) {
+  }
+  catch (err) {
     console.error('[notify/tour-interest] dispatch failed:', err)
     return jsonResponse(500, { error: 'dispatch_failed', message: (err as Error).message })
   }
