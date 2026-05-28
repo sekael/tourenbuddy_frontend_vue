@@ -157,6 +157,18 @@ export const useTourLinksStore = defineStore('tour-links', () => {
     },
   )
 
+  // Tours load async; realtime onSubscribed may fire while toursStore.tours is
+  // still empty, causing fetchAll's early-return to leave requests/members empty
+  // permanently. Re-run fetchAll when the owned-tour set arrives or changes so
+  // pending request banners survive page reload.
+  watch(
+    () => toursStore.tours.map(t => t.id).sort().join(','),
+    (newKey, oldKey) => {
+      if (newKey && newKey !== oldKey)
+        fetchAll().catch(err => logger.warn('refetch on tours change failed', err))
+    },
+  )
+
   return {
     loading,
     error,

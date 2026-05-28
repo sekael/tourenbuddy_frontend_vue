@@ -337,8 +337,30 @@ function tourPushTitle(
   action: string,
   locale: 'en' | 'de',
 ): string {
-  if (type === 'tour_interest')
-    return locale === 'de' ? 'Interesse an deiner Tour' : 'Interest in your tour'
+  if (type === 'tour_interest') {
+    if (locale === 'de') {
+      switch (action) {
+        case 'collision': return 'Gleiche Tour geplant'
+        case 'link_created': return 'Verknüpfungsanfrage erhalten'
+        case 'link_accepted': return 'Tour verknüpft'
+        case 'link_declined': return 'Verknüpfung abgelehnt'
+        case 'group_joined': return 'Neue Tour in deiner Verknüpfung'
+        case 'group_evicted_external': return 'Tour aus Verknüpfung entfernt'
+        case 'group_dissolved': return 'Verknüpfung aufgelöst'
+        default: return 'Update zu deiner Tour'
+      }
+    }
+    switch (action) {
+      case 'collision': return 'Same tour planned'
+      case 'link_created': return 'Link request received'
+      case 'link_accepted': return 'Tour linked'
+      case 'link_declined': return 'Link request declined'
+      case 'group_joined': return 'New tour in your link group'
+      case 'group_evicted_external': return 'Tour removed from link group'
+      case 'group_dissolved': return 'Tour link dissolved'
+      default: return 'Update on your tour'
+    }
+  }
   if (locale === 'de') {
     return action === 'created'
       ? 'Neue geteilte Tour'
@@ -362,9 +384,28 @@ function tourPushBody(
 ): string {
   const tour = tourName || (locale === 'de' ? 'eine Tour' : 'a tour')
   if (type === 'tour_interest') {
-    return locale === 'de'
-      ? `${actorName} interessiert sich für «${tour}».`
-      : `${actorName} is interested in “${tour}”.`
+    if (locale === 'de') {
+      switch (action) {
+        case 'collision': return `${actorName} hat dieselbe Tour wie «${tour}» geplant.`
+        case 'link_created': return `${actorName} möchte «${tour}» mit dir verknüpfen.`
+        case 'link_accepted': return `${actorName} hat deine Verknüpfungsanfrage für «${tour}» angenommen.`
+        case 'link_declined': return `${actorName} hat deine Verknüpfungsanfrage für «${tour}» abgelehnt.`
+        case 'group_joined': return `${actorName} hat eine Tour zur Verknüpfung mit «${tour}» hinzugefügt.`
+        case 'group_evicted_external': return `Eine Tour wurde aus der Verknüpfung mit «${tour}» entfernt.`
+        case 'group_dissolved': return `Die Verknüpfung für «${tour}» wurde aufgelöst.`
+        default: return `${actorName} hat «${tour}» aktualisiert.`
+      }
+    }
+    switch (action) {
+      case 'collision': return `${actorName} planned the same tour as “${tour}”.`
+      case 'link_created': return `${actorName} wants to link “${tour}” with their tour.`
+      case 'link_accepted': return `${actorName} accepted your link request for “${tour}”.`
+      case 'link_declined': return `${actorName} declined your link request for “${tour}”.`
+      case 'group_joined': return `${actorName} added a tour to your link group for “${tour}”.`
+      case 'group_evicted_external': return `A tour was removed from the link group for “${tour}”.`
+      case 'group_dissolved': return `The link group for “${tour}” was dissolved.`
+      default: return `${actorName} updated “${tour}”.`
+    }
   }
   if (locale === 'de') {
     return action === 'created'

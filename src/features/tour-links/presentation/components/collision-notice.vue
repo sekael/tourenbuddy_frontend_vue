@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useLogger } from '@/core/logging/use-logger'
+import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
@@ -15,8 +16,14 @@ const { t } = useI18n({ useScope: 'global' })
 const logger = useLogger('collision-notice')
 const toursStore = useToursStore()
 const tourLinksStore = useTourLinksStore()
+const friendshipsStore = useFriendshipsStore()
 const { tours, friendTours } = storeToRefs(toursStore)
 const { requestsByTourId, groupIdByTourId } = storeToRefs(tourLinksStore)
+const { userIdToNamesMap } = storeToRefs(friendshipsStore)
+
+// Defensive: friend-tours has no realtime sub yet (#198). Refresh on mount so
+// a freshly-saved owner-tour can see colliding friend tours without page reload.
+toursStore.loadFriendTours()
 
 const submitting = ref<string | null>(null)
 const submitError = ref<string | null>(null)
@@ -54,11 +61,26 @@ const candidates = computed(() => {
   })
 })
 
+// Owner name comes from friendships store (userId → profile name map).
+// `partnerNames` on a friend tour holds the tour's PARTNERS, never the owner.
 const candidateNames = computed(() =>
   candidates.value.map((f) => {
-    const friend = (f.partnerNames ?? []).find(p => p.userId === f.userId)
-    return [friend?.firstName, friend?.lastName].filter(Boolean).join(' ') || t('tours.infoSheet.unnamedTour')
+    const name = userIdToNamesMap.value.get(f.userId)
+    return [name?.firstName, name?.lastName].filter(Boolean).join(' ') || t('tours.infoSheet.unnamedTour')
   }),
+)
+
+// Ensure owner profile names are resolved for each candidate.
+watch(
+  candidates,
+  (list) => {
+    const missing = [...new Set(list.map(f => f.userId))].filter(
+      id => !userIdToNamesMap.value.has(id),
+    )
+    if (missing.length > 0)
+      friendshipsStore.getNamesByUserIds(missing)
+  },
+  { immediate: true },
 )
 
 function sameGoalWithin100m(a: { lng: number, lat: number }, b: { lng: number, lat: number }): boolean {

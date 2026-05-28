@@ -31,6 +31,7 @@ const LINK_LAYER_ID = 'tours-link-indicator'
 const PREVIEW_LAYER_ID = 'tours-preview-circle'
 const CHECK_ICON_ID = 'tour-check-icon'
 const FRIEND_ICON_ID = 'tour-friend-icon'
+const LINK_ICON_ID = 'tour-link-icon'
 
 export const SPIDERFY_CIRCLE_RADIUS_PX = 32
 export const SPIDERFY_SPIRAL_THRESHOLD = 8
@@ -121,6 +122,46 @@ async function loadFriendIcon(map: MapLibreMap): Promise<boolean> {
         // SDF so the layer can tint it per tour type via `icon-color`; the SVG's
         // own white fill is ignored — only its alpha silhouette is used.
         map.addImage(FRIEND_ICON_ID, img, { sdf: true, pixelRatio: scale })
+        resolve(true)
+      }
+      catch {
+        resolve(false)
+      }
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve(false)
+    }
+    img.src = url
+  })
+}
+
+async function loadLinkIcon(map: MapLibreMap): Promise<boolean> {
+  if (map.hasImage(LINK_ICON_ID))
+    return true
+
+  const size = 28
+  const scale = 4
+  const render = size * scale
+  // Chain-link glyph (two interlocking links) — marks a tour that belongs to a
+  // tour_link_group. White fill; the SDF alpha silhouette is tinted by the layer.
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${render}" height="${render}" viewBox="0 0 28 28" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11.5 16.5l-3 3a3.5 3.5 0 1 1-4.95-4.95l3-3a3.5 3.5 0 0 1 4.95 0" />
+      <path d="M16.5 11.5l3-3a3.5 3.5 0 1 1 4.95 4.95l-3 3a3.5 3.5 0 0 1-4.95 0" />
+      <path d="M10.5 17.5l7-7" />
+    </svg>
+  `.trim()
+
+  const blob = new Blob([svg], { type: 'image/svg+xml' })
+  const url = URL.createObjectURL(blob)
+
+  return new Promise((resolve) => {
+    const img = new Image(render, render)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      try {
+        map.addImage(LINK_ICON_ID, img, { sdf: true, pixelRatio: scale })
         resolve(true)
       }
       catch {
@@ -265,10 +306,12 @@ export function useToursMarkerLayer(
     }
 
     if (map.getLayer(FRIEND_LAYER_ID)) {
+      // Friend glyph is hidden for linked tours — the chain icon takes precedence.
       map.setFilter(FRIEND_LAYER_ID, [
         'all',
         inVisible,
         ['==', ['get', 'isFriendTour'], true],
+        ['!=', ['get', 'isLinked'], true],
       ] as ExpressionSpecification)
     }
 
@@ -620,6 +663,30 @@ export function useToursMarkerLayer(
       })
     }
 
+    // Link indicator BEFORE the check so the white completion ✓ stacks above
+    // it. Same shape / size / tint as the friend glyph — fills the marker,
+    // PREVIEW_COLOR_EXPR keeps the completion mark legible on top.
+    const linkIconLoaded = await loadLinkIcon(map)
+    if (linkIconLoaded) {
+      map.addLayer({
+        id: LINK_LAYER_ID,
+        type: 'symbol',
+        source: SOURCE_ID,
+        filter: ['in', ['get', 'id'], ['literal', []]],
+        layout: {
+          'icon-image': LINK_ICON_ID,
+          'icon-size': 0.8,
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+        },
+        paint: {
+          'icon-color': PREVIEW_COLOR_EXPR,
+          'icon-opacity': 1,
+          'icon-opacity-transition': { duration: 200 },
+        },
+      })
+    }
+
     const iconLoaded = await loadCheckIcon(map)
     if (iconLoaded) {
       map.addLayer({
@@ -639,25 +706,6 @@ export function useToursMarkerLayer(
         },
       })
     }
-
-    // Link indicator: small circle badge in the upper-right of the marker for
-    // tours that belong to a tour_link_group. Visual only — clicks fall through
-    // to the LAYER_ID handler. Uses a circle (not a symbol icon) so no glyph
-    // asset is required.
-    map.addLayer({
-      id: LINK_LAYER_ID,
-      type: 'circle',
-      source: SOURCE_ID,
-      filter: ['in', ['get', 'id'], ['literal', []]],
-      paint: {
-        'circle-radius': 5,
-        'circle-color': '#2196f3',
-        'circle-stroke-color': '#ffffff',
-        'circle-stroke-width': 1.5,
-        'circle-translate': [10, -10],
-        'circle-translate-anchor': 'viewport',
-      },
-    })
 
     map.on('click', LAYER_ID, (e) => {
       const feature = e.features?.[0]

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { TourLinkRequest } from '@/features/tour-links/domain/entities/tour-link'
 import { storeToRefs } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useLogger } from '@/core/logging/use-logger'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
+import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
@@ -17,8 +18,10 @@ const logger = useLogger('link-request-banner')
 const tourLinksStore = useTourLinksStore()
 const toursStore = useToursStore()
 const authStore = useAuthStore()
+const friendshipsStore = useFriendshipsStore()
 const { tours, friendTours } = storeToRefs(toursStore)
 const { currentUser } = storeToRefs(authStore)
+const { userIdToNamesMap } = storeToRefs(friendshipsStore)
 
 const submitting = ref(false)
 const submitError = ref<string | null>(null)
@@ -38,14 +41,29 @@ const otherTourName = computed(() => {
   return t1?.name ?? t('tours.infoSheet.unnamedTour')
 })
 
+// Owner name comes from friendships store (userId → profile name map).
+// `partnerNames` on a friend tour holds the tour's PARTNERS, never the owner.
 const otherFriendName = computed(() => {
   const otherId = isIncoming.value ? props.request.initiatorTourId : props.request.targetTourId
   const t1 = friendTours.value.find(t => t.id === otherId)
   if (!t1)
     return ''
-  const friend = (t1.partnerNames ?? []).find(p => p.userId === t1.userId)
-  return [friend?.firstName, friend?.lastName].filter(Boolean).join(' ')
+  const name = userIdToNamesMap.value.get(t1.userId)
+  return [name?.firstName, name?.lastName].filter(Boolean).join(' ')
 })
+
+// Ensure the counterpart's profile name is resolved.
+watch(
+  () => {
+    const otherId = isIncoming.value ? props.request.initiatorTourId : props.request.targetTourId
+    return friendTours.value.find(t => t.id === otherId)?.userId
+  },
+  (uid) => {
+    if (uid && !userIdToNamesMap.value.has(uid))
+      friendshipsStore.getNamesByUserIds([uid])
+  },
+  { immediate: true },
+)
 
 async function accept() {
   submitting.value = true
