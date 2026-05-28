@@ -41,6 +41,13 @@ const router = createRouter({
       component: () => import('@/features/map/presentation/pages/map-page.vue'),
       meta: { requiresAuth: true, requiresCompleteProfile: true },
     },
+    {
+      path: '/friends/:friendshipId/backfill-collisions',
+      name: 'backfill-collisions',
+      component: () =>
+        import('@/features/tour-links/presentation/pages/backfill-collisions-page.vue'),
+      meta: { requiresAuth: true, requiresCompleteProfile: true },
+    },
   ],
 })
 

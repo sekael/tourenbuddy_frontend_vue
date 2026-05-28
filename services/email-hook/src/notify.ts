@@ -216,12 +216,23 @@ async function handle(
 
   const recipientId = event === 'received' ? friendRequest.to_user_id : friendRequest.from_user_id
 
+  // Sub-routine A: the existing per-event responded/received notification.
   try {
     await dispatchToRecipient(recipientId, callerId, event, env)
   }
   catch (err) {
     console.error(`[notify/${event}] dispatch failed:`, err)
-    return jsonResponse(500, { error: 'dispatch_failed', message: (err as Error).message })
+    // Don't return — sub-routine B must still run independently.
+  }
+
+  // Sub-routine B: friendship-accept backfill digest (responded path only).
+  if (event === 'responded') {
+    try {
+      await dispatchBackfillDigest(friendRequest, env)
+    }
+    catch (err) {
+      console.error('[notify/responded] backfill digest failed:', err)
+    }
   }
 
   return jsonResponse(200)
@@ -538,10 +549,33 @@ async function handleTourDeleted(
   return jsonResponse(200, { notified: recipients.length })
 }
 
+// ── Collision-detected scan (post-save) ──────────────────────────────────────
+
+interface CollisionRow {
+  other_tour_id: string
+  other_user_id: string
+  other_tour_name: string | null
+}
+
+async function scanCollisionsForTour(tourId: string, env: Env): Promise<CollisionRow[]> {
+  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/fn_scan_collisions_for_tour`, {
+    method: 'POST',
+    headers: {
+      'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
+      'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ p_tour_id: tourId }),
+  })
+  if (!res.ok)
+    return []
+  return (await res.json()) as CollisionRow[]
+}
+
 /**
- * Notify a tour's owner that the caller is interested in it (declined a duplicate
- * save). Authorized by an accepted friendship between caller and owner AND the tour
- * being friends-visible. Collision/partner status is NOT re-verified (UX trigger).
+ * Scan for friend-owned tours colliding with the just-saved tour, dispatch a
+ * tour_interest notification to each colliding owner. Replaces the legacy
+ * "decline duplicate → signal interest" flow. Authorized: caller must own the tour.
  */
 export async function handleTourInterest(request: Request, env: Env): Promise<Response> {
   const missing = missingConfigKeys(env)
@@ -566,21 +600,25 @@ export async function handleTourInterest(request: Request, env: Env): Promise<Re
   const tour = await fetchTour(body.tourId, env)
   if (!tour)
     return jsonResponse(404, { error: 'tour_not_found' })
+  if (tour.user_id !== callerId)
+    return jsonResponse(403, { error: 'forbidden' })
   if (tour.visibility !== 'friends')
-    return jsonResponse(403, { error: 'forbidden' })
-  if (tour.user_id === callerId)
-    return jsonResponse(400, { error: 'own_tour' })
+    return jsonResponse(200, { skipped: 'private', notified: 0 })
 
-  const friendIds = await fetchFriendUserIds(callerId, env)
-  if (!friendIds.has(tour.user_id))
-    return jsonResponse(403, { error: 'forbidden' })
+  const collisions = await scanCollisionsForTour(tour.id, env)
+  if (collisions.length === 0)
+    return jsonResponse(200, { notified: 0 })
 
   try {
-    await dispatchTourNotification(
-      tour.user_id,
-      callerId,
-      { type: 'tour_interest', action: 'interest', tourName: tour.name ?? '' },
-      env,
+    await Promise.all(
+      collisions.map(c =>
+        dispatchTourNotification(
+          c.other_user_id,
+          callerId,
+          { type: 'tour_interest', action: 'collision', tourName: tour.name ?? '' },
+          env,
+        ),
+      ),
     )
   }
   catch (err) {
@@ -588,5 +626,308 @@ export async function handleTourInterest(request: Request, env: Env): Promise<Re
     return jsonResponse(500, { error: 'dispatch_failed', message: (err as Error).message })
   }
 
+  return jsonResponse(200, { notified: collisions.length })
+}
+
+// ── Friendship-accept backfill digest ────────────────────────────────────────
+
+async function scanBackfillCollisions(
+  userA: string,
+  userB: string,
+  env: Env,
+): Promise<Array<{ a_tour_id: string, b_tour_id: string }>> {
+  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/fn_scan_backfill_collisions`, {
+    method: 'POST',
+    headers: {
+      'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
+      'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ p_user_a: userA, p_user_b: userB }),
+  })
+  if (!res.ok)
+    return []
+  return (await res.json()) as Array<{ a_tour_id: string, b_tour_id: string }>
+}
+
+async function dispatchBackfillDigestTo(
+  recipientId: string,
+  friendId: string,
+  friendshipId: string,
+  collisionCount: number,
+  env: Env,
+): Promise<void> {
+  const [recipientProfile, friendName, recipientEmail] = await Promise.all([
+    fetchUserProfile(recipientId, env),
+    fetchActorDisplayName(friendId, env),
+    fetchUserEmail(recipientId, env),
+  ])
+
+  if (!recipientProfile)
+    return
+  if (recipientProfile.notif_muted_types.includes('tour_interest'))
+    return
+
+  const appUrl = env.APP_URL || DEFAULT_APP_URL
+  const locale = resolveLocale(recipientProfile.locale)
+  const title = locale === 'de'
+    ? 'Gemeinsame Touren mit neuem Freund'
+    : 'Shared tours with new friend'
+  const bodyText = locale === 'de'
+    ? `${collisionCount} deiner Touren überschneiden sich mit Touren von ${friendName}.`
+    : `${collisionCount} of your tours overlap with ${friendName}'s tours.`
+  const url = `${appUrl}/friends/${friendshipId}/backfill-collisions`
+
+  const tasks: Promise<void>[] = []
+  if (recipientProfile.notif_push_enabled)
+    tasks.push(dispatchPushToUser(recipientId, { title, body: bodyText, url }, env))
+
+  if (recipientProfile.notif_email_enabled && recipientEmail) {
+    tasks.push(
+      sendTourNotificationEmail(
+        {
+          toEmail: recipientEmail,
+          locale: recipientProfile.locale,
+          type: 'tour_interest',
+          action: 'backfill_digest',
+          actorName: friendName,
+          tourName: String(collisionCount),
+          appUrl: url,
+        },
+        env,
+      ),
+    )
+  }
+
+  await Promise.all(tasks)
+}
+
+async function dispatchBackfillDigest(
+  friendRequest: FriendRequestRow,
+  env: Env,
+): Promise<void> {
+  const collisions = await scanBackfillCollisions(
+    friendRequest.from_user_id,
+    friendRequest.to_user_id,
+    env,
+  )
+  if (collisions.length === 0)
+    return
+
+  // Per-side counts (a_tour_id always belongs to from_user_id by RPC contract).
+  const countForFrom = collisions.length
+  const countForTo = collisions.length
+
+  await Promise.all([
+    dispatchBackfillDigestTo(
+      friendRequest.from_user_id,
+      friendRequest.to_user_id,
+      friendRequest.id,
+      countForFrom,
+      env,
+    ),
+    dispatchBackfillDigestTo(
+      friendRequest.to_user_id,
+      friendRequest.from_user_id,
+      friendRequest.id,
+      countForTo,
+      env,
+    ),
+  ])
+}
+
+// ── Link-request lifecycle ────────────────────────────────────────────────────
+
+interface LinkRequestRow {
+  id: string
+  initiator_tour_id: string
+  target_tour_id: string
+  status: string
+}
+
+async function fetchLinkRequest(id: string, env: Env): Promise<LinkRequestRow | null> {
+  const res = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/tour_link_request?id=eq.${encodeURIComponent(id)}&select=id,initiator_tour_id,target_tour_id,status`,
+    {
+      headers: {
+        apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+    },
+  )
+  if (!res.ok)
+    return null
+  const rows = (await res.json()) as LinkRequestRow[]
+  return rows[0] ?? null
+}
+
+/**
+ * Dispatch a tour_interest notification for a link-request lifecycle event.
+ * Authorized by JWT subject matching the event actor (initiator for `created`,
+ * target for `accepted`/`declined`). Withdraws SHALL NOT trigger dispatch.
+ */
+export async function handleLinkRequestEvent(request: Request, env: Env): Promise<Response> {
+  const missing = missingConfigKeys(env)
+  if (missing.length > 0)
+    return jsonResponse(500, { error: 'missing_configuration', missing })
+
+  const callerId = await verifySupabaseJwt(request, env)
+  if (!callerId)
+    return jsonResponse(401, { error: 'unauthorized' })
+
+  let body: { requestId?: string, event?: 'created' | 'accepted' | 'declined' }
+  try {
+    body = (await request.json()) as typeof body
+  }
+  catch {
+    return jsonResponse(400, { error: 'invalid_json' })
+  }
+
+  if (!body.requestId || !body.event)
+    return jsonResponse(400, { error: 'missing_fields' })
+  if (!['created', 'accepted', 'declined'].includes(body.event))
+    return jsonResponse(400, { error: 'invalid_event' })
+
+  const req = await fetchLinkRequest(body.requestId, env)
+  if (!req)
+    return jsonResponse(404, { error: 'request_not_found' })
+
+  const [initiator, target] = await Promise.all([
+    fetchTour(req.initiator_tour_id, env),
+    fetchTour(req.target_tour_id, env),
+  ])
+  if (!initiator || !target)
+    return jsonResponse(404, { error: 'tour_not_found' })
+
+  // Authorize and pick recipient.
+  let recipientId: string
+  let actorId: string
+  let targetTourName: string
+  if (body.event === 'created') {
+    if (initiator.user_id !== callerId)
+      return jsonResponse(403, { error: 'forbidden' })
+    recipientId = target.user_id
+    actorId = initiator.user_id
+    targetTourName = target.name ?? ''
+  }
+  else {
+    if (target.user_id !== callerId)
+      return jsonResponse(403, { error: 'forbidden' })
+    recipientId = initiator.user_id
+    actorId = target.user_id
+    targetTourName = initiator.name ?? ''
+  }
+
+  try {
+    await dispatchTourNotification(
+      recipientId,
+      actorId,
+      { type: 'tour_interest', action: `link_${body.event}`, tourName: targetTourName },
+      env,
+    )
+  }
+  catch (err) {
+    console.error('[notify/link-request-event] dispatch failed:', err)
+    return jsonResponse(500, { error: 'dispatch_failed', message: (err as Error).message })
+  }
+
   return jsonResponse(200)
+}
+
+// ── Group membership change ──────────────────────────────────────────────────
+
+interface GroupMemberRow {
+  tour_id: string
+  user_id: string
+}
+
+async function fetchGroupMembers(groupId: string, env: Env): Promise<GroupMemberRow[]> {
+  const res = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/tour_link_member?group_id=eq.${encodeURIComponent(groupId)}&select=tour_id,tours!inner(user_id)`,
+    {
+      headers: {
+        apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+    },
+  )
+  if (!res.ok)
+    return []
+  const rows = (await res.json()) as Array<{ tour_id: string, tours: { user_id: string } }>
+  return rows.map(r => ({ tour_id: r.tour_id, user_id: r.tours.user_id }))
+}
+
+/**
+ * Notify members of a group about a membership change.
+ * - joined: notify pre-existing members about the new tour.
+ * - evicted_external: notify the evicted user + remaining members; self-eviction
+ *   (own confirmed edit) suppresses the self-notify via the callerId match.
+ * - dissolved: notify the lone remaining member.
+ */
+export async function handleGroupMembershipEvent(request: Request, env: Env): Promise<Response> {
+  const missing = missingConfigKeys(env)
+  if (missing.length > 0)
+    return jsonResponse(500, { error: 'missing_configuration', missing })
+
+  const callerId = await verifySupabaseJwt(request, env)
+  if (!callerId)
+    return jsonResponse(401, { error: 'unauthorized' })
+
+  let body: {
+    groupId?: string
+    event?: 'joined' | 'evicted_external' | 'dissolved'
+    actorTourId?: string
+    affectedTourId?: string
+    affectedUserId?: string
+  }
+  try {
+    body = (await request.json()) as typeof body
+  }
+  catch {
+    return jsonResponse(400, { error: 'invalid_json' })
+  }
+
+  if (!body.groupId || !body.event)
+    return jsonResponse(400, { error: 'missing_fields' })
+
+  const members = await fetchGroupMembers(body.groupId, env)
+
+  let recipients: string[] = []
+  if (body.event === 'joined') {
+    recipients = members
+      .filter(m => m.tour_id !== body.affectedTourId)
+      .map(m => m.user_id)
+  }
+  else if (body.event === 'evicted_external') {
+    recipients = members.map(m => m.user_id)
+    if (body.affectedUserId && body.affectedUserId !== callerId)
+      recipients.push(body.affectedUserId)
+  }
+  else if (body.event === 'dissolved') {
+    recipients = members.map(m => m.user_id)
+  }
+
+  // Dedupe + drop the actor (their own action).
+  recipients = Array.from(new Set(recipients)).filter(id => id !== callerId)
+  if (recipients.length === 0)
+    return jsonResponse(200, { notified: 0 })
+
+  try {
+    await Promise.all(
+      recipients.map(r =>
+        dispatchTourNotification(
+          r,
+          callerId,
+          { type: 'tour_interest', action: `group_${body.event}`, tourName: '' },
+          env,
+        ),
+      ),
+    )
+  }
+  catch (err) {
+    console.error('[notify/group-membership] dispatch failed:', err)
+    return jsonResponse(500, { error: 'dispatch_failed', message: (err as Error).message })
+  }
+
+  return jsonResponse(200, { notified: recipients.length })
 }

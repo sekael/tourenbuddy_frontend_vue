@@ -31,7 +31,10 @@ export interface TourDraft {
 }
 
 /** Converts a tour to a GeoJSON Feature for MapLibre rendering. */
-export function tourToGeoJsonFeature(tour: Tour): GeoJSON.Feature<GeoJSON.Point> {
+export function tourToGeoJsonFeature(
+  tour: Tour,
+  opts?: { linkedTourIds?: Set<string> },
+): GeoJSON.Feature<GeoJSON.Point> {
   return {
     type: 'Feature',
     id: tour.id,
@@ -44,14 +47,18 @@ export function tourToGeoJsonFeature(tour: Tour): GeoJSON.Feature<GeoJSON.Point>
       tourType: tour.tourType ?? null,
       completed: tour.completed,
       isFriendTour: tour.isFriendTour ?? false,
+      isLinked: opts?.linkedTourIds?.has(tour.id) ?? false,
     },
   }
 }
 
 /** Converts an array of tours to a GeoJSON FeatureCollection. */
-export function toursToGeoJson(tours: Tour[]): GeoJSON.FeatureCollection<GeoJSON.Point> {
+export function toursToGeoJson(
+  tours: Tour[],
+  opts?: { linkedTourIds?: Set<string> },
+): GeoJSON.FeatureCollection<GeoJSON.Point> {
   return {
     type: 'FeatureCollection',
-    features: tours.map(tourToGeoJsonFeature),
+    features: tours.map(t => tourToGeoJsonFeature(t, opts)),
   }
 }

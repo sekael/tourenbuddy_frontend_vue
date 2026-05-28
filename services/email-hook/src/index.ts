@@ -4,6 +4,8 @@ import { corsHeaders, jsonResponse, resolveLocale } from './config'
 import {
   handleFriendRequestReceived,
   handleFriendRequestResponded,
+  handleGroupMembershipEvent,
+  handleLinkRequestEvent,
   handleTourChanged,
   handleTourInterest,
 } from './notify'
@@ -125,6 +127,14 @@ export default {
 
       if (url.pathname === '/notify/tour-interest') {
         return withCors(await handleTourInterest(request, env), request)
+      }
+
+      if (url.pathname === '/notify/link-request-event') {
+        return withCors(await handleLinkRequestEvent(request, env), request)
+      }
+
+      if (url.pathname === '/notify/group-membership-event') {
+        return withCors(await handleGroupMembershipEvent(request, env), request)
       }
 
       // Default: Supabase Auth email hook (verifies signature internally, no CORS — server-to-server)

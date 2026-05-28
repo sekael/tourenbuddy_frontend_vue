@@ -15,6 +15,11 @@ import ContactChip from '@/features/contacts/presentation/components/contact-chi
 import GroupSmsConfirmDialog from '@/features/contacts/presentation/components/group-sms-confirm-dialog.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
+import CollisionNotice from '@/features/tour-links/presentation/components/collision-notice.vue'
+import LinkEditWarningDialog from '@/features/tour-links/presentation/components/link-edit-warning-dialog.vue'
+import LinkRequestBanner from '@/features/tour-links/presentation/components/link-request-banner.vue'
+import LinkedWithSection from '@/features/tour-links/presentation/components/linked-with-section.vue'
+import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
 import { TOUR_TYPE_I18N_KEYS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
 import { downloadOriginal } from '@/features/tours/data/services/gpx-storage-service'
 import TourAttachmentViewer from '@/features/tours/presentation/components/tour-attachment-viewer.vue'
@@ -55,6 +60,8 @@ const toursStore = useToursStore()
 const mapStore = useMapStore()
 const authStore = useAuthStore()
 const attachmentsStore = useTourAttachmentsStore()
+const tourLinksStore = useTourLinksStore()
+const { siblingsByTourId, requestsByTourId, groupIdByTourId } = storeToRefs(tourLinksStore)
 const { contacts } = storeToRefs(contactsStore)
 const { isPickingLocation } = storeToRefs(mapStore)
 const { currentUser } = storeToRefs(authStore)
@@ -143,6 +150,21 @@ watch(
   },
 )
 
+// ── Tour link group / pending request derivation (early — used by edit gate) ─
+const linkSiblings = computed(() => siblingsByTourId.value.get(props.tour.id) ?? [])
+const linkPendingRequests = computed(() => requestsByTourId.value.get(props.tour.id) ?? [])
+const isLinked = computed(() => groupIdByTourId.value.has(props.tour.id))
+
+// Edit-warning dialog: shown when owner submits an edit that would evict the
+// tour from its group (tour_type changed, visibility flipped from friends, or
+// goal moved >100 m from any sibling). Confirm proceeds with submit; cancel
+// rolls back.
+const editWarningPending = ref<null | (() => Promise<void>)>(null)
+
+function navigateToSibling(siblingId: string) {
+  mapStore.selectTour(siblingId)
+}
+
 // ── Edit save ────────────────────────────────────────────────────────────────
 const saveError = ref<string | null>(null)
 const isSaving = ref(false)
@@ -152,6 +174,31 @@ async function handleEditSubmit(draft: TourDraft, _gpxFile: File | null, gpxRemo
     log.debug('Ignoring edit submit while location picker is active')
     return
   }
+
+  // Soft-gate: if this edit would evict the tour from its group, ask first.
+  if (isLinked.value && wouldEvict(draft, pendingGoal.value)) {
+    editWarningPending.value = () => performEditSubmit(draft, gpxRemoved)
+    return
+  }
+  await performEditSubmit(draft, gpxRemoved)
+}
+
+/** True if applying the edit to a linked tour would break the group invariant. */
+function wouldEvict(draft: TourDraft, newGoal: { lng: number, lat: number }): boolean {
+  const t1 = props.tour
+  if (draft.tourType !== t1.tourType)
+    return true
+  const effectiveVisibility = draft.visibility ?? t1.visibility
+  if (t1.visibility === 'friends' && effectiveVisibility !== 'friends')
+    return true
+  // Goal change: trigger handles distance check server-side. Treat any move as
+  // eviction-causing for the warning copy; the trigger will pass through if it
+  // turns out to stay within radius.
+  const moved = newGoal.lng !== t1.goal.lng || newGoal.lat !== t1.goal.lat
+  return moved
+}
+
+async function performEditSubmit(draft: TourDraft, gpxRemoved: boolean) {
   saveError.value = null
   isSaving.value = true
   try {
@@ -165,6 +212,17 @@ async function handleEditSubmit(draft: TourDraft, _gpxFile: File | null, gpxRemo
   finally {
     isSaving.value = false
   }
+}
+
+async function confirmEditWarning() {
+  const fn = editWarningPending.value
+  editWarningPending.value = null
+  if (fn)
+    await fn()
+}
+
+function cancelEditWarning() {
+  editWarningPending.value = null
 }
 
 async function handleDownloadGpx() {
@@ -396,6 +454,18 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
     <!-- ── View mode ───────────────────────────────────────────────────── -->
     <template v-else>
       <div class="details">
+        <!-- Tour link group siblings + pending link requests + collision notice -->
+        <LinkedWithSection
+          :siblings="linkSiblings"
+          @open-tour="navigateToSibling"
+        />
+        <LinkRequestBanner
+          v-for="req in linkPendingRequests"
+          :key="req.id"
+          :request="req"
+        />
+        <CollisionNotice v-if="isOwner" :own-tour-id="tour.id" />
+
         <!-- Completion toggle (owner only) -->
         <button
           v-if="isOwner"
@@ -662,6 +732,9 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
           <template v-if="deleteState === 'confirm'">
             <span class="delete-confirm-text">{{ t('tours.infoSheet.deleteConfirmText') }}</span>
+            <span v-if="isLinked && linkSiblings.length > 0" class="delete-confirm-text delete-confirm-text--link">
+              {{ t('tourLinks.deleteUnlinkWarning', { count: linkSiblings.length }) }}
+            </span>
             <div class="delete-confirm-row">
               <button type="button" class="cancel-btn" @click="deleteState = 'idle'">
                 {{ t('tours.infoSheet.cancelBtn') }}
@@ -698,6 +771,13 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
       :attachments="viewerAttachments"
       :start-index="viewerStartIndex"
       @close="viewerOpen = false"
+    />
+
+    <LinkEditWarningDialog
+      v-if="editWarningPending"
+      :linked-count="linkSiblings.length"
+      @confirm="confirmEditWarning"
+      @cancel="cancelEditWarning"
     />
   </component>
 </template>

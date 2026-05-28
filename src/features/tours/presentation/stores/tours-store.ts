@@ -7,7 +7,11 @@ import { useLogger } from '@/core/logging/use-logger'
 import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
-import { notifyTourChanged, notifyTourDeleted } from '@/features/notifications/data/notify-dispatch'
+import {
+  notifyTourChanged,
+  notifyTourDeleted,
+  notifyTourInterest,
+} from '@/features/notifications/data/notify-dispatch'
 import { ToursRepositoryImpl } from '@/features/tours/data/repositories/tours-repository-impl'
 import { removeGpx } from '@/features/tours/data/services/gpx-storage-service'
 import { isMeaningfulTourChange, isShareableTour } from '@/features/tours/domain/tour-notifications'
@@ -220,6 +224,11 @@ export const useToursStore = defineStore('tours', () => {
     ) {
       notifyTourChanged(id, 'updated')
     }
+
+    // Independent of meaningful-edit filter: re-scan for friend collisions on every
+    // update (goal / type / visibility may have changed). Worker no-ops for private tours.
+    if (effectiveVisibility === 'friends')
+      notifyTourInterest(id)
   }
 
   async function setCompleted(tourId: string, completed: boolean) {

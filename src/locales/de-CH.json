@@ -521,11 +521,38 @@
     "type": {
       "friend_requests": "Freundschaftsanfragen",
       "tour_updates": "Änderungen an geteilten Touren",
-      "tour_interest": "Interesse an deinen Touren"
+      "tour_interest": "Hinweise auf gleiche Touren"
+    },
+    "typeDescription": {
+      "tour_interest": "Wenn ein Freund die gleiche Tour plant, bei Verknüpfungsanfragen und nach neuen Freundschaften."
     },
     "allOffDisclaimer": "Du erhältst keine Benachrichtigungen über Freundschaftsanfragen oder andere wichtige Ereignisse. Aktiviere mindestens einen Kanal, um informiert zu bleiben.",
     "pushUnavailable": "Nicht verfügbar",
     "installHint": "Um Push-Benachrichtigungen zu aktivieren, füge TourenBuddy zuerst zum Home-Bildschirm hinzu.",
     "deniedHint": "Push-Benachrichtigungen sind blockiert. Aktiviere sie in den Browser- oder Geräteeinstellungen."
+  },
+  "common": {
+    "loading": "Lädt…"
+  },
+  "tourLinks": {
+    "linkedWithHeader": "Verknüpft mit",
+    "moreLinked": "+{count} weitere",
+    "collisionNoticeTitle": "Gleiche Tour geplant",
+    "collisionNoticeBody": "Freunde mit der gleichen Tour: {names}. Verknüpfe eure Touren, um gemeinsam zu planen.",
+    "requestToLinkBtn": "Verknüpfung anfragen bei {name}",
+    "requestToLinkShortBtn": "Verknüpfen",
+    "requestingBtn": "Wird angefragt…",
+    "bannerIncoming": "{name} möchte «{tour}» mit deiner Tour verknüpfen.",
+    "bannerOutgoing": "Verknüpfungsanfrage an {name} für «{tour}» gesendet.",
+    "acceptBtn": "Annehmen",
+    "declineBtn": "Ablehnen",
+    "withdrawBtn": "Zurückziehen",
+    "editWarningTitle": "Diese Änderung trennt die Verknüpfung",
+    "editWarningBody": "Diese Änderung trennt diese Tour von {count} verknüpften Freund-Tour(en).",
+    "editWarningHint": "Du kannst später eine neue Verknüpfung anfragen, wenn die Touren noch übereinstimmen.",
+    "editWarningProceedBtn": "Speichern und Verknüpfung lösen",
+    "deleteUnlinkWarning": "Diese Tour ist mit {count} Freund-Tour(en) verknüpft. Beim Löschen wird die Verknüpfung getrennt.",
+    "backfillPageTitle": "Tour-Überschneidungen mit diesem Freund",
+    "backfillEmpty": "Keine Überschneidungen zu prüfen."
   }
 }

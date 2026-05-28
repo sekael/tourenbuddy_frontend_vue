@@ -27,6 +27,7 @@ const LAYER_ID = TOUR_LAYER_IDS[0]
 const SELECTED_LAYER_ID = TOUR_LAYER_IDS[1]
 const CHECK_LAYER_ID = 'tours-completed-check'
 const FRIEND_LAYER_ID = 'tours-friend-indicator'
+const LINK_LAYER_ID = 'tours-link-indicator'
 const PREVIEW_LAYER_ID = 'tours-preview-circle'
 const CHECK_ICON_ID = 'tour-check-icon'
 const FRIEND_ICON_ID = 'tour-friend-icon'
@@ -268,6 +269,14 @@ export function useToursMarkerLayer(
         'all',
         inVisible,
         ['==', ['get', 'isFriendTour'], true],
+      ] as ExpressionSpecification)
+    }
+
+    if (map.getLayer(LINK_LAYER_ID)) {
+      map.setFilter(LINK_LAYER_ID, [
+        'all',
+        inVisible,
+        ['==', ['get', 'isLinked'], true],
       ] as ExpressionSpecification)
     }
   }
@@ -631,6 +640,25 @@ export function useToursMarkerLayer(
       })
     }
 
+    // Link indicator: small circle badge in the upper-right of the marker for
+    // tours that belong to a tour_link_group. Visual only — clicks fall through
+    // to the LAYER_ID handler. Uses a circle (not a symbol icon) so no glyph
+    // asset is required.
+    map.addLayer({
+      id: LINK_LAYER_ID,
+      type: 'circle',
+      source: SOURCE_ID,
+      filter: ['in', ['get', 'id'], ['literal', []]],
+      paint: {
+        'circle-radius': 5,
+        'circle-color': '#2196f3',
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 1.5,
+        'circle-translate': [10, -10],
+        'circle-translate-anchor': 'viewport',
+      },
+    })
+
     map.on('click', LAYER_ID, (e) => {
       const feature = e.features?.[0]
       if (feature?.properties?.id) {
@@ -672,7 +700,11 @@ export function useToursMarkerLayer(
     })
   }
 
-  function updateTours(tours: Tour[], selectedTourId: string | null) {
+  function updateTours(
+    tours: Tour[],
+    selectedTourId: string | null,
+    linkedTourIds: Set<string> = new Set(),
+  ) {
     const source = map.getSource(SOURCE_ID)
     if (!source || source.type !== 'geojson')
       return
@@ -691,7 +723,7 @@ export function useToursMarkerLayer(
     splitZooms = collectSplitZooms(currentTree)
     currentSelectedId = selectedTourId
 
-    const geoJson = toursToGeoJson(tours)
+    const geoJson = toursToGeoJson(tours, { linkedTourIds })
     source.setData(geoJson)
     commitFrame(currentTree, map.getZoom())
   }

@@ -71,9 +71,43 @@ export function notifyTourDeleted(partnerContactIds: string[], tourName: string)
   })
 }
 
-/** Fire-and-forget: notify a tour's owner that the caller is interested in it. */
+/**
+ * Fire-and-forget: after a successful tour create/update, ask the Worker to scan
+ * for friend-owned colliding tours (same goal within 100 m, same `tour_type`, both
+ * friends-visible) and dispatch a `tour_interest` notification to each colliding
+ * owner. Replaces the legacy "decline duplicate save → signal interest" flow.
+ */
 export function notifyTourInterest(tourId: string): void {
   postToWorker('/notify/tour-interest', { tourId }).catch((err) => {
     logger.warn('notifyTourInterest failed', err)
+  })
+}
+
+/**
+ * Fire-and-forget: notify the counterparty of a tour-link-request lifecycle event.
+ * Withdrawals SHALL NOT call this (per design — silent for the target).
+ */
+export function notifyTourLinkRequestEvent(
+  requestId: string,
+  event: 'created' | 'accepted' | 'declined',
+): void {
+  postToWorker('/notify/link-request-event', { requestId, event }).catch((err) => {
+    logger.warn('notifyTourLinkRequestEvent failed', err)
+  })
+}
+
+/**
+ * Fire-and-forget: notify group members of a membership change. Worker resolves
+ * recipients per the design's group-membership notification matrix (joined →
+ * pre-existing members; evicted_external → evicted + remaining; dissolved →
+ * lone remaining member). The actor is suppressed by the Worker via JWT match.
+ */
+export function notifyGroupMembershipEvent(
+  groupId: string,
+  event: 'joined' | 'evicted_external' | 'dissolved',
+  detail: { actorTourId?: string, affectedTourId?: string, affectedUserId?: string } = {},
+): void {
+  postToWorker('/notify/group-membership-event', { groupId, event, ...detail }).catch((err) => {
+    logger.warn('notifyGroupMembershipEvent failed', err)
   })
 }

@@ -24,16 +24,44 @@ Go to **Brevo → Transactional → Email Templates → Create a template**.
 
 Create the templates by pasting the corresponding files from `brevo-templates/`:
 
-| File                                        | Template name (suggestion)    | Note                                                         |
-| ------------------------------------------- | ----------------------------- | ------------------------------------------------------------ |
-| `friend_request_received_en.html` + `.txt`  | `friend_request_received_en`  | Subject line is in the HTML top comment                      |
-| `friend_request_received_de.html` + `.txt`  | `friend_request_received_de`  |                                                              |
-| `friend_request_responded_en.html` + `.txt` | `friend_request_responded_en` | Never reveals accept/decline                                 |
-| `friend_request_responded_de.html` + `.txt` | `friend_request_responded_de` |                                                              |
-| `tour_updates_en.html` + `.txt`             | `tour_updates_en`             | Generic; params: `action`, `actorName`, `tourName`, `appUrl` |
-| `tour_updates_de.html` + `.txt`             | `tour_updates_de`             | `action` ∈ created/updated/deleted                           |
-| `tour_interest_en.html` + `.txt`            | `tour_interest_en`            | params: `actorName`, `tourName`, `appUrl`                    |
-| `tour_interest_de.html` + `.txt`            | `tour_interest_de`            |                                                              |
+| File                                        | Template name (suggestion)    | Note                                                                                                                                            |
+| ------------------------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `friend_request_received_en.html` + `.txt`  | `friend_request_received_en`  | Subject line is in the HTML top comment                                                                                                         |
+| `friend_request_received_de.html` + `.txt`  | `friend_request_received_de`  |                                                                                                                                                 |
+| `friend_request_responded_en.html` + `.txt` | `friend_request_responded_en` | Never reveals accept/decline                                                                                                                    |
+| `friend_request_responded_de.html` + `.txt` | `friend_request_responded_de` |                                                                                                                                                 |
+| `tour_updates_en.html` + `.txt`             | `tour_updates_en`             | Generic; params: `action`, `actorName`, `tourName`, `appUrl`                                                                                    |
+| `tour_updates_de.html` + `.txt`             | `tour_updates_de`             | `action` ∈ created/updated/deleted                                                                                                              |
+| `tour_interest_en.html` + `.txt`            | `tour_interest_en`            | params: `action`, `actorName`, `tourName`, `appUrl`                                                                                             |
+| `tour_interest_de.html` + `.txt`            | `tour_interest_de`            | `action` ∈ collision / link_created / link_accepted / link_declined / group_joined / group_evicted_external / group_dissolved / backfill_digest |
+
+### `tour_interest` action semantics
+
+The reworked `tour_interest` channel covers all "same-tour collaboration suggestion" events. The Worker dispatches under one of these `action` values:
+
+| action                   | Trigger                                                                  | tourName param           |
+| ------------------------ | ------------------------------------------------------------------------ | ------------------------ |
+| `collision`              | Friend just saved a tour colliding with one of yours                     | the friend's tour name   |
+| `link_created`           | Someone sent you a link request                                          | the initiator's tour     |
+| `link_accepted`          | Your link request was accepted                                           | the target's tour        |
+| `link_declined`          | Your link request was declined                                           | the target's tour        |
+| `group_joined`           | A new tour joined a group you're in                                      | (empty)                  |
+| `group_evicted_external` | A member's tour was evicted (type / visibility / goal change)            | (empty)                  |
+| `group_dissolved`        | The group dissolved (count fell below 2)                                 | (empty)                  |
+| `backfill_digest`        | New friendship — N pre-existing overlaps detected (deeplink to backfill) | `String(collisionCount)` |
+
+The frontend deep-links `backfill_digest` to `/friends/:friendshipId/backfill-collisions`.
+
+### Worker endpoints (notifications)
+
+| Path                               | Caller         | Payload                                                              |
+| ---------------------------------- | -------------- | -------------------------------------------------------------------- |
+| `/notify/friend-request-received`  | request sender | `{friendshipId}`                                                     |
+| `/notify/friend-request-responded` | responder      | `{friendshipId}` — also fires `dispatchBackfillDigest` sub-routine   |
+| `/notify/tour-changed`             | tour owner     | `{tourId, action, partnerContactIds?, tourName?}`                    |
+| `/notify/tour-interest`            | tour owner     | `{tourId}` — Worker scans + dispatches `action: collision` per match |
+| `/notify/link-request-event`       | event actor    | `{requestId, event: 'created'\|'accepted'\|'declined'}`              |
+| `/notify/group-membership-event`   | actor          | `{groupId, event, actorTourId?, affectedTourId?, affectedUserId?}`   |
 
 For each template:
 

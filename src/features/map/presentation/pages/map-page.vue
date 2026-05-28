@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
+import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -18,9 +18,7 @@ import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { notifyTourInterest } from '@/features/notifications/data/notify-dispatch'
 import { getElevation } from '@/features/tours/data/services/swisstopo-elevation-service'
 import { suggestTourName } from '@/features/tours/data/services/swisstopo-name-service'
-import { findCollidingPartnerTour } from '@/features/tours/domain/collision'
 import { isSameGoal } from '@/features/tours/domain/distance'
-import DuplicateTourDialog from '@/features/tours/presentation/components/duplicate-tour-dialog.vue'
 import TourCreationDialog from '@/features/tours/presentation/components/tour-creation-dialog.vue'
 import TourInfoSheet from '@/features/tours/presentation/components/tour-info-sheet.vue'
 import TourListSheet from '@/features/tours/presentation/components/tour-list-sheet.vue'
@@ -435,19 +433,6 @@ function handleListSheetAddTour() {
   mapStore.setPickingLocation(true)
 }
 
-interface PendingCreate {
-  draft: TourDraft
-  goal: { lng: number, lat: number }
-  gpxFile: File | null
-  preUploadedTourId: string | null
-  draftId: string
-  collidingTour: Tour
-}
-
-// Set when a new tour collides with a friend tour the user partners on — the
-// duplicate-save prompt holds the create until the user confirms or declines.
-const pendingDuplicate = ref<PendingCreate | null>(null)
-
 async function handleTourCreated(
   draft: TourDraft,
   gpxFile: File | null,
@@ -460,14 +445,6 @@ async function handleTourCreated(
   // Capture goal before closeOverlay resets state
   const goal = pendingLocation.value
   closeOverlay()
-
-  // Colliding with a friend tour the user is a partner on → prompt before saving.
-  const collidingTour = findCollidingPartnerTour(goal, friendTours.value)
-  if (collidingTour) {
-    pendingDuplicate.value = { draft, goal, gpxFile, preUploadedTourId, draftId, collidingTour }
-    return
-  }
-
   await performCreate(draft, goal, gpxFile, preUploadedTourId, draftId)
 }
 
@@ -484,28 +461,10 @@ async function performCreate(
     // Upload staged attachments now that the tour row exists
     if (draftId)
       await attachmentsStore.commitStaged(draftId, newId)
+    // Fire-and-forget: Worker scans for friend-owned colliding tours and dispatches
+    // tour_interest notifications. Replaces the legacy "decline duplicate → signal" flow.
+    notifyTourInterest(newId)
   }
-}
-
-function handleDuplicateConfirm() {
-  const p = pendingDuplicate.value
-  if (!p)
-    return
-  pendingDuplicate.value = null
-  performCreate(p.draft, p.goal, p.gpxFile, p.preUploadedTourId, p.draftId)
-}
-
-function handleDuplicateDecline() {
-  const p = pendingDuplicate.value
-  if (!p)
-    return
-  // Don't save; signal interest to the colliding tour's owner instead.
-  notifyTourInterest(p.collidingTour.id)
-  pendingDuplicate.value = null
-}
-
-function handleDuplicateCancel() {
-  pendingDuplicate.value = null
 }
 
 function handleDialogClose() {
@@ -613,14 +572,6 @@ function handleDialogClose() {
         />
       </div>
     </Transition>
-
-    <DuplicateTourDialog
-      v-if="pendingDuplicate"
-      :colliding-tour="pendingDuplicate.collidingTour"
-      @confirm="handleDuplicateConfirm"
-      @decline="handleDuplicateDecline"
-      @cancel="handleDuplicateCancel"
-    />
   </div>
 </template>
 

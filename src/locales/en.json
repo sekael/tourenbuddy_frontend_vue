@@ -521,11 +521,38 @@
     "type": {
       "friend_requests": "Friend requests",
       "tour_updates": "Shared tour changes",
-      "tour_interest": "Interest in your tours"
+      "tour_interest": "Same-tour collaboration suggestions"
+    },
+    "typeDescription": {
+      "tour_interest": "Pings when a friend plans the same tour, link requests, and overlap digests after a new friendship."
     },
     "allOffDisclaimer": "You won't receive friend request notifications or other important updates. Enable at least one channel to stay informed.",
     "pushUnavailable": "Not available",
     "installHint": "To enable push notifications, add TourenBuddy to your home screen first.",
     "deniedHint": "Push notifications are blocked. Enable them in your browser or device settings."
+  },
+  "common": {
+    "loading": "Loading…"
+  },
+  "tourLinks": {
+    "linkedWithHeader": "Linked with",
+    "moreLinked": "+{count} more",
+    "collisionNoticeTitle": "Same tour planned",
+    "collisionNoticeBody": "Friends planning the same tour: {names}. Link your tours to collaborate.",
+    "requestToLinkBtn": "Request to link with {name}",
+    "requestToLinkShortBtn": "Request to link",
+    "requestingBtn": "Requesting…",
+    "bannerIncoming": "{name} wants to link “{tour}” with this tour.",
+    "bannerOutgoing": "Link request sent to {name} for “{tour}”.",
+    "acceptBtn": "Accept",
+    "declineBtn": "Decline",
+    "withdrawBtn": "Withdraw",
+    "editWarningTitle": "This will unlink the tour",
+    "editWarningBody": "This change will unlink this tour from {count} friend tour(s) it is currently grouped with.",
+    "editWarningHint": "You can re-request a link later if the tours still match.",
+    "editWarningProceedBtn": "Save & unlink",
+    "deleteUnlinkWarning": "This tour is linked with {count} friend tour(s). Deleting will unlink them.",
+    "backfillPageTitle": "Tour overlaps with this friend",
+    "backfillEmpty": "No tour overlaps to review."
   }
 }

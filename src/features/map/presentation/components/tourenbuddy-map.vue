@@ -6,6 +6,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { SWISSTOPO_STYLES } from '@/features/map/data/swisstopo-styles'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
+import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
 import {
   friendTourIdsShadowedByOwned,
   ownedTourIdsShadowedByFriends,
@@ -27,8 +28,12 @@ let mapInstance: MapLibreMap | null = null
 
 const toursStore = useToursStore()
 const mapStore = useMapStore()
+const tourLinksStore = useTourLinksStore()
 const { tours, friendTours } = storeToRefs(toursStore)
 const { currentStyleIndex, selectedTourId, editPreviewGoal } = storeToRefs(mapStore)
+const { groupIdByTourId } = storeToRefs(tourLinksStore)
+
+const linkedTourIds = computed(() => new Set(groupIdByTourId.value.keys()))
 
 // Expose map instance for location picker
 const map = ref<MapLibreMap | null>(null)
@@ -95,7 +100,7 @@ onMounted(() => {
       () => t('map.cluster.spiderfyHint'),
     )
     await markerLayer.setup()
-    markerLayer.updateTours(mapTours.value, selectedTourId.value)
+    markerLayer.updateTours(mapTours.value, selectedTourId.value, linkedTourIds.value)
     markerLayer.updatePreview(editPreviewGoal.value, selectedTour.value?.tourType ?? null)
 
     gpxLayer = useGpxTrackLayer(mapInstance!)
@@ -128,8 +133,8 @@ onUnmounted(() => {
 })
 
 // Watch for tour/selection changes and update both layers
-watch([mapTours, selectedTourId], ([newTours, newSelectedId]) => {
-  markerLayer?.updateTours(newTours, newSelectedId)
+watch([mapTours, selectedTourId, linkedTourIds], ([newTours, newSelectedId, newLinked]) => {
+  markerLayer?.updateTours(newTours, newSelectedId, newLinked as Set<string>)
   gpxLayer?.updateTrack(selectedTour.value)
 })
 
@@ -148,7 +153,7 @@ watch(currentStyleIndex, (index) => {
     mapInstance.setStyle(style.style)
     mapInstance.once('style.load', async () => {
       await markerLayer?.setup()
-      markerLayer?.updateTours(mapTours.value, selectedTourId.value)
+      markerLayer?.updateTours(mapTours.value, selectedTourId.value, linkedTourIds.value)
       markerLayer?.updatePreview(editPreviewGoal.value, selectedTour.value?.tourType ?? null)
       gpxLayer?.setup()
       gpxLayer?.updateTrack(selectedTour.value)

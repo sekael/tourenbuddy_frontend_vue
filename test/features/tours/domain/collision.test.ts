@@ -1,7 +1,6 @@
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import { describe, expect, it } from 'vitest'
 import {
-  findCollidingPartnerTour,
   friendTourIdsShadowedByOwned,
   ownedTourIdsShadowedByFriends,
 } from '@/features/tours/domain/collision'
@@ -40,23 +39,6 @@ function friendTour(overrides: Partial<Tour>): Tour {
     ...overrides,
   }
 }
-
-describe('findCollidingPartnerTour', () => {
-  it('ignores a colliding friend tour the user is NOT a partner on', () => {
-    const tours = [friendTour({ isPartner: false, goal: NEAR })]
-    expect(findCollidingPartnerTour(GOAL, tours)).toBeNull()
-  })
-
-  it('ignores a partner tour outside the 100m radius', () => {
-    const tours = [friendTour({ isPartner: true, goal: FAR })]
-    expect(findCollidingPartnerTour(GOAL, tours)).toBeNull()
-  })
-
-  it('returns the partner tour within the radius', () => {
-    const hit = friendTour({ id: 'hit', isPartner: true, goal: NEAR })
-    expect(findCollidingPartnerTour(GOAL, [hit])?.id).toBe('hit')
-  })
-})
 
 describe('friendTourIdsShadowedByOwned', () => {
   it('shadows a friend tour colliding with an owned tour', () => {
