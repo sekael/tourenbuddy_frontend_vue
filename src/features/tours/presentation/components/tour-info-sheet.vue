@@ -161,7 +161,16 @@ const isLinked = computed(() => groupIdByTourId.value.has(props.tour.id))
 // rolls back.
 const editWarningPending = ref<null | (() => Promise<void>)>(null)
 
+// "Verknüpft mit" full list takes over the sheet body when the user taps the
+// "+N weitere" pill. Back returns to the tour details inside the same sheet —
+// no nested overlay (avoids the stacked bottom-sheet broken on mobile).
+const linksView = ref(false)
+watch(() => props.tour.id, () => {
+  linksView.value = false
+})
+
 function navigateToSibling(siblingId: string) {
+  linksView.value = false
   mapStore.selectTour(siblingId)
 }
 
@@ -292,10 +301,32 @@ const sheetTitle = computed(() => {
       return t('tours.picker.endTitle')
     return t('tours.picker.goalTitle')
   }
+  if (linksView.value)
+    return t('tourLinks.linkedWithHeader')
   return mode.value === 'edit'
     ? `${t('tours.infoSheet.editTitlePrefix')}: ${displayName.value}`
     : displayName.value
 })
+
+const sheetShowBack = computed(() => {
+  // linksView wins on both viewports — its back returns to tour details.
+  if (linksView.value)
+    return true
+  return props.showBack && !isDesktop.value ? true : undefined
+})
+const sheetBackLabel = computed(() => {
+  if (linksView.value && isDesktop.value)
+    return t('tourLinks.linkedWithHeader')
+  return props.showBack && isDesktop.value ? t('tours.infoSheet.backToTours') : undefined
+})
+
+function handleSheetBack() {
+  if (linksView.value) {
+    linksView.value = false
+    return
+  }
+  emit('back')
+}
 
 const formattedDate = computed(() => {
   if (!props.tour.plannedDate)
@@ -422,10 +453,10 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
     :is="isDesktop ? SideDrawer : BottomSheet"
     :title="sheetTitle"
     :collapsed="sheetCollapsed"
-    :back-label="props.showBack && isDesktop ? t('tours.infoSheet.backToTours') : undefined"
-    :show-back="props.showBack && !isDesktop ? true : undefined"
+    :back-label="sheetBackLabel"
+    :show-back="sheetShowBack"
     @close="emit('close')"
-    @back="emit('back')"
+    @back="handleSheetBack"
   >
     <!-- ── Edit mode ────────────────────────────────────────────────────── -->
     <template v-if="mode === 'edit'">
@@ -451,6 +482,15 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
       />
     </template>
 
+    <!-- ── Linked-tours full-list mode ─────────────────────────────────── -->
+    <template v-else-if="linksView">
+      <LinkedWithSection
+        :siblings="linkSiblings"
+        :full-list="true"
+        @open-tour="navigateToSibling"
+      />
+    </template>
+
     <!-- ── View mode ───────────────────────────────────────────────────── -->
     <template v-else>
       <div class="details">
@@ -458,6 +498,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         <LinkedWithSection
           :siblings="linkSiblings"
           @open-tour="navigateToSibling"
+          @view-all="linksView = true"
         />
         <LinkRequestBanner
           v-for="req in linkPendingRequests"
@@ -716,7 +757,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
       </div>
     </template>
 
-    <template v-if="mode === 'view' && isOwner" #footer>
+    <template v-if="mode === 'view' && isOwner && !linksView" #footer>
       <div class="view-actions">
         <div class="edit-delete-row">
           <button

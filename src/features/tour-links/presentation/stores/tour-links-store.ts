@@ -139,8 +139,13 @@ export const useTourLinksStore = defineStore('tour-links', () => {
   useRealtimeSubscription({
     key: () => channelKey.value,
     enabled: () => realtimeEnabled.value,
-    // tour_link_request only — handshake feedback. Membership is refetched lazily.
-    bindings: () => [{ event: '*', table: 'tour_link_request' }],
+    // Both tables: request rows drive banner state, member rows drive linked
+    // sibling pills and the map chain badge. Without the member binding, the
+    // non-acceptor side never learns about a successful accept until reload.
+    bindings: () => [
+      { event: '*', table: 'tour_link_request' },
+      { event: '*', table: 'tour_link_member' },
+    ],
     onChange: () => {
       fetchAll().catch(err => logger.warn('refetch on realtime change failed', err))
     },

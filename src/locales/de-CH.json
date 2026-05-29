@@ -537,6 +537,7 @@
   "tourLinks": {
     "linkedWithHeader": "Verknüpft mit",
     "moreLinked": "+{count} weitere",
+    "unknownPartner": "Unbekannter Buddy",
     "collisionNoticeTitle": "Gleiche Tour geplant",
     "collisionNoticeBody": "Freunde mit der gleichen Tour: {names}. Verknüpfe eure Touren, um gemeinsam zu planen.",
     "requestToLinkBtn": "Verknüpfung anfragen bei {name}",

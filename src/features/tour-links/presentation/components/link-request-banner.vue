@@ -23,6 +23,11 @@ const { tours, friendTours } = storeToRefs(toursStore)
 const { currentUser } = storeToRefs(authStore)
 const { userIdToNamesMap } = storeToRefs(friendshipsStore)
 
+// Defensive: friend-tours has no realtime sub yet (#198). If a link request
+// realtime arrives before the initial friend-tours fetch resolves, the banner
+// can't resolve the counterpart's name or tour. Refresh on mount.
+toursStore.loadFriendTours()
+
 const submitting = ref(false)
 const submitError = ref<string | null>(null)
 

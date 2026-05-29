@@ -1,25 +1,40 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
+import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   /** Tour ids of the group siblings (excluding the current tour). */
   siblings: string[]
-}>()
+  /**
+   * Render the complete sibling list (no overflow pill). Parent's sheet
+   * provides its own back / close chrome.
+   */
+  fullList?: boolean
+}>(), { fullList: false })
 const emit = defineEmits<{
   /** Navigate to a sibling tour. */
   openTour: [tourId: string]
+  /** Switch the parent sheet into "view all linked tours" mode. */
+  viewAll: []
 }>()
 
 const { t } = useI18n({ useScope: 'global' })
 
 const toursStore = useToursStore()
+const friendshipsStore = useFriendshipsStore()
 const { tours, friendTours } = storeToRefs(toursStore)
+const { userIdToNamesMap } = storeToRefs(friendshipsStore)
 
-const overflowOpen = ref(false)
+/**
+ * Sibling is unresolvable when neither own tours nor friend tours hold it.
+ * Tour info is then unreachable from this client — pill must be inert.
+ */
+function isResolvable(id: string): boolean {
+  return tours.value.some(t => t.id === id) || friendTours.value.some(t => t.id === id)
+}
 
 function tourName(id: string): string {
   const t1 = tours.value.find(t => t.id === id)
@@ -27,68 +42,114 @@ function tourName(id: string): string {
   return t1?.name ?? t2?.name ?? t('tours.infoSheet.unnamedTour')
 }
 
+// Owner display name comes from friendships store (userId → profile name map).
+// `partnerNames` on a friend tour holds the tour's PARTNERS, never the owner.
+// A sibling can belong to a group member who is NOT a direct friend of the
+// viewer (the friendship invariant on link groups is not strictly enforced
+// across all pairs), in which case friendTours won't contain it. Surface
+// "Unknown buddy" rather than collapsing the pill to just a tour name.
 function partnerName(id: string): string {
+  const t1 = tours.value.find(t => t.id === id)
+  if (t1)
+    return '' // own sibling — no partner label
   const t2 = friendTours.value.find(t => t.id === id)
   if (!t2)
-    return tourName(id)
-  // For a friend's tour, use the friend's name from partnerNames (their userId).
-  const friend = (t2.partnerNames ?? []).find(p => p.userId === t2.userId)
-  if (friend) {
-    const fullName = [friend.firstName, friend.lastName].filter(Boolean).join(' ')
-    return fullName || tourName(id)
-  }
-  return tourName(id)
+    return t('tourLinks.unknownPartner')
+  const name = userIdToNamesMap.value.get(t2.userId)
+  const resolved = [name?.firstName, name?.lastName].filter(Boolean).join(' ')
+  return resolved || t('tourLinks.unknownPartner')
 }
 
-const inlineIds = computed(() => props.siblings.slice(0, 2))
-const overflowIds = computed(() => props.siblings.slice(2))
+/** Pill label: "{partnerName}: {tourName}", or just tourName for own siblings. */
+function pillLabel(id: string): string {
+  const name = partnerName(id)
+  return name ? `${name}: ${tourName(id)}` : tourName(id)
+}
+
+/**
+ * Siblings reordered so the viewer's own tours come first — both in the inline
+ * pill row and the full list. Stable wrt the original order otherwise.
+ */
+const orderedSiblings = computed(() => {
+  const own: string[] = []
+  const rest: string[] = []
+  for (const id of props.siblings) {
+    if (tours.value.some(t => t.id === id))
+      own.push(id)
+    else
+      rest.push(id)
+  }
+  return [...own, ...rest]
+})
+
+const inlineIds = computed(() => orderedSiblings.value.slice(0, 2))
+const overflowIds = computed(() => orderedSiblings.value.slice(2))
 const overflowCount = computed(() => overflowIds.value.length)
 
-function handlePillClick(id: string) {
-  emit('openTour', id)
-}
+// Resolve owner profile names for sibling friend tours so pills aren't blank.
+watch(
+  () => props.siblings,
+  (ids) => {
+    const missing = [...new Set(
+      ids
+        .map(id => friendTours.value.find(t => t.id === id)?.userId)
+        .filter((uid): uid is string => !!uid && !userIdToNamesMap.value.has(uid)),
+    )]
+    if (missing.length > 0)
+      friendshipsStore.getNamesByUserIds(missing)
+  },
+  { immediate: true },
+)
 
-function handleOverflowSelect(id: string) {
-  overflowOpen.value = false
+function handlePillClick(id: string) {
+  if (!isResolvable(id))
+    return
   emit('openTour', id)
 }
 </script>
 
 <template>
   <section v-if="props.siblings.length > 0" class="linked-with-section">
-    <h4 class="section-title">
+    <h4 v-if="!fullList" class="section-title">
       {{ t('tourLinks.linkedWithHeader') }}
     </h4>
-    <div class="pills-row">
+
+    <div v-if="!fullList" class="pills-row">
       <button
         v-for="id in inlineIds"
         :key="id"
         type="button"
         class="pill"
+        :class="{ 'pill--inert': !isResolvable(id) }"
+        :disabled="!isResolvable(id)"
         @click="handlePillClick(id)"
       >
-        {{ partnerName(id) }}
+        {{ pillLabel(id) }}
       </button>
       <button
         v-if="overflowCount > 0"
         type="button"
         class="pill pill--more"
-        @click="overflowOpen = true"
+        @click="emit('viewAll')"
       >
         {{ t('tourLinks.moreLinked', { count: overflowCount }) }}
       </button>
     </div>
 
-    <AdaptiveOverlay v-if="overflowOpen" :title="t('tourLinks.linkedWithHeader')" @close="overflowOpen = false">
-      <ul class="overflow-list">
-        <li v-for="id in overflowIds" :key="id">
-          <button type="button" class="overflow-row" @click="handleOverflowSelect(id)">
-            <span class="overflow-name">{{ partnerName(id) }}</span>
-            <span class="overflow-tour">{{ tourName(id) }}</span>
-          </button>
-        </li>
-      </ul>
-    </AdaptiveOverlay>
+    <ul v-else class="full-list">
+      <li v-for="id in orderedSiblings" :key="id">
+        <button
+          type="button"
+          class="full-row"
+          :class="{ 'full-row--inert': !isResolvable(id) }"
+          :disabled="!isResolvable(id)"
+          @click="handlePillClick(id)"
+        >
+          <span class="full-name">{{ partnerName(id) || tourName(id) }}</span>
+          <span v-if="partnerName(id)" class="full-tour">{{ tourName(id) }}</span>
+        </button>
+      </li>
+    </ul>
   </section>
 </template>
 
@@ -125,15 +186,20 @@ function handleOverflowSelect(id: string) {
   transition: background 0.15s;
 }
 
-.pill:hover {
+.pill:hover:not(:disabled) {
   background: var(--color-surface);
+}
+
+.pill--inert {
+  cursor: default;
+  opacity: 0.7;
 }
 
 .pill--more {
   font-weight: var(--font-weight-medium);
 }
 
-.overflow-list {
+.full-list {
   list-style: none;
   padding: 0;
   margin: 0;
@@ -142,26 +208,34 @@ function handleOverflowSelect(id: string) {
   gap: 1px;
 }
 
-.overflow-row {
+.full-row {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
   width: 100%;
   padding: var(--spacing-sm);
   border: none;
   background: transparent;
   cursor: pointer;
   text-align: left;
+  border-radius: var(--radius-sm);
 }
 
-.overflow-row:hover {
+.full-row:hover:not(:disabled) {
   background: var(--color-surface-variant);
 }
 
-.overflow-name {
+.full-row--inert {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.full-name {
   font-weight: var(--font-weight-medium);
 }
 
-.overflow-tour {
+.full-tour {
   color: var(--color-on-surface-variant);
   font-size: var(--font-size-sm);
 }
