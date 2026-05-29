@@ -554,6 +554,10 @@
     "editWarningProceedBtn": "Save & unlink",
     "deleteUnlinkWarning": "This tour is linked with {count} friend tour(s). Deleting will unlink them.",
     "backfillPageTitle": "Tour overlaps with this friend",
-    "backfillEmpty": "No tour overlaps to review."
+    "backfillEmpty": "No tour overlaps to review.",
+    "mergeBlockedTitle": "Another friend group plans the same tour",
+    "mergeBlockedBody": "Friends already in their own linked group: {names}. You can reach out to them directly to coordinate — joining their group from yours isn't possible.",
+    "dismissBtn": "Got it",
+    "doNotShowAgain": "Don't show again"
   }
 }

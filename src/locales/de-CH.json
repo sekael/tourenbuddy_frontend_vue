@@ -554,6 +554,10 @@
     "editWarningProceedBtn": "Speichern und Verknüpfung lösen",
     "deleteUnlinkWarning": "Diese Tour ist mit {count} Freund-Tour(en) verknüpft. Beim Löschen wird die Verknüpfung getrennt.",
     "backfillPageTitle": "Tour-Überschneidungen mit diesem Freund",
-    "backfillEmpty": "Keine Überschneidungen zu prüfen."
+    "backfillEmpty": "Keine Überschneidungen zu prüfen.",
+    "mergeBlockedTitle": "Eine andere Freundesgruppe plant dieselbe Tour",
+    "mergeBlockedBody": "Freunde bereits in eigener verknüpfter Gruppe: {names}. Du kannst sie direkt kontaktieren, um euch abzustimmen — eure Gruppen lassen sich aber nicht zusammenführen.",
+    "dismissBtn": "Verstanden",
+    "doNotShowAgain": "Nicht mehr anzeigen"
   }
 }

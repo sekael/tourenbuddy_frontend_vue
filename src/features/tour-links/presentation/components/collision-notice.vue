@@ -25,18 +25,48 @@ const { userIdToNamesMap } = storeToRefs(friendshipsStore)
 // a freshly-saved owner-tour can see colliding friend tours without page reload.
 toursStore.loadFriendTours()
 
+// Realtime gap: RLS on tour_link_member hides rows for groups the viewer has
+// no tour in. So when two friends form a group between themselves, Postgres
+// realtime never delivers that INSERT to this user — the merge-blocked
+// disclaimer would stay stale until reload. Refetching tour-links on mount
+// and on tour switch reconciles the friend-group map opportunistically.
+tourLinksStore.fetchAll()
+watch(
+  () => props.ownTourId,
+  () => { tourLinksStore.fetchAll() },
+)
+
 const submitting = ref<string | null>(null)
 const submitError = ref<string | null>(null)
 
+// Persistence keys for the merge-blocked disclaimer.
+const FOREVER_HIDE_KEY = 'tourLinks.mergeBlockedDisclaimer.hide'
+const sessionHideKey = (tourId: string) => `tourLinks.mergeBlockedDisclaimer.dismissed.${tourId}`
+
+const foreverHidden = ref(safeLocalGet(FOREVER_HIDE_KEY) === '1')
+const sessionDismissed = ref(safeSessionGet(sessionHideKey(props.ownTourId)) === '1')
+const doNotShowAgain = ref(false)
+
+// Tour switch inside same sheet instance → re-evaluate dismissal for new id.
+watch(
+  () => props.ownTourId,
+  (id) => {
+    sessionDismissed.value = safeSessionGet(sessionHideKey(id)) === '1'
+    doNotShowAgain.value = false
+  },
+)
+
 /**
- * Eligible friend tours for linking: same goal within 100 m, same non-null
- * tour_type, both friends-visible, AND not already linked / pending with us.
- * We don't check friendship here — `friendTours` is already RLS-scoped to friends.
+ * Eligible friend tours partition into two buckets:
+ *  - linkable: no group conflict (friend ungrouped OR same group as caller)
+ *  - blocked: both tours sit in DIFFERENT groups → DB rejects merge (`tour_link.merge_forbidden`)
+ * `friendTours` is already RLS-scoped to friends, so no friendship check here.
  */
-const candidates = computed(() => {
+const partitioned = computed(() => {
   const own = tours.value.find(t => t.id === props.ownTourId)
+  const empty = { linkable: [], blocked: [] } as { linkable: typeof friendTours.value, blocked: typeof friendTours.value }
   if (!own || own.visibility !== 'friends' || !own.tourType)
-    return []
+    return empty
 
   const myGroupId = groupIdByTourId.value.get(props.ownTourId)
   const myPendings = requestsByTourId.value.get(props.ownTourId) ?? []
@@ -44,35 +74,57 @@ const candidates = computed(() => {
     myPendings.flatMap(r => [r.initiatorTourId, r.targetTourId]).filter(id => id !== props.ownTourId),
   )
 
-  return friendTours.value.filter((f) => {
+  const linkable: typeof friendTours.value = []
+  const blocked: typeof friendTours.value = []
+  for (const f of friendTours.value) {
     if (f.tourType !== own.tourType)
-      return false
+      continue
     if (f.visibility !== 'friends')
-      return false
+      continue
     if (!sameGoalWithin100m(own.goal, f.goal))
-      return false
-    // Already linked with us?
-    const friendGroupId = groupIdByTourId.value.get(f.id)
-    if (myGroupId && friendGroupId && myGroupId === friendGroupId)
-      return false
+      continue
     if (pendingFriendTourIds.has(f.id))
-      return false
-    return true
-  })
+      continue
+
+    // Merge-forbidden is the ONLY group-related blocker. It requires BOTH tours
+    // to sit in groups AND the groups to differ. Every other shape (own
+    // ungrouped, friend ungrouped, both ungrouped, both in same group) is fine
+    // for the DB — either it adds the loner to the existing group, or creates
+    // a fresh one. Same-group is "already linked" not "blocked" — skip silently.
+    if (!myGroupId) {
+      linkable.push(f)
+      continue
+    }
+    const friendGroupId = groupIdByTourId.value.get(f.id)
+    if (!friendGroupId) {
+      linkable.push(f)
+      continue
+    }
+    if (friendGroupId === myGroupId)
+      continue
+    blocked.push(f)
+  }
+  return { linkable, blocked }
 })
 
-// Owner name comes from friendships store (userId → profile name map).
-// `partnerNames` on a friend tour holds the tour's PARTNERS, never the owner.
-const candidateNames = computed(() =>
-  candidates.value.map((f) => {
-    const name = userIdToNamesMap.value.get(f.userId)
-    return [name?.firstName, name?.lastName].filter(Boolean).join(' ') || t('tours.infoSheet.unnamedTour')
-  }),
+const linkableCandidates = computed(() => partitioned.value.linkable)
+const blockedCandidates = computed(() => partitioned.value.blocked)
+
+const showBlockedDisclaimer = computed(() =>
+  blockedCandidates.value.length > 0 && !foreverHidden.value && !sessionDismissed.value,
 )
 
-// Ensure owner profile names are resolved for each candidate.
+function nameFor(userId: string): string {
+  const name = userIdToNamesMap.value.get(userId)
+  return [name?.firstName, name?.lastName].filter(Boolean).join(' ') || t('tours.infoSheet.unnamedTour')
+}
+
+const linkableNames = computed(() => linkableCandidates.value.map(f => nameFor(f.userId)))
+const blockedNames = computed(() => blockedCandidates.value.map(f => nameFor(f.userId)))
+
+// Ensure owner profile names are resolved for each candidate (linkable + blocked).
 watch(
-  candidates,
+  () => [...linkableCandidates.value, ...blockedCandidates.value],
   (list) => {
     const missing = [...new Set(list.map(f => f.userId))].filter(
       id => !userIdToNamesMap.value.has(id),
@@ -84,7 +136,6 @@ watch(
 )
 
 function sameGoalWithin100m(a: { lng: number, lat: number }, b: { lng: number, lat: number }): boolean {
-  // Reuse haversine-equivalent via the existing isSameGoal helper.
   const R = 6371000
   const toRad = (d: number) => (d * Math.PI) / 180
   const dLat = toRad(b.lat - a.lat)
@@ -110,20 +161,64 @@ async function requestLink(friendTourId: string) {
     submitting.value = null
   }
 }
+
+function dismissBlocked() {
+  if (doNotShowAgain.value) {
+    safeLocalSet(FOREVER_HIDE_KEY, '1')
+    foreverHidden.value = true
+  }
+  else {
+    safeSessionSet(sessionHideKey(props.ownTourId), '1')
+    sessionDismissed.value = true
+  }
+}
+
+function safeLocalGet(key: string): string | null {
+  try {
+    return localStorage.getItem(key)
+  }
+  catch {
+    return null
+  }
+}
+function safeLocalSet(key: string, val: string) {
+  try {
+    localStorage.setItem(key, val)
+  }
+  catch {
+    // ignore quota / privacy mode
+  }
+}
+function safeSessionGet(key: string): string | null {
+  try {
+    return sessionStorage.getItem(key)
+  }
+  catch {
+    return null
+  }
+}
+function safeSessionSet(key: string, val: string) {
+  try {
+    sessionStorage.setItem(key, val)
+  }
+  catch {
+    // ignore
+  }
+}
 </script>
 
 <template>
-  <section v-if="candidates.length > 0" class="collision-notice">
+  <section v-if="linkableCandidates.length > 0" class="collision-notice">
     <div class="header">
       <span class="material-symbols-outlined icon">link</span>
       <span class="title">{{ t('tourLinks.collisionNoticeTitle') }}</span>
     </div>
     <p class="body">
-      {{ t('tourLinks.collisionNoticeBody', { names: candidateNames.join(', ') }) }}
+      {{ t('tourLinks.collisionNoticeBody', { names: linkableNames.join(', ') }) }}
     </p>
     <div class="actions">
       <button
-        v-for="(f, idx) in candidates"
+        v-for="(f, idx) in linkableCandidates"
         :key="f.id"
         type="button"
         class="link-btn"
@@ -133,13 +228,32 @@ async function requestLink(friendTourId: string) {
         {{
           submitting === f.id
             ? t('tourLinks.requestingBtn')
-            : t('tourLinks.requestToLinkBtn', { name: candidateNames[idx] })
+            : t('tourLinks.requestToLinkBtn', { name: linkableNames[idx] })
         }}
       </button>
     </div>
     <p v-if="submitError" class="error">
       {{ submitError }}
     </p>
+  </section>
+
+  <section v-if="showBlockedDisclaimer" class="collision-notice collision-notice--blocked">
+    <div class="header">
+      <span class="material-symbols-outlined icon">info</span>
+      <span class="title">{{ t('tourLinks.mergeBlockedTitle') }}</span>
+    </div>
+    <p class="body">
+      {{ t('tourLinks.mergeBlockedBody', { names: blockedNames.join(', ') }) }}
+    </p>
+    <label class="dont-show">
+      <input v-model="doNotShowAgain" type="checkbox">
+      <span>{{ t('tourLinks.doNotShowAgain') }}</span>
+    </label>
+    <div class="actions">
+      <button type="button" class="link-btn" @click="dismissBlocked">
+        {{ t('tourLinks.dismissBtn') }}
+      </button>
+    </div>
   </section>
 </template>
 
@@ -153,6 +267,10 @@ async function requestLink(friendTourId: string) {
   border-left: 3px solid var(--color-primary);
   border-radius: var(--radius-sm);
   background: var(--color-surface-variant);
+}
+
+.collision-notice--blocked {
+  border-left-color: var(--color-on-surface-variant);
 }
 
 .header {
@@ -180,6 +298,15 @@ async function requestLink(friendTourId: string) {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-xs);
+}
+
+.dont-show {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xxs);
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
+  cursor: pointer;
 }
 
 .link-btn {

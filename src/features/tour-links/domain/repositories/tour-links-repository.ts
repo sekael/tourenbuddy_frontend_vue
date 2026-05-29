@@ -14,6 +14,12 @@ export interface TourLinksRepository {
   /** All link-member rows whose groups contain any of `tourIds`. */
   listGroupsForTours: (tourIds: string[]) => Promise<TourLinkMember[]>
 
+  /**
+   * Group ids of friend tours the caller cannot otherwise see via RLS.
+   * Returns `(tourId, groupId)` only for tours that ARE in a group.
+   */
+  listFriendTourGroupIds: (tourIds: string[]) => Promise<{ tourId: string, groupId: string }[]>
+
   /** All pending requests touching any of `tourIds` (either side). */
   listPendingRequestsForTours: (tourIds: string[]) => Promise<TourLinkRequest[]>
 

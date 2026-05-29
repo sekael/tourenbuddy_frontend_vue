@@ -25,6 +25,12 @@ export const useTourLinksStore = defineStore('tour-links', () => {
   const error = ref<string | null>(null)
   const members = ref<TourLinkMember[]>([])
   const pendingRequests = ref<TourLinkRequest[]>([])
+  /**
+   * Group ids for friend tours the caller can't see via tour_link_member RLS
+   * (i.e. friend tours sitting in a group with no owned-tour overlap). Drives
+   * pre-filtering of merge-forbidden link candidates.
+   */
+  const friendGroupIdByTourId = ref<Map<string, string>>(new Map())
 
   /** group_id → ordered tour ids in that group. */
   const groupMembersByGroupId = computed(() => {
@@ -37,11 +43,19 @@ export const useTourLinksStore = defineStore('tour-links', () => {
     return map
   })
 
-  /** tour_id → group_id (if grouped). */
+  /**
+   * tour_id → group_id (if grouped). Merges own-visible member rows with the
+   * SECURITY-DEFINER-fetched friend tour group ids so the client has a complete
+   * picture of which collision candidates would trigger a merge-forbidden.
+   */
   const groupIdByTourId = computed(() => {
     const map = new Map<string, string>()
     for (const m of members.value)
       map.set(m.tourId, m.groupId)
+    for (const [tourId, groupId] of friendGroupIdByTourId.value) {
+      if (!map.has(tourId))
+        map.set(tourId, groupId)
+    }
     return map
   })
 
@@ -70,20 +84,29 @@ export const useTourLinksStore = defineStore('tour-links', () => {
 
   async function fetchAll() {
     const ownedTourIds = toursStore.tours.map(t => t.id)
+    const friendTourIds = toursStore.friendTours.map(t => t.id)
     if (ownedTourIds.length === 0) {
       members.value = []
       pendingRequests.value = []
+      friendGroupIdByTourId.value = new Map()
       return
     }
     loading.value = true
     error.value = null
     try {
-      const [m, r] = await Promise.all([
+      const [m, r, fg] = await Promise.all([
         repository.listGroupsForTours(ownedTourIds),
         repository.listPendingRequestsForTours(ownedTourIds),
+        friendTourIds.length > 0
+          ? repository.listFriendTourGroupIds(friendTourIds)
+          : Promise.resolve([]),
       ])
       members.value = m
       pendingRequests.value = r
+      const map = new Map<string, string>()
+      for (const row of fg)
+        map.set(row.tourId, row.groupId)
+      friendGroupIdByTourId.value = map
     }
     catch (err) {
       error.value = err instanceof Error ? err.message : 'failed_to_load_tour_links'
@@ -127,6 +150,7 @@ export const useTourLinksStore = defineStore('tour-links', () => {
   function clear() {
     members.value = []
     pendingRequests.value = []
+    friendGroupIdByTourId.value = new Map()
     error.value = null
   }
 
@@ -171,6 +195,16 @@ export const useTourLinksStore = defineStore('tour-links', () => {
     (newKey, oldKey) => {
       if (newKey && newKey !== oldKey)
         fetchAll().catch(err => logger.warn('refetch on tours change failed', err))
+    },
+  )
+
+  // Same reasoning for friendTours: they load async; need to refetch friend
+  // group ids once they arrive so collision-notice can pre-filter merge-forbidden.
+  watch(
+    () => toursStore.friendTours.map(t => t.id).sort().join(','),
+    (newKey, oldKey) => {
+      if (newKey !== oldKey)
+        fetchAll().catch(err => logger.warn('refetch on friendTours change failed', err))
     },
   )
 

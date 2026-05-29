@@ -38,6 +38,20 @@ export class TourLinksRepositoryImpl implements TourLinksRepository {
     return (data ?? []).map(row => tourLinkMemberRowSchema.parse(row))
   }
 
+  async listFriendTourGroupIds(tourIds: string[]): Promise<{ tourId: string, groupId: string }[]> {
+    if (tourIds.length === 0)
+      return []
+    const { data, error } = await supabase.rpc('fn_friend_tour_group_ids', {
+      p_tour_ids: tourIds,
+    })
+    if (error)
+      throw new Error(error.message)
+    return (data ?? []).map((row: { tour_id: string, group_id: string }) => ({
+      tourId: row.tour_id,
+      groupId: row.group_id,
+    }))
+  }
+
   async listPendingRequestsForTours(tourIds: string[]): Promise<TourLinkRequest[]> {
     if (tourIds.length === 0)
       return []
