@@ -12,6 +12,7 @@ import {
   notifyTourDeleted,
   notifyTourInterest,
 } from '@/features/notifications/data/notify-dispatch'
+import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
 import { ToursRepositoryImpl } from '@/features/tours/data/repositories/tours-repository-impl'
 import { removeGpx } from '@/features/tours/data/services/gpx-storage-service'
 import { isMeaningfulTourChange, isShareableTour } from '@/features/tours/domain/tour-notifications'
@@ -163,6 +164,12 @@ export const useToursStore = defineStore('tours', () => {
     const existing = tours.value.find(t => t.id === id)
     const previousFilepath = existing?.gpxFilepath ?? null
 
+    // Snapshot link-group audience BEFORE mutating: DB trigger may evict this
+    // tour (type / visibility / goal change) and the dissolution trigger may
+    // wipe the group inside the same txn. fn_evict_member_on_tour_change.
+    const tourLinksStore = useTourLinksStore()
+    const linkSnapshot = tourLinksStore.snapshotTourGroupContext(id)
+
     try {
       await repository.updateTour(id, draft, goal)
       // update_tour_full intentionally leaves visibility untouched; persist it separately
@@ -175,6 +182,12 @@ export const useToursStore = defineStore('tours', () => {
       logger.error('updateTour failed', err)
       throw err
     }
+
+    // Mutation committed → if it tripped an eviction trigger, fire the
+    // dissolution / evicted_external notification. Best-effort.
+    tourLinksStore.dispatchEvictionIfHappened(linkSnapshot, id).catch((err) => {
+      logger.warn('dispatchEvictionIfHappened (updateTour) failed', err)
+    })
 
     const newFilepath = gpxRemoved ? null : draft.gpxFilepath
 
@@ -260,6 +273,11 @@ export const useToursStore = defineStore('tours', () => {
     const previous = tour.visibility
     tours.value = tours.value.map(t => (t.id === tourId ? { ...t, visibility } : t))
 
+    // Same eviction snapshot pattern as updateTour: a friends → non-friends
+    // flip on a linked tour trips the eviction trigger.
+    const tourLinksStore = useTourLinksStore()
+    const linkSnapshot = tourLinksStore.snapshotTourGroupContext(tourId)
+
     try {
       await repository.patchVisibility(tourId, visibility)
     }
@@ -267,7 +285,12 @@ export const useToursStore = defineStore('tours', () => {
       tours.value = tours.value.map(t => (t.id === tourId ? { ...t, visibility: previous } : t))
       error.value = err instanceof Error ? err.message : 'Failed to update visibility'
       logger.error('setVisibility failed', err)
+      return
     }
+
+    tourLinksStore.dispatchEvictionIfHappened(linkSnapshot, tourId).catch((err) => {
+      logger.warn('dispatchEvictionIfHappened (setVisibility) failed', err)
+    })
   }
 
   async function deleteTour(id: string) {
@@ -277,9 +300,16 @@ export const useToursStore = defineStore('tours', () => {
     const shouldNotify = !!tour && isShareableTour(tour.visibility, tour.partnerIds)
     const partnerContactIds = tour?.partnerIds ?? []
     const tourName = tour?.name ?? ''
+    // Tour delete cascades member row removal → group may dissolve. Snapshot
+    // audience before the row is gone; eviction is unconditional so we fire
+    // directly afterwards without a "did it happen?" check.
+    const tourLinksStore = useTourLinksStore()
+    const linkSnapshot = tourLinksStore.snapshotTourGroupContext(id)
     await repository.deleteTour(id)
     if (shouldNotify)
       notifyTourDeleted(partnerContactIds, tourName)
+    if (linkSnapshot)
+      tourLinksStore.dispatchEvictionNotification(linkSnapshot)
     if (tour?.gpxFilepath) {
       try {
         await removeGpx(tour.gpxFilepath)

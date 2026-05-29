@@ -105,7 +105,24 @@ export function notifyTourLinkRequestEvent(
 export function notifyGroupMembershipEvent(
   groupId: string,
   event: 'joined' | 'evicted_external' | 'dissolved',
-  detail: { actorTourId?: string, affectedTourId?: string, affectedUserId?: string } = {},
+  detail: {
+    actorTourId?: string
+    affectedTourId?: string
+    affectedUserId?: string
+    /**
+     * Explicit recipient userIds. Used when the Worker can no longer resolve
+     * members from the live group (e.g. friendship-delete already cascaded
+     * eviction + dissolution before this fires). Worker still drops the actor.
+     */
+    recipients?: string[]
+    /**
+     * Per-recipient tour name for the `{tour}` placeholder in push/email
+     * copy. Caller's view of each recipient's tour in the affected group
+     * (snapshotted before any mutation, since the row may be gone by the
+     * time the Worker runs). Missing entries fall back to a generic phrase.
+     */
+    recipientTourNames?: Record<string, string>
+  } = {},
 ): void {
   postToWorker('/notify/group-membership-event', { groupId, event, ...detail }).catch((err) => {
     logger.warn('notifyGroupMembershipEvent failed', err)

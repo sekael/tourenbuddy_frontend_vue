@@ -1,4 +1,4 @@
-Subject: {% if params.action == "link_created" %}{{ params.actorName }} wants to link a tour with you{% elif params.action == "link_accepted" %}{{ params.actorName }} accepted your link request{% elif params.action == "link_declined" %}{{ params.actorName }} declined your link request{% elif params.action == "group_joined" %}A new tour joined your link group{% elif params.action == "group_evicted_external" %}A tour left your link group{% elif params.action == "group_dissolved" %}Your tour link group was dissolved{% else %}{{ params.actorName }} planned the same tour as you{% endif %} on TourenBuddy
+Subject: {% if params.action == "link_created" %}{{ params.actorName }} wants to link a tour with you{% elif params.action == "link_accepted" %}{{ params.actorName }} accepted your link request{% elif params.action == "link_declined" %}{{ params.actorName }} declined your link request{% elif params.action == "group_joined" %}A new tour joined your link{% elif params.action == "group_evicted_external" %}A tour left your link{% elif params.action == "group_dissolved" %}Your tour link was dissolved{% else %}{{ params.actorName }} planned the same tour as you{% endif %} on TourenBuddy
 
 Hi there,
 
@@ -15,15 +15,15 @@ Your tours are now linked. Coordinate timing and partners on either side.
 
 No further action needed — you can still plan independently.
 {% elif params.action == "group_joined" %}
-A new tour joined the link group around "{{ params.tourName }}".
+A new tour joined the link around "{{ params.tourName }}".
 
 Check the linked tours to see who else is planning the same outing.
 {% elif params.action == "group_evicted_external" %}
-A tour was removed from the link group around "{{ params.tourName }}".
+A tour was removed from the link around "{{ params.tourName }}".
 
 This happens when a tour is edited, made private, or a friendship is ended.
 {% elif params.action == "group_dissolved" %}
-The link group for "{{ params.tourName }}" was dissolved.
+The link for "{{ params.tourName }}" was dissolved.
 
 Your tour is no longer linked with any other.
 {% else %}

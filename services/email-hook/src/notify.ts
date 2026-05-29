@@ -355,8 +355,8 @@ function tourPushTitle(
       case 'link_created': return 'Link request received'
       case 'link_accepted': return 'Tour linked'
       case 'link_declined': return 'Link request declined'
-      case 'group_joined': return 'New tour in your link group'
-      case 'group_evicted_external': return 'Tour removed from link group'
+      case 'group_joined': return 'New tour in your link'
+      case 'group_evicted_external': return 'Tour removed from link'
       case 'group_dissolved': return 'Tour link dissolved'
       default: return 'Update on your tour'
     }
@@ -401,9 +401,9 @@ function tourPushBody(
       case 'link_created': return `${actorName} wants to link “${tour}” with their tour.`
       case 'link_accepted': return `${actorName} accepted your link request for “${tour}”.`
       case 'link_declined': return `${actorName} declined your link request for “${tour}”.`
-      case 'group_joined': return `${actorName} added a tour to your link group for “${tour}”.`
-      case 'group_evicted_external': return `A tour was removed from the link group for “${tour}”.`
-      case 'group_dissolved': return `The link group for “${tour}” was dissolved.`
+      case 'group_joined': return `${actorName} added a tour to your link for “${tour}”.`
+      case 'group_evicted_external': return `A tour was removed from the link for “${tour}”.`
+      case 'group_dissolved': return `The link for “${tour}” was dissolved.`
       default: return `${actorName} updated “${tour}”.`
     }
   }
@@ -920,6 +920,18 @@ export async function handleGroupMembershipEvent(request: Request, env: Env): Pr
     actorTourId?: string
     affectedTourId?: string
     affectedUserId?: string
+    /**
+     * Explicit recipient list. Required for events fired AFTER the group
+     * was already cascade-dissolved (friendship-delete trigger path), since
+     * a live fetch then returns zero members. When provided, the live fetch
+     * is skipped and the membership matrix is bypassed.
+     */
+    recipients?: string[]
+    /**
+     * userId → recipient's own tour name in this group; used for the
+     * `{tour}` placeholder in push/email copy.
+     */
+    recipientTourNames?: Record<string, string>
   }
   try {
     body = (await request.json()) as typeof body
@@ -931,22 +943,28 @@ export async function handleGroupMembershipEvent(request: Request, env: Env): Pr
   if (!body.groupId || !body.event)
     return jsonResponse(400, { error: 'missing_fields' })
 
-  const members = await fetchGroupMembers(body.groupId, env)
-
   let recipients: string[] = []
-  if (body.event === 'joined') {
-    recipients = members
-      .filter(m => m.tour_id !== body.affectedTourId)
-      .map(m => m.user_id)
+  if (body.recipients && body.recipients.length > 0) {
+    recipients = body.recipients
   }
-  else if (body.event === 'evicted_external') {
-    recipients = members.map(m => m.user_id)
-    if (body.affectedUserId && body.affectedUserId !== callerId)
-      recipients.push(body.affectedUserId)
+  else {
+    const members = await fetchGroupMembers(body.groupId, env)
+    if (body.event === 'joined') {
+      recipients = members
+        .filter(m => m.tour_id !== body.affectedTourId)
+        .map(m => m.user_id)
+    }
+    else if (body.event === 'evicted_external') {
+      recipients = members.map(m => m.user_id)
+      if (body.affectedUserId && body.affectedUserId !== callerId)
+        recipients.push(body.affectedUserId)
+    }
+    else if (body.event === 'dissolved') {
+      recipients = members.map(m => m.user_id)
+    }
   }
-  else if (body.event === 'dissolved') {
-    recipients = members.map(m => m.user_id)
-  }
+
+  const tourNames = body.recipientTourNames ?? {}
 
   // Dedupe + drop the actor (their own action).
   recipients = Array.from(new Set(recipients)).filter(id => id !== callerId)
@@ -959,7 +977,7 @@ export async function handleGroupMembershipEvent(request: Request, env: Env): Pr
         dispatchTourNotification(
           r,
           callerId,
-          { type: 'tour_interest', action: `group_${body.event}`, tourName: '' },
+          { type: 'tour_interest', action: `group_${body.event}`, tourName: tourNames[r] ?? '' },
           env,
         ),
       ),

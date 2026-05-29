@@ -1,4 +1,4 @@
-<!-- Subject: {% if params.action == "link_created" %}{{ params.actorName }} wants to link a tour with you{% elif params.action == "link_accepted" %}{{ params.actorName }} accepted your link request{% elif params.action == "link_declined" %}{{ params.actorName }} declined your link request{% elif params.action == "group_joined" %}A new tour joined your link group{% elif params.action == "group_evicted_external" %}A tour left your link group{% elif params.action == "group_dissolved" %}Your tour link group was dissolved{% else %}{{ params.actorName }} planned the same tour as you{% endif %} on TourenBuddy -->
+<!-- Subject: {% if params.action == "link_created" %}{{ params.actorName }} wants to link a tour with you{% elif params.action == "link_accepted" %}{{ params.actorName }} accepted your link request{% elif params.action == "link_declined" %}{{ params.actorName }} declined your link request{% elif params.action == "group_joined" %}A new tour joined your link{% elif params.action == "group_evicted_external" %}A tour left your link{% elif params.action == "group_dissolved" %}Your tour link was dissolved{% else %}{{ params.actorName }} planned the same tour as you{% endif %} on TourenBuddy -->
 <!doctype html>
 <html lang="en">
   <head>
@@ -86,13 +86,13 @@
           </p>
           <p>No further action needed — you can still plan independently.</p>
         {% elif params.action == "group_joined" %}
-          <p>A new tour joined the link group around <strong>{{ params.tourName }}</strong>.</p>
+          <p>A new tour joined the link around <strong>{{ params.tourName }}</strong>.</p>
           <p>Check the linked tours to see who else is planning the same outing.</p>
         {% elif params.action == "group_evicted_external" %}
-          <p>A tour was removed from the link group around <strong>{{ params.tourName }}</strong>.</p>
+          <p>A tour was removed from the link around <strong>{{ params.tourName }}</strong>.</p>
           <p>This happens when a tour is edited, made private, or a friendship is ended.</p>
         {% elif params.action == "group_dissolved" %}
-          <p>The link group for <strong>{{ params.tourName }}</strong> was dissolved.</p>
+          <p>The link for <strong>{{ params.tourName }}</strong> was dissolved.</p>
           <p>Your tour is no longer linked with any other.</p>
         {% else %}
           <p>
