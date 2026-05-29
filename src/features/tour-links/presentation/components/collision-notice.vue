@@ -5,6 +5,8 @@ import { useI18n } from 'vue-i18n'
 import { useLogger } from '@/core/logging/use-logger'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
+import { COLLISION_RADIUS_M } from '@/features/tours/domain/collision'
+import { isSameGoal } from '@/features/tours/domain/distance'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
 const props = defineProps<{
@@ -81,7 +83,7 @@ const partitioned = computed(() => {
       continue
     if (f.visibility !== 'friends')
       continue
-    if (!sameGoalWithin100m(own.goal, f.goal))
+    if (!isSameGoal(own.goal, f.goal, COLLISION_RADIUS_M))
       continue
     if (pendingFriendTourIds.has(f.id))
       continue
@@ -134,18 +136,6 @@ watch(
   },
   { immediate: true },
 )
-
-function sameGoalWithin100m(a: { lng: number, lat: number }, b: { lng: number, lat: number }): boolean {
-  const R = 6371000
-  const toRad = (d: number) => (d * Math.PI) / 180
-  const dLat = toRad(b.lat - a.lat)
-  const dLng = toRad(b.lng - a.lng)
-  const s
-    = Math.sin(dLat / 2) ** 2
-      + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2
-  const d = 2 * R * Math.asin(Math.sqrt(s))
-  return d <= 100
-}
 
 async function requestLink(friendTourId: string) {
   submitting.value = friendTourId

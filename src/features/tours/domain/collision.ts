@@ -1,11 +1,15 @@
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import { isSameGoal } from '@/features/tours/domain/distance'
 
-/** Two goals within this distance are treated as the same objective. */
-export const COLLISION_RADIUS_M = 100
+/**
+ * Two goals within this distance are treated as the same objective. MUST stay
+ * in sync with the `extensions.st_dwithin(…, 200)` literals in the tour-links
+ * SQL functions (see migration `bump_tour_link_radius_to_200m`).
+ */
+export const COLLISION_RADIUS_M = 200
 
 /**
- * Ids of friend tours that collide (within 100m) with any owned tour. The map
+ * Ids of friend tours that collide (within COLLISION_RADIUS_M) with any owned tour. The map
  * suppresses these markers — owned tours take precedence — while the Friends list
  * keeps showing them untouched.
  */

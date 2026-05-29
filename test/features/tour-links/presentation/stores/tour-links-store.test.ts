@@ -19,12 +19,13 @@ vi.mock('@/features/auth/presentation/stores/auth-store', () => ({
   useAuthStore: () => ({ isAuthenticated: true, currentUser: { id: 'me' } }),
 }))
 vi.mock('@/features/tours/presentation/stores/tours-store', () => ({
-  useToursStore: () => ({ tours: [{ id: 't1' }, { id: 't2' }] }),
+  useToursStore: () => ({ tours: [{ id: 't1' }, { id: 't2' }], friendTours: [] }),
 }))
 
 const { mockRepo } = vi.hoisted(() => ({
   mockRepo: {
     listGroupsForTours: vi.fn(),
+    listFriendTourGroupIds: vi.fn().mockResolvedValue([]),
     listPendingRequestsForTours: vi.fn(),
     createRequest: vi.fn(),
     acceptRequest: vi.fn(),
@@ -41,6 +42,8 @@ describe('tour-links-store', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     Object.values(mockRepo).forEach(fn => fn.mockReset())
+    // Default: no friend-tour groups visible. Individual tests override as needed.
+    mockRepo.listFriendTourGroupIds.mockResolvedValue([])
   })
 
   it('siblingsByTourId excludes the tour itself', async () => {

@@ -22,6 +22,8 @@ import LinkedWithSection from '@/features/tour-links/presentation/components/lin
 import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
 import { TOUR_TYPE_I18N_KEYS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
 import { downloadOriginal } from '@/features/tours/data/services/gpx-storage-service'
+import { COLLISION_RADIUS_M } from '@/features/tours/domain/collision'
+import { isSameGoal } from '@/features/tours/domain/distance'
 import TourAttachmentViewer from '@/features/tours/presentation/components/tour-attachment-viewer.vue'
 import TourAttachmentsStrip from '@/features/tours/presentation/components/tour-attachments-strip.vue'
 import TourForm from '@/features/tours/presentation/components/tour-form.vue'
@@ -62,6 +64,7 @@ const authStore = useAuthStore()
 const attachmentsStore = useTourAttachmentsStore()
 const tourLinksStore = useTourLinksStore()
 const { siblingsByTourId, requestsByTourId, groupIdByTourId } = storeToRefs(tourLinksStore)
+const { tours, friendTours } = storeToRefs(toursStore)
 const { contacts } = storeToRefs(contactsStore)
 const { isPickingLocation } = storeToRefs(mapStore)
 const { currentUser } = storeToRefs(authStore)
@@ -200,11 +203,20 @@ function wouldEvict(draft: TourDraft, newGoal: { lng: number, lat: number }): bo
   const effectiveVisibility = draft.visibility ?? t1.visibility
   if (t1.visibility === 'friends' && effectiveVisibility !== 'friends')
     return true
-  // Goal change: trigger handles distance check server-side. Treat any move as
-  // eviction-causing for the warning copy; the trigger will pass through if it
-  // turns out to stay within radius.
+  // Goal change: mirror the server-side eviction rule. The DB trigger evicts
+  // iff the new goal sits outside COLLISION_RADIUS_M of ANY sibling. Compute
+  // here so we don't warn the user for tiny nudges that the group would absorb.
   const moved = newGoal.lng !== t1.goal.lng || newGoal.lat !== t1.goal.lat
-  return moved
+  if (!moved)
+    return false
+  for (const sibId of linkSiblings.value) {
+    const sib = tours.value.find(t => t.id === sibId) ?? friendTours.value.find(t => t.id === sibId)
+    if (!sib)
+      continue // sibling out of scope (RLS, friendship gap) — be conservative, skip
+    if (!isSameGoal(newGoal, sib.goal, COLLISION_RADIUS_M))
+      return true
+  }
+  return false
 }
 
 async function performEditSubmit(draft: TourDraft, gpxRemoved: boolean) {
@@ -253,6 +265,12 @@ async function toggleCompleted() {
 // ── Visibility toggle (owner only) ──────────────────────────────────────────
 async function toggleVisibility() {
   const next = props.tour.visibility === 'private' ? 'friends' : 'private'
+  // friends → private on a linked tour will evict via the server trigger.
+  // Same affordance as the edit-form path: surface the unlink dialog first.
+  if (next === 'private' && isLinked.value) {
+    editWarningPending.value = () => toursStore.setVisibility(props.tour.id, 'private')
+    return
+  }
   await toursStore.setVisibility(props.tour.id, next)
 }
 
