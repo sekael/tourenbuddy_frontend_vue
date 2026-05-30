@@ -7,12 +7,19 @@ export async function verifySupabaseJwt(request: Request, env: Env): Promise<str
     return null
 
   const token = authHeader.slice(7)
-  const res = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-    },
-  })
+  let res: Response
+  try {
+    res = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+      },
+    })
+  }
+  catch (err) {
+    console.error(`[verifySupabaseJwt] network error reaching ${env.SUPABASE_URL}/auth/v1/user:`, err)
+    return null
+  }
 
   if (!res.ok) {
     const body = await res.text()
