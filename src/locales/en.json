@@ -524,7 +524,7 @@
       "tour_interest": "Same-tour collaboration suggestions"
     },
     "typeDescription": {
-      "tour_interest": "Pings when a friend plans the same tour, link requests, and overlap digests after a new friendship."
+      "tour_interest": "Notifies when a friend plans the same tour, requests linking a tour, and tours overlap after a new friendship."
     },
     "allOffDisclaimer": "You won't receive friend request notifications or other important updates. Enable at least one channel to stay informed.",
     "pushUnavailable": "Not available",
