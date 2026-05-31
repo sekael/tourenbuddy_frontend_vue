@@ -21,13 +21,13 @@ mute settings.
 
 Five stores currently subscribe, each with a tightly scoped filter:
 
-| Store                   | Table              | Filter                |
-| ----------------------- | ------------------ | --------------------- |
-| `tours-store`           | `tours`            | `user_id=eq.<uid>`    |
-| `tour-attachments-store`| `tour_attachments` | `user_id=eq.<uid>`    |
-| `friendships-store`     | `friendships` (+)  | viewer-scoped         |
-| `user-blocks-store`     | `user_blocks`      | viewer-scoped         |
-| `tour-links-store`      | `tour_link_*`      | viewer-scoped         |
+| Store                    | Table              | Filter             |
+| ------------------------ | ------------------ | ------------------ |
+| `tours-store`            | `tours`            | `user_id=eq.<uid>` |
+| `tour-attachments-store` | `tour_attachments` | `user_id=eq.<uid>` |
+| `friendships-store`      | `friendships` (+)  | viewer-scoped      |
+| `user-blocks-store`      | `user_blocks`      | viewer-scoped      |
+| `tour-links-store`       | `tour_link_*`      | viewer-scoped      |
 
 Filters are always user-scoped so Realtime's fanout is bounded to rows the
 caller actually owns or participates in. No store subscribes to an unfiltered
@@ -41,10 +41,10 @@ Features should never call `supabase.channel(...)` directly.
 
 ```ts
 useRealtimeSubscription({
-  key:     () => `tours:${userId.value}`,
+  key: () => `tours:${userId.value}`,
   enabled: () => !!userId.value,
   bindings: () => [{ event: '*', table: 'tours', filter: `user_id=eq.${userId.value}` }],
-  onChange:     loadTours,         // debounced 150 ms
+  onChange: loadTours, // debounced 150 ms
   onSubscribed: () => loadTours(), // initial + every re-subscribe
 })
 ```
@@ -110,13 +110,13 @@ Concretely:
   `document.visibilityState` directly via a `Object.defineProperty` stub
   and dispatch the event.
 
-## What this does *not* solve
+## What this does _not_ solve
 
 - **MapLibre GPU cost.** A visible map keeps a WebGL context busy
   regardless of Realtime. The `map.remove()` on route unmount is the only
   lever there; see `architecture.md` → Map.
 - **Local-dev multi-tab heat.** N tabs × M channels still costs N×M while
-  *all* tabs are foregrounded. Visibility pause only helps the tabs you are
+  _all_ tabs are foregrounded. Visibility pause only helps the tabs you are
   not currently looking at. For multi-user manual testing, prefer
   background-tabbing the inactive users.
 - **Server-side fanout cost.** Realtime broadcasts every matching row
