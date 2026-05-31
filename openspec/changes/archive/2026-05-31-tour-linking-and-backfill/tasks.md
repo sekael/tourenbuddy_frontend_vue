@@ -131,7 +131,7 @@
 - [x] 14.2 `npm run type-check`
 - [x] 14.3 `npm run test`
 - [x] 14.4 Update `MANUAL_TEST_CASES.md` with cases for Issue 1 (edit linked-but-pending tour off-collision → warning shown; confirm → pending request withdrawn; accept from counterpart side after → row no longer present) and Issue 2 (Friends tab entry; back navigation restores Friends tab; tab persists across reload).
-- [ ] 14.5 Prompt user to push DB migration: `supabase db push`
-- [ ] 14.6 Prompt user to commit with conventional commit messages:
+- [x] 14.5 Prompt user to push DB migration: `supabase db push`
+- [x] 14.6 Prompt user to commit with conventional commit messages:
   - `fix(tour-links): auto-withdraw pending requests when edit breaks collision predicate`
   - `feat(tour-links): in-app backfill entry on friends tab, persist last active tab`

@@ -1,9 +1,11 @@
 ## Purpose
 
-Push and email notifications for friend requests, tour invites, and group messages, gated by user preferences.
+Push and email notifications for friend requests, tour updates, and tour collaboration signals, gated by user preferences.
+
 ## Requirements
+
 ### Requirement: Notification preference channels
-The system SHALL allow each user to independently enable or disable push and email notification channels, and to mute specific notification types from a defined, extensible set. The set defines three types: `friend_requests` (received and responded events), `tour_updates` (shared-tour created, edited, or deleted events), and `tour_interest` (a friend declined a duplicate and expressed interest in a tour).
+The system SHALL allow each user to independently enable or disable push and email notification channels, and to mute specific notification types from a defined, extensible set. The set defines three types: `friend_requests` (received and responded events), `tour_updates` (shared-tour created, edited, or deleted events), and `tour_interest` (a friend has planned the same tour as one of yours, or a link request between your tours is created, accepted, or declined; also the friendship-accept backfill digest). The enum value `'tour_interest'` SHALL be retained unchanged; only the user-facing label and description in the preferences UI SHALL be reworded to reflect the collaboration-suggestion semantics.
 
 #### Scenario: Defaults on first profile creation
 - **WHEN** a new user profile is created
@@ -23,7 +25,11 @@ The system SHALL allow each user to independently enable or disable push and ema
 
 #### Scenario: User mutes tour_interest
 - **WHEN** the user mutes `tour_interest`
-- **THEN** that type is added to `notif_muted_types` and no tour-interest notifications are dispatched to that user, regardless of channel state
+- **THEN** that type is added to `notif_muted_types` and no collision-detected, link-request-lifecycle, or friendship-backfill digest notifications are dispatched to that user, regardless of channel state
+
+#### Scenario: tour_interest label reflects collaboration-suggestion semantics
+- **WHEN** the preferences UI renders the `tour_interest` row
+- **THEN** the label and description describe same-tour collaboration suggestions (collision-detected pings, link-request events, friendship backfill) — not the legacy "decline duplicate" behavior
 
 #### Scenario: Type set is extensible without schema change
 - **WHEN** a future notification type is introduced (e.g. `tour_invites`)
@@ -106,6 +112,10 @@ The system SHALL notify the original requester when their friend request receive
 ### Requirement: Localization of email content
 The system SHALL select the Brevo template matching `user_profile.locale` (`en`, `de`) for each email notification.
 
+#### Scenario: User locale is en
+- **WHEN** dispatching an email to a user with locale `en`
+- **THEN** the Worker uses the `*_en` template ID
+
 #### Scenario: User locale is de
 - **WHEN** dispatching an email to a user with locale `de`
 - **THEN** the Worker uses the `*_de` template ID
@@ -115,7 +125,7 @@ The system SHALL select the Brevo template matching `user_profile.locale` (`en`,
 - **THEN** the Worker falls back to the `*_en` template
 
 ### Requirement: Notification dispatch authorization
-The notification Worker SHALL verify the caller's Supabase JWT and SHALL reject requests where the caller is not the legitimate actor for the event.
+The notification Worker SHALL verify the caller's Supabase JWT and SHALL reject requests where the caller is not the legitimate actor for the event. Network failures during JWT verification SHALL NOT block the client-side write; the verification failure is logged and the request is rejected with a clear error.
 
 #### Scenario: Missing or invalid JWT
 - **WHEN** the Worker receives a request without a valid `Authorization` bearer token
@@ -128,6 +138,10 @@ The notification Worker SHALL verify the caller's Supabase JWT and SHALL reject 
 #### Scenario: Caller is not the responder
 - **WHEN** `/notify/friend-request-responded` is called and the JWT subject is not the `recipient_id` on the friendship row
 - **THEN** the Worker responds 403 and dispatches nothing
+
+#### Scenario: JWT verification network failure
+- **WHEN** the Worker cannot reach the Supabase authentication endpoint during JWT verification (network timeout, DNS failure, etc.)
+- **THEN** the Worker logs the error and responds with a clear error message; the client-side write is not blocked or rolled back
 
 ### Requirement: Stale push subscription cleanup
 The system SHALL delete push subscription rows whose endpoint returns 404 or 410 from the Web Push service.
