@@ -158,11 +158,14 @@ const linkSiblings = computed(() => siblingsByTourId.value.get(props.tour.id) ??
 const linkPendingRequests = computed(() => requestsByTourId.value.get(props.tour.id) ?? [])
 const isLinked = computed(() => groupIdByTourId.value.has(props.tour.id))
 
-// Edit-warning dialog: shown when owner submits an edit that would evict the
-// tour from its group (tour_type changed, visibility flipped from friends, or
-// goal moved >100 m from any sibling). Confirm proceeds with submit; cancel
-// rolls back.
+// Edit-warning dialog: shown when owner submits an edit that would either evict
+// the tour from its group (tour_type changed, visibility flipped from friends,
+// or goal moved >COLLISION_RADIUS_M from any sibling) OR invalidate the predicate
+// for any pending link request involving this tour. Confirm proceeds with
+// submit; cancel rolls back.
 const editWarningPending = ref<null | (() => Promise<void>)>(null)
+const editWarningMode = ref<'linked' | 'pending-outgoing' | 'pending-incoming' | 'pending-mixed'>('linked')
+const editWarningPendingCount = ref(0)
 
 // "Verknüpft mit" full list takes over the sheet body when the user taps the
 // "+N weitere" pill. Back returns to the tour details inside the same sheet —
@@ -187,8 +190,12 @@ async function handleEditSubmit(draft: TourDraft, _gpxFile: File | null, gpxRemo
     return
   }
 
-  // Soft-gate: if this edit would evict the tour from its group, ask first.
-  if (isLinked.value && wouldEvict(draft, pendingGoal.value)) {
+  // Soft-gate: if this edit would evict the tour from its group OR invalidate
+  // pending link requests, ask first.
+  const breakage = wouldBreakLink(draft, pendingGoal.value)
+  if (breakage) {
+    editWarningMode.value = breakage.mode
+    editWarningPendingCount.value = breakage.pendingCount
     editWarningPending.value = () => performEditSubmit(draft, gpxRemoved)
     return
   }
@@ -217,6 +224,75 @@ function wouldEvict(draft: TourDraft, newGoal: { lng: number, lat: number }): bo
       return true
   }
   return false
+}
+
+/**
+ * Pending requests that would lose the collision predicate after this edit,
+ * split by direction (this tour as initiator = outgoing, as target = incoming).
+ * Mirror of fn_collision_predicate: same non-null tour_type, both visibility=friends,
+ * within COLLISION_RADIUS_M of the counterpart tour's goal.
+ */
+function pendingRequestsBrokenBy(
+  draft: TourDraft,
+  newGoal: { lng: number, lat: number },
+): { outgoing: number, incoming: number } {
+  const result = { outgoing: 0, incoming: 0 }
+  if (linkPendingRequests.value.length === 0)
+    return result
+  const t1 = props.tour
+  const effectiveType = draft.tourType ?? t1.tourType
+  const effectiveVisibility = draft.visibility ?? t1.visibility
+
+  for (const req of linkPendingRequests.value) {
+    const isOutgoing = req.initiatorTourId === t1.id
+    const otherId = isOutgoing ? req.targetTourId : req.initiatorTourId
+    const other = tours.value.find(t => t.id === otherId) ?? friendTours.value.find(t => t.id === otherId)
+    let broken = false
+    if (effectiveVisibility !== 'friends') {
+      broken = true
+    }
+    else if (!other) {
+      // Counterpart out of scope (RLS) — be conservative: assume predicate still holds.
+      broken = false
+    }
+    else if (effectiveType == null || other.tourType == null || effectiveType !== other.tourType) {
+      broken = true
+    }
+    else if (other.visibility !== 'friends') {
+      broken = true
+    }
+    else if (!isSameGoal(newGoal, other.goal, COLLISION_RADIUS_M)) {
+      broken = true
+    }
+    if (broken) {
+      if (isOutgoing)
+        result.outgoing++
+      else
+        result.incoming++
+    }
+  }
+  return result
+}
+
+/** Combined gate: eviction wins ('linked'); falls back to pending-request invalidation. */
+function wouldBreakLink(
+  draft: TourDraft,
+  newGoal: { lng: number, lat: number },
+): {
+  mode: 'linked' | 'pending-outgoing' | 'pending-incoming' | 'pending-mixed'
+  pendingCount: number
+} | null {
+  if (isLinked.value && wouldEvict(draft, newGoal))
+    return { mode: 'linked', pendingCount: 0 }
+  const broken = pendingRequestsBrokenBy(draft, newGoal)
+  const total = broken.outgoing + broken.incoming
+  if (total === 0)
+    return null
+  if (broken.outgoing > 0 && broken.incoming > 0)
+    return { mode: 'pending-mixed', pendingCount: total }
+  if (broken.outgoing > 0)
+    return { mode: 'pending-outgoing', pendingCount: broken.outgoing }
+  return { mode: 'pending-incoming', pendingCount: broken.incoming }
 }
 
 async function performEditSubmit(draft: TourDraft, gpxRemoved: boolean) {
@@ -265,11 +341,33 @@ async function toggleCompleted() {
 // ── Visibility toggle (owner only) ──────────────────────────────────────────
 async function toggleVisibility() {
   const next = props.tour.visibility === 'private' ? 'friends' : 'private'
-  // friends → private on a linked tour will evict via the server trigger.
-  // Same affordance as the edit-form path: surface the unlink dialog first.
-  if (next === 'private' && isLinked.value) {
-    editWarningPending.value = () => toursStore.setVisibility(props.tour.id, 'private')
-    return
+  // friends → private will (a) evict from a group via the server trigger, or
+  // (b) invalidate pending requests where this tour is involved. Surface the
+  // appropriate warning before proceeding.
+  if (next === 'private') {
+    if (isLinked.value) {
+      editWarningMode.value = 'linked'
+      editWarningPendingCount.value = 0
+      editWarningPending.value = () => toursStore.setVisibility(props.tour.id, 'private')
+      return
+    }
+    if (linkPendingRequests.value.length > 0) {
+      let outgoing = 0
+      let incoming = 0
+      for (const req of linkPendingRequests.value) {
+        if (req.initiatorTourId === props.tour.id)
+          outgoing++
+        else
+          incoming++
+      }
+      editWarningMode.value
+        = outgoing > 0 && incoming > 0
+          ? 'pending-mixed'
+          : outgoing > 0 ? 'pending-outgoing' : 'pending-incoming'
+      editWarningPendingCount.value = linkPendingRequests.value.length
+      editWarningPending.value = () => toursStore.setVisibility(props.tour.id, 'private')
+      return
+    }
   }
   await toursStore.setVisibility(props.tour.id, next)
 }
@@ -835,6 +933,8 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
     <LinkEditWarningDialog
       v-if="editWarningPending"
       :linked-count="linkSiblings.length"
+      :pending-count="editWarningPendingCount"
+      :mode="editWarningMode"
       @confirm="confirmEditWarning"
       @cancel="cancelEditWarning"
     />

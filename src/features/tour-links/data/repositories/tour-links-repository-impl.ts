@@ -118,4 +118,26 @@ export class TourLinksRepositoryImpl implements TourLinksRepository {
       friendUserId: r.friend_user_id,
     }))
   }
+
+  async listAllBackfillCollisions(): Promise<BackfillCollisionPair[]> {
+    const { data, error } = await supabase.rpc('list_all_backfill_pairs')
+    if (error)
+      throw new Error(error.message)
+    const rows = (data ?? []) as Array<{
+      your_tour_id: string
+      your_tour_name: string | null
+      friend_tour_id: string
+      friend_tour_name: string | null
+      friend_user_id: string
+      friendship_id: string
+    }>
+    return rows.map(r => ({
+      yourTourId: r.your_tour_id,
+      yourTourName: r.your_tour_name,
+      friendTourId: r.friend_tour_id,
+      friendTourName: r.friend_tour_name,
+      friendUserId: r.friend_user_id,
+      friendshipId: r.friendship_id,
+    }))
+  }
 }

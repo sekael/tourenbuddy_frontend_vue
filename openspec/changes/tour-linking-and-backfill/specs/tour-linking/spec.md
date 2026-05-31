@@ -55,10 +55,10 @@ The system SHALL implement a two-sided link handshake via a `tour_link_request` 
 - **THEN** an `AFTER` trigger moves that request to status `withdrawn` with `resolved_at = now()` so users do not see banners for unresolvable handshakes
 
 ### Requirement: Link group invariants enforced by triggers
-The database SHALL maintain the invariant that all pairs of distinct owners in a `tour_link_group` are mutual accepted friends and that every member tour has `visibility = 'friends'`, matching non-null `tour_type`, and goal within 100 m of every other member. The system SHALL evict any tour that violates the invariant from its group via DB triggers.
+The database SHALL maintain the invariant that all pairs of distinct owners in a `tour_link_group` are mutual accepted friends and that every member tour has `visibility = 'friends'`, matching non-null `tour_type`, and goal within 200 m of every other member. The system SHALL evict any tour that violates the invariant from its group via DB triggers.
 
 #### Scenario: Goal moved outside the radius
-- **WHEN** a member tour's goal is updated such that it is more than 100 m from any other member tour's goal
+- **WHEN** a member tour's goal is updated such that it is more than 200 m from any other member tour's goal
 - **THEN** the moved tour is removed from the group
 
 #### Scenario: Tour type changed
@@ -92,7 +92,7 @@ The system SHALL delete a `tour_link_group` whenever, after any eviction or casc
 After any tour create or update, the system SHALL invoke the notification Worker to scan for friend-owned tours satisfying the collision predicate and dispatch a `tour_interest` notification to each colliding owner. The notification SHALL be best-effort: failures SHALL NOT block or roll back the tour write.
 
 #### Scenario: New tour collides with a friend tour
-- **WHEN** owner A saves a tour whose goal is within 100 m, with the same non-null `tour_type`, and with friends-visibility matching a friend B's tour also at friends-visibility
+- **WHEN** owner A saves a tour whose goal is within 200 m, with the same non-null `tour_type`, and with friends-visibility matching a friend B's tour also at friends-visibility
 - **THEN** the Worker dispatches a `tour_interest` notification to B naming A as the friend who planned the same tour
 
 #### Scenario: Owner muted the type
@@ -197,11 +197,11 @@ Tour info sheets SHALL display a link-request banner whenever there is a pending
 - **WHEN** A opens their tour and there is a pending request from A's tour to B's tour
 - **THEN** A sees a banner naming B with a Withdraw button
 
-### Requirement: Edit-warning dialog before eviction-causing edits
-The client SHALL display a confirmation dialog before saving an edit to a group-member tour that would cause eviction — changing the goal beyond the 100 m boundary, changing `tour_type`, or changing visibility from `friends` to `private`. The dialog SHALL follow the same design language as the existing friendship/contact delete dialog. Cancellation SHALL abort the edit; confirmation SHALL proceed with the edit and the DB trigger SHALL perform the eviction.
+### Requirement: Edit-warning dialog before eviction-causing or pending-request-invalidating edits
+The client SHALL display a confirmation dialog before saving an edit that would EITHER (a) cause eviction from a `tour_link_group` — changing the goal beyond the 200 m boundary from any sibling, changing `tour_type`, or changing visibility from `friends` to `private` — OR (b) invalidate the collision predicate for any `pending` `tour_link_request` involving the edited tour as initiator or target (goal moved >200 m from the counterpart tour's goal, `tour_type` diverges, visibility flips away from `friends`). The dialog SHALL follow the same design language as the existing friendship/contact delete dialog and SHALL adapt its title and body copy by mode: (1) `linked` when the tour is grouped → "this tour will be unlinked"; (2) `pending-outgoing` when only the user's own initiated pending request(s) are affected → "your pending link request(s) will be cancelled" (explicit ownership); (3) `pending-incoming` when only requests initiated by other users targeting this tour are affected → "there are outstanding link requests for this tour; applying these changes will withdraw them" (no implication the user sent any request); (4) `pending-mixed` when both directions are affected → reuse the `pending-incoming` copy with the combined count. Cancellation SHALL abort the edit; confirmation SHALL proceed with the edit, the DB trigger SHALL perform the eviction (if grouped), and the DB trigger SHALL set affected pending requests to `withdrawn` (regardless of grouping). Trigger-driven withdrawal SHALL NOT dispatch notifications, mirroring the manual-withdraw policy.
 
 #### Scenario: Goal nudge across the boundary
-- **WHEN** A edits a linked tour's goal to a location more than 100 m from a sibling member's goal
+- **WHEN** A edits a linked tour's goal to a location more than 200 m from a sibling member's goal
 - **THEN** the client shows the eviction-warning dialog before submitting the edit
 
 #### Scenario: Type change on a linked tour
@@ -215,6 +215,27 @@ The client SHALL display a confirmation dialog before saving an edit to a group-
 #### Scenario: Edit that does not affect linking
 - **WHEN** A edits the description of a linked tour
 - **THEN** no eviction warning is shown and the edit proceeds normally
+
+#### Scenario: Goal moved >200 m while a pending outgoing request exists (not yet grouped)
+- **WHEN** A has an outgoing `pending` `tour_link_request` from A's tour to B's tour, A's tour is not in any group, and A edits the goal to a location more than 200 m from B's tour goal
+- **THEN** the client shows the warning dialog with pending-request copy; on confirm, the edit saves and the DB trigger sets the pending request to `withdrawn`
+- **AND** if B subsequently attempts to accept, the request is no longer `pending` and the accept UI no longer offers it (preventing `predicate_failed`)
+
+#### Scenario: Tour-type change with pending incoming request
+- **WHEN** A has an incoming `pending` request on A's tour from B's tour (A did not initiate any request), and A changes A's tour `tour_type` to a different value
+- **THEN** the client shows the warning dialog in `pending-incoming` mode with copy framed around "outstanding link requests for this tour" — explicitly NOT implying A sent any request — and on confirm, the edit saves and the DB trigger sets the pending request to `withdrawn`
+
+#### Scenario: Outgoing pending request shows ownership in copy
+- **WHEN** A has an outgoing `pending` request from A's tour to B's tour and A's edit would break the predicate
+- **THEN** the warning dialog renders in `pending-outgoing` mode with copy that explicitly names the request as A's own ("your pending link request(s) you sent")
+
+#### Scenario: Mixed incoming and outgoing pending
+- **WHEN** A's tour is both initiator of one pending request and target of another, and A's edit would break both
+- **THEN** the dialog renders in `pending-mixed` mode using the incoming-style copy with the combined count (avoids overclaiming ownership)
+
+#### Scenario: Trigger-driven auto-withdrawal is silent
+- **WHEN** the DB trigger sets a pending request to `withdrawn` because an edit broke the collision predicate
+- **THEN** no notification is dispatched to either side (matching the manual-withdraw policy)
 
 ### Requirement: Friend-profile collisions entry-point
 The friend profile page SHALL display a "Collisions ([N])" entry whenever the friendship has one or more not-yet-linked, no-pending-request collisions matching the predicate. Tapping the entry SHALL open the backfill-collisions list page filtered to that friendship. The entry SHALL be visible regardless of the user's `tour_interest` mute preference, so users who muted the digest still have an in-app discovery path.
@@ -258,7 +279,7 @@ The existing delete-tour confirmation dialog SHALL display an additional line of
 - **THEN** the dialog shows the standard delete confirmation with no link-related copy
 
 ### Requirement: Backfill collisions list page
-The application SHALL provide a list page reachable from the friendship-accept digest notification that enumerates colliding tour pairs for the friendship's two users, one row per pair, each with a "Request to link" action. Rows already linked or with a pending request SHALL be excluded.
+The application SHALL provide a list page reachable from the friendship-accept digest notification that enumerates colliding tour pairs for the friendship's two users, one row per pair, each with a "Request to link" action. The same page SHALL also be reachable from an in-app entry point on the My Tours Friends tab, in which case it enumerates pairs across ALL of the viewer's accepted friendships (each row labeled with the friend's name). Rows already linked or with a pending request SHALL be excluded in both modes.
 
 #### Scenario: Digest opens the list
 - **WHEN** the recipient taps the friendship-backfill digest notification
@@ -267,6 +288,30 @@ The application SHALL provide a list page reachable from the friendship-accept d
 #### Scenario: Per-row link request
 - **WHEN** the user taps "Request to link" on a row
 - **THEN** a `tour_link_request` is created with the user's tour as initiator and the friend's tour as target, the row disappears from the list, and the friend is notified
+
+#### Scenario: In-app entry from the Friends tab opens all-friendships mode
+- **WHEN** the user opens the My Tours list, switches to the Friends tab, and taps the "View backfill collisions" action
+- **THEN** the backfill page opens in the same surface (bottom sheet on mobile, side drawer on desktop) in all-friendships mode, listing deduplicated pairs across every accepted friendship
+- **AND** each row includes the friend's display name
+
+#### Scenario: Back from in-app backfill restores Friends tab
+- **WHEN** the user taps Back inside the in-app backfill view
+- **THEN** the backfill view closes and the My Tours list is restored on the Friends tab with prior search/filter state preserved
+
+### Requirement: My Tours active tab persisted across sessions
+The application SHALL persist the active tab of the My Tours list (`owned` | `friends`) to client-side storage so that reopening the app restores the tab the user last used. Persistence SHALL be resilient to invalid stored values (falling back to `owned`) and to storage unavailable errors (no crash).
+
+#### Scenario: Tab survives reload
+- **WHEN** the user selects the Friends tab and reloads the app (or relaunches the PWA)
+- **THEN** the My Tours list opens on the Friends tab
+
+#### Scenario: Invalid stored value
+- **WHEN** the stored tab value is missing or not a member of the `TourTab` union
+- **THEN** the My Tours list opens on `owned`
+
+#### Scenario: Storage unavailable
+- **WHEN** localStorage access throws (e.g. Safari private mode)
+- **THEN** the app does not crash; the tab behaves as in-memory-only with default `owned`
 
 ### Requirement: RLS scoping for link tables
 The database SHALL enforce row-level security on `tour_link_group`, `tour_link_member`, and `tour_link_request` such that a user MAY read or write rows only when they own at least one tour referenced (directly or transitively via membership) on the row.

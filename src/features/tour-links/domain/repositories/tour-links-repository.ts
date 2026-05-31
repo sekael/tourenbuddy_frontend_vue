@@ -37,4 +37,7 @@ export interface TourLinksRepository {
 
   /** Not-yet-linked, no-pending-request friend collisions for a friendship. */
   listBackfillCollisionsForFriendship: (friendshipId: string) => Promise<BackfillCollisionPair[]>
+
+  /** Not-yet-linked, no-pending-request friend collisions across all friendships. */
+  listAllBackfillCollisions: () => Promise<BackfillCollisionPair[]>
 }

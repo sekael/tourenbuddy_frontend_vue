@@ -1,17 +1,26 @@
 <script setup lang="ts">
 import type { BackfillCollisionPair } from '@/features/tour-links/domain/entities/tour-link'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useLogger } from '@/core/logging/use-logger'
+import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { TourLinksRepositoryImpl } from '@/features/tour-links/data/repositories/tour-links-repository-impl'
 import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
+
+const props = withDefaults(defineProps<{
+  /** 'friendship' = scoped to route param; 'all' = scan every accepted friendship. */
+  mode?: 'friendship' | 'all'
+}>(), { mode: 'friendship' })
+
+const emit = defineEmits<{ back: [] }>()
 
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n({ useScope: 'global' })
 const logger = useLogger('backfill-collisions-page')
 const tourLinksStore = useTourLinksStore()
+const friendshipsStore = useFriendshipsStore()
 const repository = new TourLinksRepositoryImpl()
 
 const loading = ref(true)
@@ -19,17 +28,27 @@ const error = ref<string | null>(null)
 const pairs = ref<BackfillCollisionPair[]>([])
 const submitting = ref<string | null>(null)
 
+const isAllMode = computed(() => props.mode === 'all')
+
 async function load() {
-  const friendshipId = String(route.params.friendshipId ?? '')
-  if (!friendshipId) {
-    error.value = 'missing friendshipId'
-    loading.value = false
-    return
-  }
   loading.value = true
   error.value = null
   try {
-    pairs.value = await repository.listBackfillCollisionsForFriendship(friendshipId)
+    if (props.mode === 'all') {
+      pairs.value = await repository.listAllBackfillCollisions()
+      const ownerIds = [...new Set(pairs.value.map(p => p.friendUserId))]
+        .filter(id => !friendshipsStore.userIdToNamesMap.has(id))
+      if (ownerIds.length > 0)
+        await friendshipsStore.getNamesByUserIds(ownerIds)
+    }
+    else {
+      const friendshipId = String(route.params.friendshipId ?? '')
+      if (!friendshipId) {
+        error.value = 'missing friendshipId'
+        return
+      }
+      pairs.value = await repository.listBackfillCollisionsForFriendship(friendshipId)
+    }
   }
   catch (err) {
     logger.error('list backfill failed', err)
@@ -38,6 +57,13 @@ async function load() {
   finally {
     loading.value = false
   }
+}
+
+function friendNameOf(pair: BackfillCollisionPair): string {
+  const entry = friendshipsStore.userIdToNamesMap.get(pair.friendUserId)
+  if (!entry)
+    return ''
+  return [entry.firstName, entry.lastName].filter(Boolean).join(' ')
 }
 
 async function requestLink(pair: BackfillCollisionPair) {
@@ -55,13 +81,20 @@ async function requestLink(pair: BackfillCollisionPair) {
   }
 }
 
+function handleBack() {
+  emit('back')
+  // Route-mode (digest deeplink) has no parent listener wired — fall through.
+  if (props.mode === 'friendship')
+    router.back()
+}
+
 onMounted(load)
 </script>
 
 <template>
   <div class="page">
     <header class="page-header">
-      <button type="button" class="back-btn" @click="router.back()">
+      <button type="button" class="back-btn" @click="handleBack">
         <span class="material-symbols-outlined">arrow_back</span>
       </button>
       <h1>{{ t('tourLinks.backfillPageTitle') }}</h1>
@@ -74,15 +107,20 @@ onMounted(load)
       {{ error }}
     </div>
     <div v-else-if="pairs.length === 0" class="state">
-      {{ t('tourLinks.backfillEmpty') }}
+      {{ isAllMode ? t('tourLinks.backfillAllEmpty') : t('tourLinks.backfillEmpty') }}
     </div>
 
     <ul v-else class="list">
       <li v-for="pair in pairs" :key="`${pair.yourTourId}-${pair.friendTourId}`" class="row">
         <div class="pair">
-          <span class="tour-name">{{ pair.yourTourName ?? t('tours.infoSheet.unnamedTour') }}</span>
-          <span class="material-symbols-outlined connector">sync_alt</span>
-          <span class="tour-name">{{ pair.friendTourName ?? t('tours.infoSheet.unnamedTour') }}</span>
+          <div class="pair-tours">
+            <span class="tour-name">{{ pair.yourTourName ?? t('tours.infoSheet.unnamedTour') }}</span>
+            <span class="material-symbols-outlined connector">sync_alt</span>
+            <span class="tour-name">{{ pair.friendTourName ?? t('tours.infoSheet.unnamedTour') }}</span>
+          </div>
+          <span v-if="isAllMode && friendNameOf(pair)" class="friend-label">
+            {{ t('tourLinks.backfillFriendLabel', { name: friendNameOf(pair) }) }}
+          </span>
         </div>
         <button
           type="button"
@@ -159,9 +197,16 @@ h1 {
 
 .pair {
   display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.pair-tours {
+  display: flex;
   align-items: center;
   gap: var(--spacing-xs);
-  flex: 1;
   min-width: 0;
 }
 
@@ -170,6 +215,11 @@ h1 {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.friend-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-on-surface-variant);
 }
 
 .connector {

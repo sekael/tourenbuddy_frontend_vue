@@ -2,7 +2,7 @@ import type { Ref } from 'vue'
 import type { Season } from '@/features/tours/data/models/season'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Tour } from '@/features/tours/domain/entities/tour'
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { resolveContactName } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
@@ -41,7 +41,30 @@ const tabStates: Record<TourTab, ReturnType<typeof createFilterState>> = {
 
 // The selected tab is module-level too, so returning to the list from a tour
 // detail view (which remounts TourListSheet) restores the tab last viewed.
-const activeTourTab = ref<TourTab>('owned')
+// Persisted to localStorage so the tab survives full reloads / PWA restarts.
+const ACTIVE_TAB_STORAGE_KEY = 'tours.list.activeTab'
+
+function readStoredTab(): TourTab {
+  try {
+    const v = localStorage.getItem(ACTIVE_TAB_STORAGE_KEY)
+    if (v === 'owned' || v === 'friends')
+      return v
+  }
+  catch {
+    // localStorage unavailable (Safari private mode etc.) — fall through.
+  }
+  return 'owned'
+}
+
+const activeTourTab = ref<TourTab>(readStoredTab())
+watch(activeTourTab, (next) => {
+  try {
+    localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, next)
+  }
+  catch {
+    // ignore
+  }
+})
 
 export function useActiveTourTab() {
   return activeTourTab

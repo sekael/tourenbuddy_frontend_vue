@@ -68,38 +68,35 @@
         <p>Hi there,</p>
 
         {% if params.action == "link_created" %}
-          <p>
-            <strong>{{ params.actorName }}</strong> wants to link their tour with your
-            <strong>{{ params.tourName }}</strong>.
-          </p>
-          <p>Open the tour to accept or decline the link request.</p>
+        <p>
+          <strong>{{ params.actorName }}</strong> wants to link their tour with your
+          <strong>{{ params.tourName }}</strong>.
+        </p>
+        <p>Open the tour to accept or decline the link request.</p>
         {% elif params.action == "link_accepted" %}
-          <p>
-            <strong>{{ params.actorName }}</strong> accepted your link request for
-            <strong>{{ params.tourName }}</strong>.
-          </p>
-          <p>Your tours are now linked. Coordinate timing and partners on either side.</p>
+        <p>
+          <strong>{{ params.actorName }}</strong> accepted your link request for <strong>{{ params.tourName }}</strong>.
+        </p>
+        <p>Your tours are now linked. Coordinate timing and partners on either side.</p>
         {% elif params.action == "link_declined" %}
-          <p>
-            <strong>{{ params.actorName }}</strong> declined your link request for
-            <strong>{{ params.tourName }}</strong>.
-          </p>
-          <p>No further action needed — you can still plan independently.</p>
+        <p>
+          <strong>{{ params.actorName }}</strong> declined your link request for <strong>{{ params.tourName }}</strong>.
+        </p>
+        <p>No further action needed — you can still plan independently.</p>
         {% elif params.action == "group_joined" %}
-          <p>A new tour joined the link around <strong>{{ params.tourName }}</strong>.</p>
-          <p>Check the linked tours to see who else is planning the same outing.</p>
+        <p>A new tour joined the link around <strong>{{ params.tourName }}</strong>.</p>
+        <p>Check the linked tours to see who else is planning the same outing.</p>
         {% elif params.action == "group_evicted_external" %}
-          <p>A tour was removed from the link around <strong>{{ params.tourName }}</strong>.</p>
-          <p>This happens when a tour is edited, made private, or a friendship is ended.</p>
+        <p>A tour was removed from the link around <strong>{{ params.tourName }}</strong>.</p>
+        <p>This happens when a tour is edited, made private, or a friendship is ended.</p>
         {% elif params.action == "group_dissolved" %}
-          <p>The link for <strong>{{ params.tourName }}</strong> was dissolved.</p>
-          <p>Your tour is no longer linked with any other.</p>
+        <p>The link for <strong>{{ params.tourName }}</strong> was dissolved.</p>
+        <p>Your tour is no longer linked with any other.</p>
         {% else %}
-          <p>
-            <strong>{{ params.actorName }}</strong> planned the same tour as your
-            <strong>{{ params.tourName }}</strong>.
-          </p>
-          <p>Open the tour to link with them and plan together.</p>
+        <p>
+          <strong>{{ params.actorName }}</strong> planned the same tour as your <strong>{{ params.tourName }}</strong>.
+        </p>
+        <p>Open the tour to link with them and plan together.</p>
         {% endif %}
 
         <a href="{{ params.appUrl }}/?tours=1" class="cta">View tour</a>

@@ -254,7 +254,8 @@
       "friendsEmptyTitle": "No friend tours yet.",
       "friendsEmptySubtitle": "Tours your friends share will appear here.",
       "ownedByLabel": "by {name}",
-      "aFriend": "a friend"
+      "aFriend": "a friend",
+      "viewBackfillCollisionsBtn": "Review tour overlaps"
     },
     "duplicate": {
       "title": "Tour already here",
@@ -550,11 +551,18 @@
     "withdrawBtn": "Withdraw",
     "editWarningTitle": "This will unlink the tour",
     "editWarningBody": "This change will unlink this tour from {count} friend tour(s) it is currently grouped with.",
+    "editWarningPendingTitle": "This will cancel pending link request(s)",
+    "editWarningPendingBody": "This change breaks the location match for {count} pending link request(s) you sent. The request(s) will be cancelled.",
+    "editWarningIncomingTitle": "Pending link requests will be withdrawn",
+    "editWarningIncomingBody": "There are {count} outstanding link request(s) for this tour. Applying these changes will automatically withdraw them.",
     "editWarningHint": "You can re-request a link later if the tours still match.",
     "editWarningProceedBtn": "Save & unlink",
+    "editWarningProceedPendingBtn": "Save & cancel request",
     "deleteUnlinkWarning": "This tour is linked with {count} friend tour(s). Deleting will unlink them.",
     "backfillPageTitle": "Tour overlaps with this friend",
     "backfillEmpty": "No tour overlaps to review.",
+    "backfillAllEmpty": "No tour overlaps with friends to review.",
+    "backfillFriendLabel": "with {name}",
     "mergeBlockedTitle": "Another friend group plans the same tour",
     "mergeBlockedBody": "Friends already in their own linked group: {names}. You can reach out to them directly to coordinate — joining their group from yours isn't possible.",
     "dismissBtn": "Got it",

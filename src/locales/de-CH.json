@@ -254,7 +254,8 @@
       "friendsEmptyTitle": "Noch keine Touren von Freunden.",
       "friendsEmptySubtitle": "Touren, die deine Freunde teilen, erscheinen hier.",
       "ownedByLabel": "von {name}",
-      "aFriend": "einem Freund"
+      "aFriend": "einem Freund",
+      "viewBackfillCollisionsBtn": "Tour-Überschneidungen prüfen"
     },
     "duplicate": {
       "title": "Tour bereits vorhanden",
@@ -550,11 +551,18 @@
     "withdrawBtn": "Zurückziehen",
     "editWarningTitle": "Diese Änderung trennt die Verknüpfung",
     "editWarningBody": "Diese Änderung trennt diese Tour von {count} verknüpften Freundestour(en).",
+    "editWarningPendingTitle": "Diese Änderung verwirft deine offene(n) Verknüpfungsanfrage(n)",
+    "editWarningPendingBody": "Diese Änderung passt nicht mehr zu {count} offenen Verknüpfungsanfrage(n), die du gesendet hast. Die Anfrage(n) werden zurückgezogen.",
+    "editWarningIncomingTitle": "Offene Verknüpfungsanfragen werden zurückgezogen",
+    "editWarningIncomingBody": "Für diese Tour gibt es {count} offene Verknüpfungsanfrage(n). Wenn du die Änderungen speicherst, werden sie automatisch zurückgezogen.",
     "editWarningHint": "Du kannst später eine neue Verknüpfung anfragen, wenn die Touren wieder übereinstimmen.",
     "editWarningProceedBtn": "Speichern und Verknüpfung lösen",
+    "editWarningProceedPendingBtn": "Speichern und Anfrage zurückziehen",
     "deleteUnlinkWarning": "Diese Tour ist mit {count} Freund-Tour(en) verknüpft. Beim Löschen wird die Verknüpfung getrennt.",
     "backfillPageTitle": "Tour-Überschneidungen mit diesem Freund",
     "backfillEmpty": "Keine Überschneidungen zu prüfen.",
+    "backfillAllEmpty": "Keine Tour-Überschneidungen mit Freunden zu prüfen.",
+    "backfillFriendLabel": "mit {name}",
     "mergeBlockedTitle": "Eine andere Freundesgruppe plant dieselbe Tour",
     "mergeBlockedBody": "Freunde bereits in eigener verknüpfter Gruppe: {names}. Du kannst sie direkt kontaktieren, um euch abzustimmen — eure Gruppen lassen sich aber nicht zusammenführen.",
     "dismissBtn": "Verstanden",

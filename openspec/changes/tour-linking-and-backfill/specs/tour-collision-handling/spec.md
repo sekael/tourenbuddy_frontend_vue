@@ -1,14 +1,14 @@
 ## MODIFIED Requirements
 
 ### Requirement: Goal collision detection
-Two tours SHALL be treated as the same objective when ALL of the following hold: their goal points lie within a 100 m radius of each other; both have a non-null `tour_type` and the values are equal; both have `visibility = 'friends'`; and their owners are mutual accepted friends. Collision distance SHALL be computed with the existing tour distance utility. This predicate SHALL be the single source of truth used by both the client (info-sheet collision notice, map precedence, link suggestions) and the notification Worker (post-save scan, friendship-accept backfill scan).
+Two tours SHALL be treated as the same objective when ALL of the following hold: their goal points lie within a 200 m radius of each other; both have a non-null `tour_type` and the values are equal; both have `visibility = 'friends'`; and their owners are mutual accepted friends. Collision distance SHALL be computed with the existing tour distance utility. This predicate SHALL be the single source of truth used by both the client (info-sheet collision notice, map precedence, link suggestions) and the notification Worker (post-save scan, friendship-accept backfill scan).
 
 #### Scenario: All conditions met
-- **WHEN** A's tour and B's tour are within 100 m, share the same non-null `tour_type`, are both friends-visible, and A and B are accepted friends
+- **WHEN** A's tour and B's tour are within 200 m, share the same non-null `tour_type`, are both friends-visible, and A and B are accepted friends
 - **THEN** the two are treated as a collision for notices, map precedence, and link suggestions
 
 #### Scenario: Different tour type
-- **WHEN** A's and B's tours are within 100 m and friends-visible but have different `tour_type` values
+- **WHEN** A's and B's tours are within 200 m and friends-visible but have different `tour_type` values
 - **THEN** no collision is triggered
 
 #### Scenario: Null tour type
@@ -24,7 +24,7 @@ Two tours SHALL be treated as the same objective when ALL of the following hold:
 - **THEN** no collision is triggered
 
 #### Scenario: Goals outside radius
-- **WHEN** a new tour's goal is more than 100 m from every otherwise-matching tour's goal
+- **WHEN** a new tour's goal is more than 200 m from every otherwise-matching tour's goal
 - **THEN** no collision is triggered and the tour saves normally
 
 ## REMOVED Requirements

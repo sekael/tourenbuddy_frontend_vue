@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Worker collision scan after tour save
-The notification Worker SHALL expose an authenticated endpoint that, given a saved tour id and the caller's JWT, scans for friend-owned tours satisfying the shared collision predicate (within 100 m, equal non-null `tour_type`, both friends-visible, mutual accepted friendship) and dispatches a `tour_interest` notification to each colliding owner. The endpoint SHALL replace the legacy decline-triggered `tour_interest` flow. The endpoint SHALL honor each recipient's `notif_push_enabled`, `notif_email_enabled`, and `notif_muted_types`. Failures SHALL return error responses but SHALL NOT block or roll back the tour write that preceded the call.
+The notification Worker SHALL expose an authenticated endpoint that, given a saved tour id and the caller's JWT, scans for friend-owned tours satisfying the shared collision predicate (within 200 m, equal non-null `tour_type`, both friends-visible, mutual accepted friendship) and dispatches a `tour_interest` notification to each colliding owner. The endpoint SHALL replace the legacy decline-triggered `tour_interest` flow. The endpoint SHALL honor each recipient's `notif_push_enabled`, `notif_email_enabled`, and `notif_muted_types`. Failures SHALL return error responses but SHALL NOT block or roll back the tour write that preceded the call.
 
 #### Scenario: Save with friend-owned colliding tour
 - **WHEN** A's client posts the saved tour id and a friend B owns a tour that matches the collision predicate

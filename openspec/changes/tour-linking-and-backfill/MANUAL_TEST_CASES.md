@@ -700,34 +700,220 @@ No literal `tourLinks.*` key strings should appear in the UI (would indicate mis
 
 ## Group N — Stress / edge cases
 
-### N1. Stale pending request auto-voids on eviction
+### N1. Stale pending request auto-voids on eviction (existing path — grouped tour)
 
-**Setup:** Patrick has a pending request to Jakob (B2 state, NOT yet accepted).
+**Setup:** Patrick + Jakob linked (B4 state). Selim sends a pending request to Patrick (C1-like, but stop before Patrick accepts).
 
-**Action:** As Jakob, edit Jakob's tour and move goal to G_REMOTE (confirming the edit-warning even though Jakob isn't yet grouped).
+**Action:** As Patrick, edit Patrick's tour and change `tour_type` from `skitour` to `hiking`. Confirm the **linked**-mode warning dialog ("This will unlink the tour").
 
 **Expected:**
-- The trigger `fn_void_pending_requests_for_tour` runs.
-- Patrick's outgoing banner disappears (request status → `withdrawn`).
-- SQL verify:
-  ```sql
-  select status, resolved_at from public.tour_link_request order by created_at desc limit 1;
-  ```
-  status = `'withdrawn'`, `resolved_at` set.
+- Trigger `fn_evict_member_on_tour_change` evicts Patrick → group dissolves.
+- The same trigger calls `fn_void_pending_requests_for_tour(patrick_tour_id)` → Selim's pending request flips to `withdrawn`.
+- Selim's outgoing banner disappears via realtime within ~2 s.
+- SQL: `select status from public.tour_link_request where initiator_tour_id='<selim_tour_id>' order by created_at desc limit 1;` → `'withdrawn'`.
 
-### N2. Accept after predicate breaks
+### N2. Accept after predicate breaks (server safety net)
 
-**Setup:** Patrick sends request. Before Jakob accepts, Jakob's tour goal moves to G_REMOTE.
+**Setup:** Patrick sends request. Before Jakob accepts, Jakob's tour goal moves to G_REMOTE — but BYPASS the new client warning (edit via direct SQL or another device that doesn't have the latest client):
 
-**Action:** Jakob tries to accept the (now stale) request.
+```sql
+update public.tours set goal = extensions.st_setsrid(extensions.st_makepoint(9.5, 47.0)::extensions.geography, 4326)::extensions.geography
+  where id = '<jakob_tour_id>';
+```
 
-**Expected:** `accept_link_request` re-checks `fn_collision_predicate` → raises `tour_link.predicate_failed`. UI shows error inline. Pending request is left as-is (next eviction cycle will void it; for now manual cleanup OK).
+**Action:** With the new `trg_void_pending_requests_on_tour_change` trigger (migration `20260530120000`), the SQL update should auto-withdraw the request before Jakob can accept. So Jakob's incoming banner should disappear within ~2 s realtime, and any racing attempt to accept the now-non-pending row returns "no pending request" / `tour_link.not_pending`.
+
+**Expected:**
+- `select status from public.tour_link_request order by created_at desc limit 1;` → `'withdrawn'`, `resolved_at` set.
+- If a race produces an accept call against the now-withdrawn row, `accept_link_request` raises `tour_link.not_pending` (or equivalent). UI surfaces it inline.
 
 ### N3. Multiple colliding friends → multiple buttons
 
 **Setup:** All three users have tours at G_TÖDI. Patrick opens his info sheet.
 
 **Expected:** Collision notice lists BOTH Jakob and Selim in the body and renders TWO "Request to link with …" buttons (one per friend).
+
+### N4. Edit-warning fires for OUTGOING pending request even when not grouped (Issue 1 fix)
+
+**Setup:** Reset state. Both Jakob (G_TÖDI) and Patrick (G_NEAR) have overlapping `skitour` friends-visible tours, NOT yet linked. As Patrick, open info sheet → click "Request to link with Jakob …". Confirm a pending request exists (`tour_link_request` row, status `pending`). Patrick's tour is **not** in any `tour_link_member` row.
+
+**Action:** As Patrick, click Edit, pick a new goal at **G_REMOTE**, click Save.
+
+**Expected:**
+- Warning dialog appears in **pending** mode:
+  - Title: "This will cancel pending link request(s)" / "Diese Änderung verwirft offene Verknüpfungsanfrage(n)"
+  - Body: "This change breaks the location match for 1 pending link request(s). The request(s) will be cancelled."
+  - CTA: "Save & cancel request" / "Speichern und Anfrage zurückziehen"
+- On Cancel → tour stays at G_NEAR, request still `pending`.
+- On Confirm:
+  - Tour update commits.
+  - `trg_void_pending_requests_on_tour_change` fires; the pending request flips to `'withdrawn'` with `resolved_at` set.
+  - Jakob's incoming banner disappears via realtime within ~2 s.
+  - **No** push or email is sent to Jakob (withdrawal is silent per Task 3.3).
+- SQL verify: `select status from public.tour_link_request order by created_at desc limit 1;` → `'withdrawn'`.
+
+### N5. Edit-warning fires for INCOMING pending request with incoming-specific copy (Issue 1 fix)
+
+**Setup:** Reset state. Patrick + Jakob have overlapping tours, NOT linked. Jakob sends a link request to Patrick (so Patrick is the **target** of a pending row).
+
+**Action:** As Patrick, edit Patrick's tour and change `tour_type` from `skitour` to `hiking`. Save.
+
+**Expected:**
+- Warning dialog appears in **incoming** mode (Patrick is not grouped, only target of someone else's pending request):
+  - Title: "Pending link requests will be withdrawn" / "Offene Verknüpfungsanfragen werden zurückgezogen"
+  - Body: "There are 1 outstanding link request(s) for this tour. Applying these changes will automatically withdraw them." / "Für diese Tour gibt es 1 offene Verknüpfungsanfrage(n). Wenn du die Änderungen speicherst, werden sie automatisch zurückgezogen."
+  - The copy does **NOT** say "your pending link request(s)" / "die du gesendet hast" — Patrick never sent any request.
+- On Confirm: pending row flips to `'withdrawn'`; Jakob's outgoing banner clears within ~2 s; no notification dispatched.
+
+### N5b. Edit-warning copy for OUTGOING requests (regression of N4 copy)
+
+**Setup:** As in N4 — Patrick has a pending OUTGOING request to Jakob.
+
+**Action:** As Patrick, edit Patrick's tour off-collision.
+
+**Expected:**
+- Warning dialog title: "This will cancel pending link request(s)" / "Diese Änderung verwirft deine offene(n) Verknüpfungsanfrage(n)"
+- Body: "This change breaks the location match for 1 pending link request(s) you sent. The request(s) will be cancelled." / "Diese Änderung passt nicht mehr zu 1 offenen Verknüpfungsanfrage(n), die du gesendet hast. Die Anfrage(n) werden zurückgezogen."
+- Distinct from N5: explicit ownership ("you sent" / "die du gesendet hast").
+
+### N5c. Mixed incoming + outgoing falls back to incoming copy
+
+**Setup:** Patrick has BOTH an outgoing pending request to Jakob AND an incoming pending request from Selim — all on Patrick's same tour.
+
+**Action:** As Patrick, edit Patrick's tour goal to G_REMOTE (breaks predicate for both pairs).
+
+**Expected:**
+- Warning dialog shows the **incoming**-mode title/body with the combined count: "There are 2 outstanding link request(s) for this tour. …" (mixed mode reuses incoming copy because it covers both directions without overclaiming).
+- On Confirm: both pending rows flip to `'withdrawn'`.
+
+### N6. Visibility flip from friends → private with pending request (Issue 1 fix)
+
+**Setup:** Patrick has a pending outgoing request to Jakob. Patrick's tour is `visibility = 'friends'`, not grouped.
+
+**Action:** As Patrick, open info sheet, toggle visibility from `friends` to `private`.
+
+**Expected:**
+- Warning dialog appears in **pending** mode (since Patrick is not grouped but has an outgoing pending request).
+- On Confirm: tour visibility flips to `private`; trigger withdraws the pending request; banners on both sides disappear; no notification.
+
+### N7. Edit that does NOT break the predicate → no warning, request stays pending
+
+**Setup:** Patrick has a pending outgoing request to Jakob (predicate currently holds).
+
+**Action:** As Patrick, edit and pick a new goal at **G_NEAR** (still within 200 m of Jakob's G_TÖDI). Save.
+
+**Expected:**
+- **No warning dialog** — client-side predicate mirror determined the request would still be valid.
+- Tour saves directly.
+- Request remains `pending`.
+- SQL: trigger ran but re-evaluated `fn_collision_predicate` as still `true`, no status change.
+
+---
+
+## Group O — In-app backfill entry from Friends tab (Issue 2)
+
+### O1. Friends tab shows "Review tour overlaps" button
+
+**Setup:** Reset state. Patrick + Jakob are friends (or any accepted friendship). Both have at least one `friends`-visible `skitour` tour, with goals colliding (e.g. G_TÖDI vs G_NEAR), NOT yet linked and no pending request.
+
+**Action:** As Patrick, open the My Tours list. Switch to **Friends** tab.
+
+**Expected:**
+- A button "Review tour overlaps" / "Tour-Überschneidungen prüfen" renders below the tab bar, above the search input, with a primary-colored outline.
+- The same button is **not** rendered on the **Owned** tab.
+- On a fresh account with **zero accepted friendships**, the button is hidden on the Friends tab.
+
+### O2. Tap opens embedded backfill view in same surface
+
+**Action:** Tap the button.
+
+**Expected:**
+- The sheet body swaps to the embedded backfill view inside the **same** surface (BottomSheet on mobile, SideDrawer on desktop). No route navigation occurs; URL stays at `/`.
+- Header reads "Tour overlaps with this friend" (the page header is shared with the digest-deeplink route).
+- The list shows one row per pair across **every** accepted friendship — not scoped to a single friendship.
+- Each row carries a friend-name label "with {name}" / "mit {name}" below the tour-pair line.
+
+### O3. Request link from embedded view
+
+**Action:** Tap "Request to link" on a row.
+
+**Expected:**
+- Request fires (`create_link_request`), Jakob receives a push (action `link_created`), row disappears from Patrick's list.
+- Other rows for the same friend stay (independent pairs).
+
+### O4. Back closes embedded view and restores Friends tab
+
+**Action:** Tap the back arrow in the embedded view header.
+
+**Expected:**
+- Embedded view closes.
+- The My Tours list reappears in the same sheet on the **Friends** tab.
+- Prior search query, filter selections, and scroll position are preserved (because the underlying tab state never unmounted).
+
+### O5. Empty state
+
+**Setup:** Either (a) Patrick has no friends with colliding tours, or (b) all collisions are already linked or have pending requests.
+
+**Action:** Open the embedded backfill view via the button.
+
+**Expected:**
+- Empty-state copy "No tour overlaps with friends to review." / "Keine Tour-Überschneidungen mit Freunden zu prüfen." renders.
+
+### O6. Digest deeplink route still works (regression)
+
+**Action:** From a digest-style push (or manually navigate to `/friends/<friendshipId>/backfill-collisions`).
+
+**Expected:**
+- The full-page route still renders.
+- Back button (top-left arrow) calls `router.back()` (route mode — there is no `@back` listener wired in this surface).
+- Page shows the per-friendship pair list (NOT the all-friendships scan) and does NOT render friend-name labels per row (since all pairs share the same friend).
+
+---
+
+## Group P — My Tours tab persistence across sessions (Issue 2)
+
+### P1. Selected tab survives full reload
+
+**Action:**
+1. Open My Tours list, switch to **Friends** tab.
+2. Hard-reload the page (`Cmd-Shift-R` / `Ctrl-Shift-R`).
+3. Reopen My Tours list.
+
+**Expected:**
+- The list opens directly on the **Friends** tab.
+- `localStorage.getItem('tours.list.activeTab')` returns `"friends"` in DevTools console.
+
+### P2. Selected tab survives PWA cold start
+
+**Action (if PWA installed):**
+1. Switch to **Owned** tab.
+2. Kill the PWA process (close the standalone window completely).
+3. Reopen the PWA.
+
+**Expected:**
+- The My Tours list opens on **Owned**.
+
+### P3. Invalid stored value falls back to "owned"
+
+**Action:** In DevTools console:
+```js
+localStorage.setItem('tours.list.activeTab', 'garbage')
+location.reload()
+```
+
+**Expected:**
+- App opens; My Tours list shows the **Owned** tab.
+- No console errors. The bad value remains in storage until the next tab change overwrites it (acceptable — it's ignored on read).
+
+### P4. Storage unavailable does not crash
+
+**Action (Safari private mode):**
+1. Open the app in Safari Private Browsing (`localStorage.setItem` throws `QuotaExceededError`).
+2. Switch tabs in My Tours.
+
+**Expected:**
+- App does not crash; no unhandled errors logged.
+- Tab change works in-memory only; will not persist after reload (expected limitation).
 
 ---
 

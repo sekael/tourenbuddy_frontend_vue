@@ -11,6 +11,7 @@ import SideDrawer from '@/core/components/side-drawer.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
+import BackfillCollisionsPage from '@/features/tour-links/presentation/pages/backfill-collisions-page.vue'
 import { useActiveTourTab, useTourFilters } from '@/features/tours/presentation/composables/use-tour-filters'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import TourFiltersPanel from './tour-filters-panel.vue'
@@ -48,6 +49,19 @@ function clearAll() {
 }
 
 const friendshipsStore = useFriendshipsStore()
+const { friendships } = storeToRefs(friendshipsStore)
+const hasFriends = computed(() => friendships.value.length > 0)
+
+// Embedded backfill view (Issue 2): opening the in-app backfill page swaps the
+// sheet body in place rather than navigating to a separate route. Back returns
+// to the list with prior tab/search/filter state intact.
+const showBackfill = ref(false)
+function openBackfill() {
+  showBackfill.value = true
+}
+function closeBackfill() {
+  showBackfill.value = false
+}
 
 // Refetch friend tours when the Friends tab is opened (realtime deferred — issue #198).
 watch(activeTab, (tab) => {
@@ -101,7 +115,13 @@ function handleRowClick(tourId: string) {
       </button>
     </template>
 
-    <div class="list-view">
+    <BackfillCollisionsPage
+      v-if="showBackfill"
+      mode="all"
+      @back="closeBackfill"
+    />
+
+    <div v-else class="list-view">
       <div class="tabs" role="tablist">
         <button
           type="button"
@@ -124,6 +144,16 @@ function handleRowClick(tourId: string) {
           {{ t('tours.list.tabFriends') }}
         </button>
       </div>
+
+      <button
+        v-if="activeTab === 'friends' && hasFriends"
+        type="button"
+        class="backfill-entry-btn"
+        @click="openBackfill"
+      >
+        <span class="material-symbols-outlined">sync_alt</span>
+        {{ t('tours.list.viewBackfillCollisionsBtn') }}
+      </button>
 
       <div class="search-row">
         <span class="material-symbols-outlined search-icon">search</span>
@@ -360,5 +390,25 @@ function handleRowClick(tourId: string) {
 .header-add-btn:disabled {
   opacity: 0.45;
   cursor: default;
+}
+
+.backfill-entry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-primary);
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  align-self: flex-start;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.backfill-entry-btn:hover {
+  background-color: color-mix(in srgb, var(--color-primary) 8%, transparent);
 }
 </style>

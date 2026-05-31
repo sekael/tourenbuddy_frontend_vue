@@ -15,4 +15,6 @@ export interface BackfillCollisionPair {
   friendTourId: string
   friendTourName: string | null
   friendUserId: string
+  /** Present only for all-friendships scans; undefined for per-friendship scans. */
+  friendshipId?: string
 }
