@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { BackfillCollisionPair } from '@/features/tour-links/domain/entities/tour-link'
+import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
@@ -7,6 +8,7 @@ import { useLogger } from '@/core/logging/use-logger'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { TourLinksRepositoryImpl } from '@/features/tour-links/data/repositories/tour-links-repository-impl'
 import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
+import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
 const props = withDefaults(defineProps<{
   /** 'friendship' = scoped to route param; 'all' = scan every accepted friendship. */
@@ -20,8 +22,12 @@ const router = useRouter()
 const { t } = useI18n({ useScope: 'global' })
 const logger = useLogger('backfill-collisions-page')
 const tourLinksStore = useTourLinksStore()
+const toursStore = useToursStore()
 const friendshipsStore = useFriendshipsStore()
 const repository = new TourLinksRepositoryImpl()
+
+const { requestsByTourId, groupIdByTourId } = storeToRefs(tourLinksStore)
+const { friendTours } = storeToRefs(toursStore)
 
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -29,6 +35,34 @@ const pairs = ref<BackfillCollisionPair[]>([])
 const submitting = ref<string | null>(null)
 
 const isAllMode = computed(() => props.mode === 'all')
+
+/**
+ * Drop pairs that are no longer actionable:
+ *  - a pending link request already exists between the two tours, OR
+ *  - both tours now share a group (request was accepted elsewhere), OR
+ *  - the friend tour has disappeared from `friendTours` (visibility flipped,
+ *    friendship removed, etc.). Belt-and-suspenders against stale rows the
+ *    server-side backfill scan didn't refresh.
+ */
+const visiblePairs = computed<BackfillCollisionPair[]>(() => {
+  const friendTourIds = new Set(friendTours.value.map(t => t.id))
+  return pairs.value.filter((p) => {
+    if (!friendTourIds.has(p.friendTourId))
+      return false
+    const yg = groupIdByTourId.value.get(p.yourTourId)
+    const fg = groupIdByTourId.value.get(p.friendTourId)
+    if (yg && fg && yg === fg)
+      return false
+    const reqs = requestsByTourId.value.get(p.yourTourId) ?? []
+    if (reqs.some(r =>
+      r.initiatorTourId === p.friendTourId
+      || r.targetTourId === p.friendTourId,
+    )) {
+      return false
+    }
+    return true
+  })
+})
 
 async function load() {
   loading.value = true
@@ -88,7 +122,13 @@ function handleBack() {
     router.back()
 }
 
-onMounted(load)
+onMounted(() => {
+  // Ensure tour-links store cache reflects current server state before the
+  // user acts. Realtime onSubscribed handles steady-state, but on first nav
+  // here the store may have been hydrated minutes earlier.
+  tourLinksStore.fetchAll()
+  load()
+})
 </script>
 
 <template>
@@ -106,12 +146,12 @@ onMounted(load)
     <div v-else-if="error" class="state state--error">
       {{ error }}
     </div>
-    <div v-else-if="pairs.length === 0" class="state">
+    <div v-else-if="visiblePairs.length === 0" class="state">
       {{ isAllMode ? t('tourLinks.backfillAllEmpty') : t('tourLinks.backfillEmpty') }}
     </div>
 
     <ul v-else class="list">
-      <li v-for="pair in pairs" :key="`${pair.yourTourId}-${pair.friendTourId}`" class="row">
+      <li v-for="pair in visiblePairs" :key="`${pair.yourTourId}-${pair.friendTourId}`" class="row">
         <dl class="fields">
           <div class="field">
             <dt class="field-label">

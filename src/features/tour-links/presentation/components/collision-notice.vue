@@ -20,8 +20,8 @@ const toursStore = useToursStore()
 const tourLinksStore = useTourLinksStore()
 const friendshipsStore = useFriendshipsStore()
 const { tours, friendTours } = storeToRefs(toursStore)
-const { requestsByTourId, groupIdByTourId } = storeToRefs(tourLinksStore)
-const { userIdToNamesMap } = storeToRefs(friendshipsStore)
+const { requestsByTourId, groupIdByTourId, members, pendingRequests } = storeToRefs(tourLinksStore)
+const { userIdToNamesMap, friendUserIds } = storeToRefs(friendshipsStore)
 
 // Defensive: friend-tours has no realtime sub yet (#198). Refresh on mount so
 // a freshly-saved owner-tour can see colliding friend tours without page reload.
@@ -35,7 +35,23 @@ toursStore.loadFriendTours()
 tourLinksStore.fetchAll()
 watch(
   () => props.ownTourId,
-  () => { tourLinksStore.fetchAll() },
+  () => {
+    tourLinksStore.fetchAll()
+    toursStore.loadFriendTours()
+  },
+)
+
+// When the tour-links state shifts (link request created/accepted/declined,
+// member added/removed, group dissolved), the friend's own tour visibility may
+// have flipped to private as part of the same server-side transition (e.g.
+// fn_evict_member_on_tour_change runs because A flipped friends→private). The
+// tour_link_member DELETE event delivered to this client doesn't carry the new
+// visibility, and an UPDATE on tours with NEW=private is not delivered (RLS
+// blocks select on private friend tour). So piggyback a friend-tours refresh
+// here to make sure the link button never lingers for a now-private tour.
+watch(
+  [members, pendingRequests],
+  () => { toursStore.loadFriendTours() },
 )
 
 const submitting = ref<string | null>(null)
@@ -81,7 +97,13 @@ const partitioned = computed(() => {
   for (const f of friendTours.value) {
     if (f.tourType !== own.tourType)
       continue
+    // Belt-and-suspenders: friend_tours_view already filters by visibility
+    // 'friends' AND an active friendship row; re-check client-side so a
+    // momentarily stale cache (post visibility-flip, pre next loadFriendTours)
+    // never offers a link to a now-private or now-ex-friend tour.
     if (f.visibility !== 'friends')
+      continue
+    if (!friendUserIds.value.has(f.userId))
       continue
     if (!isSameGoal(own.goal, f.goal, COLLISION_RADIUS_M))
       continue
