@@ -42,3 +42,5 @@ Set at **repo → Settings → Secrets and variables → Actions**:
 ## Worker (`services/email-hook`)
 
 Separate deploy via `wrangler deploy` (manual). Worker secrets use **plain names, no `VITE_` prefix** (Workers env model — Vite prefix has no meaning server-side). See `services/email-hook/SETUP-NOTIFICATIONS.md` for the full list and `wrangler secret put` flow.
+
+> **IMPORTANT — Worker deploy is NOT in CI.** Any change to `services/email-hook/` (handler logic, new endpoints, dependencies, `wrangler.toml`, secrets) requires a manual `cd services/email-hook && npx wrangler deploy`. CI only ships the frontend. Without this step, Preview / prod call a stale Worker version and fail in non-obvious ways (e.g. notifications returning 401 because the deployed Worker still points at a stale `SUPABASE_URL`). Plans and OpenSpec change task lists that touch the Worker MUST include this deploy step. Always use the **latest wrangler** (`npx wrangler@latest` if in doubt) — outdated wrangler has shipped silently-broken deploys.

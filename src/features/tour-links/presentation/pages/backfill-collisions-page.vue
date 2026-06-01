@@ -112,16 +112,32 @@ onMounted(load)
 
     <ul v-else class="list">
       <li v-for="pair in pairs" :key="`${pair.yourTourId}-${pair.friendTourId}`" class="row">
-        <div class="pair">
-          <div class="pair-tours">
-            <span class="tour-name">{{ pair.yourTourName ?? t('tours.infoSheet.unnamedTour') }}</span>
-            <span class="material-symbols-outlined connector">sync_alt</span>
-            <span class="tour-name">{{ pair.friendTourName ?? t('tours.infoSheet.unnamedTour') }}</span>
+        <dl class="fields">
+          <div class="field">
+            <dt class="field-label">
+              {{ t('tourLinks.backfillYourTourLabel') }}
+            </dt>
+            <dd class="field-value">
+              {{ pair.yourTourName ?? t('tours.infoSheet.unnamedTour') }}
+            </dd>
           </div>
-          <span v-if="isAllMode && friendNameOf(pair)" class="friend-label">
-            {{ t('tourLinks.backfillFriendLabel', { name: friendNameOf(pair) }) }}
-          </span>
-        </div>
+          <div v-if="isAllMode && friendNameOf(pair)" class="field">
+            <dt class="field-label">
+              {{ t('tourLinks.backfillFriendNameLabel') }}
+            </dt>
+            <dd class="field-value field-value--muted">
+              {{ friendNameOf(pair) }}
+            </dd>
+          </div>
+          <div class="field">
+            <dt class="field-label">
+              {{ t('tourLinks.backfillFriendTourLabel') }}
+            </dt>
+            <dd class="field-value">
+              {{ pair.friendTourName ?? t('tours.infoSheet.unnamedTour') }}
+            </dd>
+          </div>
+        </dl>
         <button
           type="button"
           class="btn"
@@ -187,55 +203,81 @@ h1 {
 
 .row {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-sm);
+  flex-direction: column;
+  align-items: stretch;
+  padding: var(--spacing-md);
   border: 1px solid var(--color-outline-variant);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   gap: var(--spacing-sm);
 }
 
-.pair {
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin: 0;
+  min-width: 0;
+}
+
+.field {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  flex: 1;
   min-width: 0;
 }
 
-.pair-tours {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  min-width: 0;
-}
-
-.tour-name {
-  font-size: var(--font-size-sm);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.friend-label {
+.field-label {
   font-size: var(--font-size-xs);
   color: var(--color-on-surface-variant);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: var(--font-weight-medium);
 }
 
-.connector {
+.field-value {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.field-value--muted {
+  font-weight: var(--font-weight-regular);
   color: var(--color-on-surface-variant);
-  font-size: 18px;
 }
 
 .btn {
-  padding: var(--spacing-xs) var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-primary);
   font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
-  flex-shrink: 0;
+  align-self: stretch;
+}
+
+@media (min-width: 480px) {
+  .row {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+  }
+
+  .fields {
+    flex: 1;
+  }
+
+  .btn {
+    align-self: center;
+    flex-shrink: 0;
+  }
 }
 
 .btn:disabled {
