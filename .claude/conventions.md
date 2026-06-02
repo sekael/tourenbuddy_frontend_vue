@@ -50,6 +50,12 @@
 - `supabase/migrations/_archived/` contains pre-baseline patches — do not run, kept for history only
 - Baseline migration `20260101000000_initial_schema.sql` reflects prod schema at cutover; subsequent changes go in new timestamped files
 - App must run against local Supabase during development — point `VITE_SUPABASE_URL` to local stack URL (`http://127.0.0.1:54321`) in `.env.local`
+- IMPORTANT: Every migration that runs `CREATE TABLE` in the `public` schema MUST include explicit Data API grants in the same file. Supabase removes the implicit default on 2026-10-30 (existing projects, new tables only) — tables without grants are invisible to PostgREST / supabase-js / GraphQL. Template:
+  ```sql
+  create table public.<name> ( ... );
+  grant all on table public.<name> to anon, authenticated, service_role;
+  ```
+  RLS still governs row access — these grants only restore Data API exposure. See https://github.com/orgs/supabase/discussions/45329.
 
 ## Internationalization
 
