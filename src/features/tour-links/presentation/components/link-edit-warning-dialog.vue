@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BottomSheet from '@/core/components/bottom-sheet.vue'
 import DialogWindow from '@/core/components/dialog-window.vue'
+import { useIsDesktop } from '@/core/composables/use-is-desktop'
 
 const props = withDefaults(defineProps<{
   /** Number of friend sibling tours the current tour is linked with. */
@@ -20,6 +22,7 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{ confirm: [], cancel: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
+const isDesktop = useIsDesktop()
 
 const title = computed(() => {
   if (props.mode === 'linked')
@@ -46,22 +49,45 @@ const proceedLabel = computed(() => {
 </script>
 
 <template>
-  <DialogWindow :title="title" @close="emit('cancel')">
-    <div class="body">
-      <p>{{ body }}</p>
-      <p class="hint">
-        {{ t('tourLinks.editWarningHint') }}
-      </p>
+  <Teleport to="body">
+    <!-- Desktop: centered modal. -->
+    <DialogWindow v-if="isDesktop" :title="title" @close="emit('cancel')">
+      <div class="body">
+        <p>{{ body }}</p>
+        <p class="hint">
+          {{ t('tourLinks.editWarningHint') }}
+        </p>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn" @click="emit('cancel')">
+          {{ t('tours.infoSheet.cancelBtn') }}
+        </button>
+        <button type="button" class="btn btn--danger" @click="emit('confirm')">
+          {{ proceedLabel }}
+        </button>
+      </div>
+    </DialogWindow>
+
+    <!-- Mobile/PWA: bottom sheet stacked above the edit sheet. -->
+    <div v-else class="sheet-container" @click.self="emit('cancel')">
+      <BottomSheet :title="title" fit-content @close="emit('cancel')">
+        <div class="body">
+          <p>{{ body }}</p>
+          <p class="hint">
+            {{ t('tourLinks.editWarningHint') }}
+          </p>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn" @click="emit('cancel')">
+            {{ t('tours.infoSheet.cancelBtn') }}
+          </button>
+          <button type="button" class="btn btn--danger" @click="emit('confirm')">
+            {{ proceedLabel }}
+          </button>
+        </div>
+      </BottomSheet>
     </div>
-    <div class="actions">
-      <button type="button" class="btn" @click="emit('cancel')">
-        {{ t('tours.infoSheet.cancelBtn') }}
-      </button>
-      <button type="button" class="btn btn--danger" @click="emit('confirm')">
-        {{ proceedLabel }}
-      </button>
-    </div>
-  </DialogWindow>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -80,9 +106,17 @@ const proceedLabel = computed(() => {
 
 .actions {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
   gap: var(--spacing-sm);
   padding: 0 var(--spacing-md) var(--spacing-md);
+}
+
+/* Desktop dialog: conventional row, actions bottom-right. */
+@media (min-width: 600px) {
+  .actions {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
 }
 
 .btn {
@@ -97,5 +131,19 @@ const proceedLabel = computed(() => {
   background: var(--color-error);
   color: var(--color-on-error);
   border-color: var(--color-error);
+}
+
+/* Mobile bottom-sheet backdrop. Teleported to body, z-index above the edit
+   sheet (sheet-container z-index 50) so the warning stacks on top. */
+.sheet-container {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 60;
+  background: rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
 }
 </style>
