@@ -126,26 +126,26 @@ export const useTourLinksStore = defineStore('tour-links', () => {
 
   async function acceptRequest(requestId: string) {
     const result = await repository.acceptRequest(requestId)
-    notifyTourLinkRequestEvent(requestId, 'accepted')
-    // Refresh members BEFORE notifying so we can resolve pre-existing
-    // recipients' own tour names for the {tour} placeholder. addedTourIds
-    // only lists newly-inserted rows; pre-existing members (the actual
-    // notification audience) need a full member list.
+    // Only the group-membership "joined" notification fires. The separate
+    // 'accepted' request notification was dropped: in a 2-person link the
+    // requester is also the sole pre-existing member, so both notifications
+    // landed on the same person (duplicate push + email). The "joined" copy
+    // ("X hat eine Tour zur Verknüpfung hinzugefügt") is the single source.
+    //
+    // Refresh members BEFORE notifying so the live group includes the just-joined
+    // tour and we can resolve EVERY member's own tour name for the {tour}
+    // placeholder. The notification goes to all current members (the Worker drops
+    // the actor) — links are bidirectional, so the newcomer is not necessarily
+    // the actor and must be among the receivers.
     await fetchAll()
-    const affectedTourId = result.addedTourIds[result.addedTourIds.length - 1]
     const groupTourIds = groupMembersByGroupId.value.get(result.groupId) ?? []
     const recipientTourNames: Record<string, string> = {}
     for (const tid of groupTourIds) {
-      if (tid === affectedTourId)
-        continue
       const t = toursStore.tours.find(x => x.id === tid) ?? toursStore.friendTours.find(x => x.id === tid)
       if (t?.name)
         recipientTourNames[t.userId] = t.name
     }
-    notifyGroupMembershipEvent(result.groupId, 'joined', {
-      affectedTourId,
-      recipientTourNames,
-    })
+    notifyGroupMembershipEvent(result.groupId, 'joined', { recipientTourNames })
     return result
   }
 

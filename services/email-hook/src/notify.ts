@@ -900,7 +900,8 @@ async function fetchGroupMembers(groupId: string, env: Env): Promise<GroupMember
 
 /**
  * Notify members of a group about a membership change.
- * - joined: notify pre-existing members about the new tour.
+ * - joined: notify ALL current members (newcomer included) about the new tour;
+ *   the actor (acceptor) is dropped via the callerId match.
  * - evicted_external: notify the evicted user + remaining members; self-eviction
  *   (own confirmed edit) suppresses the self-notify via the callerId match.
  * - dissolved: notify the lone remaining member.
@@ -950,9 +951,10 @@ export async function handleGroupMembershipEvent(request: Request, env: Env): Pr
   else {
     const members = await fetchGroupMembers(body.groupId, env)
     if (body.event === 'joined') {
-      recipients = members
-        .filter(m => m.tour_id !== body.affectedTourId)
-        .map(m => m.user_id)
+      // All current members, newcomer included. The client fires this only after
+      // the join commits, so the live fetch already contains the newcomer. The
+      // actor (acceptor) is dropped below by the universal callerId filter.
+      recipients = members.map(m => m.user_id)
     }
     else if (body.event === 'evicted_external') {
       recipients = members.map(m => m.user_id)
