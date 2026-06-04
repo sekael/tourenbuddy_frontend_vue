@@ -97,9 +97,7 @@
           <strong>{{ params.actorName }}</strong> planned the same tour as your <strong>{{ params.tourName }}</strong>.
         </p>
         <p>Open the tour to link with them and plan together.</p>
-        {% endif %}
-
-        {% if params.action == "backfill_digest" %}
+        {% endif %} {% if params.action == "backfill_digest" %}
         <a href="{{ params.appUrl }}" class="cta">View shared tours</a>
         {% else %}
         <a href="{{ params.appUrl }}/?tours=1" class="cta">View tour</a>

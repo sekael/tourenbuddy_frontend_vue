@@ -100,9 +100,7 @@
           <strong>{{ params.tourName }}</strong> geplant.
         </p>
         <p>Öffne die Tour, um zu verknüpfen und gemeinsam zu planen.</p>
-        {% endif %}
-
-        {% if params.action == "backfill_digest" %}
+        {% endif %} {% if params.action == "backfill_digest" %}
         <a href="{{ params.appUrl }}" class="cta">Gemeinsame Touren ansehen</a>
         {% else %}
         <a href="{{ params.appUrl }}/?tours=1" class="cta">Tour ansehen</a>

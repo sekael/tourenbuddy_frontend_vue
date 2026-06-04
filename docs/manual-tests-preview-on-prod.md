@@ -34,5 +34,5 @@ muted. Use two real users (A, B) who are friends, both with verified phones.
 
 # TODO:
 
-- Retest realtime for link requests and dissolution by setting linked tour private
-- Investigate issue of tour link group cleanup when setting one tour to private -> double notification in screenshot from PWA push notifications in Downloads
+- [x] Retest realtime for link requests and dissolution by setting linked tour private
+- [x] Investigate issue of tour link group cleanup when setting one tour to private -> double notification in screenshot from PWA push notifications in Downloads
