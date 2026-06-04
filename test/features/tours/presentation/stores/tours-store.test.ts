@@ -12,6 +12,7 @@ const {
   mockDeleteContact,
   mockDebug,
   mockError,
+  mockNotifyTourDeleted,
 } = vi.hoisted(() => ({
   mockListTours: vi.fn(),
   mockCreateTour: vi.fn(),
@@ -21,6 +22,12 @@ const {
   mockDeleteContact: vi.fn(),
   mockDebug: vi.fn(),
   mockError: vi.fn(),
+  mockNotifyTourDeleted: vi.fn(),
+}))
+
+vi.mock('@/features/notifications/data/notify-dispatch', () => ({
+  notifyTourChanged: vi.fn(),
+  notifyTourDeleted: mockNotifyTourDeleted,
 }))
 
 vi.mock('@/features/tours/data/repositories/tours-repository-impl', () => ({
@@ -408,6 +415,19 @@ describe('useToursStore', () => {
 
       await expect(store.deleteTour('tour-1')).rejects.toThrow('Delete failed')
       expect(store.tours).toHaveLength(1)
+    })
+
+    it('should notify partners with cached contact ids when deleting a shareable tour', async () => {
+      mockDeleteTour.mockResolvedValue(undefined)
+
+      const store = useToursStore()
+      store.tours = [
+        { ...mockTours[0], partnerIds: ['contact-jakob'], visibility: 'friends', name: 'Gfroren Hora' },
+      ]
+
+      await store.deleteTour('tour-1')
+
+      expect(mockNotifyTourDeleted).toHaveBeenCalledWith(['contact-jakob'], 'Gfroren Hora')
     })
   })
 

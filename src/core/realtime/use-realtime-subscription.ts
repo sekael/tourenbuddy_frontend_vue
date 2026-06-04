@@ -32,6 +32,18 @@ supabase.auth.onAuthStateChange((event, session) => {
   }
 })
 
+// Pause Realtime channels while tab/PWA is hidden to save battery. On resume,
+// the watch in each subscription re-creates the channel and `onSubscribed`
+// refetches state, closing any gap created by missed postgres_changes events.
+const pageVisible = ref<boolean>(
+  typeof document === 'undefined' || document.visibilityState !== 'hidden',
+)
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    pageVisible.value = document.visibilityState !== 'hidden'
+  })
+}
+
 function releaseChannel(key: string) {
   const entry = registry.get(key)
   if (!entry)
@@ -90,16 +102,17 @@ export function useRealtimeSubscription(opts: RealtimeSubscriptionOptions) {
     onScopeDispose(stop)
 
     watch(
-      [opts.key, opts.enabled],
-      ([key, enabled]) => {
-        // Tear down previous channel if key changed or disabled
-        if (currentKey !== null && (currentKey !== key || !enabled)) {
+      [opts.key, opts.enabled, pageVisible],
+      ([key, enabled, visible]) => {
+        const active = enabled && visible
+        // Tear down previous channel if key changed or no longer active
+        if (currentKey !== null && (currentKey !== key || !active)) {
           releaseChannel(currentKey)
           currentKey = null
-          status.value = 'idle'
+          status.value = visible ? 'idle' : 'paused'
         }
 
-        if (!enabled || !key)
+        if (!active || !key)
           return
 
         // Check if channel already registered (dedupe by key)

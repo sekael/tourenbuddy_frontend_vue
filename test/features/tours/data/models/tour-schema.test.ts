@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { tourRowSchema, tourSchema } from '@/features/tours/data/models/tour-schema'
+import {
+  friendTourRowSchema,
+  tourRowSchema,
+  tourSchema,
+} from '@/features/tours/data/models/tour-schema'
 
 const baseRow = {
   id: 'tour-1',
@@ -11,17 +15,44 @@ const baseRow = {
   partner_ids: [],
 }
 
-describe('tourSchema invariant: no partner snapshots', () => {
-  it('should contain partnerIds but no partner name or phone fields', () => {
+describe('tourSchema invariant: no owner address-book snapshots', () => {
+  it('should carry partnerIds and registered-user partnerNames, never owner contact data', () => {
     const shape = tourSchema.shape
+    // Owner path: contact ids. Friend path: server-resolved registered-user names.
     expect(shape).toHaveProperty('partnerIds')
-    expect(shape).not.toHaveProperty('partnerNames')
+    expect(shape).toHaveProperty('partnerNames')
+    // The owner's private address book must never be projected into a tour.
     expect(shape).not.toHaveProperty('partnerPhones')
     expect(shape).not.toHaveProperty('partners')
-    expect(shape).not.toHaveProperty('partnerFirstNames')
-    expect(shape).not.toHaveProperty('partnerLastNames')
     expect(shape).not.toHaveProperty('partnerDisplayNames')
     expect(shape).not.toHaveProperty('partnerContactMethods')
+  })
+})
+
+describe('friendTourRowSchema: unresolved partner count', () => {
+  const friendBaseRow = {
+    id: 'tour-1',
+    user_id: 'owner-1',
+    planned_date: null,
+    lon: 8.2,
+    lat: 46.8,
+    name: 'Friend Tour',
+  }
+
+  it('should map unresolved_partner_count to unresolvedPartnerCount', () => {
+    const result = friendTourRowSchema.parse({ ...friendBaseRow, unresolved_partner_count: 2 })
+    expect(result.unresolvedPartnerCount).toBe(2)
+  })
+
+  it('should default unresolvedPartnerCount to 0 when the column is absent', () => {
+    const result = friendTourRowSchema.parse(friendBaseRow)
+    expect(result.unresolvedPartnerCount).toBe(0)
+  })
+
+  it('should reject a negative count', () => {
+    expect(() =>
+      friendTourRowSchema.parse({ ...friendBaseRow, unresolved_partner_count: -1 }),
+    ).toThrow()
   })
 })
 

@@ -248,7 +248,22 @@
       "emptyTitle": "No tours yet.",
       "emptySubtitle": "Create one from the map.",
       "noMatchesTitle": "No tours match your filters.",
-      "clearFiltersBtn": "Clear filters"
+      "clearFiltersBtn": "Clear filters",
+      "tabOwned": "My Tours",
+      "tabFriends": "Friends",
+      "friendsEmptyTitle": "No friend tours yet.",
+      "friendsEmptySubtitle": "Tours your friends share will appear here.",
+      "ownedByLabel": "by {name}",
+      "aFriend": "a friend",
+      "viewBackfillCollisionsBtn": "Review tour overlaps"
+    },
+    "duplicate": {
+      "title": "Tour already here",
+      "body": "{owner} already has a tour “{tour}” at this spot, and you're a partner on it.",
+      "hint": "Save your own copy anyway, or let them know you're interested instead.",
+      "confirmBtn": "Save my copy",
+      "declineBtn": "Just show interest",
+      "cancelBtn": "Cancel"
     },
     "form": {
       "nameLabel": "Tour Name",
@@ -269,6 +284,11 @@
       "pointNameLabel": "Name",
       "pointElevationLabel": "Elevation (m)",
       "partnersLabel": "Tour Partners",
+      "visibilityLabel": "Visibility",
+      "visibilityFriends": "Friends",
+      "visibilityPrivate": "Private",
+      "visibilityFriendsHint": "Friends can see this tour. Partners you mark see full details.",
+      "visibilityPrivateHint": "Only you can see this tour — hidden from everyone, including marked partners.",
       "activityLabel": "Activity Type",
       "seasonLabel": "Season",
       "gpxTooLarge": "File too large (max 2 MB)",
@@ -308,10 +328,14 @@
       "unnamedTour": "Unnamed tour",
       "completedBtn": "Completed",
       "completeTourBtn": "Complete Tour",
+      "visibilityMakePrivate": "Make tour private",
+      "visibilityMakeFriends": "Make tour visible to friends",
       "roundTrip": "Round trip",
       "oneWayToGoalIndicator": "One-way to goal",
       "gpxTrackAvailable": "Track available",
       "messageAll": "Message all",
+      "partnerSelf": "Me",
+      "morePartners": "and {count} more",
       "editBtn": "Edit",
       "deleteConfirmText": "Delete this tour?",
       "cancelBtn": "Cancel",
@@ -496,11 +520,55 @@
     "emailDescription": "Receive alerts by email",
     "typesLabel": "Alert me about",
     "type": {
-      "friend_requests": "Friend requests"
+      "friend_requests": "Friend requests",
+      "tour_updates": "Shared tour changes",
+      "tour_interest": "Same-tour collaboration suggestions"
+    },
+    "typeDescription": {
+      "tour_interest": "Notifies when a friend plans the same tour, requests linking a tour, and tours overlap after a new friendship."
     },
     "allOffDisclaimer": "You won't receive friend request notifications or other important updates. Enable at least one channel to stay informed.",
     "pushUnavailable": "Not available",
     "installHint": "To enable push notifications, add TourenBuddy to your home screen first.",
     "deniedHint": "Push notifications are blocked. Enable them in your browser or device settings."
+  },
+  "common": {
+    "loading": "Loading…"
+  },
+  "tourLinks": {
+    "linkedWithHeader": "Linked with",
+    "moreLinked": "+{count} more",
+    "unknownPartner": "Unknown buddy",
+    "collisionNoticeTitle": "Same tour planned",
+    "collisionNoticeBody": "Friends planning the same tour: {names}. Link your tours to collaborate.",
+    "requestToLinkBtn": "Request to link with {name}",
+    "requestToLinkShortBtn": "Request to link",
+    "requestingBtn": "Requesting…",
+    "bannerIncoming": "{name} wants to link “{tour}” with this tour.",
+    "bannerOutgoing": "Link request sent to {name} for “{tour}”.",
+    "acceptBtn": "Accept",
+    "declineBtn": "Decline",
+    "withdrawBtn": "Withdraw",
+    "editWarningTitle": "This will unlink the tour",
+    "editWarningBody": "This change will unlink this tour from {count} friend tour(s) it is currently grouped with.",
+    "editWarningPendingTitle": "This will cancel pending link request(s)",
+    "editWarningPendingBody": "This change breaks the location match for {count} pending link request(s) you sent. The request(s) will be cancelled.",
+    "editWarningIncomingTitle": "Pending link requests will be withdrawn",
+    "editWarningIncomingBody": "There are {count} outstanding link request(s) for this tour. Applying these changes will automatically withdraw them.",
+    "editWarningHint": "You can re-request a link later if the tours still match.",
+    "editWarningProceedBtn": "Save & unlink",
+    "editWarningProceedPendingBtn": "Save & cancel request",
+    "deleteUnlinkWarning": "This tour is linked with {count} friend tour(s). Deleting will unlink them.",
+    "backfillPageTitle": "Tour overlaps with this friend",
+    "backfillEmpty": "No tour overlaps to review.",
+    "backfillAllEmpty": "No tour overlaps with friends to review.",
+    "backfillFriendLabel": "with {name}",
+    "backfillYourTourLabel": "Your tour",
+    "backfillFriendTourLabel": "Friend's tour",
+    "backfillFriendNameLabel": "Friend",
+    "mergeBlockedTitle": "Another friend group plans the same tour",
+    "mergeBlockedBody": "Friends already in their own linked group: {names}. You can reach out to them directly to coordinate — joining their group from yours isn't possible.",
+    "dismissBtn": "Got it",
+    "doNotShowAgain": "Don't show again"
   }
 }

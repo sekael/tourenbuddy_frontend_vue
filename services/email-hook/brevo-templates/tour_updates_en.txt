@@ -1,0 +1,12 @@
+Subject: {{ params.actorName }} {% if params.action == "created" %}shared{% elif params.action == "deleted" %}removed{% else %}updated{% endif %} a tour on TourenBuddy
+
+Hi there,
+
+{{ params.actorName }} {% if params.action == "created" %}shared the tour{% elif params.action == "deleted" %}removed the shared tour{% else %}updated the shared tour{% endif %} "{{ params.tourName }}" you partner on.
+
+View your tours:
+{{ params.appUrl }}/?tours=1
+
+---
+You received this email because notifications are enabled for your TourenBuddy account.
+Manage them in your profile settings.

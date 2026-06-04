@@ -9,6 +9,12 @@ const props = defineProps<{
   collapsed?: boolean
   /** When set, shows a back arrow button in the header. */
   showBack?: boolean
+  /**
+   * Size to min(content height, max-height) and keep refitting on resize,
+   * instead of snapping to peek/default/expanded. For confirm-style sheets
+   * whose whole content must be visible without dragging the sheet up.
+   */
+  fitContent?: boolean
 }>()
 
 const emit = defineEmits<{ close: [], back: [] }>()
@@ -216,8 +222,11 @@ watch(
 // ── Viewport resize ──────────────────────────────────────────────────────────
 function onWindowResize() {
   updatePeekHeight()
-  // Re-apply current snap with updated viewport heights
-  currentHeight.value = snapHeightPx(lastSnap.value)
+  // Re-apply current snap with updated viewport heights — or refit to content.
+  if (props.fitContent)
+    void openAtNaturalHeight()
+  else
+    currentHeight.value = snapHeightPx(lastSnap.value)
 }
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
@@ -229,7 +238,10 @@ onMounted(() => {
   headerResizeObserver.value = new ResizeObserver(() => {
     updatePeekHeight()
     if (!isDragging.value) {
-      currentHeight.value = snapHeightPx(lastSnap.value)
+      if (props.fitContent)
+        void openAtNaturalHeight()
+      else
+        currentHeight.value = snapHeightPx(lastSnap.value)
     }
   })
 

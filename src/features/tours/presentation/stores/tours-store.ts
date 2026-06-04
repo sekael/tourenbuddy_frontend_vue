@@ -1,3 +1,4 @@
+import type { Visibility } from '@/features/tours/data/models/visibility'
 import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 import { defineStore } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
@@ -6,8 +7,15 @@ import { useLogger } from '@/core/logging/use-logger'
 import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
+import {
+  notifyTourChanged,
+  notifyTourDeleted,
+  notifyTourInterest,
+} from '@/features/notifications/data/notify-dispatch'
+import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
 import { ToursRepositoryImpl } from '@/features/tours/data/repositories/tours-repository-impl'
 import { removeGpx } from '@/features/tours/data/services/gpx-storage-service'
+import { isMeaningfulTourChange, isShareableTour } from '@/features/tours/domain/tour-notifications'
 
 const repository = new ToursRepositoryImpl()
 
@@ -17,18 +25,30 @@ export const useToursStore = defineStore('tours', () => {
   const contactsStore = useContactsStore()
 
   const tours = ref<Tour[]>([])
+  const friendTours = ref<Tour[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
   watch(
     () => authStore.isAuthenticated,
     (authed, wasAuthed) => {
-      if (authed && !wasAuthed)
+      if (authed && !wasAuthed) {
         loadTours()
-      else if (!authed && wasAuthed)
+        loadFriendTours()
+      }
+      else if (!authed && wasAuthed) {
         clear()
+      }
     },
   )
+
+  // The store is created lazily (first view that uses it), often after auth has
+  // already been restored at bootstrap — so the watcher above never sees the
+  // false→true transition. Owned tours still arrive via the realtime channel's
+  // onSubscribed reload; friend tours have no such trigger, so kick their initial
+  // load here when the session is already live.
+  if (authStore.isAuthenticated)
+    void loadFriendTours()
 
   contactsStore.$onAction(({ name, args, after }) => {
     if (name !== 'deleteContact')
@@ -85,6 +105,20 @@ export const useToursStore = defineStore('tours', () => {
     }
   }
 
+  // Friend tours are a separate collection. Realtime sync is deferred (issue #198);
+  // callers refetch on demand (e.g. opening the Friends list tab or the map).
+  async function loadFriendTours() {
+    if (!authStore.currentUser?.id)
+      return
+
+    try {
+      friendTours.value = await repository.listFriendTours()
+    }
+    catch (err) {
+      logger.error('Failed to load friend tours', err)
+    }
+  }
+
   async function createTourFromDraft(
     draft: TourDraft,
     goal: { lng: number, lat: number },
@@ -98,6 +132,10 @@ export const useToursStore = defineStore('tours', () => {
     const id = preUploadedTourId ?? uuidv4()
     await repository.createTourWithPartners(id, draft, goal)
 
+    // Tours default to 'friends' server-side; only a non-default choice needs a write.
+    if (draft.visibility && draft.visibility !== 'friends')
+      await repository.patchVisibility(id, draft.visibility)
+
     if (gpxFile) {
       try {
         const filepath = await uploadGpx(userId, id, gpxFile)
@@ -109,6 +147,11 @@ export const useToursStore = defineStore('tours', () => {
     }
 
     await loadTours()
+
+    // Notify friend partners of the new shared tour (Worker filters to actual friends).
+    if (isShareableTour(draft.visibility, draft.partnerIds))
+      notifyTourChanged(id, 'created')
+
     return id
   }
 
@@ -121,14 +164,30 @@ export const useToursStore = defineStore('tours', () => {
     const existing = tours.value.find(t => t.id === id)
     const previousFilepath = existing?.gpxFilepath ?? null
 
+    // Snapshot link-group audience BEFORE mutating: DB trigger may evict this
+    // tour (type / visibility / goal change) and the dissolution trigger may
+    // wipe the group inside the same txn. fn_evict_member_on_tour_change.
+    const tourLinksStore = useTourLinksStore()
+    const linkSnapshot = tourLinksStore.snapshotTourGroupContext(id)
+
     try {
       await repository.updateTour(id, draft, goal)
+      // update_tour_full intentionally leaves visibility untouched; persist it separately
+      // so an edit through the form still applies a visibility change.
+      if (draft.visibility && draft.visibility !== existing?.visibility)
+        await repository.patchVisibility(id, draft.visibility)
     }
     catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update tour'
       logger.error('updateTour failed', err)
       throw err
     }
+
+    // Mutation committed → if it tripped an eviction trigger, fire the
+    // dissolution / evicted_external notification. Best-effort.
+    tourLinksStore.dispatchEvictionIfHappened(linkSnapshot, id).catch((err) => {
+      logger.warn('dispatchEvictionIfHappened (updateTour) failed', err)
+    })
 
     const newFilepath = gpxRemoved ? null : draft.gpxFilepath
 
@@ -164,10 +223,25 @@ export const useToursStore = defineStore('tours', () => {
             endPointElevation: draft.endPointElevation ?? null,
             equipment: draft.equipment,
             notes: draft.notes,
+            visibility: draft.visibility ?? existing.visibility,
             goal,
           }
         : t,
     )
+
+    // Notify friend partners only on a partner-facing change to a shareable tour.
+    const effectiveVisibility = draft.visibility ?? existing.visibility
+    if (
+      isShareableTour(effectiveVisibility, draft.partnerIds)
+      && isMeaningfulTourChange(existing, draft, { goal, gpxFilepath: newFilepath ?? null })
+    ) {
+      notifyTourChanged(id, 'updated')
+    }
+
+    // Independent of meaningful-edit filter: re-scan for friend collisions on every
+    // update (goal / type / visibility may have changed). Worker no-ops for private tours.
+    if (effectiveVisibility === 'friends')
+      notifyTourInterest(id)
   }
 
   async function setCompleted(tourId: string, completed: boolean) {
@@ -180,6 +254,9 @@ export const useToursStore = defineStore('tours', () => {
 
     try {
       await repository.patchCompleted(tourId, completed)
+      // Completion flip is a partner-facing change.
+      if (isShareableTour(tour.visibility, tour.partnerIds))
+        notifyTourChanged(tourId, 'updated')
     }
     catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update tour'
@@ -188,9 +265,51 @@ export const useToursStore = defineStore('tours', () => {
     }
   }
 
+  async function setVisibility(tourId: string, visibility: Visibility) {
+    const tour = tours.value.find(t => t.id === tourId)
+    if (!tour)
+      return
+
+    const previous = tour.visibility
+    tours.value = tours.value.map(t => (t.id === tourId ? { ...t, visibility } : t))
+
+    // Same eviction snapshot pattern as updateTour: a friends → non-friends
+    // flip on a linked tour trips the eviction trigger.
+    const tourLinksStore = useTourLinksStore()
+    const linkSnapshot = tourLinksStore.snapshotTourGroupContext(tourId)
+
+    try {
+      await repository.patchVisibility(tourId, visibility)
+    }
+    catch (err) {
+      tours.value = tours.value.map(t => (t.id === tourId ? { ...t, visibility: previous } : t))
+      error.value = err instanceof Error ? err.message : 'Failed to update visibility'
+      logger.error('setVisibility failed', err)
+      return
+    }
+
+    tourLinksStore.dispatchEvictionIfHappened(linkSnapshot, tourId).catch((err) => {
+      logger.warn('dispatchEvictionIfHappened (setVisibility) failed', err)
+    })
+  }
+
   async function deleteTour(id: string) {
     const tour = tours.value.find(t => t.id === id)
+    // Cache what the notification needs BEFORE the row (and its tour_partners) are
+    // gone; dispatch only AFTER a confirmed delete so a failed delete sends nothing.
+    const shouldNotify = !!tour && isShareableTour(tour.visibility, tour.partnerIds)
+    const partnerContactIds = tour?.partnerIds ?? []
+    const tourName = tour?.name ?? ''
+    // Tour delete cascades member row removal → group may dissolve. Snapshot
+    // audience before the row is gone; eviction is unconditional so we fire
+    // directly afterwards without a "did it happen?" check.
+    const tourLinksStore = useTourLinksStore()
+    const linkSnapshot = tourLinksStore.snapshotTourGroupContext(id)
     await repository.deleteTour(id)
+    if (shouldNotify)
+      notifyTourDeleted(partnerContactIds, tourName)
+    if (linkSnapshot)
+      tourLinksStore.dispatchEvictionNotification(linkSnapshot)
     if (tour?.gpxFilepath) {
       try {
         await removeGpx(tour.gpxFilepath)
@@ -204,17 +323,21 @@ export const useToursStore = defineStore('tours', () => {
 
   function clear() {
     tours.value = []
+    friendTours.value = []
     error.value = null
   }
 
   return {
     tours,
+    friendTours,
     isLoading,
     error,
     loadTours,
+    loadFriendTours,
     createTourFromDraft,
     updateTour,
     setCompleted,
+    setVisibility,
     deleteTour,
     clear,
   }

@@ -15,6 +15,15 @@ export interface Env {
   BREVO_TEMPLATE_FRIEND_RECEIVED_DE: string
   BREVO_TEMPLATE_FRIEND_RESPONDED_EN: string
   BREVO_TEMPLATE_FRIEND_RESPONDED_DE: string
+  // Shared-tour notifications: one generic template per type per locale.
+  BREVO_TEMPLATE_TOUR_UPDATES_EN: string
+  BREVO_TEMPLATE_TOUR_UPDATES_DE: string
+  BREVO_TEMPLATE_TOUR_INTEREST_EN: string
+  BREVO_TEMPLATE_TOUR_INTEREST_DE: string
+  // Tour-link group dissolution: dedicated template per locale (kept out of the
+  // generic tour_interest template so its copy can diverge).
+  BREVO_TEMPLATE_TOUR_LINK_DELETED_EN: string
+  BREVO_TEMPLATE_TOUR_LINK_DELETED_DE: string
 
   // Optional: app URL used for push deep-links and email links.
   // Defaults to https://test.tourenbuddy.ch if unset.

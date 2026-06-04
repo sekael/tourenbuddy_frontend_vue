@@ -11,7 +11,12 @@ import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscripti
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { FriendshipRepositoryImpl } from '@/features/friendships/data/repositories/friendship-repository-impl'
 import { useUserBlocksStore } from '@/features/friendships/presentation/stores/user-blocks-store'
-import { notifyFriendRequestReceived, notifyFriendRequestResponded } from '@/features/notifications/data/notify-dispatch'
+import {
+  notifyFriendRequestReceived,
+  notifyFriendRequestResponded,
+  notifyGroupMembershipEvent,
+} from '@/features/notifications/data/notify-dispatch'
+import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
 
 type FriendRequestVM = FriendRequest & { _optimistic?: boolean }
 
@@ -309,6 +314,13 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     const removed = friendships.value.find(isMatch)
     friendships.value = friendships.value.filter(f => !isMatch(f))
 
+    // Snapshot tour-link groups that will be cascade-evicted by the
+    // friendship-delete trigger. Must happen BEFORE delete: the trigger
+    // tears down members + dissolves groups in the same txn, and friend
+    // tours stop being visible the moment the friendship row is gone.
+    const tourLinksStore = useTourLinksStore()
+    const groupNotifications = tourLinksStore.snapshotFriendshipRemovalNotifications(otherUserId)
+
     try {
       await repository.removeFriendship(otherUserId)
     }
@@ -317,6 +329,16 @@ export const useFriendshipsStore = defineStore('friendships', () => {
         friendships.value = [...friendships.value, removed]
       logger.error('Failed to remove friendship', err)
       throw err
+    }
+
+    // Delete succeeded → fire one notification per affected group with the
+    // pre-eviction recipient snapshot. Best-effort; failures only warn.
+    for (const n of groupNotifications) {
+      notifyGroupMembershipEvent(n.groupId, n.event, {
+        affectedUserId: otherUserId,
+        recipients: n.recipients,
+        recipientTourNames: n.recipientTourNames,
+      })
     }
   }
 

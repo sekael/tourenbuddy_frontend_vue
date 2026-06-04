@@ -15,8 +15,15 @@ import ContactChip from '@/features/contacts/presentation/components/contact-chi
 import GroupSmsConfirmDialog from '@/features/contacts/presentation/components/group-sms-confirm-dialog.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
+import CollisionNotice from '@/features/tour-links/presentation/components/collision-notice.vue'
+import LinkEditWarningDialog from '@/features/tour-links/presentation/components/link-edit-warning-dialog.vue'
+import LinkRequestBanner from '@/features/tour-links/presentation/components/link-request-banner.vue'
+import LinkedWithSection from '@/features/tour-links/presentation/components/linked-with-section.vue'
+import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
 import { TOUR_TYPE_I18N_KEYS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
 import { downloadOriginal } from '@/features/tours/data/services/gpx-storage-service'
+import { COLLISION_RADIUS_M } from '@/features/tours/domain/collision'
+import { isSameGoal } from '@/features/tours/domain/distance'
 import TourAttachmentViewer from '@/features/tours/presentation/components/tour-attachment-viewer.vue'
 import TourAttachmentsStrip from '@/features/tours/presentation/components/tour-attachments-strip.vue'
 import TourForm from '@/features/tours/presentation/components/tour-form.vue'
@@ -55,6 +62,9 @@ const toursStore = useToursStore()
 const mapStore = useMapStore()
 const authStore = useAuthStore()
 const attachmentsStore = useTourAttachmentsStore()
+const tourLinksStore = useTourLinksStore()
+const { siblingsByTourId, requestsByTourId, groupIdByTourId } = storeToRefs(tourLinksStore)
+const { tours, friendTours } = storeToRefs(toursStore)
 const { contacts } = storeToRefs(contactsStore)
 const { isPickingLocation } = storeToRefs(mapStore)
 const { currentUser } = storeToRefs(authStore)
@@ -143,6 +153,33 @@ watch(
   },
 )
 
+// ── Tour link group / pending request derivation (early — used by edit gate) ─
+const linkSiblings = computed(() => siblingsByTourId.value.get(props.tour.id) ?? [])
+const linkPendingRequests = computed(() => requestsByTourId.value.get(props.tour.id) ?? [])
+const isLinked = computed(() => groupIdByTourId.value.has(props.tour.id))
+
+// Edit-warning dialog: shown when owner submits an edit that would either evict
+// the tour from its group (tour_type changed, visibility flipped from friends,
+// or goal moved >COLLISION_RADIUS_M from any sibling) OR invalidate the predicate
+// for any pending link request involving this tour. Confirm proceeds with
+// submit; cancel rolls back.
+const editWarningPending = ref<null | (() => Promise<void>)>(null)
+const editWarningMode = ref<'linked' | 'pending-outgoing' | 'pending-incoming' | 'pending-mixed'>('linked')
+const editWarningPendingCount = ref(0)
+
+// "Verknüpft mit" full list takes over the sheet body when the user taps the
+// "+N weitere" pill. Back returns to the tour details inside the same sheet —
+// no nested overlay (avoids the stacked bottom-sheet broken on mobile).
+const linksView = ref(false)
+watch(() => props.tour.id, () => {
+  linksView.value = false
+})
+
+function navigateToSibling(siblingId: string) {
+  linksView.value = false
+  mapStore.selectTour(siblingId)
+}
+
 // ── Edit save ────────────────────────────────────────────────────────────────
 const saveError = ref<string | null>(null)
 const isSaving = ref(false)
@@ -152,6 +189,113 @@ async function handleEditSubmit(draft: TourDraft, _gpxFile: File | null, gpxRemo
     log.debug('Ignoring edit submit while location picker is active')
     return
   }
+
+  // Soft-gate: if this edit would evict the tour from its group OR invalidate
+  // pending link requests, ask first.
+  const breakage = wouldBreakLink(draft, pendingGoal.value)
+  if (breakage) {
+    editWarningMode.value = breakage.mode
+    editWarningPendingCount.value = breakage.pendingCount
+    editWarningPending.value = () => performEditSubmit(draft, gpxRemoved)
+    return
+  }
+  await performEditSubmit(draft, gpxRemoved)
+}
+
+/** True if applying the edit to a linked tour would break the group invariant. */
+function wouldEvict(draft: TourDraft, newGoal: { lng: number, lat: number }): boolean {
+  const t1 = props.tour
+  if (draft.tourType !== t1.tourType)
+    return true
+  const effectiveVisibility = draft.visibility ?? t1.visibility
+  if (t1.visibility === 'friends' && effectiveVisibility !== 'friends')
+    return true
+  // Goal change: mirror the server-side eviction rule. The DB trigger evicts
+  // iff the new goal sits outside COLLISION_RADIUS_M of ANY sibling. Compute
+  // here so we don't warn the user for tiny nudges that the group would absorb.
+  const moved = newGoal.lng !== t1.goal.lng || newGoal.lat !== t1.goal.lat
+  if (!moved)
+    return false
+  for (const sibId of linkSiblings.value) {
+    const sib = tours.value.find(t => t.id === sibId) ?? friendTours.value.find(t => t.id === sibId)
+    if (!sib)
+      continue // sibling out of scope (RLS, friendship gap) — be conservative, skip
+    if (!isSameGoal(newGoal, sib.goal, COLLISION_RADIUS_M))
+      return true
+  }
+  return false
+}
+
+/**
+ * Pending requests that would lose the collision predicate after this edit,
+ * split by direction (this tour as initiator = outgoing, as target = incoming).
+ * Mirror of fn_collision_predicate: same non-null tour_type, both visibility=friends,
+ * within COLLISION_RADIUS_M of the counterpart tour's goal.
+ */
+function pendingRequestsBrokenBy(
+  draft: TourDraft,
+  newGoal: { lng: number, lat: number },
+): { outgoing: number, incoming: number } {
+  const result = { outgoing: 0, incoming: 0 }
+  if (linkPendingRequests.value.length === 0)
+    return result
+  const t1 = props.tour
+  const effectiveType = draft.tourType ?? t1.tourType
+  const effectiveVisibility = draft.visibility ?? t1.visibility
+
+  for (const req of linkPendingRequests.value) {
+    const isOutgoing = req.initiatorTourId === t1.id
+    const otherId = isOutgoing ? req.targetTourId : req.initiatorTourId
+    const other = tours.value.find(t => t.id === otherId) ?? friendTours.value.find(t => t.id === otherId)
+    let broken = false
+    if (effectiveVisibility !== 'friends') {
+      broken = true
+    }
+    else if (!other) {
+      // Counterpart out of scope (RLS) — be conservative: assume predicate still holds.
+      broken = false
+    }
+    else if (effectiveType == null || other.tourType == null || effectiveType !== other.tourType) {
+      broken = true
+    }
+    else if (other.visibility !== 'friends') {
+      broken = true
+    }
+    else if (!isSameGoal(newGoal, other.goal, COLLISION_RADIUS_M)) {
+      broken = true
+    }
+    if (broken) {
+      if (isOutgoing)
+        result.outgoing++
+      else
+        result.incoming++
+    }
+  }
+  return result
+}
+
+/** Combined gate: eviction wins ('linked'); falls back to pending-request invalidation. */
+function wouldBreakLink(
+  draft: TourDraft,
+  newGoal: { lng: number, lat: number },
+): {
+  mode: 'linked' | 'pending-outgoing' | 'pending-incoming' | 'pending-mixed'
+  pendingCount: number
+} | null {
+  if (isLinked.value && wouldEvict(draft, newGoal))
+    return { mode: 'linked', pendingCount: 0 }
+  const broken = pendingRequestsBrokenBy(draft, newGoal)
+  const total = broken.outgoing + broken.incoming
+  if (total === 0)
+    return null
+  if (broken.outgoing > 0 && broken.incoming > 0)
+    return { mode: 'pending-mixed', pendingCount: total }
+  if (broken.outgoing > 0)
+    return { mode: 'pending-outgoing', pendingCount: broken.outgoing }
+  return { mode: 'pending-incoming', pendingCount: broken.incoming }
+}
+
+async function performEditSubmit(draft: TourDraft, gpxRemoved: boolean) {
   saveError.value = null
   isSaving.value = true
   try {
@@ -165,6 +309,17 @@ async function handleEditSubmit(draft: TourDraft, _gpxFile: File | null, gpxRemo
   finally {
     isSaving.value = false
   }
+}
+
+async function confirmEditWarning() {
+  const fn = editWarningPending.value
+  editWarningPending.value = null
+  if (fn)
+    await fn()
+}
+
+function cancelEditWarning() {
+  editWarningPending.value = null
 }
 
 async function handleDownloadGpx() {
@@ -181,6 +336,40 @@ async function handleDownloadGpx() {
 // ── Completion toggle ────────────────────────────────────────────────────────
 async function toggleCompleted() {
   await toursStore.setCompleted(props.tour.id, !props.tour.completed)
+}
+
+// ── Visibility toggle (owner only) ──────────────────────────────────────────
+async function toggleVisibility() {
+  const next = props.tour.visibility === 'private' ? 'friends' : 'private'
+  // friends → private will (a) evict from a group via the server trigger, or
+  // (b) invalidate pending requests where this tour is involved. Surface the
+  // appropriate warning before proceeding.
+  if (next === 'private') {
+    if (isLinked.value) {
+      editWarningMode.value = 'linked'
+      editWarningPendingCount.value = 0
+      editWarningPending.value = () => toursStore.setVisibility(props.tour.id, 'private')
+      return
+    }
+    if (linkPendingRequests.value.length > 0) {
+      let outgoing = 0
+      let incoming = 0
+      for (const req of linkPendingRequests.value) {
+        if (req.initiatorTourId === props.tour.id)
+          outgoing++
+        else
+          incoming++
+      }
+      editWarningMode.value
+        = outgoing > 0 && incoming > 0
+          ? 'pending-mixed'
+          : outgoing > 0 ? 'pending-outgoing' : 'pending-incoming'
+      editWarningPendingCount.value = linkPendingRequests.value.length
+      editWarningPending.value = () => toursStore.setVisibility(props.tour.id, 'private')
+      return
+    }
+  }
+  await toursStore.setVisibility(props.tour.id, next)
 }
 
 // ── Attachment viewer ────────────────────────────────────────────────────────
@@ -228,10 +417,32 @@ const sheetTitle = computed(() => {
       return t('tours.picker.endTitle')
     return t('tours.picker.goalTitle')
   }
+  if (linksView.value)
+    return t('tourLinks.linkedWithHeader')
   return mode.value === 'edit'
     ? `${t('tours.infoSheet.editTitlePrefix')}: ${displayName.value}`
     : displayName.value
 })
+
+const sheetShowBack = computed(() => {
+  // linksView wins on both viewports — its back returns to tour details.
+  if (linksView.value)
+    return true
+  return props.showBack && !isDesktop.value ? true : undefined
+})
+const sheetBackLabel = computed(() => {
+  if (linksView.value && isDesktop.value)
+    return t('tourLinks.linkedWithHeader')
+  return props.showBack && isDesktop.value ? t('tours.infoSheet.backToTours') : undefined
+})
+
+function handleSheetBack() {
+  if (linksView.value) {
+    linksView.value = false
+    return
+  }
+  emit('back')
+}
 
 const formattedDate = computed(() => {
   if (!props.tour.plannedDate)
@@ -244,6 +455,29 @@ const formattedDate = computed(() => {
 })
 
 const partners = computed(() => contacts.value.filter(c => props.tour.partnerIds.includes(c.id)))
+
+// Friend tours surface partners as registered-user profile names (the viewer is
+// not in the owner's address book and never sees raw contacts), so render them
+// read-only — no contact action menu, no group SMS. Populated only when the
+// viewer is a partner; gated to [] otherwise by friend_tours_view.
+const friendPartnerNames = computed(() =>
+  props.tour.isFriendTour
+    ? (props.tour.partnerNames ?? [])
+        .map(p =>
+          p.userId === currentUser.value?.id
+            ? t('tours.infoSheet.partnerSelf')
+            : [p.firstName, p.lastName].filter(Boolean).join(' ').trim(),
+        )
+        .filter(Boolean)
+    : [],
+)
+
+// Partner contacts the owner added that resolve to no registered user — surfaced
+// to partner-viewers only (0 otherwise, gated server-side) as a single generic
+// "and X more" pill so the roster's true size is hinted without leaking identity.
+const unresolvedPartnerCount = computed(() =>
+  props.tour.isFriendTour ? (props.tour.unresolvedPartnerCount ?? 0) : 0,
+)
 
 // ── Contact action menu ──────────────────────────────────────────────────────
 const activeMenuContactId = ref<string | null>(null)
@@ -335,10 +569,10 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
     :is="isDesktop ? SideDrawer : BottomSheet"
     :title="sheetTitle"
     :collapsed="sheetCollapsed"
-    :back-label="props.showBack && isDesktop ? t('tours.infoSheet.backToTours') : undefined"
-    :show-back="props.showBack && !isDesktop ? true : undefined"
+    :back-label="sheetBackLabel"
+    :show-back="sheetShowBack"
     @close="emit('close')"
-    @back="emit('back')"
+    @back="handleSheetBack"
   >
     <!-- ── Edit mode ────────────────────────────────────────────────────── -->
     <template v-if="mode === 'edit'">
@@ -364,9 +598,31 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
       />
     </template>
 
+    <!-- ── Linked-tours full-list mode ─────────────────────────────────── -->
+    <template v-else-if="linksView">
+      <LinkedWithSection
+        :siblings="linkSiblings"
+        :full-list="true"
+        @open-tour="navigateToSibling"
+      />
+    </template>
+
     <!-- ── View mode ───────────────────────────────────────────────────── -->
     <template v-else>
       <div class="details">
+        <!-- Tour link group siblings + pending link requests + collision notice -->
+        <LinkedWithSection
+          :siblings="linkSiblings"
+          @open-tour="navigateToSibling"
+          @view-all="linksView = true"
+        />
+        <LinkRequestBanner
+          v-for="req in linkPendingRequests"
+          :key="req.id"
+          :request="req"
+        />
+        <CollisionNotice v-if="isOwner" :own-tour-id="tour.id" />
+
         <!-- Completion toggle (owner only) -->
         <button
           v-if="isOwner"
@@ -385,10 +641,35 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           }}
         </button>
 
+        <!-- Visibility toggle (owner only) -->
+        <button
+          v-if="isOwner"
+          type="button"
+          class="visibility-toggle action-btn"
+          :class="
+            tour.visibility === 'private'
+              ? 'visibility-toggle--private'
+              : 'visibility-toggle--friends'
+          "
+          :aria-pressed="tour.visibility === 'private'"
+          @click="toggleVisibility"
+        >
+          <span class="material-symbols-outlined">
+            {{ tour.visibility === 'private' ? 'lock' : 'group' }}
+          </span>
+          {{
+            tour.visibility === 'private'
+              ? t('tours.infoSheet.visibilityMakeFriends')
+              : t('tours.infoSheet.visibilityMakePrivate')
+          }}
+        </button>
+
         <!-- Tour type -->
         <div v-if="tour.tourType" class="detail-row">
           <BaseTooltip :text="t('tours.infoSheet.iconTooltipType')">
-            <span class="detail-icon material-symbols-outlined">{{ TOUR_TYPE_ICONS[tour.tourType] }}</span>
+            <span class="detail-icon material-symbols-outlined">{{
+              TOUR_TYPE_ICONS[tour.tourType]
+            }}</span>
           </BaseTooltip>
           <span>{{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[tour.tourType]}` as any) }}</span>
         </div>
@@ -521,13 +802,10 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         </div>
 
         <!-- Attachments strip -->
-        <TourAttachmentsStrip
-          :tour-id="tour.id"
-          @open-viewer="openViewer"
-        />
+        <TourAttachmentsStrip :tour-id="tour.id" @open-viewer="openViewer" />
 
         <!-- Partners -->
-        <div v-if="partners.length > 0" class="detail-row align-start">
+        <div v-if="partners.length > 0" class="detail-row">
           <BaseTooltip :text="t('tours.infoSheet.iconTooltipPartners')">
             <span class="detail-icon material-symbols-outlined">group</span>
           </BaseTooltip>
@@ -555,6 +833,27 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           </div>
         </div>
 
+        <!-- Partners on a friend's tour (read-only registered-user names) -->
+        <div
+          v-if="tour.isFriendTour && (friendPartnerNames.length > 0 || unresolvedPartnerCount > 0)"
+          class="detail-row"
+        >
+          <BaseTooltip :text="t('tours.infoSheet.iconTooltipPartners')">
+            <span class="detail-icon material-symbols-outlined">group</span>
+          </BaseTooltip>
+          <div class="partner-chips">
+            <span v-for="(name, i) in friendPartnerNames" :key="i" class="friend-partner-chip">{{
+              name
+            }}</span>
+            <span
+              v-if="unresolvedPartnerCount > 0"
+              class="friend-partner-chip friend-partner-chip--more"
+            >
+              {{ t('tours.infoSheet.morePartners', { count: unresolvedPartnerCount }) }}
+            </span>
+          </div>
+        </div>
+
         <!-- Contact action menu -->
         <ContactActionMenu
           v-if="activeMenuContact"
@@ -574,7 +873,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
       </div>
     </template>
 
-    <template v-if="mode === 'view' && isOwner" #footer>
+    <template v-if="mode === 'view' && isOwner && !linksView" #footer>
       <div class="view-actions">
         <div class="edit-delete-row">
           <button
@@ -590,6 +889,9 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
           <template v-if="deleteState === 'confirm'">
             <span class="delete-confirm-text">{{ t('tours.infoSheet.deleteConfirmText') }}</span>
+            <span v-if="isLinked && linkSiblings.length > 0" class="delete-confirm-text delete-confirm-text--link">
+              {{ t('tourLinks.deleteUnlinkWarning', { count: linkSiblings.length }) }}
+            </span>
             <div class="delete-confirm-row">
               <button type="button" class="cancel-btn" @click="deleteState = 'idle'">
                 {{ t('tours.infoSheet.cancelBtn') }}
@@ -626,6 +928,15 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
       :attachments="viewerAttachments"
       :start-index="viewerStartIndex"
       @close="viewerOpen = false"
+    />
+
+    <LinkEditWarningDialog
+      v-if="editWarningPending"
+      :linked-count="linkSiblings.length"
+      :pending-count="editWarningPendingCount"
+      :mode="editWarningMode"
+      @confirm="confirmEditWarning"
+      @cancel="cancelEditWarning"
     />
   </component>
 </template>
@@ -744,6 +1055,24 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   background-color: transparent;
 }
 
+.visibility-toggle--friends {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.visibility-toggle--friends:hover {
+  background-color: transparent;
+}
+
+.visibility-toggle--private {
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.visibility-toggle--private:hover {
+  background-color: transparent;
+}
+
 .detail-row {
   display: flex;
   align-items: center;
@@ -852,6 +1181,21 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-xs);
+}
+
+.friend-partner-chip {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  background-color: var(--color-surface-variant);
+  color: var(--color-on-surface);
+}
+
+.friend-partner-chip--more {
+  background-color: transparent;
+  border: 1px dashed var(--color-outline-variant);
+  color: var(--color-on-surface-variant);
+  font-style: italic;
 }
 
 .group-sms-btn {

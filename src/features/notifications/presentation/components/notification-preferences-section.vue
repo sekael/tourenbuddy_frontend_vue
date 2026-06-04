@@ -105,9 +105,15 @@ onMounted(() => {
           <li
             v-for="type in ALL_NOTIFICATION_TYPES"
             :key="type"
-            class="row"
+            class="row row--with-description"
           >
-            <span class="row-label">{{ t(`notifications.type.${type}`) }}</span>
+            <div class="row-text">
+              <span class="row-label">{{ t(`notifications.type.${type}`) }}</span>
+              <span
+                v-if="type === 'tour_interest'"
+                class="row-description"
+              >{{ t('notifications.typeDescription.tour_interest') }}</span>
+            </div>
             <label class="switch" :class="{ 'switch--disabled': allOff }">
               <input
                 type="checkbox"
@@ -165,6 +171,24 @@ onMounted(() => {
   color: var(--color-on-surface);
   flex: 1;
   min-width: 0;
+}
+
+.row--with-description {
+  align-items: flex-start;
+}
+
+.row-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+}
+
+.row-description {
+  font-size: var(--font-size-xs);
+  color: var(--color-on-surface-variant);
+  line-height: 1.4;
 }
 
 .unavailable {

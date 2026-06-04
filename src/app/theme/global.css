@@ -62,3 +62,17 @@ textarea {
   font-size: 20px;
   line-height: 1;
 }
+
+/* Icon-font fail-safe: until the Material Symbols font is confirmed loaded
+   (`fonts-ready` set from main.ts on document.fonts.ready), keep glyphs
+   invisible AND box-constrained. Prevents the ligature SOURCE text
+   ("add_location_alt", "close") from painting in a fallback font and stretching
+   its container while the Google Fonts stylesheet / font file is still in
+   flight. Overrides are scoped to the pre-load window only, so loaded icons
+   keep their natural metrics. */
+html:not(.fonts-ready) .material-symbols-outlined {
+  display: inline-block;
+  width: 1em;
+  overflow: hidden;
+  visibility: hidden;
+}

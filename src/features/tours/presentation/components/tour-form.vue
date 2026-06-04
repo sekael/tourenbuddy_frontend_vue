@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Season } from '@/features/tours/data/models/season'
 import type { TourType } from '@/features/tours/data/models/tour-type'
+import type { Visibility } from '@/features/tours/data/models/visibility'
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
 import { storeToRefs } from 'pinia'
@@ -17,6 +18,7 @@ import {
   TOUR_TYPE_ICONS,
   TOUR_TYPE_VALUES,
 } from '@/features/tours/data/models/tour-type'
+import { DEFAULT_VISIBILITY } from '@/features/tours/data/models/visibility'
 import {
   GpxFileTooLargeError,
   GpxParseError,
@@ -77,6 +79,7 @@ const plannedDate = ref(
   props.initialDraft?.plannedDate ? props.initialDraft.plannedDate.toISOString().split('T')[0] : '',
 )
 const selectedPartnerIds = ref<Set<string>>(new Set(props.initialDraft?.partnerIds ?? []))
+const visibility = ref<Visibility>(props.initialDraft?.visibility ?? DEFAULT_VISIBILITY)
 const selectedTourType = ref<TourType | null>(props.initialDraft?.tourType ?? null)
 const elevation = ref<string>(
   props.initialDraft?.elevation != null
@@ -380,6 +383,7 @@ function handleSubmit() {
     name: tourName.value.trim(),
     plannedDate: plannedDate.value ? new Date(plannedDate.value) : null,
     partnerIds: Array.from(selectedPartnerIds.value),
+    visibility: visibility.value,
     tourType: selectedTourType.value,
     elevation: elevation.value ? Number(elevation.value) : null,
     gpxFilepath: effectiveGpxFilepath,
@@ -586,6 +590,36 @@ function handleSubmit() {
               @toggle="togglePartner"
             />
           </div>
+        </div>
+
+        <!-- SECTION: Visibility -->
+        <div class="section">
+          <p class="section-label">
+            {{ t('tours.form.visibilityLabel') }}
+          </p>
+          <div class="type-chips">
+            <button
+              type="button"
+              class="type-chip"
+              :class="{ selected: visibility === 'friends' }"
+              @click="visibility = 'friends'"
+            >
+              <span class="material-symbols-outlined type-icon">group</span>
+              <span class="type-label">{{ t('tours.form.visibilityFriends') }}</span>
+            </button>
+            <button
+              type="button"
+              class="type-chip"
+              :class="{ selected: visibility === 'private' }"
+              @click="visibility = 'private'"
+            >
+              <span class="material-symbols-outlined type-icon">lock</span>
+              <span class="type-label">{{ t('tours.form.visibilityPrivate') }}</span>
+            </button>
+          </div>
+          <p class="field-hint">
+            {{ visibility === 'private' ? t('tours.form.visibilityPrivateHint') : t('tours.form.visibilityFriendsHint') }}
+          </p>
         </div>
 
         <!-- SECTION: Tour Type -->
@@ -847,6 +881,12 @@ function handleSubmit() {
   background-color: var(--color-primary);
   border-color: var(--color-primary);
   color: var(--color-on-primary);
+}
+
+.field-hint {
+  margin-top: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
 }
 
 .type-icon {

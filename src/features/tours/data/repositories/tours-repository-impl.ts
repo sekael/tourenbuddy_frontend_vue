@@ -1,7 +1,8 @@
+import type { Visibility } from '@/features/tours/data/models/visibility'
 import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 import type { ToursRepository } from '@/features/tours/domain/repositories/tours-repository'
 import { supabase } from '@/core/utils/supabase'
-import { tourRowSchema } from '@/features/tours/data/models/tour-schema'
+import { friendTourRowSchema, tourRowSchema } from '@/features/tours/data/models/tour-schema'
 
 export class ToursRepositoryImpl implements ToursRepository {
   async listToursForUser(userId: string): Promise<Tour[]> {
@@ -11,6 +12,16 @@ export class ToursRepositoryImpl implements ToursRepository {
       throw new Error(error.message)
 
     return (data ?? []).map(row => tourRowSchema.parse(row))
+  }
+
+  async listFriendTours(): Promise<Tour[]> {
+    // RLS + the security_invoker view scope rows to friends' friends-visible tours.
+    const { data, error } = await supabase.from('friend_tours_view').select('*')
+
+    if (error)
+      throw new Error(error.message)
+
+    return (data ?? []).map(row => friendTourRowSchema.parse(row))
   }
 
   async createTourWithPartners(
@@ -85,6 +96,13 @@ export class ToursRepositoryImpl implements ToursRepository {
 
   async patchCompleted(id: string, completed: boolean): Promise<void> {
     const { error } = await supabase.from('tours').update({ completed }).eq('id', id)
+    if (error)
+      throw new Error(error.message)
+  }
+
+  async patchVisibility(id: string, visibility: Visibility): Promise<void> {
+    // Owner-only; enforced by the tours_update_own RLS policy.
+    const { error } = await supabase.from('tours').update({ visibility }).eq('id', id)
     if (error)
       throw new Error(error.message)
   }

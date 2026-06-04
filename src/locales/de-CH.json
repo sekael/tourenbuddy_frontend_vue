@@ -248,7 +248,22 @@
       "emptyTitle": "Noch keine Touren.",
       "emptySubtitle": "Erstelle eine auf der Karte.",
       "noMatchesTitle": "Keine Touren gefunden.",
-      "clearFiltersBtn": "Filter zurücksetzen"
+      "clearFiltersBtn": "Filter zurücksetzen",
+      "tabOwned": "Meine Touren",
+      "tabFriends": "Freunde",
+      "friendsEmptyTitle": "Noch keine Touren von Freunden.",
+      "friendsEmptySubtitle": "Touren, die deine Freunde teilen, erscheinen hier.",
+      "ownedByLabel": "von {name}",
+      "aFriend": "einem Freund",
+      "viewBackfillCollisionsBtn": "Tour-Überschneidungen prüfen"
+    },
+    "duplicate": {
+      "title": "Tour bereits vorhanden",
+      "body": "{owner} hat hier bereits eine Tour «{tour}», und du bist als Partner markiert.",
+      "hint": "Speichere trotzdem deine eigene Kopie oder zeige stattdessen dein Interesse.",
+      "confirmBtn": "Eigene Kopie speichern",
+      "declineBtn": "Nur Interesse zeigen",
+      "cancelBtn": "Abbrechen"
     },
     "form": {
       "nameLabel": "Tourname",
@@ -269,6 +284,11 @@
       "pointNameLabel": "Name",
       "pointElevationLabel": "Höhe (m)",
       "partnersLabel": "Tourenpartner",
+      "visibilityLabel": "Sichtbarkeit",
+      "visibilityFriends": "Freunde",
+      "visibilityPrivate": "Privat",
+      "visibilityFriendsHint": "Freunde sehen diese Tour. Markierte Partner sehen alle Details.",
+      "visibilityPrivateHint": "Nur du siehst diese Tour – verborgen vor allen, auch markierten Partnern.",
       "activityLabel": "Aktivitätstyp",
       "seasonLabel": "Saison",
       "gpxTooLarge": "Datei zu gross (max. 2 MB)",
@@ -308,10 +328,14 @@
       "unnamedTour": "Unbenannte Tour",
       "completedBtn": "Abgeschlossen",
       "completeTourBtn": "Tour abschliessen",
+      "visibilityMakePrivate": "Tour privat machen",
+      "visibilityMakeFriends": "Tour für Freunde sichtbar machen",
       "roundTrip": "Rundtour",
       "oneWayToGoalIndicator": "Einfache Tour zum Ziel",
       "gpxTrackAvailable": "Track verfügbar",
       "messageAll": "Alle anschreiben",
+      "partnerSelf": "Ich",
+      "morePartners": "und {count} weitere",
       "editBtn": "Bearbeiten",
       "deleteConfirmText": "Diese Tour löschen?",
       "cancelBtn": "Abbrechen",
@@ -496,11 +520,55 @@
     "emailDescription": "Benachrichtigungen per E-Mail erhalten",
     "typesLabel": "Benachrichtige mich über",
     "type": {
-      "friend_requests": "Freundschaftsanfragen"
+      "friend_requests": "Freundschaftsanfragen",
+      "tour_updates": "Änderungen an geteilten Touren",
+      "tour_interest": "Hinweise auf gleiche Touren"
+    },
+    "typeDescription": {
+      "tour_interest": "Wenn ein Freund die gleiche Tour plant, bei Verknüpfungsanfragen und nach neuen Freundschaften."
     },
     "allOffDisclaimer": "Du erhältst keine Benachrichtigungen über Freundschaftsanfragen oder andere wichtige Ereignisse. Aktiviere mindestens einen Kanal, um informiert zu bleiben.",
     "pushUnavailable": "Nicht verfügbar",
     "installHint": "Um Push-Benachrichtigungen zu aktivieren, füge TourenBuddy zuerst zum Home-Bildschirm hinzu.",
     "deniedHint": "Push-Benachrichtigungen sind blockiert. Aktiviere sie in den Browser- oder Geräteeinstellungen."
+  },
+  "common": {
+    "loading": "Lädt…"
+  },
+  "tourLinks": {
+    "linkedWithHeader": "Verknüpft mit",
+    "moreLinked": "+{count} weitere",
+    "unknownPartner": "Unbekannter Buddy",
+    "collisionNoticeTitle": "Gleiche Tour geplant",
+    "collisionNoticeBody": "Freunde mit der gleichen Tour: {names}. Verknüpfe eure Touren, um gemeinsam zu planen.",
+    "requestToLinkBtn": "Verknüpfung anfragen bei {name}",
+    "requestToLinkShortBtn": "Verknüpfen",
+    "requestingBtn": "Wird angefragt…",
+    "bannerIncoming": "{name} möchte «{tour}» mit deiner Tour verknüpfen.",
+    "bannerOutgoing": "Verknüpfungsanfrage an {name} für «{tour}» gesendet.",
+    "acceptBtn": "Annehmen",
+    "declineBtn": "Ablehnen",
+    "withdrawBtn": "Zurückziehen",
+    "editWarningTitle": "Diese Änderung trennt die Verknüpfung",
+    "editWarningBody": "Diese Änderung trennt diese Tour von {count} verknüpften Freundestour(en).",
+    "editWarningPendingTitle": "Diese Änderung verwirft deine offene(n) Verknüpfungsanfrage(n)",
+    "editWarningPendingBody": "Diese Änderung passt nicht mehr zu {count} offenen Verknüpfungsanfrage(n), die du gesendet hast. Die Anfrage(n) werden zurückgezogen.",
+    "editWarningIncomingTitle": "Offene Verknüpfungsanfragen werden zurückgezogen",
+    "editWarningIncomingBody": "Für diese Tour gibt es {count} offene Verknüpfungsanfrage(n). Wenn du die Änderungen speicherst, werden sie automatisch zurückgezogen.",
+    "editWarningHint": "Du kannst später eine neue Verknüpfung anfragen, wenn die Touren wieder übereinstimmen.",
+    "editWarningProceedBtn": "Speichern und Verknüpfung lösen",
+    "editWarningProceedPendingBtn": "Speichern und Anfrage zurückziehen",
+    "deleteUnlinkWarning": "Diese Tour ist mit {count} Freund-Tour(en) verknüpft. Beim Löschen wird die Verknüpfung getrennt.",
+    "backfillPageTitle": "Tour-Überschneidungen mit diesem Freund",
+    "backfillEmpty": "Keine Überschneidungen zu prüfen.",
+    "backfillAllEmpty": "Keine Tour-Überschneidungen mit Freunden zu prüfen.",
+    "backfillFriendLabel": "mit {name}",
+    "backfillYourTourLabel": "Deine Tour",
+    "backfillFriendTourLabel": "Tour des Freundes",
+    "backfillFriendNameLabel": "Freund",
+    "mergeBlockedTitle": "Eine andere Freundesgruppe plant dieselbe Tour",
+    "mergeBlockedBody": "Freunde bereits in eigener verknüpfter Gruppe: {names}. Du kannst sie direkt kontaktieren, um euch abzustimmen — eure Gruppen lassen sich aber nicht zusammenführen.",
+    "dismissBtn": "Verstanden",
+    "doNotShowAgain": "Nicht mehr anzeigen"
   }
 }

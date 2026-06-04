@@ -15,6 +15,7 @@ import TourActionBar from '@/features/map/presentation/components/tour-action-ba
 import TourenbuddyMap from '@/features/map/presentation/components/tourenbuddy-map.vue'
 import { computeBarState } from '@/features/map/presentation/composables/compute-bar-state'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
+import { notifyTourInterest } from '@/features/notifications/data/notify-dispatch'
 import { getElevation } from '@/features/tours/data/services/swisstopo-elevation-service'
 import { suggestTourName } from '@/features/tours/data/services/swisstopo-name-service'
 import { isSameGoal } from '@/features/tours/domain/distance'
@@ -47,7 +48,7 @@ const authStore = useAuthStore()
 const isDesktop = useIsDesktop()
 
 const { isPickingLocation, selectedTourId } = storeToRefs(mapStore)
-const { tours } = storeToRefs(toursStore)
+const { tours, friendTours } = storeToRefs(toursStore)
 const { isAuthenticated } = storeToRefs(authStore)
 
 const mapRef = ref<InstanceType<typeof TourenbuddyMap> | null>(null)
@@ -102,8 +103,14 @@ const dialogInitialEndPointMeta = ref<{ name: string | null, elevation: number |
   null,
 )
 
-// Derived reactively from store so it updates immediately when tours are mutated
-const selectedTour = computed(() => tours.value.find(t => t.id === selectedTourId.value) ?? null)
+// Derived reactively from store so it updates immediately when tours are mutated.
+// Search friend tours too — a friend marker (partner tours) can be selected on the map.
+const selectedTour = computed(
+  () =>
+    tours.value.find(t => t.id === selectedTourId.value)
+    ?? friendTours.value.find(t => t.id === selectedTourId.value)
+    ?? null,
+)
 const sheetContainerRef = ref<HTMLElement | null>(null)
 
 // Whether the current location pick was triggered from the info sheet edit mode
@@ -438,13 +445,25 @@ async function handleTourCreated(
   // Capture goal before closeOverlay resets state
   const goal = pendingLocation.value
   closeOverlay()
+  await performCreate(draft, goal, gpxFile, preUploadedTourId, draftId)
+}
 
+async function performCreate(
+  draft: TourDraft,
+  goal: { lng: number, lat: number },
+  gpxFile: File | null,
+  preUploadedTourId: string | null,
+  draftId: string,
+) {
   const newId = await toursStore.createTourFromDraft(draft, goal, gpxFile, preUploadedTourId)
   if (newId) {
     mapStore.selectTour(newId)
     // Upload staged attachments now that the tour row exists
     if (draftId)
       await attachmentsStore.commitStaged(draftId, newId)
+    // Fire-and-forget: Worker scans for friend-owned colliding tours and dispatches
+    // tour_interest notifications. Replaces the legacy "decline duplicate → signal" flow.
+    notifyTourInterest(newId)
   }
 }
 

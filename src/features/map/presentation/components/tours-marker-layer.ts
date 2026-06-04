@@ -26,8 +26,12 @@ export const TOUR_LAYER_IDS = ['tours-circles', 'tours-circles-selected'] as con
 const LAYER_ID = TOUR_LAYER_IDS[0]
 const SELECTED_LAYER_ID = TOUR_LAYER_IDS[1]
 const CHECK_LAYER_ID = 'tours-completed-check'
+const FRIEND_LAYER_ID = 'tours-friend-indicator'
+const LINK_LAYER_ID = 'tours-link-indicator'
 const PREVIEW_LAYER_ID = 'tours-preview-circle'
 const CHECK_ICON_ID = 'tour-check-icon'
+const FRIEND_ICON_ID = 'tour-friend-icon'
+const LINK_ICON_ID = 'tour-link-icon'
 
 export const SPIDERFY_CIRCLE_RADIUS_PX = 32
 export const SPIDERFY_SPIRAL_THRESHOLD = 8
@@ -73,6 +77,91 @@ async function loadCheckIcon(map: MapLibreMap): Promise<boolean> {
       URL.revokeObjectURL(url)
       try {
         map.addImage(CHECK_ICON_ID, img, { sdf: false })
+        resolve(true)
+      }
+      catch {
+        resolve(false)
+      }
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve(false)
+    }
+    img.src = url
+  })
+}
+
+async function loadFriendIcon(map: MapLibreMap): Promise<boolean> {
+  if (map.hasImage(FRIEND_ICON_ID))
+    return true
+
+  // Logical (CSS-px) size of the icon; the 0..28 viewBox holds the glyph geometry.
+  const size = 28
+  // Rasterize at 4× and register with a matching pixelRatio so the texture carries
+  // 4× the detail while still measuring 28 logical px — crisp on hi-DPI / when scaled.
+  const scale = 4
+  const render = size * scale
+  // Two-person glyph — marks a friend's tour inside the marker.
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${render}" height="${render}" viewBox="0 0 28 28" fill="white">
+      <circle cx="10" cy="9" r="3.5" />
+      <path d="M4 21c0-3.3 2.7-6 6-6s6 2.7 6 6z" />
+      <circle cx="19" cy="10" r="3" />
+      <path d="M19 14c2.8 0 5 2.2 5 5h-6.2c.2-.6.2-1.2.2-1.8 0-1.2-.3-2.3-.8-3.2z" />
+    </svg>
+  `.trim()
+
+  const blob = new Blob([svg], { type: 'image/svg+xml' })
+  const url = URL.createObjectURL(blob)
+
+  return new Promise((resolve) => {
+    const img = new Image(render, render)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      try {
+        // SDF so the layer can tint it per tour type via `icon-color`; the SVG's
+        // own white fill is ignored — only its alpha silhouette is used.
+        map.addImage(FRIEND_ICON_ID, img, { sdf: true, pixelRatio: scale })
+        resolve(true)
+      }
+      catch {
+        resolve(false)
+      }
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve(false)
+    }
+    img.src = url
+  })
+}
+
+async function loadLinkIcon(map: MapLibreMap): Promise<boolean> {
+  if (map.hasImage(LINK_ICON_ID))
+    return true
+
+  const size = 28
+  const scale = 4
+  const render = size * scale
+  // Chain-link glyph (two interlocking links) — marks a tour that belongs to a
+  // tour_link_group. White fill; the SDF alpha silhouette is tinted by the layer.
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${render}" height="${render}" viewBox="0 0 28 28" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11.5 16.5l-3 3a3.5 3.5 0 1 1-4.95-4.95l3-3a3.5 3.5 0 0 1 4.95 0" />
+      <path d="M16.5 11.5l3-3a3.5 3.5 0 1 1 4.95 4.95l-3 3a3.5 3.5 0 0 1-4.95 0" />
+      <path d="M10.5 17.5l7-7" />
+    </svg>
+  `.trim()
+
+  const blob = new Blob([svg], { type: 'image/svg+xml' })
+  const url = URL.createObjectURL(blob)
+
+  return new Promise((resolve) => {
+    const img = new Image(render, render)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      try {
+        map.addImage(LINK_ICON_ID, img, { sdf: true, pixelRatio: scale })
         resolve(true)
       }
       catch {
@@ -213,6 +302,24 @@ export function useToursMarkerLayer(
         'all',
         inVisible,
         ['==', ['get', 'completed'], true],
+      ] as ExpressionSpecification)
+    }
+
+    if (map.getLayer(FRIEND_LAYER_ID)) {
+      // Friend glyph is hidden for linked tours — the chain icon takes precedence.
+      map.setFilter(FRIEND_LAYER_ID, [
+        'all',
+        inVisible,
+        ['==', ['get', 'isFriendTour'], true],
+        ['!=', ['get', 'isLinked'], true],
+      ] as ExpressionSpecification)
+    }
+
+    if (map.getLayer(LINK_LAYER_ID)) {
+      map.setFilter(LINK_LAYER_ID, [
+        'all',
+        inVisible,
+        ['==', ['get', 'isLinked'], true],
       ] as ExpressionSpecification)
     }
   }
@@ -529,6 +636,57 @@ export function useToursMarkerLayer(
       },
     })
 
+    // Friend indicator is added BEFORE the completion check so the check (added
+    // last below) stacks on top — completion must read above everything else.
+    const friendIconLoaded = await loadFriendIcon(map)
+    if (friendIconLoaded) {
+      // Friendship indicator is centered in the marker and sized to nearly fill
+      // it (28px icon × 0.8 ≈ 22px inside a 28px circle → even ~3px padding).
+      // Tinted a lighter shade of the tour-type colour so the white completion
+      // check stays legible on top of it for completed friend tours.
+      map.addLayer({
+        id: FRIEND_LAYER_ID,
+        type: 'symbol',
+        source: SOURCE_ID,
+        filter: ['in', ['get', 'id'], ['literal', []]],
+        layout: {
+          'icon-image': FRIEND_ICON_ID,
+          'icon-size': 0.8,
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+        },
+        paint: {
+          'icon-color': PREVIEW_COLOR_EXPR,
+          'icon-opacity': 1,
+          'icon-opacity-transition': { duration: 200 },
+        },
+      })
+    }
+
+    // Link indicator BEFORE the check so the white completion ✓ stacks above
+    // it. Same shape / size / tint as the friend glyph — fills the marker,
+    // PREVIEW_COLOR_EXPR keeps the completion mark legible on top.
+    const linkIconLoaded = await loadLinkIcon(map)
+    if (linkIconLoaded) {
+      map.addLayer({
+        id: LINK_LAYER_ID,
+        type: 'symbol',
+        source: SOURCE_ID,
+        filter: ['in', ['get', 'id'], ['literal', []]],
+        layout: {
+          'icon-image': LINK_ICON_ID,
+          'icon-size': 0.8,
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+        },
+        paint: {
+          'icon-color': PREVIEW_COLOR_EXPR,
+          'icon-opacity': 1,
+          'icon-opacity-transition': { duration: 200 },
+        },
+      })
+    }
+
     const iconLoaded = await loadCheckIcon(map)
     if (iconLoaded) {
       map.addLayer({
@@ -590,7 +748,11 @@ export function useToursMarkerLayer(
     })
   }
 
-  function updateTours(tours: Tour[], selectedTourId: string | null) {
+  function updateTours(
+    tours: Tour[],
+    selectedTourId: string | null,
+    linkedTourIds: Set<string> = new Set(),
+  ) {
     const source = map.getSource(SOURCE_ID)
     if (!source || source.type !== 'geojson')
       return
@@ -609,7 +771,7 @@ export function useToursMarkerLayer(
     splitZooms = collectSplitZooms(currentTree)
     currentSelectedId = selectedTourId
 
-    const geoJson = toursToGeoJson(tours)
+    const geoJson = toursToGeoJson(tours, { linkedTourIds })
     source.setData(geoJson)
     commitFrame(currentTree, map.getZoom())
   }

@@ -1,12 +1,15 @@
+import type { Ref } from 'vue'
 import type { Season } from '@/features/tours/data/models/season'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Tour } from '@/features/tours/domain/entities/tour'
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { resolveContactName } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
 export type CompletionFilter = 'all' | 'done' | 'open'
+/** Which tour collection a filter instance operates on. */
+export type TourTab = 'owned' | 'friends'
 
 export interface TourFilters {
   partnerIds: Set<string>
@@ -16,21 +19,73 @@ export interface TourFilters {
   completion: CompletionFilter
 }
 
-// Module-level state persists across TourListSheet mount/unmount cycles
-const searchQuery = ref('')
-const filters = reactive<TourFilters>({
-  partnerIds: new Set(),
-  tourTypes: new Set(),
-  seasons: new Set(),
-  dateRange: { from: null, to: null },
-  completion: 'all',
+function createFilterState() {
+  return {
+    searchQuery: ref(''),
+    filters: reactive<TourFilters>({
+      partnerIds: new Set<string>(),
+      tourTypes: new Set<TourType>(),
+      seasons: new Set<Season>(),
+      dateRange: { from: null as Date | null, to: null as Date | null },
+      completion: 'all' as CompletionFilter,
+    }),
+  }
+}
+
+// One persistent state per tab so search/filter on Owned and Friends never bleed
+// into each other; module-level so it survives TourListSheet mount/unmount cycles.
+const tabStates: Record<TourTab, ReturnType<typeof createFilterState>> = {
+  owned: createFilterState(),
+  friends: createFilterState(),
+}
+
+// The selected tab is module-level too, so returning to the list from a tour
+// detail view (which remounts TourListSheet) restores the tab last viewed.
+// Persisted to localStorage so the tab survives full reloads / PWA restarts.
+const ACTIVE_TAB_STORAGE_KEY = 'tours.list.activeTab'
+
+function readStoredTab(): TourTab {
+  try {
+    const v = localStorage.getItem(ACTIVE_TAB_STORAGE_KEY)
+    if (v === 'owned' || v === 'friends')
+      return v
+  }
+  catch {
+    // localStorage unavailable (Safari private mode etc.) — fall through.
+  }
+  return 'owned'
+}
+
+const activeTourTab = ref<TourTab>(readStoredTab())
+watch(activeTourTab, (next) => {
+  try {
+    localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, next)
+  }
+  catch {
+    // ignore
+  }
 })
 
-export function useTourFilters() {
+export function useActiveTourTab() {
+  return activeTourTab
+}
+
+export function useTourFilters(tab: TourTab = 'owned') {
+  const { searchQuery, filters } = tabStates[tab]
   const toursStore = useToursStore()
+  const source: Ref<Tour[]> = computed(() =>
+    tab === 'friends' ? toursStore.friendTours : toursStore.tours,
+  )
   const contactsStore = useContactsStore()
 
   function resolvePartnerNames(tour: Tour): string[] {
+    // Friend tours expose partners as server-resolved registered-user names, not the
+    // viewer's contact ids (which would resolve against the wrong address book).
+    if (tour.isFriendTour) {
+      return (tour.partnerNames ?? []).map(p =>
+        [p.firstName, p.lastName].filter(Boolean).join(' '),
+      )
+    }
     return tour.partnerIds.map((id) => {
       const contact = contactsStore.contacts.find(c => c.id === id)
       if (!contact)
@@ -84,7 +139,7 @@ export function useTourFilters() {
   }
 
   const filteredTours = computed<Tour[]>(() =>
-    toursStore.tours.filter(t => matchesSearch(t) && matchesFilters(t)),
+    source.value.filter(t => matchesSearch(t) && matchesFilters(t)),
   )
 
   const activeFilterCount = computed(() => {

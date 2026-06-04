@@ -6,6 +6,11 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { SWISSTOPO_STYLES } from '@/features/map/data/swisstopo-styles'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
+import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
+import {
+  friendTourIdsShadowedByOwned,
+  ownedTourIdsShadowedByFriends,
+} from '@/features/tours/domain/collision'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import { useGpxTrackLayer } from './gpx-track-layer'
 import { TOUR_LAYER_IDS, useToursMarkerLayer } from './tours-marker-layer'
@@ -23,8 +28,12 @@ let mapInstance: MapLibreMap | null = null
 
 const toursStore = useToursStore()
 const mapStore = useMapStore()
-const { tours } = storeToRefs(toursStore)
+const tourLinksStore = useTourLinksStore()
+const { tours, friendTours } = storeToRefs(toursStore)
 const { currentStyleIndex, selectedTourId, editPreviewGoal } = storeToRefs(mapStore)
+const { groupIdByTourId } = storeToRefs(tourLinksStore)
+
+const linkedTourIds = computed(() => new Set(groupIdByTourId.value.keys()))
 
 // Expose map instance for location picker
 const map = ref<MapLibreMap | null>(null)
@@ -33,7 +42,37 @@ defineExpose({ map })
 let markerLayer: ReturnType<typeof useToursMarkerLayer> | null = null
 let gpxLayer: ReturnType<typeof useGpxTrackLayer> | null = null
 
-const selectedTour = computed(() => tours.value.find(t => t.id === selectedTourId.value) ?? null)
+// The map shows the user's own tours plus only the friend tours the user is a
+// partner on — non-partner friend tours never get a marker (the Friends list
+// still shows every shared tour). A partner friend tour colliding (within 100m)
+// with an owned tour is suppressed — owned tours take precedence.
+const mapTours = computed(() => {
+  const partnerFriendTours = friendTours.value.filter(t => t.isPartner === true)
+  const shadowed = friendTourIdsShadowedByOwned(tours.value, partnerFriendTours)
+  const hiddenOwned = new Set<string>()
+
+  // When a partner friend tour is the active selection, it overrides owned
+  // precedence at its location: un-shadow it AND hide the owned tour(s) it
+  // collides with, so only the friend marker + GPX show (no co-located cluster)
+  // until deselected.
+  const selectedFriend = selectedTourId.value
+    ? partnerFriendTours.find(t => t.id === selectedTourId.value)
+    : undefined
+  if (selectedFriend) {
+    shadowed.delete(selectedFriend.id)
+    for (const id of ownedTourIdsShadowedByFriends(tours.value, [selectedFriend]))
+      hiddenOwned.add(id)
+  }
+
+  return [
+    ...tours.value.filter(t => !hiddenOwned.has(t.id)),
+    ...partnerFriendTours.filter(t => !shadowed.has(t.id)),
+  ]
+})
+
+const selectedTour = computed(
+  () => mapTours.value.find(t => t.id === selectedTourId.value) ?? null,
+)
 
 onMounted(() => {
   if (!mapContainer.value)
@@ -54,12 +93,14 @@ onMounted(() => {
   mapInstance.on('load', async () => {
     markerLayer = useToursMarkerLayer(
       mapInstance!,
-      (tourId) => { emit('tourClicked', tourId) },
+      (tourId) => {
+        emit('tourClicked', tourId)
+      },
       count => t('map.cluster.label', { count }),
       () => t('map.cluster.spiderfyHint'),
     )
     await markerLayer.setup()
-    markerLayer.updateTours(tours.value, selectedTourId.value)
+    markerLayer.updateTours(mapTours.value, selectedTourId.value, linkedTourIds.value)
     markerLayer.updatePreview(editPreviewGoal.value, selectedTour.value?.tourType ?? null)
 
     gpxLayer = useGpxTrackLayer(mapInstance!)
@@ -92,8 +133,8 @@ onUnmounted(() => {
 })
 
 // Watch for tour/selection changes and update both layers
-watch([tours, selectedTourId], ([newTours, newSelectedId]) => {
-  markerLayer?.updateTours(newTours, newSelectedId)
+watch([mapTours, selectedTourId, linkedTourIds], ([newTours, newSelectedId, newLinked]) => {
+  markerLayer?.updateTours(newTours, newSelectedId, newLinked as Set<string>)
   gpxLayer?.updateTrack(selectedTour.value)
 })
 
@@ -112,7 +153,7 @@ watch(currentStyleIndex, (index) => {
     mapInstance.setStyle(style.style)
     mapInstance.once('style.load', async () => {
       await markerLayer?.setup()
-      markerLayer?.updateTours(tours.value, selectedTourId.value)
+      markerLayer?.updateTours(mapTours.value, selectedTourId.value, linkedTourIds.value)
       markerLayer?.updatePreview(editPreviewGoal.value, selectedTour.value?.tourType ?? null)
       gpxLayer?.setup()
       gpxLayer?.updateTrack(selectedTour.value)

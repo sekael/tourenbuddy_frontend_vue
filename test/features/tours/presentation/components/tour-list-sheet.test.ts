@@ -89,10 +89,11 @@ describe('tourListSheet', () => {
       expect(rows[1]!.text()).toContain('Ski Tour')
     })
 
-    it('should display "Unnamed tour" for tours with null name', () => {
+    it('should display the unnamed-tour fallback for tours with null name', () => {
       const tours = [{ ...mockTours[0]!, id: 't-3', name: null }]
       const wrapper = mountSheet({ tours })
-      expect(wrapper.find('.tour-row').text()).toContain('Unnamed tour')
+      // i18n stub echoes keys; the row falls back to the unnamed-tour label.
+      expect(wrapper.find('.tour-row').text()).toContain('tours.infoSheet.unnamedTour')
     })
   })
 

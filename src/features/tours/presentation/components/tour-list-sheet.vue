@@ -3,14 +3,16 @@ import type { Season } from '@/features/tours/data/models/season'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { CompletionFilter } from '@/features/tours/presentation/composables/use-tour-filters'
 import { storeToRefs } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
-import { useTourFilters } from '@/features/tours/presentation/composables/use-tour-filters'
+import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
+import BackfillCollisionsPage from '@/features/tour-links/presentation/pages/backfill-collisions-page.vue'
+import { useActiveTourTab, useTourFilters } from '@/features/tours/presentation/composables/use-tour-filters'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import TourFiltersPanel from './tour-filters-panel.vue'
 import TourListRow from './tour-list-row.vue'
@@ -23,10 +25,59 @@ const authStore = useAuthStore()
 const { isAuthenticated } = storeToRefs(authStore)
 
 const toursStore = useToursStore()
-const { tours, isLoading } = storeToRefs(toursStore)
+const { tours, friendTours, isLoading } = storeToRefs(toursStore)
 
 const isDesktop = useIsDesktop()
-const { searchQuery, filters, filteredTours, activeFilterCount, clearAll } = useTourFilters()
+
+// Owned and Friends are separate, no merged list. Each tab keeps its own
+// persistent search + filters via the namespaced composable.
+const activeTab = useActiveTourTab()
+const owned = useTourFilters('owned')
+const friends = useTourFilters('friends')
+const active = computed(() => (activeTab.value === 'friends' ? friends : owned))
+
+const searchQuery = computed({
+  get: () => active.value.searchQuery.value,
+  set: v => (active.value.searchQuery.value = v),
+})
+const filters = computed(() => active.value.filters)
+const filteredTours = computed(() => active.value.filteredTours.value)
+const activeFilterCount = computed(() => active.value.activeFilterCount.value)
+const sourceCount = computed(() => (activeTab.value === 'friends' ? friendTours.value.length : tours.value.length))
+function clearAll() {
+  active.value.clearAll()
+}
+
+const friendshipsStore = useFriendshipsStore()
+const { friendships } = storeToRefs(friendshipsStore)
+const hasFriends = computed(() => friendships.value.length > 0)
+
+// Embedded backfill view (Issue 2): opening the in-app backfill page swaps the
+// sheet body in place rather than navigating to a separate route. Back returns
+// to the list with prior tab/search/filter state intact.
+const showBackfill = ref(false)
+function openBackfill() {
+  showBackfill.value = true
+}
+function closeBackfill() {
+  showBackfill.value = false
+}
+
+// Refetch friend tours when the Friends tab is opened (realtime deferred — issue #198).
+watch(activeTab, (tab) => {
+  if (tab === 'friends')
+    toursStore.loadFriendTours()
+})
+
+// Resolve friend-tour owner profile names for the "owned by" row label.
+watch(friendTours, (list) => {
+  const ownerIds = [...new Set(list.map(tour => tour.userId))].filter(
+    id => !friendshipsStore.userIdToNamesMap.has(id),
+  )
+  if (ownerIds.length > 0)
+    friendshipsStore.getNamesByUserIds(ownerIds)
+}, { immediate: true })
+
 const filtersExpanded = ref(false)
 
 function handleRowClick(tourId: string) {
@@ -64,7 +115,46 @@ function handleRowClick(tourId: string) {
       </button>
     </template>
 
-    <div class="list-view">
+    <BackfillCollisionsPage
+      v-if="showBackfill"
+      mode="all"
+      @back="closeBackfill"
+    />
+
+    <div v-else class="list-view">
+      <div class="tabs" role="tablist">
+        <button
+          type="button"
+          role="tab"
+          class="tab"
+          :class="{ 'tab--active': activeTab === 'owned' }"
+          :aria-selected="activeTab === 'owned'"
+          @click="activeTab = 'owned'"
+        >
+          {{ t('tours.list.tabOwned') }}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          class="tab"
+          :class="{ 'tab--active': activeTab === 'friends' }"
+          :aria-selected="activeTab === 'friends'"
+          @click="activeTab = 'friends'"
+        >
+          {{ t('tours.list.tabFriends') }}
+        </button>
+      </div>
+
+      <button
+        v-if="activeTab === 'friends' && hasFriends"
+        type="button"
+        class="backfill-entry-btn"
+        @click="openBackfill"
+      >
+        <span class="material-symbols-outlined">sync_alt</span>
+        {{ t('tours.list.viewBackfillCollisionsBtn') }}
+      </button>
+
       <div class="search-row">
         <span class="material-symbols-outlined search-icon">search</span>
         <input
@@ -94,17 +184,19 @@ function handleRowClick(tourId: string) {
         @update:completion="(v: CompletionFilter) => (filters.completion = v)"
       />
 
-      <div v-if="isLoading && tours.length === 0" class="loading-text">
+      <div v-if="activeTab === 'owned' && isLoading && tours.length === 0" class="loading-text">
         {{ t('tours.list.loading') }}
       </div>
 
-      <div v-else-if="tours.length === 0" class="empty-state">
-        <span class="material-symbols-outlined empty-icon">location_on</span>
+      <div v-else-if="sourceCount === 0" class="empty-state">
+        <span class="material-symbols-outlined empty-icon">
+          {{ activeTab === 'friends' ? 'group' : 'location_on' }}
+        </span>
         <p class="empty-text">
-          {{ t('tours.list.emptyTitle') }}
+          {{ activeTab === 'friends' ? t('tours.list.friendsEmptyTitle') : t('tours.list.emptyTitle') }}
         </p>
         <p class="empty-sub">
-          {{ t('tours.list.emptySubtitle') }}
+          {{ activeTab === 'friends' ? t('tours.list.friendsEmptySubtitle') : t('tours.list.emptySubtitle') }}
         </p>
       </div>
 
@@ -135,6 +227,33 @@ function handleRowClick(tourId: string) {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
+}
+
+.tabs {
+  display: flex;
+  gap: var(--spacing-xs);
+  border-bottom: 1.5px solid var(--color-outline-variant);
+}
+
+.tab {
+  flex: 1;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1.5px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-on-surface-variant);
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.tab--active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
 }
 
 .search-row {
@@ -271,5 +390,25 @@ function handleRowClick(tourId: string) {
 .header-add-btn:disabled {
   opacity: 0.45;
   cursor: default;
+}
+
+.backfill-entry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-primary);
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  align-self: flex-start;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.backfill-entry-btn:hover {
+  background-color: color-mix(in srgb, var(--color-primary) 8%, transparent);
 }
 </style>

@@ -2,6 +2,7 @@ import type { z } from 'zod'
 import type { Season } from '@/features/tours/data/models/season'
 import type { tourSchema } from '@/features/tours/data/models/tour-schema'
 import type { TourType } from '@/features/tours/data/models/tour-type'
+import type { Visibility } from '@/features/tours/data/models/visibility'
 
 /** Domain entity for a tour. */
 export type Tour = z.infer<typeof tourSchema>
@@ -25,10 +26,15 @@ export interface TourDraft {
   equipment: string | null
   notes: string | null
   completed?: boolean
+  /** Owner-chosen visibility. Defaults to `friends` server-side when omitted. */
+  visibility?: Visibility
 }
 
 /** Converts a tour to a GeoJSON Feature for MapLibre rendering. */
-export function tourToGeoJsonFeature(tour: Tour): GeoJSON.Feature<GeoJSON.Point> {
+export function tourToGeoJsonFeature(
+  tour: Tour,
+  opts?: { linkedTourIds?: Set<string> },
+): GeoJSON.Feature<GeoJSON.Point> {
   return {
     type: 'Feature',
     id: tour.id,
@@ -40,14 +46,19 @@ export function tourToGeoJsonFeature(tour: Tour): GeoJSON.Feature<GeoJSON.Point>
       id: tour.id,
       tourType: tour.tourType ?? null,
       completed: tour.completed,
+      isFriendTour: tour.isFriendTour ?? false,
+      isLinked: opts?.linkedTourIds?.has(tour.id) ?? false,
     },
   }
 }
 
 /** Converts an array of tours to a GeoJSON FeatureCollection. */
-export function toursToGeoJson(tours: Tour[]): GeoJSON.FeatureCollection<GeoJSON.Point> {
+export function toursToGeoJson(
+  tours: Tour[],
+  opts?: { linkedTourIds?: Set<string> },
+): GeoJSON.FeatureCollection<GeoJSON.Point> {
   return {
     type: 'FeatureCollection',
-    features: tours.map(tourToGeoJsonFeature),
+    features: tours.map(t => tourToGeoJsonFeature(t, opts)),
   }
 }
