@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.26.0...tourenbuddy-frontend-v0.27.0) (2026-06-04)
+
+
+### Features
+
+* Friend tour visibility ([#201](https://github.com/sekael/tourenbuddy_frontend_vue/issues/201)) ([4b22e72](https://github.com/sekael/tourenbuddy_frontend_vue/commit/4b22e72d747592055b09bacf629fc7c357d2d905))
+
 ## [0.26.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.25.0...tourenbuddy-frontend-v0.26.0) (2026-05-25)
 
 
