@@ -1,4 +1,4 @@
-Subject: {% if params.action == "link_created" %}{{ params.actorName }} möchte eine Tour mit dir verknüpfen{% elif params.action == "link_accepted" %}{{ params.actorName }} hat deine Verknüpfungsanfrage angenommen{% elif params.action == "link_declined" %}{{ params.actorName }} hat deine Verknüpfungsanfrage abgelehnt{% elif params.action == "group_joined" %}Eine neue Tour ist deiner Verknüpfung beigetreten{% elif params.action == "group_evicted_external" %}Eine Tour wurde aus deiner Verknüpfung entfernt{% elif params.action == "group_dissolved" %}Deine Tour-Verknüpfung wurde aufgelöst{% else %}{{ params.actorName }} hat dieselbe Tour wie du geplant{% endif %} auf TourenBuddy
+Subject: {% if params.action == "link_created" %}{{ params.actorName }} möchte eine Tour mit dir verknüpfen{% elif params.action == "link_accepted" %}{{ params.actorName }} hat deine Verknüpfungsanfrage angenommen{% elif params.action == "link_declined" %}{{ params.actorName }} hat deine Verknüpfungsanfrage abgelehnt{% elif params.action == "group_joined" %}Eine neue Tour ist deiner Verknüpfung beigetreten{% elif params.action == "group_evicted_external" %}Eine Tour wurde aus deiner Verknüpfung entfernt{% elif params.action == "backfill_digest" %}{{ params.actorName }} hat dieselben Touren wie du geplant{% else %}{{ params.actorName }} hat dieselbe Tour wie du geplant{% endif %} auf TourenBuddy
 
 Hallo,
 
@@ -22,18 +22,23 @@ Sieh dir die verknüpften Touren an, um zu sehen, wer dasselbe plant.
 Eine Tour wurde aus der Verknüpfung um "{{ params.tourName }}" entfernt.
 
 Das passiert, wenn eine Tour bearbeitet, privat gemacht oder eine Freundschaft beendet wurde.
-{% elif params.action == "group_dissolved" %}
-Die Verknüpfung für "{{ params.tourName }}" wurde aufgelöst.
+{% elif params.action == "backfill_digest" %}
+{{ params.actorName }} hat dieselben Touren wie du geplant.
 
-Deine Tour ist nicht mehr mit anderen verknüpft.
+Schau sie dir auf TourenBuddy an.
 {% else %}
 {{ params.actorName }} hat dieselbe Tour wie deine "{{ params.tourName }}" geplant.
 
 Öffne die Tour, um zu verknüpfen und gemeinsam zu planen.
 {% endif %}
 
+{% if params.action == "backfill_digest" %}
+Gemeinsame Touren ansehen:
+{{ params.appUrl }}
+{% else %}
 Tour ansehen:
 {{ params.appUrl }}/?tours=1
+{% endif %}
 
 ---
 Du erhältst diese E-Mail, weil Benachrichtigungen für dein TourenBuddy-Konto aktiviert sind.

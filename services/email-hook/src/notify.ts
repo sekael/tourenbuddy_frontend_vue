@@ -1,7 +1,7 @@
 import type { Env } from './config'
 import { verifySupabaseJwt } from './auth'
 import { jsonResponse, resolveLocale } from './config'
-import { sendFriendNotificationEmail, sendTourNotificationEmail } from './email'
+import { sendFriendNotificationEmail, sendTourLinkDeletedEmail, sendTourNotificationEmail } from './email'
 import { dispatchPushToUser } from './push'
 
 interface FriendRequestRow {
@@ -456,19 +456,32 @@ async function dispatchTourNotification(
   }
 
   if (recipientProfile.notif_email_enabled && recipientEmail) {
+    // Group dissolution uses a dedicated template, separate from the generic
+    // tour_interest one, so its copy can diverge.
     tasks.push(
-      sendTourNotificationEmail(
-        {
-          toEmail: recipientEmail,
-          locale: recipientProfile.locale,
-          type: opts.type,
-          action: opts.action,
-          actorName,
-          tourName: opts.tourName,
-          appUrl,
-        },
-        env,
-      ),
+      opts.action === 'group_dissolved'
+        ? sendTourLinkDeletedEmail(
+            {
+              toEmail: recipientEmail,
+              locale: recipientProfile.locale,
+              actorName,
+              tourName: opts.tourName,
+              appUrl,
+            },
+            env,
+          )
+        : sendTourNotificationEmail(
+            {
+              toEmail: recipientEmail,
+              locale: recipientProfile.locale,
+              type: opts.type,
+              action: opts.action,
+              actorName,
+              tourName: opts.tourName,
+              appUrl,
+            },
+            env,
+          ),
     )
   }
 
@@ -695,7 +708,6 @@ async function dispatchBackfillDigestTo(
   recipientId: string,
   friendId: string,
   friendshipId: string,
-  collisionCount: number,
   env: Env,
 ): Promise<void> {
   const [recipientProfile, friendName, recipientEmail] = await Promise.all([
@@ -712,11 +724,13 @@ async function dispatchBackfillDigestTo(
   const appUrl = env.APP_URL || DEFAULT_APP_URL
   const locale = resolveLocale(recipientProfile.locale)
   const title = locale === 'de'
-    ? 'Gemeinsame Touren mit neuem Freund'
-    : 'Shared tours with new friend'
+    ? 'Gemeinsame Touren geplant'
+    : 'Shared tours planned'
+  // Generic digest copy — no per-tour name or count injected. The deep link
+  // points at the backfill-collisions page where the overlaps are listed.
   const bodyText = locale === 'de'
-    ? `${collisionCount} deiner Touren überschneiden sich mit Touren von ${friendName}.`
-    : `${collisionCount} of your tours overlap with ${friendName}'s tours.`
+    ? `${friendName} hat dieselben Touren wie du geplant. Schau sie dir auf TourenBuddy an.`
+    : `${friendName} planned the same tours as you. Check them out on TourenBuddy.`
   const url = `${appUrl}/friends/${friendshipId}/backfill-collisions`
 
   const tasks: Promise<void>[] = []
@@ -732,7 +746,10 @@ async function dispatchBackfillDigestTo(
           type: 'tour_interest',
           action: 'backfill_digest',
           actorName: friendName,
-          tourName: String(collisionCount),
+          // Digest copy is generic — no tour name. The Brevo backfill_digest
+          // branch must NOT inject {tour}; the appUrl button links to the
+          // backfill-collisions page.
+          tourName: '',
           appUrl: url,
         },
         env,
@@ -755,23 +772,19 @@ async function dispatchBackfillDigest(
   if (collisions.length === 0)
     return
 
-  // Per-side counts (a_tour_id always belongs to from_user_id by RPC contract).
-  const countForFrom = collisions.length
-  const countForTo = collisions.length
-
+  // Both sides get the same generic digest — the per-side overlap count is no
+  // longer part of the copy, only presence of any overlap matters.
   await Promise.all([
     dispatchBackfillDigestTo(
       friendRequest.from_user_id,
       friendRequest.to_user_id,
       friendRequest.id,
-      countForFrom,
       env,
     ),
     dispatchBackfillDigestTo(
       friendRequest.to_user_id,
       friendRequest.from_user_id,
       friendRequest.id,
-      countForTo,
       env,
     ),
   ])

@@ -1,4 +1,4 @@
-<!-- Subject: {% if params.action == "link_created" %}{{ params.actorName }} wants to link a tour with you{% elif params.action == "link_accepted" %}{{ params.actorName }} accepted your link request{% elif params.action == "link_declined" %}{{ params.actorName }} declined your link request{% elif params.action == "group_joined" %}A new tour joined your link{% elif params.action == "group_evicted_external" %}A tour left your link{% elif params.action == "group_dissolved" %}Your tour link was dissolved{% else %}{{ params.actorName }} planned the same tour as you{% endif %} on TourenBuddy -->
+<!-- Subject: {% if params.action == "link_created" %}{{ params.actorName }} wants to link a tour with you{% elif params.action == "link_accepted" %}{{ params.actorName }} accepted your link request{% elif params.action == "link_declined" %}{{ params.actorName }} declined your link request{% elif params.action == "group_joined" %}A new tour joined your link{% elif params.action == "group_evicted_external" %}A tour left your link{% elif params.action == "backfill_digest" %}{{ params.actorName }} planned the same tours as you{% else %}{{ params.actorName }} planned the same tour as you{% endif %} on TourenBuddy -->
 <!doctype html>
 <html lang="en">
   <head>
@@ -89,9 +89,9 @@
         {% elif params.action == "group_evicted_external" %}
         <p>A tour was removed from the link around <strong>{{ params.tourName }}</strong>.</p>
         <p>This happens when a tour is edited, made private, or a friendship is ended.</p>
-        {% elif params.action == "group_dissolved" %}
-        <p>The link for <strong>{{ params.tourName }}</strong> was dissolved.</p>
-        <p>Your tour is no longer linked with any other.</p>
+        {% elif params.action == "backfill_digest" %}
+        <p><strong>{{ params.actorName }}</strong> planned the same tours as you.</p>
+        <p>Check them out on TourenBuddy.</p>
         {% else %}
         <p>
           <strong>{{ params.actorName }}</strong> planned the same tour as your <strong>{{ params.tourName }}</strong>.
@@ -99,7 +99,11 @@
         <p>Open the tour to link with them and plan together.</p>
         {% endif %}
 
+        {% if params.action == "backfill_digest" %}
+        <a href="{{ params.appUrl }}" class="cta">View shared tours</a>
+        {% else %}
         <a href="{{ params.appUrl }}/?tours=1" class="cta">View tour</a>
+        {% endif %}
       </div>
       <div class="footer">
         You received this email because notifications are enabled for your TourenBuddy account. You can manage them in

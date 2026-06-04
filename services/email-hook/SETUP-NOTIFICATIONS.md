@@ -33,7 +33,9 @@ Create the templates by pasting the corresponding files from `brevo-templates/`:
 | `tour_updates_en.html` + `.txt`             | `tour_updates_en`             | Generic; params: `action`, `actorName`, `tourName`, `appUrl`                                                                                    |
 | `tour_updates_de.html` + `.txt`             | `tour_updates_de`             | `action` ∈ created/updated/deleted                                                                                                              |
 | `tour_interest_en.html` + `.txt`            | `tour_interest_en`            | params: `action`, `actorName`, `tourName`, `appUrl`                                                                                             |
-| `tour_interest_de.html` + `.txt`            | `tour_interest_de`            | `action` ∈ collision / link_created / link_accepted / link_declined / group_joined / group_evicted_external / group_dissolved / backfill_digest |
+| `tour_interest_de.html` + `.txt`            | `tour_interest_de`            | `action` ∈ collision / link_created / link_accepted / link_declined / group_joined / group_evicted_external / backfill_digest                   |
+| `tour_link_deleted_en.html` + `.txt`        | `tour_link_deleted_en`        | Group dissolution; params: `actorName`, `tourName`, `appUrl`                                                                                     |
+| `tour_link_deleted_de.html` + `.txt`        | `tour_link_deleted_de`        | Group dissolution                                                                                                                                |
 
 ### `tour_interest` action semantics
 
@@ -47,10 +49,15 @@ The reworked `tour_interest` channel covers all "same-tour collaboration suggest
 | `link_declined`          | Your link request was declined                                           | the target's tour        |
 | `group_joined`           | A new tour joined a group you're in                                      | (empty)                  |
 | `group_evicted_external` | A member's tour was evicted (type / visibility / goal change)            | (empty)                  |
-| `group_dissolved`        | The group dissolved (count fell below 2)                                 | (empty)                  |
-| `backfill_digest`        | New friendship — N pre-existing overlaps detected (deeplink to backfill) | `String(collisionCount)` |
+| `backfill_digest`        | New friendship — pre-existing overlaps detected (deeplink to backfill)   | (empty — generic copy)   |
 
-The frontend deep-links `backfill_digest` to `/friends/:friendshipId/backfill-collisions`.
+Note: `group_dissolved` is **no longer** sent through `tour_interest`. Dissolution emails use the dedicated `tour_link_deleted_{en,de}` templates instead — remove the `group_dissolved` branch from the `tour_interest` template. (The push notification copy for dissolution is unchanged and still built in the Worker.)
+
+`backfill_digest` copy must be **generic** — do NOT inject `tourName`/`{tour}` (it is sent empty). Suggested copy: "{{ params.actorName }} planned the same tours as you. Check them out on TourenBuddy." with a CTA button to `{{ params.appUrl }}`. The Worker sets `appUrl` to `/friends/:friendshipId/backfill-collisions` for this action.
+
+### `tour_link_deleted` template
+
+Sent when a tour-link group dissolves (member count fell below 2). Params: `actorName`, `tourName` (the recipient's own tour in the dissolved group), `appUrl` (app tours view). Author distinct dissolution copy here, e.g. "The link for «{{ params.tourName }}» was dissolved."
 
 ### Worker endpoints (notifications)
 
@@ -99,6 +106,8 @@ wrangler secret put BREVO_TEMPLATE_TOUR_UPDATES_EN
 wrangler secret put BREVO_TEMPLATE_TOUR_UPDATES_DE
 wrangler secret put BREVO_TEMPLATE_TOUR_INTEREST_EN
 wrangler secret put BREVO_TEMPLATE_TOUR_INTEREST_DE
+wrangler secret put BREVO_TEMPLATE_TOUR_LINK_DELETED_EN
+wrangler secret put BREVO_TEMPLATE_TOUR_LINK_DELETED_DE
 
 # Optional: app URL used for push deep-links / email links
 # Defaults to https://test.tourenbuddy.ch if unset. Override when prod domain goes live:
@@ -190,6 +199,8 @@ BREVO_TEMPLATE_TOUR_UPDATES_EN=
 BREVO_TEMPLATE_TOUR_UPDATES_DE=
 BREVO_TEMPLATE_TOUR_INTEREST_EN=
 BREVO_TEMPLATE_TOUR_INTEREST_DE=
+BREVO_TEMPLATE_TOUR_LINK_DELETED_EN=
+BREVO_TEMPLATE_TOUR_LINK_DELETED_DE=
 ```
 
 > `wrangler dev` runs workerd directly on the host (not in a Docker container), so `127.0.0.1:54321` reaches the Supabase stack via host loopback. Do not use `host.docker.internal` — it only resolves inside Docker.

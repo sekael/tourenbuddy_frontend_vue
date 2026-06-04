@@ -1,4 +1,4 @@
-<!-- Subject: {% if params.action == "link_created" %}{{ params.actorName }} möchte eine Tour mit dir verknüpfen{% elif params.action == "link_accepted" %}{{ params.actorName }} hat deine Verknüpfungsanfrage angenommen{% elif params.action == "link_declined" %}{{ params.actorName }} hat deine Verknüpfungsanfrage abgelehnt{% elif params.action == "group_joined" %}Eine neue Tour ist deiner Verknüpfung beigetreten{% elif params.action == "group_evicted_external" %}Eine Tour wurde aus deiner Verknüpfung entfernt{% elif params.action == "group_dissolved" %}Deine Tour-Verknüpfung wurde aufgelöst{% else %}{{ params.actorName }} hat dieselbe Tour wie du geplant{% endif %} auf TourenBuddy -->
+<!-- Subject: {% if params.action == "link_created" %}{{ params.actorName }} möchte eine Tour mit dir verknüpfen{% elif params.action == "link_accepted" %}{{ params.actorName }} hat deine Verknüpfungsanfrage angenommen{% elif params.action == "link_declined" %}{{ params.actorName }} hat deine Verknüpfungsanfrage abgelehnt{% elif params.action == "group_joined" %}Eine neue Tour ist deiner Verknüpfung beigetreten{% elif params.action == "group_evicted_external" %}Eine Tour wurde aus deiner Verknüpfung entfernt{% elif params.action == "backfill_digest" %}{{ params.actorName }} hat dieselben Touren wie du geplant{% else %}{{ params.actorName }} hat dieselbe Tour wie du geplant{% endif %} auf TourenBuddy -->
 <!doctype html>
 <html lang="de">
   <head>
@@ -91,9 +91,9 @@
         {% elif params.action == "group_evicted_external" %}
         <p>Eine Tour wurde aus der Verknüpfung um <strong>{{ params.tourName }}</strong> entfernt.</p>
         <p>Das passiert, wenn eine Tour bearbeitet, privat gemacht oder eine Freundschaft beendet wurde.</p>
-        {% elif params.action == "group_dissolved" %}
-        <p>Die Verknüpfung für <strong>{{ params.tourName }}</strong> wurde aufgelöst.</p>
-        <p>Deine Tour ist nicht mehr mit anderen verknüpft.</p>
+        {% elif params.action == "backfill_digest" %}
+        <p><strong>{{ params.actorName }}</strong> hat dieselben Touren wie du geplant.</p>
+        <p>Schau sie dir auf TourenBuddy an.</p>
         {% else %}
         <p>
           <strong>{{ params.actorName }}</strong> hat dieselbe Tour wie deine
@@ -102,7 +102,11 @@
         <p>Öffne die Tour, um zu verknüpfen und gemeinsam zu planen.</p>
         {% endif %}
 
+        {% if params.action == "backfill_digest" %}
+        <a href="{{ params.appUrl }}" class="cta">Gemeinsame Touren ansehen</a>
+        {% else %}
         <a href="{{ params.appUrl }}/?tours=1" class="cta">Tour ansehen</a>
+        {% endif %}
       </div>
       <div class="footer">
         Du erhältst diese E-Mail, weil Benachrichtigungen für dein TourenBuddy-Konto aktiviert sind. Du kannst sie in
