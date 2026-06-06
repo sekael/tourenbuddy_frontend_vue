@@ -78,7 +78,10 @@ export const useToursStore = defineStore('tours', () => {
       const uid = authStore.currentUser?.id
       if (!uid)
         return []
-      return [{ event: '*', table: 'tours', filter: `user_id=eq.${uid}` }]
+      return [
+        { event: '*', table: 'tours', filter: `user_id=eq.${uid}` },
+        { event: '*', table: 'tour_partners', filter: `user_id=eq.${uid}` },
+      ]
     },
     onChange: loadTours,
     onSubscribed: () => loadTours(),

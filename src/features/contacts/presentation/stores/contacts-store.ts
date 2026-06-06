@@ -2,8 +2,9 @@ import type { Contact } from '@/features/contacts/domain/entities/contact'
 import type { ContactMethod } from '@/features/contacts/domain/entities/contact-method'
 import type { NewContactMethod } from '@/features/contacts/domain/repositories/contact-methods-repository'
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useLogger } from '@/core/logging/use-logger'
+import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { dedupePhones } from '@/features/contacts/core/utils/dedupe'
@@ -337,6 +338,36 @@ export const useContactsStore = defineStore('contacts', () => {
     contacts.value = []
     error.value = null
   }
+
+  const channelKey = computed(() => {
+    const uid = authStore.currentUser?.id
+    return authStore.isAuthenticated && uid ? `contacts-${uid}` : null
+  })
+  const realtimeEnabled = computed(() => authStore.isAuthenticated)
+
+  useRealtimeSubscription({
+    key: () => channelKey.value,
+    enabled: () => realtimeEnabled.value,
+    bindings: () => {
+      const uid = authStore.currentUser?.id
+      if (!uid)
+        return []
+      return [
+        { event: '*', table: 'contacts', filter: `user_id=eq.${uid}` },
+        { event: '*', table: 'contact_methods', filter: `user_id=eq.${uid}` },
+      ]
+    },
+    onChange: loadContacts,
+    onSubscribed: () => loadContacts(),
+  })
+
+  watch(
+    () => authStore.isAuthenticated,
+    (v) => {
+      if (!v)
+        clear()
+    },
+  )
 
   return {
     contacts,

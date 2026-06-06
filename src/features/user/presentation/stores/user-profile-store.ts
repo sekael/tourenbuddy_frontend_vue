@@ -2,9 +2,10 @@ import type { SupportedLocaleCode } from '@/features/user/data/models/user-profi
 import type { FullUserProfile } from '@/features/user/domain/entities/full-user-profile'
 import type { UserProfile } from '@/features/user/domain/entities/user-profile'
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { InvalidPhoneNumberError, PhoneAlreadyRegisteredError } from '@/core/exceptions'
 import { useLogger } from '@/core/logging/use-logger'
+import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import { supabase } from '@/core/utils/supabase'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
@@ -179,6 +180,34 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     error.value = null
     sessionSkipped.value = false
   }
+
+  const channelKey = computed(() => {
+    const uid = authStore.currentUser?.id
+    return authStore.isAuthenticated && uid ? `user-profile-${uid}` : null
+  })
+  const realtimeEnabled = computed(() => authStore.isAuthenticated)
+
+  useRealtimeSubscription({
+    key: () => channelKey.value,
+    enabled: () => realtimeEnabled.value,
+    bindings: () => {
+      const uid = authStore.currentUser?.id
+      if (!uid)
+        return []
+      // user_profile PK id IS the auth uid — filter by id, not user_id
+      return [{ event: '*', table: 'user_profile', filter: `id=eq.${uid}` }]
+    },
+    onChange: loadProfile,
+    onSubscribed: () => loadProfile(),
+  })
+
+  watch(
+    () => authStore.isAuthenticated,
+    (v) => {
+      if (!v)
+        clear()
+    },
+  )
 
   return {
     profile,
