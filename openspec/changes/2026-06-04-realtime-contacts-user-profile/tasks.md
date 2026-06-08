@@ -49,20 +49,24 @@
 
 ## 7. Manual verification
 
-- [ ] 7.1 Two sessions signed in as the same user (local Supabase + dev server).
-- [ ] 7.2 Create a contact on A → appears on B within one debounce window.
-- [ ] 7.3 Edit a contact's name on A → reflects on B.
-- [ ] 7.4 **Add/edit/remove a phone** (method-only change) on A → reflects on B (the path the `contact_methods` denormalisation enables).
-- [ ] 7.5 **Delete a contact partnered on a tour** on A → on B the contact disappears AND the tour drops the partner id (via the `tour_partners` realtime binding, not just the local reconciler). Verify on a fresh B that never ran `deleteContact`.
-- [ ] 7.6 Change profile (name / locale / notification setting) on A → reflects on B.
-- [ ] 7.7 Sign out on A → no further Realtime events (DevTools → WS frames); local data cleared.
+- [x] 7.1 Two sessions signed in as the same user (local Supabase + dev server).
+      > NOTE: After `db reset`, run `supabase stop && supabase start` so Realtime's
+      > replication slot picks up the newly-published tables. `db reset` alone leaves
+      > the slot decoding the old table set — channel reports SUBSCRIBED but the new
+      > tables emit zero events. Cloud handles this on `db push`; still confirm in 8.6.
+- [x] 7.2 Create a contact on A → appears on B within one debounce window.
+- [x] 7.3 Edit a contact's name on A → reflects on B.
+- [x] 7.4 **Add/edit/remove a phone** (method-only change) on A → reflects on B (the path the `contact_methods` denormalisation enables).
+- [x] 7.5 **Delete a contact partnered on a tour** on A → on B the contact disappears AND the tour drops the partner id (via the `tour_partners` realtime binding, not just the local reconciler). Verify on a fresh B that never ran `deleteContact`.
+- [x] 7.6 Change profile (name / locale / notification setting) on A → reflects on B.
+- [x] 7.7 Sign out on A → no further Realtime events (DevTools → WS frames); local data cleared.
 
 ## 8. Finalize
 
 - [x] 8.1 `npx eslint . --fix` — zero warnings.
 - [x] 8.2 `npm run type-check` — passes.
 - [x] 8.3 `npm run test` — all pass.
-- [ ] 8.4 Prompt user to commit. Suggested message:
+- [x] 8.4 Prompt user to commit. Suggested message:
       ```
       feat(contacts): realtime sync for contacts, profile, and tour partners
 
@@ -80,9 +84,9 @@
 
       Closes #193
       ```
-- [ ] 8.5 Prompt user to `git push -u origin feat/193-realtime-contacts-profile` and open a PR against `main`.
-- [ ] 8.6 Prompt user to `supabase db push` against prod *only after* PR approval (confirm PostgREST embed resolves post-deploy).
-- [ ] 8.7 After merge, prompt user to archive this change with `/opsx:archive`.
+- [x] 8.5 Prompt user to `git push -u origin feat/193-realtime-contacts-profile` and open a PR against `main`.
+- [x] 8.6 Prompt user to `supabase db push` against prod *only after* PR approval (confirm PostgREST embed resolves post-deploy).
+- [x] 8.7 After merge, prompt user to archive this change with `/opsx:archive`.
 
 ---
 

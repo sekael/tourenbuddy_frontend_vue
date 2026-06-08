@@ -1,7 +1,8 @@
 import type { NotificationPreferences, NotificationType } from '../../domain/entities/notification-preferences'
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useLogger } from '@/core/logging/use-logger'
+import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { NotificationPreferencesRepositoryImpl } from '../../data/repositories/notification-preferences-repository-impl'
 import { useWebPush } from '../composables/use-web-push'
@@ -123,6 +124,33 @@ export const useNotificationsStore = defineStore('notifications', () => {
     prefs.value = null
     error.value = null
   }
+
+  const channelKey = computed(() => {
+    const uid = authStore.currentUser?.id
+    return authStore.isAuthenticated && uid ? `notification-settings-${uid}` : null
+  })
+  const realtimeEnabled = computed(() => authStore.isAuthenticated)
+
+  useRealtimeSubscription({
+    key: () => channelKey.value,
+    enabled: () => realtimeEnabled.value,
+    bindings: () => {
+      const uid = authStore.currentUser?.id
+      if (!uid)
+        return []
+      return [{ event: '*', table: 'user_profile', filter: `id=eq.${uid}` }]
+    },
+    onChange: loadPrefs,
+    onSubscribed: () => loadPrefs(),
+  })
+
+  watch(
+    () => authStore.isAuthenticated,
+    (v) => {
+      if (!v)
+        clear()
+    },
+  )
 
   return {
     prefs,
