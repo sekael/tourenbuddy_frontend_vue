@@ -46,7 +46,7 @@ onMounted(() => {
       {{ t('notifications.sectionTitle') }}
     </h3>
 
-    <div v-if="isLoading" class="loading-placeholder" />
+    <div v-if="isLoading && !prefs" class="loading-placeholder" />
 
     <template v-else-if="prefs">
       <ul class="rows">

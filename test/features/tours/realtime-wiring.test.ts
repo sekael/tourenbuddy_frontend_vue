@@ -41,22 +41,13 @@ vi.mock('@/features/tours/data/repositories/tour-attachment-repository-impl', ()
   SupabaseTourAttachmentRepository: vi.fn().mockImplementation(() => mockAttachmentsRepo),
 }))
 
-vi.mock('@/features/contacts/data/repositories/contacts-repository-impl', () => ({
-  ContactsRepositoryImpl: vi.fn().mockImplementation(() => ({
-    fetchContacts: vi.fn().mockResolvedValue([]),
-    createContact: vi.fn(),
-    updateContact: vi.fn(),
-    deleteContact: vi.fn(),
-  })),
-}))
-
-vi.mock('@/features/contacts/data/repositories/contact-methods-repository-impl', () => ({
-  ContactMethodsRepositoryImpl: vi.fn().mockImplementation(() => ({
-    addMethod: vi.fn(),
-    updateMethod: vi.fn(),
-    removeMethod: vi.fn(),
-    setPrimaryPhone: vi.fn(),
-  })),
+// Mock the whole contacts-store so it doesn't register its own
+// useRealtimeSubscription call and shift the mock.calls indices.
+vi.mock('@/features/contacts/presentation/stores/contacts-store', () => ({
+  useContactsStore: vi.fn().mockReturnValue({
+    $onAction: vi.fn().mockReturnValue(vi.fn()),
+    contacts: { value: [] },
+  }),
 }))
 
 vi.mock('@/core/utils/phone-normalize', () => ({
@@ -120,7 +111,7 @@ describe('toursStore — realtime wiring', () => {
     expect(opts.enabled()).toBe(false)
   })
 
-  it('should wire a single binding on tours filtered by user_id', async () => {
+  it('should wire two bindings: tours and tour_partners, both filtered by user_id', async () => {
     mockCurrentUser.value = { id: 'user-abc' }
     const { useToursStore } = await import(
       '@/features/tours/presentation/stores/tours-store'
@@ -129,10 +120,24 @@ describe('toursStore — realtime wiring', () => {
 
     const opts = mockUseRealtime.mock.calls[0][0]
     const bindings = opts.bindings()
-    expect(bindings).toHaveLength(1)
-    expect(bindings[0].table).toBe('tours')
-    expect(bindings[0].event).toBe('*')
-    expect(bindings[0].filter).toBe('user_id=eq.user-abc')
+    expect(bindings).toHaveLength(2)
+    expect(bindings[0]).toMatchObject({ event: '*', table: 'tours', filter: 'user_id=eq.user-abc' })
+    expect(bindings[1]).toMatchObject({ event: '*', table: 'tour_partners', filter: 'user_id=eq.user-abc' })
+  })
+
+  it('tour_partners event triggers loadTours via shared onChange', async () => {
+    mockCurrentUser.value = { id: 'user-abc' }
+    const { useToursStore } = await import(
+      '@/features/tours/presentation/stores/tours-store'
+    )
+    useToursStore()
+
+    // Both bindings share one channel with one onChange — call it directly
+    const opts = mockUseRealtime.mock.calls[0][0]
+    opts.onChange()
+    await Promise.resolve()
+
+    expect(mockToursRepo.listToursForUser).toHaveBeenCalledTimes(1)
   })
 
   it('onChange calls loadTours (primitive handles debounce internally)', async () => {
