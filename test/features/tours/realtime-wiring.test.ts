@@ -1,12 +1,15 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick, reactive, ref } from 'vue'
 
 // ── shared hoisted mocks ────────────────────────────────────────────────────
 
-const { mockUseRealtime, mockToursRepo, mockAttachmentsRepo, mockCurrentUser } = vi.hoisted(() => ({
+const { mockUseRealtime, mockUseBroadcast, mockToursRepo, mockAttachmentsRepo, mockCurrentUser } = vi.hoisted(() => ({
   mockUseRealtime: vi.fn(),
+  mockUseBroadcast: vi.fn(),
   mockToursRepo: {
     listToursForUser: vi.fn().mockResolvedValue([]),
+    listFriendTours: vi.fn().mockResolvedValue([]),
     createTourWithPartners: vi.fn(),
     updateTour: vi.fn(),
     patchGpxFilepath: vi.fn(),
@@ -26,6 +29,10 @@ const { mockUseRealtime, mockToursRepo, mockAttachmentsRepo, mockCurrentUser } =
 
 vi.mock('@/core/realtime/use-realtime-subscription', () => ({
   useRealtimeSubscription: mockUseRealtime,
+}))
+
+vi.mock('@/core/realtime/use-realtime-broadcast', () => ({
+  useRealtimeBroadcast: mockUseBroadcast,
 }))
 
 vi.mock('@/features/tours/data/repositories/tours-repository-impl', () => ({
@@ -48,6 +55,20 @@ vi.mock('@/features/contacts/presentation/stores/contacts-store', () => ({
     $onAction: vi.fn().mockReturnValue(vi.fn()),
     contacts: { value: [] },
   }),
+}))
+
+// reactive proxy so Vue's watch tracks friendUserIds reads and fires on Set changes.
+const mockFriendUserIds = ref(new Set<string>())
+// Capture the $onAction subscriber so tests can simulate accept/removeFriendship.
+const friendshipsActionCb = { value: null as null | ((ctx: { name: string, after: (cb: () => void) => void }) => void) }
+vi.mock('@/features/friendships/presentation/stores/friendships-store', () => ({
+  useFriendshipsStore: vi.fn(() => reactive({
+    get friendUserIds() { return mockFriendUserIds.value },
+    $onAction: (cb: (ctx: { name: string, after: (cb: () => void) => void }) => void) => {
+      friendshipsActionCb.value = cb
+      return vi.fn()
+    },
+  })),
 }))
 
 vi.mock('@/core/utils/phone-normalize', () => ({
@@ -76,6 +97,8 @@ describe('toursStore — realtime wiring', () => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
     mockUseRealtime.mockReturnValue({ status: { value: 'idle' }, stop: vi.fn() })
+    mockUseBroadcast.mockReturnValue({ status: { value: 'idle' }, stop: vi.fn() })
+    mockFriendUserIds.value = new Set()
   })
 
   it('should pass null channel key when user is not authenticated', async () => {
@@ -178,6 +201,7 @@ describe('tourAttachmentsStore — realtime wiring', () => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
     mockUseRealtime.mockReturnValue({ status: { value: 'idle' }, stop: vi.fn() })
+    mockUseBroadcast.mockReturnValue({ status: { value: 'idle' }, stop: vi.fn() })
     mockAttachmentsRepo.list.mockResolvedValue([])
   })
 
@@ -248,5 +272,174 @@ describe('tourAttachmentsStore — realtime wiring', () => {
     await Promise.resolve() // flush async load microtask
 
     expect(mockAttachmentsRepo.list).toHaveBeenCalledWith('tour-xyz')
+  })
+})
+
+// ── tours-store broadcast wiring (#198) ─────────────────────────────────────
+
+describe('toursStore — broadcast wiring (friend-tours)', () => {
+  let activePinia: ReturnType<typeof createPinia>
+
+  beforeEach(() => {
+    // Stop the previous pinia's effect scope to prevent watcher accumulation
+    // across tests sharing the reactive mockFriendUserIds ref.
+    // @ts-expect-error _e is internal
+    activePinia?._e.stop()
+    activePinia = createPinia()
+    setActivePinia(activePinia)
+    vi.clearAllMocks()
+    mockUseRealtime.mockReturnValue({ status: { value: 'idle' }, stop: vi.fn() })
+    mockUseBroadcast.mockReturnValue({ status: { value: 'idle' }, stop: vi.fn() })
+    mockToursRepo.listFriendTours = vi.fn().mockResolvedValue([])
+    mockFriendUserIds.value = new Set()
+  })
+
+  it('should pass topic friend-tours:<uid> when authenticated', async () => {
+    mockCurrentUser.value = { id: 'user-abc' }
+    const { useToursStore } = await import(
+      '@/features/tours/presentation/stores/tours-store'
+    )
+    useToursStore()
+
+    const opts = mockUseBroadcast.mock.calls[0][0]
+    expect(opts.topic()).toBe('friend-tours:user-abc')
+    expect(opts.event).toBe('refetch')
+  })
+
+  it('should pass null topic when not authenticated', async () => {
+    mockCurrentUser.value = null
+    const { useToursStore } = await import(
+      '@/features/tours/presentation/stores/tours-store'
+    )
+    useToursStore()
+
+    const opts = mockUseBroadcast.mock.calls[0][0]
+    expect(opts.topic()).toBeNull()
+    expect(opts.enabled()).toBe(false)
+  })
+
+  it('onMessage triggers loadFriendTours', async () => {
+    mockCurrentUser.value = { id: 'user-abc' }
+    const { useToursStore } = await import(
+      '@/features/tours/presentation/stores/tours-store'
+    )
+    useToursStore()
+    await nextTick()
+    mockToursRepo.listFriendTours.mockClear()
+
+    const opts = mockUseBroadcast.mock.calls[0][0]
+    opts.onMessage()
+    await Promise.resolve()
+
+    expect(mockToursRepo.listFriendTours).toHaveBeenCalledTimes(1)
+  })
+
+  it('onSubscribed triggers loadFriendTours', async () => {
+    mockCurrentUser.value = { id: 'user-abc' }
+    const { useToursStore } = await import(
+      '@/features/tours/presentation/stores/tours-store'
+    )
+    useToursStore()
+    await nextTick()
+    mockToursRepo.listFriendTours.mockClear()
+
+    const opts = mockUseBroadcast.mock.calls[0][0]
+    opts.onSubscribed()
+    await Promise.resolve()
+
+    expect(mockToursRepo.listFriendTours).toHaveBeenCalledTimes(1)
+  })
+
+  it('onMessage only triggers loadFriendTours (no notifications side-effect)', async () => {
+    mockCurrentUser.value = { id: 'user-abc' }
+    const { useToursStore } = await import(
+      '@/features/tours/presentation/stores/tours-store'
+    )
+    useToursStore()
+    await nextTick()
+    mockToursRepo.listFriendTours.mockClear()
+
+    const opts = mockUseBroadcast.mock.calls[0][0]
+    opts.onMessage()
+    await Promise.resolve()
+
+    // Only listFriendTours called — no own-tour load, no notification dispatch
+    expect(mockToursRepo.listFriendTours).toHaveBeenCalledTimes(1)
+    expect(mockToursRepo.listToursForUser).not.toHaveBeenCalled()
+  })
+
+  it('friendUserIds change triggers loadFriendTours', async () => {
+    mockCurrentUser.value = { id: 'user-abc' }
+    const { useToursStore } = await import(
+      '@/features/tours/presentation/stores/tours-store'
+    )
+    useToursStore()
+    await nextTick()
+
+    // Count calls BEFORE the change (includes init calls from this + any lingering watchers)
+    const before = mockToursRepo.listFriendTours.mock.calls.length
+    mockFriendUserIds.value = new Set(['friend-1'])
+    await nextTick()
+    await Promise.resolve()
+
+    // At least one new call must have been made by the friendUserIds watch
+    expect(mockToursRepo.listFriendTours.mock.calls.length).toBeGreaterThan(before)
+  })
+
+  it('accept action (post-commit after) triggers loadFriendTours', async () => {
+    mockCurrentUser.value = { id: 'user-abc' }
+    const { useToursStore } = await import(
+      '@/features/tours/presentation/stores/tours-store'
+    )
+    useToursStore()
+    await nextTick()
+    mockToursRepo.listFriendTours.mockClear()
+
+    // Simulate friendships-store accept resolving (after runs post-commit)
+    friendshipsActionCb.value!({ name: 'accept', after: fn => fn() })
+    await Promise.resolve()
+
+    expect(mockToursRepo.listFriendTours).toHaveBeenCalledTimes(1)
+  })
+
+  it('unrelated friendships action does not refetch friend tours', async () => {
+    mockCurrentUser.value = { id: 'user-abc' }
+    const { useToursStore } = await import(
+      '@/features/tours/presentation/stores/tours-store'
+    )
+    useToursStore()
+    await nextTick()
+    mockToursRepo.listFriendTours.mockClear()
+
+    friendshipsActionCb.value!({ name: 'sendRequest', after: fn => fn() })
+    await Promise.resolve()
+
+    expect(mockToursRepo.listFriendTours).not.toHaveBeenCalled()
+  })
+
+  it('stale (earlier-initiated) refetch does not overwrite a later one', async () => {
+    mockCurrentUser.value = { id: 'user-abc' }
+    const { useToursStore } = await import(
+      '@/features/tours/presentation/stores/tours-store'
+    )
+    const store = useToursStore()
+    await nextTick()
+
+    let resolveFirst!: (v: unknown) => void
+    let resolveSecond!: (v: unknown) => void
+    mockToursRepo.listFriendTours
+      .mockImplementationOnce(() => new Promise((r) => { resolveFirst = r }))
+      .mockImplementationOnce(() => new Promise((r) => { resolveSecond = r }))
+
+    const p1 = store.loadFriendTours()
+    const p2 = store.loadFriendTours()
+
+    // Later-initiated call resolves first with fresh data; stale call resolves last.
+    resolveSecond([{ id: 'fresh' }])
+    await p2
+    resolveFirst([])
+    await p1
+
+    expect(store.friendTours).toEqual([{ id: 'fresh' }])
   })
 })

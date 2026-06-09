@@ -4,9 +4,11 @@ import { defineStore } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
 import { computed, ref, watch } from 'vue'
 import { useLogger } from '@/core/logging/use-logger'
+import { useRealtimeBroadcast } from '@/core/realtime/use-realtime-broadcast'
 import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
+import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import {
   notifyTourChanged,
   notifyTourDeleted,
@@ -23,11 +25,14 @@ export const useToursStore = defineStore('tours', () => {
   const logger = useLogger('ToursStore')
   const authStore = useAuthStore()
   const contactsStore = useContactsStore()
+  const friendshipsStore = useFriendshipsStore()
 
   const tours = ref<Tour[]>([])
   const friendTours = ref<Tour[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  // Monotonic token so only the latest-initiated loadFriendTours assigns (see below).
+  let friendToursSeq = 0
 
   watch(
     () => authStore.isAuthenticated,
@@ -65,6 +70,16 @@ export const useToursStore = defineStore('tours', () => {
     })
   })
 
+  // Friend-set mutations the local user performs (accept / removeFriendship) update
+  // friendUserIds optimistically BEFORE the DB commits, so the friendUserIds watch
+  // fires a premature loadFriendTours that reads the view before the row exists.
+  // Refetch in `after` (post-commit) so the accepter sees the new friend's tours.
+  friendshipsStore.$onAction(({ name, after }) => {
+    if (name !== 'accept' && name !== 'removeFriendship')
+      return
+    after(() => loadFriendTours())
+  })
+
   const channelKey = computed(() => {
     const uid = authStore.currentUser?.id
     return authStore.isAuthenticated && uid ? `tours-${uid}` : null
@@ -87,6 +102,25 @@ export const useToursStore = defineStore('tours', () => {
     onSubscribed: () => loadTours(),
   })
 
+  useRealtimeBroadcast({
+    topic: () => {
+      const uid = authStore.currentUser?.id
+      return uid ? `friend-tours:${uid}` : null
+    },
+    enabled: () => realtimeEnabled.value,
+    event: 'refetch',
+    onMessage: loadFriendTours,
+    onSubscribed: loadFriendTours,
+  })
+
+  watch(
+    () => [...friendshipsStore.friendUserIds].sort().join(','),
+    (n, o) => {
+      if (n !== o)
+        loadFriendTours()
+    },
+  )
+
   async function loadTours() {
     const userId = authStore.currentUser?.id
     if (!userId)
@@ -108,14 +142,19 @@ export const useToursStore = defineStore('tours', () => {
     }
   }
 
-  // Friend tours are a separate collection. Realtime sync is deferred (issue #198);
-  // callers refetch on demand (e.g. opening the Friends list tab or the map).
+  // Friend tours are a separate collection synced via realtime broadcast (#198) and
+  // refetched on friend-set change. Concurrent refetches can race (e.g. a premature
+  // optimistic-triggered fetch vs. a post-commit one); a monotonic token ensures only
+  // the latest-initiated call assigns, so a slow stale fetch can't blank the list.
   async function loadFriendTours() {
     if (!authStore.currentUser?.id)
       return
 
+    const req = ++friendToursSeq
     try {
-      friendTours.value = await repository.listFriendTours()
+      const result = await repository.listFriendTours()
+      if (req === friendToursSeq)
+        friendTours.value = result
     }
     catch (err) {
       logger.error('Failed to load friend tours', err)
