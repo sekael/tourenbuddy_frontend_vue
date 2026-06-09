@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { FriendRequest } from '@/features/friendships/data/models/friendship-schemas'
 import { storeToRefs } from 'pinia'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import { useSnackbar } from '@/core/composables/use-snackbar'
@@ -25,6 +25,13 @@ const { blockedUserIds } = storeToRefs(blocksStore)
 
 type Tab = 'pending' | 'blocked'
 const activeTab = ref<Tab>('pending')
+
+// Stale-while-revalidate: only blank the view for the FIRST load (no data yet).
+// Background refetches (accept creates a contact → contacts watch; realtime pokes)
+// keep the existing list on screen so the sheet doesn't flicker.
+const showInitialLoading = computed(
+  () => isLoading.value && incomingRequests.value.length === 0 && outgoingRequests.value.length === 0,
+)
 
 function phoneFor(userId: string): string {
   const e164 = userIdToPhoneMap.value.get(userId)
@@ -208,7 +215,7 @@ async function handleCancel(requestId: string) {
           </p>
         </div>
 
-        <div v-if="isLoading" class="loading-text">
+        <div v-if="showInitialLoading" class="loading-text">
           {{ t('contacts.list.loading') }}
         </div>
 

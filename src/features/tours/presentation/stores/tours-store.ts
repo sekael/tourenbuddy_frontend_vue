@@ -31,6 +31,8 @@ export const useToursStore = defineStore('tours', () => {
   const friendTours = ref<Tour[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  // Monotonic token so only the latest-initiated loadFriendTours assigns (see below).
+  let friendToursSeq = 0
 
   watch(
     () => authStore.isAuthenticated,
@@ -66,6 +68,16 @@ export const useToursStore = defineStore('tours', () => {
           : t,
       )
     })
+  })
+
+  // Friend-set mutations the local user performs (accept / removeFriendship) update
+  // friendUserIds optimistically BEFORE the DB commits, so the friendUserIds watch
+  // fires a premature loadFriendTours that reads the view before the row exists.
+  // Refetch in `after` (post-commit) so the accepter sees the new friend's tours.
+  friendshipsStore.$onAction(({ name, after }) => {
+    if (name !== 'accept' && name !== 'removeFriendship')
+      return
+    after(() => loadFriendTours())
   })
 
   const channelKey = computed(() => {
@@ -130,14 +142,19 @@ export const useToursStore = defineStore('tours', () => {
     }
   }
 
-  // Friend tours are a separate collection. Realtime sync is deferred (issue #198);
-  // callers refetch on demand (e.g. opening the Friends list tab or the map).
+  // Friend tours are a separate collection synced via realtime broadcast (#198) and
+  // refetched on friend-set change. Concurrent refetches can race (e.g. a premature
+  // optimistic-triggered fetch vs. a post-commit one); a monotonic token ensures only
+  // the latest-initiated call assigns, so a slow stale fetch can't blank the list.
   async function loadFriendTours() {
     if (!authStore.currentUser?.id)
       return
 
+    const req = ++friendToursSeq
     try {
-      friendTours.value = await repository.listFriendTours()
+      const result = await repository.listFriendTours()
+      if (req === friendToursSeq)
+        friendTours.value = result
     }
     catch (err) {
       logger.error('Failed to load friend tours', err)

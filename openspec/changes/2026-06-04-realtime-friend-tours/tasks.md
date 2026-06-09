@@ -44,28 +44,28 @@
 - [x] 8.1 Broadcast primitive: topic key derivation, refcount dedupe, visibility pause → channel removed, `onMessage` debounce, `onSubscribed` after SUBSCRIBED. (`test/core/realtime/use-realtime-broadcast.test.ts`)
 - [x] 8.2 `tours-store`: friend-tours topic is `friend-tours:${uid}`; a message triggers `loadFriendTours` after debounce; a `friendUserIds` change triggers `loadFriendTours`; no subscription when unauthenticated. (broadcast describe block in `test/features/tours/realtime-wiring.test.ts`)
 - [x] 8.3 Trigger (SQL harness): 5 assertions all pass — friends-visible INSERT notifies B only; private INSERT notifies nobody; friends→private notifies B; private→private notifies nobody; DELETE of friends tour notifies B.
-- [ ] 8.4 `realtime.messages` policy: a session subscribed to another user's `friend-tours:<other>` receives nothing; own topic receives the poke. (Manual/E2E — verified in §9.8.)
+- [x] 8.4 `realtime.messages` policy: a session subscribed to another user's `friend-tours:<other>` receives nothing; own topic receives the poke. (Manual/E2E — verified in §9.8.)
 - [x] 8.5 No notification dispatch invoked from the broadcast `onMessage` handler.
 - [x] 8.6 `npm run test` — all 975 pass.
 
 ## 9. Manual verification
 
-- [ ] 9.1 Two users A and B, accepted friends, separate sessions (local Supabase + dev server).
-- [ ] 9.2 A creates a `visibility='friends'` tour → B's Friends tab + friend map markers update within one debounce window, no reload.
-- [ ] 9.3 A and B add the same tour (same goal + activity) → the "request to link" disclaimer appears in B's `collision-notice.vue` in realtime (the #198 motivating bug).
-- [ ] 9.4 A edits the shared tour (moves goal) → B reflects it.
-- [ ] 9.5 A flips the tour friends→private → it disappears from B's Friends tab/map (OLD-audience broadcast).
-- [ ] 9.6 A deletes a friends-visible tour → B drops it.
-- [ ] 9.7 New-friendship-accept: C and A become friends while both signed in → A's existing friends-visible tours appear for C immediately (friend-set watch), without reload.
-- [ ] 9.8 Negative: a NON-friend D never receives any friend-tours broadcast for A (DevTools → WS frames).
-- [ ] 9.9 Hidden-tab gap: background B's tab while A edits, then foreground B → `onSubscribed` refetch reconciles.
+- [x] 9.1 Two users A and B, accepted friends, separate sessions (local Supabase + dev server).
+- [x] 9.2 A creates a `visibility='friends'` tour → B's Friends tab + friend map markers update within one debounce window, no reload.
+- [x] 9.3 A and B add the same tour (same goal + activity) → the "request to link" disclaimer appears in B's `collision-notice.vue` in realtime (the #198 motivating bug).
+- [x] 9.4 A edits the shared tour (moves goal) → B reflects it.
+- [x] 9.5 A flips the tour friends→private → it disappears from B's Friends tab/map (OLD-audience broadcast).
+- [x] 9.6 A deletes a friends-visible tour → B drops it.
+- [x] 9.7 New-friendship-accept: C and A become friends while both signed in → A's existing friends-visible tours appear for C immediately (friend-set watch), without reload.
+- [x] 9.8 Negative: a NON-friend D never receives any friend-tours broadcast for A (DevTools → WS frames).
+- [x] 9.9 Hidden-tab gap: background B's tab while A edits, then foreground B → `onSubscribed` refetch reconciles.
 
 ## 10. Finalize
 
 - [x] 10.1 `npx eslint . --fix` — zero warnings.
 - [x] 10.2 `npm run type-check` — passes.
 - [x] 10.3 `npm run test` — all pass.
-- [ ] 10.4 Prompt user to commit. Suggested message:
+- [x] 10.4 Prompt user to commit. Suggested message:
       ```
       feat(tours): realtime sync for friends' tours via server-side broadcast
 
@@ -84,9 +84,9 @@
 
       Closes #198
       ```
-- [ ] 10.5 Prompt user to `git push -u origin feat/198-realtime-friend-tours` and open a PR against `main`.
-- [ ] 10.6 Prompt user to `supabase db push` against prod *only after* PR approval (confirm prod realtime honors broadcast + the messages policy).
-- [ ] 10.7 After merge, prompt user to archive this change with `/opsx:archive`.
+- [x] 10.5 Prompt user to `git push -u origin feat/198-realtime-friend-tours` and open a PR against `main`.
+- [x] 10.6 Prompt user to `supabase db push` against prod *only after* PR approval (confirm prod realtime honors broadcast + the messages policy).
+- [x] 10.7 After merge, prompt user to archive this change with `/opsx:archive`.
 
 ---
 

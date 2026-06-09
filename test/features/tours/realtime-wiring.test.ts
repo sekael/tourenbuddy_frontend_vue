@@ -59,9 +59,15 @@ vi.mock('@/features/contacts/presentation/stores/contacts-store', () => ({
 
 // reactive proxy so Vue's watch tracks friendUserIds reads and fires on Set changes.
 const mockFriendUserIds = ref(new Set<string>())
+// Capture the $onAction subscriber so tests can simulate accept/removeFriendship.
+const friendshipsActionCb = { value: null as null | ((ctx: { name: string, after: (cb: () => void) => void }) => void) }
 vi.mock('@/features/friendships/presentation/stores/friendships-store', () => ({
   useFriendshipsStore: vi.fn(() => reactive({
     get friendUserIds() { return mockFriendUserIds.value },
+    $onAction: (cb: (ctx: { name: string, after: (cb: () => void) => void }) => void) => {
+      friendshipsActionCb.value = cb
+      return vi.fn()
+    },
   })),
 }))
 
@@ -378,5 +384,62 @@ describe('toursStore — broadcast wiring (friend-tours)', () => {
 
     // At least one new call must have been made by the friendUserIds watch
     expect(mockToursRepo.listFriendTours.mock.calls.length).toBeGreaterThan(before)
+  })
+
+  it('accept action (post-commit after) triggers loadFriendTours', async () => {
+    mockCurrentUser.value = { id: 'user-abc' }
+    const { useToursStore } = await import(
+      '@/features/tours/presentation/stores/tours-store'
+    )
+    useToursStore()
+    await nextTick()
+    mockToursRepo.listFriendTours.mockClear()
+
+    // Simulate friendships-store accept resolving (after runs post-commit)
+    friendshipsActionCb.value!({ name: 'accept', after: fn => fn() })
+    await Promise.resolve()
+
+    expect(mockToursRepo.listFriendTours).toHaveBeenCalledTimes(1)
+  })
+
+  it('unrelated friendships action does not refetch friend tours', async () => {
+    mockCurrentUser.value = { id: 'user-abc' }
+    const { useToursStore } = await import(
+      '@/features/tours/presentation/stores/tours-store'
+    )
+    useToursStore()
+    await nextTick()
+    mockToursRepo.listFriendTours.mockClear()
+
+    friendshipsActionCb.value!({ name: 'sendRequest', after: fn => fn() })
+    await Promise.resolve()
+
+    expect(mockToursRepo.listFriendTours).not.toHaveBeenCalled()
+  })
+
+  it('stale (earlier-initiated) refetch does not overwrite a later one', async () => {
+    mockCurrentUser.value = { id: 'user-abc' }
+    const { useToursStore } = await import(
+      '@/features/tours/presentation/stores/tours-store'
+    )
+    const store = useToursStore()
+    await nextTick()
+
+    let resolveFirst!: (v: unknown) => void
+    let resolveSecond!: (v: unknown) => void
+    mockToursRepo.listFriendTours
+      .mockImplementationOnce(() => new Promise((r) => { resolveFirst = r }))
+      .mockImplementationOnce(() => new Promise((r) => { resolveSecond = r }))
+
+    const p1 = store.loadFriendTours()
+    const p2 = store.loadFriendTours()
+
+    // Later-initiated call resolves first with fresh data; stale call resolves last.
+    resolveSecond([{ id: 'fresh' }])
+    await p2
+    resolveFirst([])
+    await p1
+
+    expect(store.friendTours).toEqual([{ id: 'fresh' }])
   })
 })
