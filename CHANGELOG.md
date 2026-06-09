@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.28.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.27.0...tourenbuddy-frontend-v0.28.0) (2026-06-09)
+
+
+### Features
+
+* Realtime contacts & user profile ([#206](https://github.com/sekael/tourenbuddy_frontend_vue/issues/206)) ([4b55458](https://github.com/sekael/tourenbuddy_frontend_vue/commit/4b5545893ea113174aca18f5b577cb1b6b8f4269))
+* Realtime friend tours ([#211](https://github.com/sekael/tourenbuddy_frontend_vue/issues/211)) ([d71fc9f](https://github.com/sekael/tourenbuddy_frontend_vue/commit/d71fc9f2187a1731bbf1800e7233be005f3e8123))
+
 ## [0.27.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.26.0...tourenbuddy-frontend-v0.27.0) (2026-06-04)
 
 
