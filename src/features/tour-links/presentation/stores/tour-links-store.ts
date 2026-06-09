@@ -324,13 +324,6 @@ export const useTourLinksStore = defineStore('tour-links', () => {
     ],
     onChange: () => {
       fetchAll().catch(err => logger.warn('refetch on realtime change failed', err))
-      // Group changes can be triggered by a sibling's visibility flip (the
-      // server trigger evicts the now-private tour). The ex-sibling's view of
-      // the friend tour is stale-cached as visibility='friends' until we
-      // refetch — refresh here so the collision-notice stops offering it as
-      // a link candidate. friend_tours_view has no realtime binding (#198),
-      // so this piggyback is currently the only push signal.
-      toursStore.loadFriendTours().catch(err => logger.warn('refetch friendTours failed', err))
     },
     onSubscribed: () => {
       fetchAll().catch(err => logger.warn('initial fetch failed', err))

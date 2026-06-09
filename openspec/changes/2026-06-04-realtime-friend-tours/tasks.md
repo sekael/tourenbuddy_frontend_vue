@@ -1,50 +1,52 @@
 ## 1. Git Setup
 
-- [ ] 1.1 `git fetch origin && git checkout main && git pull && git checkout -b feat/198-realtime-friend-tours`
-- [ ] 1.2 Verify `supabase status` shows the local stack running (`supabase start` if not).
+- [x] 1.1 `git fetch origin && git checkout main && git pull && git checkout -b feat/198-realtime-friend-tours`
+- [x] 1.2 Verify `supabase status` shows the local stack running (`supabase start` if not).
 
 ## 2. Spike: confirm Broadcast-from-Database is available locally
 
-- [ ] 2.1 In `psql` against the local DB, confirm `realtime.send(jsonb, text, text, boolean)` exists and that an RLS policy on `realtime.messages` gates a private channel. (CLI 2.104 / supabase-js ^2.49 are new enough; verify the container honors it before building on it.)
-- [ ] 2.2 If unavailable, STOP and revisit the mechanism (fallback: physical `friend_tour_events` table + `postgres_changes` — see design "Why broadcast").
+- [x] 2.1 In `psql` against the local DB, confirm `realtime.send(jsonb, text, text, boolean)` exists and that an RLS policy on `realtime.messages` gates a private channel. (CLI 2.104 / supabase-js ^2.49 are new enough; verify the container honors it before building on it.)
+  - Confirmed: `realtime.send(payload bytea, event text, topic text, private boolean DEFAULT true)` exists. No existing `realtime.messages` policies (we add one in task 4).
+- [x] 2.2 If unavailable, STOP and revisit the mechanism (fallback: physical `friend_tour_events` table + `postgres_changes` — see design "Why broadcast").
+  - Available — proceeding.
 
 ## 3. Migration: friend-tour broadcast trigger
 
-- [ ] 3.1 `supabase migration new friend_tours_broadcast_trigger`.
-- [ ] 3.2 **YOUR TURN** — write the broadcast trigger function (audience derivation + `realtime.send` fan-out). See gap task below.
-- [ ] 3.3 Attach as `AFTER INSERT OR UPDATE OR DELETE` on `public.tours`.
-- [ ] 3.4 `supabase db reset` locally; confirm clean apply.
+- [x] 3.1 `supabase migration new friend_tours_broadcast_trigger` → `supabase/migrations/20260608062416_friend_tours_broadcast_trigger.sql`
+- [x] 3.2 **YOUR TURN** — write the broadcast trigger function (audience derivation + `realtime.send` fan-out). ✓ implemented and SQL-verified.
+- [x] 3.3 Attach as `AFTER INSERT OR UPDATE OR DELETE` on `public.tours` (shell with TODO stub in place; trigger fires but is a no-op until gap is filled).
+- [x] 3.4 `supabase db reset` locally; confirm clean apply.
 
 ## 4. Migration: realtime.messages topic authorization
 
-- [ ] 4.1 `supabase migration new friend_tours_realtime_messages_policy`.
-- [ ] 4.2 `SELECT` policy on `realtime.messages` for `authenticated`, scoped to the broadcast extension and `friend-tours:` topic prefix, permitting a row only when `auth.uid()::text = split_part(realtime.messages.topic, ':', 2)`.
-- [ ] 4.3 `supabase db reset`; verify the policy exists and is enabled.
+- [x] 4.1 `supabase migration new friend_tours_realtime_messages_policy` → `supabase/migrations/20260608062430_friend_tours_realtime_messages_policy.sql`
+- [x] 4.2 `SELECT` policy on `realtime.messages` for `authenticated`, scoped to the broadcast extension and `friend-tours:` topic prefix, permitting a row only when `auth.uid()::text = split_part(realtime.messages.topic, ':', 2)`.
+- [x] 4.3 `supabase db reset`; verify the policy exists and is enabled.
 
 ## 5. Client broadcast primitive
 
-- [ ] 5.1 Add `src/core/realtime/use-realtime-broadcast.ts`: module-level registry keyed by topic (one channel per topic, refcounted), page-visibility pause/resume, reuse of the singleton `TOKEN_REFRESHED` `setAuth` handler.
-- [ ] 5.2 Subscribe a **private** channel (`supabase.channel(topic, { config: { private: true } })`), `.on('broadcast', { event: 'refetch' }, …)`, debounced `onMessage` (150 ms), `onSubscribed` after `SUBSCRIBED`.
-- [ ] 5.3 Export `__resetRealtimeBroadcastRegistry()` test helper (mirror the postgres_changes primitive).
+- [x] 5.1 Add `src/core/realtime/use-realtime-broadcast.ts`: module-level registry keyed by topic (one channel per topic, refcounted), page-visibility pause/resume, reuse of the singleton `TOKEN_REFRESHED` `setAuth` handler.
+- [x] 5.2 Subscribe a **private** channel (`supabase.channel(topic, { config: { private: true } })`), `.on('broadcast', { event: 'refetch' }, …)`, debounced `onMessage` (150 ms), `onSubscribed` after `SUBSCRIBED`.
+- [x] 5.3 Export `__resetRealtimeBroadcastRegistry()` test helper (mirror the postgres_changes primitive).
 
 ## 6. Tours store wiring
 
-- [ ] 6.1 In `tours-store`, wire `use-realtime-broadcast` on topic `friend-tours:${uid}` (enabled when authenticated). `onMessage`/`onSubscribed` → debounced `loadFriendTours()` (and nothing else — downstream consumers react via existing watches).
-- [ ] 6.2 Add `watch(() => [...friendshipsStore.friendUserIds].sort().join(','), (n, o) => { if (n !== o) loadFriendTours() })` so a newly accepted/removed friendship refetches friend tours immediately.
-- [ ] 6.3 Confirm sign-out teardown removes the friend-tours channel and clears `friendTours`.
+- [x] 6.1 In `tours-store`, wire `use-realtime-broadcast` on topic `friend-tours:${uid}` (enabled when authenticated). `onMessage`/`onSubscribed` → debounced `loadFriendTours()` (and nothing else — downstream consumers react via existing watches).
+- [x] 6.2 Add `watch(() => [...friendshipsStore.friendUserIds].sort().join(','), (n, o) => { if (n !== o) loadFriendTours() })` so a newly accepted/removed friendship refetches friend tours immediately.
+- [x] 6.3 Confirm sign-out teardown removes the friend-tours channel and clears `friendTours` (broadcast channel tears down via `enabled: () => isAuthenticated`; `clear()` clears `friendTours`).
 
 ## 7. Remove redundant signal
 
-- [ ] 7.1 In `tour-links-store.ts`, remove the `onChange` `toursStore.loadFriendTours()` piggyback (line ~333) and its now-false comment ("`friend_tours_view` has no realtime binding (#198)…"). Keep the `fetchAll()` call. Leave `collision-notice.vue` watchers untouched.
+- [x] 7.1 In `tour-links-store.ts`, remove the `onChange` `toursStore.loadFriendTours()` piggyback (line ~333) and its now-false comment ("`friend_tours_view` has no realtime binding (#198)…"). Keep the `fetchAll()` call. Leave `collision-notice.vue` watchers untouched.
 
 ## 8. Tests
 
-- [ ] 8.1 Broadcast primitive: topic key derivation, refcount dedupe, visibility pause → channel removed, `onMessage` debounce, `onSubscribed` after SUBSCRIBED.
-- [ ] 8.2 `tours-store`: friend-tours topic is `friend-tours:${uid}`; a message triggers `loadFriendTours` after debounce; a `friendUserIds` change triggers `loadFriendTours`; no subscription when unauthenticated.
-- [ ] 8.3 Trigger (pgTAP / SQL harness): friends-visible insert → one `realtime.messages` row per accepted friend on the right topic; private insert → none; friends→private UPDATE → OLD audience notified; non-friend never notified.
-- [ ] 8.4 `realtime.messages` policy: a session subscribed to another user's `friend-tours:<other>` receives nothing; own topic receives the poke.
-- [ ] 8.5 No notification dispatch invoked from the broadcast `onMessage` handler.
-- [ ] 8.6 `npm run test` — all pass.
+- [x] 8.1 Broadcast primitive: topic key derivation, refcount dedupe, visibility pause → channel removed, `onMessage` debounce, `onSubscribed` after SUBSCRIBED. (`test/core/realtime/use-realtime-broadcast.test.ts`)
+- [x] 8.2 `tours-store`: friend-tours topic is `friend-tours:${uid}`; a message triggers `loadFriendTours` after debounce; a `friendUserIds` change triggers `loadFriendTours`; no subscription when unauthenticated. (broadcast describe block in `test/features/tours/realtime-wiring.test.ts`)
+- [x] 8.3 Trigger (SQL harness): 5 assertions all pass — friends-visible INSERT notifies B only; private INSERT notifies nobody; friends→private notifies B; private→private notifies nobody; DELETE of friends tour notifies B.
+- [ ] 8.4 `realtime.messages` policy: a session subscribed to another user's `friend-tours:<other>` receives nothing; own topic receives the poke. (Manual/E2E — verified in §9.8.)
+- [x] 8.5 No notification dispatch invoked from the broadcast `onMessage` handler.
+- [x] 8.6 `npm run test` — all 975 pass.
 
 ## 9. Manual verification
 
@@ -60,9 +62,9 @@
 
 ## 10. Finalize
 
-- [ ] 10.1 `npx eslint . --fix` — zero warnings.
-- [ ] 10.2 `npm run type-check` — passes.
-- [ ] 10.3 `npm run test` — all pass.
+- [x] 10.1 `npx eslint . --fix` — zero warnings.
+- [x] 10.2 `npm run type-check` — passes.
+- [x] 10.3 `npm run test` — all pass.
 - [ ] 10.4 Prompt user to commit. Suggested message:
       ```
       feat(tours): realtime sync for friends' tours via server-side broadcast

@@ -4,9 +4,11 @@ import { defineStore } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
 import { computed, ref, watch } from 'vue'
 import { useLogger } from '@/core/logging/use-logger'
+import { useRealtimeBroadcast } from '@/core/realtime/use-realtime-broadcast'
 import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
+import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import {
   notifyTourChanged,
   notifyTourDeleted,
@@ -23,6 +25,7 @@ export const useToursStore = defineStore('tours', () => {
   const logger = useLogger('ToursStore')
   const authStore = useAuthStore()
   const contactsStore = useContactsStore()
+  const friendshipsStore = useFriendshipsStore()
 
   const tours = ref<Tour[]>([])
   const friendTours = ref<Tour[]>([])
@@ -86,6 +89,25 @@ export const useToursStore = defineStore('tours', () => {
     onChange: loadTours,
     onSubscribed: () => loadTours(),
   })
+
+  useRealtimeBroadcast({
+    topic: () => {
+      const uid = authStore.currentUser?.id
+      return uid ? `friend-tours:${uid}` : null
+    },
+    enabled: () => realtimeEnabled.value,
+    event: 'refetch',
+    onMessage: loadFriendTours,
+    onSubscribed: loadFriendTours,
+  })
+
+  watch(
+    () => [...friendshipsStore.friendUserIds].sort().join(','),
+    (n, o) => {
+      if (n !== o)
+        loadFriendTours()
+    },
+  )
 
   async function loadTours() {
     const userId = authStore.currentUser?.id
