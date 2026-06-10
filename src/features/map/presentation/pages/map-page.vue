@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { TourSurface } from '@/features/onboarding/presentation/onboarding-steps'
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
@@ -16,6 +17,8 @@ import TourenbuddyMap from '@/features/map/presentation/components/tourenbuddy-m
 import { computeBarState } from '@/features/map/presentation/composables/compute-bar-state'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { notifyTourInterest } from '@/features/notifications/data/notify-dispatch'
+import { useOnboardingTour } from '@/features/onboarding/presentation/composables/use-onboarding-tour'
+import { useOnboardingTourStore } from '@/features/onboarding/presentation/stores/onboarding-tour-store'
 import { getElevation } from '@/features/tours/data/services/swisstopo-elevation-service'
 import { suggestTourName } from '@/features/tours/data/services/swisstopo-name-service'
 import { isSameGoal } from '@/features/tours/domain/distance'
@@ -45,11 +48,13 @@ const attachmentsStore = useTourAttachmentsStore()
 const contactsStore = useContactsStore()
 const userProfileStore = useUserProfileStore()
 const authStore = useAuthStore()
+const onboardingTourStore = useOnboardingTourStore()
 const isDesktop = useIsDesktop()
 
 const { isPickingLocation, selectedTourId } = storeToRefs(mapStore)
 const { tours, friendTours } = storeToRefs(toursStore)
 const { isAuthenticated } = storeToRefs(authStore)
+const { reopenSignal } = storeToRefs(onboardingTourStore)
 
 const mapRef = ref<InstanceType<typeof TourenbuddyMap> | null>(null)
 const mapOverlayRef = ref<InstanceType<typeof MapActionOverlay> | null>(null)
@@ -172,6 +177,51 @@ function closeOverlay() {
   activeOverlay.value = null
 }
 
+// --- Onboarding tour ---------------------------------------------------------
+// The tour composable knows only abstract surfaces; this page owns the concrete
+// overlays + speed-dial, so it translates each surface into open/close calls.
+async function stageTourSurface(surface: TourSurface) {
+  switch (surface) {
+    case 'profile':
+      mapOverlayRef.value?.closeMenu()
+      openOverlay('profile')
+      break
+    case 'speed-dial-menu':
+      closeOverlay()
+      mapOverlayRef.value?.openMenu()
+      break
+    case 'base-map-panel':
+      closeOverlay()
+      mapOverlayRef.value?.openBaseMap()
+      break
+    case 'tour-bar':
+      closeOverlay()
+      mapOverlayRef.value?.closeMenu()
+      break
+  }
+  await nextTick()
+}
+
+const onboardingTour = useOnboardingTour({
+  stage: stageTourSurface,
+  cleanup: () => {
+    closeOverlay()
+    mapOverlayRef.value?.closeMenu()
+  },
+  saveTourStep: n => userProfileStore.saveTourStep(n),
+  dismissTourAtSignIn: () => userProfileStore.dismissTourAtSignIn(),
+  canAutoStart: () =>
+    isAuthenticated.value
+    && userProfileStore.profile != null
+    && userProfileStore.profile.onboardingTourShowAtSignIn === true,
+  getResumeStep: () => userProfileStore.profile?.onboardingTourLastStep ?? 0,
+})
+
+// "Show app tour" in the profile sheet bumps this signal — resume at last step.
+watch(reopenSignal, () => {
+  onboardingTour.startTour(userProfileStore.profile?.onboardingTourLastStep ?? 0)
+})
+
 function handleTourSelectedFromList(tourId: string) {
   tourOpenedFromList.value = true
   mapStore.selectTour(tourId)
@@ -223,6 +273,8 @@ onMounted(async () => {
     contactsStore.loadContacts(),
     userProfileStore.loadProfile(),
   ])
+  // Profile is now loaded, so the auto-start gate flag is known.
+  onboardingTour.maybeStartTour()
 })
 
 async function flyToSelectedTour() {

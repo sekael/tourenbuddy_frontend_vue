@@ -8,7 +8,7 @@ const { t } = useI18n({ useScope: 'global' })
 </script>
 
 <template>
-  <div role="menu" class="panel">
+  <div role="menu" class="panel" data-tour="basemap">
     <button
       v-for="(style, idx) in SWISSTOPO_STYLES"
       :key="idx"

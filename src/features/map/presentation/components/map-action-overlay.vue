@@ -54,7 +54,20 @@ function closeMenu() {
   view.value = 'closed'
 }
 
-defineExpose({ isOpen, closeMenu })
+// Imperative openers for the onboarding tour to stage the contacts item and
+// the base-map switcher (both live inside this component's `view`, not in the
+// page-level overlay set).
+function openMenu() {
+  if (!isPickingLocation.value)
+    view.value = 'menu'
+}
+
+function openBaseMap() {
+  if (!isPickingLocation.value)
+    view.value = 'base-map'
+}
+
+defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
 </script>
 
 <template>

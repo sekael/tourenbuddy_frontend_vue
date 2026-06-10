@@ -570,5 +570,36 @@
     "mergeBlockedBody": "Freunde bereits in eigener verknüpfter Gruppe: {names}. Du kannst sie direkt kontaktieren, um euch abzustimmen — eure Gruppen lassen sich aber nicht zusammenführen.",
     "dismissBtn": "Verstanden",
     "doNotShowAgain": "Nicht mehr anzeigen"
+  },
+  "onboarding": {
+    "tour": {
+      "phone": {
+        "title": "Telefonnummer hinzufügen",
+        "body": "Füge deine Nummer hinzu und verifiziere sie, damit dich Freunde finden und sich auf gemeinsamen Touren mit dir vernetzen können. Optional — schaltet aber die sozialen Funktionen frei."
+      },
+      "notifications": {
+        "title": "Immer auf dem Laufenden",
+        "body": "Wähle, welche Benachrichtigungen du erhältst — Freundschaftsanfragen, Toureneinladungen und Updates landen hier."
+      },
+      "contacts": {
+        "title": "Deine Kontakte",
+        "body": "Füge die Personen hinzu, mit denen du unterwegs bist, und verknüpfe sie mit Touren, um euch abzustimmen."
+      },
+      "tours": {
+        "title": "Deine Touren",
+        "body": "Öffne hier deine Touren oder erstelle eine neue, indem du eine Markierung auf der Karte setzt."
+      },
+      "basemap": {
+        "title": "Karte wechseln",
+        "body": "Wechsle zwischen Swisstopo-Karten — Wandern, Satellit und mehr — passend zu deiner Planung."
+      },
+      "controls": {
+        "next": "Weiter",
+        "previous": "Zurück",
+        "done": "Fertig",
+        "finish": "Tour beenden",
+        "reopen": "App-Tour anzeigen"
+      }
+    }
   }
 }

@@ -58,6 +58,7 @@ defineExpose({ focusFirst })
     <SpeedDialItem
       v-for="item in props.items"
       :key="item.id"
+      :data-tour="item.id === 'contacts' ? 'contacts' : undefined"
       :icon="item.icon"
       :label="item.label"
       :disabled="item.disabled"

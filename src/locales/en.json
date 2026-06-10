@@ -570,5 +570,36 @@
     "mergeBlockedBody": "Friends already in their own linked group: {names}. You can reach out to them directly to coordinate — joining their group from yours isn't possible.",
     "dismissBtn": "Got it",
     "doNotShowAgain": "Don't show again"
+  },
+  "onboarding": {
+    "tour": {
+      "phone": {
+        "title": "Add your phone number",
+        "body": "Add and verify your phone so friends can find you and connect with you on shared tours. It's optional — but it unlocks the social features."
+      },
+      "notifications": {
+        "title": "Stay in the loop",
+        "body": "Choose which notifications you receive — friend requests, tour invites and updates all land here."
+      },
+      "contacts": {
+        "title": "Your contacts",
+        "body": "Add the people you tour with, then link them to tours to coordinate and share your plans."
+      },
+      "tours": {
+        "title": "Your tours",
+        "body": "Open your tours here, or start a new one by dropping a pin on the map."
+      },
+      "basemap": {
+        "title": "Switch the map",
+        "body": "Swap between Swisstopo base maps — hiking, satellite and more — to suit your planning."
+      },
+      "controls": {
+        "next": "Next",
+        "previous": "Back",
+        "done": "Done",
+        "finish": "Finish tour",
+        "reopen": "Show app tour"
+      }
+    }
   }
 }
