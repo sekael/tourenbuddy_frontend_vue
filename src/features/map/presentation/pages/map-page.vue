@@ -283,9 +283,12 @@ onboardingTour.maybeStartTour()
 // them together. Toggled here (scoped styles can't reach <html>); the rule
 // lives in onboarding-tour.css.
 const tourLockActive = computed(() => tourRunning.value || tourWelcome.value)
+// `immediate` matters: on first sign-in the welcome auto-starts synchronously
+// above, so the lock is ALREADY active when this registers — a lazy watch would
+// miss that initial state and only lock on a later toggle (the reopen path).
 watch(tourLockActive, (locked) => {
   document.documentElement.classList.toggle('tour-scroll-locked', locked)
-})
+}, { immediate: true })
 
 // driver.js' overlay lives on <body> outside Vue, so a route change (back
 // button / back-swipe) would leave it orphaned on a non-tour page. Tear it down
