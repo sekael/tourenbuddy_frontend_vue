@@ -122,7 +122,7 @@ function handleRowClick(tourId: string) {
     />
 
     <div v-else class="list-view">
-      <div class="tabs" role="tablist">
+      <div class="tabs" role="tablist" data-tour="tours">
         <button
           type="button"
           role="tab"

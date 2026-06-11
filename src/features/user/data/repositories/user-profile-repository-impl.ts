@@ -35,6 +35,8 @@ export class UserProfileRepositoryImpl implements UserProfileRepository {
         first_name: profile.firstName,
         last_name: profile.lastName,
         locale: profile.locale,
+        onboarding_tour_show_at_sign_in: profile.onboardingTourShowAtSignIn,
+        onboarding_tour_last_step: profile.onboardingTourLastStep,
       })
       .select()
       .single()

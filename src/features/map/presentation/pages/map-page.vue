@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import type { StageContext } from '@/features/onboarding/presentation/composables/use-onboarding-tour'
+import type { TourSurface } from '@/features/onboarding/presentation/onboarding-steps'
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { onBeforeRouteLeave } from 'vue-router'
 import FeedbackSheet from '@/core/components/feedback-sheet.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
@@ -16,6 +19,11 @@ import TourenbuddyMap from '@/features/map/presentation/components/tourenbuddy-m
 import { computeBarState } from '@/features/map/presentation/composables/compute-bar-state'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { notifyTourInterest } from '@/features/notifications/data/notify-dispatch'
+import { useNotificationsStore } from '@/features/notifications/presentation/stores/notifications-store'
+import OnboardingTourBanner from '@/features/onboarding/presentation/components/onboarding-tour-banner.vue'
+import OnboardingWelcome from '@/features/onboarding/presentation/components/onboarding-welcome.vue'
+import { useOnboardingTour } from '@/features/onboarding/presentation/composables/use-onboarding-tour'
+import { useOnboardingTourStore } from '@/features/onboarding/presentation/stores/onboarding-tour-store'
 import { getElevation } from '@/features/tours/data/services/swisstopo-elevation-service'
 import { suggestTourName } from '@/features/tours/data/services/swisstopo-name-service'
 import { isSameGoal } from '@/features/tours/domain/distance'
@@ -45,11 +53,14 @@ const attachmentsStore = useTourAttachmentsStore()
 const contactsStore = useContactsStore()
 const userProfileStore = useUserProfileStore()
 const authStore = useAuthStore()
+const onboardingTourStore = useOnboardingTourStore()
+const notificationsStore = useNotificationsStore()
 const isDesktop = useIsDesktop()
 
 const { isPickingLocation, selectedTourId } = storeToRefs(mapStore)
 const { tours, friendTours } = storeToRefs(toursStore)
 const { isAuthenticated } = storeToRefs(authStore)
+const { reopenSignal } = storeToRefs(onboardingTourStore)
 
 const mapRef = ref<InstanceType<typeof TourenbuddyMap> | null>(null)
 const mapOverlayRef = ref<InstanceType<typeof MapActionOverlay> | null>(null)
@@ -172,6 +183,129 @@ function closeOverlay() {
   activeOverlay.value = null
 }
 
+// --- Onboarding tour ---------------------------------------------------------
+// The tour composable knows only abstract surfaces; this page owns the concrete
+// overlays + speed-dial, so it translates each surface into open/close calls.
+// Every step replays its full navigation path from a clean slate (overlays
+// closed) so spotlight positions are deterministic — also when stepping back.
+// Each waypoint carries a short hint ("Open menu", "Open contacts") via
+// `ctx.spotlight(selector, hintKey)`, which waits for the control to settle
+// before highlighting so the mask never lags an animation.
+async function stageTourSurface(surface: TourSurface, ctx: StageContext) {
+  // Open a speed-dial-backed sheet the way a user would: spotlight the FAB,
+  // pop the menu, spotlight the menu item, then open the sheet.
+  async function openViaMenu(name: OverlayName, itemSelector: string, itemHintKey: string) {
+    await ctx.spotlight('[data-tour="open-menu"]', 'onboarding.tour.nav.openMenu')
+    mapOverlayRef.value?.openMenu()
+    await ctx.spotlight(itemSelector, itemHintKey)
+    openOverlay(name)
+  }
+
+  closeOverlay()
+  mapOverlayRef.value?.closeMenu()
+
+  switch (surface) {
+    case 'profile': {
+      // Both profile targets sit in the vertically centered desktop dialog,
+      // which is sized by its content: when the notification prefs fetch lands,
+      // the section swaps its 96px loading placeholder for the full toggle
+      // list, the card grows and re-centers, and an already-highlighted target
+      // moves out from under its popover. Ensure prefs are loaded BEFORE the
+      // highlight; the fetch overlaps the waypoint spotlights, so the wait is
+      // normally free.
+      const prefsReady = notificationsStore.prefs ? null : notificationsStore.loadPrefs()
+      await openViaMenu('profile', '[data-tour="menu-profile"]', 'onboarding.tour.nav.profile')
+      await prefsReady
+      break
+    }
+    case 'contacts':
+      await openViaMenu('contacts', '[data-tour="menu-contacts"]', 'onboarding.tour.nav.contacts')
+      break
+    case 'friend-requests':
+      // Reached through the contacts sheet: open it, then spotlight the
+      // switch-to-requests button before opening the requests view.
+      await openViaMenu('contacts', '[data-tour="menu-contacts"]', 'onboarding.tour.nav.contacts')
+      await ctx.spotlight('[data-tour="open-friend-requests"]', 'onboarding.tour.nav.friendRequests')
+      openOverlay('friend-requests')
+      break
+    case 'tours':
+      // The My-tours sheet opens from the bottom action bar, not the speed-dial.
+      await ctx.spotlight('[data-tour="open-tours"]', 'onboarding.tour.nav.tours')
+      openOverlay('tours')
+      break
+    case 'tour-bar':
+      // No overlay — the bottom action bar (add-location button) is always visible.
+      break
+    case 'base-map-panel':
+      await ctx.spotlight('[data-tour="open-menu"]', 'onboarding.tour.nav.openMenu')
+      mapOverlayRef.value?.openMenu()
+      await ctx.spotlight('[data-tour="menu-base-map"]', 'onboarding.tour.nav.baseMap')
+      mapOverlayRef.value?.openBaseMap()
+      break
+  }
+  await nextTick()
+}
+
+const onboardingTour = useOnboardingTour({
+  stage: stageTourSurface,
+  cleanup: () => {
+    closeOverlay()
+    mapOverlayRef.value?.closeMenu()
+  },
+  saveTourStep: n => userProfileStore.saveTourStep(n),
+  dismissTourAtSignIn: () => userProfileStore.dismissTourAtSignIn(),
+  canAutoStart: () =>
+    isAuthenticated.value
+    && userProfileStore.profile != null
+    && userProfileStore.profile.onboardingTourShowAtSignIn === true,
+  getResumeStep: () => userProfileStore.profile?.onboardingTourLastStep ?? 0,
+})
+
+// Reactive tour state for the top banner.
+const {
+  isRunning: tourRunning,
+  isStaging: tourStaging,
+  currentIndex: tourIndex,
+  currentTitle: tourTitle,
+  showWelcome: tourWelcome,
+} = onboardingTour
+const tourTotal = onboardingTour.totalSteps
+
+// The router guard blocks /map until the profile is loaded, so the auto-start
+// gate is already decidable in setup — open the welcome synchronously, before
+// the first paint, so a tour-eligible user never sees the bare map flash first.
+// (No-op when the gate is off; `onMounted` re-checks for a cold profile.)
+onboardingTour.maybeStartTour()
+
+// Lock document scroll for the whole tour + welcome. `.map-page` is overflow:
+// hidden, but iOS Safari still rubber-band/address-bar scrolls the document
+// under the viewport-fixed spotlight + popovers — only a body-level lock pins
+// them together. Toggled here (scoped styles can't reach <html>); the rule
+// lives in onboarding-tour.css.
+const tourLockActive = computed(() => tourRunning.value || tourWelcome.value)
+// `immediate` matters: on first sign-in the welcome auto-starts synchronously
+// above, so the lock is ALREADY active when this registers — a lazy watch would
+// miss that initial state and only lock on a later toggle (the reopen path).
+watch(tourLockActive, (locked) => {
+  document.documentElement.classList.toggle('tour-scroll-locked', locked)
+}, { immediate: true })
+
+// driver.js' overlay lives on <body> outside Vue, so a route change (back
+// button / back-swipe) would leave it orphaned on a non-tour page. Tear it down
+// before leaving and on any unmount, and always drop the scroll-lock class.
+onBeforeRouteLeave(() => {
+  onboardingTour.stop()
+})
+onUnmounted(() => {
+  onboardingTour.stop()
+  document.documentElement.classList.remove('tour-scroll-locked')
+})
+
+// "Show app tour" in the profile sheet bumps this signal — resume at last step.
+watch(reopenSignal, () => {
+  onboardingTour.startTour(userProfileStore.profile?.onboardingTourLastStep ?? 0)
+})
+
 function handleTourSelectedFromList(tourId: string) {
   tourOpenedFromList.value = true
   mapStore.selectTour(tourId)
@@ -218,11 +352,13 @@ watch(selectedTour, (tour) => {
 })
 
 onMounted(async () => {
-  await Promise.all([
-    toursStore.loadTours(),
-    contactsStore.loadContacts(),
-    userProfileStore.loadProfile(),
-  ])
+  // Welcome must not wait on tours/contacts: gate it on the profile alone so it
+  // appears immediately. Profile is normally already loaded (guard), so this is
+  // the cold-profile fallback for the synchronous setup call above.
+  if (!userProfileStore.profile)
+    await userProfileStore.loadProfile()
+  onboardingTour.maybeStartTour()
+  await Promise.all([toursStore.loadTours(), contactsStore.loadContacts()])
 })
 
 async function flyToSelectedTour() {
@@ -473,7 +609,37 @@ function handleDialogClose() {
 </script>
 
 <template>
-  <div class="map-page">
+  <div class="map-page" :class="{ 'map-page--tour-locked': tourRunning || tourWelcome }">
+    <!-- Teleported to <body> so it shares driver.js' top-level stacking context
+         (driver appends its overlay to body) — keeps the banner above the
+         spotlight overlay and, crucially, clickable. -->
+    <Teleport to="body">
+      <Transition name="tour-slide">
+        <OnboardingTourBanner
+          v-if="tourRunning"
+          :title="tourTitle"
+          :current="tourIndex + 1"
+          :total="tourTotal"
+          :can-back="tourIndex > 0"
+          :busy="tourStaging"
+          @back="onboardingTour.back()"
+          @next="onboardingTour.next()"
+          @finish="onboardingTour.finish()"
+        />
+      </Transition>
+    </Teleport>
+
+    <!-- Pre-tour welcome (auto-start only). Teleported to <body> so it stacks
+         above the map + sheets, the same as the tour banner. -->
+    <Teleport to="body">
+      <OnboardingWelcome
+        v-if="tourWelcome"
+        @start="onboardingTour.startFromWelcome()"
+        @skip="onboardingTour.skipWelcome()"
+        @dismiss="onboardingTour.dismissWelcome()"
+      />
+    </Teleport>
+
     <TourenbuddyMap
       ref="mapRef"
       @tour-clicked="handleTourClicked"
@@ -582,6 +748,19 @@ function handleDialogClose() {
   height: -webkit-fill-available;
   height: 100lvh;
   overflow: hidden;
+}
+
+/* During the guided tour (and its welcome screen) the whole app subtree is made
+   inert: driver.js positions each spotlight/popover ONCE, so any MapLibre pan or
+   sheet scroll would drag it off its target. This holds continuously — including
+   the brief staging gaps where driver's own `pointer-events:none` is down. The
+   banner, welcome, and driver's backdrop overlay are all teleported to <body>,
+   outside this subtree, so they stay live and tap-to-advance keeps working.
+   `pointer-events:none` blocks taps reaching the map+sheets; `touch-action:none`
+   kills any residual touch-pan/scroll gesture. */
+.map-page--tour-locked {
+  pointer-events: none;
+  touch-action: none;
 }
 
 .sheet-container {

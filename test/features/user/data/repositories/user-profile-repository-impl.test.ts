@@ -39,7 +39,14 @@ describe('userProfileRepositoryImpl.upsertProfile', () => {
       '@/features/user/data/repositories/user-profile-repository-impl'
     )
     const repo = new UserProfileRepositoryImpl()
-    await repo.upsertProfile({ id: 'u1', firstName: 'A', lastName: 'B', locale: 'de-CH' })
+    await repo.upsertProfile({
+      id: 'u1',
+      firstName: 'A',
+      lastName: 'B',
+      locale: 'de-CH',
+      onboardingTourShowAtSignIn: true,
+      onboardingTourLastStep: 0,
+    })
 
     expect(mockUpsert).toHaveBeenCalledWith(
       expect.objectContaining({ locale: 'de-CH' }),
@@ -51,7 +58,14 @@ describe('userProfileRepositoryImpl.upsertProfile', () => {
       '@/features/user/data/repositories/user-profile-repository-impl'
     )
     const repo = new UserProfileRepositoryImpl()
-    await repo.upsertProfile({ id: 'u1', firstName: 'A', lastName: 'B', locale: null })
+    await repo.upsertProfile({
+      id: 'u1',
+      firstName: 'A',
+      lastName: 'B',
+      locale: null,
+      onboardingTourShowAtSignIn: true,
+      onboardingTourLastStep: 0,
+    })
 
     expect(mockUpsert).toHaveBeenCalledWith(
       expect.objectContaining({ locale: null }),

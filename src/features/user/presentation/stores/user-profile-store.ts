@@ -53,6 +53,8 @@ export const useUserProfileStore = defineStore('userProfile', () => {
           firstName: null,
           lastName: null,
           locale: null,
+          onboardingTourShowAtSignIn: true,
+          onboardingTourLastStep: 0,
         })
       }
 
@@ -175,6 +177,30 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     sessionSkipped.value = true
   }
 
+  /**
+   * Flip the auto-start gate off once the onboarding tour is first shown at
+   * sign-in. Non-blocking: a failure just means the tour may auto-show again
+   * next mount, which is acceptable.
+   */
+  async function dismissTourAtSignIn() {
+    try {
+      await updateProfile({ onboardingTourShowAtSignIn: false })
+    }
+    catch (err) {
+      logger.error('Failed to dismiss onboarding tour auto-start', err)
+    }
+  }
+
+  /** Persist the onboarding tour resume index. Non-blocking. */
+  async function saveTourStep(n: number) {
+    try {
+      await updateProfile({ onboardingTourLastStep: n })
+    }
+    catch (err) {
+      logger.error('Failed to persist onboarding tour step', err)
+    }
+  }
+
   function clear() {
     profile.value = null
     error.value = null
@@ -223,6 +249,8 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     verifyPhone,
     deletePhone,
     skipOnboarding,
+    dismissTourAtSignIn,
+    saveTourStep,
     clear,
   }
 })

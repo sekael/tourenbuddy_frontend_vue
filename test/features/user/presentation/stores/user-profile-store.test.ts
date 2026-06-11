@@ -113,6 +113,8 @@ describe('useUserProfileStore', () => {
         firstName: null,
         lastName: null,
         locale: null,
+        onboardingTourShowAtSignIn: true,
+        onboardingTourLastStep: 0,
       })
       expect(store.profile).toEqual(newProfile)
     })
@@ -238,6 +240,52 @@ describe('useUserProfileStore', () => {
     })
   })
 
+  describe('onboarding tour actions', () => {
+    const base = {
+      id: 'user-123',
+      firstName: null,
+      lastName: null,
+      locale: 'en' as const,
+      onboardingTourShowAtSignIn: true,
+      onboardingTourLastStep: 0,
+    }
+
+    it('saveTourStep persists the resume index', async () => {
+      mockGetUserById.mockResolvedValue(base)
+      mockUpsertProfile.mockResolvedValue({ ...base, onboardingTourLastStep: 3 })
+      const store = useUserProfileStore()
+      await store.loadProfile()
+
+      await store.saveTourStep(3)
+
+      expect(mockUpsertProfile).toHaveBeenLastCalledWith(
+        expect.objectContaining({ onboardingTourLastStep: 3 }),
+      )
+    })
+
+    it('dismissTourAtSignIn flips the gate off', async () => {
+      mockGetUserById.mockResolvedValue(base)
+      mockUpsertProfile.mockResolvedValue({ ...base, onboardingTourShowAtSignIn: false })
+      const store = useUserProfileStore()
+      await store.loadProfile()
+
+      await store.dismissTourAtSignIn()
+
+      expect(mockUpsertProfile).toHaveBeenLastCalledWith(
+        expect.objectContaining({ onboardingTourShowAtSignIn: false }),
+      )
+    })
+
+    it('swallows a persistence failure instead of throwing', async () => {
+      mockGetUserById.mockResolvedValue(base)
+      const store = useUserProfileStore()
+      await store.loadProfile()
+      mockUpsertProfile.mockRejectedValueOnce(new Error('network'))
+
+      await expect(store.saveTourStep(2)).resolves.toBeUndefined()
+    })
+  })
+
   describe('skipOnboarding', () => {
     it('should set sessionSkipped to true', () => {
       const store = useUserProfileStore()
@@ -250,7 +298,14 @@ describe('useUserProfileStore', () => {
   describe('clear', () => {
     it('should clear profile on sign out', async () => {
       const store = useUserProfileStore()
-      store.profile = { id: 'user-123', firstName: 'Max', lastName: null, locale: null }
+      store.profile = {
+        id: 'user-123',
+        firstName: 'Max',
+        lastName: null,
+        locale: null,
+        onboardingTourShowAtSignIn: true,
+        onboardingTourLastStep: 0,
+      }
       store.clear()
 
       expect(store.profile).toBeNull()

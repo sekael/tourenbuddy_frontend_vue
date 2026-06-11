@@ -14,6 +14,7 @@ import PhoneVerificationNotice from '@/features/friendships/presentation/compone
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useLocaleStore } from '@/features/i18n/presentation/stores/use-locale-store'
 import NotificationPreferencesSection from '@/features/notifications/presentation/components/notification-preferences-section.vue'
+import { useOnboardingTourStore } from '@/features/onboarding/presentation/stores/onboarding-tour-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 import PhoneVerificationDialog from './phone-verification-dialog.vue'
@@ -28,6 +29,7 @@ const contactsStore = useContactsStore()
 const toursStore = useToursStore()
 const localeStore = useLocaleStore()
 const friendshipsStore = useFriendshipsStore()
+const onboardingTourStore = useOnboardingTourStore()
 
 const isEditing = ref(false)
 const editFirstName = ref('')
@@ -129,6 +131,13 @@ function handleAddPhone() {
   startEdit()
 }
 
+// Reopen the onboarding tour: close this sheet so the tour can stage its own
+// overlays, then signal map-page (the tour controller) to start at last step.
+function handleShowTour() {
+  emit('close')
+  onboardingTourStore.requestReopen()
+}
+
 function handleVerificationComplete() {
   showPhoneVerification.value = false
 }
@@ -218,7 +227,7 @@ async function handleSignOut() {
           </div>
         </div>
 
-        <div class="phone-row">
+        <div class="phone-row" data-tour="phone-verification">
           <template v-if="full?.phoneNumber">
             <span class="material-symbols-outlined phone-icon">phone</span>
             <span class="phone-number">{{ displayPhoneNumber }}</span>
@@ -259,7 +268,9 @@ async function handleSignOut() {
         <hr class="divider">
 
         <!-- Notification preferences -->
-        <NotificationPreferencesSection />
+        <div data-tour="notifications">
+          <NotificationPreferencesSection />
+        </div>
 
         <hr class="divider">
 
@@ -267,6 +278,10 @@ async function handleSignOut() {
           <button class="edit-btn" @click="startEdit">
             <span class="material-symbols-outlined">edit</span>
             {{ t('user.profile.editBtn') }}
+          </button>
+          <button class="edit-btn" @click="handleShowTour">
+            <span class="material-symbols-outlined">tour</span>
+            {{ t('onboarding.tour.controls.reopen') }}
           </button>
           <button class="sign-out-btn" @click="handleSignOut">
             <span class="material-symbols-outlined">logout</span>

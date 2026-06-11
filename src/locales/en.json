@@ -570,5 +570,74 @@
     "mergeBlockedBody": "Friends already in their own linked group: {names}. You can reach out to them directly to coordinate — joining their group from yours isn't possible.",
     "dismissBtn": "Got it",
     "doNotShowAgain": "Don't show again"
+  },
+  "onboarding": {
+    "tour": {
+      "phone": {
+        "title": "Add your phone number",
+        "body": "Add and verify your phone number so friends can find and connect with you to plan shared tours."
+      },
+      "notifications": {
+        "title": "Stay in the loop",
+        "body": "Choose which notifications you receive related to friend requests, tour invites and tour updates."
+      },
+      "addContact": {
+        "title": "Add a contact",
+        "body": "Add contacts from your phone book or by hand so you can link them to tours."
+      },
+      "contacts": {
+        "title": "Your contacts",
+        "body": "Everyone you've added as a contact shows up here. Tap a contact to see their details and add more contact methods."
+      },
+      "friendRequests": {
+        "title": "Friend requests",
+        "body": "Send and accept friend requests here. Friends can see each other's tours and get notified about shared plans."
+      },
+      "tours": {
+        "title": "Your tours & friends' tours",
+        "body": "Switch between your own tours and your friends' tours with these tabs to plan and enjoy tours together."
+      },
+      "addLocation": {
+        "title": "Add a tour",
+        "body": "Tap here to drop a pin and plan a new tour objective anywhere on the map."
+      },
+      "basemap": {
+        "title": "Switch the map",
+        "body": "Swap between different maps to suit your style."
+      },
+      "welcome": {
+        "title": "Welcome to TourenBuddy",
+        "body": "Let's show you around during a quick guided tour of the essentials. Click anywhere to continue the tour or use the buttons at the top.",
+        "start": "Start tour",
+        "skip": "Skip for now",
+        "dismiss": "Don't show again"
+      },
+      "labels": {
+        "phone": "Verify phone number",
+        "notifications": "Notification settings",
+        "addContact": "Add a contact",
+        "contacts": "Contacts list",
+        "friendRequests": "Friend requests",
+        "tours": "Your tours",
+        "addLocation": "Add a tour",
+        "basemap": "Switch maps"
+      },
+      "nav": {
+        "openMenu": "Open menu",
+        "profile": "Open profile",
+        "contacts": "Open contacts",
+        "baseMap": "Switch maps",
+        "friendRequests": "Open friend requests",
+        "tours": "Open your tours"
+      },
+      "bannerLabel": "Guided tour",
+      "controls": {
+        "next": "Next",
+        "previous": "Back",
+        "done": "Done",
+        "finish": "Finish tour",
+        "reopen": "Show app tour"
+      }
+    }
   }
 }

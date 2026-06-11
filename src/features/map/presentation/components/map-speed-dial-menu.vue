@@ -62,6 +62,7 @@ defineExpose({ focusFirst })
       :label="item.label"
       :disabled="item.disabled"
       :tooltip="item.tooltip"
+      :data-tour="`menu-${item.id}`"
       @select="select(item.id)"
     >
       <template v-if="item.badge && item.badge > 0" #badge>
