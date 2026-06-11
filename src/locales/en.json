@@ -575,7 +575,7 @@
     "tour": {
       "phone": {
         "title": "Add your phone number",
-        "body": "Add and verify your phone so friends can find and connect with you to plan shared tours."
+        "body": "Add and verify your phone number so friends can find and connect with you to plan shared tours."
       },
       "notifications": {
         "title": "Stay in the loop",
@@ -587,7 +587,7 @@
       },
       "contacts": {
         "title": "Your contacts",
-        "body": "Everyone you've added shows up here. Tap a contact to see their details and add more contact methods."
+        "body": "Everyone you've added as a contact shows up here. Tap a contact to see their details and add more contact methods."
       },
       "friendRequests": {
         "title": "Friend requests",
@@ -607,7 +607,7 @@
       },
       "welcome": {
         "title": "Welcome to TourenBuddy",
-        "body": "Let's show you around — a quick guided tour of the essentials.",
+        "body": "Let's show you around during a quick guided tour of the essentials. Click anywhere to continue the tour or use the buttons at the top.",
         "start": "Start tour",
         "skip": "Skip for now",
         "dismiss": "Don't show again"

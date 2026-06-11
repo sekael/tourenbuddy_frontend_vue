@@ -270,6 +270,12 @@ const {
 } = onboardingTour
 const tourTotal = onboardingTour.totalSteps
 
+// The router guard blocks /map until the profile is loaded, so the auto-start
+// gate is already decidable in setup — open the welcome synchronously, before
+// the first paint, so a tour-eligible user never sees the bare map flash first.
+// (No-op when the gate is off; `onMounted` re-checks for a cold profile.)
+onboardingTour.maybeStartTour()
+
 // "Show app tour" in the profile sheet bumps this signal — resume at last step.
 watch(reopenSignal, () => {
   onboardingTour.startTour(userProfileStore.profile?.onboardingTourLastStep ?? 0)
@@ -321,13 +327,13 @@ watch(selectedTour, (tour) => {
 })
 
 onMounted(async () => {
-  await Promise.all([
-    toursStore.loadTours(),
-    contactsStore.loadContacts(),
-    userProfileStore.loadProfile(),
-  ])
-  // Profile is now loaded, so the auto-start gate flag is known.
+  // Welcome must not wait on tours/contacts: gate it on the profile alone so it
+  // appears immediately. Profile is normally already loaded (guard), so this is
+  // the cold-profile fallback for the synchronous setup call above.
+  if (!userProfileStore.profile)
+    await userProfileStore.loadProfile()
   onboardingTour.maybeStartTour()
+  await Promise.all([toursStore.loadTours(), contactsStore.loadContacts()])
 })
 
 async function flyToSelectedTour() {
@@ -578,7 +584,7 @@ function handleDialogClose() {
 </script>
 
 <template>
-  <div class="map-page">
+  <div class="map-page" :class="{ 'map-page--tour-locked': tourRunning || tourWelcome }">
     <!-- Teleported to <body> so it shares driver.js' top-level stacking context
          (driver appends its overlay to body) — keeps the banner above the
          spotlight overlay and, crucially, clickable. -->
@@ -717,6 +723,19 @@ function handleDialogClose() {
   height: -webkit-fill-available;
   height: 100lvh;
   overflow: hidden;
+}
+
+/* During the guided tour (and its welcome screen) the whole app subtree is made
+   inert: driver.js positions each spotlight/popover ONCE, so any MapLibre pan or
+   sheet scroll would drag it off its target. This holds continuously — including
+   the brief staging gaps where driver's own `pointer-events:none` is down. The
+   banner, welcome, and driver's backdrop overlay are all teleported to <body>,
+   outside this subtree, so they stay live and tap-to-advance keeps working.
+   `pointer-events:none` blocks taps reaching the map+sheets; `touch-action:none`
+   kills any residual touch-pan/scroll gesture. */
+.map-page--tour-locked {
+  pointer-events: none;
+  touch-action: none;
 }
 
 .sheet-container {
