@@ -1,22 +1,24 @@
 import type { Driver, Popover } from 'driver.js'
 import type { OnboardingStep, TourSurface } from '../onboarding-steps'
 import { driver } from 'driver.js'
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useLogger } from '@/core/logging/use-logger'
 import { ONBOARDING_STEPS } from '../onboarding-steps'
 import 'driver.js/dist/driver.css'
+import '../onboarding-tour.css'
 
 /** Capabilities handed to `stage` so it can choreograph the navigation. */
 export interface StageContext {
   /**
    * Spotlight an intermediate control (the speed-dial FAB, a menu item, a tab)
    * on the way to the step's target: previous spotlight off → wait for the
-   * control to exist and stop moving → spotlight on → hold a beat. No popover —
-   * waypoints are self-explanatory; copy lives on the step targets. No-op if
-   * the control never appears.
+   * control to exist and stop moving → spotlight on → hold a beat. Pass a
+   * `hintKey` to attach a short one-line popover ("Open menu", "Open contacts")
+   * naming the control; omit it for a bare spotlight. No-op if the control
+   * never appears.
    */
-  spotlight: (selector: string) => Promise<void>
+  spotlight: (selector: string, hintKey?: string) => Promise<void>
 }
 
 export interface UseOnboardingTourOptions {
@@ -49,13 +51,16 @@ export interface TourPace {
 }
 
 const LAST_INDEX = ONBOARDING_STEPS.length - 1
-const DEFAULT_PACE: TourPace = { holdMs: 1300, gapMs: 400 }
+const DEFAULT_PACE: TourPace = { holdMs: 2000, gapMs: 500 }
 
 export function useOnboardingTour(options: UseOnboardingTourOptions) {
   const { t } = useI18n({ useScope: 'global' })
   const logger = useLogger('OnboardingTour')
 
   const isRunning = ref(false)
+  // True while the pre-tour welcome screen is showing (auto-start only, before
+  // the driver.js tour itself runs). The component renders its own backdrop.
+  const showWelcome = ref(false)
   const currentIndex = ref(0)
   // True while a step is being staged (mask removed, app being driven). Nav
   // controls are inert during this window so rapid clicks can't overlap stages.
@@ -65,6 +70,10 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
   const pace: TourPace = { ...DEFAULT_PACE, ...options.pace }
   const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
   const clamp = (i: number) => Math.max(0, Math.min(i, LAST_INDEX))
+
+  // Short label for the current step, shown in the top banner (distinct from the
+  // benefit-oriented popover title).
+  const currentTitle = computed(() => t(ONBOARDING_STEPS[currentIndex.value].labelKey))
 
   /**
    * Resolve the first element matching `selector`, or null if it never appears
@@ -250,7 +259,7 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
    * old control during that transition. Handed to `stage` via the context.
    * No-op if the element never appears or the tour ended mid-wait.
    */
-  async function spotlight(selector: string) {
+  async function spotlight(selector: string, hintKey?: string) {
     if (!isRunning.value)
       return
     await maskOffAndBreathe() // safety: normally already down
@@ -261,7 +270,22 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
     if (!isRunning.value)
       return
     driverObj = makeDriver()
-    driverObj.highlight({ element: el })
+    // A hinted waypoint shows a short, description-only popover ("Open menu")
+    // naming the control; without a hint it stays a bare spotlight. No forced
+    // side — driver.js auto-places it to fit, since waypoints sit anywhere
+    // (bottom-right FAB, mid-list menu item, action-bar tab).
+    driverObj.highlight(
+      hintKey
+        ? {
+            element: el,
+            popover: {
+              description: t(hintKey),
+              showButtons: [],
+              popoverClass: 'onboarding-hint-popover',
+            },
+          }
+        : { element: el },
+    )
     void refreshAfterMotion(el)
     await sleep(pace.holdMs)
     await maskOffAndBreathe()
@@ -356,22 +380,47 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
 
   /**
    * Auto-start once at sign-in: only when the gate allows it and not already
-   * running. Flips the gate off and resumes at the persisted step.
+   * running. Opens the welcome screen rather than starting straight away (the
+   * unprompted tour start was the bad UX). The gate is left untouched and the
+   * tour stays down — both are decided by the welcome actions below.
    */
   function maybeStartTour() {
-    if (isRunning.value || !options.canAutoStart())
+    if (isRunning.value || showWelcome.value || !options.canAutoStart())
       return
+    showWelcome.value = true
+  }
+
+  /** Welcome "Start tour": engage the tour and stop it auto-popping again. */
+  function startFromWelcome() {
+    showWelcome.value = false
     options.dismissTourAtSignIn()
     startTour(options.getResumeStep())
+  }
+
+  /** Welcome "Skip for now": dismiss the welcome but let it return next sign-in. */
+  function skipWelcome() {
+    showWelcome.value = false
+  }
+
+  /** Welcome "Don't show again": dismiss and flip the gate off for good. */
+  function dismissWelcome() {
+    showWelcome.value = false
+    options.dismissTourAtSignIn()
   }
 
   return {
     isRunning,
     isStaging,
+    showWelcome,
     currentIndex,
+    currentTitle,
     totalSteps: ONBOARDING_STEPS.length,
     startTour,
     maybeStartTour,
+    // Welcome-screen actions:
+    startFromWelcome,
+    skipWelcome,
+    dismissWelcome,
     // Banner-driven navigation:
     next: advance,
     back,

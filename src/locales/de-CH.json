@@ -605,6 +605,31 @@
         "title": "Karte wechseln",
         "body": "Wechsle zwischen verschiedenen Karten, ganz nach deinem Geschmack."
       },
+      "welcome": {
+        "title": "Willkommen bei TourenBuddy",
+        "body": "Wir zeigen dir alles Wichtige — eine kurze geführte Tour.",
+        "start": "Tour starten",
+        "skip": "Vorerst überspringen",
+        "dismiss": "Nicht mehr anzeigen"
+      },
+      "labels": {
+        "phone": "Telefonnummer verifizieren",
+        "notifications": "Benachrichtigungen",
+        "addContact": "Kontakt hinzufügen",
+        "contacts": "Kontaktliste",
+        "friendRequests": "Freundschaftsanfragen",
+        "tours": "Deine Touren",
+        "addLocation": "Tour hinzufügen",
+        "basemap": "Karte wechseln"
+      },
+      "nav": {
+        "openMenu": "Menü öffnen",
+        "profile": "Profil öffnen",
+        "contacts": "Kontakte öffnen",
+        "baseMap": "Karte wechseln",
+        "friendRequests": "Anfragen öffnen",
+        "tours": "Touren öffnen"
+      },
       "bannerLabel": "Geführte Tour",
       "controls": {
         "next": "Weiter",

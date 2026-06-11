@@ -2,6 +2,8 @@
 import { useI18n } from 'vue-i18n'
 
 defineProps<{
+  /** Short label for the current step (e.g. "Verify phone number"). */
+  title: string
   /** 1-based current step number. */
   current: number
   /** Total step count. */
@@ -23,7 +25,10 @@ const { t } = useI18n({ useScope: 'global' })
       {{ t('onboarding.tour.controls.finish') }}
     </button>
 
-    <span class="progress" aria-live="polite">{{ current }} / {{ total }}</span>
+    <div class="step-info">
+      <span class="step-title">{{ title }}</span>
+      <span class="progress" aria-live="polite">{{ current }} / {{ total }}</span>
+    </div>
 
     <div class="nav">
       <button
@@ -70,7 +75,10 @@ const { t } = useI18n({ useScope: 'global' })
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
-  max-width: calc(100vw - 2 * var(--spacing-md));
+  /* Constant width across steps: the title column flexes/ellipsises inside this
+     fixed box, so a long step name never resizes the banner. Capped to the
+     viewport on narrow screens. */
+  width: min(22rem, calc(100vw - 2 * var(--spacing-md)));
   padding: var(--spacing-xs) var(--spacing-xs) var(--spacing-xs) var(--spacing-md);
   border-radius: 26px;
   background-color: var(--color-fab-surface);
@@ -97,10 +105,42 @@ const { t } = useI18n({ useScope: 'global' })
   border-color: rgba(255, 255, 255, 0.85);
 }
 
-.progress {
+.step-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  /* Take the slack between Finish and the arrows so the banner stays fixed
+     width; the title ellipsises within it rather than growing the box. */
+  flex: 1;
+  min-width: 0;
+}
+
+.step-title {
+  max-width: 100%;
+  /* Wrap to a maximum of 2 lines (ellipsis past that), horizontally centered —
+     long titles break instead of forcing the fixed-width banner wider. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  /* Override the banner's `white-space: nowrap` so the title actually wraps
+     (line-clamp only ellipsises wrapped text — without this it just clips). */
+  white-space: normal;
+  overflow-wrap: break-word;
+  text-align: center;
+  line-height: 1.2;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--color-fab-on-surface);
+}
+
+.progress {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-fab-on-surface);
+  opacity: 0.8;
   font-variant-numeric: tabular-nums;
 }
 

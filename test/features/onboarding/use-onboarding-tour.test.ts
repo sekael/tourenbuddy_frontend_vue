@@ -77,31 +77,33 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('useOnboardingTour — auto-start guard', () => {
-  it('does NOT auto-start when the gate is closed', async () => {
+describe('useOnboardingTour — auto-start welcome gate', () => {
+  it('does NOT open the welcome when the gate is closed', async () => {
     const opts = makeOptions({ canAutoStart: vi.fn(() => false) })
     const tour = useOnboardingTour(opts)
     tour.maybeStartTour()
     await flush()
 
+    expect(tour.showWelcome.value).toBe(false)
     expect(opts.dismissTourAtSignIn).not.toHaveBeenCalled()
     expect(driverInstances).toHaveLength(0)
     expect(tour.isRunning.value).toBe(false)
   })
 
-  it('auto-starts when gate is open: dismisses the gate and highlights step 0', async () => {
+  it('opens the welcome when the gate is open — without starting or flipping the gate', async () => {
     mountAllAnchors()
     const opts = makeOptions()
     const tour = useOnboardingTour(opts)
     tour.maybeStartTour()
     await flush()
 
-    expect(opts.dismissTourAtSignIn).toHaveBeenCalledTimes(1)
-    expect(popoverTitle()).toBe(ONBOARDING_STEPS[0].titleKey)
-    expect(tour.isRunning.value).toBe(true)
+    expect(tour.showWelcome.value).toBe(true)
+    expect(tour.isRunning.value).toBe(false)
+    expect(driverInstances).toHaveLength(0)
+    expect(opts.dismissTourAtSignIn).not.toHaveBeenCalled()
   })
 
-  it('does not start a second time while already running', async () => {
+  it('does not reopen the welcome while it is already showing', async () => {
     mountAllAnchors()
     const tour = useOnboardingTour(makeOptions())
     tour.maybeStartTour()
@@ -109,15 +111,57 @@ describe('useOnboardingTour — auto-start guard', () => {
     tour.maybeStartTour()
     await flush()
 
-    expect(driverInstances).toHaveLength(1)
+    expect(tour.showWelcome.value).toBe(true)
+    expect(driverInstances).toHaveLength(0)
+  })
+
+  it('start: begins the tour at the resume step and flips the gate off', async () => {
+    mountAllAnchors()
+    const opts = makeOptions({ getResumeStep: vi.fn(() => 2) })
+    const tour = useOnboardingTour(opts)
+    tour.maybeStartTour()
+    await flush()
+    tour.startFromWelcome()
+    await flush()
+
+    expect(tour.showWelcome.value).toBe(false)
+    expect(tour.isRunning.value).toBe(true)
+    expect(opts.dismissTourAtSignIn).toHaveBeenCalledTimes(1)
+    expect(popoverTitle()).toBe(ONBOARDING_STEPS[2].titleKey)
+  })
+
+  it('skip for now: closes the welcome but leaves the gate untouched', async () => {
+    const opts = makeOptions()
+    const tour = useOnboardingTour(opts)
+    tour.maybeStartTour()
+    await flush()
+    tour.skipWelcome()
+
+    expect(tour.showWelcome.value).toBe(false)
+    expect(tour.isRunning.value).toBe(false)
+    expect(opts.dismissTourAtSignIn).not.toHaveBeenCalled()
+    expect(driverInstances).toHaveLength(0)
+  })
+
+  it('don\'t show again: closes the welcome and flips the gate off', async () => {
+    const opts = makeOptions()
+    const tour = useOnboardingTour(opts)
+    tour.maybeStartTour()
+    await flush()
+    tour.dismissWelcome()
+
+    expect(tour.showWelcome.value).toBe(false)
+    expect(tour.isRunning.value).toBe(false)
+    expect(opts.dismissTourAtSignIn).toHaveBeenCalledTimes(1)
+    expect(driverInstances).toHaveLength(0)
   })
 })
 
 describe('useOnboardingTour — resume + clamp', () => {
-  it('resumes at the persisted step index', async () => {
+  it('resumes at the given step index', async () => {
     mountAllAnchors()
-    const tour = useOnboardingTour(makeOptions({ getResumeStep: vi.fn(() => 2) }))
-    tour.maybeStartTour()
+    const tour = useOnboardingTour(makeOptions())
+    tour.startTour(2)
     await flush()
 
     expect(tour.currentIndex.value).toBe(2)
@@ -152,7 +196,7 @@ describe('useOnboardingTour — banner navigation', () => {
   it('next advances and back returns, re-staging each step', async () => {
     mountAllAnchors()
     const tour = useOnboardingTour(makeOptions())
-    tour.maybeStartTour()
+    tour.startTour(0)
     await flush()
     expect(tour.currentIndex.value).toBe(0)
 
@@ -168,7 +212,7 @@ describe('useOnboardingTour — banner navigation', () => {
   it('back at step 0 is a no-op (does not go negative)', async () => {
     mountAllAnchors()
     const tour = useOnboardingTour(makeOptions())
-    tour.maybeStartTour()
+    tour.startTour(0)
     await flush()
 
     tour.back()
@@ -181,9 +225,9 @@ describe('useOnboardingTour — banner navigation', () => {
 describe('useOnboardingTour — persistence', () => {
   it('persists the current index when dismissed mid-tour', async () => {
     mountAllAnchors()
-    const opts = makeOptions({ getResumeStep: vi.fn(() => 2) })
+    const opts = makeOptions()
     const tour = useOnboardingTour(opts)
-    tour.maybeStartTour()
+    tour.startTour(2)
     await flush()
 
     tour.finish()
@@ -195,9 +239,9 @@ describe('useOnboardingTour — persistence', () => {
 
   it('resets the resume point to 0 when advancing past the final step', async () => {
     mountAllAnchors()
-    const opts = makeOptions({ getResumeStep: vi.fn(() => LAST) })
+    const opts = makeOptions()
     const tour = useOnboardingTour(opts)
-    tour.maybeStartTour()
+    tour.startTour(LAST)
     await flush()
 
     tour.next()
@@ -264,12 +308,32 @@ describe('useOnboardingTour — staging spotlights', () => {
     expect(driverInstances).toHaveLength(2)
     const [waypoint, target] = driverInstances
     expect(waypoint.highlighted[0].element).toBe(document.querySelector('[data-tour="open-menu"]'))
-    expect(waypoint.highlighted[0].popover).toBeUndefined() // spotlight-only, no copy
+    expect(waypoint.highlighted[0].popover).toBeUndefined() // no hintKey → bare spotlight
     expect(waypoint.destroyed).toBe(true)
     // Two-phase reveal: spotlight first (no copy), then the popover.
     expect(target.highlighted[0].popover).toBeUndefined()
     expect(popoverTitle(target)).toBe(ONBOARDING_STEPS[0].titleKey)
     expect(target.destroyed).toBe(false)
+  })
+
+  it('attaches a hint popover to a waypoint when a hintKey is given', async () => {
+    vi.useFakeTimers()
+    document.body.innerHTML
+      = `<button data-tour="open-menu"></button><div ${ONBOARDING_STEPS[0].target.slice(1, -1)}></div>`
+    const opts = makeOptions({
+      stage: vi.fn(async (_s, ctx) => {
+        await ctx.spotlight('[data-tour="open-menu"]', 'onboarding.tour.nav.openMenu')
+      }),
+    })
+    const tour = useOnboardingTour(opts)
+    tour.startTour(0)
+    await vi.advanceTimersByTimeAsync(3000)
+    vi.useRealTimers()
+
+    const [waypoint] = driverInstances
+    // Hint popover: description only (mocked t echoes the key), no title.
+    expect(waypoint.highlighted[0].popover?.description).toBe('onboarding.tour.nav.openMenu')
+    expect(waypoint.highlighted[0].popover?.title).toBeUndefined()
   })
 
   it('skips a spotlight whose control never appears, still highlighting the target', async () => {

@@ -5,7 +5,7 @@ import OnboardingTourBanner from '@/features/onboarding/presentation/components/
 describe('onboardingTourBanner', () => {
   function mountBanner(props: Record<string, unknown> = {}) {
     return mount(OnboardingTourBanner, {
-      props: { current: 2, total: 8, canBack: true, ...props },
+      props: { title: 'Verify phone number', current: 2, total: 8, canBack: true, ...props },
     })
   }
 
@@ -35,5 +35,10 @@ describe('onboardingTourBanner', () => {
   it('renders progress as current / total', () => {
     const w = mountBanner({ current: 3, total: 8 })
     expect(w.text()).toContain('3 / 8')
+  })
+
+  it('renders the current step title', () => {
+    const w = mountBanner({ title: 'Contacts list' })
+    expect(w.find('.step-title').text()).toBe('Contacts list')
   })
 })

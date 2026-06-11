@@ -1,0 +1,11 @@
+/* Overrides for driver.js popovers used by the onboarding tour.
+   Loaded from `use-onboarding-tour.ts` (the popover is teleported to <body>,
+   so scoped component styles can't reach it). */
+
+/* Waypoint hint popovers ("Open menu", "Open contacts") size to their text
+   instead of driver.js' default 250px min-width. Two-class selector
+   out-specifies the base `.driver-popover` rule. */
+.driver-popover.onboarding-hint-popover {
+  min-width: 0;
+  white-space: nowrap;
+}

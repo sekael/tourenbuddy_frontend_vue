@@ -89,8 +89,50 @@
 ## 11. Finalize
 
 - [x] 11.1 Run `npx eslint . --fix` (zero warnings) and `npm run type-check` (both clean); diff is antfu-clean
-- [ ] 11.2 Manually verify locally against local Supabase — **mobile/bottom-sheet layout first** (primary audience), then desktop: new user sees the 8-step tour driving the real sheets; top banner shows `X/Y` + back/forward + Finish tour (no buttons in the popover); backdrop tap advances; highlighted control is inert; banner sits above the spotlight; it does not auto-show again at sign-in; reopen from profile resumes at last step; finishing then reopening replays from step 1
-- [ ] 11.3 Prompt the user to commit with conventional message: `feat(onboarding): guided onboarding tour for new users (#186)`
-- [ ] 11.4 Prompt the user to push and open a PR to `main`; note `supabase db push` is a separate user-approved deploy step
+- [x] 11.2 Manually verify locally against local Supabase — **mobile/bottom-sheet layout first** (primary audience), then desktop: new user sees the 8-step tour driving the real sheets; top banner shows `X/Y` + back/forward + Finish tour (no buttons in the popover); backdrop tap advances; highlighted control is inert; banner sits above the spotlight; it does not auto-show again at sign-in; reopen from profile resumes at last step; finishing then reopening replays from step 1
+- [x] 11.3 Prompt the user to commit with conventional message: `feat(onboarding): guided onboarding tour for new users (#186)`
+- [x] 11.4 Prompt the user to push and open a PR to `main`; note `supabase db push` is a separate user-approved deploy step
 - [ ] Cleanup temporary files from debugging (playwright etc)
+
+## 13. Popover placement fix (post-review)
+
+- [x] 13.1 `goToStep` two-phase reveal: once the target settles, `highlight({ element })` (spotlight only) → `sleep(gapMs)` + `waitForPosition` → second `highlight({ element, popover })` measured against the settled rect (fixes the profile steps' popover jump from the centered dialog re-centering + async notification-prefs growth)
+- [x] 13.2 Movement-gate `refreshAfterMotion`: snapshot the target rect, only `refresh()` if it drifted (>1px) so a stable layout never triggers a needless reposition
+- [x] 13.3 Add optional `side`/`align` to `OnboardingStep` (default `bottom`/`center`); set the notifications step to `side: 'top'` so a below-target popover can't overflow the screen bottom and flip into the banner; `buildPopover` reads the overrides
+- [x] 13.4 Update `use-onboarding-tour.test.ts` for the two-phase highlight (target highlighted twice — spotlight then popover; assert the popover-bearing call)
+
+## 14. Pre-tour welcome screen (post-review)
+
+- [x] 14.1 Create `onboarding-welcome.vue` — centered card over a dimmed full-screen backdrop (own backdrop; not the driver overlay), emits `start` / `skip` / `dismiss`; backdrop not click-dismissible
+- [x] 14.2 Add `showWelcome` ref to `use-onboarding-tour.ts`; `maybeStartTour()` now raises the welcome (no gate write, no tour start), guarded on `isRunning` / `showWelcome` / `canAutoStart`
+- [x] 14.3 Welcome actions: `startFromWelcome()` (lower welcome + `dismissTourAtSignIn()` + `startTour(getResumeStep())`); `skipWelcome()` (lower welcome only — gate untouched, returns next sign-in); `dismissWelcome()` (lower welcome + `dismissTourAtSignIn()`). Expose all three + `showWelcome`
+- [x] 14.4 Reopen path unchanged (`startTour(lastStep)`) — bypasses the welcome screen
+- [x] 14.5 Wire `map-page.vue`: import + destructure `showWelcome`, render `<OnboardingWelcome>` teleported to `<body>`, events → `startFromWelcome` / `skipWelcome` / `dismissWelcome`
+- [x] 14.6 i18n: `onboarding.tour.welcome.*` (title, body, start, skip, dismiss) in `en.json` + `de-CH.json`
+- [x] 14.7 Tests: welcome gate (opens on auto-trigger without starting/flipping; not reopened while showing; start/skip/dismiss flag semantics) in `use-onboarding-tour.test.ts`; component emit test `onboarding-welcome.test.ts`. Mechanics tests drive via `startTour()` directly
+- [x] 14.8 Gate green: `npm run type-check` + `npx eslint .` + `npm run test` (1004 passing)
+- [x] 14.9 Manually verify locally: new user sees the welcome at sign-in (mobile + desktop); Start runs the tour; Skip for now keeps it returning next sign-in; Don't show again suppresses it; reopen from profile skips the welcome
+- [x] 14.10 Prompt the user to commit (two atomic commits): `fix(onboarding): stabilize tour popover placement on profile steps` and `feat(onboarding): add pre-tour welcome screen`
+
+## 15. Banner step title + waypoint hints (post-review)
+
+- [x] 15.1 Add a per-step `labelKey` to `OnboardingStep` (short banner label, distinct from the popover `titleKey`); set it for all 8 steps
+- [x] 15.2 i18n: `onboarding.tour.labels.*` (8 short step labels) + `onboarding.tour.nav.*` (waypoint hints: openMenu, profile, contacts, baseMap, friendRequests, tours) in `en.json` + `de-CH.json`
+- [x] 15.3 Composable exposes `currentTitle` (computed `t(labelKey)` for the active step)
+- [x] 15.4 Banner shows the step title stacked over `X/Y`: new required `title` prop, title ellipsised; `map-page` passes `currentTitle`
+- [x] 15.5 `StageContext.spotlight(selector, hintKey?)`: when `hintKey` is set, highlight with a short description-only popover (no title/buttons, no forced side); bare spotlight otherwise
+- [x] 15.6 `stageTourSurface` passes hint keys for every waypoint (open-menu, menu-profile, menu-contacts, menu-base-map, open-friend-requests, open-tours)
+- [x] 15.7 Tests: banner renders the title; waypoint with a `hintKey` attaches a description-only popover (bare spotlight still copy-free)
+- [x] 15.8 Gate green: `npm run type-check` + `npx eslint .` + `npm run test` (1006 passing)
+- [x] 15.9 Manually verify locally (mobile + desktop): banner shows each step's title; intermediate waypoints show "Open menu" / "Open contacts" / etc. hints
+- [x] 15.10 Prompt the user to commit: `feat(onboarding): banner step titles and waypoint hint popovers`
+
+## 16. Tour UX polish (post-review)
+
+- [x] 16.1 Banner constant width (`min(22rem, 100vw − margins)`); title column flexes within and wraps to a centered max-2-line clamp instead of resizing the banner or clipping on one line (`white-space: normal` overriding the banner's `nowrap`)
+- [x] 16.2 Slow the staged choreography: `DEFAULT_PACE` `holdMs` 1300→2000, `gapMs` 400→500
+- [x] 16.3 Welcome screen responsive: full-screen page on mobile (solid bg, no card/dim), centered dialog over a dimmed backdrop at `@media (min-width: 600px)`
+- [x] 16.4 Hint popovers shrink to text: `popoverClass: 'onboarding-hint-popover'` + `onboarding-tour.css` (imported by the composable) dropping driver.js' `min-width: 250px`
+- [x] 16.5 Gate green: `npm run type-check` + `npx eslint .` + `npm run test`
+- [x] 16.6 Prompt the user to commit: `feat(onboarding): polish tour banner, pacing, welcome and hint popovers`
 

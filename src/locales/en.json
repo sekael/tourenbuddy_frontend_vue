@@ -605,6 +605,31 @@
         "title": "Switch the map",
         "body": "Swap between different maps to suit your style."
       },
+      "welcome": {
+        "title": "Welcome to TourenBuddy",
+        "body": "Let's show you around — a quick guided tour of the essentials.",
+        "start": "Start tour",
+        "skip": "Skip for now",
+        "dismiss": "Don't show again"
+      },
+      "labels": {
+        "phone": "Verify phone number",
+        "notifications": "Notification settings",
+        "addContact": "Add a contact",
+        "contacts": "Contacts list",
+        "friendRequests": "Friend requests",
+        "tours": "Your tours",
+        "addLocation": "Add a tour",
+        "basemap": "Switch maps"
+      },
+      "nav": {
+        "openMenu": "Open menu",
+        "profile": "Open profile",
+        "contacts": "Open contacts",
+        "baseMap": "Switch maps",
+        "friendRequests": "Open friend requests",
+        "tours": "Open your tours"
+      },
       "bannerLabel": "Guided tour",
       "controls": {
         "next": "Next",

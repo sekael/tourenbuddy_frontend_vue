@@ -31,6 +31,8 @@ export interface OnboardingStep {
   titleKey: string
   /** i18n key for the popover body. */
   bodyKey: string
+  /** i18n key for the short banner label (distinct from the popover title). */
+  labelKey: string
   /**
    * Optional popover placement override (defaults to `bottom` / `center`).
    * The top banner is pinned above every target, so `bottom` is the safe
@@ -50,12 +52,14 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     target: '[data-tour="phone-verification"]',
     titleKey: 'onboarding.tour.phone.title',
     bodyKey: 'onboarding.tour.phone.body',
+    labelKey: 'onboarding.tour.labels.phone',
   },
   {
     surface: 'profile',
     target: '[data-tour="notifications"]',
     titleKey: 'onboarding.tour.notifications.title',
     bodyKey: 'onboarding.tour.notifications.body',
+    labelKey: 'onboarding.tour.labels.notifications',
     // Notifications sit low in the profile dialog; place the popover above the
     // target so it can't overflow the screen bottom (and get flipped into the
     // banner). It lands in the dialog's upper area, clear of the pinned banner.
@@ -66,35 +70,41 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     target: '[data-tour="add-contact"]',
     titleKey: 'onboarding.tour.addContact.title',
     bodyKey: 'onboarding.tour.addContact.body',
+    labelKey: 'onboarding.tour.labels.addContact',
   },
   {
     surface: 'contacts',
     target: '[data-tour="contacts"]',
     titleKey: 'onboarding.tour.contacts.title',
     bodyKey: 'onboarding.tour.contacts.body',
+    labelKey: 'onboarding.tour.labels.contacts',
   },
   {
     surface: 'friend-requests',
     target: '[data-tour="friend-requests"]',
     titleKey: 'onboarding.tour.friendRequests.title',
     bodyKey: 'onboarding.tour.friendRequests.body',
+    labelKey: 'onboarding.tour.labels.friendRequests',
   },
   {
     surface: 'tours',
     target: '[data-tour="tours"]',
     titleKey: 'onboarding.tour.tours.title',
     bodyKey: 'onboarding.tour.tours.body',
+    labelKey: 'onboarding.tour.labels.tours',
   },
   {
     surface: 'tour-bar',
     target: '[data-tour="add-tour"]',
     titleKey: 'onboarding.tour.addLocation.title',
     bodyKey: 'onboarding.tour.addLocation.body',
+    labelKey: 'onboarding.tour.labels.addLocation',
   },
   {
     surface: 'base-map-panel',
     target: '[data-tour="basemap"]',
     titleKey: 'onboarding.tour.basemap.title',
     bodyKey: 'onboarding.tour.basemap.body',
+    labelKey: 'onboarding.tour.labels.basemap',
   },
 ]
