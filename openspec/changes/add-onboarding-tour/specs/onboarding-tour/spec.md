@@ -64,7 +64,7 @@ The tour SHALL allow navigating steps both forward and backward. The system SHAL
 
 ### Requirement: Guided step sequence
 
-The tour SHALL present steps in this order, each highlighting the corresponding feature with a spotlight and an explanatory tooltip: (1) phone verification, (2) notification settings, (3) contacts, (4) tours, (5) switching maps.
+The tour SHALL present steps in this order, each opening/driving the real surface and highlighting the corresponding feature with a spotlight and an explanatory popover: (1) phone verification, (2) notification settings, (3) add a contact, (4) your contacts list, (5) friend requests, (6) my tours (own/friends tabs), (7) add a location, (8) switching maps. Steps whose surface is a page-level overlay (contacts, friend-requests, tours) SHALL open the actual sheet and target a stable anchor that exists even for a new user with empty lists.
 
 #### Scenario: Advancing through all steps
 
@@ -81,9 +81,14 @@ The tour SHALL present steps in this order, each highlighting the corresponding 
 - **WHEN** a step's target element cannot be found in the DOM after its overlay is opened
 - **THEN** the tour skips that step rather than highlighting an empty region or erroring
 
-### Requirement: Dismiss control and non-blocking behavior
+### Requirement: Control banner and non-blocking behavior
 
-The tour SHALL be dismissible at any step via an explicit "Finish tour" control present on every step, and SHALL never force the user to complete an action (e.g. it must not require actually verifying a phone number to proceed). Tapping the dimmed backdrop SHALL advance to the next step rather than dismiss the tour. The highlighted control SHALL be inert (non-interactive) while the tour is active.
+While the tour is active, the system SHALL display a control banner fixed at the top of the screen (above the spotlight overlay/popover) showing a "Finish tour" control, the current step position as `X / Y`, and back/forward arrow controls. The tour's popover SHALL contain only the step title and description (no footer buttons). The tour SHALL be dismissible at any step via the banner's "Finish tour" control, and SHALL never force the user to complete an action (e.g. it must not require actually verifying a phone number to proceed). Tapping the dimmed backdrop SHALL advance to the next step rather than dismiss the tour. The highlighted control SHALL be inert (non-interactive) while the tour is active.
+
+#### Scenario: Banner shows progress and navigation
+
+- **WHEN** the tour is on step N of M
+- **THEN** the banner shows `N / M`, the back arrow is disabled on the first step, the forward arrow advances (and completes the tour past the last step), and the back arrow returns to the previous step
 
 #### Scenario: User finishes the tour mid-sequence
 

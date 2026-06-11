@@ -52,13 +52,16 @@ Rather than coupling the tour to CSS classes (brittle), each highlighted control
 
 ### D4: Staging surfaces between steps + driver.js interaction config
 
-Each step names the **surface** it needs staged (see D2): phone-verification + notifications → `'profile'` (profile sheet, `activeOverlay = 'profile'`); contacts → `'speed-dial-menu'` (expanded speed-dial); tours → `'tour-bar'` (always-visible `TourActionBar`); basemap → `'base-map-panel'` (speed-dial base-map switcher). Because driver.js does NOT await its hooks, the composable does NOT stage inside `onHighlightStarted`; instead it controls progression manually with `driver.highlight()` per step: `goToStep(i)` awaits `stage(surface)` + `nextTick` + a `waitForElement(selector)` poll, then highlights — or skips the step (in the travel direction) if the target never appears. Sequence is ordered so the two profile-sheet steps are adjacent (sheet opens once). The profile sheet must be in **view mode** for the phone/notification targets — a fresh open defaults to view mode, so no extra handling beyond not forcing edit. `MapActionOverlay` gains `openMenu()` / `openBaseMap()` (alongside the existing `closeMenu()`) so `stage()` can drive the speed-dial.
+Each step names the **surface** it needs staged (see D2). The 8-step sequence and surfaces: phone-verification + notifications → `'profile'`; add-contact + your-contacts → `'contacts'` (contacts sheet); friend-requests → `'friend-requests'` (friend-requests sheet); my-tours tabs → `'tours'` (tours sheet); add-location → `'tour-bar'` (always-visible `TourActionBar`); switch-maps → `'base-map-panel'` (speed-dial base-map switcher). **Contacts, friend-requests and tours are page-level `activeOverlay` overlays**, so `stage()` opens the *real* sheet (`openOverlay(surface)`) and the tour highlights stable anchors that exist even for an empty new-user account (`.list-actions-row`/`.add-contact-btn`, a `.contacts-content` wrapper, `.tab-bar`, `.tabs`). Only the base-map switcher still needs the speed-dial (`MapActionOverlay.openBaseMap()`).
+
+Because driver.js does NOT await its hooks, the composable controls progression manually with `driver.highlight()` per step: `goToStep(i)` awaits `stage(surface)` + a `waitForElement(selector)` poll, then highlights — or skips the step (in the travel direction) if the target never appears. Adjacent same-surface steps (e.g. the two profile steps) reuse the open sheet (`openOverlay` no-ops when already active); switching surfaces animates via the existing sheet `Transition mode="out-in"`, so step transitions are animated.
 
 driver.js interaction config (resolved):
 
-- `overlayClickBehavior: 'nextStep'` — tapping the dimmed backdrop **advances** to the next step (does not dismiss).
-- A persistent **"Finish tour"** button on every step is the **only** way to dismiss. No backdrop-close, no Escape-to-dismiss (`allowClose: false`); navigation buttons Next/Previous enabled for bidirectional movement.
-- `disableActiveInteraction: true` — highlighted controls are inert during the tour (prevents tapping "Add phone" from opening edit mode under the spotlight and hiding the next target).
+- `overlayClickBehavior: () => advance()` — tapping the dimmed backdrop **advances** (does not dismiss).
+- `allowClose: false` — no backdrop-close, no Escape-to-dismiss.
+- `disableActiveInteraction: true` — highlighted controls are inert during the tour.
+- `showButtons: []` — **the popover has no footer buttons**. All controls live in the top banner (see D7); the popover is title + description only. This avoids cramming a long "Finish tour" label into driver.js's corner ✕ slot (which overflowed and collided with the title).
 
 ### D5: Two-field state persistence on the store
 
@@ -79,8 +82,16 @@ Reads: `store.profile?.onboardingTourShowAtSignIn` and `?.onboardingTourLastStep
 - **Auto-start:** `maybeStartTour()` runs only when authenticated, profile loaded, `onboardingTourShowAtSignIn === true`, and not already running (internal `isRunning` ref). On start it calls `dismissTourAtSignIn()` so it never auto-shows again. Gating on profile-loaded avoids a flash for users who already saw it. **Auto-starts regardless of profile completeness** — a user who skipped the profile form still gets feature discovery (it's non-blocking and skippable).
 - **Reopen:** "Show app tour" in the profile sheet calls `onboardingTourStore.requestReopen()`; `map-page.vue` watches the store and calls `startTour(onboardingTourLastStep)` (bypasses the gate). Decouples the sibling overlay from the controller (D2).
 - **Resume clamp:** `startTour` clamps the index to `[0, steps.length - 1]` so a persisted `last_step` that is out of range after a future step-list change never errors.
-- **Bidirectional:** driver.js exposes `moveNext`/`movePrevious` and renders Next/Previous buttons natively; steps are ordered and re-staged on either direction (the `onHighlightStarted` overlay-staging runs regardless of travel direction). The composable tracks the active index and, via driver.js's `onDeselected`/`onDestroyed`, persists it.
-- **Persist on close/finish:** on dismiss/skip → `saveTourStep(currentIndex)`. On advancing past the final step (finish) → `saveTourStep(0)` so a later reopen replays from the start (resolved UX decision).
+- **Bidirectional:** the composable tracks the active index and exposes `next`/`back`/`finish` actions; `goToStep(i, direction)` re-stages on either direction. Driven from the banner (D7), not driver.js footer buttons.
+- **Persist on close/finish:** on dismiss (Finish tour) → `saveTourStep(currentIndex)`. On advancing past the final step → `saveTourStep(0)` so a later reopen replays from the start (resolved UX decision).
+
+### D7: Top control banner (controls live outside the popover)
+
+driver.js renders its dismiss as a corner ✕; relabelling it "Finish tour" overflowed the popover and collided with the title (observed on desktop + mobile). Resolution: **a custom `onboarding-tour-banner.vue` fixed at the top of the screen owns all controls** — a **Finish tour** button, a **step `X/Y`** progress indicator, and **back/forward arrow** buttons. The popover keeps only title + description (`showButtons: []`).
+
+- The banner renders in `map-page.vue` (`v-if="tourRunning"`, slide/fade `Transition`) and is driven by the composable's exposed `isRunning` / `currentIndex` / `totalSteps`, wiring its events to `next` / `back` / `finish`.
+- `z-index: 2147483000` sits above driver.js' overlay + popover (`z-index: 1000000000`) so the controls stay clickable and the backdrop-tap-advance never swallows banner clicks.
+- Back arrow is disabled on step 0; forward arrow on the last step **completes** (resets resume to 0); Finish **dismisses** (saves current step). Tap-away still advances; highlighted control still inert.
 
 ## Risks / Trade-offs
 

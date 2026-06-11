@@ -362,63 +362,71 @@ function onFormPhoneInput(phone: string) {
     <!-- List view -->
     <div v-if="viewState === 'list'" class="list-view">
       <div class="list-actions-row">
-        <button type="button" class="add-contact-btn" @click="openAdd">
+        <button type="button" class="add-contact-btn" data-tour="add-contact" @click="openAdd">
           <span class="material-symbols-outlined">person_add</span>
           {{ t('contacts.list.addBtn') }}
         </button>
-        <button
-          v-if="callerPhoneVerified"
-          type="button"
-          class="friend-requests-btn"
-          @click="goToFriendRequests"
-        >
-          <span class="material-symbols-outlined">group</span>
-          {{ t('friendships.friendsListLink') }}
-          <span v-if="pendingIncomingCount > 0" class="badge">{{ pendingIncomingCount }}</span>
-        </button>
+        <!-- Always rendered (discoverability + onboarding tour waypoint);
+             disabled until the caller's phone is verified. -->
+        <BaseTooltip :text="t('friendships.verifyPhoneHint')" :disabled="callerPhoneVerified">
+          <button
+            type="button"
+            class="friend-requests-btn"
+            data-tour="open-friend-requests"
+            :disabled="!callerPhoneVerified"
+            :aria-disabled="!callerPhoneVerified"
+            @click="goToFriendRequests"
+          >
+            <span class="material-symbols-outlined">group</span>
+            {{ t('friendships.friendsListLink') }}
+            <span v-if="pendingIncomingCount > 0" class="badge">{{ pendingIncomingCount }}</span>
+          </button>
+        </BaseTooltip>
       </div>
 
-      <div v-if="isLoading" class="loading-text">
-        {{ t('contacts.list.loading') }}
-      </div>
+      <div class="contacts-content" data-tour="contacts">
+        <div v-if="isLoading" class="loading-text">
+          {{ t('contacts.list.loading') }}
+        </div>
 
-      <div v-else-if="contacts.length === 0" class="empty-state">
-        <span class="material-symbols-outlined empty-icon">group</span>
-        <p class="empty-text">
-          {{ t('contacts.list.emptyTitle') }}
-        </p>
-        <p class="empty-sub">
-          {{ t('contacts.list.emptySubtitle') }}
-        </p>
-      </div>
+        <div v-else-if="contacts.length === 0" class="empty-state">
+          <span class="material-symbols-outlined empty-icon">group</span>
+          <p class="empty-text">
+            {{ t('contacts.list.emptyTitle') }}
+          </p>
+          <p class="empty-sub">
+            {{ t('contacts.list.emptySubtitle') }}
+          </p>
+        </div>
 
-      <ul v-else class="contacts-list">
-        <li
-          v-for="contact in contacts"
-          :key="contact.id"
-          class="contact-row"
-          @click="openDetail(contact)"
-        >
-          <div class="contact-avatar">
-            {{ resolveContactName(contact)[0]?.toUpperCase() }}
-          </div>
-          <div class="contact-info">
-            <span class="contact-name-row">
-              <span class="contact-name">{{ resolveContactName(contact) }}</span>
-              <BaseTooltip v-if="friendContactIds.has(contact.id) && !blockedContactIds.has(contact.id)" :text="t('friendships.tooltip')">
-                <span class="material-symbols-outlined friend-icon">group</span>
-              </BaseTooltip>
-              <BaseTooltip v-if="blockedContactIds.has(contact.id)" :text="t('blocks.tooltip')">
-                <span class="material-symbols-outlined blocked-icon">block</span>
-              </BaseTooltip>
-            </span>
-            <span v-if="getPrimaryPhone(contact)" class="contact-subtitle">
-              {{ formatPhoneDisplay(getPrimaryPhone(contact)!) }}
-            </span>
-          </div>
-          <span class="material-symbols-outlined row-arrow">chevron_right</span>
-        </li>
-      </ul>
+        <ul v-else class="contacts-list">
+          <li
+            v-for="contact in contacts"
+            :key="contact.id"
+            class="contact-row"
+            @click="openDetail(contact)"
+          >
+            <div class="contact-avatar">
+              {{ resolveContactName(contact)[0]?.toUpperCase() }}
+            </div>
+            <div class="contact-info">
+              <span class="contact-name-row">
+                <span class="contact-name">{{ resolveContactName(contact) }}</span>
+                <BaseTooltip v-if="friendContactIds.has(contact.id) && !blockedContactIds.has(contact.id)" :text="t('friendships.tooltip')">
+                  <span class="material-symbols-outlined friend-icon">group</span>
+                </BaseTooltip>
+                <BaseTooltip v-if="blockedContactIds.has(contact.id)" :text="t('blocks.tooltip')">
+                  <span class="material-symbols-outlined blocked-icon">block</span>
+                </BaseTooltip>
+              </span>
+              <span v-if="getPrimaryPhone(contact)" class="contact-subtitle">
+                {{ formatPhoneDisplay(getPrimaryPhone(contact)!) }}
+              </span>
+            </div>
+            <span class="material-symbols-outlined row-arrow">chevron_right</span>
+          </li>
+        </ul>
+      </div>
     </div>
 
     <!-- Detail / edit view -->
@@ -615,8 +623,13 @@ function onFormPhoneInput(phone: string) {
   transition: background-color 0.15s;
 }
 
-.friend-requests-btn:hover {
+.friend-requests-btn:hover:not(:disabled) {
   background-color: var(--color-surface-variant);
+}
+
+.friend-requests-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .friend-requests-btn .material-symbols-outlined {

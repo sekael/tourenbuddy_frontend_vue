@@ -24,7 +24,7 @@ const { t } = useI18n({ useScope: 'global' })
       <BaseTooltip :text="t('map.actionBar.myTours')" :disabled="dismissMode">
         <button
           class="segment segment--tours"
-          data-tour="tours"
+          data-tour="open-tours"
           :disabled="toursDisabled"
           :aria-disabled="toursDisabled"
           @click="emit('tours')"
@@ -42,6 +42,7 @@ const { t } = useI18n({ useScope: 'global' })
       >
         <button
           class="segment segment--add"
+          data-tour="add-tour"
           :disabled="addTourDisabled"
           :aria-disabled="addTourDisabled"
           :aria-label="t('map.actionBar.addTourAriaLabel')"

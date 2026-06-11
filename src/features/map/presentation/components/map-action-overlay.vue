@@ -54,9 +54,9 @@ function closeMenu() {
   view.value = 'closed'
 }
 
-// Imperative openers for the onboarding tour to stage the contacts item and
-// the base-map switcher (both live inside this component's `view`, not in the
-// page-level overlay set).
+// Imperative openers for the onboarding tour to demonstrate the navigation
+// path (open the speed-dial menu, then the base-map switcher) — both live
+// inside this component's `view`, not the page-level overlay set.
 function openMenu() {
   if (!isPickingLocation.value)
     view.value = 'menu'

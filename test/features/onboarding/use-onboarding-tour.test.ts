@@ -15,6 +15,7 @@ interface MockDriver {
   destroyed: boolean
   highlight: ReturnType<typeof vi.fn>
   destroy: ReturnType<typeof vi.fn>
+  refresh: ReturnType<typeof vi.fn>
 }
 const driverInstances: MockDriver[] = []
 vi.mock('driver.js', () => ({
@@ -29,6 +30,7 @@ vi.mock('driver.js', () => ({
       destroy: vi.fn(function (this: MockDriver) {
         this.destroyed = true
       }),
+      refresh: vi.fn(),
     }
     inst.highlight = inst.highlight.bind(inst)
     inst.destroy = inst.destroy.bind(inst)
@@ -39,7 +41,9 @@ vi.mock('driver.js', () => ({
 
 // --- helpers -----------------------------------------------------------------
 const LAST = ONBOARDING_STEPS.length - 1
-const flush = () => new Promise(r => setTimeout(r, 0))
+// Highlighting now waits for the target's position to settle (~5 frames of
+// 16 ms), so flushing a step takes a beat longer than a single macrotask.
+const flush = () => new Promise(r => setTimeout(r, 300))
 const lastDriver = () => driverInstances[driverInstances.length - 1]
 
 function mountAllAnchors() {
@@ -56,6 +60,8 @@ function makeOptions(overrides: Partial<Parameters<typeof useOnboardingTour>[0]>
     dismissTourAtSignIn: vi.fn(() => Promise.resolve()),
     canAutoStart: vi.fn(() => true),
     getResumeStep: vi.fn(() => 0),
+    // Tiny pacing so real-timer tests stay fast (prod defaults are >1s/step).
+    pace: { holdMs: 20, gapMs: 20 },
     ...overrides,
   }
 }
@@ -132,6 +138,41 @@ describe('useOnboardingTour — resume + clamp', () => {
   })
 })
 
+describe('useOnboardingTour — banner navigation', () => {
+  it('exposes the total step count', () => {
+    const tour = useOnboardingTour(makeOptions())
+    expect(tour.totalSteps).toBe(ONBOARDING_STEPS.length)
+  })
+
+  it('next advances and back returns, re-staging each step', async () => {
+    mountAllAnchors()
+    const tour = useOnboardingTour(makeOptions())
+    tour.maybeStartTour()
+    await flush()
+    expect(tour.currentIndex.value).toBe(0)
+
+    tour.next()
+    await flush()
+    expect(tour.currentIndex.value).toBe(1)
+
+    tour.back()
+    await flush()
+    expect(tour.currentIndex.value).toBe(0)
+  })
+
+  it('back at step 0 is a no-op (does not go negative)', async () => {
+    mountAllAnchors()
+    const tour = useOnboardingTour(makeOptions())
+    tour.maybeStartTour()
+    await flush()
+
+    tour.back()
+    await flush()
+
+    expect(tour.currentIndex.value).toBe(0)
+  })
+})
+
 describe('useOnboardingTour — persistence', () => {
   it('persists the current index when dismissed mid-tour', async () => {
     mountAllAnchors()
@@ -140,7 +181,7 @@ describe('useOnboardingTour — persistence', () => {
     tour.maybeStartTour()
     await flush()
 
-    lastDriver().highlighted[0].popover.onCloseClick()
+    tour.finish()
 
     expect(opts.saveTourStep).toHaveBeenCalledWith(2)
     expect(lastDriver().destroyed).toBe(true)
@@ -154,7 +195,7 @@ describe('useOnboardingTour — persistence', () => {
     tour.maybeStartTour()
     await flush()
 
-    lastDriver().highlighted[0].popover.onNextClick()
+    tour.next()
     await flush()
 
     expect(opts.saveTourStep).toHaveBeenCalledWith(0)
@@ -192,8 +233,54 @@ describe('useOnboardingTour — missing target', () => {
     })
     const tour = useOnboardingTour(opts)
     tour.startTour(0)
-    await new Promise(r => setTimeout(r, 100))
+    // Generous: highlight waits ~80 ms position-stability after the 20 ms insert.
+    await flush()
 
     expect(lastDriver().highlighted[0].popover.title).toBe(ONBOARDING_STEPS[0].titleKey)
+  })
+})
+
+describe('useOnboardingTour — staging spotlights', () => {
+  it('runs the discrete sequence: waypoint spotlight on → off → target spotlight on', async () => {
+    vi.useFakeTimers()
+    document.body.innerHTML
+      = `<button data-tour="open-menu"></button><div ${ONBOARDING_STEPS[0].target.slice(1, -1)}></div>`
+    const opts = makeOptions({
+      stage: vi.fn(async (_s, ctx) => {
+        await ctx.spotlight('[data-tour="open-menu"]')
+      }),
+    })
+    const tour = useOnboardingTour(opts)
+    tour.startTour(0)
+    await vi.advanceTimersByTimeAsync(3000)
+    vi.useRealTimers()
+
+    // Two separate masks: the waypoint's is torn down before the target's goes up.
+    expect(driverInstances).toHaveLength(2)
+    const [waypoint, target] = driverInstances
+    expect(waypoint.highlighted[0].element).toBe(document.querySelector('[data-tour="open-menu"]'))
+    expect(waypoint.highlighted[0].popover).toBeUndefined() // spotlight-only, no copy
+    expect(waypoint.destroyed).toBe(true)
+    expect(target.highlighted[0].popover.title).toBe(ONBOARDING_STEPS[0].titleKey)
+    expect(target.destroyed).toBe(false)
+  })
+
+  it('skips a spotlight whose control never appears, still highlighting the target', async () => {
+    vi.useFakeTimers()
+    document.body.innerHTML = `<div ${ONBOARDING_STEPS[0].target.slice(1, -1)}></div>`
+    const opts = makeOptions({
+      stage: vi.fn(async (_s, ctx) => {
+        await ctx.spotlight('[data-tour="never-here"]')
+      }),
+    })
+    const tour = useOnboardingTour(opts)
+    tour.startTour(0)
+    await vi.advanceTimersByTimeAsync(3000)
+    vi.useRealTimers()
+
+    expect(driverInstances).toHaveLength(1)
+    const hl = lastDriver().highlighted
+    expect(hl).toHaveLength(1)
+    expect(hl[0].popover.title).toBe(ONBOARDING_STEPS[0].titleKey)
   })
 })

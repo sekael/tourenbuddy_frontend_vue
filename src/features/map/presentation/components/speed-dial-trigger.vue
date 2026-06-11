@@ -14,6 +14,7 @@ defineEmits<{ toggle: [] }>()
     <button
       class="fab"
       :class="{ open: isOpen }"
+      data-tour="open-menu"
       aria-haspopup="menu"
       :aria-expanded="isOpen"
       aria-controls="speed-dial-menu"

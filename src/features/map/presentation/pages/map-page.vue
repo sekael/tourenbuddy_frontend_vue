@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { StageContext } from '@/features/onboarding/presentation/composables/use-onboarding-tour'
 import type { TourSurface } from '@/features/onboarding/presentation/onboarding-steps'
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
@@ -17,6 +18,7 @@ import TourenbuddyMap from '@/features/map/presentation/components/tourenbuddy-m
 import { computeBarState } from '@/features/map/presentation/composables/compute-bar-state'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { notifyTourInterest } from '@/features/notifications/data/notify-dispatch'
+import OnboardingTourBanner from '@/features/onboarding/presentation/components/onboarding-tour-banner.vue'
 import { useOnboardingTour } from '@/features/onboarding/presentation/composables/use-onboarding-tour'
 import { useOnboardingTourStore } from '@/features/onboarding/presentation/stores/onboarding-tour-store'
 import { getElevation } from '@/features/tours/data/services/swisstopo-elevation-service'
@@ -180,23 +182,50 @@ function closeOverlay() {
 // --- Onboarding tour ---------------------------------------------------------
 // The tour composable knows only abstract surfaces; this page owns the concrete
 // overlays + speed-dial, so it translates each surface into open/close calls.
-async function stageTourSurface(surface: TourSurface) {
+// Every step replays its full navigation path from a clean slate (overlays
+// closed) so spotlight positions are deterministic — also when stepping back.
+// Waypoints are spotlight-only (no copy); `ctx.spotlight` waits for each
+// control to settle before highlighting, so the mask never lags an animation.
+async function stageTourSurface(surface: TourSurface, ctx: StageContext) {
+  // Open a speed-dial-backed sheet the way a user would: spotlight the FAB,
+  // pop the menu, spotlight the menu item, then open the sheet.
+  async function openViaMenu(name: OverlayName, itemSelector: string) {
+    await ctx.spotlight('[data-tour="open-menu"]')
+    mapOverlayRef.value?.openMenu()
+    await ctx.spotlight(itemSelector)
+    openOverlay(name)
+  }
+
+  closeOverlay()
+  mapOverlayRef.value?.closeMenu()
+
   switch (surface) {
     case 'profile':
-      mapOverlayRef.value?.closeMenu()
-      openOverlay('profile')
+      await openViaMenu('profile', '[data-tour="menu-profile"]')
       break
-    case 'speed-dial-menu':
-      closeOverlay()
-      mapOverlayRef.value?.openMenu()
+    case 'contacts':
+      await openViaMenu('contacts', '[data-tour="menu-contacts"]')
       break
-    case 'base-map-panel':
-      closeOverlay()
-      mapOverlayRef.value?.openBaseMap()
+    case 'friend-requests':
+      // Reached through the contacts sheet: open it, then spotlight the
+      // switch-to-requests button before opening the requests view.
+      await openViaMenu('contacts', '[data-tour="menu-contacts"]')
+      await ctx.spotlight('[data-tour="open-friend-requests"]')
+      openOverlay('friend-requests')
+      break
+    case 'tours':
+      // The My-tours sheet opens from the bottom action bar, not the speed-dial.
+      await ctx.spotlight('[data-tour="open-tours"]')
+      openOverlay('tours')
       break
     case 'tour-bar':
-      closeOverlay()
-      mapOverlayRef.value?.closeMenu()
+      // No overlay — the bottom action bar (add-location button) is always visible.
+      break
+    case 'base-map-panel':
+      await ctx.spotlight('[data-tour="open-menu"]')
+      mapOverlayRef.value?.openMenu()
+      await ctx.spotlight('[data-tour="menu-base-map"]')
+      mapOverlayRef.value?.openBaseMap()
       break
   }
   await nextTick()
@@ -216,6 +245,10 @@ const onboardingTour = useOnboardingTour({
     && userProfileStore.profile.onboardingTourShowAtSignIn === true,
   getResumeStep: () => userProfileStore.profile?.onboardingTourLastStep ?? 0,
 })
+
+// Reactive tour state for the top banner.
+const { isRunning: tourRunning, isStaging: tourStaging, currentIndex: tourIndex } = onboardingTour
+const tourTotal = onboardingTour.totalSteps
 
 // "Show app tour" in the profile sheet bumps this signal — resume at last step.
 watch(reopenSignal, () => {
@@ -526,6 +559,24 @@ function handleDialogClose() {
 
 <template>
   <div class="map-page">
+    <!-- Teleported to <body> so it shares driver.js' top-level stacking context
+         (driver appends its overlay to body) — keeps the banner above the
+         spotlight overlay and, crucially, clickable. -->
+    <Teleport to="body">
+      <Transition name="tour-slide">
+        <OnboardingTourBanner
+          v-if="tourRunning"
+          :current="tourIndex + 1"
+          :total="tourTotal"
+          :can-back="tourIndex > 0"
+          :busy="tourStaging"
+          @back="onboardingTour.back()"
+          @next="onboardingTour.next()"
+          @finish="onboardingTour.finish()"
+        />
+      </Transition>
+    </Teleport>
+
     <TourenbuddyMap
       ref="mapRef"
       @tour-clicked="handleTourClicked"

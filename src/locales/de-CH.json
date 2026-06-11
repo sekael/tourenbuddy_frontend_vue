@@ -575,24 +575,37 @@
     "tour": {
       "phone": {
         "title": "Telefonnummer hinzufügen",
-        "body": "Füge deine Nummer hinzu und verifiziere sie, damit dich Freunde finden und sich auf gemeinsamen Touren mit dir vernetzen können. Optional — schaltet aber die sozialen Funktionen frei."
+        "body": "Füge deine Nummer hinzu und verifiziere sie, damit dich Freunde finden und sich auf gemeinsamen Touren mit dir vernetzen können."
       },
       "notifications": {
         "title": "Immer auf dem Laufenden",
         "body": "Wähle, welche Benachrichtigungen du erhältst — Freundschaftsanfragen, Toureneinladungen und Updates landen hier."
       },
+      "addContact": {
+        "title": "Kontakt hinzufügen",
+        "body": "Füge Kontakte aus deinem Telefonbuch oder von Hand hinzu, damit du sie später mit Touren verknüpfen kannst."
+      },
       "contacts": {
         "title": "Deine Kontakte",
-        "body": "Füge die Personen hinzu, mit denen du unterwegs bist, und verknüpfe sie mit Touren, um euch abzustimmen."
+        "body": "Alle, die du hinzugefügt hast, erscheinen hier. Tippe auf einen Kontakt für Details und um neue Kontaktmethoden hinzuzufügen."
+      },
+      "friendRequests": {
+        "title": "Freundschaftsanfragen",
+        "body": "Sende und akzeptiere hier Freundschaftsanfragen. Freunde sehen die Touren der anderen und werden über gemeinsame Pläne benachrichtigt."
       },
       "tours": {
-        "title": "Deine Touren",
-        "body": "Öffne hier deine Touren oder erstelle eine neue, indem du eine Markierung auf der Karte setzt."
+        "title": "Deine & Touren von Freunden",
+        "body": "Wechsle mit diesen Tabs zwischen deinen eigenen Touren und denen deiner Freunde, so dass ihr zusammen planen und geniessen könnt."
+      },
+      "addLocation": {
+        "title": "Tour hinzufügen",
+        "body": "Tippe hier, um eine Markierung zu setzen und irgendwo auf der Karte ein neues Tourenziel zu planen."
       },
       "basemap": {
         "title": "Karte wechseln",
-        "body": "Wechsle zwischen Swisstopo-Karten — Wandern, Satellit und mehr — passend zu deiner Planung."
+        "body": "Wechsle zwischen verschiedenen Karten, ganz nach deinem Geschmack."
       },
+      "bannerLabel": "Geführte Tour",
       "controls": {
         "next": "Weiter",
         "previous": "Zurück",

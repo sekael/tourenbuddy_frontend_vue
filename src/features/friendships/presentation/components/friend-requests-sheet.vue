@@ -188,7 +188,7 @@ async function handleCancel(requestId: string) {
     @back="emit('back')"
   >
     <div class="content">
-      <div class="tab-bar">
+      <div class="tab-bar" data-tour="friend-requests">
         <button
           type="button"
           class="tab-btn"
