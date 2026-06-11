@@ -45,6 +45,11 @@ const LAST = ONBOARDING_STEPS.length - 1
 // 16 ms), so flushing a step takes a beat longer than a single macrotask.
 const flush = () => new Promise(r => setTimeout(r, 300))
 const lastDriver = () => driverInstances[driverInstances.length - 1]
+// A target is highlighted twice: spotlight-only first, then re-highlighted with
+// the popover once the layout settles. Assert against the popover-bearing call.
+function popoverTitle(d: MockDriver = lastDriver()) {
+  return d.highlighted.at(-1)?.popover?.title
+}
 
 function mountAllAnchors() {
   document.body.innerHTML = ONBOARDING_STEPS
@@ -92,7 +97,7 @@ describe('useOnboardingTour — auto-start guard', () => {
     await flush()
 
     expect(opts.dismissTourAtSignIn).toHaveBeenCalledTimes(1)
-    expect(lastDriver().highlighted[0].popover.title).toBe(ONBOARDING_STEPS[0].titleKey)
+    expect(popoverTitle()).toBe(ONBOARDING_STEPS[0].titleKey)
     expect(tour.isRunning.value).toBe(true)
   })
 
@@ -116,7 +121,7 @@ describe('useOnboardingTour — resume + clamp', () => {
     await flush()
 
     expect(tour.currentIndex.value).toBe(2)
-    expect(lastDriver().highlighted[0].popover.title).toBe(ONBOARDING_STEPS[2].titleKey)
+    expect(popoverTitle()).toBe(ONBOARDING_STEPS[2].titleKey)
   })
 
   it('clamps an out-of-range high index to the last step', async () => {
@@ -216,7 +221,7 @@ describe('useOnboardingTour — missing target', () => {
     vi.useRealTimers()
 
     expect(tour.currentIndex.value).toBe(1)
-    expect(lastDriver().highlighted[0].popover.title).toBe(ONBOARDING_STEPS[1].titleKey)
+    expect(popoverTitle()).toBe(ONBOARDING_STEPS[1].titleKey)
   })
 
   // GAP VERIFIER: passes only once `waitForElement` actually polls. The target
@@ -236,7 +241,7 @@ describe('useOnboardingTour — missing target', () => {
     // Generous: highlight waits ~80 ms position-stability after the 20 ms insert.
     await flush()
 
-    expect(lastDriver().highlighted[0].popover.title).toBe(ONBOARDING_STEPS[0].titleKey)
+    expect(popoverTitle()).toBe(ONBOARDING_STEPS[0].titleKey)
   })
 })
 
@@ -261,7 +266,9 @@ describe('useOnboardingTour — staging spotlights', () => {
     expect(waypoint.highlighted[0].element).toBe(document.querySelector('[data-tour="open-menu"]'))
     expect(waypoint.highlighted[0].popover).toBeUndefined() // spotlight-only, no copy
     expect(waypoint.destroyed).toBe(true)
-    expect(target.highlighted[0].popover.title).toBe(ONBOARDING_STEPS[0].titleKey)
+    // Two-phase reveal: spotlight first (no copy), then the popover.
+    expect(target.highlighted[0].popover).toBeUndefined()
+    expect(popoverTitle(target)).toBe(ONBOARDING_STEPS[0].titleKey)
     expect(target.destroyed).toBe(false)
   })
 
@@ -280,7 +287,9 @@ describe('useOnboardingTour — staging spotlights', () => {
 
     expect(driverInstances).toHaveLength(1)
     const hl = lastDriver().highlighted
-    expect(hl).toHaveLength(1)
-    expect(hl[0].popover.title).toBe(ONBOARDING_STEPS[0].titleKey)
+    // Two-phase reveal: spotlight-only, then the popover.
+    expect(hl).toHaveLength(2)
+    expect(hl[0].popover).toBeUndefined()
+    expect(popoverTitle()).toBe(ONBOARDING_STEPS[0].titleKey)
   })
 })

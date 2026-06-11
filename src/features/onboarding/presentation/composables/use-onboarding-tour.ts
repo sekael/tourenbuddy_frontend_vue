@@ -145,11 +145,13 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
       title: t(step.titleKey),
       description: t(step.bodyKey),
       showButtons: [],
-      // Render below the target: the control banner is pinned to the top, so a
-      // popover placed below its anchor never collides with it. driver.js flips
-      // to another side only if there's genuinely no room below.
-      side: 'bottom',
-      align: 'center',
+      // Render below the target by default: the control banner is pinned to the
+      // top, so a popover placed below its anchor never collides with it. A step
+      // can override `side`/`align` when its target sits low in a tall surface
+      // and `bottom` would overflow the screen (driver.js would then flip it up
+      // into the banner). See `OnboardingStep.side`.
+      side: step.side ?? 'bottom',
+      align: step.align ?? 'center',
     }
   }
 
@@ -190,6 +192,11 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
     const obj = driverObj
     if (!obj)
       return
+    // Snapshot where the popover was anchored, so we only re-position if the
+    // target actually drifted. A blind refresh re-runs driver's placement even
+    // when nothing moved — that needless reposition is the visible popover
+    // "jump" the user sees; skipping it keeps the message put once it's placed.
+    const before = el.getBoundingClientRect()
     // Give late motion a chance to start…
     await sleep(pace.gapMs)
     if (driverObj !== obj || !isRunning.value)
@@ -198,7 +205,14 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
     await waitForPosition(el, 1500)
     if (driverObj !== obj || !isRunning.value)
       return
-    obj.refresh()
+    const after = el.getBoundingClientRect()
+    const moved
+      = Math.abs(after.top - before.top) > 1
+        || Math.abs(after.left - before.left) > 1
+        || Math.abs(after.width - before.width) > 1
+        || Math.abs(after.height - before.height) > 1
+    if (moved)
+      obj.refresh()
   }
 
   /**
@@ -293,9 +307,9 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
         return
       }
 
-      // 3. Target settled in place → fresh mask up on the target + its
-      //    message. Never highlight a moving element. (Waypoint spotlights
-      //    tear themselves down; this maskOff is a safety net.)
+      // 3. Target settled in place → fresh mask up. Never highlight a moving
+      //    element. (Waypoint spotlights tear themselves down; this maskOff is a
+      //    safety net.)
       await maskOffAndBreathe()
       // Scroll the whole target into view first: driver.js only auto-scrolls
       // fully off-screen elements, so a tall section (e.g. the notification
@@ -309,7 +323,21 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
       await waitForPosition(el)
       if (!isRunning.value)
         return
+
+      // Two-phase reveal — the user's required order: surface → spotlight →
+      // message. driver.js positions the popover exactly ONCE, at highlight
+      // time. Putting up the mask can itself reflow the page (a vertically
+      // centered dialog re-centers under the overlay; scrollbar suppression
+      // shifts it sideways), so a popover attached in the same call is pinned to
+      // the pre-mask rect and then visibly jumps. Instead: raise the spotlight
+      // alone, let the mask paint and the layout settle beneath it, and only
+      // THEN attach the popover — measured against the final, stable rect.
       driverObj = makeDriver()
+      driverObj.highlight({ element: el })
+      await sleep(pace.gapMs)
+      await waitForPosition(el)
+      if (driverObj === null || !isRunning.value)
+        return
       driverObj.highlight({ element: el, popover: buildPopover(clamped) })
       void refreshAfterMotion(el)
     }

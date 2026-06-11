@@ -18,6 +18,7 @@ import TourenbuddyMap from '@/features/map/presentation/components/tourenbuddy-m
 import { computeBarState } from '@/features/map/presentation/composables/compute-bar-state'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { notifyTourInterest } from '@/features/notifications/data/notify-dispatch'
+import { useNotificationsStore } from '@/features/notifications/presentation/stores/notifications-store'
 import OnboardingTourBanner from '@/features/onboarding/presentation/components/onboarding-tour-banner.vue'
 import { useOnboardingTour } from '@/features/onboarding/presentation/composables/use-onboarding-tour'
 import { useOnboardingTourStore } from '@/features/onboarding/presentation/stores/onboarding-tour-store'
@@ -51,6 +52,7 @@ const contactsStore = useContactsStore()
 const userProfileStore = useUserProfileStore()
 const authStore = useAuthStore()
 const onboardingTourStore = useOnboardingTourStore()
+const notificationsStore = useNotificationsStore()
 const isDesktop = useIsDesktop()
 
 const { isPickingLocation, selectedTourId } = storeToRefs(mapStore)
@@ -200,9 +202,19 @@ async function stageTourSurface(surface: TourSurface, ctx: StageContext) {
   mapOverlayRef.value?.closeMenu()
 
   switch (surface) {
-    case 'profile':
+    case 'profile': {
+      // Both profile targets sit in the vertically centered desktop dialog,
+      // which is sized by its content: when the notification prefs fetch lands,
+      // the section swaps its 96px loading placeholder for the full toggle
+      // list, the card grows and re-centers, and an already-highlighted target
+      // moves out from under its popover. Ensure prefs are loaded BEFORE the
+      // highlight; the fetch overlaps the waypoint spotlights, so the wait is
+      // normally free.
+      const prefsReady = notificationsStore.prefs ? null : notificationsStore.loadPrefs()
       await openViaMenu('profile', '[data-tour="menu-profile"]')
+      await prefsReady
       break
+    }
     case 'contacts':
       await openViaMenu('contacts', '[data-tour="menu-contacts"]')
       break

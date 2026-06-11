@@ -1,3 +1,5 @@
+import type { Popover } from 'driver.js'
+
 /**
  * Declarative descriptors for the onboarding spotlight tour.
  *
@@ -29,6 +31,16 @@ export interface OnboardingStep {
   titleKey: string
   /** i18n key for the popover body. */
   bodyKey: string
+  /**
+   * Optional popover placement override (defaults to `bottom` / `center`).
+   * The top banner is pinned above every target, so `bottom` is the safe
+   * default. Steps whose target sits low in a tall surface (e.g. the
+   * notification toggles deep in the profile dialog) override to `top` so the
+   * popover never spills past the screen bottom — where driver.js would
+   * otherwise flip it up and collide it with the banner.
+   */
+  side?: Popover['side']
+  align?: Popover['align']
 }
 
 /** The onboarding steps, in presentation order. */
@@ -44,6 +56,10 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     target: '[data-tour="notifications"]',
     titleKey: 'onboarding.tour.notifications.title',
     bodyKey: 'onboarding.tour.notifications.body',
+    // Notifications sit low in the profile dialog; place the popover above the
+    // target so it can't overflow the screen bottom (and get flipped into the
+    // banner). It lands in the dialog's upper area, clear of the pinned banner.
+    side: 'top',
   },
   {
     surface: 'contacts',
