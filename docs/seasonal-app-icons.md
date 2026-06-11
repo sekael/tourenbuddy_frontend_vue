@@ -6,11 +6,11 @@ thaw).
 
 ## Layout
 
-| Role | Live path (shipped) | Size |
-| --- | --- | --- |
-| iOS home screen | `public/apple-touch-icon.png` | 180×180 |
-| PWA icon (small) | `public/icons/icon-192.png` | 192×192 |
-| PWA icon (large) | `public/icons/icon-512.png` | 512×512 |
+| Role             | Live path (shipped)           | Size    |
+| ---------------- | ----------------------------- | ------- |
+| iOS home screen  | `public/apple-touch-icon.png` | 180×180 |
+| PWA icon (small) | `public/icons/icon-192.png`   | 192×192 |
+| PWA icon (large) | `public/icons/icon-512.png`   | 512×512 |
 
 The three paths above are referenced by `index.html` and the PWA manifest in
 `vite.config.ts`. Filenames never change — a seasonal switch only replaces the
