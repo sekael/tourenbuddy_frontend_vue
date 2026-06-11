@@ -3,8 +3,9 @@ import type { StageContext } from '@/features/onboarding/presentation/composable
 import type { TourSurface } from '@/features/onboarding/presentation/onboarding-steps'
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { onBeforeRouteLeave } from 'vue-router'
 import FeedbackSheet from '@/core/components/feedback-sheet.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
@@ -275,6 +276,27 @@ const tourTotal = onboardingTour.totalSteps
 // the first paint, so a tour-eligible user never sees the bare map flash first.
 // (No-op when the gate is off; `onMounted` re-checks for a cold profile.)
 onboardingTour.maybeStartTour()
+
+// Lock document scroll for the whole tour + welcome. `.map-page` is overflow:
+// hidden, but iOS Safari still rubber-band/address-bar scrolls the document
+// under the viewport-fixed spotlight + popovers — only a body-level lock pins
+// them together. Toggled here (scoped styles can't reach <html>); the rule
+// lives in onboarding-tour.css.
+const tourLockActive = computed(() => tourRunning.value || tourWelcome.value)
+watch(tourLockActive, (locked) => {
+  document.documentElement.classList.toggle('tour-scroll-locked', locked)
+})
+
+// driver.js' overlay lives on <body> outside Vue, so a route change (back
+// button / back-swipe) would leave it orphaned on a non-tour page. Tear it down
+// before leaving and on any unmount, and always drop the scroll-lock class.
+onBeforeRouteLeave(() => {
+  onboardingTour.stop()
+})
+onUnmounted(() => {
+  onboardingTour.stop()
+  document.documentElement.classList.remove('tour-scroll-locked')
+})
 
 // "Show app tour" in the profile sheet bumps this signal — resume at last step.
 watch(reopenSignal, () => {

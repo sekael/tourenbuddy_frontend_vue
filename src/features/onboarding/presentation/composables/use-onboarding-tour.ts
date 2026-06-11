@@ -121,6 +121,19 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
     teardown()
   }
 
+  /**
+   * Hard-stop on navigation / unmount. driver.js appends its overlay directly to
+   * <body> (outside Vue), so if the host page unmounts without this the overlay
+   * orphans onto the next route. Persist the resume step, drop the welcome, and
+   * tear the driver overlay down. Idempotent — safe to call when nothing runs.
+   */
+  function stop() {
+    if (isRunning.value)
+      options.saveTourStep(currentIndex.value)
+    showWelcome.value = false
+    teardown()
+  }
+
   /** Advanced past the final step: reset resume point so a reopen replays. */
   function finishCompleted() {
     options.saveTourStep(0)
@@ -417,6 +430,7 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
     totalSteps: ONBOARDING_STEPS.length,
     startTour,
     maybeStartTour,
+    stop,
     // Welcome-screen actions:
     startFromWelcome,
     skipWelcome,

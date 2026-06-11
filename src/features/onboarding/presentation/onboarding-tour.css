@@ -2,6 +2,24 @@
    Loaded from `use-onboarding-tour.ts` (the popover is teleported to <body>,
    so scoped component styles can't reach it). */
 
+/* iOS Safari-proof scroll lock while the tour / welcome is active. The spotlight
+   cutout and popovers are positioned once against the viewport (position:fixed),
+   so the page underneath must not move or they drift off their target. On iOS
+   `overflow:hidden` alone does NOT stop momentum / rubber-band / address-bar
+   scroll — the body must be pinned with `position:fixed` as well. Toggled by a
+   `tour-scroll-locked` class on <html> from map-page.vue. */
+html.tour-scroll-locked,
+html.tour-scroll-locked body {
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+html.tour-scroll-locked body {
+  position: fixed;
+  inset: 0;
+}
+
 /* Waypoint hint popovers ("Open menu", "Open contacts") size to their text
    instead of driver.js' default 250px min-width. Two-class selector
    out-specifies the base `.driver-popover` rule. */
