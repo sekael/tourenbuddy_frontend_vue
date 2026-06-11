@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.28.0...tourenbuddy-frontend-v0.29.0) (2026-06-11)
+
+
+### Features
+
+* **onboarding:** Guided onboarding tour for new users ([#186](https://github.com/sekael/tourenbuddy_frontend_vue/issues/186)) ([#213](https://github.com/sekael/tourenbuddy_frontend_vue/issues/213)) ([1cecd45](https://github.com/sekael/tourenbuddy_frontend_vue/commit/1cecd45fda913e3f8e59597abbfdd23edc274ee0))
+
 ## [0.28.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.27.0...tourenbuddy-frontend-v0.28.0) (2026-06-09)
 
 
