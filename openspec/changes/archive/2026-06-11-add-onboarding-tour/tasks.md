@@ -92,7 +92,6 @@
 - [x] 11.2 Manually verify locally against local Supabase — **mobile/bottom-sheet layout first** (primary audience), then desktop: new user sees the 8-step tour driving the real sheets; top banner shows `X/Y` + back/forward + Finish tour (no buttons in the popover); backdrop tap advances; highlighted control is inert; banner sits above the spotlight; it does not auto-show again at sign-in; reopen from profile resumes at last step; finishing then reopening replays from step 1
 - [x] 11.3 Prompt the user to commit with conventional message: `feat(onboarding): guided onboarding tour for new users (#186)`
 - [x] 11.4 Prompt the user to push and open a PR to `main`; note `supabase db push` is a separate user-approved deploy step
-- [ ] Cleanup temporary files from debugging (playwright etc)
 
 ## 13. Popover placement fix (post-review)
 
