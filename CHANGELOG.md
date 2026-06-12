@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.29.0...tourenbuddy-frontend-v0.30.0) (2026-06-12)
+
+
+### Features
+
+* Switch to summer icon ([#216](https://github.com/sekael/tourenbuddy_frontend_vue/issues/216)) ([6b74d09](https://github.com/sekael/tourenbuddy_frontend_vue/commit/6b74d094699feed2b47960940b072f3ae3d5840b))
+
 ## [0.29.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.28.0...tourenbuddy-frontend-v0.29.0) (2026-06-11)
 
 
