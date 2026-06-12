@@ -607,7 +607,7 @@
       },
       "welcome": {
         "title": "Willkommen bei TourenBuddy",
-        "body": "Wir zeigen dir alles Wichtige in einer kurzen Einführung. Klicke irgendwo oder benutze die Navigation um fortzufahren.",
+        "body": "Wir zeigen dir alles Wichtige in einer kurzen Einführung. Klicke während der Tour einfach auf den Bildschirm oder benutze die Navigation um fortzufahren.",
         "start": "Tour starten",
         "skip": "Vorerst überspringen",
         "dismiss": "Nicht mehr anzeigen"

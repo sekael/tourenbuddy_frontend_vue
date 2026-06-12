@@ -21,34 +21,35 @@ const { t } = useI18n({ useScope: 'global' })
 
 <template>
   <div class="tour-banner" role="region" :aria-label="t('onboarding.tour.bannerLabel')">
-    <button type="button" class="finish-btn" @click="emit('finish')">
-      {{ t('onboarding.tour.controls.finish') }}
-    </button>
+    <span class="step-title">{{ title }}</span>
 
-    <div class="step-info">
-      <span class="step-title">{{ title }}</span>
+    <div class="controls">
+      <button type="button" class="finish-btn" @click="emit('finish')">
+        {{ t('onboarding.tour.controls.finish') }}
+      </button>
+
       <span class="progress" aria-live="polite">{{ current }} / {{ total }}</span>
-    </div>
 
-    <div class="nav">
-      <button
-        type="button"
-        class="nav-btn"
-        :disabled="!canBack || busy"
-        :aria-label="t('onboarding.tour.controls.previous')"
-        @click="emit('back')"
-      >
-        <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
-      </button>
-      <button
-        type="button"
-        class="nav-btn"
-        :disabled="busy"
-        :aria-label="t('onboarding.tour.controls.next')"
-        @click="emit('next')"
-      >
-        <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
-      </button>
+      <div class="nav">
+        <button
+          type="button"
+          class="nav-btn"
+          :disabled="!canBack || busy"
+          :aria-label="t('onboarding.tour.controls.previous')"
+          @click="emit('back')"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+        </button>
+        <button
+          type="button"
+          class="nav-btn"
+          :disabled="busy"
+          :aria-label="t('onboarding.tour.controls.next')"
+          @click="emit('next')"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -72,24 +73,33 @@ const { t } = useI18n({ useScope: 'global' })
   left: 50%;
   transform: translateX(-50%);
   z-index: 2147483000;
+  /* Two rows: the title gets the full banner width on top, the controls
+     (finish / progress / nav) sit on their own row beneath it. A long step
+     name now wraps across the whole width instead of being squeezed into a
+     narrow column and breaking mid-word. */
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--spacing-md);
-  /* Constant width across steps: the title column flexes/ellipsises inside this
-     fixed box, so a long step name never resizes the banner. Capped to the
-     viewport on narrow screens. */
-  width: min(22rem, calc(100vw - 2 * var(--spacing-md)));
-  padding: var(--spacing-xs) var(--spacing-xs) var(--spacing-xs) var(--spacing-md);
-  border-radius: 26px;
+  /* Constant width across steps so a long title never resizes the banner;
+     capped to the viewport on narrow screens. */
+  width: min(24rem, calc(100vw - 2 * var(--spacing-md)));
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: 20px;
   background-color: var(--color-fab-surface);
   border: 1px solid var(--color-fab-border);
   box-shadow: var(--shadow-lg);
   pointer-events: auto;
-  white-space: nowrap;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
 }
 
 .finish-btn {
-  padding: var(--spacing-xs) var(--spacing-md);
+  padding: var(--spacing-xs) var(--spacing-sm);
   border: 1px solid rgba(255, 255, 255, 0.55);
   border-radius: 18px;
   font-size: var(--font-size-sm);
@@ -105,33 +115,13 @@ const { t } = useI18n({ useScope: 'global' })
   border-color: rgba(255, 255, 255, 0.85);
 }
 
-.step-info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  /* Take the slack between Finish and the arrows so the banner stays fixed
-     width; the title ellipsises within it rather than growing the box. */
-  flex: 1;
-  min-width: 0;
-}
-
 .step-title {
-  max-width: 100%;
-  /* Wrap to a maximum of 2 lines (ellipsis past that), horizontally centered —
-     long titles break instead of forcing the fixed-width banner wider. */
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  overflow: hidden;
-  /* Override the banner's `white-space: nowrap` so the title actually wraps
-     (line-clamp only ellipsises wrapped text — without this it just clips). */
-  white-space: normal;
-  overflow-wrap: break-word;
+  /* Full banner width, wrapping at word boundaries — there's room now, so a
+     long label breaks between words (never mid-word). */
+  width: 100%;
   text-align: center;
-  line-height: 1.2;
-  font-size: var(--font-size-sm);
+  line-height: 1.25;
+  font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
   color: var(--color-fab-on-surface);
 }
