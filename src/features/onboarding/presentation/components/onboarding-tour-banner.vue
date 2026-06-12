@@ -79,7 +79,7 @@ const { t } = useI18n({ useScope: 'global' })
      narrow column and breaking mid-word. */
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: var(--spacing-md);
   /* Constant width across steps so a long title never resizes the banner;
      capped to the viewport on narrow screens. */
   width: min(24rem, calc(100vw - 2 * var(--spacing-md)));
