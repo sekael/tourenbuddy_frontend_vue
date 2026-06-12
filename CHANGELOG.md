@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.30.0...tourenbuddy-frontend-v0.30.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* **onboarding:** Correct banner title wrap and popover placement ([#218](https://github.com/sekael/tourenbuddy_frontend_vue/issues/218)) ([31e3258](https://github.com/sekael/tourenbuddy_frontend_vue/commit/31e3258774811e0d15a2fbeb52df28986d521bce))
+
 ## [0.30.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.29.0...tourenbuddy-frontend-v0.30.0) (2026-06-12)
 
 
