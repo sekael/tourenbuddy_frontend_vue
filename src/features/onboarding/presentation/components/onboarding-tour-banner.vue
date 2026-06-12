@@ -74,11 +74,12 @@ const { t } = useI18n({ useScope: 'global' })
   z-index: 2147483000;
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm);
   /* Constant width across steps: the title column flexes/ellipsises inside this
      fixed box, so a long step name never resizes the banner. Capped to the
-     viewport on narrow screens. */
-  width: min(22rem, calc(100vw - 2 * var(--spacing-md)));
+     viewport on narrow screens. Wide enough that the longest label's longest
+     word (German "Telefonnummer") sits on one line instead of breaking mid-word. */
+  width: min(24rem, calc(100vw - 2 * var(--spacing-md)));
   padding: var(--spacing-xs) var(--spacing-xs) var(--spacing-xs) var(--spacing-md);
   border-radius: 26px;
   background-color: var(--color-fab-surface);
@@ -89,7 +90,7 @@ const { t } = useI18n({ useScope: 'global' })
 }
 
 .finish-btn {
-  padding: var(--spacing-xs) var(--spacing-md);
+  padding: var(--spacing-xs) var(--spacing-sm);
   border: 1px solid rgba(255, 255, 255, 0.55);
   border-radius: 18px;
   font-size: var(--font-size-sm);

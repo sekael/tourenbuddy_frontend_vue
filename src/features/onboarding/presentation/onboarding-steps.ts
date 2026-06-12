@@ -74,7 +74,12 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
   },
   {
     surface: 'contacts',
-    target: '[data-tour="contacts"]',
+    // Spotlight a single entry, not the whole `.contacts-content` scroll
+    // container — that flex:1 box fills the sheet, so highlighting it made a
+    // giant cutout and left driver.js no room below for the popover (it flipped
+    // up behind the pinned banner). The first contact row (or the empty-state
+    // for a brand-new user) is compact, so the popover drops cleanly beneath it.
+    target: '[data-tour="contacts"] .empty-state, [data-tour="contacts"] .contact-row',
     titleKey: 'onboarding.tour.contacts.title',
     bodyKey: 'onboarding.tour.contacts.body',
     labelKey: 'onboarding.tour.labels.contacts',
@@ -99,6 +104,11 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     titleKey: 'onboarding.tour.addLocation.title',
     bodyKey: 'onboarding.tour.addLocation.body',
     labelKey: 'onboarding.tour.labels.addLocation',
+    // The action bar is pinned to the viewport bottom: there's no room for the
+    // default `bottom` placement, so driver.js flips the popover up and the
+    // arrow detaches from the target. Pin `top` so it's placed (and its arrow
+    // aligned) against the spotlighted button from the start.
+    side: 'top',
   },
   {
     surface: 'base-map-panel',
