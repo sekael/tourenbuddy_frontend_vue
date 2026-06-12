@@ -27,3 +27,12 @@ html.tour-scroll-locked body {
   min-width: 0;
   white-space: nowrap;
 }
+
+/* No speech-bubble arrow on any onboarding popover. driver.js positions the
+   arrow once against the target rect; when a popover is clamped to the viewport
+   (wide popover, edge-anchored / bottom-pinned target) the arrow visibly
+   detaches from the spotlight. Dropping it sidesteps the misalignment entirely
+   — the dark cutout already shows what's being pointed at. */
+.driver-popover-arrow {
+  display: none;
+}
