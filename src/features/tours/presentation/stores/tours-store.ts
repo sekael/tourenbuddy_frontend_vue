@@ -277,7 +277,12 @@ export const useToursStore = defineStore('tours', () => {
       isShareableTour(effectiveVisibility, draft.partnerIds)
       && isMeaningfulTourChange(existing, draft, { goal, gpxFilepath: newFilepath ?? null })
     ) {
-      notifyTourChanged(id, 'updated')
+      // Partners added by this edit get the "shared with you" greeting; pre-existing
+      // partners get the generic "updated" copy. Diff on contact ids (the id space the
+      // Worker's users_by_contact_ids resolves).
+      const prevPartners = new Set(existing.partnerIds)
+      const addedPartnerIds = draft.partnerIds.filter(pid => !prevPartners.has(pid))
+      notifyTourChanged(id, 'updated', addedPartnerIds)
     }
 
     // Independent of meaningful-edit filter: re-scan for friend collisions on every

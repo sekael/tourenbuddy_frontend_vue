@@ -28,6 +28,7 @@ const {
 vi.mock('@/features/notifications/data/notify-dispatch', () => ({
   notifyTourChanged: vi.fn(),
   notifyTourDeleted: mockNotifyTourDeleted,
+  notifyTourInterest: vi.fn(),
 }))
 
 vi.mock('@/features/tours/data/repositories/tours-repository-impl', () => ({
@@ -331,6 +332,68 @@ describe('useToursStore', () => {
       ).rejects.toThrow('RPC failed')
 
       expect(store.tours[0]?.name).toBe('Rigi Tour')
+    })
+
+    it('should pass only newly-added partner contact ids to notifyTourChanged', async () => {
+      const { notifyTourChanged } = await import('@/features/notifications/data/notify-dispatch')
+      mockUpdateTour.mockResolvedValue(undefined)
+
+      const store = useToursStore()
+      // Existing tour already has contact-1 as a partner.
+      store.tours = [{ ...mockTours[0]!, partnerIds: ['contact-1'], visibility: 'friends' }]
+
+      await store.updateTour(
+        'tour-1',
+        {
+          name: 'Rigi Tour',
+          plannedDate: null,
+          partnerIds: ['contact-1', 'contact-2'],
+          tourType: null,
+          elevation: null,
+          gpxFilepath: null,
+          description: null,
+          seasons: null,
+          startPoint: null,
+          endPoint: null,
+          equipment: null,
+          notes: null,
+          visibility: 'friends',
+        },
+        { lng: 8.2, lat: 46.8 },
+      )
+
+      // Only contact-2 is new; contact-1 was already a partner.
+      expect(notifyTourChanged).toHaveBeenCalledWith('tour-1', 'updated', ['contact-2'])
+    })
+
+    it('should pass an empty added-partner list when the partner set is unchanged', async () => {
+      const { notifyTourChanged } = await import('@/features/notifications/data/notify-dispatch')
+      mockUpdateTour.mockResolvedValue(undefined)
+
+      const store = useToursStore()
+      store.tours = [{ ...mockTours[0]!, partnerIds: ['contact-1'], visibility: 'friends' }]
+
+      await store.updateTour(
+        'tour-1',
+        {
+          name: 'Rigi Renamed', // meaningful change so a notification still fires
+          plannedDate: null,
+          partnerIds: ['contact-1'],
+          tourType: null,
+          elevation: null,
+          gpxFilepath: null,
+          description: null,
+          seasons: null,
+          startPoint: null,
+          endPoint: null,
+          equipment: null,
+          notes: null,
+          visibility: 'friends',
+        },
+        { lng: 8.2, lat: 46.8 },
+      )
+
+      expect(notifyTourChanged).toHaveBeenCalledWith('tour-1', 'updated', [])
     })
   })
 

@@ -52,9 +52,21 @@ export type TourChangeAction = 'created' | 'updated' | 'deleted'
  * Fire-and-forget: notify friend partners that a shared tour was created/updated.
  * The Worker resolves recipients (tour partner users ∩ owner's friends, minus the
  * actor) by reading the still-live tour row, so the client only sends id + action.
+ *
+ * `newPartnerContactIds` (optional, `updated` only) are the partner contact ids added
+ * by this edit. The Worker greets those recipients with the `created` ("shared with
+ * you") copy instead of the generic `updated` copy; everyone else gets `updated`. An
+ * empty/omitted list preserves the all-`updated` behavior.
  */
-export function notifyTourChanged(tourId: string, action: Exclude<TourChangeAction, 'deleted'>): void {
-  postToWorker('/notify/tour-changed', { tourId, action }).catch((err) => {
+export function notifyTourChanged(
+  tourId: string,
+  action: Exclude<TourChangeAction, 'deleted'>,
+  newPartnerContactIds?: string[],
+): void {
+  const body: Record<string, unknown> = { tourId, action }
+  if (newPartnerContactIds && newPartnerContactIds.length > 0)
+    body.newPartnerContactIds = newPartnerContactIds
+  postToWorker('/notify/tour-changed', body).catch((err) => {
     logger.warn('notifyTourChanged failed', err)
   })
 }

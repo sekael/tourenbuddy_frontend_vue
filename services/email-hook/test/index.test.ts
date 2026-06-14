@@ -381,4 +381,104 @@ describe('notify routes', () => {
     expect(bodyStr).not.toContain('accept')
     expect(bodyStr).not.toContain('decline')
   })
+
+  // Tour-updates env needs the tour template ids the base VALID_ENV omits.
+  const TOUR_ENV = { ...VALID_ENV, BREVO_TEMPLATE_TOUR_UPDATES_EN: '40', BREVO_TEMPLATE_TOUR_UPDATES_DE: '41' }
+
+  // URL-routed fetch mock: multi-recipient dispatch fires fetches concurrently, so
+  // ordered mockResolvedValueOnce chains are too brittle here. `users` maps userId →
+  // email so each Brevo call can be tied back to its recipient.
+  function routeTourFetch(opts: {
+    partnerUserIds: string[]
+    friendRows: Array<{ request_user_id: string, response_user_id: string }>
+    addedUserIds: string[]
+  }) {
+    return vi.fn(async (url: string) => {
+      const u = String(url)
+      if (u.includes('/auth/v1/admin/users/')) {
+        const id = decodeURIComponent(u.split('/admin/users/')[1] ?? '')
+        return new Response(JSON.stringify({ id, email: `${id}@example.com` }), { status: 200 })
+      }
+      if (u.includes('/auth/v1/user'))
+        return new Response(JSON.stringify({ id: 'owner' }), { status: 200 })
+      if (u.includes('/rest/v1/tours?'))
+        return new Response(JSON.stringify([{ id: 't1', user_id: 'owner', visibility: 'friends', name: 'Rigi' }]), { status: 200 })
+      if (u.includes('/rpc/tour_partner_user_ids'))
+        return new Response(JSON.stringify(opts.partnerUserIds), { status: 200 })
+      if (u.includes('/rpc/users_by_contact_ids'))
+        return new Response(JSON.stringify(opts.addedUserIds), { status: 200 })
+      if (u.includes('/rest/v1/friendships'))
+        return new Response(JSON.stringify(opts.friendRows), { status: 200 })
+      if (u.includes('/rest/v1/user_profile')) {
+        // Actor-name fetch selects first_name; recipient-profile fetch selects notif_*.
+        if (u.includes('first_name'))
+          return new Response(JSON.stringify([{ first_name: 'Owner', last_name: null }]), { status: 200 })
+        return new Response(
+          JSON.stringify([{ id: 'x', notif_push_enabled: false, notif_email_enabled: true, notif_muted_types: [], locale: 'en' }]),
+          { status: 200 },
+        )
+      }
+      if (u === 'https://api.brevo.com/v3/smtp/email')
+        return new Response('OK', { status: 200 })
+      return new Response('', { status: 200 })
+    })
+  }
+
+  function brevoActionByEmail(email: string): string | undefined {
+    const calls = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([url]: [string]) => url === 'https://api.brevo.com/v3/smtp/email',
+    )
+    for (const c of calls) {
+      const body = JSON.parse(c[1].body as string)
+      if (body.to?.[0]?.email === email)
+        return body.params?.action
+    }
+    return undefined
+  }
+
+  it('tour-changed updated: newly-added partner gets created, pre-existing gets updated', async () => {
+    globalThis.fetch = routeTourFetch({
+      partnerUserIds: ['user-old', 'user-new'],
+      friendRows: [
+        { request_user_id: 'owner', response_user_id: 'user-old' },
+        { request_user_id: 'user-new', response_user_id: 'owner' },
+      ],
+      addedUserIds: ['user-new'],
+    })
+
+    const req = makeNotifyRequest('/notify/tour-changed', {
+      tourId: 't1',
+      action: 'updated',
+      newPartnerContactIds: ['c-new'],
+    })
+    const response = await worker.fetch(req, TOUR_ENV as never)
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ notified: 2 })
+    expect(brevoActionByEmail('user-new@example.com')).toBe('created')
+    expect(brevoActionByEmail('user-old@example.com')).toBe('updated')
+  })
+
+  it('tour-changed updated: no newPartnerContactIds → every recipient gets updated', async () => {
+    globalThis.fetch = routeTourFetch({
+      partnerUserIds: ['user-old'],
+      friendRows: [{ request_user_id: 'owner', response_user_id: 'user-old' }],
+      addedUserIds: [],
+    })
+
+    const req = makeNotifyRequest('/notify/tour-changed', {
+      tourId: 't1',
+      action: 'updated',
+    })
+    const response = await worker.fetch(req, TOUR_ENV as never)
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ notified: 1 })
+    expect(brevoActionByEmail('user-old@example.com')).toBe('updated')
+    // The added-resolver RPC must not even be called when no new partners are sent.
+    const calledResolver = (fetch as ReturnType<typeof vi.fn>).mock.calls.some(
+      ([url]: [string]) => String(url).includes('/rpc/users_by_contact_ids'),
+    )
+    expect(calledResolver).toBe(false)
+  })
 })
