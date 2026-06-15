@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.31.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.30.1...tourenbuddy-frontend-v0.31.0) (2026-06-15)
+
+
+### Features
+
+* **notifications:** Greet newly-added tour partners as a shared tour ([#220](https://github.com/sekael/tourenbuddy_frontend_vue/issues/220)) ([226a078](https://github.com/sekael/tourenbuddy_frontend_vue/commit/226a078020dffb7f2fe3b4da6bb8bab2293301a0))
+* **ui:** Default mobile sheets to fit-content, keep tour sheets snap ([#224](https://github.com/sekael/tourenbuddy_frontend_vue/issues/224)) ([408a985](https://github.com/sekael/tourenbuddy_frontend_vue/commit/408a985ceccd766bb1ffd9749adfd30294892667))
+* **ui:** Shrink bottom sheet above the on-screen keyboard and use space on bottom sheet more efficiently ([#225](https://github.com/sekael/tourenbuddy_frontend_vue/issues/225)) ([e99cbe8](https://github.com/sekael/tourenbuddy_frontend_vue/commit/e99cbe8515982397d36dbdeb7e78369492ca0280))
+
 ## [0.30.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.30.0...tourenbuddy-frontend-v0.30.1) (2026-06-12)
 
 
