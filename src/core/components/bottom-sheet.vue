@@ -41,40 +41,27 @@ function snapHeightPx(snap: Snap): number {
 }
 
 // ── Internal state ───────────────────────────────────────────────────────────
-// `restingHeight` (S) is the sheet's keyboard-free height — what snap/fit logic
-// writes. `currentHeight` is the *applied* height: equal to S when no keyboard,
-// a full page above the keyboard otherwise, and written live during a drag.
+// `restingHeight` is the sheet's keyboard-free height — what snap/fit/drag logic
+// writes. `currentHeight` (below) is the *applied* height derived from it.
 const restingHeight = ref(0)
-const currentHeight = ref(0)
 const isDragging = ref(false)
 const lastSnap = ref<Snap>('default')
 
 // ── Keyboard-aware sizing ─────────────────────────────────────────────────────
 const { inset } = useKeyboardInset()
 
-// True while the on-screen keyboard is up. Drives both the applied height
-// (deriveHeight) and the fullscreen presentation class in the template.
+// True while the on-screen keyboard is up. Drives both the applied height and
+// the fullscreen presentation class in the template.
 const keyboardOpen = computed(() => inset.value > 0)
 
-// Map the resting height (S) and keyboard inset (K) to the applied height.
-// K is clamped >= 0 in useKeyboardInset, so this function is total: every
-// branch assigns a height (no silent no-op leaving a stale value).
-function deriveHeight() {
-  if (keyboardOpen.value) {
-    // Full page above the keyboard. The container's bottom sits at the keyboard
-    // top (bottom: var(--keyboard-inset)), so a sheet this tall reaches y=0.
-    // innerHeight − inset is always >= 0 (inset is clamped to [0, innerHeight]).
-    currentHeight.value = window.innerHeight - inset.value
-    return
-  }
-  // Keyboard down: back to the resting snap/fit height (the 40% map view).
-  currentHeight.value = restingHeight.value
-}
-
-// Re-derive whenever the resting height changes (snap/fit/resize) or the
-// keyboard inset changes. Drag writes `currentHeight` directly and is gated
-// while the keyboard is open, so neither source fires mid-gesture.
-watch([restingHeight, inset], deriveHeight)
+// The applied height. Keyboard up → a full page above the keyboard: the
+// container's bottom sits at the keyboard top (bottom: var(--keyboard-inset)),
+// so innerHeight − inset reaches y=0 (inset is clamped to [0, innerHeight], so
+// it's never negative). Keyboard down → the resting snap/fit height. Drag is
+// inert while the keyboard is open, so the keyboard branch never fights a write.
+const currentHeight = computed(() =>
+  keyboardOpen.value ? window.innerHeight - inset.value : restingHeight.value,
+)
 
 // Publish the inset so the fixed `.sheet-container` can lift above the keyboard.
 // Owned here (mount/unmount colocated) so the reset on close is guaranteed.
@@ -95,7 +82,7 @@ function updatePeekHeight() {
 
 function applySnap(snap: Snap) {
   lastSnap.value = snap
-  // Set the resting base; the derive watch maps it to the applied height.
+  // Set the resting base; `currentHeight` maps it to the applied height.
   // CSS transition on `height` animates the change.
   restingHeight.value = snapHeightPx(snap)
 }
@@ -127,7 +114,9 @@ function onDragMove(e: PointerEvent) {
   const clamped = Math.round(
     Math.max(peekHeight.value, Math.min(expandedHeight.value, startHeight - delta)),
   )
-  currentHeight.value = clamped
+  // Drag is gated while the keyboard is open, so writing the resting base here
+  // updates the applied height live (transition is suppressed during the drag).
+  restingHeight.value = clamped
   lastMoveY = e.clientY
 }
 
@@ -140,7 +129,7 @@ function onDragEnd(e: PointerEvent) {
   const totalDelta = Math.abs(e.clientY - startY)
   if (totalDelta < 4) {
     // tap — restore snap without change
-    currentHeight.value = snapHeightPx(lastSnap.value)
+    restingHeight.value = snapHeightPx(lastSnap.value)
     return
   }
 

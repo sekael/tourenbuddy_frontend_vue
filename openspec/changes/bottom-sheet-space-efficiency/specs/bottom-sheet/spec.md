@@ -1,33 +1,52 @@
+## MODIFIED Requirements
+
+### Requirement: Bottom sheet height is user-adjustable via drag handle
+
+The drag handle SHALL act as a resize control. The user SHALL be able to drag the handle vertically (touch or pointer) to change the sheet height. Sheet height SHALL be clamped between a peek height (header-only) and a maximum of 60vh. Dragging up SHALL grow the sheet; dragging down SHALL shrink it. While the on-screen keyboard is closed the maximum height SHALL never exceed 60vh so the underlying map remains partially visible; the full-page keyboard mode is the sole exception (see "Sheet expands to full screen above the on-screen keyboard"), and the drag handle is inert there.
+
+#### Scenario: Drag up grows the sheet
+
+- **WHEN** the sheet is at its default height
+- **AND** the user presses the drag handle and moves the pointer up by 100px
+- **THEN** the sheet height SHALL increase by approximately 100px
+- **AND** the sheet height SHALL NOT exceed 60vh
+
+#### Scenario: Drag down shrinks the sheet
+
+- **WHEN** the sheet is at its default height
+- **AND** the user presses the drag handle and moves the pointer down by 100px
+- **THEN** the sheet height SHALL decrease by approximately 100px
+- **AND** the sheet height SHALL NOT shrink below the peek height (header only)
+
+#### Scenario: Hard 60vh ceiling
+
+- **WHEN** the user drags the handle further up after the sheet has already reached 60vh
+- **THEN** the sheet height SHALL remain at 60vh
+
 ## ADDED Requirements
 
-### Requirement: Sheet shrinks above the on-screen keyboard
+### Requirement: Sheet expands to full screen above the on-screen keyboard
 
-When the on-screen keyboard opens on mobile, the sheet SHALL keep its top edge anchored and shrink from the bottom so its bottom edge rests at the top of the keyboard, with its content region scrolling within the reduced height. The sheet SHALL derive the keyboard inset from the visual viewport as `K = max(0, window.innerHeight − (visualViewport.height + visualViewport.offsetTop))` — clamped to be non-negative — rather than assuming the layout viewport shrinks, and SHALL keep it current as both the `resize` and `scroll` visual-viewport events fire. The fixed sheet container SHALL be offset above the keyboard by the same inset. While the keyboard is open the drag handle SHALL be inert (no manual resize). When the keyboard closes, the sheet SHALL restore its prior resting height and offset.
+When the on-screen keyboard opens on mobile, the sheet SHALL expand to a full page that fills the entire screen above the keyboard — covering any content behind it (such as the map) — so all available real estate is given to the edit/input form. The sheet SHALL derive the keyboard inset from the visual viewport as `K = max(0, window.innerHeight − (visualViewport.height + visualViewport.offsetTop))` — clamped to be non-negative — rather than assuming the layout viewport shrinks, and SHALL keep it current as both the `resize` and `scroll` visual-viewport events fire. The fixed sheet container SHALL be offset above the keyboard by the same inset so the sheet's bottom edge rests exactly at the top of the keyboard. While in this full-page mode the sheet SHALL drop the chrome that would otherwise leave gaps over the covered content — its max-height cap, top corner radius, and side/top borders — and the drag handle SHALL be inert (no manual resize). When the keyboard closes, the sheet SHALL restore its prior resting height and the offset SHALL return to `0`, revealing the map again.
 
 With `H` = layout viewport height, `K` = keyboard inset, and `S` = the sheet's resting height before the keyboard opened (its snap height or fit-content height):
 
 - `K = 0` → height SHALL be `S` and the container offset SHALL be `0`.
-- `0 < K ≤ S` → height SHALL be `S − K` and the container offset SHALL be `K` (the sheet's top stays put; any content above the sheet, such as the map, keeps its region).
-- `K > S` → height SHALL be `H − K` and the container offset SHALL be `K` (the sheet expands to the top of the screen on small devices).
+- `K > 0` → height SHALL be `H − K` and the container offset SHALL be `K`. Because the container's bottom edge sits `K` above the viewport bottom (at the keyboard's top), a sheet of height `H − K` reaches the top of the screen (`y = 0`) with no gap above or below.
 
-#### Scenario: Keyboard opens with room for content above
+#### Scenario: Keyboard opens
 
-- **WHEN** a sheet resting at height `S` is open and the keyboard opens with inset `K` where `K ≤ S`
-- **THEN** the sheet height SHALL become `S − K`
-- **AND** the sheet's top edge SHALL not move
-- **AND** the content region SHALL scroll within the reduced height
-
-#### Scenario: Keyboard taller than the sheet on a small device
-
-- **WHEN** a sheet resting at height `S` is open and the keyboard opens with inset `K` where `K > S`
-- **THEN** the sheet SHALL expand so its top edge reaches the top of the screen
-- **AND** the sheet height SHALL become `H − K`
+- **WHEN** a sheet resting at height `S` is open and the keyboard opens with inset `K > 0`
+- **THEN** the sheet height SHALL become `H − K`
+- **AND** the sheet SHALL fill the screen from the top edge down to the top of the keyboard, covering the map
+- **AND** the content region SHALL scroll within the full-page height
 
 #### Scenario: Keyboard closes
 
 - **WHEN** the keyboard closes (inset returns to `0`)
 - **THEN** the sheet SHALL restore its prior resting height `S`
 - **AND** the container offset SHALL return to `0`
+- **AND** the map SHALL be revealed again behind the sheet
 
 #### Scenario: Drag is inert while the keyboard is open
 
