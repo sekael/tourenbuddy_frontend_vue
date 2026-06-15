@@ -105,7 +105,7 @@ async function handleFileChange(event: Event) {
 </script>
 
 <template>
-  <BottomSheet :title="t('contacts.addDialog.title')" @close="emit('close')">
+  <BottomSheet :title="t('contacts.addDialog.title')" fit-content @close="emit('close')">
     <!-- Import results view -->
     <div v-if="viewState === 'import-results'" class="results-view">
       <p class="results-summary">
