@@ -25,11 +25,11 @@
 
 ## 6. Worker deploy
 
-- [ ] 6.1 Deploy the updated Worker (NOT in CI): `cd services/email-hook && npx wrangler@latest deploy`. Without this, the client change runs against a stale Worker that ignores `newPartnerContactIds` (degrades to all-`updated`).
+- [x] 6.1 Deploy the updated Worker (NOT in CI): `cd services/email-hook && npx wrangler@latest deploy`. Without this, the client change runs against a stale Worker that ignores `newPartnerContactIds` (degrades to all-`updated`).
 
 ## 7. Finalize
 
 - [x] 7.1 Root checks clean: `npx eslint . --fix && npm run type-check && npm run test`.
 - [x] 7.2 Worker checks clean (separate vitest project, not covered by root `npm run test`): `cd services/email-hook && npm test`.
-- [ ] 7.3 Prompt the user to commit with a ready-to-copy conventional commit message (e.g. `feat(notifications): greet newly-added tour partners as a shared tour (#210)` + a `docs:` commit for `docs/notifications.md`).
-- [ ] 7.4 Prompt the user to push and open a PR to `main`.
+- [x] 7.3 Prompt the user to commit with a ready-to-copy conventional commit message (e.g. `feat(notifications): greet newly-added tour partners as a shared tour (#210)` + a `docs:` commit for `docs/notifications.md`).
+- [x] 7.4 Prompt the user to push and open a PR to `main`.
