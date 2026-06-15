@@ -195,11 +195,16 @@ async function openAtNaturalHeight() {
     return
   }
 
-  // CSS max-height: 70vh acts as the ceiling — offsetHeight at height:auto
-  // gives us min(naturalContentH, 70vh) directly.
+  // Measure natural content height, then clamp to the expanded ceiling
+  // (innerHeight * 0.7) so the sheet never exceeds 70% of the *visible*
+  // viewport. We can't lean on CSS `max-height: 70vh` for this: `vh` is the
+  // large viewport (full height behind the mobile URL bar), so on-device it's
+  // taller than `innerHeight * 0.7` and the sheet would overshoot. When the
+  // content is taller than the cap, `targetH` lands exactly on the expanded
+  // snap, so it reads as snapped to 70%.
   el.style.height = 'auto'
   const measuredH = el.offsetHeight
-  const targetH = measuredH > 0 ? measuredH : expandedHeight.value
+  const targetH = measuredH > 0 ? Math.min(measuredH, expandedHeight.value) : expandedHeight.value
   // Set inline immediately to avoid a flash before Vue's reactive render
   el.style.height = `${targetH}px`
 
@@ -342,7 +347,10 @@ const sheetStyle = computed(() => {
 .bottom-sheet {
   width: 100%;
   max-width: var(--bottom-sheet-max-width, 480px);
-  max-height: 70vh;
+  /* Secondary safety net only — JS clamps the applied height to
+     innerHeight * 0.7. `dvh` (visible viewport) keeps this in step with that
+     clamp; `vh` would be the larger viewport and let the sheet overshoot 70%. */
+  max-height: 70dvh;
   display: flex;
   flex-direction: column;
   background-color: var(--color-background);

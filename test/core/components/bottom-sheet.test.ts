@@ -222,6 +222,21 @@ describe('bottomSheet', () => {
     })
   })
 
+  describe('fit-content clamp', () => {
+    it('should clamp natural height to the 70% expanded ceiling when content is taller', async () => {
+      const wrapper = mount(BottomSheet, { props: { title: 'Test', fitContent: true } })
+      await flushPromises()
+      const el = wrapper.find('.bottom-sheet').element as HTMLElement
+      // Content taller than the cap (innerHeight * 0.7 = 700) — emulate on-device
+      // where CSS `vh` (large viewport) would let the sheet overshoot.
+      Object.defineProperty(el, 'offsetHeight', { value: 900, configurable: true })
+      window.dispatchEvent(new Event('resize'))
+      await flushPromises()
+      // min(900, 700) → snapped to the expanded ceiling, not the 900 content height
+      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 700px')
+    })
+  })
+
   describe('keyboard navigation', () => {
     async function mountAndGetHandle() {
       const wrapper = mount(BottomSheet, { props: { title: 'Test' } })

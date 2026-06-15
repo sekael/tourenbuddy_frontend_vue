@@ -1,6 +1,6 @@
 ## Context
 
-Mobile bottom sheets sit in a `.sheet-container` that is `position: fixed; bottom: 0` (`map-page.vue:770`), stacked over a full-screen MapLibre map. `bottom-sheet.vue` computes its own height (`currentHeight`) from snap points (`window.innerHeight * 0.4/0.7`) or, in fit-content mode, `min(content, 70vh)`.
+Mobile bottom sheets sit in a `.sheet-container` that is `position: fixed; bottom: 0` (`map-page.vue:770`), stacked over a full-screen MapLibre map. `bottom-sheet.vue` computes its own height (`currentHeight`) from snap points (`window.innerHeight * 0.4/0.7`) or, in fit-content mode, `min(content, window.innerHeight * 0.7)`.
 
 The on-screen keyboard breaks this for **edit forms**: on iOS the layout viewport (`window.innerHeight`) does **not** shrink (Android's default `interactive-widget: resizes-visual` is the same), so the keyboard overlays the fixed sheet and the browser auto-scrolls the focused input, dragging the whole fixed layer (sheet + map) around. Two iterations tried to keep the form *in* the sheet and resize it around the keyboard via the visual viewport — first shrinking (`S − K`), then expanding to a full page (`H − K`). On real devices both were buggy and noisy: dragging the sheet moved the map behind it and broke the layout; the keyboard produced flicker and gaps.
 
@@ -43,7 +43,7 @@ Each form (`tour-form`, `contact-form`, profile edit) gains `formId` + `embedded
 - Rationale: native `form=` avoids refs/`defineExpose` for the common case; only `tour-form`'s cleanup-on-cancel needs an exposed method.
 
 **5. Remove the keyboard machinery.**
-`use-keyboard-inset.ts` (+ test), the `--keyboard-inset` var publish/reset, `.sheet-container { bottom: var(--keyboard-inset) }`, and the `bottom-sheet.vue` `currentHeight`/`--fullscreen` math are all deleted. `currentHeight` collapses to `restingHeight`; the drag guard drops the `inset > 0` clause. The sheet is plain view-only again, capped at 70vh (the expanded snap is `innerHeight * 0.7` and the CSS ceiling is `max-height: 70vh`), so the map keeps at least 30% of the viewport.
+`use-keyboard-inset.ts` (+ test), the `--keyboard-inset` var publish/reset, `.sheet-container { bottom: var(--keyboard-inset) }`, and the `bottom-sheet.vue` `currentHeight`/`--fullscreen` math are all deleted. `currentHeight` collapses to `restingHeight`; the drag guard drops the `inset > 0` clause. The sheet is plain view-only again, capped at 70% of the **visible** viewport: the expanded snap is `innerHeight * 0.7`, and fit-content clamps its measured height to that same value in JS (`min(content, innerHeight * 0.7)`). The CSS `max-height: 70dvh` is only a secondary safety net — it must use `dvh`, not `vh`, because `vh` is the *large* viewport (full height behind the mobile URL bar) and on-device let the sheet overshoot 70% of the visible screen. The map keeps at least 30% of the viewport.
 
 **6. Compact chrome as a soft, visual requirement (density pass).**
 Trim non-content chrome in `bottom-sheet.vue` — **padding, margins, gaps** — so more area goes to information: reduce content horizontal padding from `spacing-xl` (24px) toward `spacing-md` (reclaims ~13% horizontal), tighten header `padding-bottom` and footer padding. These are *starting* values, tuned on-device.
