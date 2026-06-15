@@ -508,6 +508,8 @@ export async function handleTourChanged(request: Request, env: Env): Promise<Res
     action?: TourChangeAction
     partnerContactIds?: string[]
     tourName?: string
+    /** Partner contact ids added by an edit — these recipients get the 'created' greeting. */
+    newPartnerContactIds?: string[]
   }
   try {
     body = (await request.json()) as typeof body
@@ -542,16 +544,17 @@ export async function handleTourChanged(request: Request, env: Env): Promise<Res
   const recipients = partnerIds.filter(id => friendIds.has(id) && id !== callerId)
 
   try {
-    await Promise.all(
-      recipients.map(r =>
-        dispatchTourNotification(
-          r,
-          callerId,
-          { type: 'tour_updates', action: body.action!, tourName: tour.name ?? '' },
-          env,
-        ),
-      ),
-    )
+    // Partners added by this edit get the 'created' greeting; everyone else gets the
+    // edit action. Membership on the resolved-added set partitions recipients in one
+    // pass (mutually exclusive — a recipient is in the set or not).
+    const newlyAddedUserIds = new Set(await resolveUsersByContactIds(body.newPartnerContactIds ?? [], env))
+    await Promise.all(recipients.map(r =>
+      dispatchTourNotification(
+        r,
+        callerId,
+        { type: 'tour_updates', action: newlyAddedUserIds.has(r) ? 'created' : body.action!, tourName: tour.name ?? '' },
+        env,
+      )))
   }
   catch (err) {
     console.error('[notify/tour-changed] dispatch failed:', err)
