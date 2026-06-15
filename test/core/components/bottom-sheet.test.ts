@@ -313,20 +313,21 @@ describe('bottomSheet', () => {
       return Number(style.match(/height: (\d+)px/)?.[1] ?? -1)
     }
 
-    it('shrinks by the keyboard inset when K <= S', async () => {
+    it('goes fullscreen (H − K) above the keyboard regardless of resting height', async () => {
       const vv = makeViewport(1000)
       const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
       await flushPromises()
-      vv.set(700) // K = 300 <= S = 600
+      vv.set(700) // K = 300; sheet covers everything above the keyboard
       await nextTick()
-      expect(heightOf(wrapper)).toBe(300) // S − K
+      expect(heightOf(wrapper)).toBe(700) // H − K, not S − K
+      expect(wrapper.find('.bottom-sheet').classes()).toContain('bottom-sheet--fullscreen')
     })
 
-    it('expands to the top (H − K) when K > S on a small device', async () => {
+    it('fills to the keyboard top on a small device too', async () => {
       const vv = makeViewport(1000)
       const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
       await flushPromises()
-      vv.set(200) // K = 800 > S = 600
+      vv.set(200) // K = 800
       await nextTick()
       expect(heightOf(wrapper)).toBe(200) // H − K
     })
@@ -346,13 +347,13 @@ describe('bottomSheet', () => {
       const vv = makeViewport(1000)
       const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
       await flushPromises()
-      vv.set(700) // K = 300 → height 300, drag now inert
+      vv.set(700) // K = 300 → fullscreen height 700, drag now inert
       await nextTick()
       const handle = wrapper.find('.drag-handle').element
       firePointer(handle, 'pointerdown', 500)
       firePointer(handle, 'pointermove', 300)
       await nextTick()
-      expect(heightOf(wrapper)).toBe(300) // unchanged by the gesture
+      expect(heightOf(wrapper)).toBe(700) // unchanged by the gesture
     })
   })
 

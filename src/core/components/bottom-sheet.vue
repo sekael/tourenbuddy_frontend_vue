@@ -43,7 +43,7 @@ function snapHeightPx(snap: Snap): number {
 // ── Internal state ───────────────────────────────────────────────────────────
 // `restingHeight` (S) is the sheet's keyboard-free height — what snap/fit logic
 // writes. `currentHeight` is the *applied* height: equal to S when no keyboard,
-// shrunk above the keyboard otherwise, and written live during a drag gesture.
+// a full page above the keyboard otherwise, and written live during a drag.
 const restingHeight = ref(0)
 const currentHeight = ref(0)
 const isDragging = ref(false)
@@ -52,23 +52,23 @@ const lastSnap = ref<Snap>('default')
 // ── Keyboard-aware sizing ─────────────────────────────────────────────────────
 const { inset } = useKeyboardInset()
 
+// True while the on-screen keyboard is up. Drives both the applied height
+// (deriveHeight) and the fullscreen presentation class in the template.
+const keyboardOpen = computed(() => inset.value > 0)
+
 // Map the resting height (S) and keyboard inset (K) to the applied height.
 // K is clamped >= 0 in useKeyboardInset, so this function is total: every
-// input assigns a height (no silent no-op leaving a stale value).
+// branch assigns a height (no silent no-op leaving a stale value).
 function deriveHeight() {
-  const s = restingHeight.value
-  const k = inset.value
-  const h = window.innerHeight
-
-  if (k > s) {
-    // Small device: keyboard taller than the sheet, so the sheet takes all
-    // space above it. h - k is always >= 0 because K = max(0, innerHeight - …)
-    // can never exceed innerHeight (h) — no clamp needed here.
-    currentHeight.value = h - k
+  if (keyboardOpen.value) {
+    // Full page above the keyboard. The container's bottom sits at the keyboard
+    // top (bottom: var(--keyboard-inset)), so a sheet this tall reaches y=0.
+    // innerHeight − inset is always >= 0 (inset is clamped to [0, innerHeight]).
+    currentHeight.value = window.innerHeight - inset.value
     return
   }
-  // K = 0 (no keyboard) yields S; 0 < K <= S shrinks the sheet by K.
-  currentHeight.value = s - k
+  // Keyboard down: back to the resting snap/fit height (the 40% map view).
+  currentHeight.value = restingHeight.value
 }
 
 // Re-derive whenever the resting height changes (snap/fit/resize) or the
@@ -215,6 +215,10 @@ function onHandleKeydown(e: KeyboardEvent) {
 
 // ── Natural height open ──────────────────────────────────────────────────────
 async function openAtNaturalHeight() {
+  // While the keyboard is up the sheet is fullscreen (keyboard-driven); a refit
+  // here would write a stale resting height and fight deriveHeight. Skip it.
+  if (keyboardOpen.value)
+    return
   isDragging.value = true
   restingHeight.value = expandedHeight.value
   await nextTick()
@@ -257,6 +261,9 @@ watch(
 // ── Viewport resize ──────────────────────────────────────────────────────────
 function onWindowResize() {
   updatePeekHeight()
+  // Keyboard up → fullscreen height is keyboard-driven; don't refit/re-snap.
+  if (keyboardOpen.value)
+    return
   // Re-apply current snap with updated viewport heights — or refit to content.
   if (props.fitContent)
     void openAtNaturalHeight()
@@ -311,6 +318,7 @@ const sheetStyle = computed(() => {
     :class="{
       'bottom-sheet--collapsed': props.collapsed,
       'bottom-sheet--dragging': isDragging,
+      'bottom-sheet--fullscreen': keyboardOpen,
     }"
     :style="sheetStyle"
     role="dialog"
@@ -394,6 +402,21 @@ const sheetStyle = computed(() => {
 
 .bottom-sheet--dragging {
   transition: none;
+}
+
+/* Keyboard up: the sheet becomes a full page above the keyboard. The applied
+   height (innerHeight − inset) reaches y=0 because the container's bottom edge
+   sits at the keyboard's top; here we drop the chrome that would otherwise
+   leave a void — the 60vh cap, rounded corners, side/top borders, width cap. */
+.bottom-sheet--fullscreen {
+  max-width: none;
+  max-height: none;
+  border-radius: 0;
+  border: none;
+}
+
+.bottom-sheet--fullscreen .drag-handle {
+  display: none;
 }
 
 .bottom-sheet--collapsed {

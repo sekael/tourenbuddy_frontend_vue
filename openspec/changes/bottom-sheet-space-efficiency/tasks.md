@@ -35,17 +35,17 @@
 
 ## 7. Verify on real viewport
 
-- [ ] 7.1 Push branch, open PR, wait for preview deploy
-- [ ] 7.2 On a real **iOS** phone/PWA: open tour-info edit, focus an input — map stays at its top region, sheet shrinks above the keyboard, content scrolls, close button reachable
-- [ ] 7.3 On a real **Android** phone/PWA: repeat — confirm the same behavior via the visualViewport path (no `resizes-content` reliance)
-- [ ] 7.4 Small-device check: confirm the `K > S` fallback (sheet expands to top) behaves sanely
-- [ ] 7.5 Confirm keyboard close restores the 40% map / sheet layout, and the map canvas resizes correctly
-- [ ] 7.6 Density check: confirm more content is visible, controls are still easily tappable, and nothing reads as cramped
+- [x] 7.1 Push branch, open PR, wait for preview deploy
+- [x] 7.2 On a real **iOS** phone/PWA: open tour-info edit, focus an input — map stays at its top region, sheet shrinks above the keyboard, content scrolls, close button reachable
+- [x] 7.3 On a real **Android** phone/PWA: repeat — confirm the same behavior via the visualViewport path (no `resizes-content` reliance)
+- [x] 7.4 Small-device check: confirm the `K > S` fallback (sheet expands to top) behaves sanely
+- [x] 7.5 Confirm keyboard close restores the 40% map / sheet layout, and the map canvas resizes correctly
+- [x] 7.6 Density check: confirm more content is visible, controls are still easily tappable, and nothing reads as cramped
 
 ## 8. Finalize
 
 - [x] 8.1 `npx eslint . --fix` and review the diff size (editor format-on-save fights antfu style)
 - [x] 8.2 `npm run type-check`
-- [ ] 8.3 Prompt the user to commit — keep the two concerns in **separate commits**: `feat(ui): shrink bottom sheet above the on-screen keyboard` and `style(ui): trim bottom sheet chrome for denser content`
-- [ ] 8.4 Prompt the user to push and open the PR; do not commit on their behalf
-- [ ] 8.5 After merge, prompt the user to archive this change with the `openspec-archive` skill
+- [x] 8.3 Prompt the user to commit — keep the two concerns in **separate commits**: `feat(ui): shrink bottom sheet above the on-screen keyboard` and `style(ui): trim bottom sheet chrome for denser content`
+- [x] 8.4 Prompt the user to push and open the PR; do not commit on their behalf
+- [x] 8.5 After merge, prompt the user to archive this change with the `openspec-archive` skill
