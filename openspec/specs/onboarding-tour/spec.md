@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Introduce new users to TourenBuddy's core features via a guided spotlight tour. On first arrival at the map after profile onboarding, a welcome screen offers to start the tour, which walks through phone verification, notifications, contacts, friend requests, tours, and map controls. Tour progress and the auto-show gate persist on `user_profile` so state follows the user across devices, and the tour is reopenable from the profile sheet.
+
+## Requirements
 
 ### Requirement: First-arrival welcome trigger
 
