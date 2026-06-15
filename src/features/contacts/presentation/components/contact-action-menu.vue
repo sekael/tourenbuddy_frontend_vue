@@ -116,7 +116,7 @@ onUnmounted(() => {
 
     <!-- Mobile: bottom sheet -->
     <div v-else class="sheet-container" @click.self="emit('close')">
-      <BottomSheet :title="contactName" @close="emit('close')">
+      <BottomSheet :title="contactName" fit-content @close="emit('close')">
         <div class="sheet-body">
           <template v-if="actions.length > 0">
             <div v-for="action in actions" :key="action.methodId" class="method-row">
