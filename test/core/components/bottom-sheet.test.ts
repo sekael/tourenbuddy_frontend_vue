@@ -6,6 +6,12 @@ import BottomSheet from '@/core/components/bottom-sheet.vue'
 // happy-dom stubs for APIs not supported in test env
 beforeEach(() => {
   Object.defineProperty(window, 'innerHeight', { value: 1000, writable: true, configurable: true })
+  // Default: no keyboard. Individual tests override with a scriptable viewport.
+  Object.defineProperty(window, 'visualViewport', {
+    value: undefined,
+    writable: true,
+    configurable: true,
+  })
   vi.stubGlobal(
     'ResizeObserver',
     class {
@@ -148,21 +154,21 @@ describe('bottomSheet', () => {
     it('should set height to expanded snap on mount (natural height unmeasurable in test env)', async () => {
       const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
       await flushPromises()
-      // measured offsetHeight = 0 in happy-dom → fallback to expandedHeight = 600
-      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 600px')
+      // measured offsetHeight = 0 in happy-dom → fallback to expandedHeight = 700
+      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 700px')
     })
 
     it('should update height during drag', async () => {
       const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
       await flushPromises()
       const handle = wrapper.find('.drag-handle').element
-      // Start drag at y=500 (sheet is at 600px)
+      // Start drag at y=500 (sheet is at 700px)
       firePointer(handle, 'pointerdown', 500)
-      // Move down 100px → newHeight = 600 - (600 - 500) = 500
+      // Move down 100px → newHeight = 700 - (600 - 500) = 600
       firePointer(handle, 'pointermove', 600)
       await nextTick()
       const style = wrapper.find('.bottom-sheet').attributes('style') ?? ''
-      expect(style).toContain('height: 500px')
+      expect(style).toContain('height: 600px')
     })
 
     it('should clamp height to expanded ceiling during drag', async () => {
@@ -170,10 +176,10 @@ describe('bottomSheet', () => {
       await flushPromises()
       const handle = wrapper.find('.drag-handle').element
       firePointer(handle, 'pointerdown', 500)
-      // Move up by 400px → would be 1000px but clamped to 600 (expandedHeight)
+      // Move up by 400px → would be 1100px but clamped to 700 (expandedHeight)
       firePointer(handle, 'pointermove', 100)
       await nextTick()
-      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 600px')
+      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 700px')
     })
 
     it('should clamp height to peek floor during drag', async () => {
@@ -195,11 +201,11 @@ describe('bottomSheet', () => {
       await flushPromises()
       const handle = wrapper.find('.drag-handle').element
       firePointer(handle, 'pointerdown', 500)
-      // Move up ~200px → currentHeight clamped at 600 → nearest snap = expanded
+      // Move up ~200px → currentHeight clamped at 700 → nearest snap = expanded
       firePointer(handle, 'pointermove', 300)
       firePointer(handle, 'pointerup', 300)
       await nextTick()
-      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 600px')
+      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 700px')
     })
 
     it('should keep current snap when tap (< 4px movement)', async () => {
@@ -211,8 +217,23 @@ describe('bottomSheet', () => {
       firePointer(handle, 'pointermove', 502)
       firePointer(handle, 'pointerup', 502)
       await nextTick()
-      // Should remain at current snap (expanded = 600px in test env)
-      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 600px')
+      // Should remain at current snap (expanded = 700px in test env)
+      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 700px')
+    })
+  })
+
+  describe('fit-content clamp', () => {
+    it('should clamp natural height to the 70% expanded ceiling when content is taller', async () => {
+      const wrapper = mount(BottomSheet, { props: { title: 'Test', fitContent: true } })
+      await flushPromises()
+      const el = wrapper.find('.bottom-sheet').element as HTMLElement
+      // Content taller than the cap (innerHeight * 0.7 = 700) — emulate on-device
+      // where CSS `vh` (large viewport) would let the sheet overshoot.
+      Object.defineProperty(el, 'offsetHeight', { value: 900, configurable: true })
+      window.dispatchEvent(new Event('resize'))
+      await flushPromises()
+      // min(900, 700) → snapped to the expanded ceiling, not the 900 content height
+      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 700px')
     })
   })
 
@@ -228,7 +249,7 @@ describe('bottomSheet', () => {
       const wrapper = await mountAndGetHandle()
       await wrapper.find('.drag-handle').trigger('keydown', { key: 'ArrowUp' })
       await nextTick()
-      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 600px')
+      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 700px')
       expect(wrapper.find('.drag-handle').attributes('aria-valuenow')).toBe('2')
     })
 
@@ -266,7 +287,7 @@ describe('bottomSheet', () => {
       await nextTick()
       await wrapper.find('.drag-handle').trigger('keydown', { key: 'Home' })
       await nextTick()
-      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 600px')
+      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 700px')
     })
 
     it('should jump to peek on End key', async () => {

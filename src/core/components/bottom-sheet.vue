@@ -29,7 +29,7 @@ const SNAP_ORDER: Snap[] = ['peek', 'default', 'expanded']
 
 const peekHeight = ref(64)
 const defaultHeight = computed(() => Math.round(window.innerHeight * 0.4))
-const expandedHeight = computed(() => Math.round(window.innerHeight * 0.6))
+const expandedHeight = computed(() => Math.round(window.innerHeight * 0.7))
 
 function snapHeightPx(snap: Snap): number {
   if (snap === 'peek')
@@ -40,7 +40,11 @@ function snapHeightPx(snap: Snap): number {
 }
 
 // ── Internal state ───────────────────────────────────────────────────────────
-const currentHeight = ref(0)
+// The bottom sheet is view-mode only (data entry goes to a full-screen page),
+// so there's no keyboard-vs-sheet sizing: the applied height is just the resting
+// height the snap/fit/drag logic writes.
+const restingHeight = ref(0)
+const currentHeight = computed(() => restingHeight.value)
 const isDragging = ref(false)
 const lastSnap = ref<Snap>('default')
 
@@ -55,15 +59,11 @@ function updatePeekHeight() {
   peekHeight.value = h
 }
 
-function applySnap(snap: Snap, immediate = false) {
+function applySnap(snap: Snap) {
   lastSnap.value = snap
-  if (immediate) {
-    currentHeight.value = snapHeightPx(snap)
-  }
-  else {
-    // Trigger transition by setting height — CSS transition handles animation
-    currentHeight.value = snapHeightPx(snap)
-  }
+  // Set the resting base; `currentHeight` maps it to the applied height.
+  // CSS transition on `height` animates the change.
+  restingHeight.value = snapHeightPx(snap)
 }
 
 // ── Drag logic ───────────────────────────────────────────────────────────────
@@ -73,6 +73,7 @@ let lastMoveY = 0
 let activeDragPointerId: number | null = null
 
 function onDragStart(e: PointerEvent) {
+  // Inert while collapsed.
   if (props.collapsed)
     return
   e.preventDefault()
@@ -92,7 +93,9 @@ function onDragMove(e: PointerEvent) {
   const clamped = Math.round(
     Math.max(peekHeight.value, Math.min(expandedHeight.value, startHeight - delta)),
   )
-  currentHeight.value = clamped
+  // Drag is gated while the keyboard is open, so writing the resting base here
+  // updates the applied height live (transition is suppressed during the drag).
+  restingHeight.value = clamped
   lastMoveY = e.clientY
 }
 
@@ -105,7 +108,7 @@ function onDragEnd(e: PointerEvent) {
   const totalDelta = Math.abs(e.clientY - startY)
   if (totalDelta < 4) {
     // tap — restore snap without change
-    currentHeight.value = snapHeightPx(lastSnap.value)
+    restingHeight.value = snapHeightPx(lastSnap.value)
     return
   }
 
@@ -181,7 +184,7 @@ function onHandleKeydown(e: KeyboardEvent) {
 // ── Natural height open ──────────────────────────────────────────────────────
 async function openAtNaturalHeight() {
   isDragging.value = true
-  currentHeight.value = expandedHeight.value
+  restingHeight.value = expandedHeight.value
   await nextTick()
 
   const el = sheetRef.value
@@ -192,15 +195,20 @@ async function openAtNaturalHeight() {
     return
   }
 
-  // CSS max-height: 60vh acts as the ceiling — offsetHeight at height:auto
-  // gives us min(naturalContentH, 60vh) directly.
+  // Measure natural content height, then clamp to the expanded ceiling
+  // (innerHeight * 0.7) so the sheet never exceeds 70% of the *visible*
+  // viewport. We can't lean on CSS `max-height: 70vh` for this: `vh` is the
+  // large viewport (full height behind the mobile URL bar), so on-device it's
+  // taller than `innerHeight * 0.7` and the sheet would overshoot. When the
+  // content is taller than the cap, `targetH` lands exactly on the expanded
+  // snap, so it reads as snapped to 70%.
   el.style.height = 'auto'
   const measuredH = el.offsetHeight
-  const targetH = measuredH > 0 ? measuredH : expandedHeight.value
+  const targetH = measuredH > 0 ? Math.min(measuredH, expandedHeight.value) : expandedHeight.value
   // Set inline immediately to avoid a flash before Vue's reactive render
   el.style.height = `${targetH}px`
 
-  currentHeight.value = targetH
+  restingHeight.value = targetH
   lastSnap.value = nearestSnap(targetH, 'up')
   await nextTick()
   isDragging.value = false
@@ -226,7 +234,7 @@ function onWindowResize() {
   if (props.fitContent)
     void openAtNaturalHeight()
   else
-    currentHeight.value = snapHeightPx(lastSnap.value)
+    restingHeight.value = snapHeightPx(lastSnap.value)
 }
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
@@ -241,7 +249,7 @@ onMounted(() => {
       if (props.fitContent)
         void openAtNaturalHeight()
       else
-        currentHeight.value = snapHeightPx(lastSnap.value)
+        restingHeight.value = snapHeightPx(lastSnap.value)
     }
   })
 
@@ -339,7 +347,10 @@ const sheetStyle = computed(() => {
 .bottom-sheet {
   width: 100%;
   max-width: var(--bottom-sheet-max-width, 480px);
-  max-height: 60vh;
+  /* Secondary safety net only — JS clamps the applied height to
+     innerHeight * 0.7. `dvh` (visible viewport) keeps this in step with that
+     clamp; `vh` would be the larger viewport and let the sheet overshoot 70%. */
+  max-height: 70dvh;
   display: flex;
   flex-direction: column;
   background-color: var(--color-background);
@@ -347,7 +358,8 @@ const sheetStyle = computed(() => {
   border: 1px solid var(--color-outline-variant);
   border-bottom: none;
   box-shadow: var(--shadow-lg);
-  padding: var(--spacing-sm) var(--spacing-xl) 0;
+  /* Compact horizontal padding (md, not xl) so more width goes to content. */
+  padding: var(--spacing-sm) var(--spacing-md) 0;
   transition: height 200ms ease-out;
   /* Restore pointer events — parent sheet-container sets pointer-events: none
      to allow FAB clicks through transparent areas */
@@ -403,7 +415,7 @@ const sheetStyle = computed(() => {
   align-items: center;
   flex-shrink: 0;
   gap: var(--spacing-sm);
-  padding-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
 }
 
 .back-btn {
@@ -472,6 +484,7 @@ const sheetStyle = computed(() => {
 .footer {
   flex-shrink: 0;
   border-top: 1px solid var(--color-outline-variant);
-  padding: var(--spacing-sm) 0 calc(var(--spacing-xl) + env(safe-area-inset-bottom, 0px));
+  /* Base padding trimmed (md, not xl); env() still clears the home-gesture bar. */
+  padding: var(--spacing-sm) 0 calc(var(--spacing-md) + env(safe-area-inset-bottom, 0px));
 }
 </style>

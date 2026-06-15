@@ -6,6 +6,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
+import FullScreenPage from '@/core/components/full-screen-page.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useLogger } from '@/core/logging/use-logger'
@@ -409,6 +410,22 @@ const displayName = computed(() => props.tour.name ?? t('tours.infoSheet.unnamed
 // desktop (side drawer → compact top-right header) and mobile (bottom sheet
 // → title-only bar).
 const sheetCollapsed = computed(() => isPicking.value && mode.value === 'edit')
+
+// On mobile, an active edit takes a full-screen page (no map, no drag) — except
+// while a location pick is active, where the sheet collapses to reveal the map.
+const editAsPage = computed(
+  () => !isDesktop.value && mode.value === 'edit' && !isPicking.value,
+)
+const editFormRef = ref<{ cancel: () => void } | null>(null)
+
+function handleSheetClose() {
+  // In page mode the top-bar cancel returns to view mode and runs the form's
+  // cleanup (rolls back attachments added this session); otherwise dismiss.
+  if (editAsPage.value)
+    editFormRef.value?.cancel()
+  else
+    emit('close')
+}
 const sheetTitle = computed(() => {
   if (sheetCollapsed.value) {
     if (props.activePickType === 'start')
@@ -566,12 +583,13 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
 <template>
   <component
-    :is="isDesktop ? SideDrawer : BottomSheet"
+    :is="editAsPage ? FullScreenPage : isDesktop ? SideDrawer : BottomSheet"
     :title="sheetTitle"
+    :fit-content="!isDesktop && !editAsPage"
     :collapsed="sheetCollapsed"
     :back-label="sheetBackLabel"
-    :show-back="sheetShowBack"
-    @close="emit('close')"
+    :show-back="editAsPage ? false : sheetShowBack"
+    @close="handleSheetClose"
     @back="handleSheetBack"
   >
     <!-- ── Edit mode ────────────────────────────────────────────────────── -->
@@ -580,6 +598,9 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         {{ saveError }}
       </p>
       <TourForm
+        ref="editFormRef"
+        form-id="tour-edit-form"
+        :embedded="editAsPage"
         :submit-label="t('tours.infoSheet.saveLabel')"
         :allow-goal-edit="true"
         :current-goal="pendingGoal"
@@ -871,6 +892,13 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           @cancel="showGroupSmsDialog = false"
         />
       </div>
+    </template>
+
+    <!-- Full-screen edit page: Save lives in the top app bar (above keyboard). -->
+    <template v-if="editAsPage && mode === 'edit'" #page-action>
+      <button type="submit" form="tour-edit-form" class="page-save-btn">
+        {{ t('tours.infoSheet.saveLabel') }}
+      </button>
     </template>
 
     <template v-if="mode === 'view' && isOwner && !linksView" #footer>
@@ -1224,7 +1252,8 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 .save-error {
   font-size: var(--font-size-sm);
   color: var(--color-error);
-  padding: 0 var(--spacing-xl);
+  /* Align with the sheet's content inset (now md, was xl). */
+  padding: 0 var(--spacing-md);
   margin-bottom: calc(-1 * var(--spacing-md));
 }
 </style>

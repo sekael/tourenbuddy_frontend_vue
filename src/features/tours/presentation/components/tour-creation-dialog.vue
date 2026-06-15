@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
+import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useLogger } from '@/core/logging/use-logger'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import TourForm from '@/features/tours/presentation/components/tour-form.vue'
@@ -43,8 +44,25 @@ const { t } = useI18n({ useScope: 'global' })
 const mapStore = useMapStore()
 const { isPickingLocation } = storeToRefs(mapStore)
 const log = useLogger('tour-creation-dialog')
+const isDesktop = useIsDesktop()
 
 const isPicking = computed(() => isPickingLocation.value)
+
+// On mobile, the creation form takes a full-screen page — except while a
+// location pick is active, where it collapses to reveal the map. `embedded`
+// hides the in-form action row (the page top bar provides Save/Cancel).
+const showAsPage = computed(() => !isPicking.value)
+const embedded = computed(() => !isDesktop.value && showAsPage.value)
+const formRef = ref<{ cancel: () => void } | null>(null)
+
+function handleClose() {
+  // In page mode the top-bar cancel must run the form's cleanup (orphaned GPX /
+  // staged attachments); elsewhere the close path is unchanged.
+  if (embedded.value)
+    formRef.value?.cancel()
+  else
+    emit('close')
+}
 
 const pickTypeLabel = computed(() => {
   if (!isPicking.value)
@@ -78,8 +96,16 @@ function handlePickPoint(type: 'start' | 'end' | 'goal') {
 </script>
 
 <template>
-  <AdaptiveOverlay :title="title" :collapsed="isPicking" @close="emit('close')">
+  <AdaptiveOverlay
+    :title="title"
+    :collapsed="isPicking"
+    :page="showAsPage"
+    @close="handleClose"
+  >
     <TourForm
+      ref="formRef"
+      form-id="tour-create-form"
+      :embedded="embedded"
       :submit-label="t('tours.creation.saveBtn')"
       :allow-goal-edit="true"
       :current-goal="initialGoal ?? null"
@@ -94,5 +120,11 @@ function handlePickPoint(type: 'start' | 'end' | 'goal') {
       @cancel="emit('close')"
       @pick-point="handlePickPoint"
     />
+
+    <template #page-action>
+      <button type="submit" form="tour-create-form" class="page-save-btn">
+        {{ t('tours.creation.saveBtn') }}
+      </button>
+    </template>
   </AdaptiveOverlay>
 </template>

@@ -89,6 +89,7 @@ function handleRowClick(tourId: string) {
   <component
     :is="isDesktop ? SideDrawer : BottomSheet"
     :title="t('tours.list.title')"
+    :fit-content="!isDesktop"
     @close="emit('close')"
   >
     <template #header-actions>

@@ -53,6 +53,14 @@ const props = defineProps<{
   disabled?: boolean
   /** Tour ID — only required in edit mode; used by the attachments picker. */
   tourId?: string
+  /** `<form>` id, so an external Save button can submit via the `form` attribute. */
+  formId?: string
+  /**
+   * Hide the in-form cancel/save row — used when the form lives in a full-screen
+   * page whose top app bar provides those controls instead. The page's cancel
+   * calls the exposed `cancel()` so GPX/attachment cleanup still runs.
+   */
+  embedded?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -368,7 +376,10 @@ function formatPoint(point: { lng: number, lat: number }) {
 }
 
 function handleSubmit() {
-  if (props.disabled)
+  // `disabled` covers the location-picker; `isUploadingGpx` is the in-form submit
+  // button's disabled state — guard it here too since an external (top-bar) Save
+  // button bypasses that attribute.
+  if (props.disabled || isUploadingGpx.value)
     return
   if (!tourName.value.trim()) {
     nameError.value = true
@@ -400,10 +411,14 @@ function handleSubmit() {
   }
   emit('submit', draft, null, gpxRemoved.value, preUploadedTourId, draftId ?? '')
 }
+
+// Let a full-screen page's top-bar cancel run the same cleanup as the in-form
+// Cancel button (orphaned GPX upload + staged attachments).
+defineExpose({ cancel: handleCancel })
 </script>
 
 <template>
-  <form class="form" @submit.prevent="handleSubmit">
+  <form :id="props.formId" class="form" @submit.prevent="handleSubmit">
     <fieldset class="form-fieldset" :disabled="props.disabled">
       <div class="scroll-body">
         <!-- SECTION: Location Details -->
@@ -778,7 +793,7 @@ function handleSubmit() {
       </div>
       <!-- end scroll-body -->
 
-      <div class="actions">
+      <div v-if="!props.embedded" class="actions">
         <button type="button" class="cancel-btn" @click="handleCancel">
           {{ t('tours.form.cancelBtn') }}
         </button>
