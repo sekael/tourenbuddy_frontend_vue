@@ -2,31 +2,34 @@
 
 - [x] 1.1 Create branch from latest main: `git fetch origin && git checkout main && git pull && git checkout -b feat/bottom-sheet-space-efficiency`
 
-## 2. Detection composable (pure)
+> **Pivot (superseded keyboard approach).** Resizing the sheet around the keyboard (first `S − K`, then full-page `H − K` via a `visualViewport` inset) was buggy and noisy on-device — dragging moved the map, the keyboard flickered and left gaps. Replaced with: on mobile, data entry leaves the sheet for a full-screen page. Sections 2–5 below record the final shipped approach.
 
-- [x] 2.1 Add `core/composables/use-keyboard-inset.ts`: own `visualViewport` `resize` **and `scroll`** listeners, expose a reactive `inset` ref = `K = max(0, innerHeight − (visualViewport.height + visualViewport.offsetTop))`. No DOM writes
-- [x] 2.2 Clean up both listeners on unmount
-- [x] 2.3 Guard `visualViewport` being undefined (older/unsupported) — inset stays `0`
+## 2. Full-screen page primitive
 
-## 3. Owner publishes the var + container offset
+- [x] 2.1 Add `core/components/full-screen-page.vue`: opaque `position: fixed; inset: 0` surface, fixed top app bar (cancel control + `page-action` slot for Save), scrolling body; no drag/snap; covers the map
+- [x] 2.2 Style a shared `page-save-btn` (via `:slotted`) so consumers' top-bar Save buttons are consistent
+- [x] 2.3 In `adaptive-overlay.vue`, add a `page` prop: mobile + `page` → `full-screen-page`, mobile → bottom sheet, desktop → dialog/drawer; forward all named slots through to whichever renders
 
-- [x] 3.1 In `bottom-sheet.vue`, `watch(inset)` and write `--keyboard-inset: ${inset}px` on `document.documentElement`; reset to `0px` on unmount
-- [x] 3.2 In `map-page.vue`, apply `bottom: var(--keyboard-inset, 0px)` to `.sheet-container`
-- [x] 3.3 Verify the map's interactive inset (`sheetContainerRef.offsetHeight`) still recomputes as the sheet height changes
+## 3. Remove the keyboard machinery
 
-## 4. Sheet height math (full-page above keyboard)
+- [x] 3.1 Delete `core/composables/use-keyboard-inset.ts` and its test
+- [x] 3.2 In `bottom-sheet.vue`, strip the `inset`/`keyboardOpen`/`--keyboard-inset` publish, the `--fullscreen` class + CSS, and the refit/​drag guards; collapse `currentHeight` to `restingHeight`
+- [x] 3.3 In `map-page.vue`, revert `.sheet-container` to `bottom: 0`
+- [x] 3.4 Remove the keyboard-aware describe block from `bottom-sheet.test.ts`
 
-- [x] 4.1 In `bottom-sheet.vue`, consume the `inset` ref; route snap/fit/drag heights through a reactive `restingHeight` base (`S`) instead of writing the applied height directly
-- [x] 4.2 Derive `currentHeight` as a `computed` of `(restingHeight, inset, H)`: `K=0 → S`; `K>0 → H−K` (full page above the keyboard, covering the map)
-- [x] 4.3 Add a `bottom-sheet--fullscreen` class (bound to `inset > 0`) that drops the `max-height: 60vh` cap, top corner radius, side/top borders, and hides the drag handle — so no gaps show over the covered map
-- [x] 4.4 Gate the drag handle while `inset > 0`: extend the `onDragStart` `collapsed` early-return to `collapsed || inset > 0`; guard the refit paths (`openAtNaturalHeight`, `onWindowResize`) to skip while the keyboard is open
-- [x] 4.5 Confirm restore on keyboard close (inset → 0) returns to `S`, the `:root` offset → 0, and the map is revealed
+## 4. Consumer wiring (data entry → page on mobile)
+
+- [x] 4.1 `tour-form.vue` / `contact-form.vue`: add `formId` + `embedded` (hide the in-form action row); `tour-form` guards submit on `isUploadingGpx` and exposes `cancel()` for cleanup
+- [x] 4.2 `tour-info-sheet.vue`: add `full-screen-page` as a third `:is` target for `!isDesktop && mode === 'edit' && !isPicking`; top-bar Save submits `tour-edit-form`; top-bar cancel runs the form's cleanup
+- [x] 4.3 `tour-creation-dialog.vue`: `:page="!isPicking"`; top-bar Save submits `tour-create-form`; falls back to the collapsed sheet while picking
+- [x] 4.4 `user-profile-sheet.vue`: `:page="isEditing"`; top-bar Save submits `profile-edit-form`; cancel returns to view
+- [x] 4.5 `contact-creation-dialog.vue`: `full-screen-page` for the form view on mobile (import-results stays a sheet); top-bar Save submits `contact-create-form`
+- [x] 4.6 Decision: leave `phone-verification-dialog` (OTP) and contact search as bottom sheets — not over the interactive map, paging is disproportionate (flag for the user)
 
 ## 5. Tests
 
-- [x] 5.1 Unit-test `use-keyboard-inset` with a mocked `visualViewport`: inset math, iOS `offsetTop` term, `max(0,…)` clamp, `resize`+`scroll` updates, open/close, cleanup
-- [x] 5.2 Component test for the height branch in `bottom-sheet.vue` (drive a mocked inset): full-page `H−K` whenever `K>0` (with `--fullscreen` class), restore at `K=0`, and drag inert while `inset > 0`
-- [x] 5.3 `npm run test` — all pass
+- [x] 5.1 `bottom-sheet.test.ts`: keyboard tests removed; view-mode snap/drag/fit tests still pass
+- [x] 5.2 `npm run test` — all pass (type-check + eslint clean)
 
 ## 6. Compact space usage (independent commit/PR)
 
@@ -37,10 +40,10 @@
 ## 7. Verify on real viewport
 
 - [x] 7.1 Push branch, open PR, wait for preview deploy
-- [x] 7.2 On a real **iOS** phone/PWA: open tour-info edit, focus an input — sheet expands to a full page above the keyboard (no gaps over the map), content scrolls, close button reachable
-- [x] 7.3 On a real **Android** phone/PWA: repeat — confirm the same behavior via the visualViewport path (no `resizes-content` reliance)
-- [x] 7.4 Small-device check: confirm the full-page sheet fills exactly to the keyboard top with no gap and the content scrolls
-- [x] 7.5 Confirm keyboard close restores the 40% map / sheet layout, and the map canvas resizes correctly
+- [ ] 7.2 On a real **iOS** phone/PWA: enter tour edit / creation / profile edit — surface becomes a full-screen page (no map behind), Save in the top bar stays above the keyboard, content scrolls, no drag/flicker
+- [ ] 7.3 On a real **Android** phone/PWA: repeat — same behavior
+- [ ] 7.4 Confirm a location pick mid-edit collapses to the sheet (map visible) and returns to the page after
+- [ ] 7.5 Confirm save/cancel returns to the bottom sheet with the map visible again
 - [x] 7.6 Density check: confirm more content is visible, controls are still easily tappable, and nothing reads as cramped
 
 ## 8. Finalize

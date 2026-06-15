@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
+import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { InvalidPhoneNumberError, PhoneAlreadyRegisteredError } from '@/core/exceptions'
 import { SUPPORTED_LOCALES } from '@/core/i18n/supported'
 import { formatPhoneForDisplay } from '@/core/utils/phone-normalize'
@@ -31,7 +32,19 @@ const localeStore = useLocaleStore()
 const friendshipsStore = useFriendshipsStore()
 const onboardingTourStore = useOnboardingTourStore()
 
+const isDesktop = useIsDesktop()
 const isEditing = ref(false)
+// On mobile, editing the profile takes a full-screen page; `editAsPage` also
+// hides the in-form action row (the page's top app bar provides Save/Cancel).
+const editAsPage = computed(() => !isDesktop.value && isEditing.value)
+
+function handleClose() {
+  if (editAsPage.value)
+    cancelEdit()
+  else
+    emit('close')
+}
+
 const editFirstName = ref('')
 const editLastName = ref('')
 const editPhone = ref('')
@@ -209,7 +222,13 @@ async function handleSignOut() {
 </script>
 
 <template>
-  <AdaptiveOverlay :title="t('user.profile.title')" @close="emit('close')">
+  <AdaptiveOverlay :title="t('user.profile.title')" :page="isEditing" @close="handleClose">
+    <template v-if="editAsPage" #page-action>
+      <button type="submit" form="profile-edit-form" class="page-save-btn" :disabled="isSaving">
+        {{ isSaving ? t('user.shared.savingBtn') : t('user.shared.saveBtn') }}
+      </button>
+    </template>
+
     <div class="profile-content">
       <!-- View mode -->
       <template v-if="!isEditing">
@@ -292,7 +311,7 @@ async function handleSignOut() {
 
       <!-- Edit mode -->
       <template v-else>
-        <form class="edit-form" @submit.prevent="handleSave">
+        <form id="profile-edit-form" class="edit-form" @submit.prevent="handleSave">
           <div class="field">
             <label for="edit-first-name" class="label">{{ t('user.shared.firstNameLabel') }}</label>
             <input
@@ -387,7 +406,7 @@ async function handleSignOut() {
             {{ editError }}
           </p>
 
-          <div class="edit-actions">
+          <div v-if="!editAsPage" class="edit-actions">
             <button type="button" class="cancel-btn" @click="cancelEdit">
               {{ t('user.shared.cancelBtn') }}
             </button>

@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { ImportResult, ParsedImportItem } from '@/features/contacts/presentation/composables/use-contact-import'
 import type { PhoneEntry } from '@/features/contacts/presentation/stores/contacts-store'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
+import FullScreenPage from '@/core/components/full-screen-page.vue'
+import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { DuplicateContactMethodError } from '@/core/exceptions'
 import { useContactImport } from '@/features/contacts/presentation/composables/use-contact-import'
 import { useContactPicker } from '@/features/contacts/presentation/composables/use-contact-picker'
@@ -14,6 +16,7 @@ import ContactForm from './contact-form.vue'
 const emit = defineEmits<{ close: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
+const isDesktop = useIsDesktop()
 
 const contactsStore = useContactsStore()
 
@@ -29,6 +32,10 @@ const error = ref<string | null>(null)
 const isLoading = ref(false)
 
 const fileInput = ref<HTMLInputElement | null>(null)
+
+// The manual-entry form takes a full-screen page on mobile (Save in the top
+// bar); the import-results list stays a fit-content bottom sheet.
+const formAsPage = computed(() => !isDesktop.value && viewState.value === 'form')
 
 function switchToForm() {
   viewState.value = 'form'
@@ -105,7 +112,18 @@ async function handleFileChange(event: Event) {
 </script>
 
 <template>
-  <BottomSheet :title="t('contacts.addDialog.title')" fit-content @close="emit('close')">
+  <component
+    :is="formAsPage ? FullScreenPage : BottomSheet"
+    :title="t('contacts.addDialog.title')"
+    :fit-content="formAsPage ? undefined : true"
+    @close="emit('close')"
+  >
+    <template v-if="formAsPage" #page-action>
+      <button type="submit" form="contact-create-form" class="page-save-btn" :disabled="isLoading">
+        {{ isLoading ? t('contacts.shared.savingBtn') : t('contacts.addDialog.title') }}
+      </button>
+    </template>
+
     <!-- Import results view -->
     <div v-if="viewState === 'import-results'" class="results-view">
       <p class="results-summary">
@@ -203,13 +221,15 @@ async function handleFileChange(event: Event) {
       </p>
 
       <ContactForm
+        form-id="contact-create-form"
+        :embedded="formAsPage"
         :submit-label="t('contacts.addDialog.title')"
         :is-loading="isLoading"
         @submit="handleSubmit"
         @cancel="emit('close')"
       />
     </div>
-  </BottomSheet>
+  </component>
 </template>
 
 <style scoped>

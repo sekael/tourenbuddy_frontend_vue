@@ -20,6 +20,10 @@ interface Props {
   initialDisplayName?: string
   submitLabel?: string
   isLoading?: boolean
+  /** `<form>` id, so an external Save button can submit via the `form` attribute. */
+  formId?: string
+  /** Hide the in-form cancel/save row (a full-screen page's top bar provides them). */
+  embedded?: boolean
 }
 
 interface FormData {
@@ -174,7 +178,7 @@ defineExpose({ submit, validateAndCollect })
 </script>
 
 <template>
-  <form class="form" @submit.prevent="submit">
+  <form :id="props.formId" class="form" @submit.prevent="submit">
     <div class="field">
       <label class="label" for="cf-firstName">{{ t('contacts.form.firstNameLabel') }} <span class="required">*</span></label>
       <input
@@ -273,7 +277,7 @@ defineExpose({ submit, validateAndCollect })
       {{ error }}
     </p>
 
-    <div class="actions">
+    <div v-if="!props.embedded" class="actions">
       <button type="button" class="cancel-btn" @click="emit('cancel')">
         {{ t('contacts.shared.cancelBtn') }}
       </button>

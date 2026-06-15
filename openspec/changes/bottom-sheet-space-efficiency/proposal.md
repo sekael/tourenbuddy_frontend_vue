@@ -5,23 +5,19 @@ Bottom sheets have limited screen real estate, and that space must be used as ef
 1. **Keyboard handling.** When the on-screen keyboard opens on mobile/PWA, the layout viewport does not shrink on iOS (and Android's default `interactive-widget=resizes-visual` behaves the same), so the `position: fixed; bottom: 0` `.sheet-container` ends up behind the keyboard. The browser then auto-scrolls the focused input into view, shoving the whole fixed layer — sheet *and* the map above it — up and out of view. Any bottom sheet with a text input (tour-info edit, contact/tour creation, profile, OTP) is affected.
 2. **Wasted chrome.** Non-content chrome eats the limited space: the content's horizontal padding is `spacing-xl` (24px × 2 = 48px, ~13% of a 360px screen), plus generous header/footer padding and the gaps reserved around the drag handle and the edit/delete and cancel/save action buttons. This pushes relevant information out of view and forces extra scrolling.
 
-We want the sheet to expand to a full page above the keyboard when it opens (covering the map so the whole screen serves the edit form, with no gaps), **and** the sheet's non-content chrome trimmed so the maximum area goes to information — without sacrificing tap-target size or visual separation.
+We want **edit/create on mobile to leave the bottom sheet entirely and render as a full-screen page** (no map, no drag) so the whole screen serves the form and there's nothing to misalign, **and** the sheet's non-content chrome trimmed so the maximum area goes to information — without sacrificing tap-target size or visual separation.
 
 ## What Changes
 
-### Keyboard-aware sizing
+### Mobile: full-screen page for data entry (bottom sheet is view-only)
 
-- Add `core/composables/use-keyboard-inset.ts`: a **pure** composable owning `visualViewport` `resize` **and `scroll`** listeners, exposing a reactive `inset` ref equal to `K = max(0, window.innerHeight − (visualViewport.height + visualViewport.offsetTop))`. No DOM side effects.
-- `bottom-sheet.vue` (the owner; no refcount — single active overlay is guaranteed) publishes `--keyboard-inset` on `:root` via `watch(inset)` and resets it to `0` on unmount. `.sheet-container` consumes `bottom: var(--keyboard-inset, 0px)` to lift above the keyboard.
-- `bottom-sheet.vue` routes snap/fit heights through a reactive `restingHeight` base (`S`) and derives the applied `currentHeight` (a `computed`) from `(restingHeight, inset, H)`. With `H = innerHeight`, `K = inset`:
-  - `K = 0` → `height = S` (restore, no keyboard)
-  - `K > 0` → `height = H − K` (the sheet becomes a **full page** above the keyboard, covering the map, so the whole screen serves the edit form). Because the container's bottom sits at `K` (the keyboard top), `H − K` reaches `y = 0` with no gap.
-- In full-page mode the sheet drops the chrome that would otherwise leave gaps over the map — the `max-height: 60vh` cap, top corner radius, side/top borders — via a `bottom-sheet--fullscreen` class.
-- While `inset > 0` the drag handle is inert (extend the existing `collapsed` guard) — size is keyboard-driven while typing.
-- Behavior lives at the bottom-sheet **primitive**, so every input sheet benefits, in both snap and fit-content modes.
+Earlier iterations tried to keep edit forms inside the bottom sheet and resize it around the keyboard (first shrinking it `S − K`, then expanding it to a full page above the keyboard via a `visualViewport` inset). Both were buggy and noisy on-device: dragging moved the map behind the sheet, and the keyboard produced flicker and gaps. The simpler, robust approach is to stop fighting it — when the user enters data, replace the sheet with a dedicated page.
 
-> Earlier iterations shrank the sheet from the bottom (`S − K`, top anchored) so the map kept its region. On-device this was buggy and noisy — it fought the browser's auto-scroll-into-view and left visible gaps between sheet, map and keyboard. The full-page approach replaces it: simpler, gap-free, and the map returns when the keyboard closes.
-- **Decision (documented):** do **not** add `interactive-widget=resizes-content` to the viewport meta — keep `resizes-visual` on both platforms so `visualViewport` is the single, uniform mechanism.
+- Add `core/components/full-screen-page.vue`: an opaque, full-viewport (`position: fixed; inset: 0`) surface with a fixed top app bar (cancel + a `page-action` slot for Save) and a scrolling body. No drag, no snap, no map behind. Because Save lives in the fixed top bar, the keyboard never hides it.
+- `adaptive-overlay.vue` gains a `page` prop: on mobile it renders `full-screen-page` when `page` is set, the bottom sheet otherwise (desktop is unaffected — still the dialog/drawer). `tour-info-sheet.vue` (which picks its surface directly) adds `full-screen-page` as a third `:is` target for mobile edit.
+- Each data-entry consumer drives `page` from its edit/create state: `tour-info-sheet` (edit mode), `tour-creation-dialog`, `user-profile-sheet` (editing), `contact-creation-dialog`. A flow that needs the map (location pick) falls back to the collapsed bottom sheet instead of paging.
+- The forms (`tour-form`, `contact-form`, profile edit) gain a `formId` + `embedded` pair: `embedded` hides their in-form action row, and a top-bar `page-action` Save button submits them via the native `form=` attribute. The page's top-bar cancel still runs each form's cleanup.
+- **Remove the keyboard machinery** entirely — `use-keyboard-inset.ts`, the `--keyboard-inset` CSS var, and the `bottom-sheet.vue` height/`--fullscreen` math. The bottom sheet reverts to a simple view-only surface capped at 60vh.
 
 ### Compact space usage
 
@@ -29,22 +25,19 @@ We want the sheet to expand to a full page above the keyboard when it opens (cov
 - **Soft requirement, no hardcoded floor:** UI/UX density is judged per control by visual inspection — controls stay comfortably usable, with **visible size == hit area** (no invisible hit extensions), and grouping separation (dividers/borders/`gap`) stays perceptible. We do not mandate fixed min sizes or assert sizes in a test.
 - Audit the sheet consumers with the heaviest button bars (notably `tour-info-sheet` action buttons and the creation/profile forms) so trimming the primitive doesn't leave a consumer cramped or misaligned.
 
-This density work is **mechanically independent** of the keyboard work and SHALL ship as its own commit (and may be split into its own PR) for reviewability.
+This density work is **mechanically independent** of the page work and SHALL ship as its own commit (and may be split into its own PR) for reviewability.
 
 ## Capabilities
 
-### New Capabilities
-
-_None._
-
 ### Modified Capabilities
 
-- `bottom-sheet`: add a requirement that the sheet expands to a full page above the on-screen keyboard (covers the map, `H − K` height, gap-free chrome, drag inert while open, restores on close); modify the drag requirement so the 60vh cap is scoped to keyboard-closed state; add a requirement that the sheet uses space efficiently — compact padding/margins/gaps while keeping controls comfortably usable (visible size == hit area) and grouping separation visible.
+- `bottom-sheet`: add a requirement that mobile data entry uses a full-screen page (bottom sheet is view-only; map hidden during edit, restored on save/cancel; a map-needing pick falls back to the collapsed sheet; desktop unchanged); add a requirement that the sheet uses space efficiently — compact padding/margins/gaps while keeping controls comfortably usable (visible size == hit area) and grouping separation visible.
 
 ## Impact
 
-- **New file:** `core/composables/use-keyboard-inset.ts` (+ unit test).
-- **Changed:** `core/components/bottom-sheet.vue` (full-page keyboard height + `--fullscreen` chrome + compact spacing), `features/map/presentation/pages/map-page.vue` (`.sheet-container` CSS var). Possibly minor per-consumer spacing fixes (e.g. `tour-info-sheet`) surfaced by the audit.
-- **Unchanged:** the map already resizes its canvas on `visualViewport.resize` (`tourenbuddy-map.vue`) and recomputes its interactive inset from `sheetContainerRef.offsetHeight` (`map-page.vue`) — both keep working. Deduping the map's listener onto the new composable is noted as a future cleanup, not part of this change.
+- **New file:** `core/components/full-screen-page.vue`.
+- **Removed:** `core/composables/use-keyboard-inset.ts` (+ its test) and the `--keyboard-inset` machinery in `bottom-sheet.vue` / `map-page.vue`.
+- **Changed:** `core/components/adaptive-overlay.vue` (`page` prop + slot forwarding), `core/components/bottom-sheet.vue` (keyboard math stripped; view-only + compact spacing), `tour-info-sheet.vue` / `tour-creation-dialog.vue` / `user-profile-sheet.vue` / `contact-creation-dialog.vue` (page mode + top-bar Save), `tour-form.vue` / `contact-form.vue` (`formId` + `embedded`).
+- **Deliberately left as a bottom sheet:** `phone-verification-dialog` (OTP) — a small single-field modal rendered over its own dim backdrop (not over the interactive map), so it does not exhibit the drag/flicker bug; converting a one-field modal to a whole page is disproportionate. Contact **search** likewise stays a list/browse sheet. Flag for the user to confirm.
 - **No DB / API / dependency changes.** Pure presentation.
-- **Verification:** real iOS *and* Android mobile/PWA via the PR preview deploy — keyboard behavior and visual density cannot be asserted in happy-dom beyond the composable's pure math; the density check is a visual sign-off that controls stay tappable and content is more visible.
+- **Verification:** real iOS *and* Android mobile/PWA via the PR preview deploy — page behavior and visual density cannot be asserted in happy-dom; the density check is a visual sign-off that controls stay tappable and content is more visible.

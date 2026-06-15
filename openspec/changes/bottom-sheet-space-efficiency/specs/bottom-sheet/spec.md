@@ -1,58 +1,34 @@
-## MODIFIED Requirements
-
-### Requirement: Bottom sheet height is user-adjustable via drag handle
-
-The drag handle SHALL act as a resize control. The user SHALL be able to drag the handle vertically (touch or pointer) to change the sheet height. Sheet height SHALL be clamped between a peek height (header-only) and a maximum of 60vh. Dragging up SHALL grow the sheet; dragging down SHALL shrink it. While the on-screen keyboard is closed the maximum height SHALL never exceed 60vh so the underlying map remains partially visible; the full-page keyboard mode is the sole exception (see "Sheet expands to full screen above the on-screen keyboard"), and the drag handle is inert there.
-
-#### Scenario: Drag up grows the sheet
-
-- **WHEN** the sheet is at its default height
-- **AND** the user presses the drag handle and moves the pointer up by 100px
-- **THEN** the sheet height SHALL increase by approximately 100px
-- **AND** the sheet height SHALL NOT exceed 60vh
-
-#### Scenario: Drag down shrinks the sheet
-
-- **WHEN** the sheet is at its default height
-- **AND** the user presses the drag handle and moves the pointer down by 100px
-- **THEN** the sheet height SHALL decrease by approximately 100px
-- **AND** the sheet height SHALL NOT shrink below the peek height (header only)
-
-#### Scenario: Hard 60vh ceiling
-
-- **WHEN** the user drags the handle further up after the sheet has already reached 60vh
-- **THEN** the sheet height SHALL remain at 60vh
-
 ## ADDED Requirements
 
-### Requirement: Sheet expands to full screen above the on-screen keyboard
+### Requirement: Data entry uses a full-screen page on mobile
 
-When the on-screen keyboard opens on mobile, the sheet SHALL expand to a full page that fills the entire screen above the keyboard — covering any content behind it (such as the map) — so all available real estate is given to the edit/input form. The sheet SHALL derive the keyboard inset from the visual viewport as `K = max(0, window.innerHeight − (visualViewport.height + visualViewport.offsetTop))` — clamped to be non-negative — rather than assuming the layout viewport shrinks, and SHALL keep it current as both the `resize` and `scroll` visual-viewport events fire. The fixed sheet container SHALL be offset above the keyboard by the same inset so the sheet's bottom edge rests exactly at the top of the keyboard. While in this full-page mode the sheet SHALL drop the chrome that would otherwise leave gaps over the covered content — its max-height cap, top corner radius, and side/top borders — and the drag handle SHALL be inert (no manual resize). When the keyboard closes, the sheet SHALL restore its prior resting height and the offset SHALL return to `0`, revealing the map again.
+On mobile, the bottom sheet SHALL be used for **view mode only**. Whenever the user enters or edits data — editing an existing entity, creating a new one, or any other text-entry form — the surface SHALL switch from the bottom sheet to a full-screen page that occupies the entire screen, with no map (or other content) visible behind it, so all real estate serves the form. When the edit/creation is saved or cancelled, the surface SHALL return to the bottom sheet view (map visible again, sheet capped at its normal height).
 
-With `H` = layout viewport height, `K` = keyboard inset, and `S` = the sheet's resting height before the keyboard opened (its snap height or fit-content height):
+The full-screen page SHALL render an opaque surface covering the viewport (`position: fixed; inset: 0`), a fixed top app bar holding the cancel control (top-left) and the primary action / Save button (top-right), and a scrolling body for the form. Because the primary action lives in the fixed top bar, the on-screen keyboard SHALL NOT hide it; the form body scrolls beneath. The page SHALL NOT be draggable and SHALL NOT show a drag handle or snap points.
 
-- `K = 0` → height SHALL be `S` and the container offset SHALL be `0`.
-- `K > 0` → height SHALL be `H − K` and the container offset SHALL be `K`. Because the container's bottom edge sits `K` above the viewport bottom (at the keyboard's top), a sheet of height `H − K` reaches the top of the screen (`y = 0`) with no gap above or below.
+This replaces any keyboard-inset / visual-viewport height math on the bottom sheet: with edit forms on their own page, the bottom sheet no longer needs to resize around the keyboard.
 
-#### Scenario: Keyboard opens
+#### Scenario: Entering edit mode on mobile
 
-- **WHEN** a sheet resting at height `S` is open and the keyboard opens with inset `K > 0`
-- **THEN** the sheet height SHALL become `H − K`
-- **AND** the sheet SHALL fill the screen from the top edge down to the top of the keyboard, covering the map
-- **AND** the content region SHALL scroll within the full-page height
+- **WHEN** the user enters edit or create mode for a tour, contact, or profile on a mobile viewport
+- **THEN** the surface SHALL switch from the bottom sheet to a full-screen page
+- **AND** the map SHALL NOT be visible behind the page
+- **AND** the primary Save action SHALL be reachable in the top app bar regardless of keyboard state
 
-#### Scenario: Keyboard closes
+#### Scenario: Leaving edit mode
 
-- **WHEN** the keyboard closes (inset returns to `0`)
-- **THEN** the sheet SHALL restore its prior resting height `S`
-- **AND** the container offset SHALL return to `0`
-- **AND** the map SHALL be revealed again behind the sheet
+- **WHEN** the user saves or cancels the edit/creation
+- **THEN** the surface SHALL return to the bottom sheet (or close), revealing the map again
 
-#### Scenario: Drag is inert while the keyboard is open
+#### Scenario: A pick that needs the map collapses instead of paging
 
-- **WHEN** the keyboard is open (`inset > 0`) and the user attempts to drag the handle
-- **THEN** the sheet SHALL NOT resize from the gesture
-- **AND** the prior resting height SHALL be restored when the keyboard closes
+- **WHEN** an edit/create flow needs the map (e.g. picking a location)
+- **THEN** the surface SHALL fall back to the collapsed bottom sheet so the map stays visible, rather than the full-screen page
+
+#### Scenario: Desktop is unaffected
+
+- **WHEN** the user edits on a desktop viewport
+- **THEN** the edit form SHALL continue to use the side drawer / dialog, not the full-screen page
 
 ### Requirement: Sheet uses its limited space efficiently
 
