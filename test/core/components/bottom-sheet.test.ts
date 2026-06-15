@@ -6,6 +6,12 @@ import BottomSheet from '@/core/components/bottom-sheet.vue'
 // happy-dom stubs for APIs not supported in test env
 beforeEach(() => {
   Object.defineProperty(window, 'innerHeight', { value: 1000, writable: true, configurable: true })
+  // Default: no keyboard. Individual tests override with a scriptable viewport.
+  Object.defineProperty(window, 'visualViewport', {
+    value: undefined,
+    writable: true,
+    configurable: true,
+  })
   vi.stubGlobal(
     'ResizeObserver',
     class {
@@ -277,6 +283,76 @@ describe('bottomSheet', () => {
       const h = Number(style.match(/height: (\d+)px/)?.[1] ?? -1)
       expect(h).toBeLessThan(400)
       expect(wrapper.find('.drag-handle').attributes('aria-valuenow')).toBe('0')
+    })
+  })
+
+  describe('keyboard-aware height', () => {
+    // Resting height S = 600 (expanded fallback, natural height unmeasurable in happy-dom).
+    function makeViewport(height: number, offsetTop = 0) {
+      const cbs: Array<() => void> = []
+      const vv = {
+        height,
+        offsetTop,
+        addEventListener: (_t: string, cb: () => void) => cbs.push(cb),
+        removeEventListener: () => {},
+        set(height: number) {
+          this.height = height
+          cbs.forEach(cb => cb())
+        },
+      }
+      Object.defineProperty(window, 'visualViewport', {
+        value: vv,
+        writable: true,
+        configurable: true,
+      })
+      return vv
+    }
+
+    function heightOf(wrapper: ReturnType<typeof mount>) {
+      const style = wrapper.find('.bottom-sheet').attributes('style') ?? ''
+      return Number(style.match(/height: (\d+)px/)?.[1] ?? -1)
+    }
+
+    it('shrinks by the keyboard inset when K <= S', async () => {
+      const vv = makeViewport(1000)
+      const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
+      await flushPromises()
+      vv.set(700) // K = 300 <= S = 600
+      await nextTick()
+      expect(heightOf(wrapper)).toBe(300) // S − K
+    })
+
+    it('expands to the top (H − K) when K > S on a small device', async () => {
+      const vv = makeViewport(1000)
+      const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
+      await flushPromises()
+      vv.set(200) // K = 800 > S = 600
+      await nextTick()
+      expect(heightOf(wrapper)).toBe(200) // H − K
+    })
+
+    it('restores the resting height when the keyboard closes', async () => {
+      const vv = makeViewport(1000)
+      const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
+      await flushPromises()
+      vv.set(700)
+      await nextTick()
+      vv.set(1000) // K = 0
+      await nextTick()
+      expect(heightOf(wrapper)).toBe(600)
+    })
+
+    it('ignores drag while the keyboard is open', async () => {
+      const vv = makeViewport(1000)
+      const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
+      await flushPromises()
+      vv.set(700) // K = 300 → height 300, drag now inert
+      await nextTick()
+      const handle = wrapper.find('.drag-handle').element
+      firePointer(handle, 'pointerdown', 500)
+      firePointer(handle, 'pointermove', 300)
+      await nextTick()
+      expect(heightOf(wrapper)).toBe(300) // unchanged by the gesture
     })
   })
 

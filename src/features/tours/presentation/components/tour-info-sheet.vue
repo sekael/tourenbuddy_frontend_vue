@@ -1224,7 +1224,8 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 .save-error {
   font-size: var(--font-size-sm);
   color: var(--color-error);
-  padding: 0 var(--spacing-xl);
+  /* Align with the sheet's content inset (now md, was xl). */
+  padding: 0 var(--spacing-md);
   margin-bottom: calc(-1 * var(--spacing-md));
 }
 </style>

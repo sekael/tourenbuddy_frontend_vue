@@ -768,7 +768,8 @@ function handleDialogClose() {
      mobile browsers — sits above Android system nav and Brave bottom chrome,
      not behind it where page-root 100lvh extends. */
   position: fixed;
-  bottom: 0;
+  /* Lifted above the on-screen keyboard; bottom-sheet.vue publishes the inset. */
+  bottom: var(--keyboard-inset, 0px);
   left: 0;
   right: 0;
   z-index: 50;

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useKeyboardInset } from '@/core/composables/use-keyboard-inset'
 
 const props = defineProps<{
   title?: string
@@ -40,9 +41,46 @@ function snapHeightPx(snap: Snap): number {
 }
 
 // ── Internal state ───────────────────────────────────────────────────────────
+// `restingHeight` (S) is the sheet's keyboard-free height — what snap/fit logic
+// writes. `currentHeight` is the *applied* height: equal to S when no keyboard,
+// shrunk above the keyboard otherwise, and written live during a drag gesture.
+const restingHeight = ref(0)
 const currentHeight = ref(0)
 const isDragging = ref(false)
 const lastSnap = ref<Snap>('default')
+
+// ── Keyboard-aware sizing ─────────────────────────────────────────────────────
+const { inset } = useKeyboardInset()
+
+// Map the resting height (S) and keyboard inset (K) to the applied height.
+// K is clamped >= 0 in useKeyboardInset, so this function is total: every
+// input assigns a height (no silent no-op leaving a stale value).
+function deriveHeight() {
+  const s = restingHeight.value
+  const k = inset.value
+  const h = window.innerHeight
+
+  if (k > s) {
+    // Small device: keyboard taller than the sheet, so the sheet takes all
+    // space above it. h - k is always >= 0 because K = max(0, innerHeight - …)
+    // can never exceed innerHeight (h) — no clamp needed here.
+    currentHeight.value = h - k
+    return
+  }
+  // K = 0 (no keyboard) yields S; 0 < K <= S shrinks the sheet by K.
+  currentHeight.value = s - k
+}
+
+// Re-derive whenever the resting height changes (snap/fit/resize) or the
+// keyboard inset changes. Drag writes `currentHeight` directly and is gated
+// while the keyboard is open, so neither source fires mid-gesture.
+watch([restingHeight, inset], deriveHeight)
+
+// Publish the inset so the fixed `.sheet-container` can lift above the keyboard.
+// Owned here (mount/unmount colocated) so the reset on close is guaranteed.
+watch(inset, (k) => {
+  document.documentElement.style.setProperty('--keyboard-inset', `${k}px`)
+})
 
 const sheetRef = ref<HTMLElement | null>(null)
 const headerRef = ref<HTMLElement | null>(null)
@@ -55,15 +93,11 @@ function updatePeekHeight() {
   peekHeight.value = h
 }
 
-function applySnap(snap: Snap, immediate = false) {
+function applySnap(snap: Snap) {
   lastSnap.value = snap
-  if (immediate) {
-    currentHeight.value = snapHeightPx(snap)
-  }
-  else {
-    // Trigger transition by setting height — CSS transition handles animation
-    currentHeight.value = snapHeightPx(snap)
-  }
+  // Set the resting base; the derive watch maps it to the applied height.
+  // CSS transition on `height` animates the change.
+  restingHeight.value = snapHeightPx(snap)
 }
 
 // ── Drag logic ───────────────────────────────────────────────────────────────
@@ -73,7 +107,8 @@ let lastMoveY = 0
 let activeDragPointerId: number | null = null
 
 function onDragStart(e: PointerEvent) {
-  if (props.collapsed)
+  // Inert while collapsed or while the keyboard is open (size is keyboard-driven).
+  if (props.collapsed || inset.value > 0)
     return
   e.preventDefault()
   isDragging.value = true
@@ -181,7 +216,7 @@ function onHandleKeydown(e: KeyboardEvent) {
 // ── Natural height open ──────────────────────────────────────────────────────
 async function openAtNaturalHeight() {
   isDragging.value = true
-  currentHeight.value = expandedHeight.value
+  restingHeight.value = expandedHeight.value
   await nextTick()
 
   const el = sheetRef.value
@@ -200,7 +235,7 @@ async function openAtNaturalHeight() {
   // Set inline immediately to avoid a flash before Vue's reactive render
   el.style.height = `${targetH}px`
 
-  currentHeight.value = targetH
+  restingHeight.value = targetH
   lastSnap.value = nearestSnap(targetH, 'up')
   await nextTick()
   isDragging.value = false
@@ -226,7 +261,7 @@ function onWindowResize() {
   if (props.fitContent)
     void openAtNaturalHeight()
   else
-    currentHeight.value = snapHeightPx(lastSnap.value)
+    restingHeight.value = snapHeightPx(lastSnap.value)
 }
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
@@ -241,7 +276,7 @@ onMounted(() => {
       if (props.fitContent)
         void openAtNaturalHeight()
       else
-        currentHeight.value = snapHeightPx(lastSnap.value)
+        restingHeight.value = snapHeightPx(lastSnap.value)
     }
   })
 
@@ -258,6 +293,8 @@ onMounted(() => {
 onUnmounted(() => {
   headerResizeObserver.value?.disconnect()
   window.removeEventListener('resize', onWindowResize)
+  // Don't leave a stale offset if the sheet closes while the keyboard is up.
+  document.documentElement.style.setProperty('--keyboard-inset', '0px')
 })
 
 const sheetStyle = computed(() => {
@@ -347,7 +384,8 @@ const sheetStyle = computed(() => {
   border: 1px solid var(--color-outline-variant);
   border-bottom: none;
   box-shadow: var(--shadow-lg);
-  padding: var(--spacing-sm) var(--spacing-xl) 0;
+  /* Compact horizontal padding (md, not xl) so more width goes to content. */
+  padding: var(--spacing-sm) var(--spacing-md) 0;
   transition: height 200ms ease-out;
   /* Restore pointer events — parent sheet-container sets pointer-events: none
      to allow FAB clicks through transparent areas */
@@ -403,7 +441,7 @@ const sheetStyle = computed(() => {
   align-items: center;
   flex-shrink: 0;
   gap: var(--spacing-sm);
-  padding-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
 }
 
 .back-btn {
@@ -472,6 +510,7 @@ const sheetStyle = computed(() => {
 .footer {
   flex-shrink: 0;
   border-top: 1px solid var(--color-outline-variant);
-  padding: var(--spacing-sm) 0 calc(var(--spacing-xl) + env(safe-area-inset-bottom, 0px));
+  /* Base padding trimmed (md, not xl); env() still clears the home-gesture bar. */
+  padding: var(--spacing-sm) 0 calc(var(--spacing-md) + env(safe-area-inset-bottom, 0px));
 }
 </style>
