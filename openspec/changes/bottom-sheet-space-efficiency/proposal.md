@@ -18,13 +18,14 @@ Earlier iterations tried to keep edit forms inside the bottom sheet and resize i
 - Each data-entry consumer drives `page` from its edit/create state: `tour-info-sheet` (edit mode), `tour-creation-dialog`, `user-profile-sheet` (editing), and `contacts-list-sheet` (its add form, and a contact open in edit mode via `contact-detail-view`). A flow that needs the map (location pick) falls back to the collapsed bottom sheet instead of paging.
 - For contact editing, the view/edit `mode` is lifted into `contacts-list-sheet` (via `defineModel`) so it survives the sheet → page remount; `contact-detail-view` gains an `embedded` prop (hides its own header + Save/Cancel) and exposes `saveAll`/`cancelEdit` for the page's top bar.
 - The forms (`tour-form`, `contact-form`, profile edit) gain a `formId` + `embedded` pair: `embedded` hides their in-form action row, and a top-bar `page-action` Save button submits them via the native `form=` attribute. The page's top-bar cancel still runs each form's cleanup.
-- **Remove the keyboard machinery** entirely — `use-keyboard-inset.ts`, the `--keyboard-inset` CSS var, and the `bottom-sheet.vue` height/`--fullscreen` math. The bottom sheet reverts to a simple view-only surface capped at 60vh.
+- **Remove the keyboard machinery** entirely — `use-keyboard-inset.ts`, the `--keyboard-inset` CSS var, and the `bottom-sheet.vue` height/`--fullscreen` math. The bottom sheet reverts to a simple view-only surface capped at 70vh (map keeps ≥30% of the viewport).
 
 ### Compact space usage
 
 - Trim the `bottom-sheet.vue` non-content chrome — **padding, margins, gaps** — so more of the sheet shows information: reduce content horizontal padding (from `spacing-xl`), tighten header and footer padding.
 - **Soft requirement, no hardcoded floor:** UI/UX density is judged per control by visual inspection — controls stay comfortably usable, with **visible size == hit area** (no invisible hit extensions), and grouping separation (dividers/borders/`gap`) stays perceptible. We do not mandate fixed min sizes or assert sizes in a test.
 - Audit the sheet consumers with the heaviest button bars (notably `tour-info-sheet` action buttons and the creation/profile forms) so trimming the primitive doesn't leave a consumer cramped or misaligned.
+- Raise the sheet's max height to 70vh (expanded snap `innerHeight * 0.7`) so the map keeps ≥30% of the viewport, and switch the `tour-list-sheet` / `tour-info-sheet` view surfaces from snap to fit-content so every view sheet hugs its content consistently.
 
 This density work is **mechanically independent** of the page work and SHALL ship as its own commit (and may be split into its own PR) for reviewability.
 

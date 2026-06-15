@@ -34,6 +34,14 @@ This replaces any keyboard-inset / visual-viewport height math on the bottom she
 
 The sheet SHALL keep non-content chrome — content padding, header padding, footer padding, and the margins/gaps around the drag handle and footer action bar — compact so the maximum area is available for information, while interactive controls remain comfortably usable and visually separated. The comfortable size of each control is a per-control design decision judged by visual inspection; this requirement does NOT mandate a fixed numeric touch-target floor. A control's visible size SHALL equal its hit area — no invisible hit extensions, which produce confusing behavior. Visual grouping (dividers, borders, and inter-element `gap`) SHALL remain perceptible so the layout stays readable, not cramped.
 
+The sheet's maximum height SHALL be 70% of the viewport height (expanded snap = `innerHeight * 0.7`; CSS ceiling `max-height: 70vh`), so the map always retains at least 30% of the screen.
+
+#### Scenario: Sheet caps at 70% so the map keeps 30%
+
+- **WHEN** the sheet is at its tallest (expanded snap, or fit-content with content taller than the cap)
+- **THEN** the sheet SHALL occupy at most 70% of the viewport height
+- **AND** at least 30% of the viewport SHALL remain for the map
+
 #### Scenario: Content uses the available width
 
 - **WHEN** the sheet renders content on a narrow mobile viewport

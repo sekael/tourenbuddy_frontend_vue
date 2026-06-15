@@ -585,6 +585,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   <component
     :is="editAsPage ? FullScreenPage : isDesktop ? SideDrawer : BottomSheet"
     :title="sheetTitle"
+    :fit-content="!isDesktop && !editAsPage"
     :collapsed="sheetCollapsed"
     :back-label="sheetBackLabel"
     :show-back="editAsPage ? false : sheetShowBack"

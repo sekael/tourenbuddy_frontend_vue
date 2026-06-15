@@ -40,10 +40,10 @@
 ## 7. Verify on real viewport
 
 - [x] 7.1 Push branch, open PR, wait for preview deploy
-- [ ] 7.2 On a real **iOS** phone/PWA: enter tour edit / creation / profile edit — surface becomes a full-screen page (no map behind), Save in the top bar stays above the keyboard, content scrolls, no drag/flicker
-- [ ] 7.3 On a real **Android** phone/PWA: repeat — same behavior
-- [ ] 7.4 Confirm a location pick mid-edit collapses to the sheet (map visible) and returns to the page after
-- [ ] 7.5 Confirm save/cancel returns to the bottom sheet with the map visible again
+- [x] 7.2 On a real **iOS** phone/PWA: enter tour edit / creation / profile edit — surface becomes a full-screen page (no map behind), Save in the top bar stays above the keyboard, content scrolls, no drag/flicker
+- [x] 7.3 On a real **Android** phone/PWA: repeat — same behavior
+- [x] 7.4 Confirm a location pick mid-edit collapses to the sheet (map visible) and returns to the page after
+- [x] 7.5 Confirm save/cancel returns to the bottom sheet with the map visible again
 - [x] 7.6 Density check: confirm more content is visible, controls are still easily tappable, and nothing reads as cramped
 
 ## 8. Finalize

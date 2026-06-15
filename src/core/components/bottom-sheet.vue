@@ -29,7 +29,7 @@ const SNAP_ORDER: Snap[] = ['peek', 'default', 'expanded']
 
 const peekHeight = ref(64)
 const defaultHeight = computed(() => Math.round(window.innerHeight * 0.4))
-const expandedHeight = computed(() => Math.round(window.innerHeight * 0.6))
+const expandedHeight = computed(() => Math.round(window.innerHeight * 0.7))
 
 function snapHeightPx(snap: Snap): number {
   if (snap === 'peek')
@@ -195,8 +195,8 @@ async function openAtNaturalHeight() {
     return
   }
 
-  // CSS max-height: 60vh acts as the ceiling — offsetHeight at height:auto
-  // gives us min(naturalContentH, 60vh) directly.
+  // CSS max-height: 70vh acts as the ceiling — offsetHeight at height:auto
+  // gives us min(naturalContentH, 70vh) directly.
   el.style.height = 'auto'
   const measuredH = el.offsetHeight
   const targetH = measuredH > 0 ? measuredH : expandedHeight.value
@@ -342,7 +342,7 @@ const sheetStyle = computed(() => {
 .bottom-sheet {
   width: 100%;
   max-width: var(--bottom-sheet-max-width, 480px);
-  max-height: 60vh;
+  max-height: 70vh;
   display: flex;
   flex-direction: column;
   background-color: var(--color-background);
