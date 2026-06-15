@@ -24,37 +24,45 @@ const titleId = 'full-screen-page-title'
 </script>
 
 <template>
-  <div
-    class="full-screen-page"
-    role="dialog"
-    aria-modal="true"
-    :aria-labelledby="title ? titleId : undefined"
-    :aria-label="!title ? (ariaLabel ?? t('core.drawer.back')) : undefined"
-  >
-    <header class="page-bar">
-      <button
-        type="button"
-        class="cancel-btn"
-        :aria-label="showBack ? t('core.drawer.back') : t('core.drawer.close')"
-        @click="showBack ? emit('back') : emit('close')"
-      >
-        <span class="material-symbols-outlined" aria-hidden="true">
-          {{ showBack ? 'arrow_back' : 'close' }}
-        </span>
-      </button>
-      <h2 v-if="title" :id="titleId" class="title">
-        {{ title }}
-      </h2>
-      <div v-else class="title-spacer" />
-      <div class="page-action">
-        <slot name="page-action" />
-      </div>
-    </header>
+  <!-- Teleport to <body> so the page is never nested inside the bottom-sheet
+       container. That container gets a `transform` during its open/close
+       transition, which would make it the containing block for this
+       `position: fixed` surface — collapsing the page into the sheet box and
+       leaving a sliver of map above it. Escaping to <body> keeps the page
+       resolved against the viewport at all times. -->
+  <Teleport to="body">
+    <div
+      class="full-screen-page"
+      role="dialog"
+      aria-modal="true"
+      :aria-labelledby="title ? titleId : undefined"
+      :aria-label="!title ? (ariaLabel ?? t('core.drawer.back')) : undefined"
+    >
+      <header class="page-bar">
+        <button
+          type="button"
+          class="cancel-btn"
+          :aria-label="showBack ? t('core.drawer.back') : t('core.drawer.close')"
+          @click="showBack ? emit('back') : emit('close')"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">
+            {{ showBack ? 'arrow_back' : 'close' }}
+          </span>
+        </button>
+        <h2 v-if="title" :id="titleId" class="title">
+          {{ title }}
+        </h2>
+        <div v-else class="title-spacer" />
+        <div class="page-action">
+          <slot name="page-action" />
+        </div>
+      </header>
 
-    <div class="content">
-      <slot />
+      <div class="content">
+        <slot />
+      </div>
     </div>
-  </div>
+  </Teleport>
 </template>
 
 <style scoped>

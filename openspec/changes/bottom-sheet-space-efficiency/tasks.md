@@ -6,7 +6,7 @@
 
 ## 2. Full-screen page primitive
 
-- [x] 2.1 Add `core/components/full-screen-page.vue`: opaque `position: fixed; inset: 0` surface, fixed top app bar (cancel control + `page-action` slot for Save), scrolling body; no drag/snap; covers the map
+- [x] 2.1 Add `core/components/full-screen-page.vue`: opaque `position: fixed; inset: 0` surface, fixed top app bar (cancel control + `page-action` slot for Save), scrolling body; no drag/snap; covers the map. `Teleport to="body"` so a transformed sheet-container ancestor never becomes the page's containing block (was leaving an intermittent map sliver mid-transition)
 - [x] 2.2 Style a shared `page-save-btn` (via `:slotted`) so consumers' top-bar Save buttons are consistent
 - [x] 2.3 In `adaptive-overlay.vue`, add a `page` prop: mobile + `page` → `full-screen-page`, mobile → bottom sheet, desktop → dialog/drawer; forward all named slots through to whichever renders
 
@@ -23,7 +23,7 @@
 - [x] 4.2 `tour-info-sheet.vue`: add `full-screen-page` as a third `:is` target for `!isDesktop && mode === 'edit' && !isPicking`; top-bar Save submits `tour-edit-form`; top-bar cancel runs the form's cleanup
 - [x] 4.3 `tour-creation-dialog.vue`: `:page="!isPicking"`; top-bar Save submits `tour-create-form`; falls back to the collapsed sheet while picking
 - [x] 4.4 `user-profile-sheet.vue`: `:page="isEditing"`; top-bar Save submits `profile-edit-form`; cancel returns to view
-- [x] 4.5 `contact-creation-dialog.vue`: `full-screen-page` for the form view on mobile (import-results stays a sheet); top-bar Save submits `contact-create-form`
+- [x] 4.5 `contacts-list-sheet.vue` (the live contact surface; `contact-creation-dialog.vue` is dead code): `:page` for the add form **and** a contact open in edit mode; import-results stays a sheet. Add-form Save submits `contact-add-form`; edit Save calls the detail view's `saveAll()`. Lift `contact-detail-view` `mode` to the parent via `defineModel` (survives the sheet→page remount) and add its `embedded` prop + `saveAll`/`cancelEdit`/`isSaving` expose
 - [x] 4.6 Decision: leave `phone-verification-dialog` (OTP) and contact search as bottom sheets — not over the interactive map, paging is disproportionate (flag for the user)
 
 ## 5. Tests

@@ -15,7 +15,8 @@ Earlier iterations tried to keep edit forms inside the bottom sheet and resize i
 
 - Add `core/components/full-screen-page.vue`: an opaque, full-viewport (`position: fixed; inset: 0`) surface with a fixed top app bar (cancel + a `page-action` slot for Save) and a scrolling body. No drag, no snap, no map behind. Because Save lives in the fixed top bar, the keyboard never hides it.
 - `adaptive-overlay.vue` gains a `page` prop: on mobile it renders `full-screen-page` when `page` is set, the bottom sheet otherwise (desktop is unaffected — still the dialog/drawer). `tour-info-sheet.vue` (which picks its surface directly) adds `full-screen-page` as a third `:is` target for mobile edit.
-- Each data-entry consumer drives `page` from its edit/create state: `tour-info-sheet` (edit mode), `tour-creation-dialog`, `user-profile-sheet` (editing), `contact-creation-dialog`. A flow that needs the map (location pick) falls back to the collapsed bottom sheet instead of paging.
+- Each data-entry consumer drives `page` from its edit/create state: `tour-info-sheet` (edit mode), `tour-creation-dialog`, `user-profile-sheet` (editing), and `contacts-list-sheet` (its add form, and a contact open in edit mode via `contact-detail-view`). A flow that needs the map (location pick) falls back to the collapsed bottom sheet instead of paging.
+- For contact editing, the view/edit `mode` is lifted into `contacts-list-sheet` (via `defineModel`) so it survives the sheet → page remount; `contact-detail-view` gains an `embedded` prop (hides its own header + Save/Cancel) and exposes `saveAll`/`cancelEdit` for the page's top bar.
 - The forms (`tour-form`, `contact-form`, profile edit) gain a `formId` + `embedded` pair: `embedded` hides their in-form action row, and a top-bar `page-action` Save button submits them via the native `form=` attribute. The page's top-bar cancel still runs each form's cleanup.
 - **Remove the keyboard machinery** entirely — `use-keyboard-inset.ts`, the `--keyboard-inset` CSS var, and the `bottom-sheet.vue` height/`--fullscreen` math. The bottom sheet reverts to a simple view-only surface capped at 60vh.
 
@@ -35,9 +36,10 @@ This density work is **mechanically independent** of the page work and SHALL shi
 
 ## Impact
 
-- **New file:** `core/components/full-screen-page.vue`.
+- **New file:** `core/components/full-screen-page.vue` (teleported to `<body>` so a transformed sheet-container ancestor never becomes its containing block).
 - **Removed:** `core/composables/use-keyboard-inset.ts` (+ its test) and the `--keyboard-inset` machinery in `bottom-sheet.vue` / `map-page.vue`.
-- **Changed:** `core/components/adaptive-overlay.vue` (`page` prop + slot forwarding), `core/components/bottom-sheet.vue` (keyboard math stripped; view-only + compact spacing), `tour-info-sheet.vue` / `tour-creation-dialog.vue` / `user-profile-sheet.vue` / `contact-creation-dialog.vue` (page mode + top-bar Save), `tour-form.vue` / `contact-form.vue` (`formId` + `embedded`).
+- **Changed:** `core/components/adaptive-overlay.vue` (`page` prop + slot forwarding), `core/components/bottom-sheet.vue` (keyboard math stripped; view-only + compact spacing), `tour-info-sheet.vue` / `tour-creation-dialog.vue` / `user-profile-sheet.vue` / `contacts-list-sheet.vue` (page mode + top-bar Save), `contact-detail-view.vue` (`embedded` prop, `mode` via `defineModel`, exposes `saveAll`/`cancelEdit`), `tour-form.vue` / `contact-form.vue` (`formId` + `embedded`).
+- **Removed:** `contact-creation-dialog.vue` (+ its test) — dead code, rendered nowhere; its import-branch logic is already covered by `use-contact-import.test.ts`. The live contact add/edit surface is `contacts-list-sheet.vue`.
 - **Deliberately left as a bottom sheet:** `phone-verification-dialog` (OTP) — a small single-field modal rendered over its own dim backdrop (not over the interactive map), so it does not exhibit the drag/flicker bug; converting a one-field modal to a whole page is disproportionate. Contact **search** likewise stays a list/browse sheet. Flag for the user to confirm.
 - **No DB / API / dependency changes.** Pure presentation.
 - **Verification:** real iOS *and* Android mobile/PWA via the PR preview deploy — page behavior and visual density cannot be asserted in happy-dom; the density check is a visual sign-off that controls stay tappable and content is more visible.

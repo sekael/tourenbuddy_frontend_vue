@@ -7,6 +7,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
+import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import {
   formatPhoneDisplay,
@@ -54,10 +55,16 @@ function goToFriendRequests() {
   emit('openFriendRequests')
 }
 
+const isDesktop = useIsDesktop()
+
 const viewState = ref<ViewState>('list')
 const selectedContact = ref<Contact | null>(null)
 const detailRef = ref<InstanceType<typeof ContactDetailView>>()
-const detailMode = computed(() => detailRef.value?.mode ?? 'view')
+// Edit mode is owned here (not inside ContactDetailView) so it survives the
+// sheet → full-screen-page swap that surface selection triggers — otherwise the
+// remounted child would reset to 'view' and toggle the surface back and forth.
+const detailEditMode = ref<'view' | 'edit'>('view')
+const detailMode = detailEditMode
 const addFormRef = ref<InstanceType<typeof ContactForm>>()
 
 // Auto-open detail view when initialContactId is provided
@@ -104,6 +111,12 @@ const { parseVCardFile } = useVCardImport()
 const { importContacts } = useContactImport()
 
 const addViewState = ref<'form' | 'import-results'>('form')
+
+// On mobile, any data-entry surface (the add form, or a contact open in edit
+// mode) renders as a full-screen page instead of the bottom sheet.
+const addFormPage = computed(() => viewState.value === 'add' && addViewState.value === 'form')
+const detailEditPage = computed(() => viewState.value === 'detail' && detailEditMode.value === 'edit')
+const contactPage = computed(() => !isDesktop.value && (addFormPage.value || detailEditPage.value))
 const importResults = ref<ImportResult[]>([])
 const addError = ref<string | null>(null)
 const isAddLoading = ref(false)
@@ -176,6 +189,7 @@ const detailViewMatchedUserId = computed<string | null>(() => {
 // ── Navigation ───────────────────────────────────────────────────────────────
 function openDetail(contact: Contact) {
   selectedContact.value = contact
+  detailEditMode.value = 'view'
   viewState.value = 'detail'
 }
 
@@ -189,11 +203,13 @@ function openAdd() {
 function backToList() {
   viewState.value = 'list'
   selectedContact.value = null
+  detailEditMode.value = 'view'
 }
 
 function handleContactDeleted() {
   viewState.value = 'list'
   selectedContact.value = null
+  detailEditMode.value = 'view'
 }
 
 function handleClose() {
@@ -202,6 +218,17 @@ function handleClose() {
     return
   }
   emit('close')
+}
+
+// Top-left control of the full-screen data-entry page. For a contact open in
+// edit mode it cancels the edit (back to the detail view); for the add form it
+// returns to the list.
+function handlePageBack() {
+  if (detailEditPage.value) {
+    detailRef.value?.cancelEdit()
+    return
+  }
+  backToList()
 }
 
 async function persistNewContact(data: {
@@ -358,7 +385,35 @@ function onFormPhoneInput(phone: string) {
 </script>
 
 <template>
-  <AdaptiveOverlay :title="sheetTitle ?? undefined" @close="handleClose">
+  <AdaptiveOverlay
+    :title="sheetTitle ?? undefined"
+    :page="contactPage"
+    :show-back="contactPage"
+    @close="handleClose"
+    @back="handlePageBack"
+  >
+    <!-- Full-screen page: top-bar Save. Submits the add form, or commits the
+         open contact's edits, depending on which data-entry surface is active. -->
+    <template v-if="contactPage" #page-action>
+      <button
+        v-if="addFormPage"
+        type="submit"
+        form="contact-add-form"
+        class="page-save-btn"
+        :disabled="isAddLoading"
+      >
+        {{ t('contacts.addDialog.title') }}
+      </button>
+      <button
+        v-else
+        type="button"
+        class="page-save-btn"
+        :disabled="detailRef?.isSaving"
+        @click="detailRef?.saveAll()"
+      >
+        {{ detailRef?.isSaving ? t('contacts.detailView.savingBtn') : t('contacts.detailView.saveBtn') }}
+      </button>
+    </template>
     <!-- List view -->
     <div v-if="viewState === 'list'" class="list-view">
       <div class="list-actions-row">
@@ -433,8 +488,10 @@ function onFormPhoneInput(phone: string) {
     <div v-else-if="viewState === 'detail' && liveContact">
       <ContactDetailView
         ref="detailRef"
+        v-model:mode="detailEditMode"
         :contact="liveContact"
         :linked-friend-user-id="detailLinkedFriendUserId"
+        :embedded="detailEditPage && !isDesktop"
         @back="backToList"
         @deleted="handleContactDeleted"
       />
@@ -555,6 +612,8 @@ function onFormPhoneInput(phone: string) {
 
         <ContactForm
           ref="addFormRef"
+          form-id="contact-add-form"
+          :embedded="addFormPage && !isDesktop"
           :submit-label="t('contacts.addDialog.title')"
           :is-loading="isAddLoading"
           @submit="handleAddSubmit"

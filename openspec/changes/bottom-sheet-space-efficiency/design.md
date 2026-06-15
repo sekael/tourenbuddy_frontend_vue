@@ -26,12 +26,16 @@ The on-screen keyboard breaks this for **edit forms**: on iOS the layout viewpor
 The page is its own component: `position: fixed; inset: 0`, opaque, `z-index` above the map, a fixed top app bar (cancel + a `page-action` slot) and a scrolling body. It has no drag, snap, or height math.
 - Rationale: the bottom sheet's snap/drag/fit machinery is irrelevant to a page; bolting a "page mode" onto it would entangle two unrelated layouts. A separate primitive keeps each focused, and `bottom-sheet.vue` shrinks back to view-only.
 - Keyboard: with the page full-height and the body scrolling, the browser scrolls the focused input into view natively; the fixed top bar keeps Save visible. No `visualViewport` math needed at all.
+- **`Teleport to="body"`.** The page renders inside `map-page`'s `.sheet-container`, which gets a `transform` during its open/close transition. A transformed ancestor becomes the containing block for `position: fixed` descendants, so mid-transition the page stopped resolving against the viewport and collapsed into the sheet box — leaving a sliver of map above it (intermittent: only while the transform was applied). The page teleports to `<body>` so it is never nested under a transformed ancestor and resolves against the viewport at all times.
 
 **2. Selection lives in `adaptive-overlay` (and `tour-info-sheet`'s `:is`).**
 `adaptive-overlay` gains a `page` prop: mobile + `page` → `full-screen-page`; mobile → bottom sheet; desktop → dialog/drawer (unchanged). It forwards all slots so consumers pass `#page-action` (Save) and `#footer` through unchanged. `tour-info-sheet` picks its surface directly, so it adds `full-screen-page` as a third `:is` target gated on `!isDesktop && mode === 'edit' && !isPicking`.
 - Rationale: one decision point per surface-picker. Consumers stay declarative — they flip `page` from their own edit/create state.
 
-**3. A map-needing pick falls back to the collapsed sheet, not the page.**
+**3a. Contact data entry: lift edit mode to the parent.**
+Contact creation is the add form inside `contacts-list-sheet` (the `contact-creation-dialog.vue` file is unused/dead). Contact *editing* is `contact-detail-view`, whose view/edit `mode` lived inside the component. Surface selection (`contactPage`) depends on that mode, but swapping the host sheet → page **remounts the slotted child**, which would reset its mode to `view` and toggle the surface back — an infinite flip. So `mode` is lifted to `contacts-list-sheet` via `defineModel('mode')`: the parent owns it, and when the child remounts into the page the parent re-supplies `edit`. (Tour/profile edit never hit this because their mode already lived in the parent.) `contact-detail-view` gains an `embedded` prop that hides its own header + bottom Save/Cancel, and exposes `saveAll`/`cancelEdit`/`isSaving` so the page's top bar drives them.
+
+**3b. A map-needing pick falls back to the collapsed sheet, not the page.**
 Tour create/edit can pick a location mid-form. The page would hide the map, so while `isPicking` the surface drops back to the collapsed bottom sheet (existing behavior). Hence `page = !isPicking` (creation) / `editAsPage = mode === 'edit' && !isPicking` (edit).
 
 **4. Forms submit via the native `form=` attribute; cancel via an exposed method.**

@@ -16,7 +16,15 @@ import BlockConfirmDialog from '@/features/friendships/presentation/components/b
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useUserBlocksStore } from '@/features/friendships/presentation/stores/user-blocks-store'
 
-const props = defineProps<{ contact: Contact, linkedFriendUserId?: string | null }>()
+const props = defineProps<{
+  contact: Contact
+  linkedFriendUserId?: string | null
+  /**
+   * Rendered inside a full-screen page: hide the in-view header and the
+   *  bottom Save/Cancel bar — the page's top app bar supplies both.
+   */
+  embedded?: boolean
+}>()
 
 const emit = defineEmits<{ back: [], deleted: [] }>()
 
@@ -92,7 +100,10 @@ const linkedMethodIds = computed<Set<string>>(() => {
 })
 
 // ── View/edit mode ───────────────────────────────────────────────────────────
-const mode = ref<'view' | 'edit'>('view')
+// Owned via v-model so the parent can keep it stable across a surface swap
+// (sheet → full-screen page): when this component is remounted into the page,
+// the parent re-supplies `edit`, so it doesn't snap back to `view` and loop.
+const mode = defineModel<'view' | 'edit'>('mode', { default: 'view' })
 const isSaving = ref(false)
 const saveError = ref<string | null>(null)
 
@@ -441,6 +452,10 @@ async function confirmDelete() {
 
 defineExpose({
   mode,
+  isSaving,
+  enterEditMode,
+  saveAll,
+  cancelEdit,
   commitPendingEdits: async () => {
     if (mode.value === 'view')
       return
@@ -453,8 +468,8 @@ defineExpose({
 
 <template>
   <div class="detail-view">
-    <!-- Header -->
-    <div class="detail-header">
+    <!-- Header (suppressed when embedded — the page's top app bar replaces it) -->
+    <div v-if="!embedded" class="detail-header">
       <button type="button" class="back-btn" @click="emit('back')">
         <span class="material-symbols-outlined">arrow_back</span>
       </button>
@@ -769,8 +784,9 @@ defineExpose({
       </template>
     </section>
 
-    <!-- Form-level Save / Cancel (edit mode only) -->
-    <section v-if="mode === 'edit'" class="section section--actions">
+    <!-- Form-level Save / Cancel (edit mode only; suppressed when embedded —
+         the page's top app bar supplies Save/Cancel) -->
+    <section v-if="mode === 'edit' && !embedded" class="section section--actions">
       <p v-if="saveError" class="error-text">
         {{ saveError }}
       </p>
