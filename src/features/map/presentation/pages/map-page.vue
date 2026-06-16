@@ -153,6 +153,10 @@ function resetTourCreationState() {
   dialogInitialStartPointMeta.value = null
   dialogInitialEndPointMeta.value = null
   pendingPickType.value = 'goal'
+  // Drop the draft marker on every cancel/dismiss path (closeOverlay, openOverlay
+  // switching away). The save path re-asserts it afterwards so it survives the round-trip.
+  mapStore.setPreviewGoal(null)
+  mapStore.setPreviewTourType(null)
 }
 
 /** Opens an overlay, closing any previously open overlay first. */
@@ -161,7 +165,7 @@ function openOverlay(name: OverlayName) {
     return
   if (activeOverlay.value === 'tour' && name !== 'tour') {
     mapStore.selectTour(null)
-    mapStore.setEditPreviewGoal(null)
+    mapStore.setPreviewGoal(null)
     tourOpenedFromList.value = false
   }
   if (activeOverlay.value === 'tour-creation' && name !== 'tour-creation') {
@@ -174,7 +178,7 @@ function openOverlay(name: OverlayName) {
 function closeOverlay() {
   if (activeOverlay.value === 'tour') {
     mapStore.selectTour(null)
-    mapStore.setEditPreviewGoal(null)
+    mapStore.setPreviewGoal(null)
     tourOpenedFromList.value = false
   }
   if (activeOverlay.value === 'tour-creation') {
@@ -315,7 +319,7 @@ function handleTourSelectedFromList(tourId: string) {
 function handleTourInfoBack() {
   tourOpenedFromList.value = false
   mapStore.selectTour(null)
-  mapStore.setEditPreviewGoal(null)
+  mapStore.setPreviewGoal(null)
   activeOverlay.value = 'tours'
 }
 
@@ -425,8 +429,10 @@ async function handleLocationConfirmed(location: { lng: number, lat: number }) {
     isPickingForEdit.value = false
     pendingPickType.value = 'goal'
     if (pickType === 'goal') {
-      // Show the tentative goal as an orange preview marker until edit mode closes
-      mapStore.setEditPreviewGoal(location)
+      // Show the tentative goal as a lighter-tone preview marker until edit mode closes,
+      // tinted by the edited tour's own type.
+      mapStore.setPreviewGoal(location)
+      mapStore.setPreviewTourType(selectedTour.value?.tourType ?? null)
       // Run Swisstopo lookups in parallel (same as creation flow)
       const [elevation, suggestedName] = await Promise.all([
         getElevation(location),
@@ -468,6 +474,8 @@ async function handleLocationConfirmed(location: { lng: number, lat: number }) {
   if (pendingPickType.value === 'goal' && pendingLocation.value !== null) {
     if (!isSameGoal(pendingLocation.value, location)) {
       pendingLocation.value = location
+      // Move the single draft marker to the re-picked goal (no second marker).
+      mapStore.setPreviewGoal(location)
       const [elevation, name] = await Promise.all([
         getElevation(location),
         suggestTourName(location),
@@ -482,6 +490,8 @@ async function handleLocationConfirmed(location: { lng: number, lat: number }) {
 
   // Initial goal pick: fire Swisstopo lookups in parallel before showing dialog
   pendingLocation.value = location
+  // Show the draft marker immediately; type is neutral until the form picks one.
+  mapStore.setPreviewGoal(location)
   const [elevation, name] = await Promise.all([getElevation(location), suggestTourName(location)])
   dialogInitialElevation.value = elevation
   dialogInitialName.value = name
@@ -527,7 +537,7 @@ function handlePointConsumed() {
 async function handleEditModeChange(editing: boolean) {
   if (!editing) {
     // Cancel/save: drop preview and recenter on the (possibly updated) tour goal
-    mapStore.setEditPreviewGoal(null)
+    mapStore.setPreviewGoal(null)
     await flyToSelectedTour()
   }
 }
@@ -581,6 +591,10 @@ async function handleTourCreated(
   // Capture goal before closeOverlay resets state
   const goal = pendingLocation.value
   closeOverlay()
+  // closeOverlay() cleared the draft via resetTourCreationState; re-assert it so the
+  // colored draft survives the create round-trip until performCreate swaps in the real marker.
+  mapStore.setPreviewGoal(goal)
+  mapStore.setPreviewTourType(draft.tourType)
   await performCreate(draft, goal, gpxFile, preUploadedTourId, draftId)
 }
 
@@ -591,15 +605,23 @@ async function performCreate(
   preUploadedTourId: string | null,
   draftId: string,
 ) {
-  const newId = await toursStore.createTourFromDraft(draft, goal, gpxFile, preUploadedTourId)
-  if (newId) {
-    mapStore.selectTour(newId)
-    // Upload staged attachments now that the tour row exists
-    if (draftId)
-      await attachmentsStore.commitStaged(draftId, newId)
-    // Fire-and-forget: Worker scans for friend-owned colliding tours and dispatches
-    // tour_interest notifications. Replaces the legacy "decline duplicate → signal" flow.
-    notifyTourInterest(newId)
+  // Keep the re-asserted draft marker on screen through the round-trip; clear it in
+  // `finally` so the real marker replaces it on success and no draft lingers on failure.
+  try {
+    const newId = await toursStore.createTourFromDraft(draft, goal, gpxFile, preUploadedTourId)
+    if (newId) {
+      mapStore.selectTour(newId)
+      // Upload staged attachments now that the tour row exists
+      if (draftId)
+        await attachmentsStore.commitStaged(draftId, newId)
+      // Fire-and-forget: Worker scans for friend-owned colliding tours and dispatches
+      // tour_interest notifications. Replaces the legacy "decline duplicate → signal" flow.
+      notifyTourInterest(newId)
+    }
+  }
+  finally {
+    mapStore.setPreviewGoal(null)
+    mapStore.setPreviewTourType(null)
   }
 }
 
@@ -735,6 +757,7 @@ function handleDialogClose() {
           @confirm="(d, f, r, tid, did) => handleTourCreated(d, f, r, tid, did)"
           @close="handleDialogClose"
           @pick-point="handlePickPoint"
+          @tour-type-change="mapStore.setPreviewTourType($event)"
         />
       </div>
     </Transition>

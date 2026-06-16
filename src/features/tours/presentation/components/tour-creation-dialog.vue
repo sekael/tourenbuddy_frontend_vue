@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
@@ -38,6 +39,7 @@ const emit = defineEmits<{
   ]
   close: []
   pickPoint: [type: 'start' | 'end' | 'goal']
+  tourTypeChange: [tourType: TourType | null]
 }>()
 
 const { t } = useI18n({ useScope: 'global' })
@@ -119,6 +121,7 @@ function handlePickPoint(type: 'start' | 'end' | 'goal') {
       @submit="(d, f, r, tid, did) => handleSubmit(d, f, r, tid, did)"
       @cancel="emit('close')"
       @pick-point="handlePickPoint"
+      @tour-type-change="emit('tourTypeChange', $event)"
     />
 
     <template #page-action>

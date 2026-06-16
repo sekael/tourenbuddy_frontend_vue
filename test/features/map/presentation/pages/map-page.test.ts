@@ -399,5 +399,57 @@ describe('mapPage', () => {
       expect(wrapper.vm.dialogInitialName).toBe('Mocked Peak')
       expect(wrapper.vm.activeOverlay).toBe('tour-creation')
     })
+
+    it('re-picking the goal moves the single draft marker to the new location', async () => {
+      const wrapper = mountMapPage()
+      wrapper.vm.activeOverlay = 'tour-creation'
+      wrapper.vm.pendingLocation = { ...GOAL }
+      wrapper.vm.pendingPickType = 'goal'
+      const mapStore = useMapStore()
+      mapStore.$patch({ isPickingLocation: true })
+      await wrapper.vm.$nextTick()
+
+      await wrapper.vm.handleLocationConfirmed(NEW_GOAL)
+      await wrapper.vm.$nextTick()
+
+      // Single preview-goal setter → inherently one marker that moves, not a second one.
+      expect(mapStore.setPreviewGoal).toHaveBeenCalledWith(NEW_GOAL)
+    })
+  })
+
+  describe('draft marker clear lifecycle', () => {
+    const GOAL = { lng: 8.2, lat: 46.8 }
+    const DRAFT = { tourType: 'hiking' } as never
+
+    it('clears the draft marker when the creation dialog is cancelled', async () => {
+      const wrapper = mountMapPage()
+      wrapper.vm.activeOverlay = 'tour-creation'
+      wrapper.vm.pendingLocation = { ...GOAL }
+      const mapStore = useMapStore()
+      await wrapper.vm.$nextTick()
+
+      wrapper.vm.handleDialogClose()
+      await wrapper.vm.$nextTick()
+
+      expect(mapStore.setPreviewGoal).toHaveBeenCalledWith(null)
+      expect(mapStore.setPreviewTourType).toHaveBeenCalledWith(null)
+    })
+
+    it('clears the draft marker even when the create request fails', async () => {
+      const wrapper = mountMapPage()
+      wrapper.vm.activeOverlay = 'tour-creation'
+      wrapper.vm.pendingLocation = { ...GOAL }
+      const mapStore = useMapStore()
+      const toursStore = useToursStore()
+      vi.mocked(toursStore.createTourFromDraft).mockRejectedValue(new Error('create failed'))
+      await wrapper.vm.$nextTick()
+
+      // The error still propagates (to Vue's global handler) — finally only guarantees cleanup.
+      await expect(wrapper.vm.handleTourCreated(DRAFT, null, false)).rejects.toThrow('create failed')
+
+      // ...but the draft must not be left dangling on the map after a failed save.
+      expect(mapStore.setPreviewGoal).toHaveBeenLastCalledWith(null)
+      expect(mapStore.setPreviewTourType).toHaveBeenLastCalledWith(null)
+    })
   })
 })
