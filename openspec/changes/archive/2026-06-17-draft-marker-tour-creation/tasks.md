@@ -41,5 +41,5 @@
 ## 8. Finalize
 
 - [x] 8.1 Run `npx eslint . --fix` and `npm run type-check`; confirm zero warnings and review the diff size (editor format-on-save can fight antfu style)
-- [ ] 8.2 Prompt the user to commit with message: `feat(map): show draft tour marker during tour creation (#222)`
-- [ ] 8.3 Prompt the user to push and open a PR; remind them to archive the change with `openspec archive` after merge
+- [x] 8.2 Prompt the user to commit with message: `feat(map): show draft tour marker during tour creation (#222)`
+- [x] 8.3 Prompt the user to push and open a PR; remind them to archive the change with `openspec archive` after merge
