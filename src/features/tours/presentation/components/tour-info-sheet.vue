@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
 import { storeToRefs } from 'pinia'
@@ -54,6 +55,7 @@ const emit = defineEmits<{
   editModeChange: [editing: boolean]
   /** Fired when the user requests to edit a contact from the action menu. */
   editContact: [contactId: string]
+  tourTypeChange: [tourType: TourType | null]
 }>()
 
 const { t, locale } = useI18n({ useScope: 'global' })
@@ -583,14 +585,9 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
 <template>
   <component
-    :is="editAsPage ? FullScreenPage : isDesktop ? SideDrawer : BottomSheet"
-    :title="sheetTitle"
-    :fit-content="!isDesktop && !editAsPage"
-    :collapsed="sheetCollapsed"
-    :back-label="sheetBackLabel"
-    :show-back="editAsPage ? false : sheetShowBack"
-    @close="handleSheetClose"
-    @back="handleSheetBack"
+    :is="editAsPage ? FullScreenPage : isDesktop ? SideDrawer : BottomSheet" :title="sheetTitle"
+    :fit-content="!isDesktop && !editAsPage" :collapsed="sheetCollapsed" :back-label="sheetBackLabel"
+    :show-back="editAsPage ? false : sheetShowBack" @close="handleSheetClose" @back="handleSheetBack"
   >
     <!-- ── Edit mode ────────────────────────────────────────────────────── -->
     <template v-if="mode === 'edit'">
@@ -598,59 +595,34 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         {{ saveError }}
       </p>
       <TourForm
-        ref="editFormRef"
-        form-id="tour-edit-form"
-        :embedded="editAsPage"
-        :submit-label="t('tours.infoSheet.saveLabel')"
-        :allow-goal-edit="true"
-        :current-goal="pendingGoal"
-        :initial-draft="tour"
-        :tour-id="tour.id"
-        :initial-elevation="pendingElevation"
-        :initial-name="pendingSuggestedName"
-        :initial-start-point="pendingStartPoint"
-        :initial-end-point="pendingEndPoint"
-        :initial-start-point-meta="pendingStartPointMeta"
-        :initial-end-point-meta="pendingEndPointMeta"
-        :disabled="isPicking"
-        @submit="(d, f, r) => handleEditSubmit(d, f, r)"
-        @cancel="cancelEdit"
-        @pick-point="emit('pickPoint', $event)"
+        ref="editFormRef" form-id="tour-edit-form" :embedded="editAsPage"
+        :submit-label="t('tours.infoSheet.saveLabel')" :allow-goal-edit="true" :current-goal="pendingGoal"
+        :initial-draft="tour" :tour-id="tour.id" :initial-elevation="pendingElevation"
+        :initial-name="pendingSuggestedName" :initial-start-point="pendingStartPoint"
+        :initial-end-point="pendingEndPoint" :initial-start-point-meta="pendingStartPointMeta"
+        :initial-end-point-meta="pendingEndPointMeta" :disabled="isPicking"
+        @submit="(d, f, r) => handleEditSubmit(d, f, r)" @cancel="cancelEdit" @pick-point="emit('pickPoint', $event)"
+        @tour-type-change="emit('tourTypeChange', $event)"
       />
     </template>
 
     <!-- ── Linked-tours full-list mode ─────────────────────────────────── -->
     <template v-else-if="linksView">
-      <LinkedWithSection
-        :siblings="linkSiblings"
-        :full-list="true"
-        @open-tour="navigateToSibling"
-      />
+      <LinkedWithSection :siblings="linkSiblings" :full-list="true" @open-tour="navigateToSibling" />
     </template>
 
     <!-- ── View mode ───────────────────────────────────────────────────── -->
     <template v-else>
       <div class="details">
         <!-- Tour link group siblings + pending link requests + collision notice -->
-        <LinkedWithSection
-          :siblings="linkSiblings"
-          @open-tour="navigateToSibling"
-          @view-all="linksView = true"
-        />
-        <LinkRequestBanner
-          v-for="req in linkPendingRequests"
-          :key="req.id"
-          :request="req"
-        />
+        <LinkedWithSection :siblings="linkSiblings" @open-tour="navigateToSibling" @view-all="linksView = true" />
+        <LinkRequestBanner v-for="req in linkPendingRequests" :key="req.id" :request="req" />
         <CollisionNotice v-if="isOwner" :own-tour-id="tour.id" />
 
         <!-- Completion toggle (owner only) -->
         <button
-          v-if="isOwner"
-          type="button"
-          class="completion-toggle action-btn"
-          :class="{ 'completion-toggle--done': tour.completed }"
-          :aria-pressed="tour.completed"
+          v-if="isOwner" type="button" class="completion-toggle action-btn"
+          :class="{ 'completion-toggle--done': tour.completed }" :aria-pressed="tour.completed"
           @click="toggleCompleted"
         >
           <span v-if="tour.completed" class="material-symbols-outlined">check_circle</span>
@@ -664,16 +636,10 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
         <!-- Visibility toggle (owner only) -->
         <button
-          v-if="isOwner"
-          type="button"
-          class="visibility-toggle action-btn"
-          :class="
-            tour.visibility === 'private'
-              ? 'visibility-toggle--private'
-              : 'visibility-toggle--friends'
-          "
-          :aria-pressed="tour.visibility === 'private'"
-          @click="toggleVisibility"
+          v-if="isOwner" type="button" class="visibility-toggle action-btn" :class="tour.visibility === 'private'
+            ? 'visibility-toggle--private'
+            : 'visibility-toggle--friends'
+          " :aria-pressed="tour.visibility === 'private'" @click="toggleVisibility"
         >
           <span class="material-symbols-outlined">
             {{ tour.visibility === 'private' ? 'lock' : 'group' }}
@@ -778,10 +744,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           <p class="description-text">
             <template v-for="(segment, i) in linkifyText(tour.description)" :key="i">
               <a
-                v-if="segment.url"
-                :href="segment.url"
-                target="_blank"
-                rel="noopener noreferrer"
+                v-if="segment.url" :href="segment.url" target="_blank" rel="noopener noreferrer"
                 class="description-link"
               >{{ segment.text }}</a>
               <template v-else>
@@ -833,19 +796,12 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           <div class="partner-chips-section">
             <div class="partner-chips">
               <ContactChip
-                v-for="partner in partners"
-                :key="partner.id"
-                :contact="partner"
-                :selected="false"
-                mode="action"
-                @open="openContactMenu"
+                v-for="partner in partners" :key="partner.id" :contact="partner" :selected="false"
+                mode="action" @open="openContactMenu"
               />
             </div>
             <button
-              v-if="partners.length > 1"
-              type="button"
-              class="group-sms-btn"
-              data-testid="group-sms-btn"
+              v-if="partners.length > 1" type="button" class="group-sms-btn" data-testid="group-sms-btn"
               @click="showGroupSmsDialog = true"
             >
               <span class="material-symbols-outlined">sms</span>
@@ -866,10 +822,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
             <span v-for="(name, i) in friendPartnerNames" :key="i" class="friend-partner-chip">{{
               name
             }}</span>
-            <span
-              v-if="unresolvedPartnerCount > 0"
-              class="friend-partner-chip friend-partner-chip--more"
-            >
+            <span v-if="unresolvedPartnerCount > 0" class="friend-partner-chip friend-partner-chip--more">
               {{ t('tours.infoSheet.morePartners', { count: unresolvedPartnerCount }) }}
             </span>
           </div>
@@ -877,18 +830,13 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
         <!-- Contact action menu -->
         <ContactActionMenu
-          v-if="activeMenuContact"
-          :contact="activeMenuContact"
-          :anchor-rect="activeChipRect"
-          @close="closeContactMenu"
-          @edit-contact="handleEditContact"
+          v-if="activeMenuContact" :contact="activeMenuContact" :anchor-rect="activeChipRect"
+          @close="closeContactMenu" @edit-contact="handleEditContact"
         />
 
         <!-- Group SMS dialog -->
         <GroupSmsConfirmDialog
-          v-if="showGroupSmsDialog"
-          :partners="partners"
-          @confirm="showGroupSmsDialog = false"
+          v-if="showGroupSmsDialog" :partners="partners" @confirm="showGroupSmsDialog = false"
           @cancel="showGroupSmsDialog = false"
         />
       </div>
@@ -905,10 +853,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
       <div class="view-actions">
         <div class="edit-delete-row">
           <button
-            v-if="deleteState === 'idle'"
-            type="button"
-            class="action-btn"
-            data-testid="edit-btn"
+            v-if="deleteState === 'idle'" type="button" class="action-btn" data-testid="edit-btn"
             @click="enterEditMode"
           >
             <span class="material-symbols-outlined">edit</span>
@@ -930,10 +875,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
             </div>
           </template>
           <button
-            v-else
-            type="button"
-            class="action-btn action-btn--danger"
-            :disabled="deleteState === 'loading'"
+            v-else type="button" class="action-btn action-btn--danger" :disabled="deleteState === 'loading'"
             @click="deleteState = 'confirm'"
           >
             <span class="material-symbols-outlined">delete</span>
@@ -952,18 +894,13 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
     <!-- Attachment viewer uses Teleport internally; placing here keeps single root -->
     <TourAttachmentViewer
-      v-if="viewerOpen"
-      :attachments="viewerAttachments"
-      :start-index="viewerStartIndex"
+      v-if="viewerOpen" :attachments="viewerAttachments" :start-index="viewerStartIndex"
       @close="viewerOpen = false"
     />
 
     <LinkEditWarningDialog
-      v-if="editWarningPending"
-      :linked-count="linkSiblings.length"
-      :pending-count="editWarningPendingCount"
-      :mode="editWarningMode"
-      @confirm="confirmEditWarning"
+      v-if="editWarningPending" :linked-count="linkSiblings.length"
+      :pending-count="editWarningPendingCount" :mode="editWarningMode" @confirm="confirmEditWarning"
       @cancel="cancelEditWarning"
     />
   </component>

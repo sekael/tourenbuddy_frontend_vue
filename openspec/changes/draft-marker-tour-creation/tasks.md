@@ -34,9 +34,9 @@
 
 ## 7. Manual verification (desktop)
 
-- [ ] 7.1 Create a tour on desktop: draft marker appears neutral on goal pick, recolors live when an activity type is chosen, moves on goal re-pick, stays visible through save and swaps to the real colored marker (no empty-map gap), disappears on cancel
-- [ ] 7.2 Edit an existing tour's goal: preview behavior unchanged
-- [ ] 7.3 Mobile sanity: draft marker visible during goal re-pick and after save (full-screen form covers it otherwise — expected)
+- [x] 7.1 Create a tour on desktop: draft marker appears neutral on goal pick, recolors live when an activity type is chosen, moves on goal re-pick, stays visible through save and swaps to the real colored marker (no empty-map gap), disappears on cancel
+- [x] 7.2 Edit an existing tour's goal: preview behavior unchanged
+- [x] 7.3 Mobile sanity: draft marker visible during goal re-pick and after save (full-screen form covers it otherwise — expected)
 
 ## 8. Finalize
 
