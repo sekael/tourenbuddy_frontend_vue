@@ -30,7 +30,7 @@ const toursStore = useToursStore()
 const mapStore = useMapStore()
 const tourLinksStore = useTourLinksStore()
 const { tours, friendTours } = storeToRefs(toursStore)
-const { currentStyleIndex, selectedTourId, editPreviewGoal } = storeToRefs(mapStore)
+const { currentStyleIndex, selectedTourId, previewGoal, previewTourType } = storeToRefs(mapStore)
 const { groupIdByTourId } = storeToRefs(tourLinksStore)
 
 const linkedTourIds = computed(() => new Set(groupIdByTourId.value.keys()))
@@ -101,7 +101,7 @@ onMounted(() => {
     )
     await markerLayer.setup()
     markerLayer.updateTours(mapTours.value, selectedTourId.value, linkedTourIds.value)
-    markerLayer.updatePreview(editPreviewGoal.value, selectedTour.value?.tourType ?? null)
+    markerLayer.updatePreview(previewGoal.value, previewTourType.value)
 
     gpxLayer = useGpxTrackLayer(mapInstance!)
     gpxLayer.setup()
@@ -138,9 +138,9 @@ watch([mapTours, selectedTourId, linkedTourIds], ([newTours, newSelectedId, newL
   gpxLayer?.updateTrack(selectedTour.value)
 })
 
-// Watch for edit preview goal changes and update the preview marker
-watch(editPreviewGoal, (goal) => {
-  markerLayer?.updatePreview(goal, selectedTour.value?.tourType ?? null)
+// Watch for preview goal/type changes (edit or creation) and update the preview marker
+watch([previewGoal, previewTourType], ([goal, tourType]) => {
+  markerLayer?.updatePreview(goal, tourType)
 })
 
 // Watch for map style changes
@@ -154,7 +154,7 @@ watch(currentStyleIndex, (index) => {
     mapInstance.once('style.load', async () => {
       await markerLayer?.setup()
       markerLayer?.updateTours(mapTours.value, selectedTourId.value, linkedTourIds.value)
-      markerLayer?.updatePreview(editPreviewGoal.value, selectedTour.value?.tourType ?? null)
+      markerLayer?.updatePreview(previewGoal.value, previewTourType.value)
       gpxLayer?.setup()
       gpxLayer?.updateTrack(selectedTour.value)
     })

@@ -73,6 +73,7 @@ const emit = defineEmits<{
   ]
   cancel: []
   pickPoint: [type: 'start' | 'end' | 'goal']
+  tourTypeChange: [tourType: TourType | null]
 }>()
 
 const { t } = useI18n({ useScope: 'global' })
@@ -228,6 +229,9 @@ watch(
     }
   },
 )
+
+// Surface the live activity type so the map can tint the draft preview marker.
+watch(selectedTourType, type => emit('tourTypeChange', type), { immediate: true })
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function togglePartner(contactId: string) {

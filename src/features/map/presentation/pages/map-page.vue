@@ -153,6 +153,10 @@ function resetTourCreationState() {
   dialogInitialStartPointMeta.value = null
   dialogInitialEndPointMeta.value = null
   pendingPickType.value = 'goal'
+  // Drop the draft marker on every cancel/dismiss path (closeOverlay, openOverlay
+  // switching away). The save path re-asserts it afterwards so it survives the round-trip.
+  mapStore.setPreviewGoal(null)
+  mapStore.setPreviewTourType(null)
 }
 
 /** Opens an overlay, closing any previously open overlay first. */
@@ -161,7 +165,7 @@ function openOverlay(name: OverlayName) {
     return
   if (activeOverlay.value === 'tour' && name !== 'tour') {
     mapStore.selectTour(null)
-    mapStore.setEditPreviewGoal(null)
+    mapStore.setPreviewGoal(null)
     tourOpenedFromList.value = false
   }
   if (activeOverlay.value === 'tour-creation' && name !== 'tour-creation') {
@@ -174,7 +178,7 @@ function openOverlay(name: OverlayName) {
 function closeOverlay() {
   if (activeOverlay.value === 'tour') {
     mapStore.selectTour(null)
-    mapStore.setEditPreviewGoal(null)
+    mapStore.setPreviewGoal(null)
     tourOpenedFromList.value = false
   }
   if (activeOverlay.value === 'tour-creation') {
@@ -315,7 +319,7 @@ function handleTourSelectedFromList(tourId: string) {
 function handleTourInfoBack() {
   tourOpenedFromList.value = false
   mapStore.selectTour(null)
-  mapStore.setEditPreviewGoal(null)
+  mapStore.setPreviewGoal(null)
   activeOverlay.value = 'tours'
 }
 
@@ -425,8 +429,9 @@ async function handleLocationConfirmed(location: { lng: number, lat: number }) {
     isPickingForEdit.value = false
     pendingPickType.value = 'goal'
     if (pickType === 'goal') {
-      // Show the tentative goal as an orange preview marker until edit mode closes
-      mapStore.setEditPreviewGoal(location)
+      // Tentative goal as a lighter-tone preview marker until edit mode closes,
+      // color is already held by previewTourType, so no changes needed here.
+      mapStore.setPreviewGoal(location)
       // Run Swisstopo lookups in parallel (same as creation flow)
       const [elevation, suggestedName] = await Promise.all([
         getElevation(location),
@@ -468,6 +473,8 @@ async function handleLocationConfirmed(location: { lng: number, lat: number }) {
   if (pendingPickType.value === 'goal' && pendingLocation.value !== null) {
     if (!isSameGoal(pendingLocation.value, location)) {
       pendingLocation.value = location
+      // Move the single draft marker to the re-picked goal (no second marker).
+      mapStore.setPreviewGoal(location)
       const [elevation, name] = await Promise.all([
         getElevation(location),
         suggestTourName(location),
@@ -482,6 +489,8 @@ async function handleLocationConfirmed(location: { lng: number, lat: number }) {
 
   // Initial goal pick: fire Swisstopo lookups in parallel before showing dialog
   pendingLocation.value = location
+  // Show the draft marker immediately; type is neutral until the form picks one.
+  mapStore.setPreviewGoal(location)
   const [elevation, name] = await Promise.all([getElevation(location), suggestTourName(location)])
   dialogInitialElevation.value = elevation
   dialogInitialName.value = name
@@ -527,7 +536,7 @@ function handlePointConsumed() {
 async function handleEditModeChange(editing: boolean) {
   if (!editing) {
     // Cancel/save: drop preview and recenter on the (possibly updated) tour goal
-    mapStore.setEditPreviewGoal(null)
+    mapStore.setPreviewGoal(null)
     await flyToSelectedTour()
   }
 }
@@ -581,6 +590,10 @@ async function handleTourCreated(
   // Capture goal before closeOverlay resets state
   const goal = pendingLocation.value
   closeOverlay()
+  // closeOverlay() cleared the draft via resetTourCreationState; re-assert it so the
+  // colored draft survives the create round-trip until performCreate swaps in the real marker.
+  mapStore.setPreviewGoal(goal)
+  mapStore.setPreviewTourType(draft.tourType)
   await performCreate(draft, goal, gpxFile, preUploadedTourId, draftId)
 }
 
@@ -591,15 +604,23 @@ async function performCreate(
   preUploadedTourId: string | null,
   draftId: string,
 ) {
-  const newId = await toursStore.createTourFromDraft(draft, goal, gpxFile, preUploadedTourId)
-  if (newId) {
-    mapStore.selectTour(newId)
-    // Upload staged attachments now that the tour row exists
-    if (draftId)
-      await attachmentsStore.commitStaged(draftId, newId)
-    // Fire-and-forget: Worker scans for friend-owned colliding tours and dispatches
-    // tour_interest notifications. Replaces the legacy "decline duplicate → signal" flow.
-    notifyTourInterest(newId)
+  // Keep the re-asserted draft marker on screen through the round-trip; clear it in
+  // `finally` so the real marker replaces it on success and no draft lingers on failure.
+  try {
+    const newId = await toursStore.createTourFromDraft(draft, goal, gpxFile, preUploadedTourId)
+    if (newId) {
+      mapStore.selectTour(newId)
+      // Upload staged attachments now that the tour row exists
+      if (draftId)
+        await attachmentsStore.commitStaged(draftId, newId)
+      // Fire-and-forget: Worker scans for friend-owned colliding tours and dispatches
+      // tour_interest notifications. Replaces the legacy "decline duplicate → signal" flow.
+      notifyTourInterest(newId)
+    }
+  }
+  finally {
+    mapStore.setPreviewGoal(null)
+    mapStore.setPreviewTourType(null)
   }
 }
 
@@ -616,14 +637,8 @@ function handleDialogClose() {
     <Teleport to="body">
       <Transition name="tour-slide">
         <OnboardingTourBanner
-          v-if="tourRunning"
-          :title="tourTitle"
-          :current="tourIndex + 1"
-          :total="tourTotal"
-          :can-back="tourIndex > 0"
-          :busy="tourStaging"
-          @back="onboardingTour.back()"
-          @next="onboardingTour.next()"
+          v-if="tourRunning" :title="tourTitle" :current="tourIndex + 1" :total="tourTotal"
+          :can-back="tourIndex > 0" :busy="tourStaging" @back="onboardingTour.back()" @next="onboardingTour.next()"
           @finish="onboardingTour.finish()"
         />
       </Transition>
@@ -633,46 +648,30 @@ function handleDialogClose() {
          above the map + sheets, the same as the tour banner. -->
     <Teleport to="body">
       <OnboardingWelcome
-        v-if="tourWelcome"
-        @start="onboardingTour.startFromWelcome()"
-        @skip="onboardingTour.skipWelcome()"
-        @dismiss="onboardingTour.dismissWelcome()"
+        v-if="tourWelcome" @start="onboardingTour.startFromWelcome()"
+        @skip="onboardingTour.skipWelcome()" @dismiss="onboardingTour.dismissWelcome()"
       />
     </Teleport>
 
-    <TourenbuddyMap
-      ref="mapRef"
-      @tour-clicked="handleTourClicked"
-      @map-background-click="handleMapBackgroundClick"
-    />
+    <TourenbuddyMap ref="mapRef" @tour-clicked="handleTourClicked" @map-background-click="handleMapBackgroundClick" />
 
     <MapActionOverlay
-      ref="mapOverlayRef"
-      :bearing="mapBearing"
-      :overlay-active="activeOverlay !== null"
-      @open-feedback="openOverlay('feedback')"
-      @open-profile="openOverlay('profile')"
-      @open-contacts="openOverlay('contacts')"
-      @reset-bearing="handleResetBearing"
-      @dismiss-overlay="closeOverlay"
+      ref="mapOverlayRef" :bearing="mapBearing" :overlay-active="activeOverlay !== null"
+      @open-feedback="openOverlay('feedback')" @open-profile="openOverlay('profile')"
+      @open-contacts="openOverlay('contacts')" @reset-bearing="handleResetBearing" @dismiss-overlay="closeOverlay"
     />
 
     <TourActionBar
-      :visible="barState.visible"
-      :tours-disabled="barState.toursAction === 'dismiss'"
+      :visible="barState.visible" :tours-disabled="barState.toursAction === 'dismiss'"
       :add-tour-disabled="barState.addTourAction === 'dismiss' || barState.addTourAction === 'disabled'"
-      :add-tour-tooltip="addTourTooltip"
-      :dismiss-mode="barState.toursAction === 'dismiss'"
-      @tours="handleBarTours"
+      :add-tour-tooltip="addTourTooltip" :dismiss-mode="barState.toursAction === 'dismiss'" @tours="handleBarTours"
       @add-tour="handleBarAddTour"
     />
 
     <LocationPicker
-      v-if="isPickingLocation"
-      :map="mapRef?.map ?? null"
+      v-if="isPickingLocation" :map="mapRef?.map ?? null"
       :actions-bottom="!isDesktop && (isPickingForEdit || showTourCreationDialog) ? 80 : undefined"
-      @confirm="handleLocationConfirmed"
-      @cancel="handleLocationCancelled"
+      @confirm="handleLocationConfirmed" @cancel="handleLocationCancelled"
     />
 
     <!-- Overlays: only one visible at a time; mode="out-in" ensures the active overlay
@@ -680,23 +679,13 @@ function handleDialogClose() {
          On desktop, the container uses display:contents so fixed-position dialogs
          position themselves independently and animate via their own CSS. -->
     <Transition name="sheet" mode="out-in">
-      <div
-        v-if="selectedTour && activeOverlay === 'tour'"
-        key="tour"
-        ref="sheetContainerRef"
-        class="sheet-container"
-      >
+      <div v-if="selectedTour && activeOverlay === 'tour'" key="tour" ref="sheetContainerRef" class="sheet-container">
         <TourInfoSheet
-          :tour="selectedTour"
-          :edit-picked-point="editPickedPoint"
-          :show-back="tourOpenedFromList"
-          :active-pick-type="isPickingForEdit ? pendingPickType : null"
-          @close="closeOverlay"
-          @back="handleTourInfoBack"
+          :tour="selectedTour" :edit-picked-point="editPickedPoint" :show-back="tourOpenedFromList"
+          :active-pick-type="isPickingForEdit ? pendingPickType : null" @close="closeOverlay" @back="handleTourInfoBack"
           @pick-point="(t: 'start' | 'end' | 'goal') => handleInfoSheetPickPoint(t)"
-          @point-consumed="handlePointConsumed"
-          @edit-mode-change="handleEditModeChange"
-          @edit-contact="handleEditContact"
+          @point-consumed="handlePointConsumed" @edit-mode-change="handleEditModeChange"
+          @edit-contact="handleEditContact" @tour-type-change="mapStore.setPreviewTourType($event)"
         />
       </div>
       <div v-else-if="showFeedbackSheet" key="feedback" class="sheet-container">
@@ -707,8 +696,7 @@ function handleDialogClose() {
       </div>
       <div v-else-if="showContactDialog" key="contacts" class="sheet-container">
         <ContactsListSheet
-          :initial-contact-id="editContactId"
-          @close="handleContactsClose"
+          :initial-contact-id="editContactId" @close="handleContactsClose"
           @open-friend-requests="handleOpenFriendRequests"
         />
       </div>
@@ -717,24 +705,18 @@ function handleDialogClose() {
       </div>
       <div v-else-if="showToursList" key="tours" class="sheet-container">
         <TourListSheet
-          @close="closeOverlay"
-          @select-tour="handleTourSelectedFromList"
+          @close="closeOverlay" @select-tour="handleTourSelectedFromList"
           @add-tour="handleListSheetAddTour"
         />
       </div>
       <div v-else-if="showTourCreationDialog" key="tour-creation" class="sheet-container">
         <TourCreationDialog
-          :initial-elevation="dialogInitialElevation"
-          :initial-name="dialogInitialName"
-          :initial-start-point="dialogInitialStartPoint"
-          :initial-end-point="dialogInitialEndPoint"
-          :initial-start-point-meta="dialogInitialStartPointMeta"
-          :initial-end-point-meta="dialogInitialEndPointMeta"
-          :initial-goal="pendingLocation"
-          :active-pick-type="pendingPickType"
-          @confirm="(d, f, r, tid, did) => handleTourCreated(d, f, r, tid, did)"
-          @close="handleDialogClose"
-          @pick-point="handlePickPoint"
+          :initial-elevation="dialogInitialElevation" :initial-name="dialogInitialName"
+          :initial-start-point="dialogInitialStartPoint" :initial-end-point="dialogInitialEndPoint"
+          :initial-start-point-meta="dialogInitialStartPointMeta" :initial-end-point-meta="dialogInitialEndPointMeta"
+          :initial-goal="pendingLocation" :active-pick-type="pendingPickType"
+          @confirm="(d, f, r, tid, did) => handleTourCreated(d, f, r, tid, did)" @close="handleDialogClose"
+          @pick-point="handlePickPoint" @tour-type-change="mapStore.setPreviewTourType($event)"
         />
       </div>
     </Transition>
