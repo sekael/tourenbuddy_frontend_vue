@@ -167,8 +167,7 @@ function openOverlay(name: OverlayName) {
     return
   if (activeOverlay.value === 'tour' && name !== 'tour') {
     mapStore.selectTour(null)
-    mapStore.setPreviewGoal(null)
-    clearDraftPoints()
+    clearTourPreview()
     tourOpenedFromList.value = false
   }
   if (activeOverlay.value === 'tour-creation' && name !== 'tour-creation') {
@@ -181,8 +180,7 @@ function openOverlay(name: OverlayName) {
 function closeOverlay() {
   if (activeOverlay.value === 'tour') {
     mapStore.selectTour(null)
-    mapStore.setPreviewGoal(null)
-    clearDraftPoints()
+    clearTourPreview()
     tourOpenedFromList.value = false
   }
   if (activeOverlay.value === 'tour-creation') {
@@ -323,8 +321,7 @@ function handleTourSelectedFromList(tourId: string) {
 function handleTourInfoBack() {
   tourOpenedFromList.value = false
   mapStore.selectTour(null)
-  mapStore.setPreviewGoal(null)
-  clearDraftPoints()
+  clearTourPreview()
   activeOverlay.value = 'tours'
 }
 
@@ -541,13 +538,19 @@ function handlePointConsumed() {
 async function handleEditModeChange(editing: boolean) {
   if (!editing) {
     // Cancel/save: drop previews and recenter on the (possibly updated) tour goal
-    mapStore.setPreviewGoal(null)
-    clearDraftPoints()
+    clearTourPreview()
     await flyToSelectedTour()
   }
 }
 
-function clearDraftPoints() {
+// Tear down every preview overlay tied to a viewed/edited tour: the tentative
+// goal, its draft type tint, and the draft start/end points. Called on close,
+// back, overlay-switch and edit-exit so nothing leaks into the next selection.
+// A stale previewTourType in particular would mis-color the next tour's
+// start/end markers, since they read it as a draft override.
+function clearTourPreview() {
+  mapStore.setPreviewGoal(null)
+  mapStore.setPreviewTourType(null)
   mapStore.setPreviewStart(null)
   mapStore.setPreviewEnd(null)
 }
@@ -651,9 +654,7 @@ async function performCreate(
     }
   }
   finally {
-    mapStore.setPreviewGoal(null)
-    mapStore.setPreviewTourType(null)
-    clearDraftPoints()
+    clearTourPreview()
   }
 }
 

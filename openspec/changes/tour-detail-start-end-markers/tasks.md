@@ -4,7 +4,7 @@
 
 ## 2. Detail-marker policy (pure function + tests)
 
-- [ ] 2.1 Add a pure function `tourDetailMarkers(tour, draft?)` (e.g. in `src/features/tours/domain/`) returning the start/end markers to render as `{ kind: 'start' | 'end', lngLat, tourType, draft }[]`: start whenever a start coordinate exists; end only when a distinct end coordinate exists (reuse the existing `isSameGoal`/distance check); draft overrides per point fall back to the saved tour coordinate. Friend status SHALL NOT affect output.
+- [x] 2.1 Add a pure function `tourDetailMarkers(tour, draft?)` (e.g. in `src/features/tours/domain/`) returning the start/end markers to render as `{ kind: 'start' | 'end', lngLat, tourType, draft }[]`: start whenever a start coordinate exists; end only when a distinct end coordinate exists (reuse the existing `isSameGoal`/distance check); draft overrides per point fall back to the saved tour coordinate. Friend status SHALL NOT affect output.
 - [x] 2.2 Unit-test the edge cases in `test/features/tours/...`: round trip (end == start → start only), one-way (no end → start only), distinct end (both), no start (none), draft override changes one point while the other stays saved. (Per testing.md: cover edge/failure cases, skip the trivial happy path.)
 
 ## 3. Marker layer renderer (GL, mirroring the goal)
@@ -26,7 +26,7 @@
 
 ## 6. Finalize
 
-- [ ] 6.1 Run `npm run test`, `npm run type-check`, and `npx eslint . --fix` — all green, zero warnings.
+- [x] 6.1 Run `npm run test`, `npm run type-check`, and `npx eslint . --fix` — all green, zero warnings.
 - [ ] 6.2 Prompt the user to commit with a ready-to-copy conventional commit message (e.g. `feat(map): show start and end markers when viewing tour details (#223)`).
 - [ ] 6.3 Prompt the user to push the branch and open a PR to `main`.
 - [ ] 6.4 Prompt the user to archive this change with the `openspec-archive` skill once merged.

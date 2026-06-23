@@ -24,7 +24,10 @@ export interface DetailMarker {
 interface PointInput {
   /** Coordinate stored on the tour (null while creating, or if unset). */
   saved: LngLat | null
-  /** Re-picked, not-yet-saved coordinate; takes precedence and renders as draft. */
+  /**
+   * Re-picked, not-yet-saved coordinate. Set ONLY when it genuinely differs from
+   * `saved` (the caller diffs first), so its presence always means "being edited".
+   */
   draft: LngLat | null
 }
 
@@ -36,46 +39,44 @@ export interface TourDetailMarkersInput {
 }
 
 /**
- * Resolves a point to the coordinate that should render and whether it is a draft.
- * A draft (re-picked, not-yet-saved) coordinate takes precedence over the saved one.
- * Returns `null` when the point has neither — a normal "no point here" case (a
- * one-way tour with no end, or a not-yet-picked point during creation), so callers
- * branch on the value instead of guarding against an error. Total by design.
- */
-function resolvePoint(point: PointInput): { coord: LngLat, draft: boolean } | null {
-  if (point.draft !== null) {
-    return { coord: point.draft, draft: true }
-  }
-  if (point.saved !== null) {
-    return { coord: point.saved, draft: false }
-  }
-  return null
-}
-
-/**
  * Resolves which start/end markers to render for the open/created tour.
  *
- * Policy (mirrors the info sheet):
- * - The start marker shows whenever a start coordinate exists (draft over saved).
- * - The end marker shows ONLY when an end coordinate exists AND is distinct from
- *   the effective start (use `isSameGoal`). Round-trip (end == start) and
- *   one-way-to-goal (no end) tours therefore yield a start marker and no end marker.
- * - A point renders as `draft: true` when its coordinate came from the draft
- *   override, else `draft: false` (saved, full color). Unchanged points stay saved.
+ * Mirrors the goal marker's edit behavior: the SAVED marker always stays
+ * visible, and while a point is being edited its DRAFT marker shows ALONGSIDE
+ * it (lighter tone, new position) — not in place of it. Cancel drops the draft
+ * (its `previewStart`/`previewEnd` clears); save promotes it (the tour's saved
+ * coordinate updates and the draft clears). So a point with both a saved and a
+ * draft coordinate yields TWO markers.
+ *
+ * Round-trip dedup, per tone: an end marker is omitted when it coincides
+ * (`isSameGoal`) with the start of the same tone — a saved round trip shows one
+ * saved marker; a draft round trip shows one draft marker. A tour with no
+ * effective start (no saved and no draft start) renders nothing — an end never
+ * appears orphaned.
  */
 export function tourDetailMarkers(input: TourDetailMarkersInput): DetailMarker[] {
-  const detailMarkers: DetailMarker[] = []
+  const effectiveStart = input.start.draft ?? input.start.saved
+  if (effectiveStart === null)
+    return []
 
-  const effectiveStart = resolvePoint(input.start)
-  if (effectiveStart === null) {
-    return detailMarkers
+  // One tone (saved or draft): the start always shows; the end shows only when
+  // it's distinct from that tone's anchoring start (round-trip dedup).
+  function tone(
+    start: LngLat | null,
+    end: LngLat | null,
+    anchor: LngLat | null,
+    draft: boolean,
+  ): DetailMarker[] {
+    const out: DetailMarker[] = []
+    if (start !== null)
+      out.push({ pointKind: 'start', lngLat: start, tourType: input.tourType, draft })
+    if (end !== null && anchor !== null && !isSameGoal(end, anchor))
+      out.push({ pointKind: 'end', lngLat: end, tourType: input.tourType, draft })
+    return out
   }
-  detailMarkers.push({ pointKind: 'start', lngLat: effectiveStart.coord, tourType: input.tourType, draft: effectiveStart.draft })
 
-  const effectiveEnd = resolvePoint(input.end)
-
-  if (effectiveEnd !== null && !isSameGoal(effectiveStart.coord, effectiveEnd.coord)) {
-    detailMarkers.push({ pointKind: 'end', lngLat: effectiveEnd.coord, tourType: input.tourType, draft: effectiveEnd.draft })
-  }
-  return detailMarkers
+  return [
+    ...tone(input.start.saved, input.end.saved, input.start.saved, false),
+    ...tone(input.start.draft, input.end.draft, effectiveStart, true),
+  ]
 }
