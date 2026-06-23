@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.32.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.31.0...tourenbuddy-frontend-v0.32.0) (2026-06-23)
+
+
+### Features
+
+* Draft marker tour creation ([#228](https://github.com/sekael/tourenbuddy_frontend_vue/issues/228)) ([9bee307](https://github.com/sekael/tourenbuddy_frontend_vue/commit/9bee3075757ffe0e466ed4b54b4d766c2af33f80))
+* Tour detail start end markers ([#230](https://github.com/sekael/tourenbuddy_frontend_vue/issues/230)) ([799463e](https://github.com/sekael/tourenbuddy_frontend_vue/commit/799463ece4a427808c8c3f068353bcccba884f3b))
+
 ## [0.31.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.30.1...tourenbuddy-frontend-v0.31.0) (2026-06-15)
 
 
