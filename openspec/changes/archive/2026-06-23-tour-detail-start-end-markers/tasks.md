@@ -22,11 +22,11 @@
 
 ## 5. Manual verification
 
-- [ ] 5.1 Verify against local Supabase: open an own tour's details → saved start/end markers appear with correct icons/colors; standard map shows none; round-trip/one-way show start only; partner friend tour shows identical markers; completing a tour leaves start/end unchanged; edit a start/end → lighter draft marker, save promotes it, cancel reverts; style switch re-renders markers.
+- [x] 5.1 Verify against local Supabase: open an own tour's details → saved start/end markers appear with correct icons/colors; standard map shows none; round-trip/one-way show start only; partner friend tour shows identical markers; completing a tour leaves start/end unchanged; edit a start/end → lighter draft marker, save promotes it, cancel reverts; style switch re-renders markers.
 
 ## 6. Finalize
 
 - [x] 6.1 Run `npm run test`, `npm run type-check`, and `npx eslint . --fix` — all green, zero warnings.
-- [ ] 6.2 Prompt the user to commit with a ready-to-copy conventional commit message (e.g. `feat(map): show start and end markers when viewing tour details (#223)`).
-- [ ] 6.3 Prompt the user to push the branch and open a PR to `main`.
-- [ ] 6.4 Prompt the user to archive this change with the `openspec-archive` skill once merged.
+- [x] 6.2 Prompt the user to commit with a ready-to-copy conventional commit message (e.g. `feat(map): show start and end markers when viewing tour details (#223)`).
+- [x] 6.3 Prompt the user to push the branch and open a PR to `main`.
+- [x] 6.4 Prompt the user to archive this change with the `openspec-archive` skill once merged.
