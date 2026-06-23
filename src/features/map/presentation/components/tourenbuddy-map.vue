@@ -11,9 +11,10 @@ import {
   friendTourIdsShadowedByOwned,
   ownedTourIdsShadowedByFriends,
 } from '@/features/tours/domain/collision'
+import { tourDetailMarkers } from '@/features/tours/domain/tour-detail-markers'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import { useGpxTrackLayer } from './gpx-track-layer'
-import { TOUR_LAYER_IDS, useToursMarkerLayer } from './tours-marker-layer'
+import { DETAIL_CIRCLE_LAYER_ID, TOUR_LAYER_IDS, useToursMarkerLayer } from './tours-marker-layer'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
 const emit = defineEmits<{
@@ -30,7 +31,8 @@ const toursStore = useToursStore()
 const mapStore = useMapStore()
 const tourLinksStore = useTourLinksStore()
 const { tours, friendTours } = storeToRefs(toursStore)
-const { currentStyleIndex, selectedTourId, previewGoal, previewTourType } = storeToRefs(mapStore)
+const { currentStyleIndex, selectedTourId, previewGoal, previewTourType, previewStart, previewEnd }
+  = storeToRefs(mapStore)
 const { groupIdByTourId } = storeToRefs(tourLinksStore)
 
 const linkedTourIds = computed(() => new Set(groupIdByTourId.value.keys()))
@@ -74,6 +76,30 @@ const selectedTour = computed(
   () => mapTours.value.find(t => t.id === selectedTourId.value) ?? null,
 )
 
+// Tours as fed to the marker layer. Identical to `mapTours`, except while a
+// selected tour's type is being edited: the goal's color is data-driven off the
+// `tourType` property, so the only way to preview the draft type is to feed the
+// layer a copy of the selected tour carrying `previewTourType`. (The saved
+// start/end markers already recolor live because their data reads it directly.)
+const renderedTours = computed(() => {
+  if (previewTourType.value === null || selectedTourId.value === null) {
+    return mapTours.value
+  }
+  return mapTours.value.map(t => t.id === selectedTourId.value ? { ...t, tourType: previewTourType.value } : t)
+})
+
+// Start/end detail markers for the open or in-creation tour. When a tour is
+// selected, saved coords with per-point draft overrides; during creation (no
+// selected tour) the preview refs alone drive them. Empty on the bare map.
+const detailMarkers = computed(() => {
+  const tour = selectedTour.value
+  return tourDetailMarkers({
+    tourType: previewTourType.value ?? tour?.tourType ?? null,
+    start: { saved: tour?.startPoint ?? null, draft: previewStart.value },
+    end: { saved: tour?.endPoint ?? null, draft: previewEnd.value },
+  })
+})
+
 onMounted(() => {
   if (!mapContainer.value)
     return
@@ -100,17 +126,21 @@ onMounted(() => {
       () => t('map.cluster.spiderfyHint'),
     )
     await markerLayer.setup()
-    markerLayer.updateTours(mapTours.value, selectedTourId.value, linkedTourIds.value)
+    markerLayer.updateTours(renderedTours.value, selectedTourId.value, linkedTourIds.value)
     markerLayer.updatePreview(previewGoal.value, previewTourType.value)
+    markerLayer.updateDetailMarkers(detailMarkers.value)
 
     gpxLayer = useGpxTrackLayer(mapInstance!)
     gpxLayer.setup()
     gpxLayer.updateTrack(selectedTour.value)
 
     mapInstance!.on('click', (e) => {
-      const hits = mapInstance!.queryRenderedFeatures(e.point, {
-        layers: [...TOUR_LAYER_IDS],
-      })
+      // Include the detail circle so tapping a start/end marker is swallowed
+      // (no select, no dismiss) rather than read as a background click.
+      const layers = [...TOUR_LAYER_IDS]
+      if (mapInstance!.getLayer(DETAIL_CIRCLE_LAYER_ID))
+        layers.push(DETAIL_CIRCLE_LAYER_ID)
+      const hits = mapInstance!.queryRenderedFeatures(e.point, { layers })
       if (hits.length === 0) {
         emit('mapBackgroundClick')
       }
@@ -132,8 +162,9 @@ onUnmounted(() => {
   map.value = null
 })
 
-// Watch for tour/selection changes and update both layers
-watch([mapTours, selectedTourId, linkedTourIds], ([newTours, newSelectedId, newLinked]) => {
+// Watch for tour/selection changes and update both layers. Keyed on
+// `renderedTours` (not `mapTours`) so a live tour-type edit recolors the goal.
+watch([renderedTours, selectedTourId, linkedTourIds], ([newTours, newSelectedId, newLinked]) => {
   markerLayer?.updateTours(newTours, newSelectedId, newLinked as Set<string>)
   gpxLayer?.updateTrack(selectedTour.value)
 })
@@ -141,6 +172,11 @@ watch([mapTours, selectedTourId, linkedTourIds], ([newTours, newSelectedId, newL
 // Watch for preview goal/type changes (edit or creation) and update the preview marker
 watch([previewGoal, previewTourType], ([goal, tourType]) => {
   markerLayer?.updatePreview(goal, tourType)
+})
+
+// Re-render start/end detail markers whenever the open tour or its draft points change
+watch(detailMarkers, (markers) => {
+  markerLayer?.updateDetailMarkers(markers)
 })
 
 // Watch for map style changes
@@ -153,8 +189,9 @@ watch(currentStyleIndex, (index) => {
     mapInstance.setStyle(style.style)
     mapInstance.once('style.load', async () => {
       await markerLayer?.setup()
-      markerLayer?.updateTours(mapTours.value, selectedTourId.value, linkedTourIds.value)
+      markerLayer?.updateTours(renderedTours.value, selectedTourId.value, linkedTourIds.value)
       markerLayer?.updatePreview(previewGoal.value, previewTourType.value)
+      markerLayer?.updateDetailMarkers(detailMarkers.value)
       gpxLayer?.setup()
       gpxLayer?.updateTrack(selectedTour.value)
     })

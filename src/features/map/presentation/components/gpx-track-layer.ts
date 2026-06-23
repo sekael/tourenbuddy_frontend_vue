@@ -5,7 +5,7 @@ import { useGpxCache } from '@/features/map/presentation/composables/use-gpx-cac
 import { TOUR_TYPE_TRACK_COLORS } from '@/features/tours/data/models/tour-type'
 import { parseGpxFile } from '@/features/tours/data/services/gpx-parser'
 import { getSignedUrl } from '@/features/tours/data/services/gpx-storage-service'
-import { TOUR_LAYER_IDS } from './tours-marker-layer'
+import { DETAIL_CIRCLE_LAYER_ID, TOUR_LAYER_IDS } from './tours-marker-layer'
 
 const GPX_SOURCE_ID = 'gpx-track'
 const GPX_LAYER_ID = 'gpx-track-line'
@@ -30,7 +30,11 @@ export function useGpxTrackLayer(map: MapLibreMap) {
       data: EMPTY_GEOJSON,
     })
 
-    const beforeId = TOUR_LAYER_IDS.find(id => map.getLayer(id))
+    // Sit below the start/end detail markers when present (so markers stay above
+    // the track), else below the goal circle layers.
+    const beforeId = map.getLayer(DETAIL_CIRCLE_LAYER_ID)
+      ? DETAIL_CIRCLE_LAYER_ID
+      : TOUR_LAYER_IDS.find(id => map.getLayer(id))
     map.addLayer(
       {
         id: GPX_LAYER_ID,

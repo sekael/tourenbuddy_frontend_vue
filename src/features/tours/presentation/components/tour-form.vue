@@ -74,6 +74,8 @@ const emit = defineEmits<{
   cancel: []
   pickPoint: [type: 'start' | 'end' | 'goal']
   tourTypeChange: [tourType: TourType | null]
+  startPointChange: [point: { lng: number, lat: number } | null]
+  endPointChange: [point: { lng: number, lat: number } | null]
 }>()
 
 const { t } = useI18n({ useScope: 'global' })
@@ -232,6 +234,10 @@ watch(
 
 // Surface the live activity type so the map can tint the draft preview marker.
 watch(selectedTourType, type => emit('tourTypeChange', type), { immediate: true })
+// Surface live start/end coords so the map can draft-preview them. `immediate`
+// seeds the current value (e.g. a point picked before the dialog opened).
+watch(startPoint, point => emit('startPointChange', point), { immediate: true })
+watch(endPoint, point => emit('endPointChange', point), { immediate: true })
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function togglePartner(contactId: string) {

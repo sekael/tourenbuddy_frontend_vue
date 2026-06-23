@@ -3,6 +3,7 @@ import type { RenderedNode } from './cluster-transitions'
 import type { InternalNode, TreeNode } from './cluster-tree'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Tour } from '@/features/tours/domain/entities/tour'
+import type { DetailMarker } from '@/features/tours/domain/tour-detail-markers'
 import maplibregl from 'maplibre-gl'
 import { TOUR_TYPE_COLORS, TOUR_TYPE_PREVIEW_COLORS } from '@/features/tours/data/models/tour-type'
 import { toursToGeoJson } from '@/features/tours/domain/entities/tour'
@@ -32,6 +33,18 @@ const PREVIEW_LAYER_ID = 'tours-preview-circle'
 const CHECK_ICON_ID = 'tour-check-icon'
 const FRIEND_ICON_ID = 'tour-friend-icon'
 const LINK_ICON_ID = 'tour-link-icon'
+
+// Selection-scoped start/end detail markers — own source so they never touch
+// clustering/collision; rendered beneath the goal so the goal stays on top.
+const DETAIL_SOURCE_ID = 'tour-detail'
+export const DETAIL_CIRCLE_LAYER_ID = 'tour-detail-circle'
+const DETAIL_ICON_LAYER_ID = 'tour-detail-icon'
+const START_ICON_ID = 'tour-start-icon'
+const END_ICON_ID = 'tour-end-icon'
+
+// Shared with the goal circle so the detail circle can't visually drift from it.
+const MARKER_CIRCLE_RADIUS = 14
+const MARKER_CIRCLE_OPACITY = 0.85
 
 export const SPIDERFY_CIRCLE_RADIUS_PX = 32
 export const SPIDERFY_SPIRAL_THRESHOLD = 8
@@ -175,6 +188,48 @@ async function loadLinkIcon(map: MapLibreMap): Promise<boolean> {
     img.src = url
   })
 }
+
+// Rasterizes a white glyph (non-SDF, like the completion check) at 4× for crisp
+// hi-DPI rendering. Used for the start/end detail-marker icons.
+async function loadWhiteGlyphIcon(map: MapLibreMap, id: string, innerSvg: string): Promise<boolean> {
+  if (map.hasImage(id))
+    return true
+
+  const size = 24
+  const scale = 4
+  const render = size * scale
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${render}" height="${render}" viewBox="0 0 24 24" fill="white">
+      ${innerSvg}
+    </svg>
+  `.trim()
+
+  const blob = new Blob([svg], { type: 'image/svg+xml' })
+  const url = URL.createObjectURL(blob)
+
+  return new Promise((resolve) => {
+    const img = new Image(render, render)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      try {
+        map.addImage(id, img, { sdf: false, pixelRatio: scale })
+        resolve(true)
+      }
+      catch {
+        resolve(false)
+      }
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve(false)
+    }
+    img.src = url
+  })
+}
+
+// House glyph (start) and flag glyph (end) — mirror the info sheet's home/flag.
+const START_GLYPH_SVG = '<path d="M12 3 3 10.5V21h6v-6h6v6h6V10.5z" />'
+const END_GLYPH_SVG = '<path d="M6 3h1.8v18H6z" /><path d="M7.8 4h11l-2.6 4 2.6 4h-11z" />'
 
 function cubicEaseOut(t: number): number {
   return 1 - (1 - t) ** 3
@@ -593,15 +648,20 @@ export function useToursMarkerLayer(
       data: { type: 'FeatureCollection', features: [] },
     })
 
+    map.addSource(DETAIL_SOURCE_ID, {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+    })
+
     map.addLayer({
       id: LAYER_ID,
       type: 'circle',
       source: SOURCE_ID,
       filter: ['in', ['get', 'id'], ['literal', []]],
       paint: {
-        'circle-radius': 14,
+        'circle-radius': MARKER_CIRCLE_RADIUS,
         'circle-color': COLOR_EXPR,
-        'circle-opacity': 0.85,
+        'circle-opacity': MARKER_CIRCLE_OPACITY,
         'circle-opacity-transition': { duration: 200 },
       },
     })
@@ -620,6 +680,36 @@ export function useToursMarkerLayer(
         'circle-stroke-color': '#ffffff',
       },
     })
+
+    // Start/end detail markers — inserted BEFORE the goal circle so the goal
+    // always stacks on top when they overlap. Circle mirrors the goal's paint
+    // constants; the draft tone uses the lighter preview palette.
+    map.addLayer({
+      id: DETAIL_CIRCLE_LAYER_ID,
+      type: 'circle',
+      source: DETAIL_SOURCE_ID,
+      paint: {
+        'circle-radius': MARKER_CIRCLE_RADIUS,
+        'circle-color': ['case', ['get', 'draft'], PREVIEW_COLOR_EXPR, COLOR_EXPR],
+        'circle-opacity': MARKER_CIRCLE_OPACITY,
+      },
+    }, LAYER_ID)
+
+    const startIconLoaded = await loadWhiteGlyphIcon(map, START_ICON_ID, START_GLYPH_SVG)
+    const endIconLoaded = await loadWhiteGlyphIcon(map, END_ICON_ID, END_GLYPH_SVG)
+    if (startIconLoaded && endIconLoaded) {
+      map.addLayer({
+        id: DETAIL_ICON_LAYER_ID,
+        type: 'symbol',
+        source: DETAIL_SOURCE_ID,
+        layout: {
+          'icon-image': ['match', ['get', 'pointKind'], 'end', END_ICON_ID, START_ICON_ID],
+          'icon-size': 0.7,
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+        },
+      }, LAYER_ID)
+    }
 
     spiderfier.setup()
 
@@ -795,6 +885,21 @@ export function useToursMarkerLayer(
     })
   }
 
+  function updateDetailMarkers(markers: DetailMarker[]) {
+    const source = map.getSource(DETAIL_SOURCE_ID)
+    if (!source || source.type !== 'geojson')
+      return
+
+    source.setData({
+      type: 'FeatureCollection',
+      features: markers.map(m => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [m.lngLat.lng, m.lngLat.lat] },
+        properties: { pointKind: m.pointKind, tourType: m.tourType ?? null, draft: m.draft },
+      })),
+    })
+  }
+
   function cleanup() {
     spiderfier.teardown()
     cancelAllAnimations()
@@ -807,5 +912,5 @@ export function useToursMarkerLayer(
     splitZooms = []
   }
 
-  return { setup, updateTours, updatePreview, cleanup }
+  return { setup, updateTours, updatePreview, updateDetailMarkers, cleanup }
 }

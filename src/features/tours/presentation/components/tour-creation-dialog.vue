@@ -40,6 +40,8 @@ const emit = defineEmits<{
   close: []
   pickPoint: [type: 'start' | 'end' | 'goal']
   tourTypeChange: [tourType: TourType | null]
+  startPointChange: [point: { lng: number, lat: number } | null]
+  endPointChange: [point: { lng: number, lat: number } | null]
 }>()
 
 const { t } = useI18n({ useScope: 'global' })
@@ -122,6 +124,8 @@ function handlePickPoint(type: 'start' | 'end' | 'goal') {
       @cancel="emit('close')"
       @pick-point="handlePickPoint"
       @tour-type-change="emit('tourTypeChange', $event)"
+      @start-point-change="emit('startPointChange', $event)"
+      @end-point-change="emit('endPointChange', $event)"
     />
 
     <template #page-action>
