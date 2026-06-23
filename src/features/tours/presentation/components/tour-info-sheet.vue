@@ -56,6 +56,8 @@ const emit = defineEmits<{
   /** Fired when the user requests to edit a contact from the action menu. */
   editContact: [contactId: string]
   tourTypeChange: [tourType: TourType | null]
+  startPointChange: [point: { lng: number, lat: number } | null]
+  endPointChange: [point: { lng: number, lat: number } | null]
 }>()
 
 const { t, locale } = useI18n({ useScope: 'global' })
@@ -603,6 +605,8 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         :initial-end-point-meta="pendingEndPointMeta" :disabled="isPicking"
         @submit="(d, f, r) => handleEditSubmit(d, f, r)" @cancel="cancelEdit" @pick-point="emit('pickPoint', $event)"
         @tour-type-change="emit('tourTypeChange', $event)"
+        @start-point-change="emit('startPointChange', $event)"
+        @end-point-change="emit('endPointChange', $event)"
       />
     </template>
 

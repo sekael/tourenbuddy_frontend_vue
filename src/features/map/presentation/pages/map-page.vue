@@ -157,6 +157,8 @@ function resetTourCreationState() {
   // switching away). The save path re-asserts it afterwards so it survives the round-trip.
   mapStore.setPreviewGoal(null)
   mapStore.setPreviewTourType(null)
+  mapStore.setPreviewStart(null)
+  mapStore.setPreviewEnd(null)
 }
 
 /** Opens an overlay, closing any previously open overlay first. */
@@ -166,6 +168,7 @@ function openOverlay(name: OverlayName) {
   if (activeOverlay.value === 'tour' && name !== 'tour') {
     mapStore.selectTour(null)
     mapStore.setPreviewGoal(null)
+    clearDraftPoints()
     tourOpenedFromList.value = false
   }
   if (activeOverlay.value === 'tour-creation' && name !== 'tour-creation') {
@@ -179,6 +182,7 @@ function closeOverlay() {
   if (activeOverlay.value === 'tour') {
     mapStore.selectTour(null)
     mapStore.setPreviewGoal(null)
+    clearDraftPoints()
     tourOpenedFromList.value = false
   }
   if (activeOverlay.value === 'tour-creation') {
@@ -320,6 +324,7 @@ function handleTourInfoBack() {
   tourOpenedFromList.value = false
   mapStore.selectTour(null)
   mapStore.setPreviewGoal(null)
+  clearDraftPoints()
   activeOverlay.value = 'tours'
 }
 
@@ -535,10 +540,37 @@ function handlePointConsumed() {
 
 async function handleEditModeChange(editing: boolean) {
   if (!editing) {
-    // Cancel/save: drop preview and recenter on the (possibly updated) tour goal
+    // Cancel/save: drop previews and recenter on the (possibly updated) tour goal
     mapStore.setPreviewGoal(null)
+    clearDraftPoints()
     await flyToSelectedTour()
   }
+}
+
+function clearDraftPoints() {
+  mapStore.setPreviewStart(null)
+  mapStore.setPreviewEnd(null)
+}
+
+// A working start/end is a *draft* marker only when it differs from the tour's
+// saved point (during creation there is no saved point, so it's always draft).
+function draftIfChanged(
+  point: { lng: number, lat: number } | null,
+  saved: { lng: number, lat: number } | null,
+) {
+  if (!point)
+    return null
+  if (!saved)
+    return point
+  return isSameGoal(point, saved) ? null : point
+}
+
+function handleStartPointChange(point: { lng: number, lat: number } | null) {
+  mapStore.setPreviewStart(draftIfChanged(point, selectedTour.value?.startPoint ?? null))
+}
+
+function handleEndPointChange(point: { lng: number, lat: number } | null) {
+  mapStore.setPreviewEnd(draftIfChanged(point, selectedTour.value?.endPoint ?? null))
 }
 
 function handleMapBackgroundClick() {
@@ -621,6 +653,7 @@ async function performCreate(
   finally {
     mapStore.setPreviewGoal(null)
     mapStore.setPreviewTourType(null)
+    clearDraftPoints()
   }
 }
 
@@ -686,6 +719,7 @@ function handleDialogClose() {
           @pick-point="(t: 'start' | 'end' | 'goal') => handleInfoSheetPickPoint(t)"
           @point-consumed="handlePointConsumed" @edit-mode-change="handleEditModeChange"
           @edit-contact="handleEditContact" @tour-type-change="mapStore.setPreviewTourType($event)"
+          @start-point-change="handleStartPointChange" @end-point-change="handleEndPointChange"
         />
       </div>
       <div v-else-if="showFeedbackSheet" key="feedback" class="sheet-container">
@@ -717,6 +751,7 @@ function handleDialogClose() {
           :initial-goal="pendingLocation" :active-pick-type="pendingPickType"
           @confirm="(d, f, r, tid, did) => handleTourCreated(d, f, r, tid, did)" @close="handleDialogClose"
           @pick-point="handlePickPoint" @tour-type-change="mapStore.setPreviewTourType($event)"
+          @start-point-change="handleStartPointChange" @end-point-change="handleEndPointChange"
         />
       </div>
     </Transition>

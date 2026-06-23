@@ -10,6 +10,9 @@ export const useMapStore = defineStore('map', () => {
   const previewGoal = ref<{ lng: number, lat: number } | null>(null)
   /** Activity type driving the preview marker's lighter shade; null → neutral fallback color. */
   const previewTourType = ref<TourType | null>(null)
+  /** Re-picked, not-yet-saved start/end coordinates shown as lighter-tone draft detail markers. */
+  const previewStart = ref<{ lng: number, lat: number } | null>(null)
+  const previewEnd = ref<{ lng: number, lat: number } | null>(null)
 
   function setPickingLocation(picking: boolean) {
     isPickingLocation.value = picking
@@ -31,16 +34,28 @@ export const useMapStore = defineStore('map', () => {
     previewTourType.value = tourType
   }
 
+  function setPreviewStart(start: { lng: number, lat: number } | null) {
+    previewStart.value = start
+  }
+
+  function setPreviewEnd(end: { lng: number, lat: number } | null) {
+    previewEnd.value = end
+  }
+
   return {
     isPickingLocation,
     currentStyleIndex,
     selectedTourId,
     previewGoal,
     previewTourType,
+    previewStart,
+    previewEnd,
     setPickingLocation,
     setStyleIndex,
     selectTour,
     setPreviewGoal,
     setPreviewTourType,
+    setPreviewStart,
+    setPreviewEnd,
   }
 })
