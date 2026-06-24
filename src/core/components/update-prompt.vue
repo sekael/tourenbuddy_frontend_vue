@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import BaseButton from '@/core/components/base-button.vue'
 import { usePwaUpdate } from '@/core/composables/use-pwa-update'
 
 const { t } = useI18n({ useScope: 'global' })
@@ -17,9 +18,9 @@ const { needRefresh, accept, dismiss } = usePwaUpdate()
           <button class="dismiss-btn" @click="dismiss">
             {{ t('core.pwa.update.dismiss') }}
           </button>
-          <button class="reload-btn" @click="accept">
+          <BaseButton variant="primary" size="sm" @click="accept">
             {{ t('core.pwa.update.action') }}
-          </button>
+          </BaseButton>
         </div>
       </div>
     </div>
@@ -65,23 +66,6 @@ const { needRefresh, accept, dismiss } = usePwaUpdate()
   padding: var(--spacing-xs) var(--spacing-md);
   color: var(--color-on-surface-variant);
   font-size: var(--font-size-sm);
-}
-
-.reload-btn {
-  padding: var(--spacing-xs) var(--spacing-md);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: 12px;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  transition:
-    background-color 0.2s,
-    transform 0.15s;
-}
-
-.reload-btn:hover {
-  background-color: var(--color-primary-dark);
-  transform: translateY(-1px);
 }
 
 .banner-enter-active,

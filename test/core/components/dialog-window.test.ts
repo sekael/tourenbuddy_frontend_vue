@@ -24,7 +24,7 @@ describe('dialogWindow', () => {
 
   it('should emit close when close button is clicked', async () => {
     const wrapper = mount(DialogWindow, { props: { title: 'Test' } })
-    await wrapper.find('.close-btn').trigger('click')
+    await wrapper.find('[aria-label="Close"]').trigger('click')
     expect(wrapper.emitted('close')).toHaveLength(1)
   })
 
@@ -63,6 +63,6 @@ describe('dialogWindow', () => {
 
   it('should label the close button with "Close"', () => {
     const wrapper = mount(DialogWindow, { props: { title: 'Test' } })
-    expect(wrapper.find('.close-btn').attributes('aria-label')).toBe('Close')
+    expect(wrapper.find('[aria-label="Close"]').attributes('aria-label')).toBe('Close')
   })
 })

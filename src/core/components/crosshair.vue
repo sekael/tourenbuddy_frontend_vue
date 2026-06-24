@@ -11,7 +11,7 @@
         y1="20"
         x2="16"
         y2="20"
-        stroke="#3b82f6"
+        stroke="currentColor"
         stroke-width="2.5"
         stroke-linecap="round"
       />
@@ -20,7 +20,7 @@
         y1="20"
         x2="40"
         y2="20"
-        stroke="#3b82f6"
+        stroke="currentColor"
         stroke-width="2.5"
         stroke-linecap="round"
       />
@@ -30,7 +30,7 @@
         y1="0"
         x2="20"
         y2="16"
-        stroke="#3b82f6"
+        stroke="currentColor"
         stroke-width="2.5"
         stroke-linecap="round"
       />
@@ -39,12 +39,12 @@
         y1="24"
         x2="20"
         y2="40"
-        stroke="#3b82f6"
+        stroke="currentColor"
         stroke-width="2.5"
         stroke-linecap="round"
       />
       <!-- Center dot -->
-      <circle cx="20" cy="20" r="2.5" fill="#3b82f6" />
+      <circle cx="20" cy="20" r="2.5" fill="currentColor" />
     </svg>
   </div>
 </template>
@@ -63,5 +63,7 @@
 .crosshair {
   width: 40px;
   height: 40px;
+  /* Drives stroke/fill via currentColor on the SVG elements. */
+  color: var(--color-accent);
 }
 </style>

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import BaseIcon from '@/core/components/base-icon.vue'
+
 const props = defineProps<{
   message: string
   visible: boolean
@@ -11,8 +13,10 @@ const emit = defineEmits<{ dismiss: [] }>()
   <Transition name="snackbar">
     <div v-if="props.visible" class="snackbar error" role="alert">
       <span class="message">{{ props.message }}</span>
+      <!-- Bespoke button kept (color: inherit on the colored snackbar surface);
+           glyph routed through BaseIcon. -->
       <button class="dismiss-btn" @click="emit('dismiss')">
-        <span class="material-symbols-outlined">close</span>
+        <BaseIcon name="close" size="sm" />
       </button>
     </div>
   </Transition>

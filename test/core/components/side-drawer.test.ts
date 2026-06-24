@@ -32,13 +32,13 @@ describe('sideDrawer', () => {
 
     it('should render a close button', () => {
       const wrapper = mount(SideDrawer, { props: { title: 'Test' } })
-      expect(wrapper.find('.close-btn').exists()).toBe(true)
-      expect(wrapper.find('.close-btn').attributes('aria-label')).toBe('core.drawer.close')
+      expect(wrapper.find('[aria-label="core.drawer.close"]').exists()).toBe(true)
+      expect(wrapper.find('[aria-label="core.drawer.close"]').attributes('aria-label')).toBe('core.drawer.close')
     })
 
     it('should emit close when the close button is clicked', async () => {
       const wrapper = mount(SideDrawer, { props: { title: 'Test' } })
-      await wrapper.find('.close-btn').trigger('click')
+      await wrapper.find('[aria-label="core.drawer.close"]').trigger('click')
       expect(wrapper.emitted('close')).toHaveLength(1)
     })
 
@@ -73,7 +73,7 @@ describe('sideDrawer', () => {
             footer: '<div class="slot-footer">f</div>',
           },
         })
-        expect(wrapper.find('.close-btn').exists()).toBe(false)
+        expect(wrapper.find('[aria-label="core.drawer.close"]').exists()).toBe(false)
         expect(wrapper.find('.drawer-content').attributes('inert')).toBeDefined()
         expect(wrapper.find('.drawer-footer').attributes('inert')).toBeDefined()
         expect(wrapper.find('.side-drawer--collapsed').exists()).toBe(true)
@@ -102,7 +102,7 @@ describe('sideDrawer', () => {
         const wrapper = mount(SideDrawer, {
           props: { title: 'Test', backLabel: 'Tours', collapsed: true },
         })
-        expect(wrapper.find('.back-btn').exists()).toBe(false)
+        expect(wrapper.find('[aria-label^="core.drawer.back"]').exists()).toBe(false)
       })
     })
   })
@@ -125,7 +125,7 @@ describe('sideDrawer', () => {
 
     it('should emit close from the BottomSheet close button on mobile', async () => {
       const wrapper = mount(SideDrawer, { props: { title: 'Test' } })
-      await wrapper.find('.close-btn').trigger('click')
+      await wrapper.find('[aria-label="core.drawer.close"]').trigger('click')
       expect(wrapper.emitted('close')).toHaveLength(1)
     })
   })

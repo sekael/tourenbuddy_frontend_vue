@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseButton from '@/core/components/base-button.vue'
 
 const { t } = useI18n({ useScope: 'global' })
 
@@ -47,9 +48,9 @@ function handleDismiss() {
           <button class="dismiss-btn" @click="handleDismiss">
             {{ t('core.pwa.banner.dismiss') }}
           </button>
-          <button class="install-btn" @click="handleInstall">
+          <BaseButton variant="primary" size="sm" @click="handleInstall">
             {{ t('core.pwa.banner.install') }}
-          </button>
+          </BaseButton>
         </div>
       </div>
     </div>
@@ -95,23 +96,6 @@ function handleDismiss() {
   padding: var(--spacing-xs) var(--spacing-md);
   color: var(--color-on-surface-variant);
   font-size: var(--font-size-sm);
-}
-
-.install-btn {
-  padding: var(--spacing-xs) var(--spacing-md);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: 12px;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  transition:
-    background-color 0.2s,
-    transform 0.15s;
-}
-
-.install-btn:hover {
-  background-color: var(--color-primary-dark);
-  transform: translateY(-1px);
 }
 
 .banner-enter-active,

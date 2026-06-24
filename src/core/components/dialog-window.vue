@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import BaseIconButton from './base-icon-button.vue'
+
 const props = defineProps<{
   title?: string
   ariaLabel?: string
@@ -33,28 +35,24 @@ function handleBackdropClick() {
       :aria-label="!props.title ? (props.ariaLabel ?? 'Dialog') : undefined"
     >
       <div class="dialog-header">
-        <button
+        <BaseIconButton
           v-if="props.showBack && !props.collapsed"
-          type="button"
-          class="back-btn"
-          aria-label="Back"
+          name="arrow_back"
+          size="sm"
+          label="Back"
           @click="emit('back')"
-        >
-          <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
-        </button>
+        />
         <h2 v-if="props.title" :id="titleId" class="dialog-title">
           {{ props.title }}
         </h2>
         <div v-else class="title-spacer" />
-        <button
+        <BaseIconButton
           v-if="!props.collapsed"
-          type="button"
-          class="close-btn"
-          aria-label="Close"
+          name="close"
+          size="sm"
+          label="Close"
           @click="emit('close')"
-        >
-          <span class="material-symbols-outlined" aria-hidden="true">close</span>
-        </button>
+        />
       </div>
       <div
         class="dialog-content"
@@ -153,38 +151,6 @@ function handleBackdropClick() {
 
 .title-spacer {
   flex: 1;
-}
-
-.back-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-on-surface-variant);
-  flex-shrink: 0;
-  transition: background-color 0.15s;
-}
-
-.back-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.close-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-on-surface-variant);
-  flex-shrink: 0;
-  transition: background-color 0.15s;
-}
-
-.close-btn:hover {
-  background-color: var(--color-surface-variant);
 }
 
 .dialog-content {

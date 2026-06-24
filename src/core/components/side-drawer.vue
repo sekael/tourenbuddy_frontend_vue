@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 
@@ -43,29 +44,25 @@ const isDesktop = useIsDesktop()
     :aria-label="props.title ?? props.ariaLabel ?? t('core.drawer.close')"
   >
     <div class="drawer-header">
-      <button
+      <BaseIconButton
         v-if="props.backLabel && !props.collapsed"
-        type="button"
-        class="back-btn"
-        :aria-label="`${t('core.drawer.back')} ${props.backLabel}`"
+        name="arrow_back"
+        size="sm"
+        :label="`${t('core.drawer.back')} ${props.backLabel}`"
         @click="emit('back')"
-      >
-        <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
-      </button>
+      />
       <h2 v-if="props.title" class="drawer-title">
         {{ props.title }}
       </h2>
       <div v-else class="title-spacer" />
       <slot name="header-actions" />
-      <button
+      <BaseIconButton
         v-if="!props.collapsed"
-        type="button"
-        class="close-btn"
-        :aria-label="t('core.drawer.close')"
+        name="close"
+        size="sm"
+        :label="t('core.drawer.close')"
         @click="emit('close')"
-      >
-        <span class="material-symbols-outlined" aria-hidden="true">close</span>
-      </button>
+      />
     </div>
     <div
       class="drawer-content"
@@ -139,22 +136,6 @@ const isDesktop = useIsDesktop()
   border-bottom: 1px solid var(--color-outline-variant);
 }
 
-.back-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-on-surface-variant);
-  flex-shrink: 0;
-  transition: background-color 0.15s;
-}
-
-.back-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
 .drawer-title {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
@@ -163,22 +144,6 @@ const isDesktop = useIsDesktop()
 
 .title-spacer {
   flex: 1;
-}
-
-.close-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-on-surface-variant);
-  flex-shrink: 0;
-  transition: background-color 0.15s;
-}
-
-.close-btn:hover {
-  background-color: var(--color-surface-variant);
 }
 
 .drawer-content {

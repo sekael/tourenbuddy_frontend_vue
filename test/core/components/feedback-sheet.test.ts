@@ -20,7 +20,7 @@ describe('feedbackSheet', () => {
     const mockOpen = vi.spyOn(window, 'open').mockReturnValue({} as Window)
     const wrapper = mount(FeedbackSheet)
 
-    await wrapper.find('.primary-btn').trigger('click')
+    await wrapper.find('.base-button--primary').trigger('click')
 
     expect(mockOpen).toHaveBeenCalledWith(BUG_REPORT_GITHUB_ISSUE_URL, '_blank')
     expect(wrapper.emitted('close')).toHaveLength(1)
@@ -30,7 +30,7 @@ describe('feedbackSheet', () => {
     const mockOpen = vi.spyOn(window, 'open').mockReturnValue({} as Window)
     const wrapper = mount(FeedbackSheet)
 
-    await wrapper.find('.secondary-btn').trigger('click')
+    await wrapper.find('.base-button--text').trigger('click')
 
     expect(mockOpen).toHaveBeenCalledWith(FEEDBACK_GITHUB_ISSUE_URL, '_blank')
     expect(wrapper.emitted('close')).toHaveLength(1)
@@ -40,7 +40,7 @@ describe('feedbackSheet', () => {
     vi.spyOn(window, 'open').mockReturnValue(null)
     const wrapper = mount(FeedbackSheet)
 
-    await wrapper.find('.primary-btn').trigger('click')
+    await wrapper.find('.base-button--primary').trigger('click')
 
     expect(wrapper.emitted('close')).toBeUndefined()
     const snackbarEl = wrapper.find('[role="alert"]')
@@ -59,7 +59,7 @@ describe('feedbackSheet', () => {
   it('should emit close when the BottomSheet close button is clicked', async () => {
     const wrapper = mount(FeedbackSheet)
 
-    await wrapper.find('.close-btn').trigger('click')
+    await wrapper.find('.base-icon-button').trigger('click')
 
     expect(wrapper.emitted('close')).toHaveLength(1)
   })

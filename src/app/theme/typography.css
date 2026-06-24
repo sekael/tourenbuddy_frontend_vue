@@ -1,4 +1,12 @@
 :root {
+  /* ===========================================================================
+     PRIMITIVE TIER — the type scale. Context-free values consumed directly.
+     Typography has no contextual semantic roles today (the app uses the scale
+     steps directly, e.g. --font-size-lg). When a real role distinction emerges
+     (e.g. a heading vs body alias), add it as a semantic tier below that
+     references these primitives — mirroring the color tiers in tokens.css.
+     =========================================================================== */
+
   --font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
   --font-size-xs: 0.75rem;

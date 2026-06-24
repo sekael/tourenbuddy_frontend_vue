@@ -51,7 +51,7 @@ describe('bottomSheet', () => {
 
   it('should emit close when the close button is clicked', async () => {
     const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
-    await wrapper.find('.close-btn').trigger('click')
+    await wrapper.find('[aria-label="core.drawer.close"]').trigger('click')
     expect(wrapper.emitted('close')).toHaveLength(1)
   })
 
@@ -78,7 +78,7 @@ describe('bottomSheet', () => {
 
   it('should have the close button with an aria-label', () => {
     const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
-    expect(wrapper.find('.close-btn').attributes('aria-label')).toBe('core.drawer.close')
+    expect(wrapper.find('[aria-label="core.drawer.close"]').attributes('aria-label')).toBe('core.drawer.close')
   })
 
   describe('collapsed mode', () => {
@@ -87,7 +87,7 @@ describe('bottomSheet', () => {
         props: { title: 'Test', collapsed: true },
         slots: { footer: '<div class="slot-footer">f</div>' },
       })
-      expect(wrapper.find('.close-btn').exists()).toBe(false)
+      expect(wrapper.find('[aria-label="core.drawer.close"]').exists()).toBe(false)
       expect(wrapper.find('.drag-handle').exists()).toBe(false)
       expect(wrapper.find('.footer').attributes('style')).toContain('display: none')
     })
@@ -121,7 +121,7 @@ describe('bottomSheet', () => {
       const wrapper = mount(BottomSheet, {
         props: { title: 'Test', collapsed: true, showBack: true },
       })
-      expect(wrapper.find('.back-btn').exists()).toBe(false)
+      expect(wrapper.find('[aria-label="core.drawer.back"]').exists()).toBe(false)
     })
   })
 

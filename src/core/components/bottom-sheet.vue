@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseIconButton from './base-icon-button.vue'
 
 const props = defineProps<{
   title?: string
@@ -308,29 +309,25 @@ const sheetStyle = computed(() => {
     />
 
     <div ref="headerRef" class="header">
-      <button
+      <BaseIconButton
         v-if="props.showBack && !props.collapsed"
-        type="button"
-        class="back-btn"
-        :aria-label="t('core.drawer.back')"
+        name="arrow_back"
+        size="sm"
+        :label="t('core.drawer.back')"
         @click="emit('back')"
-      >
-        <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
-      </button>
+      />
       <h2 v-if="props.title" :id="titleId" class="title">
         {{ props.title }}
       </h2>
       <div v-else class="title-spacer" />
       <slot name="header-actions" />
-      <button
+      <BaseIconButton
         v-if="!props.collapsed"
-        type="button"
-        class="close-btn"
-        :aria-label="t('core.drawer.close')"
+        name="close"
+        size="sm"
+        :label="t('core.drawer.close')"
         @click="emit('close')"
-      >
-        <span class="material-symbols-outlined" aria-hidden="true">close</span>
-      </button>
+      />
     </div>
 
     <div v-show="!props.collapsed" class="content">
@@ -418,22 +415,6 @@ const sheetStyle = computed(() => {
   padding-bottom: var(--spacing-sm);
 }
 
-.back-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-on-surface-variant);
-  flex-shrink: 0;
-  transition: background-color 0.15s;
-}
-
-.back-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
 .title {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
@@ -442,22 +423,6 @@ const sheetStyle = computed(() => {
 
 .title-spacer {
   flex: 1;
-}
-
-.close-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-on-surface-variant);
-  flex-shrink: 0;
-  transition: background-color 0.15s;
-}
-
-.close-btn:hover {
-  background-color: var(--color-surface-variant);
 }
 
 .content {
