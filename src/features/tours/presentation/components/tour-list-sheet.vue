@@ -5,6 +5,8 @@ import type { CompletionFilter } from '@/features/tours/presentation/composables
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseButton from '@/core/components/base-button.vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
@@ -103,7 +105,7 @@ function handleRowClick(tourId: string) {
           :aria-label="t('tours.list.addTourAriaLabel')"
           @click="emit('addTour')"
         >
-          <span class="material-symbols-outlined" aria-hidden="true">add_location_alt</span>
+          <BaseIcon name="add_location_alt" />
         </button>
       </BaseTooltip>
       <button
@@ -152,12 +154,12 @@ function handleRowClick(tourId: string) {
         class="backfill-entry-btn"
         @click="openBackfill"
       >
-        <span class="material-symbols-outlined">sync_alt</span>
+        <BaseIcon name="sync_alt" />
         {{ t('tours.list.viewBackfillCollisionsBtn') }}
       </button>
 
       <div class="search-row">
-        <span class="material-symbols-outlined search-icon">search</span>
+        <BaseIcon name="search" class="search-icon" />
         <input
           v-model="searchQuery"
           type="search"
@@ -167,9 +169,7 @@ function handleRowClick(tourId: string) {
       </div>
 
       <button class="filters-trigger" type="button" @click="filtersExpanded = !filtersExpanded">
-        <span class="material-symbols-outlined trigger-icon">
-          {{ filtersExpanded ? 'expand_less' : 'tune' }}
-        </span>
+        <BaseIcon :name="filtersExpanded ? 'expand_less' : 'tune'" size="sm" />
         {{ t('tours.list.filtersBtn') }}
         <span v-if="activeFilterCount > 0" class="filter-badge">{{ activeFilterCount }}</span>
       </button>
@@ -190,9 +190,7 @@ function handleRowClick(tourId: string) {
       </div>
 
       <div v-else-if="sourceCount === 0" class="empty-state">
-        <span class="material-symbols-outlined empty-icon">
-          {{ activeTab === 'friends' ? 'group' : 'location_on' }}
-        </span>
+        <BaseIcon :name="activeTab === 'friends' ? 'group' : 'location_on'" size="xl" class="empty-icon" />
         <p class="empty-text">
           {{ activeTab === 'friends' ? t('tours.list.friendsEmptyTitle') : t('tours.list.emptyTitle') }}
         </p>
@@ -202,13 +200,13 @@ function handleRowClick(tourId: string) {
       </div>
 
       <div v-else-if="filteredTours.length === 0" class="empty-state">
-        <span class="material-symbols-outlined empty-icon">search_off</span>
+        <BaseIcon name="search_off" size="xl" class="empty-icon" />
         <p class="empty-text">
           {{ t('tours.list.noMatchesTitle') }}
         </p>
-        <button class="clear-filters-btn" type="button" @click="clearAll">
+        <BaseButton variant="primary" size="sm" @click="clearAll">
           {{ t('tours.list.clearFiltersBtn') }}
-        </button>
+        </BaseButton>
       </div>
 
       <ul v-else class="tours-list">
@@ -267,7 +265,6 @@ function handleRowClick(tourId: string) {
 }
 
 .search-icon {
-  font-size: 20px;
   color: var(--color-on-surface-variant);
   flex-shrink: 0;
 }
@@ -297,10 +294,6 @@ function handleRowClick(tourId: string) {
 
 .filters-trigger:hover {
   background-color: var(--color-surface-variant);
-}
-
-.trigger-icon {
-  font-size: 18px;
 }
 
 .filter-badge {
@@ -334,7 +327,6 @@ function handleRowClick(tourId: string) {
 }
 
 .empty-icon {
-  font-size: 48px;
   color: var(--color-outline-variant);
 }
 
@@ -348,20 +340,6 @@ function handleRowClick(tourId: string) {
   font-size: var(--font-size-sm);
   color: var(--color-on-surface-variant);
   opacity: 0.7;
-}
-
-.clear-filters-btn {
-  padding: var(--spacing-xs) var(--spacing-lg);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  transition: background-color 0.15s;
-}
-
-.clear-filters-btn:hover {
-  background-color: var(--color-primary-dark);
 }
 
 .tours-list {

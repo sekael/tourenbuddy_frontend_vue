@@ -125,7 +125,7 @@ describe('tourListSheet', () => {
       const wrapper = mountSheet()
       await wrapper.find('.search-input').setValue('xyznotfound')
       await wrapper.vm.$nextTick()
-      await wrapper.find('.clear-filters-btn').trigger('click')
+      await wrapper.find('.base-button--primary').trigger('click')
       await wrapper.vm.$nextTick()
       expect(wrapper.findAll('.tour-row')).toHaveLength(2)
     })

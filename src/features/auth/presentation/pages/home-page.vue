@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import bgDesktop from '@/assets/background-desktop.webp'
 import bgMobile from '@/assets/background-mobile.webp'
+import BaseButton from '@/core/components/base-button.vue'
 
 const router = useRouter()
 const { t } = useI18n({ useScope: 'global' })
@@ -22,9 +23,9 @@ const { t } = useI18n({ useScope: 'global' })
       <p class="subtitle">
         {{ t('auth.home.subtitle') }}
       </p>
-      <button class="login-button" @click="router.push({ name: 'email-entry' })">
+      <BaseButton variant="primary" @click="router.push({ name: 'email-entry' })">
         {{ t('auth.home.getStartedBtn') }}
-      </button>
+      </BaseButton>
     </div>
   </div>
 </template>
@@ -91,21 +92,5 @@ const { t } = useI18n({ useScope: 'global' })
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
-.login-button {
-  padding: var(--spacing-md) var(--spacing-xxl);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: 12px;
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: 0.02em;
-  transition:
-    background-color 0.2s,
-    transform 0.15s;
-}
-
-.login-button:hover {
-  background-color: var(--color-primary-dark);
-  transform: translateY(-1px);
-}
+/* Hero "Get started" CTA uses the standard primary BaseButton. */
 </style>

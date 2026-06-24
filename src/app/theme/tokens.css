@@ -93,6 +93,7 @@
   --icon-size-sm: 18px;
   --icon-size-md: 20px;
   --icon-size-lg: 24px;
+  --icon-size-xl: 48px;
 
   /* Icon-only button touch targets (square box; shape via radius prop) */
   --icon-button-size-sm: 32px;

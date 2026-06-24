@@ -2,6 +2,8 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
+import BaseButton from '@/core/components/base-button.vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 
 const router = useRouter()
@@ -40,7 +42,7 @@ async function handleSubmit() {
   <div class="page">
     <div class="card">
       <button class="back-btn" @click="router.back()">
-        <span class="material-symbols-outlined">arrow_back</span>
+        <BaseIcon name="arrow_back" size="sm" />
         {{ t('auth.shared.backBtn') }}
       </button>
       <h1 class="title">
@@ -68,9 +70,9 @@ async function handleSubmit() {
           {{ error }}
         </p>
 
-        <button type="submit" class="submit-btn" :disabled="isLoading">
+        <BaseButton type="submit" variant="primary" :disabled="isLoading">
           {{ isLoading ? t('auth.shared.sendingBtn') : t('auth.emailEntry.sendCodeBtn') }}
-        </button>
+        </BaseButton>
       </form>
     </div>
   </div>
@@ -155,25 +157,5 @@ async function handleSubmit() {
   font-size: var(--font-size-sm);
 }
 
-.submit-btn {
-  padding: var(--spacing-md);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: 12px;
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  transition:
-    background-color 0.2s,
-    transform 0.15s;
-}
-
-.submit-btn:hover:not(:disabled) {
-  background-color: var(--color-primary-dark);
-  transform: translateY(-1px);
-}
-
-.submit-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+/* Submit uses the standard primary BaseButton (full-width via the flex column). */
 </style>

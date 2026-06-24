@@ -2,6 +2,8 @@
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
+import BaseButton from '@/core/components/base-button.vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
@@ -64,7 +66,7 @@ async function handleResend() {
   <div class="page">
     <div class="card">
       <button class="back-btn" @click="router.push({ name: 'email-entry' })">
-        <span class="material-symbols-outlined">arrow_back</span>
+        <BaseIcon name="arrow_back" size="sm" />
         {{ t('auth.verifyOtp.backBtn') }}
       </button>
       <h1 class="title">
@@ -97,9 +99,9 @@ async function handleResend() {
           {{ t('auth.verifyOtp.resendSuccess') }}
         </p>
 
-        <button type="submit" class="submit-btn" :disabled="isVerifying || code.length < 6">
+        <BaseButton type="submit" variant="primary" :disabled="isVerifying || code.length < 6">
           {{ isVerifying ? t('auth.shared.sendingBtn') : t('auth.verifyOtp.verifyBtn') }}
-        </button>
+        </BaseButton>
       </form>
 
       <button class="resend-btn" :disabled="isResending" @click="handleResend">
@@ -191,30 +193,8 @@ async function handleResend() {
 }
 
 .success-text {
-  color: #15803d;
+  color: var(--color-success);
   font-size: var(--font-size-sm);
-}
-
-.submit-btn {
-  padding: var(--spacing-md);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: 12px;
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  transition:
-    background-color 0.2s,
-    transform 0.15s;
-}
-
-.submit-btn:hover:not(:disabled) {
-  background-color: var(--color-primary-dark);
-  transform: translateY(-1px);
-}
-
-.submit-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .resend-btn {
