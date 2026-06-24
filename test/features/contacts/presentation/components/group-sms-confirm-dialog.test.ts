@@ -87,7 +87,7 @@ describe('groupSmsConfirmDialog', () => {
   it('emits cancel when Cancel is clicked', async () => {
     const partners = [makeContact('c1', '+41791111111')]
     const wrapper = mountDialog(partners)
-    await wrapper.find('.cancel-btn').trigger('click')
+    await wrapper.find('.base-button--secondary').trigger('click')
     expect(wrapper.emitted('cancel')).toBeTruthy()
   })
 })

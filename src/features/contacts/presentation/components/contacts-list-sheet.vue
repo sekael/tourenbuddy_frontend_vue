@@ -6,6 +6,8 @@ import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
+import BaseButton from '@/core/components/base-button.vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { normalizePhone } from '@/core/utils/phone-normalize'
@@ -395,30 +397,32 @@ function onFormPhoneInput(phone: string) {
     <!-- Full-screen page: top-bar Save. Submits the add form, or commits the
          open contact's edits, depending on which data-entry surface is active. -->
     <template v-if="contactPage" #page-action>
-      <button
+      <BaseButton
         v-if="addFormPage"
         type="submit"
         form="contact-add-form"
-        class="page-save-btn"
+        variant="primary"
+        size="sm"
         :disabled="isAddLoading"
       >
         {{ t('contacts.addDialog.title') }}
-      </button>
-      <button
+      </BaseButton>
+      <BaseButton
         v-else
         type="button"
-        class="page-save-btn"
+        variant="primary"
+        size="sm"
         :disabled="detailRef?.isSaving"
         @click="detailRef?.saveAll()"
       >
         {{ detailRef?.isSaving ? t('contacts.detailView.savingBtn') : t('contacts.detailView.saveBtn') }}
-      </button>
+      </BaseButton>
     </template>
     <!-- List view -->
     <div v-if="viewState === 'list'" class="list-view">
       <div class="list-actions-row">
         <button type="button" class="add-contact-btn" data-tour="add-contact" @click="openAdd">
-          <span class="material-symbols-outlined">person_add</span>
+          <BaseIcon name="person_add" />
           {{ t('contacts.list.addBtn') }}
         </button>
         <!-- Always rendered (discoverability + onboarding tour waypoint);
@@ -432,7 +436,7 @@ function onFormPhoneInput(phone: string) {
             :aria-disabled="!callerPhoneVerified"
             @click="goToFriendRequests"
           >
-            <span class="material-symbols-outlined">group</span>
+            <BaseIcon name="group" />
             {{ t('friendships.friendsListLink') }}
             <span v-if="pendingIncomingCount > 0" class="badge">{{ pendingIncomingCount }}</span>
           </button>
@@ -445,7 +449,7 @@ function onFormPhoneInput(phone: string) {
         </div>
 
         <div v-else-if="contacts.length === 0" class="empty-state">
-          <span class="material-symbols-outlined empty-icon">group</span>
+          <BaseIcon name="group" class="empty-icon" size="xl" />
           <p class="empty-text">
             {{ t('contacts.list.emptyTitle') }}
           </p>
@@ -468,17 +472,17 @@ function onFormPhoneInput(phone: string) {
               <span class="contact-name-row">
                 <span class="contact-name">{{ resolveContactName(contact) }}</span>
                 <BaseTooltip v-if="friendContactIds.has(contact.id) && !blockedContactIds.has(contact.id)" :text="t('friendships.tooltip')">
-                  <span class="material-symbols-outlined friend-icon">group</span>
+                  <BaseIcon name="group" class="friend-icon" />
                 </BaseTooltip>
                 <BaseTooltip v-if="blockedContactIds.has(contact.id)" :text="t('blocks.tooltip')">
-                  <span class="material-symbols-outlined blocked-icon">block</span>
+                  <BaseIcon name="block" class="blocked-icon" />
                 </BaseTooltip>
               </span>
               <span v-if="getPrimaryPhone(contact)" class="contact-subtitle">
                 {{ formatPhoneDisplay(getPrimaryPhone(contact)!) }}
               </span>
             </div>
-            <span class="material-symbols-outlined row-arrow">chevron_right</span>
+            <BaseIcon name="chevron_right" class="row-arrow" />
           </li>
         </ul>
       </div>
@@ -524,7 +528,7 @@ function onFormPhoneInput(phone: string) {
             <div class="result-info">
               <span class="result-name">{{ result.firstName }}{{ result.lastName ? ` ${result.lastName}` : '' }}</span>
               <span v-if="result.primaryPhone" class="result-phone">
-                <span class="material-symbols-outlined star-icon-sm">star</span>
+                <BaseIcon name="star" class="star-icon-sm" />
                 {{ formatPhoneDisplay(result.primaryPhone) }}
                 <span v-if="result.extraPhoneCount > 0" class="extra-phones">+{{ result.extraPhoneCount }} more</span>
               </span>
@@ -564,12 +568,12 @@ function onFormPhoneInput(phone: string) {
         </ul>
         <div class="results-actions">
           <button type="button" class="add-manual-link" @click="switchAddToForm">
-            <span class="material-symbols-outlined">add</span>
+            <BaseIcon name="add" />
             {{ t('contacts.list.addManuallyBtn') }}
           </button>
-          <button type="button" class="done-btn" @click="backToList">
+          <BaseButton type="button" variant="primary" @click="backToList">
             {{ t('contacts.addDialog.doneBtn') }}
-          </button>
+          </BaseButton>
         </div>
       </div>
 
@@ -582,7 +586,7 @@ function onFormPhoneInput(phone: string) {
             :disabled="isAddLoading"
             @click="handleFileImportClick"
           >
-            <span class="material-symbols-outlined">upload_file</span>
+            <BaseIcon name="upload_file" />
             {{ t('contacts.addDialog.importFileBtn') }}
           </button>
           <button
@@ -592,7 +596,7 @@ function onFormPhoneInput(phone: string) {
             :disabled="isAddLoading"
             @click="handleContactPickerImport"
           >
-            <span class="material-symbols-outlined">contacts</span>
+            <BaseIcon name="contacts" />
             {{ t('contacts.addDialog.importContactsBtn') }}
           </button>
           <input
@@ -726,7 +730,6 @@ function onFormPhoneInput(phone: string) {
 }
 
 .empty-icon {
-  font-size: 48px;
   color: var(--color-outline-variant);
 }
 
@@ -807,7 +810,7 @@ function onFormPhoneInput(phone: string) {
 
 .blocked-icon {
   font-size: 16px;
-  color: var(--color-error, #dc2626);
+  color: var(--color-error);
   flex-shrink: 0;
 }
 
@@ -1005,17 +1008,5 @@ function onFormPhoneInput(phone: string) {
   font-size: 16px;
 }
 
-.done-btn {
-  padding: var(--spacing-sm) var(--spacing-lg);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: 12px;
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  transition: background-color 0.2s;
-}
-
-.done-btn:hover {
-  background-color: var(--color-primary-dark);
-}
+/* Done uses the shared primary BaseButton. */
 </style>

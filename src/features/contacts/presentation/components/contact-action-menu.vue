@@ -2,6 +2,7 @@
 import type { Contact } from '@/features/contacts/domain/entities/contact'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseIcon from '@/core/components/base-icon.vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { buildContactActions } from '@/features/contacts/core/utils/contact-actions'
@@ -71,7 +72,7 @@ onUnmounted(() => {
         <div class="popover-header">
           <span class="popover-name">{{ contactName }}</span>
           <button type="button" class="close-btn" aria-label="Close" @click="emit('close')">
-            <span class="material-symbols-outlined">close</span>
+            <BaseIcon name="close" />
           </button>
         </div>
 
@@ -81,7 +82,7 @@ onUnmounted(() => {
               <span class="method-label">{{ action.label }}</span>
               <div class="method-actions">
                 <a :href="action.call" class="menu-action-btn" title="Call" role="menuitem">
-                  <span class="material-symbols-outlined">call</span>
+                  <BaseIcon name="call" />
                 </a>
                 <a
                   :href="action.whatsApp"
@@ -91,7 +92,7 @@ onUnmounted(() => {
                   rel="noopener noreferrer"
                   role="menuitem"
                 >
-                  <span class="material-symbols-outlined">chat</span>
+                  <BaseIcon name="chat" />
                 </a>
               </div>
             </div>
@@ -107,7 +108,7 @@ onUnmounted(() => {
             role="menuitem"
             @click="emit('editContact', props.contact.id)"
           >
-            <span class="material-symbols-outlined edit-icon">edit</span>
+            <BaseIcon name="edit" class="edit-icon" />
             {{ t('contacts.actionMenu.editBtn') }}
           </button>
         </div>
@@ -123,7 +124,7 @@ onUnmounted(() => {
               <span class="method-label">{{ action.label }}</span>
               <div class="method-actions">
                 <a :href="action.call" class="menu-action-btn sheet-action-btn" title="Call">
-                  <span class="material-symbols-outlined">call</span>
+                  <BaseIcon name="call" />
                 </a>
                 <a
                   :href="action.whatsApp"
@@ -132,7 +133,7 @@ onUnmounted(() => {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <span class="material-symbols-outlined">chat</span>
+                  <BaseIcon name="chat" />
                 </a>
               </div>
             </div>
@@ -147,7 +148,7 @@ onUnmounted(() => {
             class="edit-row sheet-edit-row"
             @click="emit('editContact', props.contact.id)"
           >
-            <span class="material-symbols-outlined edit-icon">edit</span>
+            <BaseIcon name="edit" class="edit-icon" />
             {{ t('contacts.actionMenu.editBtn') }}
           </button>
         </div>

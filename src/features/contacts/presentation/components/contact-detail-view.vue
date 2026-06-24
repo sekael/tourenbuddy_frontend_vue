@@ -5,6 +5,8 @@ import type { NewContactMethod } from '@/features/contacts/domain/repositories/c
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseButton from '@/core/components/base-button.vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
 import { useSnackbar } from '@/core/composables/use-snackbar'
@@ -471,7 +473,7 @@ defineExpose({
     <!-- Header (suppressed when embedded — the page's top app bar replaces it) -->
     <div v-if="!embedded" class="detail-header">
       <button type="button" class="back-btn" @click="emit('back')">
-        <span class="material-symbols-outlined">arrow_back</span>
+        <BaseIcon name="arrow_back" />
       </button>
       <span class="detail-title">{{ t('contacts.detailView.title') }}</span>
       <button v-if="mode === 'view'" type="button" class="edit-btn" @click="enterEditMode">
@@ -484,10 +486,10 @@ defineExpose({
       <h3 class="section-label">
         {{ t('contacts.detailView.nameSection') }}
         <BaseTooltip v-if="linkedFriendUserId && !isContactBlocked" :text="t('friendships.tooltip')">
-          <span class="material-symbols-outlined detail-friend-icon">group</span>
+          <BaseIcon name="group" class="detail-friend-icon" />
         </BaseTooltip>
         <BaseTooltip v-if="isContactBlocked" :text="t('blocks.tooltip')">
-          <span class="material-symbols-outlined detail-blocked-icon">block</span>
+          <BaseIcon name="block" class="detail-blocked-icon" />
         </BaseTooltip>
       </h3>
 
@@ -576,24 +578,24 @@ defineExpose({
             v-if="methodDeleteConfirm.hasFriendship && methodDeleteConfirm.hasPending"
             class="delete-friend-warning"
           >
-            <span class="material-symbols-outlined warn-icon">warning</span>
+            <BaseIcon name="warning" class="warn-icon" />
             {{ t('contacts.detailView.removeMethodFriendAndPendingWarning') }}
           </p>
           <p v-else-if="methodDeleteConfirm.hasFriendship" class="delete-friend-warning">
-            <span class="material-symbols-outlined warn-icon">warning</span>
+            <BaseIcon name="warning" class="warn-icon" />
             {{ t('contacts.detailView.removeMethodFriendWarning') }}
           </p>
           <p v-else-if="methodDeleteConfirm.hasPending" class="delete-friend-warning">
-            <span class="material-symbols-outlined warn-icon">warning</span>
+            <BaseIcon name="warning" class="warn-icon" />
             {{ t('contacts.detailView.removeMethodPendingWarning') }}
           </p>
           <div class="delete-actions">
-            <button type="button" class="cancel-btn" :disabled="isRemovingMethod" @click="methodDeleteConfirm = null">
+            <BaseButton type="button" variant="secondary" size="sm" :disabled="isRemovingMethod" @click="methodDeleteConfirm = null">
               {{ t('contacts.detailView.cancelBtn') }}
-            </button>
-            <button type="button" class="delete-confirm-btn" :disabled="isRemovingMethod" @click="confirmRemoveMethod">
+            </BaseButton>
+            <BaseButton type="button" variant="danger" size="sm" :disabled="isRemovingMethod" @click="confirmRemoveMethod">
               {{ isRemovingMethod ? t('contacts.detailView.removingMethodBtn') : t('contacts.detailView.removeBtn') }}
-            </button>
+            </BaseButton>
           </div>
         </div>
       </template>
@@ -613,7 +615,7 @@ defineExpose({
               ? t('contacts.detailView.primaryPhoneTooltip')
               : t('contacts.detailView.setAsPrimaryTooltip')"
           >
-            <span class="material-symbols-outlined">star</span>
+            <BaseIcon name="star" />
           </BaseTooltip>
         </button>
         <span
@@ -621,11 +623,11 @@ defineExpose({
           class="primary-star"
           :class="{ 'primary-star--selected': method.isPrimary }"
         >
-          <span class="material-symbols-outlined">star</span>
+          <BaseIcon name="star" />
         </span>
 
         <div class="method-type-badge">
-          <span class="material-symbols-outlined">phone</span>
+          <BaseIcon name="phone" />
         </div>
 
         <!-- View mode: read-only -->
@@ -637,7 +639,7 @@ defineExpose({
         <!-- Edit mode: inputs -->
         <div v-else class="method-fields">
           <p v-if="!method.isValid" class="invalid-phone-hint">
-            <span class="material-symbols-outlined warn-icon">warning</span>
+            <BaseIcon name="warning" class="warn-icon" />
             {{ t('contacts.detailView.invalidPhoneHint') }}
           </p>
           <input
@@ -666,7 +668,7 @@ defineExpose({
             :disabled="methodDeleteConfirm?.methodId === method.id"
             @click="requestRemoveMethod(method)"
           >
-            <span class="material-symbols-outlined">delete</span>
+            <BaseIcon name="delete" />
           </button>
         </div>
       </div>
@@ -678,7 +680,7 @@ defineExpose({
         class="method-row"
       >
         <div class="method-type-badge">
-          <span class="material-symbols-outlined">mail</span>
+          <BaseIcon name="mail" />
         </div>
 
         <!-- View mode: read-only -->
@@ -708,7 +710,7 @@ defineExpose({
 
         <div v-if="mode === 'edit'" class="method-actions">
           <button type="button" class="icon-btn icon-btn--danger" @click="requestRemoveMethod(method)">
-            <span class="material-symbols-outlined">delete</span>
+            <BaseIcon name="delete" />
           </button>
         </div>
       </div>
@@ -723,7 +725,7 @@ defineExpose({
               :class="{ 'type-btn--active': newMethodType === 'phone' }"
               @click="newMethodType = 'phone'"
             >
-              <span class="material-symbols-outlined">phone</span>
+              <BaseIcon name="phone" />
               {{ t('contacts.detailView.phoneTypeBtn') }}
             </button>
             <button
@@ -732,7 +734,7 @@ defineExpose({
               :class="{ 'type-btn--active': newMethodType === 'email' }"
               @click="newMethodType = 'email'"
             >
-              <span class="material-symbols-outlined">mail</span>
+              <BaseIcon name="mail" />
               {{ t('contacts.detailView.emailTypeBtn') }}
             </button>
           </div>
@@ -761,24 +763,25 @@ defineExpose({
             {{ addMethodError }}
           </p>
           <div class="add-method-actions">
-            <button type="button" class="cancel-btn" @click="cancelAddMethod">
+            <BaseButton type="button" variant="secondary" size="sm" @click="cancelAddMethod">
               {{ t('contacts.shared.cancelBtn') }}
-            </button>
-            <button
+            </BaseButton>
+            <BaseButton
               type="button"
-              class="save-btn"
+              variant="primary"
+              size="sm"
               :disabled="isAddingMethod"
               @click="confirmAddMethod"
             >
               {{
                 isAddingMethod ? t('contacts.detailView.addingBtn') : t('contacts.detailView.addBtn')
               }}
-            </button>
+            </BaseButton>
           </div>
         </div>
 
         <button v-else type="button" class="add-method-btn" @click="openAddMethod">
-          <span class="material-symbols-outlined">add</span>
+          <BaseIcon name="add" />
           {{ t('contacts.detailView.addMethodBtn') }}
         </button>
       </template>
@@ -791,12 +794,12 @@ defineExpose({
         {{ saveError }}
       </p>
       <div class="form-actions">
-        <button type="button" class="cancel-btn" :disabled="isSaving" @click="cancelEdit">
+        <BaseButton type="button" variant="secondary" :disabled="isSaving" @click="cancelEdit">
           {{ t('contacts.detailView.cancelBtn') }}
-        </button>
-        <button type="button" class="save-btn" :disabled="isSaving" @click="saveAll">
+        </BaseButton>
+        <BaseButton type="button" variant="primary" :disabled="isSaving" @click="saveAll">
           {{ isSaving ? t('contacts.detailView.savingBtn') : t('contacts.detailView.saveBtn') }}
-        </button>
+        </BaseButton>
       </div>
     </section>
 
@@ -814,7 +817,7 @@ defineExpose({
         class="block-btn"
         @click="openBlockConfirm"
       >
-        <span class="material-symbols-outlined">block</span>
+        <BaseIcon name="block" />
         {{ t('blocks.blockAction') }}
       </button>
 
@@ -830,24 +833,24 @@ defineExpose({
           v-if="contactRelationships?.hasFriendship && contactRelationships?.hasPending"
           class="delete-friend-warning"
         >
-          <span class="material-symbols-outlined warn-icon">warning</span>
+          <BaseIcon name="warning" class="warn-icon" />
           {{ t('contacts.detailView.deleteFriendAndPendingWarning') }}
         </p>
         <p v-else-if="contactRelationships?.hasFriendship || linkedFriendUserId" class="delete-friend-warning">
-          <span class="material-symbols-outlined warn-icon">warning</span>
+          <BaseIcon name="warning" class="warn-icon" />
           {{ t('contacts.detailView.deleteFriendWarning') }}
         </p>
         <p v-else-if="contactRelationships?.hasPending" class="delete-friend-warning">
-          <span class="material-symbols-outlined warn-icon">warning</span>
+          <BaseIcon name="warning" class="warn-icon" />
           {{ t('contacts.detailView.deletePendingWarning') }}
         </p>
         <div class="delete-actions">
-          <button type="button" class="cancel-btn" @click="deleteState = 'idle'">
+          <BaseButton type="button" variant="secondary" size="sm" @click="deleteState = 'idle'">
             {{ t('contacts.shared.cancelBtn') }}
-          </button>
-          <button type="button" class="delete-confirm-btn" @click="confirmDelete">
+          </BaseButton>
+          <BaseButton type="button" variant="danger" size="sm" @click="confirmDelete">
             {{ t('contacts.detailView.deleteBtn') }}
-          </button>
+          </BaseButton>
         </div>
       </template>
 
@@ -858,7 +861,7 @@ defineExpose({
         :disabled="deleteState === 'loading'"
         @click="requestDelete"
       >
-        <span class="material-symbols-outlined">person_remove</span>
+        <BaseIcon name="person_remove" />
         {{
           deleteState === 'loading'
             ? t('contacts.detailView.deletingBtn')
@@ -925,7 +928,7 @@ defineExpose({
 
 .detail-blocked-icon {
   font-size: 20px;
-  color: var(--color-error, #dc2626);
+  color: var(--color-error);
 }
 
 .section {
@@ -1008,7 +1011,7 @@ defineExpose({
 }
 
 .input--warning {
-  border-color: var(--color-warning, #f59e0b);
+  border-color: var(--color-warning);
 }
 
 .invalid-phone-hint {
@@ -1016,11 +1019,11 @@ defineExpose({
   align-items: center;
   gap: 4px;
   font-size: var(--font-size-xs, 11px);
-  color: var(--color-warning, #f59e0b);
+  color: var(--color-warning);
 }
 
 .warn-icon {
-  font-size: 14px;
+  font-size: var(--font-size-sm);
 }
 
 .error-text {
@@ -1028,21 +1031,7 @@ defineExpose({
   color: var(--color-error);
 }
 
-.save-btn {
-  align-self: flex-end;
-  padding: var(--spacing-xs) var(--spacing-lg);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: 10px;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  transition: background-color 0.2s;
-}
-
-.save-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+/* save/cancel/delete-confirm now use shared BaseButton. */
 
 .empty-methods {
   font-size: var(--font-size-sm);
@@ -1225,34 +1214,21 @@ button.primary-star:hover {
   justify-content: flex-end;
 }
 
-.cancel-btn {
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: 10px;
-  border: 1px solid var(--color-outline-variant);
-  color: var(--color-on-surface-variant);
-  font-size: var(--font-size-sm);
-  transition: background-color 0.15s;
-}
-
-.cancel-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
 .block-btn {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-xs);
   padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--radius-md);
-  border: 1.5px solid color-mix(in srgb, var(--color-error, #dc2626) 60%, transparent);
-  color: var(--color-error, #dc2626);
+  border: 1.5px solid color-mix(in srgb, var(--color-error) 60%, transparent);
+  color: var(--color-error);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   transition: background-color 0.15s;
 }
 
 .block-btn:hover {
-  background-color: color-mix(in srgb, var(--color-error, #dc2626) 8%, transparent);
+  background-color: color-mix(in srgb, var(--color-error) 8%, transparent);
 }
 
 .block-btn .material-symbols-outlined {
@@ -1308,25 +1284,11 @@ button.primary-star:hover {
   font-size: 16px;
   flex-shrink: 0;
   margin-top: 1px;
-  color: var(--color-warning, #f59e0b);
+  color: var(--color-warning);
 }
 
 .delete-actions {
   display: flex;
   gap: var(--spacing-sm);
-}
-
-.delete-confirm-btn {
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: 10px;
-  background-color: var(--color-error);
-  color: white;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  transition: opacity 0.15s;
-}
-
-.delete-confirm-btn:hover {
-  opacity: 0.85;
 }
 </style>

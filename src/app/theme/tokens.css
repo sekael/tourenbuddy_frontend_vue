@@ -24,6 +24,7 @@
   --red-900: #7f1d1d;
 
   --green-600: #16a34a;
+  --amber-500: #f59e0b;
 
   --white: #ffffff;
   --white-a25: rgba(255, 255, 255, 0.25);
@@ -80,6 +81,8 @@
 
   --color-success: var(--green-600);
   --color-on-success: var(--white);
+
+  --color-warning: var(--amber-500);
 
   /* FAB surface — dark azure, clearly distinct from Swisstopo terrain */
   --color-fab-surface: var(--blue-900);

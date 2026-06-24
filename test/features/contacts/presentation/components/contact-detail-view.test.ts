@@ -83,7 +83,7 @@ describe('contactDetailView', () => {
       const wrapper = mountDetail()
       await enterEditMode(wrapper)
       await wrapper.find('#dv-firstName').setValue('Annika')
-      await wrapper.find('.form-actions .cancel-btn').trigger('click')
+      await wrapper.find('.form-actions .base-button--secondary').trigger('click')
 
       expect(wrapper.find('.edit-btn').exists()).toBe(true)
       expect(wrapper.find('#dv-firstName').exists()).toBe(false)
@@ -124,7 +124,7 @@ describe('contactDetailView', () => {
 
       await enterEditMode(wrapper)
       await wrapper.find('#dv-firstName').setValue('Annika')
-      await wrapper.find('.form-actions .save-btn').trigger('click')
+      await wrapper.find('.form-actions .base-button--primary').trigger('click')
       await flushPromises()
 
       expect(store.updateContact).toHaveBeenCalledWith('c-1', {
@@ -143,7 +143,7 @@ describe('contactDetailView', () => {
       vi.mocked(store.updateContact).mockRejectedValue(new Error('DB error'))
 
       await enterEditMode(wrapper)
-      await wrapper.find('.form-actions .save-btn').trigger('click')
+      await wrapper.find('.form-actions .base-button--primary').trigger('click')
       await flushPromises()
 
       expect(wrapper.find('#dv-firstName').exists()).toBe(true)
@@ -154,7 +154,7 @@ describe('contactDetailView', () => {
       const wrapper = mountDetail()
       await enterEditMode(wrapper)
       await wrapper.find('#dv-firstName').setValue('')
-      await wrapper.find('.form-actions .save-btn').trigger('click')
+      await wrapper.find('.form-actions .base-button--primary').trigger('click')
       await flushPromises()
 
       expect(wrapper.find('#dv-firstName').exists()).toBe(true)
@@ -272,7 +272,7 @@ describe('contactDetailView', () => {
       const wrapper = mountDetail()
       await enterEditMode(wrapper)
       await wrapper.find('.add-method-btn').trigger('click')
-      await wrapper.find('.add-method-form .save-btn').trigger('click')
+      await wrapper.find('.add-method-form .base-button--primary').trigger('click')
       expect(wrapper.find('.error-text').text()).toBe('contacts.detailView.valueRequired')
     })
 
@@ -282,7 +282,7 @@ describe('contactDetailView', () => {
       await wrapper.find('.add-method-btn').trigger('click')
       expect(wrapper.find('.add-method-form').exists()).toBe(true)
 
-      await wrapper.find('.form-actions .cancel-btn').trigger('click')
+      await wrapper.find('.form-actions .base-button--secondary').trigger('click')
       // Returned to view mode — add-method-form gone
       expect(wrapper.find('.add-method-form').exists()).toBe(false)
       expect(wrapper.find('.edit-btn').exists()).toBe(true)
@@ -294,14 +294,14 @@ describe('contactDetailView', () => {
       const wrapper = mountDetail()
       await wrapper.find('.delete-btn').trigger('click')
       expect(wrapper.find('.delete-confirm-text').exists()).toBe(true)
-      expect(wrapper.find('.delete-confirm-btn').exists()).toBe(true)
+      expect(wrapper.find('.base-button--danger').exists()).toBe(true)
     })
 
     it('should hide confirmation when cancel clicked in delete section', async () => {
       const wrapper = mountDetail()
       await wrapper.find('.delete-btn').trigger('click')
       const deleteSection = wrapper.find('.section--danger')
-      await deleteSection.find('.cancel-btn').trigger('click')
+      await deleteSection.find('.base-button--secondary').trigger('click')
 
       expect(wrapper.find('.delete-confirm-text').exists()).toBe(false)
       expect(wrapper.find('.delete-btn').exists()).toBe(true)
@@ -313,7 +313,7 @@ describe('contactDetailView', () => {
       vi.mocked(store.deleteContact).mockResolvedValue(undefined)
 
       await wrapper.find('.delete-btn').trigger('click')
-      await wrapper.find('.delete-confirm-btn').trigger('click')
+      await wrapper.find('.base-button--danger').trigger('click')
       await flushPromises()
 
       expect(store.deleteContact).toHaveBeenCalledWith('c-1')
@@ -327,7 +327,7 @@ describe('contactDetailView', () => {
       vi.mocked(friendships.removeFriendship).mockRejectedValue(new Error('rpc failed'))
 
       await wrapper.find('.delete-btn').trigger('click')
-      await wrapper.find('.delete-confirm-btn').trigger('click')
+      await wrapper.find('.base-button--danger').trigger('click')
       await flushPromises()
 
       expect(contacts.deleteContact).not.toHaveBeenCalled()
@@ -364,7 +364,7 @@ describe('contactDetailView', () => {
       vi.mocked(contacts.deleteContact).mockResolvedValue(undefined)
 
       await wrapper.find('.delete-btn').trigger('click')
-      await wrapper.find('.delete-confirm-btn').trigger('click')
+      await wrapper.find('.base-button--danger').trigger('click')
       await flushPromises()
 
       expect(friendships.removeFriendship).not.toHaveBeenCalled()
