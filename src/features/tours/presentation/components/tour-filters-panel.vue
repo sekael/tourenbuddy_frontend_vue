@@ -203,7 +203,7 @@ const completionOptions = [
 }
 
 .chip {
-  padding: 4px var(--spacing-sm);
+  padding: var(--spacing-xxs) var(--spacing-sm);
   border-radius: 9999px;
   border: 1.5px solid var(--color-outline-variant);
   font-size: var(--font-size-sm);
@@ -245,7 +245,7 @@ const completionOptions = [
 .date-input {
   border: 1.5px solid var(--color-outline-variant);
   border-radius: var(--radius-sm);
-  padding: 4px var(--spacing-sm);
+  padding: var(--spacing-xxs) var(--spacing-sm);
   font-size: var(--font-size-sm);
   color: var(--color-on-surface);
   background: transparent;
@@ -260,7 +260,7 @@ const completionOptions = [
 }
 
 .segment {
-  padding: 4px var(--spacing-md);
+  padding: var(--spacing-xxs) var(--spacing-md);
   font-size: var(--font-size-sm);
   color: var(--color-on-surface-variant);
   transition: background-color 0.15s;

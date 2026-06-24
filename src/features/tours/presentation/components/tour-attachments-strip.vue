@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 
 const props = defineProps<{
@@ -106,9 +107,11 @@ function openAt(index: number) {
           :alt="att.originalFilename"
           class="strip__img"
         >
-        <span v-else class="material-symbols-outlined strip__pdf-icon" aria-hidden="true">
-          {{ att.mimeType === 'application/pdf' ? 'picture_as_pdf' : 'image' }}
-        </span>
+        <BaseIcon
+          v-else
+          :name="att.mimeType === 'application/pdf' ? 'picture_as_pdf' : 'image'"
+          class="strip__pdf-icon"
+        />
       </div>
       <span class="strip__label">{{ att.originalFilename }}</span>
     </button>

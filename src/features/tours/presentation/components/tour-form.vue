@@ -8,6 +8,8 @@ import { storeToRefs } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseButton from '@/core/components/base-button.vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
@@ -459,7 +461,7 @@ defineExpose({ cancel: handleCancel })
           <!-- Goal (read-only display, with optional change button) -->
           <div v-if="currentGoal" class="point-section point-section--goal">
             <div class="point-section-header">
-              <span class="material-symbols-outlined point-section-icon">flag</span>
+              <BaseIcon name="flag" class="point-section-icon" />
               <span class="point-section-title">{{ t('tours.form.goalLabel') }}</span>
             </div>
             <div class="point-row">
@@ -470,7 +472,7 @@ defineExpose({ cancel: handleCancel })
                 class="pick-btn"
                 @click="emit('pickPoint', 'goal')"
               >
-                <span class="material-symbols-outlined">my_location</span>
+                <BaseIcon name="my_location" />
                 {{ t('tours.form.changeGoalBtn') }}
               </button>
             </div>
@@ -492,7 +494,7 @@ defineExpose({ cancel: handleCancel })
           <!-- Start point -->
           <div class="point-section point-section--start">
             <div class="point-section-header">
-              <span class="material-symbols-outlined point-section-icon">trip_origin</span>
+              <BaseIcon name="trip_origin" class="point-section-icon" />
               <span class="point-section-title">{{ t('tours.form.startPointLabel') }}</span>
             </div>
             <div class="point-row">
@@ -500,7 +502,7 @@ defineExpose({ cancel: handleCancel })
                 startPoint ? formatPoint(startPoint) : t('tours.form.pointNotSet')
               }}</span>
               <button type="button" class="pick-btn" @click="emit('pickPoint', 'start')">
-                <span class="material-symbols-outlined">my_location</span>
+                <BaseIcon name="my_location" />
                 {{ startPoint ? t('tours.form.changeGoalBtn') : t('tours.form.pickBtn') }}
               </button>
               <button
@@ -509,7 +511,7 @@ defineExpose({ cancel: handleCancel })
                 class="remove-point-btn"
                 @click="handleRemoveStart"
               >
-                <span class="material-symbols-outlined">close</span>
+                <BaseIcon name="close" />
               </button>
             </div>
             <template v-if="startPoint">
@@ -546,18 +548,18 @@ defineExpose({ cancel: handleCancel })
           <!-- End point: only available once start point is set -->
           <div v-if="startPoint" class="point-section point-section--end">
             <div class="point-section-header">
-              <span class="material-symbols-outlined point-section-icon">sports_score</span>
+              <BaseIcon name="sports_score" class="point-section-icon" />
               <span class="point-section-title">{{ t('tours.form.endPointLabel') }}</span>
             </div>
             <template v-if="endPoint">
               <div class="point-row">
                 <span class="point-coords">{{ formatPoint(endPoint) }}</span>
                 <button type="button" class="pick-btn" @click="emit('pickPoint', 'end')">
-                  <span class="material-symbols-outlined">my_location</span>
+                  <BaseIcon name="my_location" />
                   {{ t('tours.form.changeGoalBtn') }}
                 </button>
                 <button type="button" class="remove-point-btn" @click="handleRemoveEnd">
-                  <span class="material-symbols-outlined">close</span>
+                  <BaseIcon name="close" />
                 </button>
               </div>
               <div class="field">
@@ -589,11 +591,11 @@ defineExpose({ cancel: handleCancel })
             <template v-else>
               <div class="point-row">
                 <button type="button" class="pick-btn" @click="emit('pickPoint', 'end')">
-                  <span class="material-symbols-outlined">add</span>
+                  <BaseIcon name="add" />
                   {{ t('tours.form.addEndPointBtn') }}
                 </button>
                 <button type="button" class="pick-btn" @click="handleRoundTrip">
-                  <span class="material-symbols-outlined">replay</span>
+                  <BaseIcon name="replay" />
                   {{ t('tours.form.roundTripBtn') }}
                 </button>
               </div>
@@ -629,7 +631,7 @@ defineExpose({ cancel: handleCancel })
               :class="{ selected: visibility === 'friends' }"
               @click="visibility = 'friends'"
             >
-              <span class="material-symbols-outlined type-icon">group</span>
+              <BaseIcon name="group" class="type-icon" />
               <span class="type-label">{{ t('tours.form.visibilityFriends') }}</span>
             </button>
             <button
@@ -638,7 +640,7 @@ defineExpose({ cancel: handleCancel })
               :class="{ selected: visibility === 'private' }"
               @click="visibility = 'private'"
             >
-              <span class="material-symbols-outlined type-icon">lock</span>
+              <BaseIcon name="lock" class="type-icon" />
               <span class="type-label">{{ t('tours.form.visibilityPrivate') }}</span>
             </button>
           </div>
@@ -661,7 +663,7 @@ defineExpose({ cancel: handleCancel })
               :class="{ selected: selectedTourType === type }"
               @click="toggleTourType(type)"
             >
-              <span class="material-symbols-outlined type-icon">{{ TOUR_TYPE_ICONS[type] }}</span>
+              <BaseIcon :name="TOUR_TYPE_ICONS[type]" class="type-icon" />
               <span class="type-label">{{
                 t(`tours.type.${TOUR_TYPE_I18N_KEYS[type]}` as any)
               }}</span>
@@ -741,7 +743,7 @@ defineExpose({ cancel: handleCancel })
           <div v-if="gpxFile || gpxFilepath" class="gpx-filled-row">
             <span class="gpx-filename">
               <span v-if="isUploadingGpx" class="gpx-spinner" />
-              <span v-else class="material-symbols-outlined gpx-ok-icon">route</span>
+              <BaseIcon v-else name="route" class="gpx-ok-icon" />
               {{ gpxFile ? gpxFile.name : t('tours.form.gpxExistingTrack') }}
               <span v-if="isUploadingGpx" class="gpx-uploading-label">{{
                 t('tours.form.gpxUploading')
@@ -752,7 +754,7 @@ defineExpose({ cancel: handleCancel })
                 class="gpx-icon-btn"
                 :aria-label="t('tours.form.gpxReplaceTooltip')"
               >
-                <span class="material-symbols-outlined">upload_file</span>
+                <BaseIcon name="upload_file" />
                 <input
                   type="file"
                   accept=".gpx,application/gpx+xml"
@@ -768,13 +770,13 @@ defineExpose({ cancel: handleCancel })
                 :aria-label="t('tours.form.gpxRemoveTooltip')"
                 @click="handleRemoveGpx"
               >
-                <span class="material-symbols-outlined">close</span>
+                <BaseIcon name="close" />
               </button>
             </BaseTooltip>
           </div>
           <div v-else class="gpx-empty-row">
             <label class="pick-btn gpx-upload-btn">
-              <span class="material-symbols-outlined">upload_file</span>
+              <BaseIcon name="upload_file" />
               {{ t('tours.form.gpxUploadBtn') }}
               <input
                 type="file"
@@ -804,12 +806,12 @@ defineExpose({ cancel: handleCancel })
       <!-- end scroll-body -->
 
       <div v-if="!props.embedded" class="actions">
-        <button type="button" class="cancel-btn" @click="handleCancel">
+        <BaseButton type="button" variant="secondary" @click="handleCancel">
           {{ t('tours.form.cancelBtn') }}
-        </button>
-        <button type="submit" class="submit-btn" :disabled="isUploadingGpx">
+        </BaseButton>
+        <BaseButton type="submit" variant="primary" :disabled="isUploadingGpx">
           {{ submitLabel }}
-        </button>
+        </BaseButton>
       </div>
     </fieldset>
   </form>
@@ -915,7 +917,7 @@ defineExpose({ cancel: handleCancel })
 }
 
 .type-icon {
-  font-size: 18px;
+  font-size: var(--icon-size-sm);
 }
 
 .type-label {
@@ -993,21 +995,21 @@ defineExpose({ cancel: handleCancel })
 }
 
 .input--error {
-  border-color: var(--color-error, #d32f2f);
+  border-color: var(--color-error);
 }
 
 .input--error:focus {
-  border-color: var(--color-error, #d32f2f);
+  border-color: var(--color-error);
 }
 
 .required-mark {
-  color: var(--color-error, #d32f2f);
+  color: var(--color-error);
 }
 
 .field-error {
   margin-top: var(--spacing-xs);
   font-size: var(--font-size-sm);
-  color: var(--color-error, #d32f2f);
+  color: var(--color-error);
 }
 
 .textarea {
@@ -1049,7 +1051,7 @@ defineExpose({ cancel: handleCancel })
 }
 
 .point-section-icon {
-  font-size: 18px;
+  font-size: var(--icon-size-sm);
   color: var(--color-on-surface-variant);
 }
 
@@ -1226,7 +1228,7 @@ defineExpose({ cancel: handleCancel })
 
 .gpx-error {
   font-size: var(--font-size-sm);
-  color: var(--color-error, #d32f2f);
+  color: var(--color-error);
 }
 
 /* Partner chips */
@@ -1247,44 +1249,5 @@ defineExpose({ cancel: handleCancel })
   flex-shrink: 0;
 }
 
-.cancel-btn {
-  padding: var(--spacing-sm) var(--spacing-lg);
-  border-radius: 12px;
-  border: 1px solid var(--color-outline-variant);
-  color: var(--color-on-surface-variant);
-  font-size: var(--font-size-base);
-  transition: background-color 0.2s;
-}
-
-.cancel-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.submit-btn {
-  padding: var(--spacing-sm) var(--spacing-lg);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: 12px;
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  transition:
-    background-color 0.2s,
-    transform 0.15s;
-}
-
-.submit-btn:hover {
-  background-color: var(--color-primary-dark);
-  transform: translateY(-1px);
-}
-
-.submit-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.submit-btn:disabled:hover {
-  background-color: var(--color-primary);
-  transform: none;
-}
+/* Cancel/submit use the shared BaseButton (secondary/primary). */
 </style>

@@ -31,7 +31,7 @@
 
 - [x] 5.1 **core/**: `crosshair.vue`, `bottom-sheet.vue`, `dialog-window.vue`, `side-drawer.vue` (close/back icon buttons) and other shared components
 - [x] 5.2 **auth/**: `home-page.vue`, `verify-otp-page.vue`
-- [ ] 5.3 **tours/**: `tour-list-sheet.vue`, `tour-attachment-viewer.vue`, `tour-form.vue` (+ remaining tour components with literals/buttons)
+- [x] 5.3 **tours/**: `tour-list-sheet.vue`, `tour-attachment-viewer.vue`, `tour-form.vue` (+ remaining tour components with literals/buttons)
 - [ ] 5.4 **contacts/**: `contact-detail-view.vue`, `contacts-list-sheet.vue`, `group-sms-confirm-dialog.vue`
 - [ ] 5.5 **user/**: `phone-verification-dialog.vue`, `user-profile-sheet.vue`
 - [ ] 5.6 **friendships/**: `block-confirm-dialog.vue`, `connect-prompt.vue`, `friend-requests-sheet.vue`

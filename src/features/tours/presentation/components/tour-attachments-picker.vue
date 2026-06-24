@@ -3,6 +3,7 @@ import type { TourAttachment } from '@/features/tours/domain/entities/tour-attac
 import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseIcon from '@/core/components/base-icon.vue'
 import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 
 const props = defineProps<{
@@ -122,10 +123,11 @@ async function onDrop(toIndex: number) {
 
         <!-- Normal state -->
         <template v-else>
-          <span class="material-symbols-outlined picker__drag-handle" aria-hidden="true">drag_indicator</span>
-          <span class="material-symbols-outlined picker__file-icon" aria-hidden="true">
-            {{ attachment.mimeType === 'application/pdf' ? 'picture_as_pdf' : 'image' }}
-          </span>
+          <BaseIcon name="drag_indicator" class="picker__drag-handle" />
+          <BaseIcon
+            :name="attachment.mimeType === 'application/pdf' ? 'picture_as_pdf' : 'image'"
+            class="picker__file-icon"
+          />
           <span class="picker__filename">{{ attachment.originalFilename }}</span>
           <button
             type="button"
@@ -133,7 +135,7 @@ async function onDrop(toIndex: number) {
             :aria-label="t('tours.attachments.delete')"
             @click="requestDelete(attachment)"
           >
-            <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+            <BaseIcon name="delete" />
           </button>
         </template>
       </li>
@@ -148,7 +150,7 @@ async function onDrop(toIndex: number) {
         class="picker__add-btn"
         @click="openFilePicker"
       >
-        <span class="material-symbols-outlined" aria-hidden="true">attach_file</span>
+        <BaseIcon name="attach_file" />
         {{ t('tours.attachments.add') }}
       </button>
       <p v-else class="picker__limit-reached">
@@ -206,7 +208,6 @@ async function onDrop(toIndex: number) {
 .picker__drag-handle,
 .picker__file-icon {
   color: var(--color-on-surface-variant);
-  font-size: 20px;
   flex-shrink: 0;
 }
 
@@ -315,7 +316,7 @@ async function onDrop(toIndex: number) {
   padding: var(--spacing-xxs) var(--spacing-sm);
   border-radius: 10px;
   background-color: var(--color-error);
-  color: white;
+  color: var(--color-on-error);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   transition: opacity 0.15s;

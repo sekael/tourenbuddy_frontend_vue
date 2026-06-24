@@ -2,6 +2,7 @@
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseIcon from '@/core/components/base-icon.vue'
 import { resolveContactName } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
@@ -49,14 +50,14 @@ const partnerSubtitle = computed(() => {
   <li class="tour-row" @click="emit('click')">
     <div class="tour-avatar">
       {{ initial }}
-      <span v-if="tour.isFriendTour" class="friend-badge material-symbols-outlined">group</span>
+      <BaseIcon v-if="tour.isFriendTour" name="group" class="friend-badge" />
     </div>
     <div class="tour-info">
       <span class="tour-name">{{ displayName }}</span>
       <span v-if="ownerLabel" class="tour-owner">{{ ownerLabel }}</span>
       <span v-if="partnerSubtitle" class="tour-subtitle">{{ partnerSubtitle }}</span>
     </div>
-    <span class="material-symbols-outlined row-arrow">chevron_right</span>
+    <BaseIcon name="chevron_right" class="row-arrow" />
   </li>
 </template>
 
@@ -134,7 +135,6 @@ const partnerSubtitle = computed(() => {
 }
 
 .row-arrow {
-  font-size: 20px;
   color: var(--color-outline-variant);
   flex-shrink: 0;
 }

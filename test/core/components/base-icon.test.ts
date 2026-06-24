@@ -3,9 +3,14 @@ import { describe, expect, it } from 'vitest'
 import BaseIcon from '@/core/components/base-icon.vue'
 
 describe('baseIcon', () => {
-  it('should fall back to the md size class when size is omitted', () => {
+  it('should apply no size class when size is omitted (inherits global default)', () => {
     const wrapper = mount(BaseIcon, { props: { name: 'close' } })
-    expect(wrapper.classes()).toContain('base-icon--md')
+    expect(wrapper.classes().some(c => c.startsWith('base-icon--'))).toBe(false)
+  })
+
+  it('should apply the requested size class', () => {
+    const wrapper = mount(BaseIcon, { props: { name: 'close', size: 'xl' } })
+    expect(wrapper.classes()).toContain('base-icon--xl')
   })
 
   it('should not emit an inline variation-settings style when weight is omitted', () => {

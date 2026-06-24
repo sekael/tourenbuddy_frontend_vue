@@ -2,6 +2,7 @@
 import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseIcon from '@/core/components/base-icon.vue'
 import { useLogger } from '@/core/logging/use-logger'
 import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 
@@ -223,7 +224,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
             :aria-label="t('tours.attachments.download')"
             @click="downloadCurrent"
           >
-            <span class="material-symbols-outlined" aria-hidden="true">download</span>
+            <BaseIcon name="download" />
           </button>
           <button
             type="button"
@@ -231,7 +232,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
             aria-label="Close"
             @click="emit('close')"
           >
-            <span class="material-symbols-outlined" aria-hidden="true">close</span>
+            <BaseIcon name="close" />
           </button>
         </div>
       </div>
@@ -243,7 +244,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
           <span class="viewer__loading" />
         </div>
         <div v-else-if="loadError" class="viewer__status viewer__status--error">
-          <span class="material-symbols-outlined">broken_image</span>
+          <BaseIcon name="broken_image" />
         </div>
 
         <!-- Image -->
@@ -263,13 +264,13 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
           <canvas ref="pdfCanvas" class="viewer__pdf-canvas" />
           <div v-if="pdfTotalPages > 1" class="viewer__pdf-nav">
             <button type="button" class="viewer__icon-btn" :disabled="pdfPage <= 1" @click="pdfPrevPage">
-              <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
+              <BaseIcon name="chevron_left" />
             </button>
             <span class="viewer__pdf-page">
               {{ t('tours.attachments.viewer.page', { page: pdfPage, total: pdfTotalPages }) }}
             </span>
             <button type="button" class="viewer__icon-btn" :disabled="pdfPage >= pdfTotalPages" @click="pdfNextPage">
-              <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+              <BaseIcon name="chevron_right" />
             </button>
           </div>
         </div>
@@ -283,7 +284,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         :aria-label="t('tours.attachments.viewer.previous')"
         @click="prev"
       >
-        <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
+        <BaseIcon name="chevron_left" />
       </button>
       <button
         v-if="currentIndex < attachments.length - 1"
@@ -292,7 +293,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         :aria-label="t('tours.attachments.viewer.next')"
         @click="next"
       >
-        <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+        <BaseIcon name="chevron_right" />
       </button>
 
       <!-- Dots indicator -->
