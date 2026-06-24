@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import BaseIcon from '@/core/components/base-icon.vue'
+
 defineProps<{
   icon: string
   label: string
@@ -22,7 +24,7 @@ defineEmits<{ select: [] }>()
     <span class="label-chip">{{ label }}</span>
     <span class="icon-fab">
       <slot name="badge" />
-      <span class="material-symbols-outlined icon">{{ icon }}</span>
+      <BaseIcon :name="icon" class="icon" />
     </span>
   </button>
 </template>

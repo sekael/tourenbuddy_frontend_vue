@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseButton from '@/core/components/base-button.vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import DialogWindow from '@/core/components/dialog-window.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
@@ -59,12 +60,12 @@ const proceedLabel = computed(() => {
         </p>
       </div>
       <div class="actions">
-        <button type="button" class="btn" @click="emit('cancel')">
+        <BaseButton type="button" variant="secondary" size="sm" @click="emit('cancel')">
           {{ t('tours.infoSheet.cancelBtn') }}
-        </button>
-        <button type="button" class="btn btn--danger" @click="emit('confirm')">
+        </BaseButton>
+        <BaseButton type="button" variant="danger" size="sm" @click="emit('confirm')">
           {{ proceedLabel }}
-        </button>
+        </BaseButton>
       </div>
     </DialogWindow>
 
@@ -78,12 +79,12 @@ const proceedLabel = computed(() => {
           </p>
         </div>
         <div class="actions">
-          <button type="button" class="btn" @click="emit('cancel')">
+          <BaseButton type="button" variant="secondary" size="sm" @click="emit('cancel')">
             {{ t('tours.infoSheet.cancelBtn') }}
-          </button>
-          <button type="button" class="btn btn--danger" @click="emit('confirm')">
+          </BaseButton>
+          <BaseButton type="button" variant="danger" size="sm" @click="emit('confirm')">
             {{ proceedLabel }}
-          </button>
+          </BaseButton>
         </div>
       </BottomSheet>
     </div>
@@ -119,19 +120,7 @@ const proceedLabel = computed(() => {
   }
 }
 
-.btn {
-  padding: var(--spacing-xs) var(--spacing-md);
-  border: 1px solid var(--color-outline-variant);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  cursor: pointer;
-}
-
-.btn--danger {
-  background: var(--color-error);
-  color: var(--color-on-error);
-  border-color: var(--color-error);
-}
+/* Cancel/confirm use shared BaseButton (secondary/danger). */
 
 /* Mobile bottom-sheet backdrop. Teleported to body, z-index above the edit
    sheet (sheet-container z-index 50) so the warning stacks on top. */

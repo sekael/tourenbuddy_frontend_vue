@@ -114,7 +114,7 @@ function handleRowClick(tourId: string) {
         :aria-label="t('tours.list.addTourAriaLabel')"
         @click="emit('addTour')"
       >
-        <span class="material-symbols-outlined" aria-hidden="true">add_location_alt</span>
+        <BaseIcon name="add_location_alt" />
       </button>
     </template>
 

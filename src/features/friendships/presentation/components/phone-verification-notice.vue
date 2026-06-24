@@ -2,6 +2,8 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
+import BaseButton from '@/core/components/base-button.vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 
 const emit = defineEmits<{ acknowledged: [], close: [] }>()
@@ -20,7 +22,7 @@ const acknowledged = ref(false)
       >
         <div class="notice-content">
           <div class="notice-body">
-            <span class="material-symbols-outlined notice-icon">privacy_tip</span>
+            <BaseIcon name="privacy_tip" class="notice-icon" />
             <p class="notice-text">
               {{ t('friendships.verificationNotice.body') }}
             </p>
@@ -31,14 +33,14 @@ const acknowledged = ref(false)
             <span class="checkbox-label">{{ t('friendships.verificationNotice.acknowledge') }}</span>
           </label>
 
-          <button
+          <BaseButton
             type="button"
-            class="confirm-btn"
+            variant="primary"
             :disabled="!acknowledged"
             @click="emit('acknowledged')"
           >
             {{ t('friendships.verificationNotice.sendCodeBtn') }}
-          </button>
+          </BaseButton>
         </div>
       </AdaptiveOverlay>
     </div>
@@ -50,7 +52,7 @@ const acknowledged = ref(false)
     >
       <div class="notice-content">
         <div class="notice-body">
-          <span class="material-symbols-outlined notice-icon">privacy_tip</span>
+          <BaseIcon name="privacy_tip" class="notice-icon" />
           <p class="notice-text">
             {{ t('friendships.verificationNotice.body') }}
           </p>
@@ -61,14 +63,14 @@ const acknowledged = ref(false)
           <span class="checkbox-label">{{ t('friendships.verificationNotice.acknowledge') }}</span>
         </label>
 
-        <button
+        <BaseButton
           type="button"
-          class="confirm-btn"
+          variant="primary"
           :disabled="!acknowledged"
           @click="emit('acknowledged')"
         >
           {{ t('friendships.verificationNotice.acknowledge') }}
-        </button>
+        </BaseButton>
       </div>
     </AdaptiveOverlay>
   </Teleport>
@@ -136,22 +138,5 @@ const acknowledged = ref(false)
   line-height: 1.4;
 }
 
-.confirm-btn {
-  padding: var(--spacing-md);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: 12px;
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  transition: background-color 0.2s;
-}
-
-.confirm-btn:hover:not(:disabled) {
-  background-color: var(--color-primary-dark);
-}
-
-.confirm-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+/* Confirm uses shared BaseButton (primary). */
 </style>

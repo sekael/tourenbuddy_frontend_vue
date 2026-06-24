@@ -187,7 +187,7 @@ describe('userProfileSheet', () => {
   it('should cancel edit and return to view mode', async () => {
     const wrapper = mount(UserProfileSheet)
     await wrapper.find('.edit-btn').trigger('click')
-    await wrapper.find('.cancel-btn').trigger('click')
+    await wrapper.find('.edit-actions .base-button--secondary').trigger('click')
     expect(wrapper.find('.edit-btn').exists()).toBe(true)
     expect(wrapper.find('#edit-first-name').exists()).toBe(false)
   })

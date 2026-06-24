@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
+import BaseIcon from '@/core/components/base-icon.vue'
 import { useLogger } from '@/core/logging/use-logger'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { TourLinksRepositoryImpl } from '@/features/tour-links/data/repositories/tour-links-repository-impl'
@@ -135,7 +136,7 @@ onMounted(() => {
   <div class="page">
     <header class="page-header">
       <button type="button" class="back-btn" @click="handleBack">
-        <span class="material-symbols-outlined">arrow_back</span>
+        <BaseIcon name="arrow_back" />
       </button>
       <h1>{{ t('tourLinks.backfillPageTitle') }}</h1>
     </header>

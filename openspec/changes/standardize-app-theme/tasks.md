@@ -33,16 +33,16 @@
 - [x] 5.2 **auth/**: `home-page.vue`, `verify-otp-page.vue`
 - [x] 5.3 **tours/**: `tour-list-sheet.vue`, `tour-attachment-viewer.vue`, `tour-form.vue` (+ remaining tour components with literals/buttons)
 - [x] 5.4 **contacts/**: `contact-detail-view.vue`, `contacts-list-sheet.vue`, `group-sms-confirm-dialog.vue`
-- [ ] 5.5 **user/**: `phone-verification-dialog.vue`, `user-profile-sheet.vue`
-- [ ] 5.6 **friendships/**: `block-confirm-dialog.vue`, `connect-prompt.vue`, `friend-requests-sheet.vue`
-- [ ] 5.7 **map/**: `map-speed-dial-menu.vue`
-- [ ] 5.8 **tour-links/**: `collision-notice.vue`, `link-request-banner.vue`
-- [ ] 5.9 Final sweep: re-run the hardcoded-value survey (hex / `font-size` / `border-radius` literals) **and** grep for raw `material-symbols-outlined` spans and ad-hoc `<button>` styling; confirm **zero** icon-span stragglers (full migration, no tail) and only intentional exceptions for the rest; migrate any remaining
+- [x] 5.5 **user/**: `phone-verification-dialog.vue`, `user-profile-sheet.vue`
+- [x] 5.6 **friendships/**: `block-confirm-dialog.vue`, `connect-prompt.vue`, `friend-requests-sheet.vue`
+- [x] 5.7 **map/**: `map-speed-dial-menu.vue`
+- [x] 5.8 **tour-links/**: `collision-notice.vue`, `link-request-banner.vue`
+- [x] 5.9 Final sweep: re-run the hardcoded-value survey (hex / `font-size` / `border-radius` literals) **and** grep for raw `material-symbols-outlined` spans and ad-hoc `<button>` styling; confirm **zero** icon-span stragglers (full migration, no tail) and only intentional exceptions for the rest; migrate any remaining
 
 ## 6. Finalize
 
-- [ ] 6.1 Run `npm run test` (all pass) and `npm run type-check`
-- [ ] 6.2 Run `npx eslint . --fix` and verify the diff stays minimal (no editor reformat noise); zero warnings
+- [x] 6.1 Run `npm run test` (all pass) and `npm run type-check`
+- [x] 6.2 Run `npx eslint . --fix` and verify the diff stays minimal (no editor reformat noise); zero warnings
 - [ ] 6.3 Prompt the user to commit (atomic, per-phase/per-feature) with a ready-to-copy conventional commit message, e.g. `feat(theme): standardize two-tier design tokens and shared Button/Icon (#76)`
 - [ ] 6.4 Prompt the user to push and open a PR to `main`; confirm CI (lint, type-check, vitest) is green and check the preview deploy for visual regressions
 - [ ] 6.5 Prompt the user to archive this change with the openspec-archive skill

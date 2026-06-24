@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useMapOverlay } from '../composables/use-map-overlay'
 import MapBaseMapPanel from './map-base-map-panel.vue'
@@ -79,10 +80,11 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
         class="compass-fab"
         @click="emit('resetBearing')"
       >
-        <span
-          class="material-symbols-outlined compass-icon"
+        <BaseIcon
+          name="explore"
+          class="compass-icon"
           :style="{ transform: `rotate(${iconRotation}deg)` }"
-        >explore</span>
+        />
       </button>
     </BaseTooltip>
 

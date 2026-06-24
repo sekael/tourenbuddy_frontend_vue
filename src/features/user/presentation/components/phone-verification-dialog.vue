@@ -2,6 +2,8 @@
 import { computed, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
+import BaseButton from '@/core/components/base-button.vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
@@ -96,7 +98,7 @@ async function handleResend() {
         <div class="dialog-content">
           <template v-if="isVerified">
             <div class="verified-state">
-              <span class="verified-icon material-symbols-outlined">check_circle</span>
+              <BaseIcon name="check_circle" class="verified-icon" size="xl" />
               <p class="verified-text">
                 {{ t('user.phoneVerification.verifiedMsg') }}
               </p>
@@ -130,13 +132,13 @@ async function handleResend() {
                 {{ t('user.phoneVerification.resendSuccess') }}
               </p>
 
-              <button type="submit" class="submit-btn" :disabled="isVerifying">
+              <BaseButton type="submit" variant="primary" :disabled="isVerifying">
                 {{
                   isVerifying
                     ? t('user.phoneVerification.verifyingBtn')
                     : t('user.phoneVerification.verifyBtn')
                 }}
-              </button>
+              </BaseButton>
             </form>
 
             <button
@@ -165,7 +167,7 @@ async function handleResend() {
       <div class="dialog-content">
         <template v-if="isVerified">
           <div class="verified-state">
-            <span class="verified-icon material-symbols-outlined">check_circle</span>
+            <BaseIcon name="check_circle" class="verified-icon" size="xl" />
             <p class="verified-text">
               {{ t('user.phoneVerification.verifiedMsg') }}
             </p>
@@ -199,13 +201,13 @@ async function handleResend() {
               {{ t('user.phoneVerification.resendSuccess') }}
             </p>
 
-            <button type="submit" class="submit-btn" :disabled="isVerifying">
+            <BaseButton type="submit" variant="primary" :disabled="isVerifying">
               {{
                 isVerifying
                   ? t('user.phoneVerification.verifyingBtn')
                   : t('user.phoneVerification.verifyBtn')
               }}
-            </button>
+            </BaseButton>
           </form>
 
           <button
@@ -296,30 +298,8 @@ async function handleResend() {
 }
 
 .success-text {
-  color: #15803d;
+  color: var(--color-success);
   font-size: var(--font-size-sm);
-}
-
-.submit-btn {
-  padding: var(--spacing-md);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: 12px;
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  transition:
-    background-color 0.2s,
-    transform 0.15s;
-}
-
-.submit-btn:hover:not(:disabled) {
-  background-color: var(--color-primary-dark);
-  transform: translateY(-1px);
-}
-
-.submit-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .resend-btn {
@@ -343,13 +323,12 @@ async function handleResend() {
 }
 
 .verified-icon {
-  font-size: 48px;
-  color: #15803d;
+  color: var(--color-success);
 }
 
 .verified-text {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-medium);
-  color: #15803d;
+  color: var(--color-success);
 }
 </style>

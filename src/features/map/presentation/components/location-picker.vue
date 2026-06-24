@@ -86,7 +86,7 @@ function handleConfirm() {
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(203, 213, 225, 0.6);
   color: var(--color-on-surface);
-  border-radius: 12px;
+  border-radius: var(--button-radius);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-medium);
   box-shadow: var(--shadow-sm);
@@ -101,7 +101,7 @@ function handleConfirm() {
   padding: var(--spacing-md) var(--spacing-xl);
   background-color: var(--color-primary);
   color: var(--color-on-primary);
-  border-radius: 12px;
+  border-radius: var(--button-radius);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
   box-shadow: var(--shadow-md);

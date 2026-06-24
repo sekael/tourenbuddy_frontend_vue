@@ -2,6 +2,7 @@
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseIcon from '@/core/components/base-icon.vue'
 import { useLogger } from '@/core/logging/use-logger'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
@@ -222,7 +223,7 @@ function safeSessionSet(key: string, val: string) {
 <template>
   <section v-if="linkableCandidates.length > 0" class="collision-notice">
     <div class="header">
-      <span class="material-symbols-outlined icon">link</span>
+      <BaseIcon name="link" class="icon" />
       <span class="title">{{ t('tourLinks.collisionNoticeTitle') }}</span>
     </div>
     <p class="body">
@@ -251,7 +252,7 @@ function safeSessionSet(key: string, val: string) {
 
   <section v-if="showBlockedDisclaimer" class="collision-notice collision-notice--blocked">
     <div class="header">
-      <span class="material-symbols-outlined icon">info</span>
+      <BaseIcon name="info" class="icon" />
       <span class="title">{{ t('tourLinks.mergeBlockedTitle') }}</span>
     </div>
     <p class="body">

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import BaseIcon from '@/core/components/base-icon.vue'
 import { SWISSTOPO_STYLES } from '@/features/map/data/swisstopo-styles'
 
 const props = defineProps<{ currentStyleIndex: number }>()
@@ -19,9 +20,7 @@ const { t } = useI18n({ useScope: 'global' })
     >
       <span class="label">{{ t(style.labelKey) }}</span>
       <span class="icon-wrap">
-        <span class="material-symbols-outlined icon">
-          {{ props.currentStyleIndex === idx ? 'check' : 'map' }}
-        </span>
+        <BaseIcon :name="props.currentStyleIndex === idx ? 'check' : 'map'" class="icon" />
       </span>
     </button>
   </div>

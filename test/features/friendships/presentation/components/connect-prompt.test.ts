@@ -53,22 +53,22 @@ describe('connectPrompt', () => {
   describe('showDismiss prop', () => {
     it('should render dismiss button when showDismiss is omitted', () => {
       const wrapper = mountPrompt()
-      expect(wrapper.find('.btn-secondary').exists()).toBe(true)
+      expect(wrapper.find('.base-button--secondary').exists()).toBe(true)
     })
 
     it('should render dismiss button when showDismiss is true', () => {
       const wrapper = mountPrompt({ showDismiss: true })
-      expect(wrapper.find('.btn-secondary').exists()).toBe(true)
+      expect(wrapper.find('.base-button--secondary').exists()).toBe(true)
     })
 
     it('should NOT render dismiss button when showDismiss is false', () => {
       const wrapper = mountPrompt({ showDismiss: false })
-      expect(wrapper.find('.btn-secondary').exists()).toBe(false)
+      expect(wrapper.find('.base-button--secondary').exists()).toBe(false)
     })
 
     it('should still render send button when showDismiss is false', () => {
       const wrapper = mountPrompt({ showDismiss: false })
-      expect(wrapper.find('.btn-primary').exists()).toBe(true)
+      expect(wrapper.find('.base-button--primary').exists()).toBe(true)
     })
   })
 
@@ -84,7 +84,7 @@ describe('connectPrompt', () => {
         callOrder.push('send')
       })
 
-      await wrapper.find('.btn-primary').trigger('click')
+      await wrapper.find('.base-button--primary').trigger('click')
       await flushPromises()
 
       expect(callOrder).toEqual(['hook', 'send'])
@@ -96,7 +96,7 @@ describe('connectPrompt', () => {
       const wrapper = mountPrompt({ beforeSend })
       const store = useFriendshipsStore()
 
-      await wrapper.find('.btn-primary').trigger('click')
+      await wrapper.find('.base-button--primary').trigger('click')
       await flushPromises()
 
       expect(store.sendRequest).not.toHaveBeenCalled()
@@ -107,11 +107,11 @@ describe('connectPrompt', () => {
       const beforeSend = vi.fn().mockRejectedValue(new Error('oops'))
       const wrapper = mountPrompt({ beforeSend })
 
-      await wrapper.find('.btn-primary').trigger('click')
+      await wrapper.find('.base-button--primary').trigger('click')
       await flushPromises()
 
-      const sendBtn = wrapper.find('.btn-primary')
-      const dismissBtn = wrapper.find('.btn-secondary')
+      const sendBtn = wrapper.find('.base-button--primary')
+      const dismissBtn = wrapper.find('.base-button--secondary')
       expect((sendBtn.element as HTMLButtonElement).disabled).toBe(false)
       expect((dismissBtn.element as HTMLButtonElement).disabled).toBe(false)
     })
@@ -121,7 +121,7 @@ describe('connectPrompt', () => {
       const store = useFriendshipsStore()
       vi.mocked(store.sendRequest).mockResolvedValue(undefined as never)
 
-      await wrapper.find('.btn-primary').trigger('click')
+      await wrapper.find('.base-button--primary').trigger('click')
       await flushPromises()
 
       expect(store.sendRequest).toHaveBeenCalledWith('user-42')
@@ -134,7 +134,7 @@ describe('connectPrompt', () => {
       const store = useFriendshipsStore()
       vi.mocked(store.sendRequest).mockRejectedValue(new Error('network error'))
 
-      await wrapper.find('.btn-primary').trigger('click')
+      await wrapper.find('.base-button--primary').trigger('click')
       await flushPromises()
 
       expect(wrapper.find('.error-text').text()).toBe('blocks.snackbar.sendRequestFailed')
@@ -146,7 +146,7 @@ describe('connectPrompt', () => {
       const beforeDismiss = vi.fn().mockResolvedValue(undefined)
       const wrapper = mountPrompt({ beforeDismiss })
 
-      await wrapper.find('.btn-secondary').trigger('click')
+      await wrapper.find('.base-button--secondary').trigger('click')
       await flushPromises()
 
       expect(beforeDismiss).toHaveBeenCalled()
@@ -157,7 +157,7 @@ describe('connectPrompt', () => {
       const beforeDismiss = vi.fn().mockRejectedValue(new Error('save failed'))
       const wrapper = mountPrompt({ beforeDismiss })
 
-      await wrapper.find('.btn-secondary').trigger('click')
+      await wrapper.find('.base-button--secondary').trigger('click')
       await flushPromises()
 
       expect(wrapper.emitted('dismissed')).toBeFalsy()
@@ -167,7 +167,7 @@ describe('connectPrompt', () => {
     it('should emit dismissed immediately when no beforeDismiss prop provided', async () => {
       const wrapper = mountPrompt()
 
-      await wrapper.find('.btn-secondary').trigger('click')
+      await wrapper.find('.base-button--secondary').trigger('click')
 
       expect(wrapper.emitted('dismissed')).toHaveLength(1)
     })

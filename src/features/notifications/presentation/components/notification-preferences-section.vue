@@ -3,6 +3,7 @@ import type { NotificationType } from '../../domain/entities/notification-prefer
 import { storeToRefs } from 'pinia'
 import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { ALL_NOTIFICATION_TYPES } from '../../domain/entities/notification-preferences'
 import { useNotificationCapability } from '../composables/use-notification-capability'
@@ -60,7 +61,7 @@ onMounted(() => {
                 class="unavailable__info"
                 :aria-label="t('notifications.installHint')"
               >
-                <span class="material-symbols-outlined" aria-hidden="true">info</span>
+                <BaseIcon name="info" />
               </button>
             </BaseTooltip>
           </span>
@@ -72,7 +73,7 @@ onMounted(() => {
                 class="unavailable__info unavailable__info--warning"
                 :aria-label="t('notifications.deniedHint')"
               >
-                <span class="material-symbols-outlined" aria-hidden="true">info</span>
+                <BaseIcon name="info" />
               </button>
             </BaseTooltip>
           </span>

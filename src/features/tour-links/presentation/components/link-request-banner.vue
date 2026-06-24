@@ -3,6 +3,8 @@ import type { TourLinkRequest } from '@/features/tour-links/domain/entities/tour
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseButton from '@/core/components/base-button.vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 import { useLogger } from '@/core/logging/use-logger'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
@@ -119,7 +121,7 @@ async function withdraw() {
 <template>
   <section class="link-request-banner" :class="{ 'link-request-banner--incoming': isIncoming }">
     <div class="message">
-      <span class="material-symbols-outlined icon">link</span>
+      <BaseIcon name="link" class="icon" />
       <span v-if="isIncoming">
         {{ t('tourLinks.bannerIncoming', { name: otherFriendName, tour: otherTourName }) }}
       </span>
@@ -129,17 +131,17 @@ async function withdraw() {
     </div>
     <div class="actions">
       <template v-if="isIncoming">
-        <button type="button" class="btn btn--primary" :disabled="submitting" @click="accept">
+        <BaseButton type="button" variant="primary" size="sm" :disabled="submitting" @click="accept">
           {{ t('tourLinks.acceptBtn') }}
-        </button>
-        <button type="button" class="btn" :disabled="submitting" @click="decline">
+        </BaseButton>
+        <BaseButton type="button" variant="secondary" size="sm" :disabled="submitting" @click="decline">
           {{ t('tourLinks.declineBtn') }}
-        </button>
+        </BaseButton>
       </template>
       <template v-else>
-        <button type="button" class="btn" :disabled="submitting" @click="withdraw">
+        <BaseButton type="button" variant="secondary" size="sm" :disabled="submitting" @click="withdraw">
           {{ t('tourLinks.withdrawBtn') }}
-        </button>
+        </BaseButton>
       </template>
     </div>
     <p v-if="submitError" class="error">
@@ -183,26 +185,7 @@ async function withdraw() {
   flex-wrap: wrap;
 }
 
-.btn {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border: 1px solid var(--color-outline-variant);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-on-surface);
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-}
-
-.btn--primary {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  border-color: var(--color-primary);
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+/* Accept/decline/withdraw use shared BaseButton. */
 
 .error {
   color: var(--color-error);

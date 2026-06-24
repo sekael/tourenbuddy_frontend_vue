@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseButton from '@/core/components/base-button.vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 
 const props = defineProps<{
   hasFriendship: boolean
@@ -32,7 +34,7 @@ function handleConfirm() {
     </p>
 
     <p class="cooldown-notice">
-      <span class="material-symbols-outlined notice-icon">schedule</span>
+      <BaseIcon name="schedule" class="notice-icon" />
       {{ t('blocks.confirm.cooldownNotice') }}
     </p>
 
@@ -51,20 +53,12 @@ function handleConfirm() {
     />
 
     <div class="confirm-actions">
-      <button
-        type="button"
-        class="btn btn--cancel"
-        @click="emit('cancel')"
-      >
+      <BaseButton type="button" variant="secondary" size="sm" @click="emit('cancel')">
         {{ t('blocks.confirm.cancelBtn') }}
-      </button>
-      <button
-        type="button"
-        class="btn btn--confirm"
-        @click="handleConfirm"
-      >
+      </BaseButton>
+      <BaseButton type="button" variant="danger" size="sm" @click="handleConfirm">
         {{ t('blocks.confirm.confirmBtn') }}
-      </button>
+      </BaseButton>
     </div>
   </div>
 </template>
@@ -76,14 +70,14 @@ function handleConfirm() {
   gap: var(--spacing-sm);
   padding: var(--spacing-md);
   border-radius: var(--radius-md);
-  border: 1.5px solid var(--color-error, #dc2626);
-  background-color: color-mix(in srgb, var(--color-error, #dc2626) 6%, transparent);
+  border: 1.5px solid var(--color-error);
+  background-color: color-mix(in srgb, var(--color-error) 6%, transparent);
 }
 
 .confirm-title {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-error, #dc2626);
+  color: var(--color-error);
 }
 
 .confirm-body {
@@ -98,8 +92,8 @@ function handleConfirm() {
   gap: var(--spacing-xs);
   font-size: var(--font-size-sm);
   color: var(--color-on-surface-variant);
-  background-color: color-mix(in srgb, var(--color-warning, #f59e0b) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-warning, #f59e0b) 30%, transparent);
+  background-color: color-mix(in srgb, var(--color-warning) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 30%, transparent);
   border-radius: var(--radius-sm);
   padding: var(--spacing-sm) var(--spacing-md);
 }
@@ -137,30 +131,5 @@ function handleConfirm() {
   flex-wrap: wrap;
 }
 
-.btn {
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  transition: background-color 0.15s;
-}
-
-.btn--cancel {
-  border: 1.5px solid var(--color-outline-variant);
-  color: var(--color-on-surface-variant);
-}
-
-.btn--cancel:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.btn--confirm {
-  border: 1.5px solid var(--color-error, #dc2626);
-  background-color: var(--color-error, #dc2626);
-  color: white;
-}
-
-.btn--confirm:hover {
-  opacity: 0.9;
-}
+/* Cancel/confirm use shared BaseButton (secondary/danger). */
 </style>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import BaseIcon from '@/core/components/base-icon.vue'
 
 defineProps<{
   /** Short label for the current step (e.g. "Verify phone number"). */
@@ -38,7 +39,7 @@ const { t } = useI18n({ useScope: 'global' })
           :aria-label="t('onboarding.tour.controls.previous')"
           @click="emit('back')"
         >
-          <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+          <BaseIcon name="arrow_back" />
         </button>
         <button
           type="button"
@@ -47,7 +48,7 @@ const { t } = useI18n({ useScope: 'global' })
           :aria-label="t('onboarding.tour.controls.next')"
           @click="emit('next')"
         >
-          <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+          <BaseIcon name="arrow_forward" />
         </button>
       </div>
     </div>

@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 import { useSnackbar } from '@/core/composables/use-snackbar'
 import { formatPhoneForDisplay } from '@/core/utils/phone-normalize'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
@@ -209,7 +210,7 @@ async function handleCancel(requestId: string) {
 
       <template v-if="activeTab === 'pending'">
         <div class="deny-rights-note">
-          <span class="material-symbols-outlined note-icon">info</span>
+          <BaseIcon name="info" class="note-icon" />
           <p class="note-text">
             {{ t('friendships.inboxDenyRightsNote') }}
           </p>
@@ -244,7 +245,7 @@ async function handleCancel(requestId: string) {
                       {{ t('friendships.acceptConfirm') }}
                     </p>
                     <p class="confirm-warning">
-                      <span class="material-symbols-outlined warn-icon">warning</span>
+                      <BaseIcon name="warning" class="warn-icon" />
                       {{ t('friendships.acceptWarning') }}
                     </p>
                     <div class="confirm-actions">
@@ -269,7 +270,7 @@ async function handleCancel(requestId: string) {
                 </template>
                 <template v-else>
                   <div class="request-info">
-                    <span class="material-symbols-outlined request-icon">person</span>
+                    <BaseIcon name="person" class="request-icon" />
                     <div class="request-user-block">
                       <template v-if="displayNameFor(req, 'incoming')">
                         <span class="request-user">{{ displayNameFor(req, 'incoming') }}</span>
@@ -319,7 +320,7 @@ async function handleCancel(requestId: string) {
             <ul v-else class="request-list">
               <li v-for="req in outgoingRequests" :key="req.id" class="request-row">
                 <div class="request-info">
-                  <span class="material-symbols-outlined request-icon">person</span>
+                  <BaseIcon name="person" class="request-icon" />
                   <div class="request-user-block">
                     <template v-if="displayNameFor(req, 'outgoing')">
                       <span class="request-user">{{ displayNameFor(req, 'outgoing') }}</span>
@@ -380,12 +381,12 @@ async function handleCancel(requestId: string) {
 }
 
 .action-btn--block {
-  border: 1.5px solid color-mix(in srgb, var(--color-error, #dc2626) 60%, transparent);
-  color: var(--color-error, #dc2626);
+  border: 1.5px solid color-mix(in srgb, var(--color-error) 60%, transparent);
+  color: var(--color-error);
 }
 
 .action-btn--block:hover {
-  background-color: color-mix(in srgb, var(--color-error, #dc2626) 10%, transparent);
+  background-color: color-mix(in srgb, var(--color-error) 10%, transparent);
 }
 
 .deny-rights-note {
@@ -560,10 +561,10 @@ async function handleCancel(requestId: string) {
 }
 
 .warn-icon {
-  font-size: 14px;
+  font-size: var(--font-size-sm);
   flex-shrink: 0;
   margin-top: 1px;
-  color: var(--color-warning, #f59e0b);
+  color: var(--color-warning);
 }
 
 .confirm-actions {

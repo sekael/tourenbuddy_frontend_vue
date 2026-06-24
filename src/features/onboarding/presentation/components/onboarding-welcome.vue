@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import BaseIcon from '@/core/components/base-icon.vue'
 
 // Pre-tour welcome screen. Shown once on auto-start (before the driver.js tour
 // runs), so it renders its own dark backdrop rather than relying on the tour
@@ -13,7 +14,7 @@ const { t } = useI18n({ useScope: 'global' })
 <template>
   <div class="welcome-backdrop" role="dialog" aria-modal="true" :aria-label="t('onboarding.tour.welcome.title')">
     <div class="welcome-card">
-      <span class="material-symbols-outlined welcome-icon" aria-hidden="true">explore</span>
+      <BaseIcon name="explore" class="welcome-icon" />
       <h2 class="welcome-title">
         {{ t('onboarding.tour.welcome.title') }}
       </h2>

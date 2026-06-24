@@ -62,9 +62,10 @@ Icons and buttons are consumed through shared components in
 ### Icon — `base-icon.vue`
 
 Wraps a Material Symbols glyph. Props: `name` (ligature), `size`
-(`sm`/`md`/`lg`, default `md` = 20px, the global default), optional `weight`.
-Always decorative (`aria-hidden`); the accessible name belongs on the
-surrounding control.
+(`sm`/`md`/`lg`/`xl`, **optional** — when omitted the glyph inherits the global
+20px default or a consumer's own `font-size`, so context-sized icons like small
+badges migrate faithfully), optional `weight`. Always decorative
+(`aria-hidden`); the accessible name belongs on the surrounding control.
 
 ### IconButton — `base-icon-button.vue`
 

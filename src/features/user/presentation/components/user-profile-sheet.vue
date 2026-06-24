@@ -3,6 +3,8 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
+import BaseButton from '@/core/components/base-button.vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
@@ -224,9 +226,9 @@ async function handleSignOut() {
 <template>
   <AdaptiveOverlay :title="t('user.profile.title')" :page="isEditing" @close="handleClose">
     <template v-if="editAsPage" #page-action>
-      <button type="submit" form="profile-edit-form" class="page-save-btn" :disabled="isSaving">
+      <BaseButton type="submit" form="profile-edit-form" variant="primary" size="sm" :disabled="isSaving">
         {{ isSaving ? t('user.shared.savingBtn') : t('user.shared.saveBtn') }}
-      </button>
+      </BaseButton>
     </template>
 
     <div class="profile-content">
@@ -248,17 +250,17 @@ async function handleSignOut() {
 
         <div class="phone-row" data-tour="phone-verification">
           <template v-if="full?.phoneNumber">
-            <span class="material-symbols-outlined phone-icon">phone</span>
+            <BaseIcon name="phone" class="phone-icon" />
             <span class="phone-number">{{ displayPhoneNumber }}</span>
             <BaseTooltip v-if="full.phoneVerified" :text="t('user.profile.verifiedTooltip')">
-              <span class="material-symbols-outlined verified-icon">verified</span>
+              <BaseIcon name="verified" class="verified-icon" />
             </BaseTooltip>
             <button v-else class="verify-btn" @click="startEdit">
               {{ t('user.profile.verifyBtn') }}
             </button>
           </template>
           <button v-else class="add-phone-btn" @click="handleAddPhone">
-            <span class="material-symbols-outlined">add</span>
+            <BaseIcon name="add" />
             {{ t('user.profile.addPhoneBtn') }}
           </button>
         </div>
@@ -295,15 +297,15 @@ async function handleSignOut() {
 
         <div class="actions">
           <button class="edit-btn" @click="startEdit">
-            <span class="material-symbols-outlined">edit</span>
+            <BaseIcon name="edit" />
             {{ t('user.profile.editBtn') }}
           </button>
           <button class="edit-btn" @click="handleShowTour">
-            <span class="material-symbols-outlined">tour</span>
+            <BaseIcon name="tour" />
             {{ t('onboarding.tour.controls.reopen') }}
           </button>
           <button class="sign-out-btn" @click="handleSignOut">
-            <span class="material-symbols-outlined">logout</span>
+            <BaseIcon name="logout" />
             {{ t('user.profile.signOutBtn') }}
           </button>
         </div>
@@ -355,7 +357,7 @@ async function handleSignOut() {
                   :aria-label="t('user.profile.removePhoneBtn')"
                   @click="handleRemovePhone"
                 >
-                  <span class="material-symbols-outlined">delete</span>
+                  <BaseIcon name="delete" />
                 </button>
               </BaseTooltip>
             </div>
@@ -364,41 +366,43 @@ async function handleSignOut() {
           <!-- Inline remove-phone confirmation (verified only) -->
           <div v-if="showRemovePhoneConfirm" class="remove-phone-confirm">
             <p class="remove-phone-disclaimer">
-              <span class="material-symbols-outlined warn-icon">warning</span>
+              <BaseIcon name="warning" class="warn-icon" />
               {{ t('user.profile.removePhoneDisclaimer') }}
             </p>
             <p
               v-if="removePhoneRelationships?.hasFriendship && removePhoneRelationships?.hasPending"
               class="remove-phone-disclaimer"
             >
-              <span class="material-symbols-outlined warn-icon">warning</span>
+              <BaseIcon name="warning" class="warn-icon" />
               {{ t('user.profile.removePhoneBothWarning') }}
             </p>
             <p v-else-if="removePhoneRelationships?.hasFriendship" class="remove-phone-disclaimer">
-              <span class="material-symbols-outlined warn-icon">warning</span>
+              <BaseIcon name="warning" class="warn-icon" />
               {{ t('user.profile.removePhoneFriendshipWarning') }}
             </p>
             <p v-else-if="removePhoneRelationships?.hasPending" class="remove-phone-disclaimer">
-              <span class="material-symbols-outlined warn-icon">warning</span>
+              <BaseIcon name="warning" class="warn-icon" />
               {{ t('user.profile.removePhonePendingWarning') }}
             </p>
             <div class="remove-phone-actions">
-              <button
+              <BaseButton
                 type="button"
-                class="cancel-btn"
+                variant="secondary"
+                size="sm"
                 :disabled="isRemovingPhone"
                 @click="showRemovePhoneConfirm = false"
               >
                 {{ t('user.profile.removePhoneCancelBtn') }}
-              </button>
-              <button
+              </BaseButton>
+              <BaseButton
                 type="button"
-                class="remove-confirm-btn"
+                variant="danger"
+                size="sm"
                 :disabled="isRemovingPhone"
                 @click="executeDeletePhone"
               >
                 {{ t('user.profile.removePhoneConfirmBtn') }}
-              </button>
+              </BaseButton>
             </div>
           </div>
 
@@ -407,12 +411,12 @@ async function handleSignOut() {
           </p>
 
           <div v-if="!editAsPage" class="edit-actions">
-            <button type="button" class="cancel-btn" @click="cancelEdit">
+            <BaseButton type="button" variant="secondary" @click="cancelEdit">
               {{ t('user.shared.cancelBtn') }}
-            </button>
-            <button type="submit" class="save-btn" :disabled="isSaving">
+            </BaseButton>
+            <BaseButton type="submit" variant="primary" :disabled="isSaving">
               {{ isSaving ? t('user.shared.savingBtn') : t('user.shared.saveBtn') }}
-            </button>
+            </BaseButton>
           </div>
         </form>
       </template>
@@ -582,7 +586,7 @@ async function handleSignOut() {
   gap: var(--spacing-sm);
   padding: var(--spacing-md);
   border: 1px solid var(--color-outline-variant);
-  border-radius: 12px;
+  border-radius: var(--button-radius);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-medium);
   color: var(--color-on-surface);
@@ -599,7 +603,7 @@ async function handleSignOut() {
   gap: var(--spacing-sm);
   padding: var(--spacing-md);
   border: 1px solid var(--color-outline-variant);
-  border-radius: 12px;
+  border-radius: var(--button-radius);
   color: var(--color-error);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-medium);
@@ -658,42 +662,9 @@ async function handleSignOut() {
   gap: var(--spacing-sm);
 }
 
-.cancel-btn {
+/* Edit-actions cancel/save use shared BaseButton; fill the row like before. */
+.edit-actions :deep(.base-button) {
   flex: 1;
-  padding: var(--spacing-md);
-  border: 1px solid var(--color-outline-variant);
-  border-radius: 12px;
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface);
-  transition: background-color 0.2s;
-}
-
-.cancel-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.save-btn {
-  flex: 1;
-  padding: var(--spacing-md);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: 12px;
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  transition:
-    background-color 0.2s,
-    transform 0.15s;
-}
-
-.save-btn:hover:not(:disabled) {
-  background-color: var(--color-primary-dark);
-  transform: translateY(-1px);
-}
-
-.save-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .phone-input-row {
@@ -720,7 +691,7 @@ async function handleSignOut() {
   padding: 0 var(--spacing-md);
   border: 1.5px solid var(--color-error);
   border-radius: var(--radius-sm);
-  color: white;
+  color: var(--color-on-error);
   background-color: var(--color-error);
   transition: opacity 0.2s;
 }
@@ -769,23 +740,8 @@ async function handleSignOut() {
   gap: var(--spacing-sm);
 }
 
-.remove-confirm-btn {
+/* Remove-phone cancel/confirm use shared BaseButton; fill the row. */
+.remove-phone-actions :deep(.base-button) {
   flex: 1;
-  padding: var(--spacing-sm) var(--spacing-md);
-  background-color: var(--color-error);
-  color: white;
-  border-radius: 12px;
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  transition: opacity 0.2s;
-}
-
-.remove-phone-confirm .cancel-btn {
-  padding: var(--spacing-sm) var(--spacing-md);
-}
-
-.remove-confirm-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 </style>
