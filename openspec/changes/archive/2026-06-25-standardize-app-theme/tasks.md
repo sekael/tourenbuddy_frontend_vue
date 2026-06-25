@@ -43,6 +43,6 @@
 
 - [x] 6.1 Run `npm run test` (all pass) and `npm run type-check`
 - [x] 6.2 Run `npx eslint . --fix` and verify the diff stays minimal (no editor reformat noise); zero warnings
-- [ ] 6.3 Prompt the user to commit (atomic, per-phase/per-feature) with a ready-to-copy conventional commit message, e.g. `feat(theme): standardize two-tier design tokens and shared Button/Icon (#76)`
-- [ ] 6.4 Prompt the user to push and open a PR to `main`; confirm CI (lint, type-check, vitest) is green and check the preview deploy for visual regressions
-- [ ] 6.5 Prompt the user to archive this change with the openspec-archive skill
+- [x] 6.3 Prompt the user to commit (atomic, per-phase/per-feature) with a ready-to-copy conventional commit message, e.g. `feat(theme): standardize two-tier design tokens and shared Button/Icon (#76)`
+- [x] 6.4 Prompt the user to push and open a PR to `main`; confirm CI (lint, type-check, vitest) is green and check the preview deploy for visual regressions
+- [x] 6.5 Prompt the user to archive this change with the openspec-archive skill
