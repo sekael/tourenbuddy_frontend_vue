@@ -24,7 +24,10 @@
   --red-900: #7f1d1d;
 
   --green-600: #16a34a;
+  --green-700: #2e7d32;
   --amber-500: #f59e0b;
+  --orange-500: #f97316;
+  --red-700: #c62828;
 
   --white: #ffffff;
   --white-a25: rgba(255, 255, 255, 0.25);
@@ -43,11 +46,23 @@
   --radius-sm: 8px;
   --radius-md: 16px;
   --radius-lg: 24px;
+  --radius-pill: 9999px;
+  --radius-round: 50%;
+
+  /* Overlay/contrast colors */
+  --color-backdrop: rgba(15, 23, 42, 0.35);
+  --color-backdrop-strong: rgba(0, 0, 0, 0.6);
+  --color-on-contrast: var(--white);
+  --color-contrast-surface: rgba(255, 255, 255, 0.12);
+  --color-contrast-surface-hover: rgba(255, 255, 255, 0.22);
+  --color-contrast-outline: rgba(255, 255, 255, 0.55);
+  --color-contrast-outline-strong: rgba(255, 255, 255, 0.85);
 
   /* Layered shadows (slate-900 at low alpha) */
   --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.1);
   --shadow-md: 0 2px 4px rgba(15, 23, 42, 0.06), 0 4px 8px rgba(15, 23, 42, 0.1), 0 1px 2px rgba(15, 23, 42, 0.04);
   --shadow-lg: 0 4px 6px rgba(15, 23, 42, 0.05), 0 10px 20px rgba(15, 23, 42, 0.1), 0 2px 4px rgba(15, 23, 42, 0.04);
+  --shadow-control: 0 1px 2px rgba(0, 0, 0, 0.15);
 
   /* ===========================================================================
      SEMANTIC TIER — contextual aliases that reference primitives via var().
@@ -83,6 +98,9 @@
   --color-on-success: var(--white);
 
   --color-warning: var(--amber-500);
+  --color-friend: var(--orange-500);
+  --color-route-start: var(--green-700);
+  --color-route-end: var(--red-700);
 
   /* FAB surface — dark azure, clearly distinct from Swisstopo terrain */
   --color-fab-surface: var(--blue-900);
@@ -93,6 +111,7 @@
   /* --- Component sizing (consumed by shared Button/IconButton/Icon) --------- */
 
   /* Icon glyph sizes (md = current global default of 20px) */
+  --icon-size-xs: 16px;
   --icon-size-sm: 18px;
   --icon-size-md: 20px;
   --icon-size-lg: 24px;

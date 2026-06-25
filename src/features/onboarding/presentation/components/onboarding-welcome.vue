@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 
 // Pre-tour welcome screen. Shown once on auto-start (before the driver.js tour
@@ -23,15 +24,15 @@ const { t } = useI18n({ useScope: 'global' })
       </p>
 
       <div class="welcome-actions">
-        <button type="button" class="start-btn" @click="emit('start')">
+        <BaseButton size="md" class="start-btn" @click="emit('start')">
           {{ t('onboarding.tour.welcome.start') }}
-        </button>
-        <button type="button" class="skip-btn" @click="emit('skip')">
+        </BaseButton>
+        <BaseButton variant="secondary" size="md" class="skip-btn" @click="emit('skip')">
           {{ t('onboarding.tour.welcome.skip') }}
-        </button>
-        <button type="button" class="dismiss-btn" @click="emit('dismiss')">
+        </BaseButton>
+        <BaseButton variant="text" size="sm" class="dismiss-btn" @click="emit('dismiss')">
           {{ t('onboarding.tour.welcome.dismiss') }}
-        </button>
+        </BaseButton>
       </div>
     </div>
   </div>
@@ -66,7 +67,7 @@ const { t } = useI18n({ useScope: 'global' })
 @media (min-width: 600px) {
   .welcome-backdrop {
     padding: var(--spacing-lg);
-    background-color: rgba(0, 0, 0, 0.6);
+    background-color: var(--color-backdrop-strong);
   }
 
   .welcome-card {
@@ -79,8 +80,8 @@ const { t } = useI18n({ useScope: 'global' })
 }
 
 .welcome-icon {
-  font-size: 48px;
   color: var(--color-primary);
+  font-size: var(--icon-size-xl);
 }
 
 .welcome-title {
@@ -103,45 +104,9 @@ const { t } = useI18n({ useScope: 'global' })
   margin-top: var(--spacing-sm);
 }
 
-.start-btn {
-  padding: var(--spacing-md);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: 12px;
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  transition:
-    background-color 0.2s,
-    transform 0.15s;
-}
-
-.start-btn:hover {
-  background-color: var(--color-primary-dark);
-  transform: translateY(-1px);
-}
-
-.skip-btn {
-  padding: var(--spacing-md);
-  border: 1px solid var(--color-outline-variant);
-  border-radius: 12px;
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface);
-  transition: background-color 0.2s;
-}
-
-.skip-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
+.start-btn,
+.skip-btn,
 .dismiss-btn {
-  padding: var(--spacing-xs);
-  font-size: var(--font-size-sm);
-  color: var(--color-on-surface-variant);
-  transition: color 0.2s;
-}
-
-.dismiss-btn:hover {
-  color: var(--color-on-surface);
+  width: 100%;
 }
 </style>

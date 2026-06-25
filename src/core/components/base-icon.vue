@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-type IconSize = 'sm' | 'md' | 'lg' | 'xl'
+type IconSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 
 const props = defineProps<{
   /** Material Symbols ligature name, e.g. "close", "arrow_back". */
@@ -36,6 +36,10 @@ const weightStyle = computed(() =>
 <style scoped>
 .base-icon--sm {
   font-size: var(--icon-size-sm);
+}
+
+.base-icon--xs {
+  font-size: var(--icon-size-xs);
 }
 
 .base-icon--md {

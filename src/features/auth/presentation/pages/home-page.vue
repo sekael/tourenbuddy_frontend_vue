@@ -80,7 +80,7 @@ const { t } = useI18n({ useScope: 'global' })
 .title {
   font-size: var(--font-size-3xl);
   font-weight: var(--font-weight-medium);
-  color: #ffffff;
+  color: var(--color-on-contrast);
   letter-spacing: -0.02em;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }

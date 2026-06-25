@@ -453,7 +453,7 @@ async function handleSignOut() {
 .avatar {
   width: 48px;
   height: 48px;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   background-color: var(--color-primary);
   color: var(--color-on-primary);
   display: flex;
@@ -490,7 +490,7 @@ async function handleSignOut() {
 }
 
 .phone-icon {
-  font-size: 18px;
+  font-size: var(--icon-size-sm);
   color: var(--color-on-surface-variant);
 }
 
@@ -500,8 +500,8 @@ async function handleSignOut() {
 }
 
 .verified-icon {
-  font-size: 18px;
-  color: #1d4ed8;
+  font-size: var(--icon-size-sm);
+  color: var(--color-fab-surface-strong);
 }
 
 .verify-btn {
@@ -519,7 +519,7 @@ async function handleSignOut() {
 }
 
 .add-phone-btn .material-symbols-outlined {
-  font-size: 18px;
+  font-size: var(--icon-size-sm);
 }
 
 .add-phone-btn:hover {
@@ -706,7 +706,7 @@ async function handleSignOut() {
 }
 
 .remove-phone-btn .material-symbols-outlined {
-  font-size: 20px;
+  font-size: var(--icon-size-md);
 }
 
 .remove-phone-confirm {
@@ -729,7 +729,7 @@ async function handleSignOut() {
 }
 
 .remove-phone-disclaimer .warn-icon {
-  font-size: 18px;
+  font-size: var(--icon-size-sm);
   color: var(--color-error);
   flex-shrink: 0;
   margin-top: 2px;

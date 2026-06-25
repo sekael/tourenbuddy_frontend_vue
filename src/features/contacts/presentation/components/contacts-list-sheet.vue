@@ -670,7 +670,7 @@ function onFormPhoneInput(phone: string) {
 }
 
 .add-contact-btn .material-symbols-outlined {
-  font-size: 18px;
+  font-size: var(--icon-size-sm);
 }
 
 .friend-requests-btn {
@@ -696,7 +696,7 @@ function onFormPhoneInput(phone: string) {
 }
 
 .friend-requests-btn .material-symbols-outlined {
-  font-size: 18px;
+  font-size: var(--icon-size-sm);
 }
 
 .badge {
@@ -706,10 +706,10 @@ function onFormPhoneInput(phone: string) {
   min-width: 18px;
   height: 18px;
   padding: 0 4px;
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
   background-color: var(--color-primary);
   color: var(--color-on-primary);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
 }
 
@@ -769,7 +769,7 @@ function onFormPhoneInput(phone: string) {
 .contact-avatar {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   background-color: color-mix(in srgb, var(--color-primary) 16%, transparent);
   color: var(--color-primary);
   font-size: var(--font-size-base);
@@ -803,13 +803,13 @@ function onFormPhoneInput(phone: string) {
 }
 
 .friend-icon {
-  font-size: 16px;
-  color: #f97316;
+  font-size: var(--icon-size-xs);
+  color: var(--color-friend);
   flex-shrink: 0;
 }
 
 .blocked-icon {
-  font-size: 16px;
+  font-size: var(--icon-size-sm);
   color: var(--color-error);
   flex-shrink: 0;
 }
@@ -823,7 +823,7 @@ function onFormPhoneInput(phone: string) {
 }
 
 .row-arrow {
-  font-size: 20px;
+  font-size: var(--icon-size-md);
   color: var(--color-outline-variant);
   flex-shrink: 0;
 }
@@ -873,7 +873,7 @@ function onFormPhoneInput(phone: string) {
 }
 
 .import-btn .material-symbols-outlined {
-  font-size: 18px;
+  font-size: var(--icon-size-sm);
 }
 
 .file-input-hidden {
@@ -951,7 +951,7 @@ function onFormPhoneInput(phone: string) {
 }
 
 .star-icon-sm {
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   color: var(--color-primary);
   font-variation-settings: 'FILL' 1;
 }
@@ -963,7 +963,7 @@ function onFormPhoneInput(phone: string) {
 .result-badge {
   flex-shrink: 0;
   padding: 2px var(--spacing-sm);
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
   font-size: var(--font-size-xs, 11px);
   font-weight: var(--font-weight-medium);
 }
@@ -1005,7 +1005,7 @@ function onFormPhoneInput(phone: string) {
 }
 
 .add-manual-link .material-symbols-outlined {
-  font-size: 16px;
+  font-size: var(--icon-size-xs);
 }
 
 /* Done uses the shared primary BaseButton. */

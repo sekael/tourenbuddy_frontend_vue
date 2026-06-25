@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import BaseIcon from '@/core/components/base-icon.vue'
+import BaseButton from '@/core/components/base-button.vue'
+import BaseIconButton from '@/core/components/base-icon-button.vue'
 
 defineProps<{
   /** Short label for the current step (e.g. "Verify phone number"). */
@@ -25,31 +26,29 @@ const { t } = useI18n({ useScope: 'global' })
     <span class="step-title">{{ title }}</span>
 
     <div class="controls">
-      <button type="button" class="finish-btn" @click="emit('finish')">
+      <BaseButton variant="secondary" size="sm" class="finish-btn" @click="emit('finish')">
         {{ t('onboarding.tour.controls.finish') }}
-      </button>
+      </BaseButton>
 
       <span class="progress" aria-live="polite">{{ current }} / {{ total }}</span>
 
       <div class="nav">
-        <button
-          type="button"
+        <BaseIconButton
+          name="arrow_back"
+          :label="t('onboarding.tour.controls.previous')"
+          size="sm"
           class="nav-btn"
           :disabled="!canBack || busy"
-          :aria-label="t('onboarding.tour.controls.previous')"
           @click="emit('back')"
-        >
-          <BaseIcon name="arrow_back" />
-        </button>
-        <button
-          type="button"
+        />
+        <BaseIconButton
+          name="arrow_forward"
+          :label="t('onboarding.tour.controls.next')"
+          size="sm"
           class="nav-btn"
           :disabled="busy"
-          :aria-label="t('onboarding.tour.controls.next')"
           @click="emit('next')"
-        >
-          <BaseIcon name="arrow_forward" />
-        </button>
+        />
       </div>
     </div>
   </div>
@@ -85,7 +84,7 @@ const { t } = useI18n({ useScope: 'global' })
      capped to the viewport on narrow screens. */
   width: min(24rem, calc(100vw - 2 * var(--spacing-md)));
   padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
   background-color: var(--color-fab-surface);
   border: 1px solid var(--color-fab-border);
   box-shadow: var(--shadow-lg);
@@ -100,20 +99,13 @@ const { t } = useI18n({ useScope: 'global' })
 }
 
 .finish-btn {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border: 1px solid rgba(255, 255, 255, 0.55);
-  border-radius: 18px;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
+  border-color: var(--color-contrast-outline);
   color: var(--color-fab-on-surface);
-  transition:
-    background-color 0.15s,
-    border-color 0.15s;
 }
 
 .finish-btn:hover {
-  background-color: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.85);
+  background-color: var(--color-contrast-surface);
+  border-color: var(--color-contrast-outline-strong);
 }
 
 .step-title {
@@ -142,16 +134,7 @@ const { t } = useI18n({ useScope: 'global' })
 }
 
 .nav-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   color: var(--color-fab-on-surface);
-  transition:
-    background-color 0.15s,
-    opacity 0.15s;
 }
 
 .nav-btn:hover:not(:disabled) {
@@ -161,10 +144,6 @@ const { t } = useI18n({ useScope: 'global' })
 .nav-btn:disabled {
   opacity: 0.35;
   cursor: default;
-}
-
-.nav-btn .material-symbols-outlined {
-  font-size: 22px;
 }
 
 /* Slide/fade in from the top (Transition name="tour-slide" in map-page). */

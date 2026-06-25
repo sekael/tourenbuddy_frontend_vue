@@ -857,7 +857,7 @@ defineExpose({ cancel: handleCancel })
 
 .scroll-body::-webkit-scrollbar-thumb {
   background-color: var(--color-outline-variant);
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
 }
 
 /* Sections */
@@ -1034,11 +1034,11 @@ defineExpose({ cancel: handleCancel })
 }
 
 .point-section--start {
-  border-left-color: #2e7d32;
+  border-left-color: var(--color-route-start);
 }
 
 .point-section--end {
-  border-left-color: #c62828;
+  border-left-color: var(--color-route-end);
 }
 
 .point-section-header {
@@ -1060,11 +1060,11 @@ defineExpose({ cancel: handleCancel })
 }
 
 .point-section--start .point-section-icon {
-  color: #2e7d32;
+  color: var(--color-route-start);
 }
 
 .point-section--end .point-section-icon {
-  color: #c62828;
+  color: var(--color-route-end);
 }
 
 .point-section-title {
@@ -1110,7 +1110,7 @@ defineExpose({ cancel: handleCancel })
 }
 
 .pick-btn .material-symbols-outlined {
-  font-size: 16px;
+  font-size: var(--icon-size-xs);
 }
 
 .remove-point-btn {
@@ -1119,7 +1119,7 @@ defineExpose({ cancel: handleCancel })
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   color: var(--color-outline);
   flex-shrink: 0;
 }
@@ -1130,7 +1130,7 @@ defineExpose({ cancel: handleCancel })
 }
 
 .remove-point-btn .material-symbols-outlined {
-  font-size: 16px;
+  font-size: var(--icon-size-xs);
 }
 
 /* GPX */
@@ -1175,7 +1175,7 @@ defineExpose({ cancel: handleCancel })
 }
 
 .gpx-icon-btn .material-symbols-outlined {
-  font-size: 20px;
+  font-size: var(--icon-size-md);
 }
 
 .gpx-remove-btn:hover {
@@ -1200,7 +1200,7 @@ defineExpose({ cancel: handleCancel })
 }
 
 .gpx-ok-icon {
-  font-size: 16px;
+  font-size: var(--font-size-base);
   color: var(--color-primary);
 }
 
@@ -1210,7 +1210,7 @@ defineExpose({ cancel: handleCancel })
   height: 16px;
   border: 2px solid var(--color-outline-variant);
   border-top-color: var(--color-primary);
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   animation: gpx-spin 0.7s linear infinite;
   flex-shrink: 0;
 }

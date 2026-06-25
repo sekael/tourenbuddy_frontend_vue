@@ -889,7 +889,7 @@ defineExpose({
 .back-btn {
   width: 32px;
   height: 32px;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -922,12 +922,12 @@ defineExpose({
 }
 
 .detail-friend-icon {
-  font-size: 20px;
-  color: #f97316;
+  font-size: var(--icon-size-md);
+  color: var(--color-friend);
 }
 
 .detail-blocked-icon {
-  font-size: 20px;
+  font-size: var(--icon-size-md);
   color: var(--color-error);
 }
 
@@ -1047,7 +1047,7 @@ defineExpose({
 .primary-star {
   width: 28px;
   height: 28px;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1058,7 +1058,7 @@ defineExpose({
 }
 
 .primary-star .material-symbols-outlined {
-  font-size: 18px;
+  font-size: var(--icon-size-sm);
   font-variation-settings: 'FILL' 0;
 }
 
@@ -1077,7 +1077,7 @@ button.primary-star:hover {
 .method-type-badge {
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   background-color: var(--color-surface-variant);
   display: flex;
   align-items: center;
@@ -1087,7 +1087,7 @@ button.primary-star:hover {
 }
 
 .method-type-badge .material-symbols-outlined {
-  font-size: 18px;
+  font-size: var(--icon-size-sm);
   color: var(--color-on-surface-variant);
 }
 
@@ -1109,7 +1109,7 @@ button.primary-star:hover {
 .icon-btn {
   width: 32px;
   height: 32px;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1127,7 +1127,7 @@ button.primary-star:hover {
 }
 
 .icon-btn .material-symbols-outlined {
-  font-size: 18px;
+  font-size: var(--icon-size-sm);
 }
 
 .method-delete-confirm {
@@ -1159,7 +1159,7 @@ button.primary-star:hover {
 }
 
 .add-method-btn .material-symbols-outlined {
-  font-size: 18px;
+  font-size: var(--icon-size-sm);
 }
 
 .add-method-form {
@@ -1189,7 +1189,7 @@ button.primary-star:hover {
 }
 
 .type-btn .material-symbols-outlined {
-  font-size: 16px;
+  font-size: var(--icon-size-xs);
 }
 
 .type-btn--active {
@@ -1232,7 +1232,7 @@ button.primary-star:hover {
 }
 
 .block-btn .material-symbols-outlined {
-  font-size: 18px;
+  font-size: var(--icon-size-sm);
 }
 
 .section--danger {
@@ -1263,7 +1263,7 @@ button.primary-star:hover {
 }
 
 .delete-btn .material-symbols-outlined {
-  font-size: 18px;
+  font-size: var(--icon-size-sm);
 }
 
 .delete-confirm-text {
@@ -1281,7 +1281,7 @@ button.primary-star:hover {
 }
 
 .delete-friend-warning .warn-icon {
-  font-size: 16px;
+  font-size: var(--icon-size-xs);
   flex-shrink: 0;
   margin-top: 1px;
   color: var(--color-warning);
