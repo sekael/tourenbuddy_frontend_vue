@@ -104,9 +104,9 @@ async function handleResend() {
         </BaseButton>
       </form>
 
-      <button class="resend-btn" :disabled="isResending" @click="handleResend">
+      <BaseButton variant="text" :disabled="isResending" @click="handleResend">
         {{ isResending ? t('auth.shared.sendingBtn') : t('auth.verifyOtp.resendBtn') }}
-      </button>
+      </BaseButton>
     </div>
   </div>
 </template>
@@ -195,16 +195,5 @@ async function handleResend() {
 .success-text {
   color: var(--color-success);
   font-size: var(--font-size-sm);
-}
-
-.resend-btn {
-  text-align: center;
-  color: var(--color-primary);
-  font-size: var(--font-size-sm);
-  padding: var(--spacing-xs);
-}
-
-.resend-btn:disabled {
-  opacity: 0.6;
 }
 </style>

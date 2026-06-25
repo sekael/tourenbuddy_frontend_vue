@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import BaseIcon from '@/core/components/base-icon.vue'
+import BaseIconButton from '@/core/components/base-icon-button.vue'
 import { useLogger } from '@/core/logging/use-logger'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { TourLinksRepositoryImpl } from '@/features/tour-links/data/repositories/tour-links-repository-impl'
@@ -133,11 +133,14 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="page">
+  <div class="page" :class="{ 'page--standalone': !isAllMode }">
     <header class="page-header">
-      <button type="button" class="back-btn" @click="handleBack">
-        <BaseIcon name="arrow_back" />
-      </button>
+      <BaseIconButton
+        name="arrow_back"
+        :label="t('core.drawer.back')"
+        size="sm"
+        @click="handleBack"
+      />
       <h1>{{ t('tourLinks.backfillPageTitle') }}</h1>
     </header>
 
@@ -198,6 +201,14 @@ onMounted(() => {
 
 <style scoped>
 .page {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ponytail: 'all' mode is always sheet-embedded (sheet pads its slot), so the
+   page adds none. Only the friendship-mode deeplink renders standalone and
+   needs its own padding. Revisit if 'all' ever gets a standalone route. */
+.page--standalone {
   padding: var(--spacing-md);
   max-width: 640px;
   margin: 0 auto;
@@ -206,26 +217,21 @@ onMounted(() => {
 .page-header {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-md);
-}
-
-.back-btn {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  padding: var(--spacing-xs);
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-sm);
 }
 
 h1 {
-  font-size: var(--font-size-lg);
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
   margin: 0;
 }
 
 .state {
-  padding: var(--spacing-lg) 0;
-  text-align: center;
+  padding: var(--spacing-md) 0;
   color: var(--color-on-surface-variant);
 }
 
