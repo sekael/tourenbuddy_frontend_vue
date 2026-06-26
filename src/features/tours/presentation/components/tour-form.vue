@@ -516,9 +516,10 @@ defineExpose({ cancel: handleCancel })
               </BaseButton>
               <BaseIconButton
                 v-if="startPoint"
-                name="close"
+                name="delete"
                 :label="t('tours.form.removeStartBtn')"
                 size="sm"
+                tone="danger"
                 data-testid="remove-start-btn"
                 @click="handleRemoveStart"
               />
@@ -568,10 +569,11 @@ defineExpose({ cancel: handleCancel })
                   {{ t('tours.form.changeGoalBtn') }}
                 </BaseButton>
                 <BaseIconButton
-                  name="close"
+                  name="delete"
                   :label="t('tours.form.removeEndBtn')"
                   size="sm"
                   data-testid="remove-end-btn"
+                  tone="danger"
                   @click="handleRemoveEnd"
                 />
               </div>

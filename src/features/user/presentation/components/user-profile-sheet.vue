@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import BaseButton from '@/core/components/base-button.vue'
+import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
@@ -350,40 +351,41 @@ async function handleSignOut() {
                 @input="onEditPhoneInput"
               >
               <BaseTooltip v-if="full?.phoneNumber" :text="t('user.profile.removePhoneBtn')">
-                <button
-                  type="button"
-                  class="remove-phone-btn"
+                <BaseIconButton
+                  name="delete"
+                  :label="t('user.profile.removePhoneBtn')"
+                  data-testid="remove-phone-btn"
+                  shape="square"
+                  tone="danger"
                   :disabled="isRemovingPhone || showRemovePhoneConfirm"
-                  :aria-label="t('user.profile.removePhoneBtn')"
                   @click="handleRemovePhone"
-                >
-                  <BaseIcon name="delete" />
-                </button>
+                />
               </BaseTooltip>
             </div>
           </div>
 
           <!-- Inline remove-phone confirmation (verified only) -->
           <div v-if="showRemovePhoneConfirm" class="remove-phone-confirm">
-            <p class="remove-phone-disclaimer">
+            <div class="remove-phone-warning">
               <BaseIcon name="warning" class="warn-icon" />
-              {{ t('user.profile.removePhoneDisclaimer') }}
-            </p>
-            <p
-              v-if="removePhoneRelationships?.hasFriendship && removePhoneRelationships?.hasPending"
-              class="remove-phone-disclaimer"
-            >
-              <BaseIcon name="warning" class="warn-icon" />
-              {{ t('user.profile.removePhoneBothWarning') }}
-            </p>
-            <p v-else-if="removePhoneRelationships?.hasFriendship" class="remove-phone-disclaimer">
-              <BaseIcon name="warning" class="warn-icon" />
-              {{ t('user.profile.removePhoneFriendshipWarning') }}
-            </p>
-            <p v-else-if="removePhoneRelationships?.hasPending" class="remove-phone-disclaimer">
-              <BaseIcon name="warning" class="warn-icon" />
-              {{ t('user.profile.removePhonePendingWarning') }}
-            </p>
+              <div class="remove-phone-disclaimers">
+                <p class="remove-phone-disclaimer">
+                  {{ t('user.profile.removePhoneDisclaimer') }}
+                </p>
+                <p
+                  v-if="removePhoneRelationships?.hasFriendship && removePhoneRelationships?.hasPending"
+                  class="remove-phone-disclaimer"
+                >
+                  {{ t('user.profile.removePhoneBothWarning') }}
+                </p>
+                <p v-else-if="removePhoneRelationships?.hasFriendship" class="remove-phone-disclaimer">
+                  {{ t('user.profile.removePhoneFriendshipWarning') }}
+                </p>
+                <p v-else-if="removePhoneRelationships?.hasPending" class="remove-phone-disclaimer">
+                  {{ t('user.profile.removePhonePendingWarning') }}
+                </p>
+              </div>
+            </div>
             <div class="remove-phone-actions">
               <BaseButton
                 type="button"
@@ -669,44 +671,13 @@ async function handleSignOut() {
 
 .phone-input-row {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   gap: var(--spacing-sm);
 }
 
 .phone-input-row .input {
   flex: 1;
   min-width: 0;
-}
-
-.phone-input-row :deep(.tooltip-wrapper) {
-  align-self: stretch;
-}
-
-.remove-phone-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  height: 100%;
-  padding: 0 var(--spacing-md);
-  border: 1.5px solid var(--color-error);
-  border-radius: var(--radius-sm);
-  color: var(--color-on-error);
-  background-color: var(--color-error);
-  transition: opacity 0.2s;
-}
-
-.remove-phone-btn:hover:not(:disabled) {
-  opacity: 0.85;
-}
-
-.remove-phone-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.remove-phone-btn .material-symbols-outlined {
-  font-size: var(--icon-size-md);
 }
 
 .remove-phone-confirm {
@@ -719,20 +690,30 @@ async function handleSignOut() {
   background-color: var(--color-error-container);
 }
 
-.remove-phone-disclaimer {
+.remove-phone-warning {
   display: flex;
   align-items: flex-start;
   gap: var(--spacing-xs);
-  font-size: var(--font-size-sm);
-  color: var(--color-on-surface);
-  line-height: 1.5;
 }
 
-.remove-phone-disclaimer .warn-icon {
+.remove-phone-warning .warn-icon {
   font-size: var(--icon-size-sm);
   color: var(--color-error);
   flex-shrink: 0;
   margin-top: 2px;
+}
+
+/* Disclaimer lines stack in the column beside the icon, sharing one indent. */
+.remove-phone-disclaimers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.remove-phone-disclaimer {
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface);
+  line-height: 1.5;
 }
 
 .remove-phone-actions {

@@ -227,7 +227,7 @@ describe('userProfileSheet', () => {
       }
       const wrapper = mount(UserProfileSheet)
       await wrapper.find('.edit-btn').trigger('click')
-      await wrapper.find('.remove-phone-btn').trigger('click')
+      await wrapper.find('[data-testid="remove-phone-btn"]').trigger('click')
       await wrapper.vm.$nextTick()
       expect(wrapper.find('.remove-phone-confirm').exists()).toBe(true)
       expect(wrapper.text()).toContain('user.profile.removePhoneDisclaimer')
@@ -242,7 +242,7 @@ describe('userProfileSheet', () => {
       }
       const wrapper = mount(UserProfileSheet)
       await wrapper.find('.edit-btn').trigger('click')
-      await wrapper.find('.remove-phone-btn').trigger('click')
+      await wrapper.find('[data-testid="remove-phone-btn"]').trigger('click')
       await vi.waitFor(() => expect(mockDeletePhone).toHaveBeenCalled())
       expect(wrapper.text()).not.toContain('user.profile.removePhoneDisclaimer')
     })
