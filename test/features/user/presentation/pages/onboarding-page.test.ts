@@ -135,7 +135,7 @@ describe('onboardingPage', () => {
 
   it('should call skipOnboarding and navigate to map when skip is clicked', async () => {
     const wrapper = mount(OnboardingPage)
-    await wrapper.find('.skip-btn').trigger('click')
+    await wrapper.find('[data-testid="skip-btn"]').trigger('click')
     expect(mockSkipOnboarding).toHaveBeenCalled()
     expect(mockPush).toHaveBeenCalledWith({ name: 'map' })
   })

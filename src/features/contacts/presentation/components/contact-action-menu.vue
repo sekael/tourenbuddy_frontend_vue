@@ -2,6 +2,7 @@
 import type { Contact } from '@/features/contacts/domain/entities/contact'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
@@ -71,9 +72,7 @@ onUnmounted(() => {
       >
         <div class="popover-header">
           <span class="popover-name">{{ contactName }}</span>
-          <button type="button" class="close-btn" aria-label="Close" @click="emit('close')">
-            <BaseIcon name="close" />
-          </button>
+          <BaseIconButton name="close" label="Close" size="sm" @click="emit('close')" />
         </div>
 
         <div class="menu-body">
@@ -204,26 +203,6 @@ onUnmounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.close-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-on-surface-variant);
-  flex-shrink: 0;
-  transition: background-color 0.15s;
-}
-
-.close-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.close-btn .material-symbols-outlined {
-  font-size: 18px;
 }
 
 /* ── Shared menu body ── */

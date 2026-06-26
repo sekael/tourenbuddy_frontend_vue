@@ -200,9 +200,9 @@ function handleNoticeClose() {
         </BaseButton>
       </form>
 
-      <button class="skip-btn" @click="handleSkip">
+      <BaseButton variant="text" size="sm" data-testid="skip-btn" @click="handleSkip">
         {{ t('user.onboarding.skipBtn') }}
-      </button>
+      </BaseButton>
     </div>
 
     <PhoneVerificationNotice
@@ -300,16 +300,5 @@ function handleNoticeClose() {
 .error-text {
   color: var(--color-error);
   font-size: var(--font-size-sm);
-}
-
-.skip-btn {
-  text-align: center;
-  color: var(--color-on-surface-variant);
-  font-size: var(--font-size-sm);
-  padding: var(--spacing-xs);
-}
-
-.skip-btn:hover {
-  color: var(--color-on-surface);
 }
 </style>

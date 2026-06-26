@@ -45,9 +45,9 @@ function handleDismiss() {
           {{ t('core.pwa.banner.message') }}
         </p>
         <div class="actions">
-          <button class="dismiss-btn" @click="handleDismiss">
+          <BaseButton variant="text" size="sm" @click="handleDismiss">
             {{ t('core.pwa.banner.dismiss') }}
-          </button>
+          </BaseButton>
           <BaseButton variant="primary" size="sm" @click="handleInstall">
             {{ t('core.pwa.banner.install') }}
           </BaseButton>
@@ -90,12 +90,6 @@ function handleDismiss() {
   display: flex;
   gap: var(--spacing-md);
   flex-shrink: 0;
-}
-
-.dismiss-btn {
-  padding: var(--spacing-xs) var(--spacing-md);
-  color: var(--color-on-surface-variant);
-  font-size: var(--font-size-sm);
 }
 
 .banner-enter-active,

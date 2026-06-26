@@ -781,10 +781,10 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           <BaseTooltip :text="t('tours.infoSheet.iconTooltipGpxTrack')">
             <BaseIcon name="route" class="detail-icon" />
           </BaseTooltip>
-          <button type="button" class="gpx-download-btn" @click="handleDownloadGpx">
+          <BaseButton variant="secondary" size="sm" class="gpx-download-btn" @click="handleDownloadGpx">
             <BaseIcon name="download" />
             {{ t('tours.infoSheet.downloadGpxBtn') }}
-          </button>
+          </BaseButton>
         </div>
 
         <!-- Attachments strip -->
@@ -802,13 +802,13 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
                 mode="action" @open="openContactMenu"
               />
             </div>
-            <button
-              v-if="partners.length > 1" type="button" class="group-sms-btn" data-testid="group-sms-btn"
-              @click="showGroupSmsDialog = true"
+            <BaseButton
+              v-if="partners.length > 1" variant="secondary" size="sm" class="group-sms-btn"
+              data-testid="group-sms-btn" @click="showGroupSmsDialog = true"
             >
               <BaseIcon name="sms" />
               {{ t('tours.infoSheet.messageAll') }}
-            </button>
+            </BaseButton>
           </div>
         </div>
 
@@ -1081,26 +1081,9 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   word-break: break-word;
 }
 
+/* BaseButton (secondary) provides the look; keep the 44px touch target. */
 .gpx-download-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-md);
-  border: 1.5px solid var(--color-outline-variant);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
   min-height: 44px;
-  transition: background-color 0.15s;
-}
-
-.gpx-download-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.gpx-download-btn .material-symbols-outlined {
-  font-size: 16px;
 }
 
 .partner-chips-section {
@@ -1130,26 +1113,9 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   font-style: italic;
 }
 
+/* BaseButton (secondary) provides the look; only layout lives here. */
 .group-sms-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-md);
-  border: 1.5px solid var(--color-outline-variant);
-  color: var(--color-on-surface-variant);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
   align-self: flex-start;
-  transition: background-color 0.15s;
-}
-
-.group-sms-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.group-sms-btn .material-symbols-outlined {
-  font-size: 18px;
 }
 
 /* ── Edit mode ──────────────────────────────────────────────────────────────── */

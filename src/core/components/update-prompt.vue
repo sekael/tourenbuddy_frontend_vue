@@ -15,9 +15,9 @@ const { needRefresh, accept, dismiss } = usePwaUpdate()
           {{ t('core.pwa.update.message') }}
         </p>
         <div class="actions">
-          <button class="dismiss-btn" @click="dismiss">
+          <BaseButton variant="text" size="sm" @click="dismiss">
             {{ t('core.pwa.update.dismiss') }}
-          </button>
+          </BaseButton>
           <BaseButton variant="primary" size="sm" @click="accept">
             {{ t('core.pwa.update.action') }}
           </BaseButton>
@@ -60,12 +60,6 @@ const { needRefresh, accept, dismiss } = usePwaUpdate()
   display: flex;
   gap: var(--spacing-md);
   flex-shrink: 0;
-}
-
-.dismiss-btn {
-  padding: var(--spacing-xs) var(--spacing-md);
-  color: var(--color-on-surface-variant);
-  font-size: var(--font-size-sm);
 }
 
 .banner-enter-active,

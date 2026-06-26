@@ -175,7 +175,7 @@ function handleBackdropClick() {
 
 .dialog-content::-webkit-scrollbar-thumb {
   background-color: var(--color-outline-variant);
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
 }
 
 .dialog-card--collapsed .dialog-content {

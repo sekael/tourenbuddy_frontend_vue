@@ -11,7 +11,7 @@ const props = withDefaults(defineProps<{
 // Runtime whitelist is the source of truth; the prop types are derived from it,
 // so the two can never drift. Typed props are erased at runtime, so the
 // component still guards against invalid values that slip through as plain JS.
-const BUTTON_VARIANTS = ['primary', 'secondary', 'danger', 'danger-outline', 'text'] as const
+const BUTTON_VARIANTS = ['primary', 'primary-outline', 'secondary', 'danger', 'danger-outline', 'text'] as const
 const BUTTON_SIZES = ['sm', 'md', 'lg'] as const
 
 type ButtonVariant = typeof BUTTON_VARIANTS[number]
@@ -61,6 +61,16 @@ const buttonClasses = computed(() => [`base-button--${variant.value}`, `base-but
 
 .base-button--primary:hover:not(:disabled) {
   transform: scale(1.02);
+}
+
+.base-button--primary-outline {
+  background-color: transparent;
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.base-button--primary-outline:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-primary) 8%, transparent);
 }
 
 .base-button--secondary {

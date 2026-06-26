@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import { useI18n } from 'vue-i18n'
+import BaseButton from '@/core/components/base-button.vue'
 import Crosshair from '@/core/components/crosshair.vue'
 
 const props = defineProps<{
@@ -49,12 +50,16 @@ function handleConfirm() {
       class="actions"
       :style="props.actionsBottom != null ? { bottom: `${props.actionsBottom}px` } : undefined"
     >
-      <button class="cancel-btn" @click="emit('cancel')">
+      <!-- Cancel is a map-overlay exception (see DESIGN.md): a translucent glass
+           surface so it stays legible over busy tiles. BaseButton's secondary
+           ghost is transparent and would vanish over the map. Continue uses
+           BaseButton primary — solid fill reads fine. -->
+      <button type="button" class="cancel-btn" @click="emit('cancel')">
         {{ t('tours.picker.cancelBtn') }}
       </button>
-      <button class="confirm-btn" @click="handleConfirm">
+      <BaseButton variant="primary" data-testid="picker-confirm" @click="handleConfirm">
         {{ t('tours.picker.confirmBtn') }}
-      </button>
+      </BaseButton>
     </div>
   </div>
 </template>
@@ -80,38 +85,23 @@ function handleConfirm() {
 }
 
 .cancel-btn {
-  padding: var(--spacing-md) var(--spacing-xl);
+  /* Geometry/typography mirror BaseButton md so the pair matches; the glass
+     surface + blur + shadow are the overlay-specific part (rgba literals are an
+     intentional overlay exception — no light-glass token exists). */
+  padding: var(--button-padding-md);
+  border-radius: var(--button-radius);
+  font-size: var(--button-font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-on-surface);
   background-color: rgba(248, 250, 252, 0.85);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(203, 213, 225, 0.6);
-  color: var(--color-on-surface);
-  border-radius: var(--button-radius);
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-medium);
   box-shadow: var(--shadow-sm);
   transition: background-color 0.2s;
 }
 
 .cancel-btn:hover {
   background-color: rgba(226, 232, 240, 0.9);
-}
-
-.confirm-btn {
-  padding: var(--spacing-md) var(--spacing-xl);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: var(--button-radius);
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  box-shadow: var(--shadow-md);
-  transition:
-    background-color 0.2s,
-    transform 0.15s;
-}
-
-.confirm-btn:hover {
-  background-color: var(--color-primary-dark);
-  transform: translateY(-1px);
 }
 </style>

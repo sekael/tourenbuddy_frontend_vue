@@ -143,19 +143,19 @@ describe('tourListSheet', () => {
   describe('header add-tour button', () => {
     it('should render the header add-tour button when authenticated', () => {
       const wrapper = mountSheet({ isAuthenticated: true })
-      expect(wrapper.find('.header-add-btn').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="header-add-tour"]').exists()).toBe(true)
     })
 
     it('should render header button enabled when authenticated (click enabled = can emit)', () => {
       const wrapper = mountSheet({ isAuthenticated: true })
-      const btn = wrapper.find('.header-add-btn')
+      const btn = wrapper.find('[data-testid="header-add-tour"]')
       expect(btn.exists()).toBe(true)
       expect(btn.attributes('disabled')).toBeUndefined()
     })
 
     it('should render header button disabled when unauthenticated', () => {
       const wrapper = mountSheet({ isAuthenticated: false })
-      expect(wrapper.find('.header-add-btn').attributes('disabled')).toBeDefined()
+      expect(wrapper.find('[data-testid="header-add-tour"]').attributes('disabled')).toBeDefined()
     })
   })
 

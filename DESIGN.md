@@ -99,6 +99,23 @@ make it full-width at the call site (a flex/grid parent that stretches it, or a
 - No hardcoded hex / `font-size` / `border-radius` literals where a token
   exists — reference `var(--*)`.
 
+### Documented exceptions
+
+Some controls stay bespoke by **role**, not oversight. These are exempt from the
+`Button`/`IconButton` rule (see `design-system` spec for the canonical list):
+
+- **Map overlays** — speed dial (`map-speed-dial-menu`), `base-map-picker`,
+  `map-base-map-panel`, and the `round-action-button` FAB. Glassmorphism overlay
+  tokens (`--color-fab-*`, blur), not the on-surface button palette.
+- **`tour-action-bar`** — segmented pill overlay with its own spec.
+- **Fullscreen media viewer** (`tour-attachment-viewer`) — white-on-scrim
+  controls over dark media; overlay-specific contrast, not on-surface tokens.
+- **Selector/toggle controls** (e.g. the star in `contact-detail-view`) — state
+  selectors, not action buttons.
+- **`error-snackbar` dismiss** — sits on the snackbar's own colored surface.
+
+Anything not on this list uses the shared components.
+
 ### Not componentized yet — tabs & segmented toggles
 
 Tabs (`friend-requests-sheet`) and segmented toggles each have a **single**

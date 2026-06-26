@@ -204,7 +204,7 @@ const completionOptions = [
 
 .chip {
   padding: var(--spacing-xxs) var(--spacing-sm);
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
   border: 1.5px solid var(--color-outline-variant);
   font-size: var(--font-size-sm);
   color: var(--color-on-surface-variant);

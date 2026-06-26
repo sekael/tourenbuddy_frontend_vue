@@ -239,3 +239,23 @@ The system SHALL provide a shared `IconButton` component for inline icon-only bu
 
 - **WHEN** an `IconButton` is `disabled`
 - **THEN** it does not emit a click
+
+### Requirement: Documented exceptions to shared button components
+
+The shared `Button` and `IconButton` components are the default for interactive controls. The system SHALL nonetheless permit the following controls to remain bespoke because they fill a **role** the shared components do not model. Each exception below is intentional and SHALL be treated as conformant; controls NOT listed here SHALL use the shared components.
+
+- **Map overlay controls** — the speed-dial menu (`map-speed-dial-menu`, `speed-dial-*`), base-map picker (`base-map-picker`), and base-map panel (`map-base-map-panel`). Like `round-action-button`, these are floating map overlays styled with the glassmorphism surface tokens (`--color-fab-*`, backdrop blur) rather than the on-surface `Button`/`IconButton` palette. They differ by role, not by accident.
+- **Persistent tour action bar** — `tour-action-bar` is a segmented pill overlay defined by its own capability spec (see `tour-action-bar`); it is not a `Button`/`IconButton` consumer.
+- **Fullscreen media viewer controls** — the icon controls and white-on-scrim colors in `tour-attachment-viewer` sit over arbitrary dark media and require overlay-specific contrast rather than the on-surface token palette.
+- **Selector / toggle controls** — controls whose role is selection state rather than a discrete action (e.g. the favourite/star toggle in `contact-detail-view`) MAY remain bespoke; they are not action buttons.
+- **Snackbar inline dismiss** — `error-snackbar`'s dismiss is rendered against the snackbar's own colored surface and stays bespoke.
+
+#### Scenario: Map overlay control stays bespoke
+
+- **WHEN** a floating map overlay control (speed dial, base-map picker/panel) is rendered
+- **THEN** it uses glassmorphism overlay tokens and is exempt from the `Button`/`IconButton` requirement
+
+#### Scenario: New control defaults to a shared component
+
+- **WHEN** a new interactive control is added that is not a documented exception above
+- **THEN** it uses `Button` (with a text label) or `IconButton` (icon-only)

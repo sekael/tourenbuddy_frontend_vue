@@ -52,7 +52,7 @@ function handleClick(event: MouseEvent) {
   align-items: center;
   gap: var(--spacing-xs);
   padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
   border: 1.5px solid var(--color-outline-variant);
   background-color: transparent;
   color: var(--color-on-surface);

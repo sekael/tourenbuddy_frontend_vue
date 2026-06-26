@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
+import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import { useSnackbar } from '@/core/composables/use-snackbar'
 import { formatPhoneForDisplay } from '@/core/utils/phone-normalize'
@@ -249,22 +250,26 @@ async function handleCancel(requestId: string) {
                       {{ t('friendships.acceptWarning') }}
                     </p>
                     <div class="confirm-actions">
-                      <button
-                        type="button"
-                        class="action-btn action-btn--cancel"
+                      <BaseButton
+                        variant="secondary"
+                        size="sm"
+                        class="action-btn"
+                        data-testid="req-confirm-cancel"
                         :disabled="isAccepting"
                         @click="cancelAcceptConfirm"
                       >
                         {{ t('friendships.cancel') }}
-                      </button>
-                      <button
-                        type="button"
-                        class="action-btn action-btn--accept"
+                      </BaseButton>
+                      <BaseButton
+                        variant="primary-outline"
+                        size="sm"
+                        class="action-btn"
+                        data-testid="req-accept"
                         :disabled="isAccepting"
                         @click="handleAccept(req.id)"
                       >
                         {{ isAccepting ? t('friendships.acceptingBtn') : t('friendships.accept') }}
-                      </button>
+                      </BaseButton>
                     </div>
                   </div>
                 </template>
@@ -280,28 +285,34 @@ async function handleCancel(requestId: string) {
                     </div>
                   </div>
                   <div class="request-actions">
-                    <button
+                    <BaseButton
                       v-if="!blockedUserIds.has(req.fromUserId)"
-                      type="button"
-                      class="action-btn action-btn--block"
+                      variant="danger-outline"
+                      size="sm"
+                      class="action-btn"
+                      data-testid="req-block"
                       @click="startBlock(req)"
                     >
                       {{ t('blocks.blockAction') }}
-                    </button>
-                    <button
-                      type="button"
-                      class="action-btn action-btn--deny"
+                    </BaseButton>
+                    <BaseButton
+                      variant="secondary"
+                      size="sm"
+                      class="action-btn"
+                      data-testid="req-deny"
                       @click="handleDeny(req.id)"
                     >
                       {{ t('friendships.deny') }}
-                    </button>
-                    <button
-                      type="button"
-                      class="action-btn action-btn--accept"
+                    </BaseButton>
+                    <BaseButton
+                      variant="primary-outline"
+                      size="sm"
+                      class="action-btn"
+                      data-testid="req-accept"
                       @click="startAcceptConfirm(req.id)"
                     >
                       {{ t('friendships.accept') }}
-                    </button>
+                    </BaseButton>
                   </div>
                 </template>
               </li>
@@ -329,13 +340,15 @@ async function handleCancel(requestId: string) {
                     <span v-else class="request-user">{{ phoneFor(req.toUserId) }}</span>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  class="action-btn action-btn--cancel"
+                <BaseButton
+                  variant="secondary"
+                  size="sm"
+                  class="action-btn"
+                  data-testid="req-cancel"
                   @click="handleCancel(req.id)"
                 >
                   {{ t('friendships.cancel') }}
-                </button>
+                </BaseButton>
               </li>
             </ul>
           </section>
@@ -378,15 +391,6 @@ async function handleCancel(requestId: string) {
 .tab-btn--active {
   color: var(--color-primary);
   border-bottom-color: var(--color-primary);
-}
-
-.action-btn--block {
-  border: 1.5px solid color-mix(in srgb, var(--color-error) 60%, transparent);
-  color: var(--color-error);
-}
-
-.action-btn--block:hover {
-  background-color: color-mix(in srgb, var(--color-error) 10%, transparent);
 }
 
 .deny-rights-note {
@@ -502,41 +506,10 @@ async function handleCancel(requestId: string) {
   }
 }
 
+/* Visuals come from BaseButton variants; the row needs full-width controls. */
 .action-btn {
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  transition: background-color 0.15s;
-  white-space: nowrap;
   width: 100%;
-}
-
-.action-btn--accept {
-  border: 1.5px solid var(--color-primary);
-  color: var(--color-primary);
-}
-
-.action-btn--accept:hover {
-  background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
-}
-
-.action-btn--deny {
-  border: 1.5px solid var(--color-outline-variant);
-  color: var(--color-on-surface-variant);
-}
-
-.action-btn--deny:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.action-btn--cancel {
-  border: 1.5px solid var(--color-outline-variant);
-  color: var(--color-on-surface-variant);
-}
-
-.action-btn--cancel:hover {
-  background-color: var(--color-surface-variant);
+  white-space: nowrap;
 }
 
 .confirm-content {

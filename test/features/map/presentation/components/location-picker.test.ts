@@ -16,7 +16,7 @@ describe('locationPicker', () => {
     const map = makeMapStub()
     const wrapper = mount(LocationPicker, { props: { map: map as never } })
 
-    await wrapper.find('.confirm-btn').trigger('click')
+    await wrapper.find('[data-testid="picker-confirm"]').trigger('click')
 
     // Must use unproject, not getCenter
     expect(map.unproject).toHaveBeenCalledWith([400, 300])
@@ -36,7 +36,7 @@ describe('locationPicker', () => {
     })
     const wrapper = mount(LocationPicker, { props: { map: map as never } })
 
-    await wrapper.find('.confirm-btn').trigger('click')
+    await wrapper.find('[data-testid="picker-confirm"]').trigger('click')
 
     const emitted = wrapper.emitted('confirm') as [{ lng: number, lat: number }][]
     expect(emitted[0]![0]).toEqual({ lng: 8.2, lat: 46.8 })

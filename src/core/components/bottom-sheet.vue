@@ -398,7 +398,7 @@ const sheetStyle = computed(() => {
   width: 36px;
   height: 4px;
   background-color: var(--color-outline-variant);
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
 }
 
 .drag-handle:focus-visible::after {

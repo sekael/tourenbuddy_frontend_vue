@@ -3,6 +3,7 @@ import type { Contact } from '@/features/contacts/domain/entities/contact'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
+import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import { buildGroupSmsRecipients } from '@/features/contacts/core/utils/contact-actions'
 import { resolveContactName } from '@/features/contacts/domain/entities/contact'
@@ -40,9 +41,7 @@ function handleSend() {
         <h2 id="group-sms-title" class="dialog-title">
           {{ t('contacts.groupSms.title') }}
         </h2>
-        <button type="button" class="close-btn" aria-label="Close" @click="emit('cancel')">
-          <BaseIcon name="close" />
-        </button>
+        <BaseIconButton name="close" label="Close" size="sm" @click="emit('cancel')" />
       </div>
 
       <div class="dialog-body">
@@ -147,26 +146,6 @@ function handleSend() {
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
   flex: 1;
-}
-
-.close-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-on-surface-variant);
-  flex-shrink: 0;
-  transition: background-color 0.15s;
-}
-
-.close-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.close-btn .material-symbols-outlined {
-  font-size: 18px;
 }
 
 .dialog-body {

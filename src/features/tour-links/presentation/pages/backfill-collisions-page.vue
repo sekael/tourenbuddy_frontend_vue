@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
+import BaseButton from '@/core/components/base-button.vue'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
 import { useLogger } from '@/core/logging/use-logger'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
@@ -182,8 +183,9 @@ onMounted(() => {
             </dd>
           </div>
         </dl>
-        <button
-          type="button"
+        <BaseButton
+          variant="primary-outline"
+          size="sm"
           class="btn"
           :disabled="submitting !== null"
           @click="requestLink(pair)"
@@ -193,7 +195,7 @@ onMounted(() => {
               ? t('tourLinks.requestingBtn')
               : t('tourLinks.requestToLinkShortBtn')
           }}
-        </button>
+        </BaseButton>
       </li>
     </ul>
   </div>
@@ -298,14 +300,6 @@ h1 {
 }
 
 .btn {
-  padding: var(--spacing-xs) var(--spacing-md);
-  border: 1px solid var(--color-primary);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-primary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  cursor: pointer;
   align-self: stretch;
 }
 
@@ -325,10 +319,5 @@ h1 {
     align-self: center;
     flex-shrink: 0;
   }
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 </style>

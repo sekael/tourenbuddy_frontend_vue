@@ -181,7 +181,7 @@ describe('contactsListSheet', () => {
 
     it('should navigate to add view when add button is clicked', async () => {
       const wrapper = mountSheet()
-      await wrapper.find('.add-contact-btn').trigger('click')
+      await wrapper.find('[data-testid="add-contact-btn"]').trigger('click')
       await wrapper.vm.$nextTick()
       expect(wrapper.find('[data-testid="contact-form"]').exists()).toBe(true)
     })

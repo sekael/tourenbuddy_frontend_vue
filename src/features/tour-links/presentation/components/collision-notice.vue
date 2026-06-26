@@ -2,6 +2,7 @@
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import { useLogger } from '@/core/logging/use-logger'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
@@ -230,11 +231,11 @@ function safeSessionSet(key: string, val: string) {
       {{ t('tourLinks.collisionNoticeBody', { names: linkableNames.join(', ') }) }}
     </p>
     <div class="actions">
-      <button
+      <BaseButton
         v-for="(f, idx) in linkableCandidates"
         :key="f.id"
-        type="button"
-        class="link-btn"
+        variant="primary-outline"
+        size="sm"
         :disabled="submitting !== null"
         @click="requestLink(f.id)"
       >
@@ -243,7 +244,7 @@ function safeSessionSet(key: string, val: string) {
             ? t('tourLinks.requestingBtn')
             : t('tourLinks.requestToLinkBtn', { name: linkableNames[idx] })
         }}
-      </button>
+      </BaseButton>
     </div>
     <p v-if="submitError" class="error">
       {{ submitError }}
@@ -263,9 +264,9 @@ function safeSessionSet(key: string, val: string) {
       <span>{{ t('tourLinks.doNotShowAgain') }}</span>
     </label>
     <div class="actions">
-      <button type="button" class="link-btn" @click="dismissBlocked">
+      <BaseButton variant="primary-outline" size="sm" @click="dismissBlocked">
         {{ t('tourLinks.dismissBtn') }}
-      </button>
+      </BaseButton>
     </div>
   </section>
 </template>
@@ -320,27 +321,6 @@ function safeSessionSet(key: string, val: string) {
   font-size: var(--font-size-sm);
   color: var(--color-on-surface-variant);
   cursor: pointer;
-}
-
-.link-btn {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border: 1px solid var(--color-primary);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-primary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  cursor: pointer;
-}
-
-.link-btn:hover:not(:disabled) {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-}
-
-.link-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .error {
