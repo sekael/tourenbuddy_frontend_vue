@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
+import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
@@ -360,6 +361,13 @@ function handleRemoveGpx() {
   gpxError.value = null
 }
 
+// A <button> can't open a file dialog the way a <label> does — forward the click
+// to a single hidden <input> shared by the upload + replace buttons.
+const gpxInputRef = ref<HTMLInputElement | null>(null)
+function openGpxPicker() {
+  gpxInputRef.value?.click()
+}
+
 function handleRemoveStart() {
   startPoint.value = null
   startPointName.value = ''
@@ -466,15 +474,16 @@ defineExpose({ cancel: handleCancel })
             </div>
             <div class="point-row">
               <span class="point-coords">{{ formatPoint(currentGoal) }}</span>
-              <button
+              <BaseButton
                 v-if="allowGoalEdit"
                 type="button"
-                class="pick-btn"
+                variant="secondary"
+                size="sm"
                 @click="emit('pickPoint', 'goal')"
               >
                 <BaseIcon name="my_location" />
                 {{ t('tours.form.changeGoalBtn') }}
-              </button>
+              </BaseButton>
             </div>
             <div class="field">
               <label class="label" for="tf-elevation">{{ t('tours.form.elevationLabel') }}</label>
@@ -501,18 +510,18 @@ defineExpose({ cancel: handleCancel })
               <span class="point-coords">{{
                 startPoint ? formatPoint(startPoint) : t('tours.form.pointNotSet')
               }}</span>
-              <button type="button" class="pick-btn" @click="emit('pickPoint', 'start')">
+              <BaseButton type="button" variant="secondary" size="sm" @click="emit('pickPoint', 'start')">
                 <BaseIcon name="my_location" />
                 {{ startPoint ? t('tours.form.changeGoalBtn') : t('tours.form.pickBtn') }}
-              </button>
-              <button
+              </BaseButton>
+              <BaseIconButton
                 v-if="startPoint"
-                type="button"
-                class="remove-point-btn"
+                name="close"
+                :label="t('tours.form.removeStartBtn')"
+                size="sm"
+                data-testid="remove-start-btn"
                 @click="handleRemoveStart"
-              >
-                <BaseIcon name="close" />
-              </button>
+              />
             </div>
             <template v-if="startPoint">
               <div class="field">
@@ -554,13 +563,17 @@ defineExpose({ cancel: handleCancel })
             <template v-if="endPoint">
               <div class="point-row">
                 <span class="point-coords">{{ formatPoint(endPoint) }}</span>
-                <button type="button" class="pick-btn" @click="emit('pickPoint', 'end')">
+                <BaseButton type="button" variant="secondary" size="sm" @click="emit('pickPoint', 'end')">
                   <BaseIcon name="my_location" />
                   {{ t('tours.form.changeGoalBtn') }}
-                </button>
-                <button type="button" class="remove-point-btn" @click="handleRemoveEnd">
-                  <BaseIcon name="close" />
-                </button>
+                </BaseButton>
+                <BaseIconButton
+                  name="close"
+                  :label="t('tours.form.removeEndBtn')"
+                  size="sm"
+                  data-testid="remove-end-btn"
+                  @click="handleRemoveEnd"
+                />
               </div>
               <div class="field">
                 <label class="label" for="tf-end-name">{{ t('tours.form.pointNameLabel') }}</label>
@@ -590,14 +603,14 @@ defineExpose({ cancel: handleCancel })
             </template>
             <template v-else>
               <div class="point-row">
-                <button type="button" class="pick-btn" @click="emit('pickPoint', 'end')">
+                <BaseButton type="button" variant="secondary" size="sm" @click="emit('pickPoint', 'end')">
                   <BaseIcon name="add" />
                   {{ t('tours.form.addEndPointBtn') }}
-                </button>
-                <button type="button" class="pick-btn" @click="handleRoundTrip">
+                </BaseButton>
+                <BaseButton type="button" variant="secondary" size="sm" @click="handleRoundTrip">
                   <BaseIcon name="replay" />
                   {{ t('tours.form.roundTripBtn') }}
-                </button>
+                </BaseButton>
               </div>
             </template>
           </div>
@@ -740,6 +753,14 @@ defineExpose({ cancel: handleCancel })
           <p class="section-label">
             {{ t('tours.form.gpxLabel') }}
           </p>
+          <!-- Single hidden picker shared by the upload + replace buttons. -->
+          <input
+            ref="gpxInputRef"
+            type="file"
+            accept=".gpx,application/gpx+xml"
+            class="hidden-input"
+            @change="handleGpxUpload"
+          >
           <div v-if="gpxFile || gpxFilepath" class="gpx-filled-row">
             <span class="gpx-filename">
               <span v-if="isUploadingGpx" class="gpx-spinner" />
@@ -750,41 +771,37 @@ defineExpose({ cancel: handleCancel })
               }}</span>
             </span>
             <BaseTooltip :text="t('tours.form.gpxReplaceTooltip')">
-              <label
-                class="gpx-icon-btn"
-                :aria-label="t('tours.form.gpxReplaceTooltip')"
-              >
-                <BaseIcon name="upload_file" />
-                <input
-                  type="file"
-                  accept=".gpx,application/gpx+xml"
-                  class="hidden-input"
-                  @change="handleGpxUpload"
-                >
-              </label>
+              <BaseIconButton
+                name="upload_file"
+                :label="t('tours.form.gpxReplaceTooltip')"
+                shape="square"
+                size="md"
+                @click="openGpxPicker"
+              />
             </BaseTooltip>
             <BaseTooltip :text="t('tours.form.gpxRemoveTooltip')">
-              <button
-                type="button"
-                class="gpx-icon-btn gpx-remove-btn"
-                :aria-label="t('tours.form.gpxRemoveTooltip')"
+              <BaseIconButton
+                name="delete"
+                :label="t('tours.form.gpxRemoveTooltip')"
+                shape="square"
+                size="md"
+                tone="danger"
+                data-testid="gpx-remove-btn"
                 @click="handleRemoveGpx"
-              >
-                <BaseIcon name="close" />
-              </button>
+              />
             </BaseTooltip>
           </div>
           <div v-else class="gpx-empty-row">
-            <label class="pick-btn gpx-upload-btn">
+            <BaseButton
+              type="button"
+              variant="secondary"
+              size="sm"
+              data-testid="gpx-upload-btn"
+              @click="openGpxPicker"
+            >
               <BaseIcon name="upload_file" />
               {{ t('tours.form.gpxUploadBtn') }}
-              <input
-                type="file"
-                accept=".gpx,application/gpx+xml"
-                class="hidden-input"
-                @change="handleGpxUpload"
-              >
-            </label>
+            </BaseButton>
           </div>
           <p v-if="gpxError" class="gpx-error">
             {{ gpxError }}
@@ -806,10 +823,10 @@ defineExpose({ cancel: handleCancel })
       <!-- end scroll-body -->
 
       <div v-if="!props.embedded" class="actions">
-        <BaseButton type="button" variant="secondary" @click="handleCancel">
+        <BaseButton type="button" variant="secondary" size="sm" data-testid="cancel-btn" @click="handleCancel">
           {{ t('tours.form.cancelBtn') }}
         </BaseButton>
-        <BaseButton type="submit" variant="primary" :disabled="isUploadingGpx">
+        <BaseButton type="submit" variant="primary" size="sm" data-testid="submit-btn" :disabled="isUploadingGpx">
           {{ submitLabel }}
         </BaseButton>
       </div>
@@ -1087,52 +1104,6 @@ defineExpose({ cancel: handleCancel })
   font-family: monospace;
 }
 
-.pick-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
-  color: var(--color-on-surface-variant);
-  background: transparent;
-  cursor: pointer;
-  white-space: nowrap;
-  transition:
-    border-color 0.15s,
-    color 0.15s;
-}
-
-.pick-btn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
-.pick-btn .material-symbols-outlined {
-  font-size: var(--icon-size-xs);
-}
-
-.remove-point-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-round);
-  color: var(--color-outline);
-  flex-shrink: 0;
-}
-
-.remove-point-btn:hover {
-  background-color: var(--color-surface-variant);
-  color: var(--color-on-surface-variant);
-}
-
-.remove-point-btn .material-symbols-outlined {
-  font-size: var(--icon-size-xs);
-}
-
 /* GPX */
 .gpx-empty-row {
   display: flex;
@@ -1146,41 +1117,6 @@ defineExpose({ cancel: handleCancel })
   gap: var(--spacing-sm);
   flex-wrap: wrap;
   min-height: 44px;
-}
-
-.gpx-upload-btn {
-  cursor: pointer;
-}
-
-.gpx-icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--radius-sm);
-  color: var(--color-on-surface-variant);
-  background: transparent;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition:
-    border-color 0.15s,
-    color 0.15s;
-}
-
-.gpx-icon-btn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
-.gpx-icon-btn .material-symbols-outlined {
-  font-size: var(--icon-size-md);
-}
-
-.gpx-remove-btn:hover {
-  border-color: var(--color-error) !important;
-  color: var(--color-error) !important;
 }
 
 .hidden-input {

@@ -845,19 +845,21 @@ defineExpose({
           {{ t('contacts.detailView.deletePendingWarning') }}
         </p>
         <div class="delete-actions">
-          <BaseButton type="button" variant="secondary" size="sm" @click="deleteState = 'idle'">
+          <BaseButton type="button" variant="secondary" size="sm" data-testid="delete-cancel-btn" @click="deleteState = 'idle'">
             {{ t('contacts.shared.cancelBtn') }}
           </BaseButton>
-          <BaseButton type="button" variant="danger" size="sm" @click="confirmDelete">
+          <BaseButton type="button" variant="danger" size="sm" data-testid="delete-confirm-btn" @click="confirmDelete">
             {{ t('contacts.detailView.deleteBtn') }}
           </BaseButton>
         </div>
       </template>
 
-      <button
+      <BaseButton
         v-else
         type="button"
-        class="delete-btn"
+        variant="danger-outline"
+        size="sm"
+        data-testid="delete-btn"
         :disabled="deleteState === 'loading'"
         @click="requestDelete"
       >
@@ -867,7 +869,7 @@ defineExpose({
             ? t('contacts.detailView.deletingBtn')
             : t('contacts.detailView.deleteBtn')
         }}
-      </button>
+      </BaseButton>
     </section>
   </div>
 </template>
@@ -1240,32 +1242,6 @@ button.primary-star:hover {
   padding-top: var(--spacing-sm);
 }
 
-.delete-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-md);
-  border: 1.5px solid var(--color-error);
-  color: var(--color-error);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  transition: background-color 0.15s;
-}
-
-.delete-btn:hover:not(:disabled) {
-  background-color: color-mix(in srgb, var(--color-error) 8%, transparent);
-}
-
-.delete-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.delete-btn .material-symbols-outlined {
-  font-size: var(--icon-size-sm);
-}
-
 .delete-confirm-text {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
@@ -1287,8 +1263,10 @@ button.primary-star:hover {
   color: var(--color-warning);
 }
 
+/* Equal-width cancel/confirm (point 7: button groups same size). */
 .delete-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: var(--spacing-sm);
 }
 </style>

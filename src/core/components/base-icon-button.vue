@@ -11,9 +11,12 @@ const props = withDefaults(defineProps<{
   label: string
   size?: Size
   shape?: 'round' | 'square'
+  /** 'danger' tints the glyph red on hover — for destructive actions (delete/remove). */
+  tone?: 'default' | 'danger'
 }>(), {
   size: 'md',
   shape: 'round',
+  tone: 'default',
 })
 
 // Glyph tracks the button size so the icon stays proportionate to its target.
@@ -24,7 +27,11 @@ const iconSize = computed(() => props.size)
   <button
     type="button"
     class="base-icon-button"
-    :class="[`base-icon-button--${props.size}`, `base-icon-button--${props.shape}`]"
+    :class="[
+      `base-icon-button--${props.size}`,
+      `base-icon-button--${props.shape}`,
+      `base-icon-button--${props.tone}`,
+    ]"
     :aria-label="props.label"
     :title="props.label"
   >
@@ -46,6 +53,12 @@ const iconSize = computed(() => props.size)
 
 .base-icon-button:hover:not(:disabled) {
   background-color: var(--color-surface-variant);
+}
+
+/* Danger tone: red glyph on hover, faint red wash instead of the neutral grey. */
+.base-icon-button--danger:hover:not(:disabled) {
+  color: var(--color-error);
+  background-color: color-mix(in srgb, var(--color-error) 8%, transparent);
 }
 
 .base-icon-button:disabled {

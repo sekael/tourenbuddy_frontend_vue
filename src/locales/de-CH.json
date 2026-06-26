@@ -278,6 +278,8 @@
       "pointNotSet": "Nicht gesetzt",
       "sameAsEnd": "gleich wie Ende",
       "pickBtn": "Wählen",
+      "removeStartBtn": "Startpunkt entfernen",
+      "removeEndBtn": "Endpunkt entfernen",
       "roundTrip": "Rundtour",
       "addEndPointBtn": "Endpunkt hinzufügen",
       "roundTripBtn": "Rundtour",

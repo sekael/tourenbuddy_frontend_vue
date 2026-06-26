@@ -292,19 +292,19 @@ describe('contactDetailView', () => {
   describe('delete contact', () => {
     it('should show confirmation when delete button clicked', async () => {
       const wrapper = mountDetail()
-      await wrapper.find('.delete-btn').trigger('click')
+      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
       expect(wrapper.find('.delete-confirm-text').exists()).toBe(true)
       expect(wrapper.find('.base-button--danger').exists()).toBe(true)
     })
 
     it('should hide confirmation when cancel clicked in delete section', async () => {
       const wrapper = mountDetail()
-      await wrapper.find('.delete-btn').trigger('click')
+      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
       const deleteSection = wrapper.find('.section--danger')
       await deleteSection.find('.base-button--secondary').trigger('click')
 
       expect(wrapper.find('.delete-confirm-text').exists()).toBe(false)
-      expect(wrapper.find('.delete-btn').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="delete-btn"]').exists()).toBe(true)
     })
 
     it('should call deleteContact and emit deleted when confirmed', async () => {
@@ -312,7 +312,7 @@ describe('contactDetailView', () => {
       const store = useContactsStore()
       vi.mocked(store.deleteContact).mockResolvedValue(undefined)
 
-      await wrapper.find('.delete-btn').trigger('click')
+      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
       await wrapper.find('.base-button--danger').trigger('click')
       await flushPromises()
 
@@ -326,7 +326,7 @@ describe('contactDetailView', () => {
       const contacts = useContactsStore()
       vi.mocked(friendships.removeFriendship).mockRejectedValue(new Error('rpc failed'))
 
-      await wrapper.find('.delete-btn').trigger('click')
+      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
       await wrapper.find('.base-button--danger').trigger('click')
       await flushPromises()
 
@@ -347,13 +347,13 @@ describe('contactDetailView', () => {
   describe('linked-friendship deletion', () => {
     it('does not render friend warning when contact is not linked to a friend', async () => {
       const wrapper = mountDetail(mockContact, null)
-      await wrapper.find('.delete-btn').trigger('click')
+      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
       expect(wrapper.find('.delete-friend-warning').exists()).toBe(false)
     })
 
     it('renders friend warning when contact is linked to a friend', async () => {
       const wrapper = mountDetail(mockContact, 'user-friend')
-      await wrapper.find('.delete-btn').trigger('click')
+      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
       expect(wrapper.find('.delete-friend-warning').exists()).toBe(true)
     })
 
@@ -363,7 +363,7 @@ describe('contactDetailView', () => {
       const contacts = useContactsStore()
       vi.mocked(contacts.deleteContact).mockResolvedValue(undefined)
 
-      await wrapper.find('.delete-btn').trigger('click')
+      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
       await wrapper.find('.base-button--danger').trigger('click')
       await flushPromises()
 

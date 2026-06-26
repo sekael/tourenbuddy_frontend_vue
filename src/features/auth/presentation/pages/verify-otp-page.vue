@@ -104,7 +104,7 @@ async function handleResend() {
         </BaseButton>
       </form>
 
-      <BaseButton variant="text" :disabled="isResending" @click="handleResend">
+      <BaseButton variant="secondary" :disabled="isResending" @click="handleResend">
         {{ isResending ? t('auth.shared.sendingBtn') : t('auth.verifyOtp.resendBtn') }}
       </BaseButton>
     </div>

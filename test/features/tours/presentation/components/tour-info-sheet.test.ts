@@ -286,7 +286,7 @@ describe('tourInfoSheet', () => {
     it('should show confirmation when delete button is clicked', async () => {
       const wrapper = mountSheet()
 
-      const deleteBtn = wrapper.find('.action-btn--danger')
+      const deleteBtn = wrapper.find('[data-testid="delete-btn"]')
       await deleteBtn.trigger('click')
 
       expect(wrapper.find('.delete-confirm-text').exists()).toBe(true)
@@ -295,13 +295,13 @@ describe('tourInfoSheet', () => {
     it('should return to idle when cancel is clicked on confirm prompt', async () => {
       const wrapper = mountSheet()
 
-      await wrapper.find('.action-btn--danger').trigger('click')
+      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
       expect(wrapper.find('.delete-confirm-text').exists()).toBe(true)
 
-      await wrapper.find('.cancel-btn').trigger('click')
+      await wrapper.find('[data-testid="delete-cancel-btn"]').trigger('click')
 
       expect(wrapper.find('.delete-confirm-text').exists()).toBe(false)
-      expect(wrapper.find('.action-btn--danger').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="delete-btn"]').exists()).toBe(true)
     })
 
     it('should call deleteTour and emit close on successful delete', async () => {
@@ -310,8 +310,8 @@ describe('tourInfoSheet', () => {
       const store = useToursStore()
       vi.mocked(store.deleteTour).mockResolvedValue(undefined)
 
-      await wrapper.find('.action-btn--danger').trigger('click')
-      await wrapper.find('.delete-confirm-btn').trigger('click')
+      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
+      await wrapper.find('[data-testid="delete-confirm-btn"]').trigger('click')
       await wrapper.vm.$nextTick()
 
       expect(store.deleteTour).toHaveBeenCalledWith('tour-1')
@@ -324,8 +324,8 @@ describe('tourInfoSheet', () => {
       const store = useToursStore()
       vi.mocked(store.deleteTour).mockRejectedValue(new Error('Delete failed'))
 
-      await wrapper.find('.action-btn--danger').trigger('click')
-      await wrapper.find('.delete-confirm-btn').trigger('click')
+      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
+      await wrapper.find('[data-testid="delete-confirm-btn"]').trigger('click')
       await wrapper.vm.$nextTick()
 
       expect(wrapper.emitted('close')).toBeFalsy()

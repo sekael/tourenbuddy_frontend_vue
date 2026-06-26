@@ -846,7 +846,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
     <!-- Full-screen edit page: Save lives in the top app bar (above keyboard). -->
     <template v-if="editAsPage && mode === 'edit'" #page-action>
-      <BaseButton type="submit" form="tour-edit-form" variant="primary" size="sm">
+      <BaseButton type="submit" form="tour-edit-form" variant="primary" size="md">
         {{ t('tours.infoSheet.saveLabel') }}
       </BaseButton>
     </template>
@@ -854,30 +854,30 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
     <template v-if="mode === 'view' && isOwner && !linksView" #footer>
       <div class="view-actions">
         <div class="edit-delete-row">
-          <button
-            v-if="deleteState === 'idle'" type="button" class="action-btn" data-testid="edit-btn"
-            @click="enterEditMode"
-          >
+          <BaseButton v-if="deleteState === 'idle'" variant="secondary" size="sm" data-testid="edit-btn" @click="enterEditMode">
             <BaseIcon name="edit" />
             {{ t('tours.infoSheet.editBtn') }}
-          </button>
-
+          </BaseButton>
           <template v-if="deleteState === 'confirm'">
             <span class="delete-confirm-text">{{ t('tours.infoSheet.deleteConfirmText') }}</span>
             <span v-if="isLinked && linkSiblings.length > 0" class="delete-confirm-text delete-confirm-text--link">
               {{ t('tourLinks.deleteUnlinkWarning', { count: linkSiblings.length }) }}
             </span>
             <div class="delete-confirm-row">
-              <button type="button" class="cancel-btn" @click="deleteState = 'idle'">
+              <BaseButton variant="secondary" size="sm" data-testid="delete-cancel-btn" @click="deleteState = 'idle'">
                 {{ t('tours.infoSheet.cancelBtn') }}
-              </button>
-              <button type="button" class="delete-confirm-btn" @click="confirmDelete">
+              </BaseButton>
+              <BaseButton variant="danger" size="sm" data-testid="delete-confirm-btn" @click="confirmDelete">
                 {{ t('tours.infoSheet.deleteBtn') }}
-              </button>
+              </BaseButton>
             </div>
           </template>
-          <button
-            v-else type="button" class="action-btn action-btn--danger" :disabled="deleteState === 'loading'"
+          <BaseButton
+            v-else
+            variant="danger-outline"
+            size="sm"
+            data-testid="delete-btn"
+            :disabled="deleteState === 'loading'"
             @click="deleteState = 'confirm'"
           >
             <BaseIcon name="delete" />
@@ -886,7 +886,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
                 ? t('tours.infoSheet.deletingBtn')
                 : t('tours.infoSheet.deleteBtn')
             }}
-          </button>
+          </BaseButton>
         </div>
         <p v-if="deleteError" class="delete-error">
           {{ deleteError }}
@@ -955,23 +955,16 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   cursor: not-allowed;
 }
 
-.action-btn--danger {
-  border-color: var(--color-error);
-  color: var(--color-error);
-}
-
-.action-btn--danger:hover:not(:disabled) {
-  background-color: color-mix(in srgb, var(--color-error) 8%, transparent);
-}
-
 .action-btn .material-symbols-outlined {
   font-size: 16px;
 }
 
+/* Equal-width cancel/confirm (point 7). 1fr 1fr sizes both to the wider button
+   regardless of available width — flex:1 collapses here because the footer row
+   is shrink-wrapped (no free space to distribute). */
 .delete-confirm-row {
-  display: flex;
-  justify-content: end;
-  align-items: center;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: var(--spacing-sm);
 }
 
@@ -979,33 +972,6 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--color-error);
-}
-
-.cancel-btn {
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: 10px;
-  border: 1px solid var(--color-outline-variant);
-  color: var(--color-on-surface-variant);
-  font-size: var(--font-size-sm);
-  transition: background-color 0.15s;
-}
-
-.cancel-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.delete-confirm-btn {
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: 10px;
-  background-color: var(--color-error);
-  color: var(--color-on-error);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  transition: opacity 0.15s;
-}
-
-.delete-confirm-btn:hover {
-  opacity: 0.85;
 }
 
 .delete-error {
