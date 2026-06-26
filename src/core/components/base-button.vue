@@ -36,6 +36,11 @@ const buttonClasses = computed(() => [`base-button--${variant.value}`, `base-but
   gap: var(--spacing-xs);
   font-family: inherit;
   font-weight: var(--font-weight-semibold);
+  /* Uniform 1px border on EVERY variant so filled and outlined variants share
+     identical geometry — border adds to auto height, so without this a bordered
+     variant renders 2px taller than a borderless one. Outline variants only set
+     border-color below. */
+  border: 1px solid transparent;
   border-radius: var(--button-radius);
   transition:
     background-color 0.2s,
@@ -61,7 +66,7 @@ const buttonClasses = computed(() => [`base-button--${variant.value}`, `base-but
 .base-button--secondary {
   background-color: transparent;
   color: var(--color-on-surface);
-  border: 1px solid var(--color-outline-variant);
+  border-color: var(--color-outline-variant);
 }
 
 .base-button--secondary:hover:not(:disabled) {
@@ -80,7 +85,7 @@ const buttonClasses = computed(() => [`base-button--${variant.value}`, `base-but
 .base-button--danger-outline {
   background-color: transparent;
   color: var(--color-error);
-  border: 1px solid var(--color-error);
+  border-color: var(--color-error);
 }
 
 .base-button--danger-outline:hover:not(:disabled) {

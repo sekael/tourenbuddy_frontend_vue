@@ -205,6 +205,7 @@ async function onDrop(toIndex: number) {
 .picker__item--confirm {
   cursor: default;
   border-color: var(--color-error);
+  justify-content: center;
 }
 
 .picker__drag-handle,
@@ -253,13 +254,10 @@ async function onDrop(toIndex: number) {
   display: none;
 }
 
-/* Inline delete confirm */
+/* Inline delete confirm — centered in the row via .picker__item--confirm. */
 .picker__confirm-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  align-items: center;
   gap: var(--spacing-xs);
-  flex-shrink: 0;
-  margin-left: auto;
 }
 </style>
