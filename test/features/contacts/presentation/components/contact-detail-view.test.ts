@@ -55,7 +55,7 @@ function mountDetail(contact = mockContact, linkedFriendUserId: string | null = 
 }
 
 async function enterEditMode(wrapper: ReturnType<typeof mountDetail>) {
-  await wrapper.find('.edit-btn').trigger('click')
+  await wrapper.find('[data-testid="edit-contact-btn"]').trigger('click')
 }
 
 describe('contactDetailView', () => {
@@ -66,7 +66,7 @@ describe('contactDetailView', () => {
   describe('view/edit mode toggle', () => {
     it('should default to view mode showing read-only name spans', () => {
       const wrapper = mountDetail()
-      expect(wrapper.find('.edit-btn').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="edit-contact-btn"]').exists()).toBe(true)
       expect(wrapper.find('#dv-firstName').exists()).toBe(false)
       expect(wrapper.find('.view-value').text()).toContain('Anna')
     })
@@ -85,7 +85,7 @@ describe('contactDetailView', () => {
       await wrapper.find('#dv-firstName').setValue('Annika')
       await wrapper.find('.form-actions .base-button--secondary').trigger('click')
 
-      expect(wrapper.find('.edit-btn').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="edit-contact-btn"]').exists()).toBe(true)
       expect(wrapper.find('#dv-firstName').exists()).toBe(false)
       // view-value shows original name again
       expect(wrapper.text()).toContain('Anna')
@@ -94,11 +94,11 @@ describe('contactDetailView', () => {
     it('should show add-method button and delete buttons only in edit mode', async () => {
       const wrapper = mountDetail()
       expect(wrapper.find('.add-method-btn').exists()).toBe(false)
-      expect(wrapper.find('.icon-btn--danger').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="remove-method-btn"]').exists()).toBe(false)
 
       await enterEditMode(wrapper)
       expect(wrapper.find('.add-method-btn').exists()).toBe(true)
-      expect(wrapper.find('.icon-btn--danger').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="remove-method-btn"]').exists()).toBe(true)
     })
 
     it('should make primary-phone star non-interactive in view mode', () => {
@@ -133,7 +133,7 @@ describe('contactDetailView', () => {
         displayName: null,
       })
       // After success, back to view mode
-      expect(wrapper.find('.edit-btn').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="edit-contact-btn"]').exists()).toBe(true)
       expect(wrapper.find('#dv-firstName').exists()).toBe(false)
     })
 
@@ -195,7 +195,7 @@ describe('contactDetailView', () => {
       await expect(vm.commitPendingEdits()).resolves.toBeUndefined()
       await flushPromises()
 
-      expect(wrapper.find('.edit-btn').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="edit-contact-btn"]').exists()).toBe(true)
     })
   })
 
@@ -216,7 +216,7 @@ describe('contactDetailView', () => {
       const store = useContactsStore()
 
       await enterEditMode(wrapper)
-      await wrapper.find('.icon-btn--danger').trigger('click')
+      await wrapper.find('[data-testid="remove-method-btn"]').trigger('click')
       expect(store.removeMethodFromContact).toHaveBeenCalledWith('c-1', 'm-1')
     })
 
@@ -285,7 +285,7 @@ describe('contactDetailView', () => {
       await wrapper.find('.form-actions .base-button--secondary').trigger('click')
       // Returned to view mode — add-method-form gone
       expect(wrapper.find('.add-method-form').exists()).toBe(false)
-      expect(wrapper.find('.edit-btn').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="edit-contact-btn"]').exists()).toBe(true)
     })
   })
 
@@ -339,7 +339,7 @@ describe('contactDetailView', () => {
   describe('back navigation', () => {
     it('should emit back when back button clicked', async () => {
       const wrapper = mountDetail()
-      await wrapper.find('.back-btn').trigger('click')
+      await wrapper.find('[data-testid="back-btn"]').trigger('click')
       expect(wrapper.emitted('back')).toHaveLength(1)
     })
   })

@@ -256,14 +256,14 @@ async function handleSignOut() {
             <BaseTooltip v-if="full.phoneVerified" :text="t('user.profile.verifiedTooltip')">
               <BaseIcon name="verified" class="verified-icon" />
             </BaseTooltip>
-            <button v-else class="verify-btn" @click="startEdit">
+            <BaseButton v-else variant="text" size="sm" data-testid="verify-btn" @click="startEdit">
               {{ t('user.profile.verifyBtn') }}
-            </button>
+            </BaseButton>
           </template>
-          <button v-else class="add-phone-btn" @click="handleAddPhone">
+          <BaseButton v-else variant="text" size="sm" data-testid="add-phone-btn" @click="handleAddPhone">
             <BaseIcon name="add" />
             {{ t('user.profile.addPhoneBtn') }}
-          </button>
+          </BaseButton>
         </div>
 
         <hr class="divider">
@@ -297,18 +297,18 @@ async function handleSignOut() {
         <hr class="divider">
 
         <div class="actions">
-          <button class="edit-btn" @click="startEdit">
+          <BaseButton variant="secondary" class="menu-row" data-testid="edit-profile-btn" @click="startEdit">
             <BaseIcon name="edit" />
             {{ t('user.profile.editBtn') }}
-          </button>
-          <button class="edit-btn" @click="handleShowTour">
+          </BaseButton>
+          <BaseButton variant="secondary" class="menu-row" @click="handleShowTour">
             <BaseIcon name="tour" />
             {{ t('onboarding.tour.controls.reopen') }}
-          </button>
-          <button class="sign-out-btn" @click="handleSignOut">
+          </BaseButton>
+          <BaseButton variant="danger-outline" class="menu-row" @click="handleSignOut">
             <BaseIcon name="logout" />
             {{ t('user.profile.signOutBtn') }}
-          </button>
+          </BaseButton>
         </div>
       </template>
 
@@ -506,28 +506,6 @@ async function handleSignOut() {
   color: var(--color-fab-surface-strong);
 }
 
-.verify-btn {
-  font-size: var(--font-size-sm);
-  color: var(--color-primary);
-  font-weight: var(--font-weight-medium);
-}
-
-.add-phone-btn {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  font-size: var(--font-size-sm);
-  color: var(--color-on-surface-variant);
-}
-
-.add-phone-btn .material-symbols-outlined {
-  font-size: var(--icon-size-sm);
-}
-
-.add-phone-btn:hover {
-  color: var(--color-primary);
-}
-
 .language-section {
   display: flex;
   flex-direction: column;
@@ -582,38 +560,10 @@ async function handleSignOut() {
   gap: var(--spacing-sm);
 }
 
-.edit-btn {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
-  border: 1px solid var(--color-outline-variant);
-  border-radius: var(--button-radius);
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface);
-  transition: background-color 0.2s;
-}
-
-.edit-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.sign-out-btn {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
-  border: 1px solid var(--color-outline-variant);
-  border-radius: var(--button-radius);
-  color: var(--color-error);
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-medium);
-  transition: background-color 0.2s;
-}
-
-.sign-out-btn:hover {
-  background-color: var(--color-error-container);
+/* Menu rows are BaseButtons (secondary / danger-outline) laid out as full-width
+   left-aligned list items; only the alignment override lives here. */
+.menu-row {
+  justify-content: flex-start;
 }
 
 /* Edit form */

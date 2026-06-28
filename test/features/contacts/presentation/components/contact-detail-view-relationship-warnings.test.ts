@@ -132,9 +132,9 @@ describe('contact-detail-view — relationship warnings on phone method delete',
     const store = useContactsStore()
     vi.spyOn(store, 'relationshipsForPhone').mockResolvedValue(phoneRelResult)
     // Enter edit mode
-    await wrapper.find('.edit-btn').trigger('click')
+    await wrapper.find('[data-testid="edit-contact-btn"]').trigger('click')
     // Click delete icon on the phone method
-    await wrapper.find('.icon-btn--danger').trigger('click')
+    await wrapper.find('[data-testid="remove-method-btn"]').trigger('click')
     await flushPromises()
     return wrapper
   }

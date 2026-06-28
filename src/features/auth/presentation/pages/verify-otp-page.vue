@@ -65,10 +65,10 @@ async function handleResend() {
 <template>
   <div class="page">
     <div class="card">
-      <button class="back-btn" @click="router.push({ name: 'email-entry' })">
+      <BaseButton variant="text" size="sm" class="back-btn" @click="router.push({ name: 'email-entry' })">
         <BaseIcon name="arrow_back" size="sm" />
         {{ t('auth.verifyOtp.backBtn') }}
-      </button>
+      </BaseButton>
       <h1 class="title">
         {{ t('auth.verifyOtp.title') }}
       </h1>
@@ -131,15 +131,9 @@ async function handleResend() {
   max-width: 400px;
 }
 
+/* Visual styling comes from BaseButton (text); only layout lives here. */
 .back-btn {
   align-self: flex-start;
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  color: var(--color-primary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  padding: var(--spacing-xs) 0;
 }
 
 .title {

@@ -105,13 +105,21 @@ Some controls stay bespoke by **role**, not oversight. These are exempt from the
 `Button`/`IconButton` rule (see `design-system` spec for the canonical list):
 
 - **Map overlays** — speed dial (`map-speed-dial-menu`), `base-map-picker`,
-  `map-base-map-panel`, and the `round-action-button` FAB. Glassmorphism overlay
-  tokens (`--color-fab-*`, blur), not the on-surface button palette.
+  `map-base-map-panel`, the compass FAB (`map-action-overlay`), the
+  `round-action-button` FAB, and the `location-picker` glass Cancel.
+  Glassmorphism overlay tokens (`--color-fab-*`, blur), not the on-surface
+  button palette.
 - **`tour-action-bar`** — segmented pill overlay with its own spec.
-- **Fullscreen media viewer** (`tour-attachment-viewer`) — white-on-scrim
-  controls over dark media; overlay-specific contrast, not on-surface tokens.
-- **Selector/toggle controls** (e.g. the star in `contact-detail-view`) — state
-  selectors, not action buttons.
+- **Media tiles & viewer** (`tour-attachment-viewer`, `tour-attachments-strip`)
+  — white-on-scrim controls over dark media and image/PDF preview tiles; media
+  affordances, not action buttons.
+- **Selector/toggle controls** — state selectors, not action buttons: primary
+  star (`contact-form`, `contact-detail-view`), add-method type selector and
+  language selector, the tour completion/visibility toggles (`tour-info-sheet`),
+  multi-select filter chips (`tour-form`, `tour-filters-panel`).
+- **Chips & compact pills** (`contact-chip`, `linked-with-section`, friend
+  partner chips) — pill affordance with no base component yet; tokenized in
+  place, extract a shared `Chip` at the next demand (see below).
 - **`error-snackbar` dismiss** — sits on the snackbar's own colored surface.
 
 Anything not on this list uses the shared components.

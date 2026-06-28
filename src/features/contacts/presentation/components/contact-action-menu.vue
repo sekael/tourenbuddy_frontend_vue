@@ -2,6 +2,7 @@
 import type { Contact } from '@/features/contacts/domain/entities/contact'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseButton from '@/core/components/base-button.vue'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
@@ -101,15 +102,16 @@ onUnmounted(() => {
             {{ t('contacts.actionMenu.noMethods') }}
           </p>
 
-          <button
-            type="button"
+          <BaseButton
+            variant="text"
+            size="sm"
             class="edit-row"
             role="menuitem"
             @click="emit('editContact', props.contact.id)"
           >
             <BaseIcon name="edit" class="edit-icon" />
             {{ t('contacts.actionMenu.editBtn') }}
-          </button>
+          </BaseButton>
         </div>
       </div>
     </div>
@@ -142,14 +144,15 @@ onUnmounted(() => {
             {{ t('contacts.actionMenu.noMethods') }}
           </p>
 
-          <button
-            type="button"
+          <BaseButton
+            variant="text"
+            size="sm"
             class="edit-row sheet-edit-row"
             @click="emit('editContact', props.contact.id)"
           >
             <BaseIcon name="edit" class="edit-icon" />
             {{ t('contacts.actionMenu.editBtn') }}
-          </button>
+          </BaseButton>
         </div>
       </BottomSheet>
     </div>
@@ -277,22 +280,11 @@ onUnmounted(() => {
   margin: 4px 0;
 }
 
+/* Edit row is a full-width left-aligned text BaseButton; layout only. */
 .edit-row {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-xs) var(--spacing-md) var(--spacing-md);
-  min-height: 36px;
-  color: var(--color-on-surface-variant);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
   width: 100%;
-  text-align: left;
-  transition: background-color 0.15s;
-}
-
-.edit-row:hover {
-  background-color: var(--color-surface-variant);
+  justify-content: flex-start;
+  min-height: 36px;
 }
 
 .edit-icon {

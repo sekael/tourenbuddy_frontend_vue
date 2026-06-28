@@ -6,6 +6,7 @@ import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
+import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
@@ -472,13 +473,11 @@ defineExpose({
   <div class="detail-view">
     <!-- Header (suppressed when embedded — the page's top app bar replaces it) -->
     <div v-if="!embedded" class="detail-header">
-      <button type="button" class="back-btn" @click="emit('back')">
-        <BaseIcon name="arrow_back" />
-      </button>
+      <BaseIconButton name="arrow_back" :label="t('core.drawer.back')" size="sm" data-testid="back-btn" @click="emit('back')" />
       <span class="detail-title">{{ t('contacts.detailView.title') }}</span>
-      <button v-if="mode === 'view'" type="button" class="edit-btn" @click="enterEditMode">
+      <BaseButton v-if="mode === 'view'" variant="primary-outline" size="sm" data-testid="edit-contact-btn" @click="enterEditMode">
         {{ t('contacts.detailView.editBtn') }}
-      </button>
+      </BaseButton>
     </div>
 
     <!-- Name section -->
@@ -568,9 +567,84 @@ defineExpose({
         {{ removeMethodError }}
       </p>
 
-      <!-- Method remove confirmation (friendship-linked or pending-linked phone) -->
-      <template v-if="methodDeleteConfirm">
-        <div class="method-delete-confirm">
+      <!-- Phone methods: ordered primary-first with star selector. The remove
+           confirmation (friendship-/pending-linked phone) expands inline below
+           the affected row. Non-phone methods never reach confirm. -->
+      <template v-for="method in orderedPhones" :key="method.id">
+        <div class="method-row">
+          <!-- Primary star: interactive in edit mode, inert in view mode -->
+          <button
+            v-if="mode === 'edit'"
+            type="button"
+            class="primary-star"
+            :class="{ 'primary-star--selected': method.isPrimary }"
+            @click="setPrimaryPhone(method)"
+          >
+            <BaseTooltip
+              :text="method.isPrimary
+                ? t('contacts.detailView.primaryPhoneTooltip')
+                : t('contacts.detailView.setAsPrimaryTooltip')"
+            >
+              <BaseIcon name="star" />
+            </BaseTooltip>
+          </button>
+          <span
+            v-else
+            class="primary-star"
+            :class="{ 'primary-star--selected': method.isPrimary }"
+          >
+            <BaseIcon name="star" />
+          </span>
+
+          <div class="method-type-badge">
+            <BaseIcon name="phone" />
+          </div>
+
+          <!-- View mode: read-only -->
+          <div v-if="mode === 'view'" class="method-fields">
+            <span class="view-value">{{ methodDisplayValue(method) }}</span>
+            <span v-if="method.label" class="view-label-sm">{{ method.label }}</span>
+          </div>
+
+          <!-- Edit mode: inputs -->
+          <div v-else class="method-fields">
+            <p v-if="!method.isValid" class="invalid-phone-hint">
+              <BaseIcon name="warning" class="warn-icon" />
+              {{ t('contacts.detailView.invalidPhoneHint') }}
+            </p>
+            <input
+              :value="getPhoneFormatter(method).formatted.value"
+              class="input input-sm"
+              :class="{ 'input--warning': !method.isValid }"
+              type="tel"
+              :placeholder="t('contacts.detailView.phonePlaceholder')"
+              @input="getPhoneFormatter(method).onInput"
+            >
+            <input
+              v-model="getMethodEdit(method).label"
+              class="input input-sm"
+              type="text"
+              :placeholder="t('contacts.detailView.labelPlaceholder')"
+            >
+            <p v-if="getMethodEdit(method).error" class="error-text">
+              {{ getMethodEdit(method).error }}
+            </p>
+          </div>
+
+          <div v-if="mode === 'edit'" class="method-actions">
+            <BaseIconButton
+              name="delete"
+              :label="t('contacts.detailView.removeBtn')"
+              size="sm"
+              tone="danger"
+              data-testid="remove-method-btn"
+              :disabled="methodDeleteConfirm?.methodId === method.id"
+              @click="requestRemoveMethod(method)"
+            />
+          </div>
+        </div>
+
+        <div v-if="methodDeleteConfirm?.methodId === method.id" class="method-delete-confirm">
           <p class="delete-confirm-text">
             {{ t('contacts.detailView.removeMethodConfirm') }}
           </p>
@@ -599,79 +673,6 @@ defineExpose({
           </div>
         </div>
       </template>
-
-      <!-- Phone methods: ordered primary-first with star selector -->
-      <div v-for="method in orderedPhones" :key="method.id" class="method-row">
-        <!-- Primary star: interactive in edit mode, inert in view mode -->
-        <button
-          v-if="mode === 'edit'"
-          type="button"
-          class="primary-star"
-          :class="{ 'primary-star--selected': method.isPrimary }"
-          @click="setPrimaryPhone(method)"
-        >
-          <BaseTooltip
-            :text="method.isPrimary
-              ? t('contacts.detailView.primaryPhoneTooltip')
-              : t('contacts.detailView.setAsPrimaryTooltip')"
-          >
-            <BaseIcon name="star" />
-          </BaseTooltip>
-        </button>
-        <span
-          v-else
-          class="primary-star"
-          :class="{ 'primary-star--selected': method.isPrimary }"
-        >
-          <BaseIcon name="star" />
-        </span>
-
-        <div class="method-type-badge">
-          <BaseIcon name="phone" />
-        </div>
-
-        <!-- View mode: read-only -->
-        <div v-if="mode === 'view'" class="method-fields">
-          <span class="view-value">{{ methodDisplayValue(method) }}</span>
-          <span v-if="method.label" class="view-label-sm">{{ method.label }}</span>
-        </div>
-
-        <!-- Edit mode: inputs -->
-        <div v-else class="method-fields">
-          <p v-if="!method.isValid" class="invalid-phone-hint">
-            <BaseIcon name="warning" class="warn-icon" />
-            {{ t('contacts.detailView.invalidPhoneHint') }}
-          </p>
-          <input
-            :value="getPhoneFormatter(method).formatted.value"
-            class="input input-sm"
-            :class="{ 'input--warning': !method.isValid }"
-            type="tel"
-            :placeholder="t('contacts.detailView.phonePlaceholder')"
-            @input="getPhoneFormatter(method).onInput"
-          >
-          <input
-            v-model="getMethodEdit(method).label"
-            class="input input-sm"
-            type="text"
-            :placeholder="t('contacts.detailView.labelPlaceholder')"
-          >
-          <p v-if="getMethodEdit(method).error" class="error-text">
-            {{ getMethodEdit(method).error }}
-          </p>
-        </div>
-
-        <div v-if="mode === 'edit'" class="method-actions">
-          <button
-            type="button"
-            class="icon-btn icon-btn--danger"
-            :disabled="methodDeleteConfirm?.methodId === method.id"
-            @click="requestRemoveMethod(method)"
-          >
-            <BaseIcon name="delete" />
-          </button>
-        </div>
-      </div>
 
       <!-- Non-phone methods (email etc.) -->
       <div
@@ -709,9 +710,14 @@ defineExpose({
         </div>
 
         <div v-if="mode === 'edit'" class="method-actions">
-          <button type="button" class="icon-btn icon-btn--danger" @click="requestRemoveMethod(method)">
-            <BaseIcon name="delete" />
-          </button>
+          <BaseIconButton
+            name="delete"
+            :label="t('contacts.detailView.removeBtn')"
+            size="sm"
+            tone="danger"
+            data-testid="remove-method-btn"
+            @click="requestRemoveMethod(method)"
+          />
         </div>
       </div>
 
@@ -780,10 +786,10 @@ defineExpose({
           </div>
         </div>
 
-        <button v-else type="button" class="add-method-btn" @click="openAddMethod">
+        <BaseButton v-else variant="text" size="sm" class="add-method-btn" @click="openAddMethod">
           <BaseIcon name="add" />
           {{ t('contacts.detailView.addMethodBtn') }}
-        </button>
+        </BaseButton>
       </template>
     </section>
 
@@ -811,15 +817,15 @@ defineExpose({
         @cancel="cancelBlock"
         @confirm="handleBlockConfirm"
       />
-      <button
+      <BaseButton
         v-else-if="linkedFriendUserId && !isContactBlocked"
-        type="button"
-        class="block-btn"
+        variant="danger-outline"
+        size="sm"
         @click="openBlockConfirm"
       >
         <BaseIcon name="block" />
         {{ t('blocks.blockAction') }}
-      </button>
+      </BaseButton>
 
       <p v-if="deleteError" class="error-text">
         {{ deleteError }}
@@ -888,39 +894,10 @@ defineExpose({
   margin-bottom: var(--spacing-xs);
 }
 
-.back-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-round);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-on-surface-variant);
-  transition: background-color 0.15s;
-}
-
-.back-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
 .detail-title {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   flex: 1;
-}
-
-.edit-btn {
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-sm);
-  border: 1.5px solid var(--color-outline-variant);
-  color: var(--color-primary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  transition: background-color 0.15s;
-}
-
-.edit-btn:hover {
-  background-color: color-mix(in srgb, var(--color-primary) 8%, transparent);
 }
 
 .detail-friend-icon {
@@ -1108,30 +1085,6 @@ button.primary-star:hover {
   flex-shrink: 0;
 }
 
-.icon-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-round);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-on-surface-variant);
-  transition: background-color 0.15s;
-}
-
-.icon-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.icon-btn--danger:hover {
-  background-color: color-mix(in srgb, var(--color-error) 12%, transparent);
-  color: var(--color-error);
-}
-
-.icon-btn .material-symbols-outlined {
-  font-size: var(--icon-size-sm);
-}
-
 .method-delete-confirm {
   display: flex;
   flex-direction: column;
@@ -1142,26 +1095,9 @@ button.primary-star:hover {
   background-color: color-mix(in srgb, var(--color-error) 6%, transparent);
 }
 
+/* Text BaseButton; only its left-align lives here. */
 .add-method-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  color: var(--color-primary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-
-.add-method-btn:hover {
-  opacity: 0.75;
-}
-
-.add-method-btn .material-symbols-outlined {
-  font-size: var(--icon-size-sm);
+  align-self: flex-start;
 }
 
 .add-method-form {
@@ -1214,27 +1150,6 @@ button.primary-star:hover {
   display: flex;
   gap: var(--spacing-sm);
   justify-content: flex-end;
-}
-
-.block-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-md);
-  border: 1.5px solid color-mix(in srgb, var(--color-error) 60%, transparent);
-  color: var(--color-error);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  transition: background-color 0.15s;
-}
-
-.block-btn:hover {
-  background-color: color-mix(in srgb, var(--color-error) 8%, transparent);
-}
-
-.block-btn .material-symbols-outlined {
-  font-size: var(--icon-size-sm);
 }
 
 .section--danger {

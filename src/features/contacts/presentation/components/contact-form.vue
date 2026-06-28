@@ -3,6 +3,7 @@ import type { PhoneEntry } from '@/features/contacts/presentation/stores/contact
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
+import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
@@ -257,22 +258,21 @@ defineExpose({ submit, validateAndCollect })
             :placeholder="t('contacts.form.labelPlaceholder')"
           >
         </div>
-        <button
+        <BaseIconButton
           v-if="phoneRows.length > 1"
-          type="button"
+          name="remove_circle_outline"
+          :label="t('contacts.form.removePhoneTooltip')"
+          size="sm"
+          tone="danger"
           class="remove-phone-btn"
           @click="removePhoneRow(i)"
-        >
-          <BaseTooltip :text="t('contacts.form.removePhoneTooltip')">
-            <BaseIcon name="remove_circle_outline" />
-          </BaseTooltip>
-        </button>
+        />
       </div>
 
-      <button type="button" class="add-phone-btn" @click="addPhoneRow">
+      <BaseButton variant="text" size="sm" class="add-phone-btn" @click="addPhoneRow">
         <BaseIcon name="add" />
         {{ t('contacts.form.addPhoneBtn') }}
-      </button>
+      </BaseButton>
     </div>
 
     <p v-if="error" class="error-text">
@@ -393,48 +393,14 @@ defineExpose({ submit, validateAndCollect })
   min-width: 0;
 }
 
+/* IconButton (sm, danger); only the top-align with the first input row lives here. */
 .remove-phone-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-on-surface-variant);
-  flex-shrink: 0;
   margin-top: 10px;
-  transition: color 0.15s;
 }
 
-.remove-phone-btn:hover {
-  color: var(--color-error);
-}
-
-.remove-phone-btn .material-symbols-outlined {
-  font-size: 20px;
-}
-
+/* Text BaseButton; only its left-align lives here. */
 .add-phone-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  color: var(--color-primary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
   align-self: flex-start;
-  transition: opacity 0.15s;
-}
-
-.add-phone-btn:hover {
-  opacity: 0.75;
-}
-
-.add-phone-btn .material-symbols-outlined {
-  font-size: 18px;
 }
 
 .error-text {

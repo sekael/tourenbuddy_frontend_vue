@@ -146,7 +146,7 @@ describe('userProfileSheet', () => {
 
   it('should show add phone button when no phone set', () => {
     const wrapper = mount(UserProfileSheet)
-    expect(wrapper.find('.add-phone-btn').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="add-phone-btn"]').exists()).toBe(true)
   })
 
   it('should show phone number with verified badge when phone is verified', () => {
@@ -167,35 +167,35 @@ describe('userProfileSheet', () => {
       phoneVerified: false,
     }
     const wrapper = mount(UserProfileSheet)
-    expect(wrapper.find('.verify-btn').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="verify-btn"]').exists()).toBe(true)
   })
 
   it('should switch to edit mode when Edit profile button is clicked', async () => {
     const wrapper = mount(UserProfileSheet)
-    await wrapper.find('.edit-btn').trigger('click')
+    await wrapper.find('[data-testid="edit-profile-btn"]').trigger('click')
     expect(wrapper.find('#edit-first-name').exists()).toBe(true)
     expect(wrapper.find('#edit-last-name').exists()).toBe(true)
   })
 
   it('should populate edit form with current profile values', async () => {
     const wrapper = mount(UserProfileSheet)
-    await wrapper.find('.edit-btn').trigger('click')
+    await wrapper.find('[data-testid="edit-profile-btn"]').trigger('click')
     expect((wrapper.find('#edit-first-name').element as HTMLInputElement).value).toBe('Max')
     expect((wrapper.find('#edit-last-name').element as HTMLInputElement).value).toBe('Mustermann')
   })
 
   it('should cancel edit and return to view mode', async () => {
     const wrapper = mount(UserProfileSheet)
-    await wrapper.find('.edit-btn').trigger('click')
+    await wrapper.find('[data-testid="edit-profile-btn"]').trigger('click')
     await wrapper.find('.edit-actions .base-button--secondary').trigger('click')
-    expect(wrapper.find('.edit-btn').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="edit-profile-btn"]').exists()).toBe(true)
     expect(wrapper.find('#edit-first-name').exists()).toBe(false)
   })
 
   it('should call updateProfile on save with changed name fields', async () => {
     mockUpdateProfile.mockResolvedValue(undefined)
     const wrapper = mount(UserProfileSheet)
-    await wrapper.find('.edit-btn').trigger('click')
+    await wrapper.find('[data-testid="edit-profile-btn"]').trigger('click')
     await wrapper.find('#edit-first-name').setValue('Hans')
     await wrapper.find('form').trigger('submit')
     await vi.waitFor(() =>
@@ -207,7 +207,7 @@ describe('userProfileSheet', () => {
     mockUpdateProfile.mockResolvedValue(undefined)
     mockSendPhoneVerification.mockResolvedValue(undefined)
     const wrapper = mount(UserProfileSheet)
-    await wrapper.find('.edit-btn').trigger('click')
+    await wrapper.find('[data-testid="edit-profile-btn"]').trigger('click')
     await wrapper.find('#edit-phone').setValue('+41791234567')
     await wrapper.find('form').trigger('submit')
     await wrapper.vm.$nextTick()
@@ -226,7 +226,7 @@ describe('userProfileSheet', () => {
         phoneVerified: true,
       }
       const wrapper = mount(UserProfileSheet)
-      await wrapper.find('.edit-btn').trigger('click')
+      await wrapper.find('[data-testid="edit-profile-btn"]').trigger('click')
       await wrapper.find('[data-testid="remove-phone-btn"]').trigger('click')
       await wrapper.vm.$nextTick()
       expect(wrapper.find('.remove-phone-confirm').exists()).toBe(true)
@@ -241,7 +241,7 @@ describe('userProfileSheet', () => {
         phoneVerified: false,
       }
       const wrapper = mount(UserProfileSheet)
-      await wrapper.find('.edit-btn').trigger('click')
+      await wrapper.find('[data-testid="edit-profile-btn"]').trigger('click')
       await wrapper.find('[data-testid="remove-phone-btn"]').trigger('click')
       await vi.waitFor(() => expect(mockDeletePhone).toHaveBeenCalled())
       expect(wrapper.text()).not.toContain('user.profile.removePhoneDisclaimer')

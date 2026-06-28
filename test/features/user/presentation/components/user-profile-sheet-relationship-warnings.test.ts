@@ -93,7 +93,7 @@ vi.mock('@/features/notifications/presentation/components/notification-preferenc
 
 async function mountAndOpenRemoveConfirm() {
   const wrapper = mount(UserProfileSheet)
-  await wrapper.find('.edit-btn').trigger('click')
+  await wrapper.find('[data-testid="edit-profile-btn"]').trigger('click')
   await wrapper.find('[data-testid="remove-phone-btn"]').trigger('click')
   await wrapper.vm.$nextTick()
   return wrapper

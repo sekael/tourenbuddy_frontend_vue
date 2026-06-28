@@ -141,8 +141,9 @@ async function handleResend() {
               </BaseButton>
             </form>
 
-            <button
-              class="resend-btn"
+            <BaseButton
+              variant="text"
+              size="sm"
               :disabled="isResending || resendCooldown > 0"
               @click="handleResend"
             >
@@ -153,7 +154,7 @@ async function handleResend() {
                     ? t('user.phoneVerification.sendingBtn')
                     : t('user.phoneVerification.resendBtn')
               }}
-            </button>
+            </BaseButton>
           </template>
         </div>
       </AdaptiveOverlay>
@@ -210,8 +211,9 @@ async function handleResend() {
             </BaseButton>
           </form>
 
-          <button
-            class="resend-btn"
+          <BaseButton
+            variant="text"
+            size="sm"
             :disabled="isResending || resendCooldown > 0"
             @click="handleResend"
           >
@@ -222,7 +224,7 @@ async function handleResend() {
                   ? t('user.phoneVerification.sendingBtn')
                   : t('user.phoneVerification.resendBtn')
             }}
-          </button>
+          </BaseButton>
         </template>
       </div>
     </AdaptiveOverlay>
@@ -300,18 +302,6 @@ async function handleResend() {
 .success-text {
   color: var(--color-success);
   font-size: var(--font-size-sm);
-}
-
-.resend-btn {
-  text-align: center;
-  color: var(--color-primary);
-  font-size: var(--font-size-sm);
-  padding: var(--spacing-xs);
-}
-
-.resend-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .verified-state {
