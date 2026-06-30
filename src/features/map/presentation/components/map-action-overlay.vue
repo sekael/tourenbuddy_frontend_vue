@@ -122,8 +122,8 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
      browsers — keeps the speed-dial above Android system nav and Brave/Chrome
      bottom chrome, not buried under page-root 100lvh. */
   position: fixed;
-  bottom: calc(var(--spacing-3xl) + env(safe-area-inset-bottom, 0px));
-  right: calc(var(--spacing-lg) + env(safe-area-inset-right, 0px));
+  bottom: calc(var(--spacing-3xl) + var(--safe-bottom));
+  right: calc(var(--spacing-lg) + var(--safe-right));
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);

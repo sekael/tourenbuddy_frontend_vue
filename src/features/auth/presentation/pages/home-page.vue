@@ -40,7 +40,7 @@ const { t } = useI18n({ useScope: 'global' })
   min-height: 100lvh;
   /* No top padding — background image fills edge-to-edge including notch zone.
      Inner .content handles notch clearance via padding-top. */
-  padding: 0 var(--spacing-xl) calc(var(--spacing-xl) + env(safe-area-inset-bottom, 0px));
+  padding: 0 var(--spacing-xl) calc(var(--spacing-xl) + var(--safe-bottom));
   background-color: var(--color-background);
   overflow: hidden;
 }
@@ -74,7 +74,7 @@ const { t } = useI18n({ useScope: 'global' })
   max-width: 400px;
   text-align: center;
   /* Push content below notch with comfortable breathing room */
-  padding-top: calc(var(--spacing-xl) + env(safe-area-inset-top, 0px));
+  padding-top: calc(var(--spacing-xl) + var(--safe-top));
 }
 
 .title {

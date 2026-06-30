@@ -211,7 +211,8 @@ onMounted(() => {
    page adds none. Only the friendship-mode deeplink renders standalone and
    needs its own padding. Revisit if 'all' ever gets a standalone route. */
 .page--standalone {
-  padding: var(--spacing-md);
+  /* TODO(me): make the standalone deeplink a full notch-safe page root.
+     See task list at the end of this response. */
   max-width: 640px;
   margin: 0 auto;
 }
