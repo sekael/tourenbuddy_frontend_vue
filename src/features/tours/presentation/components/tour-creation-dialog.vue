@@ -5,6 +5,7 @@ import { storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
+import BaseButton from '@/core/components/base-button.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useLogger } from '@/core/logging/use-logger'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
@@ -129,9 +130,9 @@ function handlePickPoint(type: 'start' | 'end' | 'goal') {
     />
 
     <template #page-action>
-      <button type="submit" form="tour-create-form" class="page-save-btn">
+      <BaseButton type="submit" form="tour-create-form" variant="primary" size="sm">
         {{ t('tours.creation.saveBtn') }}
-      </button>
+      </BaseButton>
     </template>
   </AdaptiveOverlay>
 </template>

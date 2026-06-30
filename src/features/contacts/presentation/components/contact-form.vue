@@ -2,6 +2,9 @@
 import type { PhoneEntry } from '@/features/contacts/presentation/stores/contacts-store'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseButton from '@/core/components/base-button.vue'
+import BaseIconButton from '@/core/components/base-icon-button.vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
 import { normalizePhone } from '@/core/utils/phone-normalize'
@@ -233,7 +236,7 @@ defineExpose({ submit, validateAndCollect })
               ? t('contacts.form.primaryPhoneTooltip')
               : t('contacts.form.setAsPrimaryTooltip')"
           >
-            <span class="material-symbols-outlined">star</span>
+            <BaseIcon name="star" />
           </BaseTooltip>
         </button>
         <div class="phone-inputs">
@@ -255,22 +258,21 @@ defineExpose({ submit, validateAndCollect })
             :placeholder="t('contacts.form.labelPlaceholder')"
           >
         </div>
-        <button
+        <BaseIconButton
           v-if="phoneRows.length > 1"
-          type="button"
+          name="remove_circle_outline"
+          :label="t('contacts.form.removePhoneTooltip')"
+          size="sm"
+          tone="danger"
           class="remove-phone-btn"
           @click="removePhoneRow(i)"
-        >
-          <BaseTooltip :text="t('contacts.form.removePhoneTooltip')">
-            <span class="material-symbols-outlined">remove_circle_outline</span>
-          </BaseTooltip>
-        </button>
+        />
       </div>
 
-      <button type="button" class="add-phone-btn" @click="addPhoneRow">
-        <span class="material-symbols-outlined">add</span>
+      <BaseButton variant="text" size="sm" class="add-phone-btn" @click="addPhoneRow">
+        <BaseIcon name="add" />
         {{ t('contacts.form.addPhoneBtn') }}
-      </button>
+      </BaseButton>
     </div>
 
     <p v-if="error" class="error-text">
@@ -278,12 +280,12 @@ defineExpose({ submit, validateAndCollect })
     </p>
 
     <div v-if="!props.embedded" class="actions">
-      <button type="button" class="cancel-btn" @click="emit('cancel')">
+      <BaseButton type="button" variant="secondary" @click="emit('cancel')">
         {{ t('contacts.shared.cancelBtn') }}
-      </button>
-      <button type="submit" class="submit-btn" :disabled="isLoading">
+      </BaseButton>
+      <BaseButton type="submit" variant="primary" :disabled="isLoading">
         {{ isLoading ? t('contacts.shared.savingBtn') : submitLabel || t('user.shared.saveBtn') }}
-      </button>
+      </BaseButton>
     </div>
   </form>
 </template>
@@ -391,48 +393,14 @@ defineExpose({ submit, validateAndCollect })
   min-width: 0;
 }
 
+/* IconButton (sm, danger); only the top-align with the first input row lives here. */
 .remove-phone-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-on-surface-variant);
-  flex-shrink: 0;
   margin-top: 10px;
-  transition: color 0.15s;
 }
 
-.remove-phone-btn:hover {
-  color: var(--color-error);
-}
-
-.remove-phone-btn .material-symbols-outlined {
-  font-size: 20px;
-}
-
+/* Text BaseButton; only its left-align lives here. */
 .add-phone-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  color: var(--color-primary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
   align-self: flex-start;
-  transition: opacity 0.15s;
-}
-
-.add-phone-btn:hover {
-  opacity: 0.75;
-}
-
-.add-phone-btn .material-symbols-outlined {
-  font-size: 18px;
 }
 
 .error-text {
@@ -446,38 +414,5 @@ defineExpose({ submit, validateAndCollect })
   justify-content: flex-end;
 }
 
-.cancel-btn {
-  padding: var(--spacing-sm) var(--spacing-lg);
-  border-radius: 12px;
-  border: 1px solid var(--color-outline-variant);
-  color: var(--color-on-surface-variant);
-  font-size: var(--font-size-base);
-  transition: background-color 0.2s;
-}
-
-.cancel-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.submit-btn {
-  padding: var(--spacing-sm) var(--spacing-lg);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: 12px;
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  transition:
-    background-color 0.2s,
-    transform 0.15s;
-}
-
-.submit-btn:hover:not(:disabled) {
-  background-color: var(--color-primary-dark);
-  transform: translateY(-1px);
-}
-
-.submit-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+/* Cancel/submit use shared BaseButton (secondary/primary). */
 </style>

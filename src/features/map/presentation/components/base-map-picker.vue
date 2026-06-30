@@ -2,6 +2,7 @@
 import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { SWISSTOPO_STYLES } from '@/features/map/data/swisstopo-styles'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
@@ -26,7 +27,7 @@ function selectStyle(index: number) {
         :class="{ active: isOpen }"
         @click="isOpen = !isOpen"
       >
-        <span class="material-symbols-outlined">map</span>
+        <BaseIcon name="map" />
       </button>
     </BaseTooltip>
 
@@ -39,9 +40,7 @@ function selectStyle(index: number) {
           :class="{ selected: currentStyleIndex === index }"
           @click="selectStyle(index)"
         >
-          <span class="check material-symbols-outlined">{{
-            currentStyleIndex === index ? 'check' : ''
-          }}</span>
+          <BaseIcon :name="currentStyleIndex === index ? 'check' : ''" class="check" />
           {{ t(style.labelKey) }}
         </button>
       </div>

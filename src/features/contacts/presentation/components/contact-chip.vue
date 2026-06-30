@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Contact } from '@/features/contacts/domain/entities/contact'
+import BaseIcon from '@/core/components/base-icon.vue'
 import { resolveContactName } from '@/features/contacts/domain/entities/contact'
 
 const props = withDefaults(
@@ -36,10 +37,11 @@ function handleClick(event: MouseEvent) {
     type="button"
     @click="handleClick($event)"
   >
-    <span
+    <BaseIcon
       v-if="props.selected && props.mode === 'select'"
-      class="check-icon material-symbols-outlined"
-    >check</span>
+      name="check"
+      class="check-icon"
+    />
     {{ resolveContactName(props.contact) }}
   </button>
 </template>
@@ -50,7 +52,7 @@ function handleClick(event: MouseEvent) {
   align-items: center;
   gap: var(--spacing-xs);
   padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
   border: 1.5px solid var(--color-outline-variant);
   background-color: transparent;
   color: var(--color-on-surface);
@@ -66,7 +68,7 @@ function handleClick(event: MouseEvent) {
 }
 
 .chip.selected {
-  background-color: rgba(71, 85, 105, 0.1);
+  background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
   border-color: var(--color-primary);
   color: var(--color-primary);
 }

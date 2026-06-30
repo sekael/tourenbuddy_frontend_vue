@@ -15,13 +15,13 @@ afterEach(() => {
 describe('phoneVerificationNotice (gating edges)', () => {
   it('confirm button starts disabled (checkbox required)', () => {
     mountNotice()
-    const btn = document.querySelector('.confirm-btn') as HTMLButtonElement
+    const btn = document.querySelector('.base-button--primary') as HTMLButtonElement
     expect(btn.disabled).toBe(true)
   })
 
   it('does not emit acknowledged while checkbox unchecked', async () => {
     const wrapper = mountNotice()
-    ;(document.querySelector('.confirm-btn') as HTMLButtonElement).click()
+    ;(document.querySelector('.base-button--primary') as HTMLButtonElement).click()
     await wrapper.vm.$nextTick()
     expect(wrapper.emitted('acknowledged')).toBeFalsy()
   })
@@ -32,7 +32,7 @@ describe('phoneVerificationNotice (gating edges)', () => {
     checkbox.checked = true
     checkbox.dispatchEvent(new Event('change'))
     await wrapper.vm.$nextTick()
-    ;(document.querySelector('.confirm-btn') as HTMLButtonElement).click()
+    ;(document.querySelector('.base-button--primary') as HTMLButtonElement).click()
     await wrapper.vm.$nextTick()
     expect(wrapper.emitted('acknowledged')).toBeTruthy()
   })

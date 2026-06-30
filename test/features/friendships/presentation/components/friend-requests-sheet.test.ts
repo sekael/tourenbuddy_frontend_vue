@@ -63,9 +63,9 @@ function mountSheet(opts: MountOpts = {}) {
 }
 
 async function triggerAccept(wrapper: ReturnType<typeof mount>) {
-  await wrapper.find('.action-btn--accept').trigger('click')
+  await wrapper.find('[data-testid="req-accept"]').trigger('click')
   await nextTick()
-  await wrapper.find('.action-btn--accept').trigger('click')
+  await wrapper.find('[data-testid="req-accept"]').trigger('click')
 }
 
 describe('friendRequestsSheet (edges only)', () => {
@@ -76,7 +76,7 @@ describe('friendRequestsSheet (edges only)', () => {
   describe('rendering edges', () => {
     it('hides action rows while loading', () => {
       const { wrapper } = mountSheet({ isLoading: true })
-      expect(wrapper.find('.action-btn--accept').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="req-accept"]').exists()).toBe(false)
     })
 
     it('shows empty state when no incoming requests', () => {
@@ -88,7 +88,7 @@ describe('friendRequestsSheet (edges only)', () => {
       const { wrapper } = mountSheet({
         incoming: [makeRequest({ id: 'req-1', fromUserId: 'user-other', toUserId: 'user-me' })],
       })
-      await wrapper.find('.action-btn--accept').trigger('click')
+      await wrapper.find('[data-testid="req-accept"]').trigger('click')
       await nextTick()
       expect(wrapper.find('.confirm-content').exists()).toBe(true)
     })
@@ -162,7 +162,7 @@ describe('friendRequestsSheet (edges only)', () => {
         incoming: [makeRequest({ id: 'req-1' })],
       })
       vi.mocked(friendships.deny).mockRejectedValue(new Error('boom'))
-      await wrapper.find('.action-btn--deny').trigger('click')
+      await wrapper.find('[data-testid="req-deny"]').trigger('click')
       await flushPromises()
       expect(mockSnackbarShow).toHaveBeenCalled()
     })
@@ -172,7 +172,7 @@ describe('friendRequestsSheet (edges only)', () => {
         outgoing: [makeRequest({ id: 'req-2', fromUserId: 'user-me', toUserId: 'user-other' })],
       })
       vi.mocked(friendships.cancel).mockRejectedValue(new Error('boom'))
-      await wrapper.find('.action-btn--cancel').trigger('click')
+      await wrapper.find('[data-testid="req-cancel"]').trigger('click')
       await flushPromises()
       expect(mockSnackbarShow).toHaveBeenCalled()
     })

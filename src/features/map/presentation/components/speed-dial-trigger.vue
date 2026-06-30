@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import BaseIcon from '@/core/components/base-icon.vue'
+
 defineProps<{
   isOpen: boolean
   hasBadge?: boolean
@@ -21,8 +23,8 @@ defineEmits<{ toggle: [] }>()
       :title="isOpen ? titleOpen : titleClosed"
       @click="$emit('toggle')"
     >
-      <span class="material-symbols-outlined icon icon-menu" :class="{ hidden: isOpen }">menu</span>
-      <span class="material-symbols-outlined icon icon-close" :class="{ hidden: !isOpen }">close</span>
+      <BaseIcon name="menu" class="icon icon-menu" :class="{ hidden: isOpen }" />
+      <BaseIcon name="close" class="icon icon-close" :class="{ hidden: !isOpen }" />
     </button>
     <span v-if="hasBadge && !isOpen" class="dot" aria-hidden="true" />
   </div>

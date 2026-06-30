@@ -3,6 +3,7 @@ import type { NotificationType } from '../../domain/entities/notification-prefer
 import { storeToRefs } from 'pinia'
 import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { ALL_NOTIFICATION_TYPES } from '../../domain/entities/notification-preferences'
 import { useNotificationCapability } from '../composables/use-notification-capability'
@@ -55,25 +56,23 @@ onMounted(() => {
           <span v-if="requiresPwaInstall" class="unavailable">
             <span class="unavailable__label">{{ t('notifications.pushUnavailable') }}</span>
             <BaseTooltip :text="t('notifications.installHint')">
-              <button
-                type="button"
+              <BaseIconButton
+                name="info"
+                :label="t('notifications.installHint')"
+                size="sm"
                 class="unavailable__info"
-                :aria-label="t('notifications.installHint')"
-              >
-                <span class="material-symbols-outlined" aria-hidden="true">info</span>
-              </button>
+              />
             </BaseTooltip>
           </span>
           <span v-else-if="pushDenied" class="unavailable">
             <span class="unavailable__label">{{ t('notifications.pushUnavailable') }}</span>
             <BaseTooltip :text="t('notifications.deniedHint')">
-              <button
-                type="button"
+              <BaseIconButton
+                name="info"
+                :label="t('notifications.deniedHint')"
+                size="sm"
                 class="unavailable__info unavailable__info--warning"
-                :aria-label="t('notifications.deniedHint')"
-              >
-                <span class="material-symbols-outlined" aria-hidden="true">info</span>
-              </button>
+              />
             </BaseTooltip>
           </span>
           <label v-else-if="pushSupported" class="switch">
@@ -205,23 +204,11 @@ onMounted(() => {
 }
 
 .unavailable__info {
-  display: flex;
-  align-items: center;
-  padding: 0;
-  border: none;
-  background: none;
-  cursor: pointer;
   color: var(--color-on-surface-variant);
-  font-size: 16px;
-  line-height: 1;
 }
 
 .unavailable__info--warning {
   color: var(--color-error);
-}
-
-.unavailable__info .material-symbols-outlined {
-  font-size: 16px;
 }
 
 .types-block {
@@ -289,7 +276,7 @@ onMounted(() => {
   position: absolute;
   inset: 0;
   background-color: var(--color-outline-variant);
-  border-radius: 22px;
+  border-radius: var(--radius-pill);
   cursor: pointer;
   transition: background-color 0.2s;
 }
@@ -301,9 +288,9 @@ onMounted(() => {
   left: 2px;
   height: 18px;
   width: 18px;
-  background-color: white;
-  border-radius: 50%;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  background-color: var(--color-background);
+  border-radius: var(--radius-round);
+  box-shadow: var(--shadow-control);
   transition: transform 0.2s;
 }
 

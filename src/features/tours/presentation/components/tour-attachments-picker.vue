@@ -3,6 +3,9 @@ import type { TourAttachment } from '@/features/tours/domain/entities/tour-attac
 import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseButton from '@/core/components/base-button.vue'
+import BaseIconButton from '@/core/components/base-icon-button.vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 
 const props = defineProps<{
@@ -109,32 +112,32 @@ async function onDrop(toIndex: number) {
       >
         <!-- Inline delete confirm state -->
         <template v-if="confirmDeleteTarget?.id === attachment.id">
-          <span class="picker__filename">{{ attachment.originalFilename }}</span>
           <div class="picker__confirm-actions">
-            <button type="button" class="picker__cancel-btn" @click="cancelDelete">
+            <BaseButton variant="secondary" size="sm" @click="cancelDelete">
               {{ t('tours.infoSheet.cancelBtn') }}
-            </button>
-            <button type="button" class="picker__confirm-delete-btn" @click="confirmDelete">
+            </BaseButton>
+            <BaseButton variant="danger" size="sm" @click="confirmDelete">
               {{ t('tours.attachments.delete') }}
-            </button>
+            </BaseButton>
           </div>
         </template>
 
         <!-- Normal state -->
         <template v-else>
-          <span class="material-symbols-outlined picker__drag-handle" aria-hidden="true">drag_indicator</span>
-          <span class="material-symbols-outlined picker__file-icon" aria-hidden="true">
-            {{ attachment.mimeType === 'application/pdf' ? 'picture_as_pdf' : 'image' }}
-          </span>
+          <BaseIcon name="drag_indicator" class="picker__drag-handle" />
+          <BaseIcon
+            :name="attachment.mimeType === 'application/pdf' ? 'picture_as_pdf' : 'image'"
+            class="picker__file-icon"
+          />
           <span class="picker__filename">{{ attachment.originalFilename }}</span>
-          <button
-            type="button"
-            class="picker__delete-btn"
-            :aria-label="t('tours.attachments.delete')"
+          <BaseIconButton
+            name="delete"
+            :label="t('tours.attachments.delete')"
+            shape="square"
+            size="sm"
+            tone="danger"
             @click="requestDelete(attachment)"
-          >
-            <span class="material-symbols-outlined" aria-hidden="true">delete</span>
-          </button>
+          />
         </template>
       </li>
     </ul>
@@ -142,15 +145,16 @@ async function onDrop(toIndex: number) {
     <!-- Add button / upload spinner -->
     <div class="picker__add-row">
       <span v-if="loading" class="picker__spinner" />
-      <button
+      <BaseButton
         v-else-if="attachments.length < 5"
         type="button"
-        class="picker__add-btn"
+        variant="secondary"
+        size="sm"
         @click="openFilePicker"
       >
-        <span class="material-symbols-outlined" aria-hidden="true">attach_file</span>
+        <BaseIcon name="attach_file" />
         {{ t('tours.attachments.add') }}
-      </button>
+      </BaseButton>
       <p v-else class="picker__limit-reached">
         {{ t('tours.attachments.limitReached') }}
       </p>
@@ -201,12 +205,12 @@ async function onDrop(toIndex: number) {
 .picker__item--confirm {
   cursor: default;
   border-color: var(--color-error);
+  justify-content: center;
 }
 
 .picker__drag-handle,
 .picker__file-icon {
   color: var(--color-on-surface-variant);
-  font-size: 20px;
   flex-shrink: 0;
 }
 
@@ -218,49 +222,10 @@ async function onDrop(toIndex: number) {
   white-space: nowrap;
 }
 
-.picker__delete-btn {
-  color: var(--color-on-surface-variant);
-  display: flex;
-  align-items: center;
-  padding: var(--spacing-xxs);
-  border-radius: var(--radius-sm);
-  flex-shrink: 0;
-  transition: color 0.15s;
-}
-
-.picker__delete-btn:hover {
-  color: var(--color-error);
-}
-
 .picker__add-row {
   display: flex;
   align-items: center;
   min-height: 36px;
-}
-
-.picker__add-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
-  color: var(--color-on-surface-variant);
-  background: transparent;
-  white-space: nowrap;
-  transition:
-    border-color 0.15s,
-    color 0.15s;
-}
-
-.picker__add-btn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
-.picker__add-btn .material-symbols-outlined {
-  font-size: 16px;
 }
 
 .picker__limit-reached {
@@ -289,39 +254,10 @@ async function onDrop(toIndex: number) {
   display: none;
 }
 
-/* Inline delete confirm */
+/* Inline delete confirm — centered in the row via .picker__item--confirm. */
 .picker__confirm-actions {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: var(--spacing-xs);
-  flex-shrink: 0;
-  margin-left: auto;
-}
-
-.picker__cancel-btn {
-  padding: var(--spacing-xxs) var(--spacing-sm);
-  border-radius: 10px;
-  border: 1px solid var(--color-outline-variant);
-  color: var(--color-on-surface-variant);
-  font-size: var(--font-size-sm);
-  transition: background-color 0.15s;
-}
-
-.picker__cancel-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.picker__confirm-delete-btn {
-  padding: var(--spacing-xxs) var(--spacing-sm);
-  border-radius: 10px;
-  background-color: var(--color-error);
-  color: white;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  transition: opacity 0.15s;
-}
-
-.picker__confirm-delete-btn:hover {
-  opacity: 0.85;
 }
 </style>

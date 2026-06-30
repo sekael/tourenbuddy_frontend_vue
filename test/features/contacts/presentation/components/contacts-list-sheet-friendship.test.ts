@@ -159,7 +159,7 @@ function mountSheet(contacts: (typeof anna)[] = [anna]) {
 }
 
 async function openAddView(wrapper: ReturnType<typeof mountSheet>) {
-  await wrapper.find('.add-contact-btn').trigger('click')
+  await wrapper.find('[data-testid="add-contact-btn"]').trigger('click')
   await wrapper.vm.$nextTick()
 }
 
@@ -270,7 +270,7 @@ describe('import discovery (failure + gating)', () => {
       rawPhoneNumbers: [],
     },
   ]
-  const pickerBtn = (w: ReturnType<typeof mountSheet>) => w.findAll('.import-btn')[1]!
+  const pickerBtn = (w: ReturnType<typeof mountSheet>) => w.find('[data-testid="import-picker-btn"]')
 
   beforeEach(() => {
     resetMocks()

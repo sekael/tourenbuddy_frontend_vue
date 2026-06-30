@@ -68,14 +68,14 @@ describe('friend-requests-sheet — block entry point', () => {
   it('renders a Block button per incoming request row', async () => {
     const w = mountSheet()
     await nextTick()
-    const blockBtns = w.findAll('.action-btn--block')
+    const blockBtns = w.findAll('[data-testid="req-block"]')
     expect(blockBtns.length).toBeGreaterThan(0)
   })
 
   it('opens block-confirm-dialog when Block button is clicked', async () => {
     const w = mountSheet()
     await nextTick()
-    const blockBtn = w.find('.action-btn--block')
+    const blockBtn = w.find('[data-testid="req-block"]')
     await blockBtn.trigger('click')
     await nextTick()
     expect(w.findComponent({ name: 'BlockConfirmDialog' }).exists()).toBe(true)
@@ -84,7 +84,7 @@ describe('friend-requests-sheet — block entry point', () => {
   it('closes dialog on cancel', async () => {
     const w = mountSheet()
     await nextTick()
-    await w.find('.action-btn--block').trigger('click')
+    await w.find('[data-testid="req-block"]').trigger('click')
     await nextTick()
     const dialog = w.findComponent({ name: 'BlockConfirmDialog' })
     await dialog.vm.$emit('cancel')

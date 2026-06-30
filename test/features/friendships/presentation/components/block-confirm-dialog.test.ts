@@ -31,13 +31,13 @@ describe('block-confirm-dialog', () => {
 
   it('emits cancel on cancel click', async () => {
     const w = mountDialog(false)
-    await w.find('.btn--cancel').trigger('click')
+    await w.find('.base-button--secondary').trigger('click')
     expect(w.emitted('cancel')).toBeTruthy()
   })
 
   it('emits confirm with null reason when report toggle not checked', async () => {
     const w = mountDialog(false)
-    await w.find('.btn--confirm').trigger('click')
+    await w.find('.base-button--danger').trigger('click')
     expect(w.emitted('confirm')?.[0]).toEqual([null])
   })
 
@@ -51,14 +51,14 @@ describe('block-confirm-dialog', () => {
     const w = mountDialog(false)
     await w.find('input[type=checkbox]').setValue(true)
     await w.find('textarea').setValue('spamming me')
-    await w.find('.btn--confirm').trigger('click')
+    await w.find('.base-button--danger').trigger('click')
     expect(w.emitted('confirm')?.[0]).toEqual(['spamming me'])
   })
 
   it('emits confirm with null when reason textarea is empty', async () => {
     const w = mountDialog(false)
     await w.find('input[type=checkbox]').setValue(true)
-    await w.find('.btn--confirm').trigger('click')
+    await w.find('.base-button--danger').trigger('click')
     expect(w.emitted('confirm')?.[0]).toEqual([null])
   })
 })

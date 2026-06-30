@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 
 defineProps<{
@@ -29,7 +30,7 @@ const { t } = useI18n({ useScope: 'global' })
           :aria-disabled="toursDisabled"
           @click="emit('tours')"
         >
-          <span class="material-symbols-outlined" aria-hidden="true">location_on</span>
+          <BaseIcon name="location_on" />
           <span class="segment-label">{{ t('map.actionBar.myTours') }}</span>
         </button>
       </BaseTooltip>
@@ -48,7 +49,7 @@ const { t } = useI18n({ useScope: 'global' })
           :aria-label="t('map.actionBar.addTourAriaLabel')"
           @click="emit('addTour')"
         >
-          <span class="material-symbols-outlined" aria-hidden="true">add_location_alt</span>
+          <BaseIcon name="add_location_alt" />
         </button>
       </BaseTooltip>
     </div>

@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
+import BaseButton from '@/core/components/base-button.vue'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
 import { InvalidPhoneNumberError } from '@/core/exceptions'
 import PhoneVerificationNotice from '@/features/friendships/presentation/components/phone-verification-notice.vue'
@@ -194,14 +195,14 @@ function handleNoticeClose() {
           {{ submitError }}
         </p>
 
-        <button type="submit" class="submit-btn" :disabled="isLoading">
+        <BaseButton type="submit" variant="primary" :disabled="isLoading">
           {{ isLoading ? t('user.shared.savingBtn') : t('user.onboarding.continueBtn') }}
-        </button>
+        </BaseButton>
       </form>
 
-      <button class="skip-btn" @click="handleSkip">
+      <BaseButton variant="text" size="sm" data-testid="skip-btn" @click="handleSkip">
         {{ t('user.onboarding.skipBtn') }}
-      </button>
+      </BaseButton>
     </div>
 
     <PhoneVerificationNotice
@@ -299,38 +300,5 @@ function handleNoticeClose() {
 .error-text {
   color: var(--color-error);
   font-size: var(--font-size-sm);
-}
-
-.submit-btn {
-  padding: var(--spacing-md);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: 12px;
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  transition:
-    background-color 0.2s,
-    transform 0.15s;
-}
-
-.submit-btn:hover:not(:disabled) {
-  background-color: var(--color-primary-dark);
-  transform: translateY(-1px);
-}
-
-.submit-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.skip-btn {
-  text-align: center;
-  color: var(--color-on-surface-variant);
-  font-size: var(--font-size-sm);
-  padding: var(--spacing-xs);
-}
-
-.skip-btn:hover {
-  color: var(--color-on-surface);
 }
 </style>

@@ -1,4 +1,37 @@
 :root {
+  /* ===========================================================================
+     PRIMITIVE TIER — raw, context-free values. Referenced only by the semantic
+     tier (for colors) or consumed directly as scales (spacing/radius/shadow).
+     Never give these contextual meaning; that is the semantic tier's job.
+     =========================================================================== */
+
+  /* Palette ramps (Tailwind slate/blue/red/green — only shades in use) */
+  --slate-50: #f8fafc;
+  --slate-200: #e2e8f0;
+  --slate-300: #cbd5e1;
+  --slate-400: #94a3b8;
+  --slate-500: #64748b;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-900: #0f172a;
+
+  --blue-500: #3b82f6;
+  --blue-700: #1d4ed8;
+  --blue-900: #1e3a8a;
+
+  --red-50: #fef2f2;
+  --red-600: #dc2626;
+  --red-900: #7f1d1d;
+
+  --green-600: #16a34a;
+  --green-700: #2e7d32;
+  --amber-500: #f59e0b;
+  --orange-500: #f97316;
+  --red-700: #c62828;
+
+  --white: #ffffff;
+  --white-a25: rgba(255, 255, 255, 0.25);
+
   /* Spacing (4-point scale) */
   --spacing-xxs: 4px;
   --spacing-xs: 8px;
@@ -13,47 +46,88 @@
   --radius-sm: 8px;
   --radius-md: 16px;
   --radius-lg: 24px;
+  --radius-pill: 9999px;
+  --radius-round: 50%;
 
-  /* Blueish-grey (slate) color palette */
-  --color-primary: #475569;
-  --color-primary-light: #64748b;
-  --color-primary-dark: #334155;
-  --color-on-primary: #ffffff;
+  /* Overlay/contrast colors */
+  --color-backdrop: rgba(15, 23, 42, 0.35);
+  --color-backdrop-strong: rgba(0, 0, 0, 0.6);
+  --color-on-contrast: var(--white);
+  --color-contrast-surface: rgba(255, 255, 255, 0.12);
+  --color-contrast-surface-hover: rgba(255, 255, 255, 0.22);
+  --color-contrast-outline: rgba(255, 255, 255, 0.55);
+  --color-contrast-outline-strong: rgba(255, 255, 255, 0.85);
 
-  --color-accent: #3b82f6;
-
-  --color-surface: #f8fafc;
-  --color-on-surface: #0f172a;
-  --color-surface-variant: #e2e8f0;
-  --color-on-surface-variant: #475569;
-  --color-outline: #94a3b8;
-  --color-outline-variant: #cbd5e1;
-
-  --color-background: #ffffff;
-  --color-on-background: #0f172a;
-
-  --color-error: #dc2626;
-  --color-on-error: #ffffff;
-  --color-error-container: #fef2f2;
-  --color-on-error-container: #7f1d1d;
-
-  --color-success: #16a34a;
-  --color-on-success: #ffffff;
-
-  /* FAB surface — dark azure, clearly distinct from Swisstopo terrain */
-  --color-fab-surface: #1e3a8a;
-  --color-fab-surface-strong: #1d4ed8;
-  --color-fab-on-surface: #ffffff;
-  --color-fab-border: rgba(255, 255, 255, 0.25);
-
-  /* Safe-area insets (iOS notch, Android nav bar, home indicator) */
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-left: env(safe-area-inset-left, 0px);
-  --safe-right: env(safe-area-inset-right, 0px);
-
-  /* Layered shadows */
+  /* Layered shadows (slate-900 at low alpha) */
   --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.1);
   --shadow-md: 0 2px 4px rgba(15, 23, 42, 0.06), 0 4px 8px rgba(15, 23, 42, 0.1), 0 1px 2px rgba(15, 23, 42, 0.04);
   --shadow-lg: 0 4px 6px rgba(15, 23, 42, 0.05), 0 10px 20px rgba(15, 23, 42, 0.1), 0 2px 4px rgba(15, 23, 42, 0.04);
+  --shadow-control: 0 1px 2px rgba(0, 0, 0, 0.15);
+
+  /* ===========================================================================
+     SEMANTIC TIER — contextual aliases that reference primitives via var().
+     Application code references THESE, never the raw palette. A later theme
+     (e.g. dark mode) is expressed by reassigning these to other primitives,
+     leaving primitives and component code untouched.
+     =========================================================================== */
+
+  /* Blueish-grey (slate) color roles */
+  --color-primary: var(--slate-600);
+  --color-primary-light: var(--slate-500);
+  --color-primary-dark: var(--slate-700);
+  --color-on-primary: var(--white);
+
+  --color-accent: var(--blue-500);
+
+  --color-surface: var(--slate-50);
+  --color-on-surface: var(--slate-900);
+  --color-surface-variant: var(--slate-200);
+  --color-on-surface-variant: var(--slate-600);
+  --color-outline: var(--slate-400);
+  --color-outline-variant: var(--slate-300);
+
+  --color-background: var(--white);
+  --color-on-background: var(--slate-900);
+
+  --color-error: var(--red-600);
+  --color-on-error: var(--white);
+  --color-error-container: var(--red-50);
+  --color-on-error-container: var(--red-900);
+
+  --color-success: var(--green-600);
+  --color-on-success: var(--white);
+
+  --color-warning: var(--amber-500);
+  --color-friend: var(--orange-500);
+  --color-route-start: var(--green-700);
+  --color-route-end: var(--red-700);
+
+  /* FAB surface — dark azure, clearly distinct from Swisstopo terrain */
+  --color-fab-surface: var(--blue-900);
+  --color-fab-surface-strong: var(--blue-700);
+  --color-fab-on-surface: var(--white);
+  --color-fab-border: var(--white-a25);
+
+  /* --- Component sizing (consumed by shared Button/IconButton/Icon) --------- */
+
+  /* Icon glyph sizes (md = current global default of 20px) */
+  --icon-size-xs: 16px;
+  --icon-size-sm: 18px;
+  --icon-size-md: 20px;
+  --icon-size-lg: 24px;
+  --icon-size-xl: 48px;
+
+  /* Icon-only button touch targets (square box; shape via radius prop) */
+  --icon-button-size-sm: 32px;
+  --icon-button-size-md: 40px;
+  --icon-button-size-lg: 48px;
+
+  /* Action button (label) — radius is off the 8/16/24 scale, hence its own token */
+  --button-radius: 12px;
+  --button-padding-sm: var(--spacing-xs) var(--spacing-md);
+  --button-padding-md: var(--spacing-md);
+  --button-padding-lg: var(--spacing-md) var(--spacing-xl);
+  --button-font-size-sm: var(--font-size-sm);
+  --button-font-size-md: var(--font-size-base);
+  --button-font-size-lg: var(--font-size-lg);
 }

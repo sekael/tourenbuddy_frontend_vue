@@ -128,7 +128,7 @@ defineExpose({ focusFirst })
   min-width: 16px;
   height: 16px;
   padding: 0 3px;
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
   background-color: var(--color-primary);
   color: var(--color-on-primary);
   font-size: 10px;

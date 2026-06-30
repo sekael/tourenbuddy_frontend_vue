@@ -76,14 +76,14 @@ describe('blocked-list', () => {
   it('unblock button enabled when cooldown has elapsed', () => {
     const block = makeBlock()
     const w = mountList([block])
-    const btn = w.find('.action-btn')
+    const btn = w.find('.base-button--secondary')
     expect(btn.attributes('disabled')).toBeUndefined()
   })
 
   it('unblock button disabled when within cooldown', () => {
     const block = makeBlock({ lastBlockedAt: new Date().toISOString() })
     const w = mountList([block])
-    const btn = w.find('.action-btn')
+    const btn = w.find('.base-button--secondary')
     expect(btn.attributes('disabled')).toBeDefined()
   })
 

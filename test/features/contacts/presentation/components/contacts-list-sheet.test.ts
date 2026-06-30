@@ -181,7 +181,7 @@ describe('contactsListSheet', () => {
 
     it('should navigate to add view when add button is clicked', async () => {
       const wrapper = mountSheet()
-      await wrapper.find('.add-contact-btn').trigger('click')
+      await wrapper.find('[data-testid="add-contact-btn"]').trigger('click')
       await wrapper.vm.$nextTick()
       expect(wrapper.find('[data-testid="contact-form"]').exists()).toBe(true)
     })
@@ -230,7 +230,7 @@ describe('contactsListSheet', () => {
   describe('close', () => {
     it('should emit close when bottom sheet close button clicked in list view', async () => {
       const wrapper = mountSheet()
-      await wrapper.find('.close-btn').trigger('click')
+      await wrapper.find('[aria-label="core.drawer.close"], [aria-label="Close"]').trigger('click')
       expect(wrapper.emitted('close')).toHaveLength(1)
     })
 
@@ -239,7 +239,7 @@ describe('contactsListSheet', () => {
       await wrapper.findAll('.contact-row')[0]!.trigger('click')
       await wrapper.vm.$nextTick()
 
-      await wrapper.find('.close-btn').trigger('click')
+      await wrapper.find('[aria-label="core.drawer.close"], [aria-label="Close"]').trigger('click')
       await wrapper.vm.$nextTick()
       expect(wrapper.emitted('close')).toBeFalsy()
       expect(wrapper.find('.contact-row').exists()).toBe(true)

@@ -80,7 +80,7 @@ describe('contact-detail-view — relationship warnings on delete confirm', () =
 
   it('should show no relationship warning when no pending or friendship', async () => {
     const wrapper = mountDetail({ hasPending: false, hasFriendship: false })
-    await wrapper.find('.delete-btn').trigger('click')
+    await wrapper.find('[data-testid="delete-btn"]').trigger('click')
     await flushPromises()
 
     expect(wrapper.find('.delete-confirm-text').exists()).toBe(true)
@@ -89,7 +89,7 @@ describe('contact-detail-view — relationship warnings on delete confirm', () =
 
   it('should show friendship warning when only friendship exists', async () => {
     const wrapper = mountDetail({ hasPending: false, hasFriendship: true })
-    await wrapper.find('.delete-btn').trigger('click')
+    await wrapper.find('[data-testid="delete-btn"]').trigger('click')
     await flushPromises()
 
     expect(wrapper.find('.delete-friend-warning').exists()).toBe(true)
@@ -98,7 +98,7 @@ describe('contact-detail-view — relationship warnings on delete confirm', () =
 
   it('should show pending warning when only pending request exists', async () => {
     const wrapper = mountDetail({ hasPending: true, hasFriendship: false })
-    await wrapper.find('.delete-btn').trigger('click')
+    await wrapper.find('[data-testid="delete-btn"]').trigger('click')
     await flushPromises()
 
     expect(wrapper.find('.delete-friend-warning').exists()).toBe(true)
@@ -107,7 +107,7 @@ describe('contact-detail-view — relationship warnings on delete confirm', () =
 
   it('should show combined warning when both exist', async () => {
     const wrapper = mountDetail({ hasPending: true, hasFriendship: true })
-    await wrapper.find('.delete-btn').trigger('click')
+    await wrapper.find('[data-testid="delete-btn"]').trigger('click')
     await flushPromises()
 
     expect(wrapper.find('.delete-friend-warning').exists()).toBe(true)
@@ -132,9 +132,9 @@ describe('contact-detail-view — relationship warnings on phone method delete',
     const store = useContactsStore()
     vi.spyOn(store, 'relationshipsForPhone').mockResolvedValue(phoneRelResult)
     // Enter edit mode
-    await wrapper.find('.edit-btn').trigger('click')
+    await wrapper.find('[data-testid="edit-contact-btn"]').trigger('click')
     // Click delete icon on the phone method
-    await wrapper.find('.icon-btn--danger').trigger('click')
+    await wrapper.find('[data-testid="remove-method-btn"]').trigger('click')
     await flushPromises()
     return wrapper
   }

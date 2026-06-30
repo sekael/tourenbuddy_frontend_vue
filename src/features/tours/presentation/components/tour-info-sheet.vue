@@ -5,6 +5,8 @@ import type { TourAttachment } from '@/features/tours/domain/entities/tour-attac
 import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseButton from '@/core/components/base-button.vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import FullScreenPage from '@/core/components/full-screen-page.vue'
@@ -629,8 +631,8 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           :class="{ 'completion-toggle--done': tour.completed }" :aria-pressed="tour.completed"
           @click="toggleCompleted"
         >
-          <span v-if="tour.completed" class="material-symbols-outlined">check_circle</span>
-          <span v-else class="material-symbols-outlined">radio_button_unchecked</span>
+          <BaseIcon v-if="tour.completed" name="check_circle" />
+          <BaseIcon v-else name="radio_button_unchecked" />
           {{
             tour.completed
               ? t('tours.infoSheet.completedBtn')
@@ -645,9 +647,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
             : 'visibility-toggle--friends'
           " :aria-pressed="tour.visibility === 'private'" @click="toggleVisibility"
         >
-          <span class="material-symbols-outlined">
-            {{ tour.visibility === 'private' ? 'lock' : 'group' }}
-          </span>
+          <BaseIcon :name="tour.visibility === 'private' ? 'lock' : 'group'" />
           {{
             tour.visibility === 'private'
               ? t('tours.infoSheet.visibilityMakeFriends')
@@ -658,9 +658,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         <!-- Tour type -->
         <div v-if="tour.tourType" class="detail-row">
           <BaseTooltip :text="t('tours.infoSheet.iconTooltipType')">
-            <span class="detail-icon material-symbols-outlined">{{
-              TOUR_TYPE_ICONS[tour.tourType]
-            }}</span>
+            <BaseIcon :name="TOUR_TYPE_ICONS[tour.tourType]" class="detail-icon" />
           </BaseTooltip>
           <span>{{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[tour.tourType]}` as any) }}</span>
         </div>
@@ -668,7 +666,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         <!-- Planned date -->
         <div v-if="formattedDate" class="detail-row">
           <BaseTooltip :text="t('tours.infoSheet.iconTooltipDate')">
-            <span class="detail-icon material-symbols-outlined">calendar_today</span>
+            <BaseIcon name="calendar_today" class="detail-icon" />
           </BaseTooltip>
           <span>{{ formattedDate }}</span>
         </div>
@@ -676,7 +674,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         <!-- Goal coordinates -->
         <div class="detail-row">
           <BaseTooltip :text="t('tours.infoSheet.iconTooltipGoal')">
-            <span class="detail-icon material-symbols-outlined">location_on</span>
+            <BaseIcon name="location_on" class="detail-icon" />
           </BaseTooltip>
           <span class="coords">{{ coordinates }}</span>
         </div>
@@ -684,7 +682,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         <!-- Elevation -->
         <div v-if="formattedElevation" class="detail-row">
           <BaseTooltip :text="t('tours.infoSheet.iconTooltipElevation')">
-            <span class="detail-icon material-symbols-outlined">landscape</span>
+            <BaseIcon name="landscape" class="detail-icon" />
           </BaseTooltip>
           <span>{{ formattedElevation }}</span>
         </div>
@@ -693,7 +691,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         <template v-if="startPointText">
           <div class="detail-row">
             <BaseTooltip :text="t('tours.infoSheet.iconTooltipStartPoint')">
-              <span class="detail-icon material-symbols-outlined">home</span>
+              <BaseIcon name="home" class="detail-icon" />
             </BaseTooltip>
             <span v-if="tour.startPointName" class="point-meta">
               {{ tour.startPointName }}
@@ -705,13 +703,13 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           </div>
           <div v-if="isOneWayToGoal" class="detail-row">
             <BaseTooltip :text="t('tours.infoSheet.iconTooltipEndPoint')">
-              <span class="detail-icon material-symbols-outlined">directions</span>
+              <BaseIcon name="directions" class="detail-icon" />
             </BaseTooltip>
             <span class="round-trip-hint">{{ t('tours.infoSheet.oneWayToGoalIndicator') }}</span>
           </div>
           <div v-else class="detail-row">
             <BaseTooltip :text="t('tours.infoSheet.iconTooltipEndPoint')">
-              <span class="detail-icon material-symbols-outlined">flag</span>
+              <BaseIcon name="flag" class="detail-icon" />
             </BaseTooltip>
             <span v-if="isRoundTrip" class="round-trip-hint">{{
               t('tours.infoSheet.roundTrip')
@@ -731,7 +729,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         <!-- Seasons -->
         <div v-if="tour.seasons && tour.seasons.length > 0" class="detail-row align-start">
           <BaseTooltip :text="t('tours.infoSheet.iconTooltipSeasons')">
-            <span class="detail-icon material-symbols-outlined">wb_sunny</span>
+            <BaseIcon name="wb_sunny" class="detail-icon" />
           </BaseTooltip>
           <div class="season-tags">
             <span v-for="season in tour.seasons" :key="season" class="season-tag">
@@ -743,7 +741,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         <!-- Description -->
         <div v-if="tour.description" class="detail-row align-start">
           <BaseTooltip :text="t('tours.infoSheet.iconTooltipDescription')">
-            <span class="detail-icon material-symbols-outlined">description</span>
+            <BaseIcon name="description" class="detail-icon" />
           </BaseTooltip>
           <p class="description-text">
             <template v-for="(segment, i) in linkifyText(tour.description)" :key="i">
@@ -761,7 +759,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         <!-- Equipment -->
         <div v-if="tour.equipment" class="detail-row align-start">
           <BaseTooltip :text="t('tours.infoSheet.iconTooltipEquipment')">
-            <span class="detail-icon material-symbols-outlined">hardware</span>
+            <BaseIcon name="hardware" class="detail-icon" />
           </BaseTooltip>
           <p class="detail-text">
             {{ tour.equipment }}
@@ -771,7 +769,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         <!-- Notes -->
         <div v-if="tour.notes" class="detail-row align-start">
           <BaseTooltip :text="t('tours.infoSheet.iconTooltipNotes')">
-            <span class="detail-icon material-symbols-outlined">sticky_note_2</span>
+            <BaseIcon name="sticky_note_2" class="detail-icon" />
           </BaseTooltip>
           <p class="detail-text">
             {{ tour.notes }}
@@ -781,12 +779,12 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         <!-- GPX track download -->
         <div v-if="tour.gpxFilepath" class="detail-row">
           <BaseTooltip :text="t('tours.infoSheet.iconTooltipGpxTrack')">
-            <span class="detail-icon material-symbols-outlined">route</span>
+            <BaseIcon name="route" class="detail-icon" />
           </BaseTooltip>
-          <button type="button" class="gpx-download-btn" @click="handleDownloadGpx">
-            <span class="material-symbols-outlined">download</span>
+          <BaseButton variant="secondary" size="sm" class="gpx-download-btn" @click="handleDownloadGpx">
+            <BaseIcon name="download" />
             {{ t('tours.infoSheet.downloadGpxBtn') }}
-          </button>
+          </BaseButton>
         </div>
 
         <!-- Attachments strip -->
@@ -795,7 +793,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         <!-- Partners -->
         <div v-if="partners.length > 0" class="detail-row">
           <BaseTooltip :text="t('tours.infoSheet.iconTooltipPartners')">
-            <span class="detail-icon material-symbols-outlined">group</span>
+            <BaseIcon name="group" class="detail-icon" />
           </BaseTooltip>
           <div class="partner-chips-section">
             <div class="partner-chips">
@@ -804,13 +802,13 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
                 mode="action" @open="openContactMenu"
               />
             </div>
-            <button
-              v-if="partners.length > 1" type="button" class="group-sms-btn" data-testid="group-sms-btn"
-              @click="showGroupSmsDialog = true"
+            <BaseButton
+              v-if="partners.length > 1" variant="secondary" size="sm" class="group-sms-btn"
+              data-testid="group-sms-btn" @click="showGroupSmsDialog = true"
             >
-              <span class="material-symbols-outlined">sms</span>
+              <BaseIcon name="sms" />
               {{ t('tours.infoSheet.messageAll') }}
-            </button>
+            </BaseButton>
           </div>
         </div>
 
@@ -820,7 +818,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           class="detail-row"
         >
           <BaseTooltip :text="t('tours.infoSheet.iconTooltipPartners')">
-            <span class="detail-icon material-symbols-outlined">group</span>
+            <BaseIcon name="group" class="detail-icon" />
           </BaseTooltip>
           <div class="partner-chips">
             <span v-for="(name, i) in friendPartnerNames" :key="i" class="friend-partner-chip">{{
@@ -848,47 +846,47 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
     <!-- Full-screen edit page: Save lives in the top app bar (above keyboard). -->
     <template v-if="editAsPage && mode === 'edit'" #page-action>
-      <button type="submit" form="tour-edit-form" class="page-save-btn">
+      <BaseButton type="submit" form="tour-edit-form" variant="primary" size="md">
         {{ t('tours.infoSheet.saveLabel') }}
-      </button>
+      </BaseButton>
     </template>
 
     <template v-if="mode === 'view' && isOwner && !linksView" #footer>
       <div class="view-actions">
         <div class="edit-delete-row">
-          <button
-            v-if="deleteState === 'idle'" type="button" class="action-btn" data-testid="edit-btn"
-            @click="enterEditMode"
-          >
-            <span class="material-symbols-outlined">edit</span>
+          <BaseButton v-if="deleteState === 'idle'" variant="secondary" size="sm" data-testid="edit-btn" @click="enterEditMode">
+            <BaseIcon name="edit" />
             {{ t('tours.infoSheet.editBtn') }}
-          </button>
-
+          </BaseButton>
           <template v-if="deleteState === 'confirm'">
             <span class="delete-confirm-text">{{ t('tours.infoSheet.deleteConfirmText') }}</span>
             <span v-if="isLinked && linkSiblings.length > 0" class="delete-confirm-text delete-confirm-text--link">
               {{ t('tourLinks.deleteUnlinkWarning', { count: linkSiblings.length }) }}
             </span>
             <div class="delete-confirm-row">
-              <button type="button" class="cancel-btn" @click="deleteState = 'idle'">
+              <BaseButton variant="secondary" size="sm" data-testid="delete-cancel-btn" @click="deleteState = 'idle'">
                 {{ t('tours.infoSheet.cancelBtn') }}
-              </button>
-              <button type="button" class="delete-confirm-btn" @click="confirmDelete">
+              </BaseButton>
+              <BaseButton variant="danger" size="sm" data-testid="delete-confirm-btn" @click="confirmDelete">
                 {{ t('tours.infoSheet.deleteBtn') }}
-              </button>
+              </BaseButton>
             </div>
           </template>
-          <button
-            v-else type="button" class="action-btn action-btn--danger" :disabled="deleteState === 'loading'"
+          <BaseButton
+            v-else
+            variant="danger-outline"
+            size="sm"
+            data-testid="delete-btn"
+            :disabled="deleteState === 'loading'"
             @click="deleteState = 'confirm'"
           >
-            <span class="material-symbols-outlined">delete</span>
+            <BaseIcon name="delete" />
             {{
               deleteState === 'loading'
                 ? t('tours.infoSheet.deletingBtn')
                 : t('tours.infoSheet.deleteBtn')
             }}
-          </button>
+          </BaseButton>
         </div>
         <p v-if="deleteError" class="delete-error">
           {{ deleteError }}
@@ -957,23 +955,16 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   cursor: not-allowed;
 }
 
-.action-btn--danger {
-  border-color: var(--color-error);
-  color: var(--color-error);
-}
-
-.action-btn--danger:hover:not(:disabled) {
-  background-color: color-mix(in srgb, var(--color-error) 8%, transparent);
-}
-
 .action-btn .material-symbols-outlined {
   font-size: 16px;
 }
 
+/* Equal-width cancel/confirm (point 7). 1fr 1fr sizes both to the wider button
+   regardless of available width — flex:1 collapses here because the footer row
+   is shrink-wrapped (no free space to distribute). */
 .delete-confirm-row {
-  display: flex;
-  justify-content: end;
-  align-items: center;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: var(--spacing-sm);
 }
 
@@ -981,33 +972,6 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--color-error);
-}
-
-.cancel-btn {
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: 10px;
-  border: 1px solid var(--color-outline-variant);
-  color: var(--color-on-surface-variant);
-  font-size: var(--font-size-sm);
-  transition: background-color 0.15s;
-}
-
-.cancel-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.delete-confirm-btn {
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: 10px;
-  background-color: var(--color-error);
-  color: white;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  transition: opacity 0.15s;
-}
-
-.delete-confirm-btn:hover {
-  opacity: 0.85;
 }
 
 .delete-error {
@@ -1056,7 +1020,6 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
 .detail-icon {
   flex-shrink: 0;
-  font-size: 20px;
   color: var(--color-outline);
 }
 
@@ -1118,26 +1081,9 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   word-break: break-word;
 }
 
+/* BaseButton (secondary) provides the look; keep the 44px touch target. */
 .gpx-download-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-md);
-  border: 1.5px solid var(--color-outline-variant);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
   min-height: 44px;
-  transition: background-color 0.15s;
-}
-
-.gpx-download-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.gpx-download-btn .material-symbols-outlined {
-  font-size: 16px;
 }
 
 .partner-chips-section {
@@ -1167,26 +1113,9 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   font-style: italic;
 }
 
+/* BaseButton (secondary) provides the look; only layout lives here. */
 .group-sms-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-md);
-  border: 1.5px solid var(--color-outline-variant);
-  color: var(--color-on-surface-variant);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
   align-self: flex-start;
-  transition: background-color 0.15s;
-}
-
-.group-sms-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.group-sms-btn .material-symbols-outlined {
-  font-size: 18px;
 }
 
 /* ── Edit mode ──────────────────────────────────────────────────────────────── */

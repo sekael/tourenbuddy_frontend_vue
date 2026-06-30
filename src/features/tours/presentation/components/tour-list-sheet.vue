@@ -5,6 +5,9 @@ import type { CompletionFilter } from '@/features/tours/presentation/composables
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseButton from '@/core/components/base-button.vue'
+import BaseIconButton from '@/core/components/base-icon-button.vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
@@ -97,23 +100,21 @@ function handleRowClick(tourId: string) {
         v-if="!isAuthenticated"
         :text="t('map.overlay.signInToAddToursTooltip')"
       >
-        <button
-          class="header-add-btn"
+        <BaseIconButton
+          name="add_location_alt"
+          :label="t('tours.list.addTourAriaLabel')"
+          data-testid="header-add-tour"
           :disabled="!isAuthenticated"
-          :aria-label="t('tours.list.addTourAriaLabel')"
           @click="emit('addTour')"
-        >
-          <span class="material-symbols-outlined" aria-hidden="true">add_location_alt</span>
-        </button>
+        />
       </BaseTooltip>
-      <button
+      <BaseIconButton
         v-else
-        class="header-add-btn"
-        :aria-label="t('tours.list.addTourAriaLabel')"
+        name="add_location_alt"
+        :label="t('tours.list.addTourAriaLabel')"
+        data-testid="header-add-tour"
         @click="emit('addTour')"
-      >
-        <span class="material-symbols-outlined" aria-hidden="true">add_location_alt</span>
-      </button>
+      />
     </template>
 
     <BackfillCollisionsPage
@@ -146,18 +147,19 @@ function handleRowClick(tourId: string) {
         </button>
       </div>
 
-      <button
+      <BaseButton
         v-if="activeTab === 'friends' && hasFriends"
-        type="button"
+        variant="primary-outline"
+        size="sm"
         class="backfill-entry-btn"
         @click="openBackfill"
       >
-        <span class="material-symbols-outlined">sync_alt</span>
+        <BaseIcon name="sync_alt" />
         {{ t('tours.list.viewBackfillCollisionsBtn') }}
-      </button>
+      </BaseButton>
 
       <div class="search-row">
-        <span class="material-symbols-outlined search-icon">search</span>
+        <BaseIcon name="search" class="search-icon" />
         <input
           v-model="searchQuery"
           type="search"
@@ -166,13 +168,11 @@ function handleRowClick(tourId: string) {
         >
       </div>
 
-      <button class="filters-trigger" type="button" @click="filtersExpanded = !filtersExpanded">
-        <span class="material-symbols-outlined trigger-icon">
-          {{ filtersExpanded ? 'expand_less' : 'tune' }}
-        </span>
+      <BaseButton variant="secondary" size="sm" class="filters-trigger" @click="filtersExpanded = !filtersExpanded">
+        <BaseIcon :name="filtersExpanded ? 'expand_less' : 'tune'" size="sm" />
         {{ t('tours.list.filtersBtn') }}
         <span v-if="activeFilterCount > 0" class="filter-badge">{{ activeFilterCount }}</span>
-      </button>
+      </BaseButton>
 
       <TourFiltersPanel
         v-if="filtersExpanded"
@@ -190,9 +190,7 @@ function handleRowClick(tourId: string) {
       </div>
 
       <div v-else-if="sourceCount === 0" class="empty-state">
-        <span class="material-symbols-outlined empty-icon">
-          {{ activeTab === 'friends' ? 'group' : 'location_on' }}
-        </span>
+        <BaseIcon :name="activeTab === 'friends' ? 'group' : 'location_on'" size="xl" class="empty-icon" />
         <p class="empty-text">
           {{ activeTab === 'friends' ? t('tours.list.friendsEmptyTitle') : t('tours.list.emptyTitle') }}
         </p>
@@ -202,13 +200,13 @@ function handleRowClick(tourId: string) {
       </div>
 
       <div v-else-if="filteredTours.length === 0" class="empty-state">
-        <span class="material-symbols-outlined empty-icon">search_off</span>
+        <BaseIcon name="search_off" size="xl" class="empty-icon" />
         <p class="empty-text">
           {{ t('tours.list.noMatchesTitle') }}
         </p>
-        <button class="clear-filters-btn" type="button" @click="clearAll">
+        <BaseButton variant="primary" size="sm" @click="clearAll">
           {{ t('tours.list.clearFiltersBtn') }}
-        </button>
+        </BaseButton>
       </div>
 
       <ul v-else class="tours-list">
@@ -267,7 +265,6 @@ function handleRowClick(tourId: string) {
 }
 
 .search-icon {
-  font-size: 20px;
   color: var(--color-on-surface-variant);
   flex-shrink: 0;
 }
@@ -281,26 +278,9 @@ function handleRowClick(tourId: string) {
   color: var(--color-on-surface);
 }
 
+/* Visual styling comes from BaseButton (secondary); only layout lives here. */
 .filters-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-md);
-  border: 1.5px solid var(--color-outline-variant);
-  color: var(--color-on-surface-variant);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
   align-self: flex-start;
-  transition: background-color 0.15s;
-}
-
-.filters-trigger:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.trigger-icon {
-  font-size: 18px;
 }
 
 .filter-badge {
@@ -310,7 +290,7 @@ function handleRowClick(tourId: string) {
   min-width: 18px;
   height: 18px;
   padding: 0 4px;
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
   background-color: var(--color-primary);
   color: var(--color-on-primary);
   font-size: 11px;
@@ -334,7 +314,6 @@ function handleRowClick(tourId: string) {
 }
 
 .empty-icon {
-  font-size: 48px;
   color: var(--color-outline-variant);
 }
 
@@ -350,20 +329,6 @@ function handleRowClick(tourId: string) {
   opacity: 0.7;
 }
 
-.clear-filters-btn {
-  padding: var(--spacing-xs) var(--spacing-lg);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  transition: background-color 0.15s;
-}
-
-.clear-filters-btn:hover {
-  background-color: var(--color-primary-dark);
-}
-
 .tours-list {
   list-style: none;
   display: flex;
@@ -371,45 +336,8 @@ function handleRowClick(tourId: string) {
   gap: 2px;
 }
 
-.header-add-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  color: var(--color-on-surface);
-  border: 1.5px solid var(--color-on-surface);
-  background-color: var(--color-surface-variant);
-  transition: background-color 0.15s;
-}
-
-.header-add-btn:hover:not(:disabled) {
-  background-color: color-mix(in srgb, var(--color-surface-variant) 70%, var(--color-on-surface));
-}
-
-.header-add-btn:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
+/* Visual styling comes from BaseButton (primary-outline); only layout lives here. */
 .backfill-entry-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-md);
-  border: 1.5px solid var(--color-primary);
-  color: var(--color-primary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
   align-self: flex-start;
-  background: transparent;
-  cursor: pointer;
-  transition: background-color 0.15s;
-}
-
-.backfill-entry-btn:hover {
-  background-color: color-mix(in srgb, var(--color-primary) 8%, transparent);
 }
 </style>

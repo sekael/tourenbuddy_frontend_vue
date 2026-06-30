@@ -2,6 +2,8 @@
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseButton from '@/core/components/base-button.vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useUserBlocksStore } from '@/features/friendships/presentation/stores/user-blocks-store'
 
@@ -70,7 +72,7 @@ async function handleDismiss() {
   <div v-if="!isHidden" class="connect-prompt">
     <template v-if="state === 'sent'">
       <p class="sent-msg">
-        <span class="material-symbols-outlined sent-icon">check_circle</span>
+        <BaseIcon name="check_circle" class="sent-icon" />
         {{ t('friendships.requestSent') }}
       </p>
     </template>
@@ -88,23 +90,25 @@ async function handleDismiss() {
         </p>
       </div>
       <div class="prompt-actions">
-        <button
+        <BaseButton
           v-if="props.showDismiss"
           type="button"
-          class="btn btn-secondary"
+          variant="secondary"
+          size="sm"
           :disabled="state === 'sending'"
           @click="handleDismiss"
         >
           {{ state === 'sending' ? '…' : t('friendships.justSaveContact') }}
-        </button>
-        <button
+        </BaseButton>
+        <BaseButton
           type="button"
-          class="btn btn-primary"
+          variant="primary"
+          size="sm"
           :disabled="state === 'sending'"
           @click="handleSend"
         >
           {{ state === 'sending' ? '…' : t('friendships.sendRequest') }}
-        </button>
+        </BaseButton>
       </div>
     </template>
   </div>
@@ -149,36 +153,9 @@ async function handleDismiss() {
   gap: var(--spacing-sm);
 }
 
-.btn {
+/* Dismiss/send use shared BaseButton; fill the row like before. */
+.prompt-actions :deep(.base-button) {
   flex: 1;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  transition: background-color 0.15s;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  border: 1.5px solid var(--color-outline-variant);
-  color: var(--color-on-surface-variant);
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background-color: var(--color-surface-variant);
-}
-
-.btn-primary {
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-}
-
-.btn-primary:hover:not(:disabled) {
-  background-color: var(--color-primary-dark);
 }
 
 .sent-msg {
@@ -186,7 +163,7 @@ async function handleDismiss() {
   align-items: center;
   gap: var(--spacing-xs);
   font-size: var(--font-size-sm);
-  color: #15803d;
+  color: var(--color-success);
   font-weight: var(--font-weight-medium);
 }
 

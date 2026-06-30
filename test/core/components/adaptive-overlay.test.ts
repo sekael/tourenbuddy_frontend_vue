@@ -47,7 +47,7 @@ describe('adaptiveOverlay', () => {
 
     it('should emit close from the dialog close button on desktop', async () => {
       const wrapper = mount(AdaptiveOverlay, { props: { title: 'Test' } })
-      await wrapper.find('.close-btn').trigger('click')
+      await wrapper.find('[aria-label="Close"]').trigger('click')
       expect(wrapper.emitted('close')).toHaveLength(1)
     })
 
@@ -89,7 +89,7 @@ describe('adaptiveOverlay', () => {
 
     it('should emit close from the bottom sheet close button on mobile', async () => {
       const wrapper = mount(AdaptiveOverlay, { props: { title: 'Test' } })
-      await wrapper.find('.close-btn').trigger('click')
+      await wrapper.find('[aria-label="core.drawer.close"]').trigger('click')
       expect(wrapper.emitted('close')).toHaveLength(1)
     })
 
@@ -105,7 +105,7 @@ describe('adaptiveOverlay', () => {
 
     it('should keep the close button rendered when not collapsed', () => {
       const wrapper = mount(AdaptiveOverlay, { props: { title: 'Test' } })
-      expect(wrapper.find('.bottom-sheet .close-btn').exists()).toBe(true)
+      expect(wrapper.find('.bottom-sheet [aria-label="core.drawer.close"]').exists()).toBe(true)
     })
   })
 })

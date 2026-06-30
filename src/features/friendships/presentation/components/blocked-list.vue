@@ -3,6 +3,8 @@ import type { UserBlock } from '@/features/friendships/data/models/user-block-sc
 import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseButton from '@/core/components/base-button.vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 import { useSnackbar } from '@/core/composables/use-snackbar'
 import { BlockCooldownError } from '@/core/exceptions'
 import { formatPhoneForDisplay } from '@/core/utils/phone-normalize'
@@ -77,7 +79,7 @@ async function handleUnblock(block: UserBlock) {
     <ul v-else class="block-items">
       <li v-for="block in activeBlocks" :key="block.blockedUserId" class="block-row">
         <div class="block-info">
-          <span class="material-symbols-outlined block-icon">block</span>
+          <BaseIcon name="block" class="block-icon" />
           <div class="block-user-block">
             <span class="block-user">{{ displayName(block) }}</span>
             <span class="block-since">{{ blockedSinceLabel(block) }}</span>
@@ -87,14 +89,15 @@ async function handleUnblock(block: UserBlock) {
           <span v-if="isInCooldown(block)" class="cooldown-label">
             {{ t('blocks.cooldown.remaining', { hours: cooldownRemainingHours(block) }) }}
           </span>
-          <button
+          <BaseButton
             type="button"
-            class="action-btn"
+            variant="secondary"
+            size="sm"
             :disabled="isInCooldown(block)"
             @click="handleUnblock(block)"
           >
             {{ t('blocks.unblockAction') }}
-          </button>
+          </BaseButton>
         </div>
       </li>
     </ul>
@@ -139,7 +142,6 @@ async function handleUnblock(block: UserBlock) {
 }
 
 .block-icon {
-  font-size: 20px;
   color: var(--color-on-surface-variant);
   flex-shrink: 0;
 }
@@ -159,7 +161,7 @@ async function handleUnblock(block: UserBlock) {
 }
 
 .block-since {
-  font-size: var(--font-size-xs, 11px);
+  font-size: var(--font-size-xs);
   color: var(--color-on-surface-variant);
 }
 
@@ -172,27 +174,9 @@ async function handleUnblock(block: UserBlock) {
 }
 
 .cooldown-label {
-  font-size: var(--font-size-xs, 11px);
+  font-size: var(--font-size-xs);
   color: var(--color-on-surface-variant);
 }
 
-.action-btn {
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  border: 1.5px solid var(--color-outline-variant);
-  color: var(--color-on-surface-variant);
-  transition: background-color 0.15s;
-  white-space: nowrap;
-}
-
-.action-btn:hover:not(:disabled) {
-  background-color: var(--color-surface-variant);
-}
-
-.action-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+/* Unblock uses shared BaseButton (secondary). */
 </style>

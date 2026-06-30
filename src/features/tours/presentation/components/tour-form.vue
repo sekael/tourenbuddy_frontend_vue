@@ -8,6 +8,9 @@ import { storeToRefs } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseButton from '@/core/components/base-button.vue'
+import BaseIconButton from '@/core/components/base-icon-button.vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
@@ -358,6 +361,13 @@ function handleRemoveGpx() {
   gpxError.value = null
 }
 
+// A <button> can't open a file dialog the way a <label> does — forward the click
+// to a single hidden <input> shared by the upload + replace buttons.
+const gpxInputRef = ref<HTMLInputElement | null>(null)
+function openGpxPicker() {
+  gpxInputRef.value?.click()
+}
+
 function handleRemoveStart() {
   startPoint.value = null
   startPointName.value = ''
@@ -459,20 +469,21 @@ defineExpose({ cancel: handleCancel })
           <!-- Goal (read-only display, with optional change button) -->
           <div v-if="currentGoal" class="point-section point-section--goal">
             <div class="point-section-header">
-              <span class="material-symbols-outlined point-section-icon">flag</span>
+              <BaseIcon name="flag" class="point-section-icon" />
               <span class="point-section-title">{{ t('tours.form.goalLabel') }}</span>
             </div>
             <div class="point-row">
               <span class="point-coords">{{ formatPoint(currentGoal) }}</span>
-              <button
+              <BaseButton
                 v-if="allowGoalEdit"
                 type="button"
-                class="pick-btn"
+                variant="secondary"
+                size="sm"
                 @click="emit('pickPoint', 'goal')"
               >
-                <span class="material-symbols-outlined">my_location</span>
+                <BaseIcon name="my_location" />
                 {{ t('tours.form.changeGoalBtn') }}
-              </button>
+              </BaseButton>
             </div>
             <div class="field">
               <label class="label" for="tf-elevation">{{ t('tours.form.elevationLabel') }}</label>
@@ -492,25 +503,26 @@ defineExpose({ cancel: handleCancel })
           <!-- Start point -->
           <div class="point-section point-section--start">
             <div class="point-section-header">
-              <span class="material-symbols-outlined point-section-icon">trip_origin</span>
+              <BaseIcon name="trip_origin" class="point-section-icon" />
               <span class="point-section-title">{{ t('tours.form.startPointLabel') }}</span>
             </div>
             <div class="point-row">
               <span class="point-coords">{{
                 startPoint ? formatPoint(startPoint) : t('tours.form.pointNotSet')
               }}</span>
-              <button type="button" class="pick-btn" @click="emit('pickPoint', 'start')">
-                <span class="material-symbols-outlined">my_location</span>
+              <BaseButton type="button" variant="secondary" size="sm" @click="emit('pickPoint', 'start')">
+                <BaseIcon name="my_location" />
                 {{ startPoint ? t('tours.form.changeGoalBtn') : t('tours.form.pickBtn') }}
-              </button>
-              <button
+              </BaseButton>
+              <BaseIconButton
                 v-if="startPoint"
-                type="button"
-                class="remove-point-btn"
+                name="delete"
+                :label="t('tours.form.removeStartBtn')"
+                size="sm"
+                tone="danger"
+                data-testid="remove-start-btn"
                 @click="handleRemoveStart"
-              >
-                <span class="material-symbols-outlined">close</span>
-              </button>
+              />
             </div>
             <template v-if="startPoint">
               <div class="field">
@@ -546,19 +558,24 @@ defineExpose({ cancel: handleCancel })
           <!-- End point: only available once start point is set -->
           <div v-if="startPoint" class="point-section point-section--end">
             <div class="point-section-header">
-              <span class="material-symbols-outlined point-section-icon">sports_score</span>
+              <BaseIcon name="sports_score" class="point-section-icon" />
               <span class="point-section-title">{{ t('tours.form.endPointLabel') }}</span>
             </div>
             <template v-if="endPoint">
               <div class="point-row">
                 <span class="point-coords">{{ formatPoint(endPoint) }}</span>
-                <button type="button" class="pick-btn" @click="emit('pickPoint', 'end')">
-                  <span class="material-symbols-outlined">my_location</span>
+                <BaseButton type="button" variant="secondary" size="sm" @click="emit('pickPoint', 'end')">
+                  <BaseIcon name="my_location" />
                   {{ t('tours.form.changeGoalBtn') }}
-                </button>
-                <button type="button" class="remove-point-btn" @click="handleRemoveEnd">
-                  <span class="material-symbols-outlined">close</span>
-                </button>
+                </BaseButton>
+                <BaseIconButton
+                  name="delete"
+                  :label="t('tours.form.removeEndBtn')"
+                  size="sm"
+                  data-testid="remove-end-btn"
+                  tone="danger"
+                  @click="handleRemoveEnd"
+                />
               </div>
               <div class="field">
                 <label class="label" for="tf-end-name">{{ t('tours.form.pointNameLabel') }}</label>
@@ -588,14 +605,14 @@ defineExpose({ cancel: handleCancel })
             </template>
             <template v-else>
               <div class="point-row">
-                <button type="button" class="pick-btn" @click="emit('pickPoint', 'end')">
-                  <span class="material-symbols-outlined">add</span>
+                <BaseButton type="button" variant="secondary" size="sm" @click="emit('pickPoint', 'end')">
+                  <BaseIcon name="add" />
                   {{ t('tours.form.addEndPointBtn') }}
-                </button>
-                <button type="button" class="pick-btn" @click="handleRoundTrip">
-                  <span class="material-symbols-outlined">replay</span>
+                </BaseButton>
+                <BaseButton type="button" variant="secondary" size="sm" @click="handleRoundTrip">
+                  <BaseIcon name="replay" />
                   {{ t('tours.form.roundTripBtn') }}
-                </button>
+                </BaseButton>
               </div>
             </template>
           </div>
@@ -629,7 +646,7 @@ defineExpose({ cancel: handleCancel })
               :class="{ selected: visibility === 'friends' }"
               @click="visibility = 'friends'"
             >
-              <span class="material-symbols-outlined type-icon">group</span>
+              <BaseIcon name="group" class="type-icon" />
               <span class="type-label">{{ t('tours.form.visibilityFriends') }}</span>
             </button>
             <button
@@ -638,7 +655,7 @@ defineExpose({ cancel: handleCancel })
               :class="{ selected: visibility === 'private' }"
               @click="visibility = 'private'"
             >
-              <span class="material-symbols-outlined type-icon">lock</span>
+              <BaseIcon name="lock" class="type-icon" />
               <span class="type-label">{{ t('tours.form.visibilityPrivate') }}</span>
             </button>
           </div>
@@ -661,7 +678,7 @@ defineExpose({ cancel: handleCancel })
               :class="{ selected: selectedTourType === type }"
               @click="toggleTourType(type)"
             >
-              <span class="material-symbols-outlined type-icon">{{ TOUR_TYPE_ICONS[type] }}</span>
+              <BaseIcon :name="TOUR_TYPE_ICONS[type]" class="type-icon" />
               <span class="type-label">{{
                 t(`tours.type.${TOUR_TYPE_I18N_KEYS[type]}` as any)
               }}</span>
@@ -738,51 +755,55 @@ defineExpose({ cancel: handleCancel })
           <p class="section-label">
             {{ t('tours.form.gpxLabel') }}
           </p>
+          <!-- Single hidden picker shared by the upload + replace buttons. -->
+          <input
+            ref="gpxInputRef"
+            type="file"
+            accept=".gpx,application/gpx+xml"
+            class="hidden-input"
+            @change="handleGpxUpload"
+          >
           <div v-if="gpxFile || gpxFilepath" class="gpx-filled-row">
             <span class="gpx-filename">
               <span v-if="isUploadingGpx" class="gpx-spinner" />
-              <span v-else class="material-symbols-outlined gpx-ok-icon">route</span>
+              <BaseIcon v-else name="route" class="gpx-ok-icon" />
               {{ gpxFile ? gpxFile.name : t('tours.form.gpxExistingTrack') }}
               <span v-if="isUploadingGpx" class="gpx-uploading-label">{{
                 t('tours.form.gpxUploading')
               }}</span>
             </span>
             <BaseTooltip :text="t('tours.form.gpxReplaceTooltip')">
-              <label
-                class="gpx-icon-btn"
-                :aria-label="t('tours.form.gpxReplaceTooltip')"
-              >
-                <span class="material-symbols-outlined">upload_file</span>
-                <input
-                  type="file"
-                  accept=".gpx,application/gpx+xml"
-                  class="hidden-input"
-                  @change="handleGpxUpload"
-                >
-              </label>
+              <BaseIconButton
+                name="upload_file"
+                :label="t('tours.form.gpxReplaceTooltip')"
+                shape="square"
+                size="md"
+                @click="openGpxPicker"
+              />
             </BaseTooltip>
             <BaseTooltip :text="t('tours.form.gpxRemoveTooltip')">
-              <button
-                type="button"
-                class="gpx-icon-btn gpx-remove-btn"
-                :aria-label="t('tours.form.gpxRemoveTooltip')"
+              <BaseIconButton
+                name="delete"
+                :label="t('tours.form.gpxRemoveTooltip')"
+                shape="square"
+                size="md"
+                tone="danger"
+                data-testid="gpx-remove-btn"
                 @click="handleRemoveGpx"
-              >
-                <span class="material-symbols-outlined">close</span>
-              </button>
+              />
             </BaseTooltip>
           </div>
           <div v-else class="gpx-empty-row">
-            <label class="pick-btn gpx-upload-btn">
-              <span class="material-symbols-outlined">upload_file</span>
+            <BaseButton
+              type="button"
+              variant="secondary"
+              size="sm"
+              data-testid="gpx-upload-btn"
+              @click="openGpxPicker"
+            >
+              <BaseIcon name="upload_file" />
               {{ t('tours.form.gpxUploadBtn') }}
-              <input
-                type="file"
-                accept=".gpx,application/gpx+xml"
-                class="hidden-input"
-                @change="handleGpxUpload"
-              >
-            </label>
+            </BaseButton>
           </div>
           <p v-if="gpxError" class="gpx-error">
             {{ gpxError }}
@@ -804,12 +825,12 @@ defineExpose({ cancel: handleCancel })
       <!-- end scroll-body -->
 
       <div v-if="!props.embedded" class="actions">
-        <button type="button" class="cancel-btn" @click="handleCancel">
+        <BaseButton type="button" variant="secondary" size="sm" data-testid="cancel-btn" @click="handleCancel">
           {{ t('tours.form.cancelBtn') }}
-        </button>
-        <button type="submit" class="submit-btn" :disabled="isUploadingGpx">
+        </BaseButton>
+        <BaseButton type="submit" variant="primary" size="sm" data-testid="submit-btn" :disabled="isUploadingGpx">
           {{ submitLabel }}
-        </button>
+        </BaseButton>
       </div>
     </fieldset>
   </form>
@@ -855,7 +876,7 @@ defineExpose({ cancel: handleCancel })
 
 .scroll-body::-webkit-scrollbar-thumb {
   background-color: var(--color-outline-variant);
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
 }
 
 /* Sections */
@@ -915,7 +936,7 @@ defineExpose({ cancel: handleCancel })
 }
 
 .type-icon {
-  font-size: 18px;
+  font-size: var(--icon-size-sm);
 }
 
 .type-label {
@@ -993,21 +1014,21 @@ defineExpose({ cancel: handleCancel })
 }
 
 .input--error {
-  border-color: var(--color-error, #d32f2f);
+  border-color: var(--color-error);
 }
 
 .input--error:focus {
-  border-color: var(--color-error, #d32f2f);
+  border-color: var(--color-error);
 }
 
 .required-mark {
-  color: var(--color-error, #d32f2f);
+  color: var(--color-error);
 }
 
 .field-error {
   margin-top: var(--spacing-xs);
   font-size: var(--font-size-sm);
-  color: var(--color-error, #d32f2f);
+  color: var(--color-error);
 }
 
 .textarea {
@@ -1032,11 +1053,11 @@ defineExpose({ cancel: handleCancel })
 }
 
 .point-section--start {
-  border-left-color: #2e7d32;
+  border-left-color: var(--color-route-start);
 }
 
 .point-section--end {
-  border-left-color: #c62828;
+  border-left-color: var(--color-route-end);
 }
 
 .point-section-header {
@@ -1049,7 +1070,7 @@ defineExpose({ cancel: handleCancel })
 }
 
 .point-section-icon {
-  font-size: 18px;
+  font-size: var(--icon-size-sm);
   color: var(--color-on-surface-variant);
 }
 
@@ -1058,11 +1079,11 @@ defineExpose({ cancel: handleCancel })
 }
 
 .point-section--start .point-section-icon {
-  color: #2e7d32;
+  color: var(--color-route-start);
 }
 
 .point-section--end .point-section-icon {
-  color: #c62828;
+  color: var(--color-route-end);
 }
 
 .point-section-title {
@@ -1085,52 +1106,6 @@ defineExpose({ cancel: handleCancel })
   font-family: monospace;
 }
 
-.pick-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
-  color: var(--color-on-surface-variant);
-  background: transparent;
-  cursor: pointer;
-  white-space: nowrap;
-  transition:
-    border-color 0.15s,
-    color 0.15s;
-}
-
-.pick-btn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
-.pick-btn .material-symbols-outlined {
-  font-size: 16px;
-}
-
-.remove-point-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  color: var(--color-outline);
-  flex-shrink: 0;
-}
-
-.remove-point-btn:hover {
-  background-color: var(--color-surface-variant);
-  color: var(--color-on-surface-variant);
-}
-
-.remove-point-btn .material-symbols-outlined {
-  font-size: 16px;
-}
-
 /* GPX */
 .gpx-empty-row {
   display: flex;
@@ -1144,41 +1119,6 @@ defineExpose({ cancel: handleCancel })
   gap: var(--spacing-sm);
   flex-wrap: wrap;
   min-height: 44px;
-}
-
-.gpx-upload-btn {
-  cursor: pointer;
-}
-
-.gpx-icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--radius-sm);
-  color: var(--color-on-surface-variant);
-  background: transparent;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition:
-    border-color 0.15s,
-    color 0.15s;
-}
-
-.gpx-icon-btn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
-.gpx-icon-btn .material-symbols-outlined {
-  font-size: 20px;
-}
-
-.gpx-remove-btn:hover {
-  border-color: var(--color-error) !important;
-  color: var(--color-error) !important;
 }
 
 .hidden-input {
@@ -1198,7 +1138,7 @@ defineExpose({ cancel: handleCancel })
 }
 
 .gpx-ok-icon {
-  font-size: 16px;
+  font-size: var(--font-size-base);
   color: var(--color-primary);
 }
 
@@ -1208,7 +1148,7 @@ defineExpose({ cancel: handleCancel })
   height: 16px;
   border: 2px solid var(--color-outline-variant);
   border-top-color: var(--color-primary);
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   animation: gpx-spin 0.7s linear infinite;
   flex-shrink: 0;
 }
@@ -1226,7 +1166,7 @@ defineExpose({ cancel: handleCancel })
 
 .gpx-error {
   font-size: var(--font-size-sm);
-  color: var(--color-error, #d32f2f);
+  color: var(--color-error);
 }
 
 /* Partner chips */
@@ -1247,44 +1187,5 @@ defineExpose({ cancel: handleCancel })
   flex-shrink: 0;
 }
 
-.cancel-btn {
-  padding: var(--spacing-sm) var(--spacing-lg);
-  border-radius: 12px;
-  border: 1px solid var(--color-outline-variant);
-  color: var(--color-on-surface-variant);
-  font-size: var(--font-size-base);
-  transition: background-color 0.2s;
-}
-
-.cancel-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.submit-btn {
-  padding: var(--spacing-sm) var(--spacing-lg);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: 12px;
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  transition:
-    background-color 0.2s,
-    transform 0.15s;
-}
-
-.submit-btn:hover {
-  background-color: var(--color-primary-dark);
-  transform: translateY(-1px);
-}
-
-.submit-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.submit-btn:disabled:hover {
-  background-color: var(--color-primary);
-  transform: none;
-}
+/* Cancel/submit use the shared BaseButton (secondary/primary). */
 </style>

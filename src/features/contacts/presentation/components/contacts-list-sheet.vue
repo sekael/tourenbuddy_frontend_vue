@@ -6,6 +6,8 @@ import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
+import BaseButton from '@/core/components/base-button.vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { normalizePhone } from '@/core/utils/phone-normalize'
@@ -395,47 +397,49 @@ function onFormPhoneInput(phone: string) {
     <!-- Full-screen page: top-bar Save. Submits the add form, or commits the
          open contact's edits, depending on which data-entry surface is active. -->
     <template v-if="contactPage" #page-action>
-      <button
+      <BaseButton
         v-if="addFormPage"
         type="submit"
         form="contact-add-form"
-        class="page-save-btn"
+        variant="primary"
+        size="sm"
         :disabled="isAddLoading"
       >
         {{ t('contacts.addDialog.title') }}
-      </button>
-      <button
+      </BaseButton>
+      <BaseButton
         v-else
         type="button"
-        class="page-save-btn"
+        variant="primary"
+        size="sm"
         :disabled="detailRef?.isSaving"
         @click="detailRef?.saveAll()"
       >
         {{ detailRef?.isSaving ? t('contacts.detailView.savingBtn') : t('contacts.detailView.saveBtn') }}
-      </button>
+      </BaseButton>
     </template>
     <!-- List view -->
     <div v-if="viewState === 'list'" class="list-view">
       <div class="list-actions-row">
-        <button type="button" class="add-contact-btn" data-tour="add-contact" @click="openAdd">
-          <span class="material-symbols-outlined">person_add</span>
+        <BaseButton variant="secondary" size="sm" data-tour="add-contact" data-testid="add-contact-btn" @click="openAdd">
+          <BaseIcon name="person_add" size="sm" />
           {{ t('contacts.list.addBtn') }}
-        </button>
+        </BaseButton>
         <!-- Always rendered (discoverability + onboarding tour waypoint);
              disabled until the caller's phone is verified. -->
         <BaseTooltip :text="t('friendships.verifyPhoneHint')" :disabled="callerPhoneVerified">
-          <button
-            type="button"
-            class="friend-requests-btn"
+          <BaseButton
+            variant="secondary"
+            size="sm"
             data-tour="open-friend-requests"
             :disabled="!callerPhoneVerified"
             :aria-disabled="!callerPhoneVerified"
             @click="goToFriendRequests"
           >
-            <span class="material-symbols-outlined">group</span>
+            <BaseIcon name="group" size="sm" />
             {{ t('friendships.friendsListLink') }}
             <span v-if="pendingIncomingCount > 0" class="badge">{{ pendingIncomingCount }}</span>
-          </button>
+          </BaseButton>
         </BaseTooltip>
       </div>
 
@@ -445,7 +449,7 @@ function onFormPhoneInput(phone: string) {
         </div>
 
         <div v-else-if="contacts.length === 0" class="empty-state">
-          <span class="material-symbols-outlined empty-icon">group</span>
+          <BaseIcon name="group" class="empty-icon" size="xl" />
           <p class="empty-text">
             {{ t('contacts.list.emptyTitle') }}
           </p>
@@ -468,17 +472,17 @@ function onFormPhoneInput(phone: string) {
               <span class="contact-name-row">
                 <span class="contact-name">{{ resolveContactName(contact) }}</span>
                 <BaseTooltip v-if="friendContactIds.has(contact.id) && !blockedContactIds.has(contact.id)" :text="t('friendships.tooltip')">
-                  <span class="material-symbols-outlined friend-icon">group</span>
+                  <BaseIcon name="group" class="friend-icon" />
                 </BaseTooltip>
                 <BaseTooltip v-if="blockedContactIds.has(contact.id)" :text="t('blocks.tooltip')">
-                  <span class="material-symbols-outlined blocked-icon">block</span>
+                  <BaseIcon name="block" class="blocked-icon" />
                 </BaseTooltip>
               </span>
               <span v-if="getPrimaryPhone(contact)" class="contact-subtitle">
                 {{ formatPhoneDisplay(getPrimaryPhone(contact)!) }}
               </span>
             </div>
-            <span class="material-symbols-outlined row-arrow">chevron_right</span>
+            <BaseIcon name="chevron_right" class="row-arrow" />
           </li>
         </ul>
       </div>
@@ -524,7 +528,7 @@ function onFormPhoneInput(phone: string) {
             <div class="result-info">
               <span class="result-name">{{ result.firstName }}{{ result.lastName ? ` ${result.lastName}` : '' }}</span>
               <span v-if="result.primaryPhone" class="result-phone">
-                <span class="material-symbols-outlined star-icon-sm">star</span>
+                <BaseIcon name="star" class="star-icon-sm" />
                 {{ formatPhoneDisplay(result.primaryPhone) }}
                 <span v-if="result.extraPhoneCount > 0" class="extra-phones">+{{ result.extraPhoneCount }} more</span>
               </span>
@@ -563,38 +567,40 @@ function onFormPhoneInput(phone: string) {
           </li>
         </ul>
         <div class="results-actions">
-          <button type="button" class="add-manual-link" @click="switchAddToForm">
-            <span class="material-symbols-outlined">add</span>
+          <BaseButton variant="text" size="sm" @click="switchAddToForm">
+            <BaseIcon name="add" size="sm" />
             {{ t('contacts.list.addManuallyBtn') }}
-          </button>
-          <button type="button" class="done-btn" @click="backToList">
+          </BaseButton>
+          <BaseButton type="button" variant="primary" @click="backToList">
             {{ t('contacts.addDialog.doneBtn') }}
-          </button>
+          </BaseButton>
         </div>
       </div>
 
       <!-- Add form -->
       <div v-else class="form-wrapper">
         <div class="import-actions">
-          <button
-            type="button"
-            class="import-btn"
+          <BaseButton
+            variant="secondary"
+            size="sm"
+            data-testid="import-file-btn"
             :disabled="isAddLoading"
             @click="handleFileImportClick"
           >
-            <span class="material-symbols-outlined">upload_file</span>
+            <BaseIcon name="upload_file" size="sm" />
             {{ t('contacts.addDialog.importFileBtn') }}
-          </button>
-          <button
+          </BaseButton>
+          <BaseButton
             v-if="isContactPickerSupported"
-            type="button"
-            class="import-btn"
+            variant="secondary"
+            size="sm"
+            data-testid="import-picker-btn"
             :disabled="isAddLoading"
             @click="handleContactPickerImport"
           >
-            <span class="material-symbols-outlined">contacts</span>
+            <BaseIcon name="contacts" size="sm" />
             {{ t('contacts.addDialog.importContactsBtn') }}
-          </button>
+          </BaseButton>
           <input
             ref="fileInput"
             type="file"
@@ -648,53 +654,6 @@ function onFormPhoneInput(phone: string) {
   flex-wrap: wrap;
 }
 
-.add-contact-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-md);
-  border: 1.5px solid var(--color-outline-variant);
-  color: var(--color-on-surface-variant);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  transition: background-color 0.15s;
-}
-
-.add-contact-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.add-contact-btn .material-symbols-outlined {
-  font-size: 18px;
-}
-
-.friend-requests-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-md);
-  border: 1.5px solid var(--color-outline-variant);
-  color: var(--color-on-surface-variant);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  transition: background-color 0.15s;
-}
-
-.friend-requests-btn:hover:not(:disabled) {
-  background-color: var(--color-surface-variant);
-}
-
-.friend-requests-btn:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-.friend-requests-btn .material-symbols-outlined {
-  font-size: 18px;
-}
-
 .badge {
   display: inline-flex;
   align-items: center;
@@ -702,10 +661,10 @@ function onFormPhoneInput(phone: string) {
   min-width: 18px;
   height: 18px;
   padding: 0 4px;
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
   background-color: var(--color-primary);
   color: var(--color-on-primary);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
 }
 
@@ -726,7 +685,6 @@ function onFormPhoneInput(phone: string) {
 }
 
 .empty-icon {
-  font-size: 48px;
   color: var(--color-outline-variant);
 }
 
@@ -766,7 +724,7 @@ function onFormPhoneInput(phone: string) {
 .contact-avatar {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   background-color: color-mix(in srgb, var(--color-primary) 16%, transparent);
   color: var(--color-primary);
   font-size: var(--font-size-base);
@@ -800,14 +758,14 @@ function onFormPhoneInput(phone: string) {
 }
 
 .friend-icon {
-  font-size: 16px;
-  color: #f97316;
+  font-size: var(--icon-size-xs);
+  color: var(--color-friend);
   flex-shrink: 0;
 }
 
 .blocked-icon {
-  font-size: 16px;
-  color: var(--color-error, #dc2626);
+  font-size: var(--icon-size-sm);
+  color: var(--color-error);
   flex-shrink: 0;
 }
 
@@ -820,7 +778,7 @@ function onFormPhoneInput(phone: string) {
 }
 
 .row-arrow {
-  font-size: 20px;
+  font-size: var(--icon-size-md);
   color: var(--color-outline-variant);
   flex-shrink: 0;
 }
@@ -845,32 +803,6 @@ function onFormPhoneInput(phone: string) {
   display: flex;
   gap: var(--spacing-sm);
   flex-wrap: wrap;
-}
-
-.import-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-md);
-  border: 1.5px solid var(--color-outline-variant);
-  color: var(--color-on-surface-variant);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  transition: background-color 0.2s;
-}
-
-.import-btn:hover:not(:disabled) {
-  background-color: var(--color-surface-variant);
-}
-
-.import-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.import-btn .material-symbols-outlined {
-  font-size: 18px;
 }
 
 .file-input-hidden {
@@ -948,7 +880,7 @@ function onFormPhoneInput(phone: string) {
 }
 
 .star-icon-sm {
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   color: var(--color-primary);
   font-variation-settings: 'FILL' 1;
 }
@@ -960,7 +892,7 @@ function onFormPhoneInput(phone: string) {
 .result-badge {
   flex-shrink: 0;
   padding: 2px var(--spacing-sm);
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
   font-size: var(--font-size-xs, 11px);
   font-weight: var(--font-weight-medium);
 }
@@ -983,39 +915,5 @@ function onFormPhoneInput(phone: string) {
   gap: var(--spacing-md);
 }
 
-.add-manual-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--color-primary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-
-.add-manual-link:hover {
-  opacity: 0.75;
-}
-
-.add-manual-link .material-symbols-outlined {
-  font-size: 16px;
-}
-
-.done-btn {
-  padding: var(--spacing-sm) var(--spacing-lg);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: 12px;
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  transition: background-color 0.2s;
-}
-
-.done-btn:hover {
-  background-color: var(--color-primary-dark);
-}
+/* Add/import/manual actions use shared BaseButton (secondary/text). */
 </style>

@@ -1,7 +1,8 @@
 import { createTestingPinia } from '@pinia/testing'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
+import { GpxParseError, parseGpxFile } from '@/features/tours/data/services/gpx-parser'
 import TourForm from '@/features/tours/presentation/components/tour-form.vue'
 
 const { mockUploadGpx, mockRemoveGpx } = vi.hoisted(() => ({
@@ -13,6 +14,12 @@ vi.mock('@/features/tours/data/services/gpx-storage-service', () => ({
   uploadGpx: mockUploadGpx,
   removeGpx: mockRemoveGpx,
 }))
+
+// Spy on parseGpxFile but keep the real error classes for instanceof checks.
+vi.mock('@/features/tours/data/services/gpx-parser', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/tours/data/services/gpx-parser')>()
+  return { ...actual, parseGpxFile: vi.fn() }
+})
 
 vi.mock('@/features/auth/presentation/stores/auth-store', () => ({
   useAuthStore: vi.fn().mockReturnValue({ currentUser: { id: 'user-abc' } }),
@@ -45,21 +52,14 @@ async function pickFile(wrapper: ReturnType<typeof mountForm>, file: File) {
 
 describe('tourForm', () => {
   describe('disabled prop', () => {
-    it('disables the fieldset so inputs and non-picker buttons are inert', async () => {
+    it('renders the fieldset disabled so nested inputs and buttons are inert', () => {
       const wrapper = mountForm({ disabled: true })
       const fieldset = wrapper.find('fieldset.form-fieldset')
       expect(fieldset.exists()).toBe(true)
+      // The component's job is to render <fieldset disabled>; native form
+      // semantics make every nested control inert. happy-dom doesn't reliably
+      // mirror that onto child .disabled props, so assert the mechanism itself.
       expect(fieldset.attributes('disabled')).toBeDefined()
-
-      // Native <fieldset disabled> disables nested form controls
-      const nameInput = wrapper.find('#tf-tourName').element as HTMLInputElement
-      expect(nameInput.disabled).toBe(true)
-
-      const submit = wrapper.find('.submit-btn').element as HTMLButtonElement
-      expect(submit.disabled).toBe(true)
-
-      const cancel = wrapper.find('.cancel-btn').element as HTMLButtonElement
-      expect(cancel.disabled).toBe(true)
     })
 
     it('does not emit submit while disabled', async () => {
@@ -86,22 +86,26 @@ describe('tourForm', () => {
 
   describe('end-point row conditional rendering', () => {
     it('shows "Add end point" button and hides point inputs when endPoint is null', () => {
-      const wrapper = mountForm()
+      // End-point section only renders once a start point exists.
+      const wrapper = mountForm({ initialStartPoint: { lng: 7.8, lat: 46.5 } })
       // No initialEndPoint → end-point row collapsed to "Add" button
-      const addBtn = wrapper.findAll('button').filter(b => b.text().includes('Add end point'))
+      const addBtn = wrapper.findAll('button').filter(b => b.text().includes('addEndPointBtn'))
       expect(addBtn.length).toBeGreaterThan(0)
-      // No point-coords span for end point (only start point "Not set" shown)
+      // Only the start point shows coordinates; end point is still the "Add" prompt.
       const coords = wrapper.findAll('.point-coords')
-      expect(coords.length).toBe(1) // only start point
+      expect(coords.length).toBe(1)
     })
 
     it('reveals end-point row when initialEndPoint is provided', () => {
-      const wrapper = mountForm({ initialEndPoint: { lng: 7.9, lat: 46.5 } })
+      const wrapper = mountForm({
+        initialStartPoint: { lng: 7.8, lat: 46.5 },
+        initialEndPoint: { lng: 7.9, lat: 46.5 },
+      })
       // "Add end point" button should not be present
-      const addBtn = wrapper.findAll('button').filter(b => b.text().includes('Add end point'))
+      const addBtn = wrapper.findAll('button').filter(b => b.text().includes('addEndPointBtn'))
       expect(addBtn.length).toBe(0)
       // Remove button present for end point
-      const removeBtns = wrapper.findAll('.remove-point-btn')
+      const removeBtns = wrapper.findAll('[data-testid="remove-end-btn"]')
       expect(removeBtns.length).toBeGreaterThan(0)
     })
   })
@@ -109,11 +113,12 @@ describe('tourForm', () => {
   describe('clearing end point also clears metadata', () => {
     it('should include null endPointName and endPointElevation in draft when end point is removed', async () => {
       const wrapper = mountForm({
+        initialStartPoint: { lng: 7.8, lat: 46.5 },
         initialEndPoint: { lng: 7.9, lat: 46.5 },
         initialEndPointMeta: { name: 'Murren', elevation: 1638 },
       })
       // Remove the end point
-      const removeBtn = wrapper.find('.remove-point-btn')
+      const removeBtn = wrapper.find('[data-testid="remove-end-btn"]')
       await removeBtn.trigger('click')
       await nextTick()
 
@@ -134,7 +139,7 @@ describe('tourForm', () => {
   describe('gPX section states', () => {
     it('shows upload button in empty state', () => {
       const wrapper = mountForm()
-      const uploadBtn = wrapper.find('.gpx-upload-btn')
+      const uploadBtn = wrapper.find('[data-testid="gpx-upload-btn"]')
       expect(uploadBtn.exists()).toBe(true)
       const filledRow = wrapper.find('.gpx-filled-row')
       expect(filledRow.exists()).toBe(false)
@@ -162,7 +167,7 @@ describe('tourForm', () => {
         },
       })
       expect(wrapper.find('.gpx-filled-row').exists()).toBe(true)
-      expect(wrapper.find('.gpx-upload-btn').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="gpx-upload-btn"]').exists()).toBe(false)
     })
 
     it('emits gpxRemoved=true after remove click', async () => {
@@ -186,12 +191,12 @@ describe('tourForm', () => {
           notes: null,
         },
       })
-      const removeBtn = wrapper.find('.gpx-remove-btn')
+      const removeBtn = wrapper.find('[data-testid="gpx-remove-btn"]')
       await removeBtn.trigger('click')
       await nextTick()
 
       expect(wrapper.find('.gpx-filled-row').exists()).toBe(false)
-      expect(wrapper.find('.gpx-upload-btn').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="gpx-upload-btn"]').exists()).toBe(true)
 
       await wrapper.find('#tf-tourName').setValue('Test Tour')
       await wrapper.find('form').trigger('submit.prevent')
@@ -203,12 +208,7 @@ describe('tourForm', () => {
     })
 
     it('shows gpxError when parseGpxFile throws for invalid GPX', async () => {
-      const { GpxParseError } = await import('@/features/tours/data/services/gpx-parser')
-      vi.doMock('@/features/tours/data/services/gpx-parser', () => ({
-        parseGpxFile: vi.fn().mockRejectedValue(new GpxParseError('bad xml')),
-        GpxParseError,
-        GpxFileTooLargeError: class GpxFileTooLargeError extends Error {},
-      }))
+      vi.mocked(parseGpxFile).mockRejectedValueOnce(new GpxParseError('bad xml'))
 
       const wrapper = mountForm()
       const input = wrapper.find('input[type="file"]')
@@ -226,14 +226,12 @@ describe('tourForm', () => {
 
     beforeEach(() => {
       vi.clearAllMocks()
+      vi.mocked(parseGpxFile).mockResolvedValue(undefined as never)
       mockUploadGpx.mockResolvedValue('user-abc/new-tour-id.gpx')
       mockRemoveGpx.mockResolvedValue(undefined)
     })
 
     it('should trigger upload and show spinner on valid file pick', async () => {
-      const { parseGpxFile } = await import('@/features/tours/data/services/gpx-parser')
-      vi.mocked(parseGpxFile).mockResolvedValue(undefined as never)
-
       const wrapper = mountForm()
       const file = new File([validGpxContent], 'track.gpx')
 
@@ -244,9 +242,6 @@ describe('tourForm', () => {
     })
 
     it('should disable Save while uploading and re-enable after completion', async () => {
-      const { parseGpxFile } = await import('@/features/tours/data/services/gpx-parser')
-      vi.mocked(parseGpxFile).mockResolvedValue(undefined as never)
-
       let resolveUpload!: () => void
       mockUploadGpx.mockReturnValue(
         new Promise<string>((res) => {
@@ -258,22 +253,20 @@ describe('tourForm', () => {
       const file = new File([validGpxContent], 'track.gpx')
 
       const pickPromise = pickFile(wrapper, file)
-      await nextTick()
+      // parseGpxFile is async, so isUploadingGpx flips a microtask later — flush.
+      await flushPromises()
 
-      const submitBtn = wrapper.find('.submit-btn').element as HTMLButtonElement
+      const submitBtn = wrapper.find('[data-testid="submit-btn"]').element as HTMLButtonElement
       expect(submitBtn.disabled).toBe(true)
 
       resolveUpload()
       await pickPromise
-      await nextTick()
+      await flushPromises()
 
       expect(submitBtn.disabled).toBe(false)
     })
 
     it('should delete prior pending blob when user picks a replacement file', async () => {
-      const { parseGpxFile } = await import('@/features/tours/data/services/gpx-parser')
-      vi.mocked(parseGpxFile).mockResolvedValue(undefined as never)
-
       mockUploadGpx
         .mockResolvedValueOnce('user-abc/first-id.gpx')
         .mockResolvedValueOnce('user-abc/second-id.gpx')
@@ -292,22 +285,16 @@ describe('tourForm', () => {
     })
 
     it('should delete pending blob on cancel after upload completes', async () => {
-      const { parseGpxFile } = await import('@/features/tours/data/services/gpx-parser')
-      vi.mocked(parseGpxFile).mockResolvedValue(undefined as never)
-
       const wrapper = mountForm()
       await pickFile(wrapper, new File([validGpxContent], 'track.gpx'))
       await nextTick()
 
-      await wrapper.find('.cancel-btn').trigger('click')
+      await wrapper.find('[data-testid="cancel-btn"]').trigger('click')
 
       expect(mockRemoveGpx).toHaveBeenCalledWith('user-abc/new-tour-id.gpx')
     })
 
     it('should set wasCancelledDuringUpload flag when cancel fires while upload in flight', async () => {
-      const { parseGpxFile } = await import('@/features/tours/data/services/gpx-parser')
-      vi.mocked(parseGpxFile).mockResolvedValue(undefined as never)
-
       let resolveUpload!: (key: string) => void
       mockUploadGpx.mockReturnValue(new Promise<string>(res => (resolveUpload = res)))
 
@@ -315,7 +302,7 @@ describe('tourForm', () => {
       pickFile(wrapper, new File([validGpxContent], 'track.gpx'))
       await nextTick()
 
-      await wrapper.find('.cancel-btn').trigger('click')
+      await wrapper.find('[data-testid="cancel-btn"]').trigger('click')
 
       resolveUpload('user-abc/inflight.gpx')
       await nextTick()
@@ -325,9 +312,6 @@ describe('tourForm', () => {
     })
 
     it('should emit null for gpxFile in submit payload', async () => {
-      const { parseGpxFile } = await import('@/features/tours/data/services/gpx-parser')
-      vi.mocked(parseGpxFile).mockResolvedValue(undefined as never)
-
       const wrapper = mountForm()
       await pickFile(wrapper, new File([validGpxContent], 'track.gpx'))
       await nextTick()

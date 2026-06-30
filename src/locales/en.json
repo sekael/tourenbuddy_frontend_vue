@@ -278,6 +278,8 @@
       "pointNotSet": "Not set",
       "sameAsEnd": "same as end",
       "pickBtn": "Pick",
+      "removeStartBtn": "Remove start point",
+      "removeEndBtn": "Remove end point",
       "roundTrip": "round trip",
       "addEndPointBtn": "Add end point",
       "roundTripBtn": "Round Trip",

@@ -2,6 +2,9 @@
 import type { Contact } from '@/features/contacts/domain/entities/contact'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseButton from '@/core/components/base-button.vue'
+import BaseIconButton from '@/core/components/base-icon-button.vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 import { buildGroupSmsRecipients } from '@/features/contacts/core/utils/contact-actions'
 import { resolveContactName } from '@/features/contacts/domain/entities/contact'
 
@@ -38,9 +41,7 @@ function handleSend() {
         <h2 id="group-sms-title" class="dialog-title">
           {{ t('contacts.groupSms.title') }}
         </h2>
-        <button type="button" class="close-btn" aria-label="Close" @click="emit('cancel')">
-          <span class="material-symbols-outlined">close</span>
-        </button>
+        <BaseIconButton name="close" label="Close" size="sm" @click="emit('cancel')" />
       </div>
 
       <div class="dialog-body">
@@ -50,7 +51,7 @@ function handleSend() {
           </p>
           <ul class="recipient-list">
             <li v-for="item in result.included" :key="item.contact.id" class="recipient-row">
-              <span class="material-symbols-outlined recipient-icon ok-icon">check_circle</span>
+              <BaseIcon name="check_circle" class="recipient-icon ok-icon" />
               <span>{{ resolveContactName(item.contact) }}</span>
               <span class="recipient-phone">{{ item.e164 }}</span>
             </li>
@@ -63,7 +64,7 @@ function handleSend() {
           </p>
           <ul class="recipient-list">
             <li v-for="item in result.excluded" :key="item.contact.id" class="recipient-row">
-              <span class="material-symbols-outlined recipient-icon excluded-icon">cancel</span>
+              <BaseIcon name="cancel" class="recipient-icon excluded-icon" />
               <span>{{ resolveContactName(item.contact) }}</span>
               <span class="recipient-reason">{{ item.reason }}</span>
             </li>
@@ -76,19 +77,19 @@ function handleSend() {
       </div>
 
       <div class="dialog-footer">
-        <button type="button" class="cancel-btn" @click="emit('cancel')">
+        <BaseButton type="button" variant="secondary" @click="emit('cancel')">
           {{ t('contacts.groupSms.cancelBtn') }}
-        </button>
-        <button
+        </BaseButton>
+        <BaseButton
           type="button"
-          class="send-btn"
+          variant="primary"
           :disabled="!canSend"
           data-testid="send-btn"
           @click="handleSend"
         >
-          <span class="material-symbols-outlined">sms</span>
+          <BaseIcon name="sms" />
           {{ t('contacts.groupSms.sendBtn') }}
-        </button>
+        </BaseButton>
       </div>
     </div>
   </div>
@@ -147,26 +148,6 @@ function handleSend() {
   flex: 1;
 }
 
-.close-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-on-surface-variant);
-  flex-shrink: 0;
-  transition: background-color 0.15s;
-}
-
-.close-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.close-btn .material-symbols-outlined {
-  font-size: 18px;
-}
-
 .dialog-body {
   flex: 1;
   min-height: 0;
@@ -184,7 +165,7 @@ function handleSend() {
 }
 
 .section-label {
-  font-size: var(--font-size-xs, 11px);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -199,7 +180,7 @@ function handleSend() {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-xxs);
 }
 
 .recipient-row {
@@ -212,12 +193,12 @@ function handleSend() {
 }
 
 .recipient-icon {
-  font-size: 18px;
+  font-size: var(--icon-size-sm);
   flex-shrink: 0;
 }
 
 .ok-icon {
-  color: var(--color-success, #22c55e);
+  color: var(--color-success);
 }
 
 .excluded-icon {
@@ -227,13 +208,13 @@ function handleSend() {
 .recipient-phone {
   margin-left: auto;
   font-family: monospace;
-  font-size: var(--font-size-xs, 11px);
+  font-size: var(--font-size-xs);
   color: var(--color-on-surface-variant);
 }
 
 .recipient-reason {
   margin-left: auto;
-  font-size: var(--font-size-xs, 11px);
+  font-size: var(--font-size-xs);
   color: var(--color-error);
   font-style: italic;
 }
@@ -255,43 +236,5 @@ function handleSend() {
   flex-shrink: 0;
 }
 
-.cancel-btn {
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-md);
-  border: 1.5px solid var(--color-outline-variant);
-  color: var(--color-on-surface-variant);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  transition: background-color 0.15s;
-}
-
-.cancel-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.send-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-md);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  transition: opacity 0.15s;
-}
-
-.send-btn:hover:not(:disabled) {
-  opacity: 0.85;
-}
-
-.send-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.send-btn .material-symbols-outlined {
-  font-size: 16px;
-}
+/* Cancel/send use shared BaseButton (secondary/primary). */
 </style>

@@ -2,6 +2,8 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
+import BaseButton from '@/core/components/base-button.vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 
 const router = useRouter()
@@ -39,10 +41,10 @@ async function handleSubmit() {
 <template>
   <div class="page">
     <div class="card">
-      <button class="back-btn" @click="router.back()">
-        <span class="material-symbols-outlined">arrow_back</span>
+      <BaseButton variant="text" size="sm" class="back-btn" @click="router.back()">
+        <BaseIcon name="arrow_back" size="sm" />
         {{ t('auth.shared.backBtn') }}
-      </button>
+      </BaseButton>
       <h1 class="title">
         {{ t('auth.emailEntry.title') }}
       </h1>
@@ -68,9 +70,9 @@ async function handleSubmit() {
           {{ error }}
         </p>
 
-        <button type="submit" class="submit-btn" :disabled="isLoading">
+        <BaseButton type="submit" variant="primary" :disabled="isLoading">
           {{ isLoading ? t('auth.shared.sendingBtn') : t('auth.emailEntry.sendCodeBtn') }}
-        </button>
+        </BaseButton>
       </form>
     </div>
   </div>
@@ -96,15 +98,9 @@ async function handleSubmit() {
   max-width: 400px;
 }
 
+/* Visual styling comes from BaseButton (text); only layout lives here. */
 .back-btn {
   align-self: flex-start;
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  color: var(--color-primary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  padding: var(--spacing-xs) 0;
 }
 
 .title {
@@ -155,25 +151,5 @@ async function handleSubmit() {
   font-size: var(--font-size-sm);
 }
 
-.submit-btn {
-  padding: var(--spacing-md);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: 12px;
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  transition:
-    background-color 0.2s,
-    transform 0.15s;
-}
-
-.submit-btn:hover:not(:disabled) {
-  background-color: var(--color-primary-dark);
-  transform: translateY(-1px);
-}
-
-.submit-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+/* Submit uses the standard primary BaseButton (full-width via the flex column). */
 </style>

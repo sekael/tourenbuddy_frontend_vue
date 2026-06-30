@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
+import BaseButton from '@/core/components/base-button.vue'
 import ErrorSnackbar from '@/core/components/error-snackbar.vue'
 import { useSnackbar } from '@/core/composables/use-snackbar'
 import {
@@ -44,12 +45,12 @@ function openBugReport() {
 <template>
   <AdaptiveOverlay :title="t('core.feedback.sheet.title')" @close="emit('close')">
     <div class="feedback-content">
-      <button type="button" class="primary-btn" @click="openBugReport">
+      <BaseButton variant="primary" @click="openBugReport">
         {{ t('core.feedback.sheet.openBugReport') }}
-      </button>
-      <button type="button" class="secondary-btn" @click="openFeedbackIssue">
+      </BaseButton>
+      <BaseButton variant="text" @click="openFeedbackIssue">
         {{ t('core.feedback.sheet.openIssue') }}
-      </button>
+      </BaseButton>
       <p class="hint">
         {{ t('core.feedback.sheet.noGitHub') }}
         <a :href="`mailto:${FEEDBACK_EMAIL}`" class="email-link">{{ FEEDBACK_EMAIL }}</a>
@@ -65,22 +66,6 @@ function openBugReport() {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
-}
-
-.primary-btn {
-  width: 100%;
-  padding: var(--spacing-md) var(--spacing-lg);
-  border-radius: var(--radius-md);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  transition: filter 0.15s;
-}
-
-.primary-btn:hover {
-  filter: brightness(1.05);
 }
 
 .hint {

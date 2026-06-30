@@ -55,7 +55,7 @@ function mountDetail(contact = mockContact, linkedFriendUserId: string | null = 
 }
 
 async function enterEditMode(wrapper: ReturnType<typeof mountDetail>) {
-  await wrapper.find('.edit-btn').trigger('click')
+  await wrapper.find('[data-testid="edit-contact-btn"]').trigger('click')
 }
 
 describe('contactDetailView', () => {
@@ -66,7 +66,7 @@ describe('contactDetailView', () => {
   describe('view/edit mode toggle', () => {
     it('should default to view mode showing read-only name spans', () => {
       const wrapper = mountDetail()
-      expect(wrapper.find('.edit-btn').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="edit-contact-btn"]').exists()).toBe(true)
       expect(wrapper.find('#dv-firstName').exists()).toBe(false)
       expect(wrapper.find('.view-value').text()).toContain('Anna')
     })
@@ -83,9 +83,9 @@ describe('contactDetailView', () => {
       const wrapper = mountDetail()
       await enterEditMode(wrapper)
       await wrapper.find('#dv-firstName').setValue('Annika')
-      await wrapper.find('.form-actions .cancel-btn').trigger('click')
+      await wrapper.find('.form-actions .base-button--secondary').trigger('click')
 
-      expect(wrapper.find('.edit-btn').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="edit-contact-btn"]').exists()).toBe(true)
       expect(wrapper.find('#dv-firstName').exists()).toBe(false)
       // view-value shows original name again
       expect(wrapper.text()).toContain('Anna')
@@ -94,11 +94,11 @@ describe('contactDetailView', () => {
     it('should show add-method button and delete buttons only in edit mode', async () => {
       const wrapper = mountDetail()
       expect(wrapper.find('.add-method-btn').exists()).toBe(false)
-      expect(wrapper.find('.icon-btn--danger').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="remove-method-btn"]').exists()).toBe(false)
 
       await enterEditMode(wrapper)
       expect(wrapper.find('.add-method-btn').exists()).toBe(true)
-      expect(wrapper.find('.icon-btn--danger').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="remove-method-btn"]').exists()).toBe(true)
     })
 
     it('should make primary-phone star non-interactive in view mode', () => {
@@ -124,7 +124,7 @@ describe('contactDetailView', () => {
 
       await enterEditMode(wrapper)
       await wrapper.find('#dv-firstName').setValue('Annika')
-      await wrapper.find('.form-actions .save-btn').trigger('click')
+      await wrapper.find('.form-actions .base-button--primary').trigger('click')
       await flushPromises()
 
       expect(store.updateContact).toHaveBeenCalledWith('c-1', {
@@ -133,7 +133,7 @@ describe('contactDetailView', () => {
         displayName: null,
       })
       // After success, back to view mode
-      expect(wrapper.find('.edit-btn').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="edit-contact-btn"]').exists()).toBe(true)
       expect(wrapper.find('#dv-firstName').exists()).toBe(false)
     })
 
@@ -143,7 +143,7 @@ describe('contactDetailView', () => {
       vi.mocked(store.updateContact).mockRejectedValue(new Error('DB error'))
 
       await enterEditMode(wrapper)
-      await wrapper.find('.form-actions .save-btn').trigger('click')
+      await wrapper.find('.form-actions .base-button--primary').trigger('click')
       await flushPromises()
 
       expect(wrapper.find('#dv-firstName').exists()).toBe(true)
@@ -154,7 +154,7 @@ describe('contactDetailView', () => {
       const wrapper = mountDetail()
       await enterEditMode(wrapper)
       await wrapper.find('#dv-firstName').setValue('')
-      await wrapper.find('.form-actions .save-btn').trigger('click')
+      await wrapper.find('.form-actions .base-button--primary').trigger('click')
       await flushPromises()
 
       expect(wrapper.find('#dv-firstName').exists()).toBe(true)
@@ -195,7 +195,7 @@ describe('contactDetailView', () => {
       await expect(vm.commitPendingEdits()).resolves.toBeUndefined()
       await flushPromises()
 
-      expect(wrapper.find('.edit-btn').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="edit-contact-btn"]').exists()).toBe(true)
     })
   })
 
@@ -216,7 +216,7 @@ describe('contactDetailView', () => {
       const store = useContactsStore()
 
       await enterEditMode(wrapper)
-      await wrapper.find('.icon-btn--danger').trigger('click')
+      await wrapper.find('[data-testid="remove-method-btn"]').trigger('click')
       expect(store.removeMethodFromContact).toHaveBeenCalledWith('c-1', 'm-1')
     })
 
@@ -272,7 +272,7 @@ describe('contactDetailView', () => {
       const wrapper = mountDetail()
       await enterEditMode(wrapper)
       await wrapper.find('.add-method-btn').trigger('click')
-      await wrapper.find('.add-method-form .save-btn').trigger('click')
+      await wrapper.find('.add-method-form .base-button--primary').trigger('click')
       expect(wrapper.find('.error-text').text()).toBe('contacts.detailView.valueRequired')
     })
 
@@ -282,29 +282,29 @@ describe('contactDetailView', () => {
       await wrapper.find('.add-method-btn').trigger('click')
       expect(wrapper.find('.add-method-form').exists()).toBe(true)
 
-      await wrapper.find('.form-actions .cancel-btn').trigger('click')
+      await wrapper.find('.form-actions .base-button--secondary').trigger('click')
       // Returned to view mode — add-method-form gone
       expect(wrapper.find('.add-method-form').exists()).toBe(false)
-      expect(wrapper.find('.edit-btn').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="edit-contact-btn"]').exists()).toBe(true)
     })
   })
 
   describe('delete contact', () => {
     it('should show confirmation when delete button clicked', async () => {
       const wrapper = mountDetail()
-      await wrapper.find('.delete-btn').trigger('click')
+      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
       expect(wrapper.find('.delete-confirm-text').exists()).toBe(true)
-      expect(wrapper.find('.delete-confirm-btn').exists()).toBe(true)
+      expect(wrapper.find('.base-button--danger').exists()).toBe(true)
     })
 
     it('should hide confirmation when cancel clicked in delete section', async () => {
       const wrapper = mountDetail()
-      await wrapper.find('.delete-btn').trigger('click')
+      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
       const deleteSection = wrapper.find('.section--danger')
-      await deleteSection.find('.cancel-btn').trigger('click')
+      await deleteSection.find('.base-button--secondary').trigger('click')
 
       expect(wrapper.find('.delete-confirm-text').exists()).toBe(false)
-      expect(wrapper.find('.delete-btn').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="delete-btn"]').exists()).toBe(true)
     })
 
     it('should call deleteContact and emit deleted when confirmed', async () => {
@@ -312,8 +312,8 @@ describe('contactDetailView', () => {
       const store = useContactsStore()
       vi.mocked(store.deleteContact).mockResolvedValue(undefined)
 
-      await wrapper.find('.delete-btn').trigger('click')
-      await wrapper.find('.delete-confirm-btn').trigger('click')
+      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
+      await wrapper.find('.base-button--danger').trigger('click')
       await flushPromises()
 
       expect(store.deleteContact).toHaveBeenCalledWith('c-1')
@@ -326,8 +326,8 @@ describe('contactDetailView', () => {
       const contacts = useContactsStore()
       vi.mocked(friendships.removeFriendship).mockRejectedValue(new Error('rpc failed'))
 
-      await wrapper.find('.delete-btn').trigger('click')
-      await wrapper.find('.delete-confirm-btn').trigger('click')
+      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
+      await wrapper.find('.base-button--danger').trigger('click')
       await flushPromises()
 
       expect(contacts.deleteContact).not.toHaveBeenCalled()
@@ -339,7 +339,7 @@ describe('contactDetailView', () => {
   describe('back navigation', () => {
     it('should emit back when back button clicked', async () => {
       const wrapper = mountDetail()
-      await wrapper.find('.back-btn').trigger('click')
+      await wrapper.find('[data-testid="back-btn"]').trigger('click')
       expect(wrapper.emitted('back')).toHaveLength(1)
     })
   })
@@ -347,13 +347,13 @@ describe('contactDetailView', () => {
   describe('linked-friendship deletion', () => {
     it('does not render friend warning when contact is not linked to a friend', async () => {
       const wrapper = mountDetail(mockContact, null)
-      await wrapper.find('.delete-btn').trigger('click')
+      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
       expect(wrapper.find('.delete-friend-warning').exists()).toBe(false)
     })
 
     it('renders friend warning when contact is linked to a friend', async () => {
       const wrapper = mountDetail(mockContact, 'user-friend')
-      await wrapper.find('.delete-btn').trigger('click')
+      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
       expect(wrapper.find('.delete-friend-warning').exists()).toBe(true)
     })
 
@@ -363,8 +363,8 @@ describe('contactDetailView', () => {
       const contacts = useContactsStore()
       vi.mocked(contacts.deleteContact).mockResolvedValue(undefined)
 
-      await wrapper.find('.delete-btn').trigger('click')
-      await wrapper.find('.delete-confirm-btn').trigger('click')
+      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
+      await wrapper.find('.base-button--danger').trigger('click')
       await flushPromises()
 
       expect(friendships.removeFriendship).not.toHaveBeenCalled()

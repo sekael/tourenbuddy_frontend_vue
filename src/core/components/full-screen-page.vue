@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import BaseIconButton from '@/core/components/base-icon-button.vue'
 
 /**
  * Mobile full-screen edit/create page. Replaces the bottom sheet whenever the
@@ -39,16 +40,12 @@ const titleId = 'full-screen-page-title'
       :aria-label="!title ? (ariaLabel ?? t('core.drawer.back')) : undefined"
     >
       <header class="page-bar">
-        <button
-          type="button"
-          class="cancel-btn"
-          :aria-label="showBack ? t('core.drawer.back') : t('core.drawer.close')"
+        <BaseIconButton
+          :name="showBack ? 'arrow_back' : 'close'"
+          size="sm"
+          :label="showBack ? t('core.drawer.back') : t('core.drawer.close')"
           @click="showBack ? emit('back') : emit('close')"
-        >
-          <span class="material-symbols-outlined" aria-hidden="true">
-            {{ showBack ? 'arrow_back' : 'close' }}
-          </span>
-        </button>
+        />
         <h2 v-if="title" :id="titleId" class="title">
           {{ title }}
         </h2>
@@ -88,22 +85,6 @@ const titleId = 'full-screen-page-title'
   border-bottom: 1px solid var(--color-outline-variant);
 }
 
-.cancel-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-on-surface-variant);
-  flex-shrink: 0;
-  transition: background-color 0.15s;
-}
-
-.cancel-btn:hover {
-  background-color: var(--color-surface-variant);
-}
-
 .title {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
@@ -127,7 +108,7 @@ const titleId = 'full-screen-page-title'
   padding: var(--spacing-xs) var(--spacing-lg);
   background-color: var(--color-primary);
   color: var(--color-on-primary);
-  border-radius: 12px;
+  border-radius: var(--button-radius);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
   transition: background-color 0.2s;

@@ -83,21 +83,21 @@ describe('verifyOtpPage', () => {
   it('should call sendEmailOtp on resend click', async () => {
     mockSendEmailOtp.mockResolvedValue(undefined)
     const wrapper = mount(VerifyOtpPage)
-    await wrapper.find('.resend-btn').trigger('click')
+    await wrapper.find('.base-button--secondary').trigger('click')
     await vi.waitFor(() => expect(mockSendEmailOtp).toHaveBeenCalledWith('test@example.com'))
   })
 
   it('should show success message after successful resend', async () => {
     mockSendEmailOtp.mockResolvedValue(undefined)
     const wrapper = mount(VerifyOtpPage)
-    await wrapper.find('.resend-btn').trigger('click')
+    await wrapper.find('.base-button--secondary').trigger('click')
     await vi.waitFor(() => expect(wrapper.text()).toContain('auth.verifyOtp.resendSuccess'))
   })
 
   it('should show error message when resend fails', async () => {
     mockSendEmailOtp.mockRejectedValue(new Error('network error'))
     const wrapper = mount(VerifyOtpPage)
-    await wrapper.find('.resend-btn').trigger('click')
+    await wrapper.find('.base-button--secondary').trigger('click')
     await vi.waitFor(() => expect(wrapper.text()).toContain('auth.verifyOtp.resendError'))
   })
 
