@@ -19,11 +19,11 @@
 - [x] 3.1 `npx eslint . --fix` clean (zero warnings); review diff size for editor-reformat noise (value-only change should stay small)
 - [x] 3.2 `npm run type-check` clean
 - [x] 3.3 `npm run test` green (108 files, 1058 tests pass)
-- [ ] 3.4 Device visual check (iPhone, Add to Home Screen → standalone): auth white under notch, map tiles under notch, snackbar above home indicator, FAB above Android nav bar — confirm no regression vs current `main` (token sweep should be pixel-identical). Additionally verify `backfill-collisions-page` standalone (friendship deeplink) now paints its background under the notch; confirm embedded `mode="all"` layout is unchanged
+- [x] 3.4 Device visual check (iPhone, Add to Home Screen → standalone): auth white under notch, map tiles under notch, snackbar above home indicator, FAB above Android nav bar — confirm no regression vs current `main` (token sweep should be pixel-identical). Additionally verify `backfill-collisions-page` standalone (friendship deeplink) now paints its background under the notch; confirm embedded `mode="all"` layout is unchanged
 
 ## 4. Finalize
 
-- [ ] 4.1 Run `npx eslint . --fix` once more and confirm working tree is clean of unintended changes
-- [ ] 4.2 Prompt user to commit (do NOT auto-commit) with message: `refactor(theme): source safe-area insets from tokens (#146)`
-- [ ] 4.3 Prompt user to push branch and open a PR against `main`; reference issue #146
-- [ ] 4.4 After merge, prompt user to archive this change via `/opsx:archive`
+- [x] 4.1 Run `npx eslint . --fix` once more and confirm working tree is clean of unintended changes
+- [x] 4.2 Prompt user to commit (do NOT auto-commit) with message: `refactor(theme): source safe-area insets from tokens (#146)`
+- [x] 4.3 Prompt user to push branch and open a PR against `main`; reference issue #146
+- [x] 4.4 After merge, prompt user to archive this change via `/opsx:archive`
