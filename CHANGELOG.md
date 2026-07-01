@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.33.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.32.0...tourenbuddy-frontend-v0.33.0) (2026-07-01)
+
+
+### Features
+
+* Standardize app theme ([#231](https://github.com/sekael/tourenbuddy_frontend_vue/issues/231)) ([b1c2099](https://github.com/sekael/tourenbuddy_frontend_vue/commit/b1c2099bee10d2dbc7e7d693b4390d03a0c3a27b))
+* Unify safe area tokens ([#235](https://github.com/sekael/tourenbuddy_frontend_vue/issues/235)) ([cafb470](https://github.com/sekael/tourenbuddy_frontend_vue/commit/cafb4702cd2c75ee10a0d57f41c815e52d9eab41))
+
 ## [0.32.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.31.0...tourenbuddy-frontend-v0.32.0) (2026-06-23)
 
 
