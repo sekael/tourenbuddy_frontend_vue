@@ -210,11 +210,16 @@ onMounted(() => {
 /* ponytail: 'all' mode is always sheet-embedded (sheet pads its slot), so the
    page adds none. Only the friendship-mode deeplink renders standalone and
    needs its own padding. Revisit if 'all' ever gets a standalone route. */
+/* ponytail: max-width caps this to a centered column on wide/landscape
+   screens, so physical L/R edges (and any landscape notch) fall through
+   to html's background — fine while both use --color-background. */
 .page--standalone {
-  /* TODO(me): make the standalone deeplink a full notch-safe page root.
-     See task list at the end of this response. */
   max-width: 640px;
   margin: 0 auto;
+  min-height: -webkit-fill-available;
+  min-height: 100lvh;
+  background-color: var(--color-background);
+  padding: calc(var(--spacing-md) + var(--safe-top)) var(--spacing-md) calc(var(--spacing-md) + var(--safe-bottom));
 }
 
 .page-header {

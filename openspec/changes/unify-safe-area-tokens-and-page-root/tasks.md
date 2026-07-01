@@ -1,6 +1,6 @@
 ## 1. Git Setup
 
-- [ ] 1.1 Branch from latest main: `git fetch origin && git checkout main && git pull && git checkout -b feat/146-unify-safe-area-tokens`
+- [x] 1.1 Branch from latest main: `git fetch origin && git checkout main && git pull && git checkout -b feat/146-unify-safe-area-tokens`
 
 ## 2. env() → var(--safe-*) sweep
 
@@ -11,14 +11,14 @@
 - [x] 2.5 `src/features/map/presentation/components/`: migrate `map-action-overlay.vue`, `location-picker.vue`, `tour-action-bar.vue`
 - [x] 2.6 `src/features/onboarding/presentation/components/`: migrate `onboarding-welcome.vue`, `onboarding-tour-banner.vue`
 - [x] 2.7 `src/features/tours/presentation/components/tour-attachment-viewer.vue`: migrate all inset usages (header top/right/left + footer/nav/dots bottom/left/right — 7 sites)
-- [ ] 2.8 `src/features/tour-links/presentation/pages/backfill-collisions-page.vue`: add standalone page-root `min-height: -webkit-fill-available; min-height: 100lvh;`, `background-color: var(--color-background);`, and safe-area-aware padding for `.page--standalone`; keep embedded `mode="all"` layout unchanged
+- [x] 2.8 `src/features/tour-links/presentation/pages/backfill-collisions-page.vue`: add standalone page-root `min-height: -webkit-fill-available; min-height: 100lvh;`, `background-color: var(--color-background);`, and safe-area-aware padding for `.page--standalone`; keep embedded `mode="all"` layout unchanged
 - [x] 2.9 Verify sweep complete: `grep -rn "env(safe-area-inset" src/` returns ONLY the four definitions in `src/app/theme/safe-area.css`
 
 ## 3. Verification
 
-- [ ] 3.1 `npx eslint . --fix` clean (zero warnings); review diff size for editor-reformat noise (value-only change should stay small)
-- [ ] 3.2 `npm run type-check` clean
-- [ ] 3.3 `npm run test` green
+- [x] 3.1 `npx eslint . --fix` clean (zero warnings); review diff size for editor-reformat noise (value-only change should stay small)
+- [x] 3.2 `npm run type-check` clean
+- [x] 3.3 `npm run test` green (108 files, 1058 tests pass)
 - [ ] 3.4 Device visual check (iPhone, Add to Home Screen → standalone): auth white under notch, map tiles under notch, snackbar above home indicator, FAB above Android nav bar — confirm no regression vs current `main` (token sweep should be pixel-identical). Additionally verify `backfill-collisions-page` standalone (friendship deeplink) now paints its background under the notch; confirm embedded `mode="all"` layout is unchanged
 
 ## 4. Finalize
