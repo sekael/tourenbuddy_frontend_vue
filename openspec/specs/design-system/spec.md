@@ -203,12 +203,12 @@ Design tokens SHALL be authored directly in CSS (`tokens.css`/`typography.css`) 
 
 ### Requirement: Runtime CSS functions are not design tokens
 
-Runtime/contextual CSS functions such as `env(safe-area-inset-*)` SHALL NOT live in the token files (`tokens.css`/`typography.css`). They SHALL be defined as hand-written custom properties in global CSS (e.g. `global.css`). The token files SHALL contain only static design values.
+Runtime/contextual CSS functions such as `env(safe-area-inset-*)` SHALL NOT live in the token files (`tokens.css`/`typography.css`). They SHALL be defined as hand-written custom properties in a dedicated global-scope theme file (`safe-area.css`), imported by `global.css`. The token files SHALL contain only static design values.
 
-#### Scenario: Safe-area vars live in global CSS
+#### Scenario: Safe-area vars live in a global-scope theme file
 
 - **WHEN** the theme files are inspected
-- **THEN** `--safe-top`/`--safe-bottom`/`--safe-left`/`--safe-right` are defined in global CSS, not in `tokens.css`
+- **THEN** `--safe-top`/`--safe-bottom`/`--safe-left`/`--safe-right` are defined in `safe-area.css` (imported by `global.css`), not in `tokens.css`
 - **AND** `tokens.css` contains only static value tokens
 
 ### Requirement: Documented design-language source of truth
