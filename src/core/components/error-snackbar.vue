@@ -25,7 +25,7 @@ const emit = defineEmits<{ dismiss: [] }>()
 <style scoped>
 .snackbar {
   position: fixed;
-  bottom: calc(var(--spacing-xl) + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--spacing-xl) + var(--safe-bottom));
   left: 50%;
   transform: translateX(-50%);
   display: flex;

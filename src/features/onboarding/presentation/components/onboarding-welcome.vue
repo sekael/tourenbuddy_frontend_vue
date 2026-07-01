@@ -49,8 +49,8 @@ const { t } = useI18n({ useScope: 'global' })
   /* Mobile: a full-screen page, not a dialog — solid background fills the
      viewport (no dimmed map behind, no floating card). */
   padding: var(--spacing-xl) var(--spacing-lg);
-  padding-top: calc(var(--spacing-xl) + env(safe-area-inset-top, 0px));
-  padding-bottom: calc(var(--spacing-xl) + env(safe-area-inset-bottom, 0px));
+  padding-top: calc(var(--spacing-xl) + var(--safe-top));
+  padding-bottom: calc(var(--spacing-xl) + var(--safe-bottom));
   background-color: var(--color-background);
 }
 

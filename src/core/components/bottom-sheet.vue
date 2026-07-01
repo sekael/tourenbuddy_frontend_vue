@@ -431,7 +431,7 @@ const sheetStyle = computed(() => {
   overflow-y: auto;
   padding-right: var(--spacing-xs);
   /* Home indicator clearance: last list item stays reachable above gesture bar */
-  padding-bottom: calc(var(--spacing-md) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(var(--spacing-md) + var(--safe-bottom));
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: var(--color-outline-variant) transparent;
@@ -450,6 +450,6 @@ const sheetStyle = computed(() => {
   flex-shrink: 0;
   border-top: 1px solid var(--color-outline-variant);
   /* Base padding trimmed (md, not xl); env() still clears the home-gesture bar. */
-  padding: var(--spacing-sm) 0 calc(var(--spacing-md) + env(safe-area-inset-bottom, 0px));
+  padding: var(--spacing-sm) 0 calc(var(--spacing-md) + var(--safe-bottom));
 }
 </style>

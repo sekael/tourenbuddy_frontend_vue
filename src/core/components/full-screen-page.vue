@@ -81,7 +81,7 @@ const titleId = 'full-screen-page-title'
   align-items: center;
   gap: var(--spacing-sm);
   flex-shrink: 0;
-  padding: calc(env(safe-area-inset-top, 0px) + var(--spacing-sm)) var(--spacing-md) var(--spacing-sm);
+  padding: calc(var(--safe-top) + var(--spacing-sm)) var(--spacing-md) var(--spacing-sm);
   border-bottom: 1px solid var(--color-outline-variant);
 }
 
@@ -127,6 +127,6 @@ const titleId = 'full-screen-page-title'
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--spacing-md) var(--spacing-md) calc(var(--spacing-md) + env(safe-area-inset-bottom, 0px));
+  padding: var(--spacing-md) var(--spacing-md) calc(var(--spacing-md) + var(--safe-bottom));
 }
 </style>

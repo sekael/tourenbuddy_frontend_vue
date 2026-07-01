@@ -69,7 +69,7 @@ const { t } = useI18n({ useScope: 'global' })
   /* Above driver.js' overlay + popover so the controls stay clickable and the
      backdrop-tap-to-advance never swallows banner clicks. */
   position: fixed;
-  top: calc(var(--spacing-md) + env(safe-area-inset-top, 0px));
+  top: calc(var(--spacing-md) + var(--safe-top));
   left: 50%;
   transform: translateX(-50%);
   z-index: 2147483000;

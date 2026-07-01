@@ -68,7 +68,7 @@ function handleDismiss() {
   box-shadow: var(--shadow-lg);
   z-index: 300;
   padding: var(--spacing-lg) var(--spacing-xl);
-  padding-bottom: calc(var(--spacing-lg) + env(safe-area-inset-bottom));
+  padding-bottom: calc(var(--spacing-lg) + var(--safe-bottom));
 }
 
 .content {

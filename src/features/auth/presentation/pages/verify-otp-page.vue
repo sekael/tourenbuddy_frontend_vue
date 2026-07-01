@@ -118,8 +118,7 @@ async function handleResend() {
   justify-content: center;
   min-height: -webkit-fill-available;
   min-height: 100lvh;
-  padding: calc(var(--spacing-xl) + env(safe-area-inset-top, 0px)) var(--spacing-xl)
-    calc(var(--spacing-xl) + env(safe-area-inset-bottom, 0px));
+  padding: calc(var(--spacing-xl) + var(--safe-top)) var(--spacing-xl) calc(var(--spacing-xl) + var(--safe-bottom));
   background-color: var(--color-background);
 }
 

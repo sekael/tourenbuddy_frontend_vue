@@ -324,9 +324,8 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: calc(var(--spacing-md) + env(safe-area-inset-top, 0px))
-    calc(var(--spacing-lg) + env(safe-area-inset-right, 0px)) var(--spacing-md)
-    calc(var(--spacing-lg) + env(safe-area-inset-left, 0px));
+  padding: calc(var(--spacing-md) + var(--safe-top)) calc(var(--spacing-lg) + var(--safe-right)) var(--spacing-md)
+    calc(var(--spacing-lg) + var(--safe-left));
   flex-shrink: 0;
   gap: var(--spacing-sm);
 }
@@ -424,7 +423,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  padding: var(--spacing-xs) 0 calc(var(--spacing-xs) + env(safe-area-inset-bottom, 0px));
+  padding: var(--spacing-xs) 0 calc(var(--spacing-xs) + var(--safe-bottom));
   flex-shrink: 0;
 }
 
@@ -455,17 +454,17 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 }
 
 .viewer__nav--prev {
-  left: calc(var(--spacing-sm) + env(safe-area-inset-left, 0px));
+  left: calc(var(--spacing-sm) + var(--safe-left));
 }
 .viewer__nav--next {
-  right: calc(var(--spacing-sm) + env(safe-area-inset-right, 0px));
+  right: calc(var(--spacing-sm) + var(--safe-right));
 }
 
 .viewer__dots {
   display: flex;
   justify-content: center;
   gap: 6px;
-  padding: var(--spacing-sm) var(--spacing-sm) calc(var(--spacing-sm) + env(safe-area-inset-bottom, 0px));
+  padding: var(--spacing-sm) var(--spacing-sm) calc(var(--spacing-sm) + var(--safe-bottom));
   flex-shrink: 0;
 }
 
