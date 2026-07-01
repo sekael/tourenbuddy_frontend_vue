@@ -464,6 +464,8 @@
     "sendRequest": "Anfrage senden",
     "justSaveContact": "Nur speichern",
     "requestSent": "Anfrage gesendet",
+    "nowFriends": "Ihr seid jetzt befreundet",
+    "sendFailedRetry": "Konnte nicht gesendet werden – bitte erneut versuchen.",
     "learnMore": "Mehr erfahren",
     "inboxEmpty": "Keine ausstehenden Freundschaftsanfragen.",
     "inboxDenyRightsNote": "Du kannst jede Anfrage ohne Begründung ablehnen. Eine Ablehnung hat keine Konsequenzen und gibt Deine Identität nicht preis.",

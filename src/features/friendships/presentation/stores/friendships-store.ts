@@ -52,6 +52,11 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     return ids
   })
 
+  /** The current user's pending incoming request from `userId`, or null. */
+  function incomingRequestFrom(userId: string): FriendRequest | null {
+    return incomingRequests.value.find(r => r.fromUserId === userId) ?? null
+  }
+
   function currentUserHasAnyRelationship(): { hasPending: boolean, hasFriendship: boolean } {
     return {
       hasPending: incomingRequests.value.length > 0 || outgoingRequests.value.length > 0,
@@ -394,6 +399,7 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     friendUserIds,
     pendingRequestUserIds,
     isPhoneVerified,
+    incomingRequestFrom,
     currentUserHasAnyRelationship,
     fetchAll,
     sendRequest,

@@ -22,12 +22,15 @@ const store = useFriendshipsStore()
 const blocksStore = useUserBlocksStore()
 const { blockedUserIds } = storeToRefs(blocksStore)
 
-type State = 'idle' | 'sending' | 'sent' | 'error'
+type State = 'idle' | 'sending' | 'sent' | 'accepted' | 'error'
 const state = ref<State>('idle')
 const errorMsg = ref<string | null>(null)
 const isBlockedByTarget = ref(false)
 const isBlockedByMe = computed(() => blockedUserIds.value.has(props.matchedUserId))
 const isHidden = computed(() => isBlockedByTarget.value || isBlockedByMe.value)
+
+/** Pending incoming request from the matched user → switch to accept mode. */
+const acceptRequestId = computed(() => store.incomingRequestFrom(props.matchedUserId)?.id ?? null)
 
 onMounted(async () => {
   isBlockedByTarget.value = await blocksStore.isBlockedBy(props.matchedUserId)
@@ -46,7 +49,24 @@ async function handleSend() {
   catch {
     state.value = 'error'
     isBlockedByTarget.value = blocksStore.isBlockedByCache.get(props.matchedUserId)?.value ?? false
-    errorMsg.value = t('blocks.snackbar.sendRequestFailed')
+    errorMsg.value = t('friendships.sendFailedRetry')
+  }
+}
+
+async function handleAccept() {
+  const id = acceptRequestId.value
+  if (!id)
+    return
+  state.value = 'sending'
+  errorMsg.value = null
+  try {
+    await store.accept(id)
+    state.value = 'accepted'
+    emit('sent')
+  }
+  catch {
+    state.value = 'error'
+    errorMsg.value = t('friendships.sendFailedRetry')
   }
 }
 
@@ -77,6 +97,13 @@ async function handleDismiss() {
       </p>
     </template>
 
+    <template v-else-if="state === 'accepted'">
+      <p class="sent-msg">
+        <BaseIcon name="check_circle" class="sent-icon" />
+        {{ t('friendships.nowFriends') }}
+      </p>
+    </template>
+
     <template v-else>
       <div class="prompt-body">
         <p class="prompt-title">
@@ -101,6 +128,17 @@ async function handleDismiss() {
           {{ state === 'sending' ? '…' : t('friendships.justSaveContact') }}
         </BaseButton>
         <BaseButton
+          v-if="acceptRequestId"
+          type="button"
+          variant="primary"
+          size="sm"
+          :disabled="state === 'sending'"
+          @click="handleAccept"
+        >
+          {{ state === 'sending' ? '…' : t('friendships.accept') }}
+        </BaseButton>
+        <BaseButton
+          v-else
           type="button"
           variant="primary"
           size="sm"
