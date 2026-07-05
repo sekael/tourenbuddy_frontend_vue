@@ -137,3 +137,49 @@ describe('useFriendshipsStore — currentUserHasAnyRelationship', () => {
     expect(result.hasPending).toBe(true)
   })
 })
+
+describe('useFriendshipsStore — incomingRequestFrom', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    mockCurrentUser.value = null
+    mockRepo.listIncoming.mockResolvedValue([])
+    mockRepo.listFriendships.mockResolvedValue([])
+  })
+
+  it('should return null when no incoming request from that user', async () => {
+    mockRepo.listIncoming.mockResolvedValue([
+      makeRequest({ fromUserId: 'user-me', toUserId: 'user-a' }), // outgoing, not incoming
+    ])
+    const store = await verifiedStore()
+    expect(store.incomingRequestFrom('user-a')).toBeNull()
+  })
+
+  it('should return the pending incoming request from the matched user', async () => {
+    mockRepo.listIncoming.mockResolvedValue([
+      makeRequest({ id: 'req-b', fromUserId: 'user-b', toUserId: 'user-me' }),
+    ])
+    const store = await verifiedStore()
+    expect(store.incomingRequestFrom('user-b')?.id).toBe('req-b')
+  })
+})
+
+describe('useFriendshipsStore — sendRequest unique-violation', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    mockCurrentUser.value = null
+    mockRepo.listIncoming.mockResolvedValue([])
+    mockRepo.listFriendships.mockResolvedValue([])
+  })
+
+  it('should roll back the optimistic outgoing row and rethrow on a concurrent cross-send collision', async () => {
+    mockRepo.sendRequest.mockRejectedValue(
+      new Error('duplicate key value violates unique constraint "friend_requests_pending_pair_idx"'),
+    )
+    const store = await verifiedStore()
+
+    await expect(store.sendRequest('user-b')).rejects.toThrow()
+    expect(store.outgoingRequests.some(r => r.toUserId === 'user-b')).toBe(false)
+  })
+})

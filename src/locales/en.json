@@ -464,6 +464,8 @@
     "sendRequest": "Send request",
     "justSaveContact": "Save contact only",
     "requestSent": "Request sent",
+    "nowFriends": "You are now friends",
+    "sendFailedRetry": "Couldn't send — please try again.",
     "learnMore": "Learn more",
     "inboxEmpty": "No pending friend requests.",
     "inboxDenyRightsNote": "You are free to deny any request without justification. Denying has no penalty and does not reveal your identity beyond the act of declining.",
