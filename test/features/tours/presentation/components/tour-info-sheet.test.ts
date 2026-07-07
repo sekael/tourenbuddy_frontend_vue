@@ -446,20 +446,6 @@ describe('tourInfoSheet', () => {
       expect(chip.props('mode')).toBe('action')
     })
 
-    it('does not show group-sms-btn for single partner', () => {
-      const wrapper = mountSheet({ partnerIds: ['contact-1'] }, 'user-1', [mockContact])
-      expect(wrapper.find('[data-testid="group-sms-btn"]').exists()).toBe(false)
-    })
-
-    it('shows group-sms-btn for multiple partners', () => {
-      const contact2 = { ...mockContact, id: 'contact-2' }
-      const wrapper = mountSheet({ partnerIds: ['contact-1', 'contact-2'] }, 'user-1', [
-        mockContact,
-        contact2,
-      ])
-      expect(wrapper.find('[data-testid="group-sms-btn"]').exists()).toBe(true)
-    })
-
     it('does not render ContactActionMenu when no chip is active', () => {
       const wrapper = mountSheet({ partnerIds: ['contact-1'] }, 'user-1', [mockContact])
       expect(wrapper.find('[data-testid="contact-action-menu"]').exists()).toBe(false)

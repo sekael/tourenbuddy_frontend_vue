@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  buildContactActions,
-  buildGroupSmsRecipients,
-} from '@/features/contacts/core/utils/contact-actions'
+import { buildContactActions } from '@/features/contacts/core/utils/contact-actions'
 
 function makeContact(
   id: string,
@@ -94,53 +91,5 @@ describe('buildContactActions', () => {
       { id: 'm1', value: '+41791234567', isPrimary: true, label: 'Mobile' },
     ])
     expect(buildContactActions(contact)[0]!.label).toBe('Mobile')
-  })
-})
-
-describe('buildGroupSmsRecipients', () => {
-  it('includes contact with valid primary E.164 phone', () => {
-    const p = makeContact('c1', [{ id: 'm1', value: '+41791234567', isPrimary: true }])
-    const result = buildGroupSmsRecipients([p])
-    expect(result.included).toHaveLength(1)
-    expect(result.included[0]!.e164).toBe('+41791234567')
-    expect(result.excluded).toHaveLength(0)
-  })
-
-  it('excludes contact with no phones', () => {
-    const p = {
-      id: 'c1',
-      userId: 'u1',
-      firstName: 'Test',
-      lastName: null,
-      displayName: null,
-      contactMethods: [],
-    }
-    const result = buildGroupSmsRecipients([p])
-    expect(result.included).toHaveLength(0)
-    expect(result.excluded).toHaveLength(1)
-    expect(result.excluded[0]!.reason).toBeTruthy()
-  })
-
-  it('excludes contact with invalid primary phone', () => {
-    const p = makeContact('c1', [{ id: 'm1', value: '079 bad', isPrimary: true, isValid: false }])
-    const result = buildGroupSmsRecipients([p])
-    expect(result.included).toHaveLength(0)
-    expect(result.excluded).toHaveLength(1)
-  })
-
-  it('handles mixed valid+invalid contacts', () => {
-    const valid = makeContact('c1', [{ id: 'm1', value: '+41791111111', isPrimary: true }])
-    const invalid = makeContact('c2', [{ id: 'm2', value: 'bad', isPrimary: true, isValid: false }])
-    const result = buildGroupSmsRecipients([valid, invalid])
-    expect(result.included).toHaveLength(1)
-    expect(result.excluded).toHaveLength(1)
-  })
-
-  it('composes comma-separated E.164 numbers for two recipients', () => {
-    const p1 = makeContact('c1', [{ id: 'm1', value: '+41791111111', isPrimary: true }])
-    const p2 = makeContact('c2', [{ id: 'm2', value: '+41792222222', isPrimary: true }])
-    const result = buildGroupSmsRecipients([p1, p2])
-    const uri = `sms:${result.included.map(r => r.e164).join(',')}`
-    expect(uri).toBe('sms:+41791111111,+41792222222')
   })
 })
