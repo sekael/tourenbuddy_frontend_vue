@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { DuplicateContactMethodError } from '@/core/exceptions'
+import { DuplicateContactAcrossContactsError, DuplicateContactMethodError } from '@/core/exceptions'
 import { ContactMethodsRepositoryImpl } from '@/features/contacts/data/repositories/contact-methods-repository-impl'
 
 vi.mock('@/core/utils/supabase', () => ({
@@ -82,6 +82,31 @@ describe('contactMethodsRepositoryImpl', () => {
       await expect(
         repo.addMethod('c-1', { methodType: 'phone', value: '+41791234567', isPrimary: true }),
       ).rejects.toThrow(DuplicateContactMethodError)
+    })
+
+    it('23505 on contact_methods_value_unique_per_user maps to DuplicateContactAcrossContactsError', async () => {
+      const { supabase } = await import('@/core/utils/supabase')
+      const mockChain = {
+        select: vi.fn(() => ({
+          single: vi.fn(() =>
+            Promise.resolve({
+              data: null,
+              error: {
+                code: '23505',
+                message: 'duplicate key value violates unique constraint "contact_methods_value_unique_per_user"',
+              },
+            }),
+          ),
+        })),
+      }
+      vi.mocked(supabase.from).mockReturnValue({
+        insert: vi.fn(() => mockChain),
+      } as ReturnType<typeof supabase.from>)
+
+      const repo = new ContactMethodsRepositoryImpl()
+      await expect(
+        repo.addMethod('c-1', { methodType: 'phone', value: '+41791234567', isPrimary: true }),
+      ).rejects.toThrow(DuplicateContactAcrossContactsError)
     })
 
     it('non-23505 errors pass through unchanged', async () => {
@@ -198,6 +223,56 @@ describe('contactMethodsRepositoryImpl', () => {
       await expect(repo.updateMethod('m-1', { value: '+41791234567' })).rejects.toThrow(
         'Update failed',
       )
+    })
+
+    it('23505 on contact_methods_value_unique_per_user maps to DuplicateContactAcrossContactsError', async () => {
+      const { supabase } = await import('@/core/utils/supabase')
+      const mockEqChain = {
+        select: vi.fn(() => ({
+          single: vi.fn(() =>
+            Promise.resolve({
+              data: null,
+              error: {
+                code: '23505',
+                message: 'duplicate key value violates unique constraint "contact_methods_value_unique_per_user"',
+              },
+            }),
+          ),
+        })),
+      }
+      vi.mocked(supabase.from).mockReturnValue({
+        update: vi.fn(() => ({ eq: vi.fn(() => mockEqChain) })),
+      } as ReturnType<typeof supabase.from>)
+
+      const repo = new ContactMethodsRepositoryImpl()
+      await expect(
+        repo.updateMethod('m-1', { methodType: 'phone', value: '+41791234567' }),
+      ).rejects.toThrow(DuplicateContactAcrossContactsError)
+    })
+
+    it('23505 on contact_methods_unique_per_contact still maps to DuplicateContactMethodError', async () => {
+      const { supabase } = await import('@/core/utils/supabase')
+      const mockEqChain = {
+        select: vi.fn(() => ({
+          single: vi.fn(() =>
+            Promise.resolve({
+              data: null,
+              error: {
+                code: '23505',
+                message: 'duplicate key value violates unique constraint "contact_methods_unique_per_contact"',
+              },
+            }),
+          ),
+        })),
+      }
+      vi.mocked(supabase.from).mockReturnValue({
+        update: vi.fn(() => ({ eq: vi.fn(() => mockEqChain) })),
+      } as ReturnType<typeof supabase.from>)
+
+      const repo = new ContactMethodsRepositoryImpl()
+      await expect(
+        repo.updateMethod('m-1', { methodType: 'phone', value: '+41791234567' }),
+      ).rejects.toThrow(DuplicateContactMethodError)
     })
   })
 })

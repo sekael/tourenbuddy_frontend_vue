@@ -245,3 +245,39 @@ describe('useContactsStore — relationshipsForPhone', () => {
     expect(result.hasPending).toBe(true)
   })
 })
+
+describe('useContactsStore — findContactByMethodValue', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    mockListIncoming.mockResolvedValue([])
+    mockListFriendships.mockResolvedValue([])
+  })
+
+  it('returns the other contact holding a matching normalised phone value', async () => {
+    mockFetchContacts.mockResolvedValue([contactWithPhone, contactWithoutPhone])
+    const store = useContactsStore()
+    await store.loadContacts()
+
+    const match = store.findContactByMethodValue('phone', '079 111 11 11')
+    expect(match?.id).toBe('c-1')
+  })
+
+  it('ignores the excepted contact id (editing in place is not a duplicate of itself)', async () => {
+    mockFetchContacts.mockResolvedValue([contactWithPhone, contactWithoutPhone])
+    const store = useContactsStore()
+    await store.loadContacts()
+
+    const match = store.findContactByMethodValue('phone', '+41791111111', 'c-1')
+    expect(match).toBeUndefined()
+  })
+
+  it('returns undefined when no contact holds the value', async () => {
+    mockFetchContacts.mockResolvedValue([contactWithPhone, contactWithoutPhone])
+    const store = useContactsStore()
+    await store.loadContacts()
+
+    const match = store.findContactByMethodValue('phone', '+41799999999')
+    expect(match).toBeUndefined()
+  })
+})

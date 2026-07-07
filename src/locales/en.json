@@ -131,7 +131,8 @@
   },
   "contacts": {
     "errors": {
-      "duplicateMethod": "This phone number is already saved for this contact."
+      "duplicateMethod": "This phone number is already saved for this contact.",
+      "duplicateAcrossContacts": "This value already exists on another contact."
     },
     "list": {
       "title": "Contacts",
@@ -179,7 +180,12 @@
       "importContactsBtn": "Import from contacts",
       "importError": "Import failed",
       "fileImportError": "File import failed",
-      "addError": "Failed to add contact"
+      "addError": "Failed to add contact",
+      "summaryImported": "{count} imported",
+      "summaryPhoneDuplicate": "{count} already on another contact",
+      "summaryPhoneDuplicateBadge": "Duplicate",
+      "summaryNameDuplicate": "{count} already in contacts",
+      "summaryUnparseable": "{count} unparseable"
     },
     "detailView": {
       "title": "Edit Contact",
@@ -219,7 +225,11 @@
       "removeMethodPendingWarning": "You have a pending friend request linked to this phone number. Removing it will cancel the pending request.",
       "removeMethodFriendAndPendingWarning": "This phone number is linked to a TourenBuddy friend and has a pending request. Removing it will terminate the friendship and cancel the pending request.",
       "removeBtn": "Remove",
-      "removingMethodBtn": "Removing..."
+      "removingMethodBtn": "Removing...",
+      "editEvictFriendWarning": "Saving this change will remove your friendship with the previously linked contact.",
+      "editEvictPendingWarning": "Saving this change will cancel the pending friend request linked to the previous number.",
+      "editEvictFriendAndPendingWarning": "Saving this change will remove your friendship and cancel the pending friend request linked to the previous number.",
+      "confirmSaveBtn": "Save anyway"
     },
     "actionMenu": {
       "noMethods": "No contact method available. Edit contact to add one.",
@@ -235,7 +245,12 @@
     },
     "shared": {
       "savingBtn": "Saving...",
-      "cancelBtn": "Cancel"
+      "cancelBtn": "Cancel",
+      "duplicateTitle": "Contact already exists",
+      "duplicateText": "{name} already has this value.",
+      "duplicateGenericText": "This value already exists on another contact.",
+      "editExistingBtn": "Edit existing",
+      "discardBtn": "Discard"
     }
   },
   "tours": {

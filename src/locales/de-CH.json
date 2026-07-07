@@ -131,7 +131,8 @@
   },
   "contacts": {
     "errors": {
-      "duplicateMethod": "Diese Telefonnummer ist für diesen Kontakt bereits gespeichert."
+      "duplicateMethod": "Diese Telefonnummer ist für diesen Kontakt bereits gespeichert.",
+      "duplicateAcrossContacts": "Dieser Wert existiert bereits bei einem anderen Kontakt."
     },
     "list": {
       "title": "Kontakte",
@@ -179,7 +180,12 @@
       "importContactsBtn": "Aus Kontakten importieren",
       "importError": "Import fehlgeschlagen",
       "fileImportError": "Dateiimport fehlgeschlagen",
-      "addError": "Kontakt konnte nicht hinzugefügt werden"
+      "addError": "Kontakt konnte nicht hinzugefügt werden",
+      "summaryImported": "{count} importiert",
+      "summaryPhoneDuplicate": "{count} bereits bei einem anderen Kontakt",
+      "summaryPhoneDuplicateBadge": "Duplikat",
+      "summaryNameDuplicate": "{count} bereits in Kontakten",
+      "summaryUnparseable": "{count} nicht lesbar"
     },
     "detailView": {
       "title": "Kontakt bearbeiten",
@@ -219,7 +225,11 @@
       "removeMethodPendingWarning": "Diese Telefonnummer ist mit einer offenen Freundschaftsanfrage verknüpft. Das Entfernen bricht die offene Anfrage ab.",
       "removeMethodFriendAndPendingWarning": "Diese Telefonnummer ist mit einem TourenBuddy-Freund und einer offenen Anfrage verknüpft. Das Entfernen beendet die Freundschaft und bricht die Anfrage ab.",
       "removeBtn": "Entfernen",
-      "removingMethodBtn": "Wird entfernt..."
+      "removingMethodBtn": "Wird entfernt...",
+      "editEvictFriendWarning": "Das Speichern dieser Änderung entfernt deine Freundschaft mit dem bisher verknüpften Kontakt.",
+      "editEvictPendingWarning": "Das Speichern dieser Änderung bricht die offene Freundschaftsanfrage der bisherigen Nummer ab.",
+      "editEvictFriendAndPendingWarning": "Das Speichern dieser Änderung entfernt die Freundschaft und bricht die offene Freundschaftsanfrage der bisherigen Nummer ab.",
+      "confirmSaveBtn": "Trotzdem speichern"
     },
     "actionMenu": {
       "noMethods": "Keine Kontaktmethode verfügbar. Bearbeite den Kontakt, um eine hinzuzufügen.",
@@ -235,7 +245,12 @@
     },
     "shared": {
       "savingBtn": "Wird gespeichert...",
-      "cancelBtn": "Abbrechen"
+      "cancelBtn": "Abbrechen",
+      "duplicateTitle": "Kontakt existiert bereits",
+      "duplicateText": "{name} hat diesen Wert bereits.",
+      "duplicateGenericText": "Dieser Wert existiert bereits bei einem anderen Kontakt.",
+      "editExistingBtn": "Bestehenden bearbeiten",
+      "discardBtn": "Verwerfen"
     }
   },
   "tours": {
