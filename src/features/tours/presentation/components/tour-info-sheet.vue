@@ -16,7 +16,6 @@ import { useLogger } from '@/core/logging/use-logger'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import ContactActionMenu from '@/features/contacts/presentation/components/contact-action-menu.vue'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
-import GroupSmsConfirmDialog from '@/features/contacts/presentation/components/group-sms-confirm-dialog.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import CollisionNotice from '@/features/tour-links/presentation/components/collision-notice.vue'
@@ -510,7 +509,6 @@ const activeMenuContact = computed(() =>
     : null,
 )
 const activeChipRect = ref<DOMRect | null>(null)
-const showGroupSmsDialog = ref(false)
 
 function openContactMenu(contactId: string, rect: DOMRect) {
   activeMenuContactId.value = contactId
@@ -802,13 +800,6 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
                 mode="action" @open="openContactMenu"
               />
             </div>
-            <BaseButton
-              v-if="partners.length > 1" variant="secondary" size="sm" class="group-sms-btn"
-              data-testid="group-sms-btn" @click="showGroupSmsDialog = true"
-            >
-              <BaseIcon name="sms" />
-              {{ t('tours.infoSheet.messageAll') }}
-            </BaseButton>
           </div>
         </div>
 
@@ -834,12 +825,6 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         <ContactActionMenu
           v-if="activeMenuContact" :contact="activeMenuContact" :anchor-rect="activeChipRect"
           @close="closeContactMenu" @edit-contact="handleEditContact"
-        />
-
-        <!-- Group SMS dialog -->
-        <GroupSmsConfirmDialog
-          v-if="showGroupSmsDialog" :partners="partners" @confirm="showGroupSmsDialog = false"
-          @cancel="showGroupSmsDialog = false"
         />
       </div>
     </template>
@@ -1111,11 +1096,6 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   border: 1px dashed var(--color-outline-variant);
   color: var(--color-on-surface-variant);
   font-style: italic;
-}
-
-/* BaseButton (secondary) provides the look; only layout lives here. */
-.group-sms-btn {
-  align-self: flex-start;
 }
 
 /* ── Edit mode ──────────────────────────────────────────────────────────────── */

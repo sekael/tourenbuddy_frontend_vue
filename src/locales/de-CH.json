@@ -235,14 +235,6 @@
       "noMethods": "Keine Kontaktmethode verfügbar. Bearbeite den Kontakt, um eine hinzuzufügen.",
       "editBtn": "Kontakt bearbeiten"
     },
-    "groupSms": {
-      "title": "SMS an alle Partner senden",
-      "willReceiveLabel": "Erhält SMS",
-      "cannotReceiveLabel": "Kann keine SMS empfangen",
-      "noRecipients": "Kein Partner hat eine gültige Telefonnummer für SMS.",
-      "cancelBtn": "Abbrechen",
-      "sendBtn": "SMS senden"
-    },
     "shared": {
       "savingBtn": "Wird gespeichert...",
       "cancelBtn": "Abbrechen",
@@ -350,7 +342,6 @@
       "roundTrip": "Rundtour",
       "oneWayToGoalIndicator": "Einfache Tour zum Ziel",
       "gpxTrackAvailable": "Track verfügbar",
-      "messageAll": "Alle anschreiben",
       "partnerSelf": "Ich",
       "morePartners": "und {count} weitere",
       "editBtn": "Bearbeiten",
