@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.34.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.33.0...tourenbuddy-frontend-v0.34.0) (2026-07-07)
+
+
+### Features
+
+* Add agents.md file ([#238](https://github.com/sekael/tourenbuddy_frontend_vue/issues/238)) ([51cc477](https://github.com/sekael/tourenbuddy_frontend_vue/commit/51cc47756119a14840f01fd9eb0d992fdcf313d7))
+* Contact method edge cases ([#239](https://github.com/sekael/tourenbuddy_frontend_vue/issues/239)) ([87defb6](https://github.com/sekael/tourenbuddy_frontend_vue/commit/87defb653c1910e58c22dffb999d56c61b58b184))
+* Single pending friend request per pair ([#236](https://github.com/sekael/tourenbuddy_frontend_vue/issues/236)) ([f6d648c](https://github.com/sekael/tourenbuddy_frontend_vue/commit/f6d648c29b55335ebab46e2fbc671efeb04b72fe))
+
 ## [0.33.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.32.0...tourenbuddy-frontend-v0.33.0) (2026-07-01)
 
 
