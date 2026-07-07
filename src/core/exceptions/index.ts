@@ -94,3 +94,13 @@ export class DuplicateContactMethodError extends Error {
     this.name = 'DuplicateContactMethodError'
   }
 }
+
+/** Thrown when a contact method value already belongs to another contact of the same user (contact_methods_value_unique_per_user). */
+export class DuplicateContactAcrossContactsError extends Error {
+  readonly i18nKey = 'contacts.errors.duplicateAcrossContacts'
+
+  constructor(message = 'This value is already saved on another contact') {
+    super(message)
+    this.name = 'DuplicateContactAcrossContactsError'
+  }
+}

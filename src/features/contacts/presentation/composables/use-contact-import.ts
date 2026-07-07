@@ -16,6 +16,7 @@ export interface ImportResult {
   extraPhoneCount: number
   rawPhoneNumbers: string[]
   status: 'imported' | 'skipped'
+  skipReason?: 'nameDuplicate' | 'unparseable' | 'phoneDuplicate'
 }
 
 /**
@@ -47,31 +48,55 @@ export function useContactImport() {
   async function importContacts(items: ParsedImportItem[]): Promise<ImportResult[]> {
     const results: ImportResult[] = []
     for (const item of items) {
-      const phones = item.phones
       const rawPhoneNumbers = item.rawPhoneNumbers ?? []
-      const primaryPhone = phones.find(p => p.isPrimary)?.value ?? phones[0]?.value ?? null
-      const extraPhoneCount = Math.max(0, phones.length - 1)
-      const base = {
-        firstName: item.firstName,
-        lastName: item.lastName,
-        primaryPhone,
-        extraPhoneCount,
-        rawPhoneNumbers,
-      }
+      const base = { firstName: item.firstName, lastName: item.lastName, rawPhoneNumbers }
 
       if (isDuplicate(item.firstName, item.lastName)) {
-        results.push({ ...base, status: 'skipped' })
+        const primaryPhone = item.phones.find(p => p.isPrimary)?.value ?? item.phones[0]?.value ?? null
+        results.push({
+          ...base,
+          primaryPhone,
+          extraPhoneCount: Math.max(0, item.phones.length - 1),
+          status: 'skipped',
+          skipReason: 'nameDuplicate',
+        })
         continue
       }
 
       // Had TEL entries but none parseable → skip; consumer shows the ⚠ rawPhoneNumbers row
-      if (phones.length === 0 && rawPhoneNumbers.length > 0) {
-        results.push({ ...base, primaryPhone: null, extraPhoneCount: 0, status: 'skipped' })
+      if (item.phones.length === 0 && rawPhoneNumbers.length > 0) {
+        results.push({
+          ...base,
+          primaryPhone: null,
+          extraPhoneCount: 0,
+          status: 'skipped',
+          skipReason: 'unparseable',
+        })
         continue
       }
 
-      await contactsStore.addContact(item.firstName, item.lastName, null, phones, 'import')
-      results.push({ ...base, status: 'imported' })
+      // Cross-contact duplicates: skip phones already held by another existing contact
+      const nonDuplicatePhones = item.phones.filter(
+        p => !contactsStore.findContactByMethodValue('phone', p.value),
+      )
+      if (item.phones.length > 0 && nonDuplicatePhones.length === 0) {
+        results.push({
+          ...base,
+          primaryPhone: null,
+          extraPhoneCount: 0,
+          status: 'skipped',
+          skipReason: 'phoneDuplicate',
+        })
+        continue
+      }
+
+      await contactsStore.addContact(item.firstName, item.lastName, null, nonDuplicatePhones, 'import')
+      results.push({
+        ...base,
+        primaryPhone: nonDuplicatePhones.find(p => p.isPrimary)?.value ?? nonDuplicatePhones[0]?.value ?? null,
+        extraPhoneCount: Math.max(0, nonDuplicatePhones.length - 1),
+        status: 'imported',
+      })
     }
     return results
   }

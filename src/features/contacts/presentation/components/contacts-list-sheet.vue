@@ -10,6 +10,7 @@ import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
+import { DuplicateContactAcrossContactsError } from '@/core/exceptions'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import {
   formatPhoneDisplay,
@@ -120,6 +121,13 @@ const addFormPage = computed(() => viewState.value === 'add' && addViewState.val
 const detailEditPage = computed(() => viewState.value === 'detail' && detailEditMode.value === 'edit')
 const contactPage = computed(() => !isDesktop.value && (addFormPage.value || detailEditPage.value))
 const importResults = ref<ImportResult[]>([])
+const duplicateConflict = ref<Contact | 'generic' | null>(null)
+const importSummary = computed(() => ({
+  imported: importResults.value.filter(r => r.status === 'imported').length,
+  phoneDuplicate: importResults.value.filter(r => r.skipReason === 'phoneDuplicate').length,
+  nameDuplicate: importResults.value.filter(r => r.skipReason === 'nameDuplicate').length,
+  unparseable: importResults.value.filter(r => r.skipReason === 'unparseable').length,
+}))
 const addError = ref<string | null>(null)
 const isAddLoading = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -197,6 +205,7 @@ function openDetail(contact: Contact) {
 
 function openAdd() {
   addError.value = null
+  duplicateConflict.value = null
   importResults.value = []
   addViewState.value = 'form'
   viewState.value = 'add'
@@ -233,19 +242,56 @@ function handlePageBack() {
   backToList()
 }
 
+// ── Duplicate disclaimer (new contact reuses a phone already on another contact) ──
+function findDuplicatePhoneMatch(phones: PhoneEntry[]): Contact | null {
+  for (const phone of phones) {
+    const match = contactsStore.findContactByMethodValue('phone', phone.value)
+    if (match)
+      return match
+  }
+  return null
+}
+
+function editConflictingContact() {
+  if (!duplicateConflict.value || duplicateConflict.value === 'generic')
+    return
+  const contact = duplicateConflict.value
+  duplicateConflict.value = null
+  openDetail(contact)
+  detailEditMode.value = 'edit'
+}
+
+function discardDuplicateDraft() {
+  duplicateConflict.value = null
+  backToList()
+}
+
 async function persistNewContact(data: {
   firstName: string
   lastName: string | null
   displayName: string | null
   phones: PhoneEntry[]
 }): Promise<void> {
+  const conflict = findDuplicatePhoneMatch(data.phones)
+  if (conflict) {
+    duplicateConflict.value = conflict
+    throw new DuplicateContactAcrossContactsError()
+  }
+
   isAddLoading.value = true
   addError.value = null
   try {
     await contactsStore.addContact(data.firstName, data.lastName, data.displayName, data.phones)
   }
   catch (err) {
-    addError.value = err instanceof Error ? err.message : t('contacts.addDialog.addError')
+    if (err instanceof DuplicateContactAcrossContactsError) {
+      // Slipped past the client pre-check (stale cache/race) — degrade to a
+      // generic disclaimer: no conflicting contact name, discard only.
+      duplicateConflict.value = 'generic'
+    }
+    else {
+      addError.value = err instanceof Error ? err.message : t('contacts.addDialog.addError')
+    }
     throw err
   }
   finally {
@@ -264,7 +310,7 @@ async function handleAddSubmit(data: {
     backToList()
   }
   catch {
-    // persistNewContact already populated addError
+    // persistNewContact already populated addError / duplicateConflict
   }
 }
 
@@ -498,6 +544,7 @@ function onFormPhoneInput(phone: string) {
         :embedded="detailEditPage && !isDesktop"
         @back="backToList"
         @deleted="handleContactDeleted"
+        @edit-contact="(c) => { openDetail(c); detailEditMode = 'edit' }"
       />
       <ConnectPrompt
         v-if="detailViewMatchedUserId && liveContact && !isConnectDismissed(liveContact.id)"
@@ -515,14 +562,20 @@ function onFormPhoneInput(phone: string) {
     <div v-else-if="viewState === 'add'" class="add-view">
       <!-- Import results -->
       <div v-if="addViewState === 'import-results'" class="results-view">
-        <p class="results-summary">
-          {{ importResults.filter((r) => r.status === 'imported').length }}
-          {{ t('contacts.list.imported') }}
-          <template v-if="importResults.some((r) => r.status === 'skipped')">
-            · {{ importResults.filter((r) => r.status === 'skipped').length }}
-            {{ t('contacts.list.skipped') }}
-          </template>
-        </p>
+        <ul class="results-summary-box">
+          <li v-if="importSummary.imported > 0">
+            {{ t('contacts.addDialog.summaryImported', { count: importSummary.imported }) }}
+          </li>
+          <li v-if="importSummary.phoneDuplicate > 0">
+            {{ t('contacts.addDialog.summaryPhoneDuplicate', { count: importSummary.phoneDuplicate }) }}
+          </li>
+          <li v-if="importSummary.nameDuplicate > 0">
+            {{ t('contacts.addDialog.summaryNameDuplicate', { count: importSummary.nameDuplicate }) }}
+          </li>
+          <li v-if="importSummary.unparseable > 0">
+            {{ t('contacts.addDialog.summaryUnparseable', { count: importSummary.unparseable }) }}
+          </li>
+        </ul>
         <ul class="results-list">
           <li v-for="(result, i) in importResults" :key="i" class="result-item">
             <div class="result-info">
@@ -561,7 +614,9 @@ function onFormPhoneInput(phone: string) {
               {{
                 result.status === 'imported'
                   ? t('contacts.list.importedLabel')
-                  : t('contacts.list.skippedLabel')
+                  : result.skipReason === 'phoneDuplicate'
+                    ? t('contacts.addDialog.summaryPhoneDuplicateBadge')
+                    : t('contacts.list.skippedLabel')
               }}
             </span>
           </li>
@@ -612,28 +667,58 @@ function onFormPhoneInput(phone: string) {
 
         <div class="divider" />
 
-        <p v-if="addError" class="error-text">
-          {{ addError }}
-        </p>
+        <div v-if="duplicateConflict" class="duplicate-disclaimer">
+          <p class="duplicate-title">
+            <BaseIcon name="warning" class="warn-icon" />
+            {{ t('contacts.shared.duplicateTitle') }}
+          </p>
+          <p class="duplicate-text">
+            {{
+              duplicateConflict === 'generic'
+                ? t('contacts.shared.duplicateGenericText')
+                : t('contacts.shared.duplicateText', { name: resolveContactName(duplicateConflict) })
+            }}
+          </p>
+          <div class="duplicate-actions">
+            <BaseButton type="button" variant="secondary" size="sm" @click="discardDuplicateDraft">
+              {{ t('contacts.shared.discardBtn') }}
+            </BaseButton>
+            <BaseButton
+              v-if="duplicateConflict !== 'generic'"
+              type="button"
+              variant="primary"
+              size="sm"
+              @click="editConflictingContact"
+            >
+              {{ t('contacts.shared.editExistingBtn') }}
+            </BaseButton>
+          </div>
+        </div>
 
-        <ContactForm
-          ref="addFormRef"
-          form-id="contact-add-form"
-          :embedded="addFormPage && !isDesktop"
-          :submit-label="t('contacts.addDialog.title')"
-          :is-loading="isAddLoading"
-          @submit="handleAddSubmit"
-          @cancel="backToList"
-          @phone-change="onFormPhoneInput"
-        />
-        <ConnectPrompt
-          v-if="manualPromptUserId && !manualPromptDismissed"
-          :matched-user-id="manualPromptUserId"
-          :before-send="commitAddFormForConnect"
-          :before-dismiss="commitAddFormForConnect"
-          @sent="handleAddConnectSent"
-          @dismissed="handleAddConnectSent"
-        />
+        <template v-else>
+          <p v-if="addError" class="error-text">
+            {{ addError }}
+          </p>
+
+          <ContactForm
+            ref="addFormRef"
+            form-id="contact-add-form"
+            :embedded="addFormPage && !isDesktop"
+            :submit-label="t('contacts.addDialog.title')"
+            :is-loading="isAddLoading"
+            @submit="handleAddSubmit"
+            @cancel="backToList"
+            @phone-change="onFormPhoneInput"
+          />
+          <ConnectPrompt
+            v-if="manualPromptUserId && !manualPromptDismissed"
+            :matched-user-id="manualPromptUserId"
+            :before-send="commitAddFormForConnect"
+            :before-dismiss="commitAddFormForConnect"
+            @sent="handleAddConnectSent"
+            @dismissed="handleAddConnectSent"
+          />
+        </template>
       </div>
     </div>
   </AdaptiveOverlay>
@@ -819,6 +904,40 @@ function onFormPhoneInput(phone: string) {
   font-size: var(--font-size-sm);
 }
 
+/* ── Duplicate disclaimer ── */
+.duplicate-disclaimer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface-variant);
+}
+
+.duplicate-title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-on-surface);
+}
+
+.warn-icon {
+  color: var(--color-warning, var(--color-error));
+  font-size: 18px;
+}
+
+.duplicate-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
+}
+
+.duplicate-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
+}
+
 /* ── Import results ── */
 .results-view {
   display: flex;
@@ -826,7 +945,14 @@ function onFormPhoneInput(phone: string) {
   gap: var(--spacing-md);
 }
 
-.results-summary {
+.results-summary-box {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface-variant);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--color-on-surface-variant);

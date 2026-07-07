@@ -11,9 +11,10 @@ import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
 import { useSnackbar } from '@/core/composables/use-snackbar'
+import { DuplicateContactAcrossContactsError } from '@/core/exceptions'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import { orderedPhoneMethods } from '@/features/contacts/core/utils/order-phone-methods'
-import { formatPhoneDisplay } from '@/features/contacts/domain/entities/contact'
+import { formatPhoneDisplay, resolveContactName } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import BlockConfirmDialog from '@/features/friendships/presentation/components/block-confirm-dialog.vue'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
@@ -29,7 +30,7 @@ const props = defineProps<{
   embedded?: boolean
 }>()
 
-const emit = defineEmits<{ back: [], deleted: [] }>()
+const emit = defineEmits<{ back: [], deleted: [], editContact: [contact: Contact] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 
@@ -218,33 +219,97 @@ watch(
   { immediate: true },
 )
 
+// ── Edit-evict: editing a phone whose OLD value links a friend/pending user ────
+interface MethodEvictConfirm {
+  methodId: string
+  linkedUserId: string
+  hasFriendship: boolean
+  hasPending: boolean
+}
+const methodEvictConfirm = ref<MethodEvictConfirm | null>(null)
+const methodEditDuplicate = ref<{ methodId: string, contact: Contact | 'generic' } | null>(null)
+let evictConfirmResolve: ((confirmed: boolean) => void) | null = null
+
+function editMethodDuplicateConflict() {
+  if (!methodEditDuplicate.value || methodEditDuplicate.value.contact === 'generic')
+    return
+  const contact = methodEditDuplicate.value.contact
+  methodEditDuplicate.value = null
+  emit('editContact', contact)
+}
+
+function waitForEvictConfirm(confirm: MethodEvictConfirm): Promise<boolean> {
+  methodEvictConfirm.value = confirm
+  return new Promise((resolve) => {
+    evictConfirmResolve = resolve
+  })
+}
+
+function confirmMethodEvict() {
+  methodEvictConfirm.value = null
+  evictConfirmResolve?.(true)
+  evictConfirmResolve = null
+}
+
+function cancelMethodEvict() {
+  methodEvictConfirm.value = null
+  evictConfirmResolve?.(false)
+  evictConfirmResolve = null
+}
+
 async function saveMethod(method: ContactMethod) {
   const edit = getMethodEdit(method)
   edit.error = null
+  methodEditDuplicate.value = null
+  let evictFriendUserId: string | null = null
 
-  if (method.methodType === 'phone') {
-    const rawValue = edit.value.trim()
-    if (rawValue) {
-      const result = normalizePhone(rawValue)
-      if (!result.ok) {
-        edit.error = t('contacts.detailView.invalidPhone')
-        return
-      }
+  let newValue = edit.value.trim()
+  if (method.methodType === 'phone' && newValue) {
+    const result = normalizePhone(newValue)
+    if (!result.ok) {
+      edit.error = t('contacts.detailView.invalidPhone')
+      return
     }
+    newValue = result.e164
   }
 
+  const valueChanged = method.methodType === 'phone' && newValue !== method.value
+
+  if (valueChanged) {
+    const conflict = store.findContactByMethodValue('phone', newValue, props.contact.id)
+    if (conflict) {
+      methodEditDuplicate.value = { methodId: method.id, contact: conflict }
+      return
+    }
+
+    const rel = await store.relationshipsForPhone(method.value)
+    if (rel.hasFriendship || rel.hasPending) {
+      const confirm = await waitForEvictConfirm({ methodId: method.id, linkedUserId: rel.userId!, hasFriendship: rel.hasFriendship, hasPending: rel.hasPending })
+      if (!confirm) {
+        return
+      }
+      if (rel.hasFriendship)
+        evictFriendUserId = rel.userId
+    }
+  }
   edit.saving = true
   try {
     await store.updateMethodOnContact(props.contact.id, method.id, {
-      value: edit.value.trim(),
+      value: newValue || edit.value.trim(),
       label: edit.label.trim() || null,
     })
+    if (evictFriendUserId) {
+      await friendshipsStore.removeFriendship(evictFriendUserId)
+    }
     const updated = props.contact.contactMethods.find(m => m.id === method.id)
     if (updated)
       edit.value = methodDisplayValue(updated)
   }
   catch (err) {
-    edit.error = err instanceof Error ? err.message : 'Failed to save'
+    if (err instanceof DuplicateContactAcrossContactsError)
+      methodEditDuplicate.value = { methodId: method.id, contact: 'generic' }
+    else
+      edit.error = err instanceof Error ? err.message : 'Failed to save'
   }
   finally {
     edit.saving = false
@@ -330,6 +395,7 @@ const { formatted: newMethodPhoneFormatted, onInput: onNewMethodPhoneInput }
 const newMethodLabel = ref('')
 const isAddingMethod = ref(false)
 const addMethodError = ref<string | null>(null)
+const addMethodDuplicateConflict = ref<Contact | 'generic' | null>(null)
 
 function openAddMethod() {
   showAddMethod.value = true
@@ -337,30 +403,57 @@ function openAddMethod() {
   newMethodValue.value = ''
   newMethodLabel.value = ''
   addMethodError.value = null
+  addMethodDuplicateConflict.value = null
 }
 
 function cancelAddMethod() {
   showAddMethod.value = false
+  addMethodError.value = null
+  addMethodDuplicateConflict.value = null
+}
+
+function discardAddMethodDuplicate() {
+  addMethodDuplicateConflict.value = null
+  showAddMethod.value = false
+}
+
+function editAddMethodConflict() {
+  if (!addMethodDuplicateConflict.value || addMethodDuplicateConflict.value === 'generic')
+    return
+  const contact = addMethodDuplicateConflict.value
+  addMethodDuplicateConflict.value = null
+  showAddMethod.value = false
+  emit('editContact', contact)
 }
 
 async function confirmAddMethod() {
   addMethodError.value = null
+  addMethodDuplicateConflict.value = null
   if (!newMethodValue.value.trim()) {
     addMethodError.value = t('contacts.detailView.valueRequired')
     return
   }
+  let value = newMethodValue.value.trim()
   if (newMethodType.value === 'phone') {
-    const result = normalizePhone(newMethodValue.value.trim())
+    const result = normalizePhone(value)
     if (!result.ok) {
       addMethodError.value = t('contacts.detailView.invalidPhone')
       return
     }
+    value = result.e164
   }
+
+  const conflict = store.findContactByMethodValue(newMethodType.value, value, props.contact.id)
+  if (conflict) {
+    addMethodDuplicateConflict.value = conflict
+    return
+  }
+
   isAddingMethod.value = true
   try {
     const method: NewContactMethod = {
       methodType: newMethodType.value,
-      value: newMethodValue.value.trim(),
+      value,
       label: newMethodLabel.value.trim() || null,
       isPrimary:
         props.contact.contactMethods.filter(m => m.methodType === newMethodType.value).length
@@ -370,7 +463,10 @@ async function confirmAddMethod() {
     showAddMethod.value = false
   }
   catch (err) {
-    addMethodError.value = err instanceof Error ? err.message : t('contacts.detailView.addError')
+    if (err instanceof DuplicateContactAcrossContactsError)
+      addMethodDuplicateConflict.value = 'generic'
+    else
+      addMethodError.value = err instanceof Error ? err.message : t('contacts.detailView.addError')
   }
   finally {
     isAddingMethod.value = false
@@ -412,7 +508,7 @@ async function saveAll(): Promise<boolean> {
     }
     await saveNameInternal()
     const hasMethodError = Object.values(methodEdits.value).some(e => e.error)
-    if (hasMethodError || addMethodError.value) {
+    if (hasMethodError || (showAddMethod.value && addMethodError.value)) {
       saveError.value = t('contacts.detailView.saveFailed')
       return false
     }
@@ -672,6 +768,60 @@ defineExpose({
             </BaseButton>
           </div>
         </div>
+
+        <div v-if="methodEditDuplicate?.methodId === method.id" class="duplicate-disclaimer">
+          <p class="duplicate-title">
+            <BaseIcon name="warning" class="warn-icon" />
+            {{ t('contacts.shared.duplicateTitle') }}
+          </p>
+          <p class="duplicate-text">
+            {{
+              methodEditDuplicate.contact === 'generic'
+                ? t('contacts.shared.duplicateGenericText')
+                : t('contacts.shared.duplicateText', { name: resolveContactName(methodEditDuplicate.contact) })
+            }}
+          </p>
+          <div class="duplicate-actions">
+            <BaseButton type="button" variant="secondary" size="sm" @click="methodEditDuplicate = null">
+              {{ t('contacts.shared.discardBtn') }}
+            </BaseButton>
+            <BaseButton
+              v-if="methodEditDuplicate.contact !== 'generic'"
+              type="button"
+              variant="primary"
+              size="sm"
+              @click="editMethodDuplicateConflict"
+            >
+              {{ t('contacts.shared.editExistingBtn') }}
+            </BaseButton>
+          </div>
+        </div>
+
+        <div v-if="methodEvictConfirm?.methodId === method.id" class="method-delete-confirm">
+          <p
+            v-if="methodEvictConfirm.hasFriendship && methodEvictConfirm.hasPending"
+            class="delete-friend-warning"
+          >
+            <BaseIcon name="warning" class="warn-icon" />
+            {{ t('contacts.detailView.editEvictFriendAndPendingWarning') }}
+          </p>
+          <p v-else-if="methodEvictConfirm.hasFriendship" class="delete-friend-warning">
+            <BaseIcon name="warning" class="warn-icon" />
+            {{ t('contacts.detailView.editEvictFriendWarning') }}
+          </p>
+          <p v-else-if="methodEvictConfirm.hasPending" class="delete-friend-warning">
+            <BaseIcon name="warning" class="warn-icon" />
+            {{ t('contacts.detailView.editEvictPendingWarning') }}
+          </p>
+          <div class="delete-actions">
+            <BaseButton type="button" variant="secondary" size="sm" @click="cancelMethodEvict">
+              {{ t('contacts.detailView.cancelBtn') }}
+            </BaseButton>
+            <BaseButton type="button" variant="primary" size="sm" @click="confirmMethodEvict">
+              {{ t('contacts.detailView.confirmSaveBtn') }}
+            </BaseButton>
+          </div>
+        </div>
       </template>
 
       <!-- Non-phone methods (email etc.) -->
@@ -723,7 +873,35 @@ defineExpose({
 
       <!-- Add method form (edit mode only) -->
       <template v-if="mode === 'edit'">
-        <div v-if="showAddMethod" class="add-method-form">
+        <div v-if="showAddMethod && addMethodDuplicateConflict" class="duplicate-disclaimer">
+          <p class="duplicate-title">
+            <BaseIcon name="warning" class="warn-icon" />
+            {{ t('contacts.shared.duplicateTitle') }}
+          </p>
+          <p class="duplicate-text">
+            {{
+              addMethodDuplicateConflict === 'generic'
+                ? t('contacts.shared.duplicateGenericText')
+                : t('contacts.shared.duplicateText', { name: resolveContactName(addMethodDuplicateConflict) })
+            }}
+          </p>
+          <div class="duplicate-actions">
+            <BaseButton type="button" variant="secondary" size="sm" @click="discardAddMethodDuplicate">
+              {{ t('contacts.shared.discardBtn') }}
+            </BaseButton>
+            <BaseButton
+              v-if="addMethodDuplicateConflict !== 'generic'"
+              type="button"
+              variant="primary"
+              size="sm"
+              @click="editAddMethodConflict"
+            >
+              {{ t('contacts.shared.editExistingBtn') }}
+            </BaseButton>
+          </div>
+        </div>
+
+        <div v-else-if="showAddMethod" class="add-method-form">
           <div class="type-selector">
             <button
               type="button"
@@ -1008,6 +1186,34 @@ defineExpose({
 .error-text {
   font-size: var(--font-size-sm);
   color: var(--color-error);
+}
+
+.duplicate-disclaimer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface-variant);
+}
+
+.duplicate-title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-on-surface);
+}
+
+.duplicate-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
+}
+
+.duplicate-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
 }
 
 /* save/cancel/delete-confirm now use shared BaseButton. */

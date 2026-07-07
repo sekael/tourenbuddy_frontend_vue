@@ -37,7 +37,7 @@ const mockContact = {
       id: 'm-1',
       contactId: 'c-1',
       methodType: 'phone' as const,
-      value: '+41 79 111 22 33',
+      value: '+41791234567',
       label: 'Mobile',
       isPrimary: true,
       isValid: true,
@@ -286,6 +286,157 @@ describe('contactDetailView', () => {
       // Returned to view mode — add-method-form gone
       expect(wrapper.find('.add-method-form').exists()).toBe(false)
       expect(wrapper.find('[data-testid="edit-contact-btn"]').exists()).toBe(true)
+    })
+
+    it('should save successfully after cancelling a blank, errored add-method draft', async () => {
+      const wrapper = mountDetail()
+      const store = useContactsStore()
+      vi.mocked(store.updateContact).mockResolvedValue(undefined as never)
+
+      await enterEditMode(wrapper)
+      await wrapper.find('.add-method-btn').trigger('click')
+      // Trigger the required-value error inside the add-method form
+      await wrapper.find('.add-method-form .base-button--primary').trigger('click')
+      expect(wrapper.find('.add-method-form .error-text').exists()).toBe(true)
+
+      // Cancel the add-method draft (its own Cancel, not the outer form's)
+      await wrapper.find('.add-method-form .base-button--secondary').trigger('click')
+      expect(wrapper.find('.add-method-form').exists()).toBe(false)
+
+      // Now save the contact via the outer form-level Save
+      await wrapper.find('.form-actions .base-button--primary').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.find('[data-testid="edit-contact-btn"]').exists()).toBe(true)
+      expect(wrapper.find('.error-text').exists()).toBe(false)
+    })
+
+    it('should show the duplicate disclaimer instead of inserting when the value already exists on another contact', async () => {
+      const wrapper = mountDetail()
+      const store = useContactsStore()
+      const otherContact = { ...mockContact, id: 'c-2', firstName: 'Bob', lastName: null }
+      vi.mocked(store.findContactByMethodValue).mockReturnValue(otherContact)
+
+      await enterEditMode(wrapper)
+      await wrapper.find('.add-method-btn').trigger('click')
+      await wrapper.find('.add-method-form input[type="tel"]').setValue('+41 79 999 88 77')
+      await wrapper.find('.add-method-form .base-button--primary').trigger('click')
+      await flushPromises()
+
+      expect(store.addMethodToContact).not.toHaveBeenCalled()
+      expect(wrapper.find('.duplicate-disclaimer').exists()).toBe(true)
+      expect(store.findContactByMethodValue).toHaveBeenCalledWith('phone', '+41799998877', 'c-1')
+    })
+  })
+
+  describe('edit-evict warning', () => {
+    it('shows the warning and blocks the update until confirmed, then removes the friendship after persisting', async () => {
+      const wrapper = mountDetail()
+      const store = useContactsStore()
+      const friendships = useFriendshipsStore()
+      vi.mocked(store.relationshipsForPhone).mockResolvedValue({
+        hasFriendship: true,
+        hasPending: false,
+        userId: 'friend-1',
+      })
+      vi.mocked(store.updateMethodOnContact).mockResolvedValue(undefined as never)
+
+      await enterEditMode(wrapper)
+      await wrapper.find('.method-fields input[type="tel"]').setValue('+41 79 999 88 77')
+      wrapper.find('.form-actions .base-button--primary').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.find('.method-delete-confirm .delete-friend-warning').exists()).toBe(true)
+      expect(store.updateMethodOnContact).not.toHaveBeenCalled()
+      expect(friendships.removeFriendship).not.toHaveBeenCalled()
+
+      await wrapper.find('.method-delete-confirm .base-button--primary').trigger('click')
+      await flushPromises()
+
+      expect(store.updateMethodOnContact).toHaveBeenCalledWith(
+        'c-1',
+        'm-1',
+        expect.objectContaining({ value: '+41799998877' }),
+      )
+      expect(friendships.removeFriendship).toHaveBeenCalledWith('friend-1')
+    })
+
+    it('shows the pending-request warning without calling removeFriendship (pending termination is DB-owned)', async () => {
+      const wrapper = mountDetail()
+      const store = useContactsStore()
+      const friendships = useFriendshipsStore()
+      vi.mocked(store.relationshipsForPhone).mockResolvedValue({
+        hasFriendship: false,
+        hasPending: true,
+        userId: 'pending-1',
+      })
+      vi.mocked(store.updateMethodOnContact).mockResolvedValue(undefined as never)
+
+      await enterEditMode(wrapper)
+      await wrapper.find('.method-fields input[type="tel"]').setValue('+41 79 999 88 77')
+      wrapper.find('.form-actions .base-button--primary').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.find('.method-delete-confirm .delete-friend-warning').exists()).toBe(true)
+
+      await wrapper.find('.method-delete-confirm .base-button--primary').trigger('click')
+      await flushPromises()
+
+      expect(store.updateMethodOnContact).toHaveBeenCalled()
+      expect(friendships.removeFriendship).not.toHaveBeenCalled()
+    })
+
+    it('cancelling the warning does not persist the update', async () => {
+      const wrapper = mountDetail()
+      const store = useContactsStore()
+      const friendships = useFriendshipsStore()
+      vi.mocked(store.relationshipsForPhone).mockResolvedValue({
+        hasFriendship: true,
+        hasPending: false,
+        userId: 'friend-1',
+      })
+
+      await enterEditMode(wrapper)
+      await wrapper.find('.method-fields input[type="tel"]').setValue('+41 79 999 88 77')
+      wrapper.find('.form-actions .base-button--primary').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.find('.method-delete-confirm .delete-friend-warning').exists()).toBe(true)
+
+      await wrapper.find('.method-delete-confirm .base-button--secondary').trigger('click')
+      await flushPromises()
+
+      expect(store.updateMethodOnContact).not.toHaveBeenCalled()
+      expect(friendships.removeFriendship).not.toHaveBeenCalled()
+    })
+
+    it('duplicate on the new value takes precedence — no eviction warning shown', async () => {
+      const wrapper = mountDetail()
+      const store = useContactsStore()
+      const otherContact = { ...mockContact, id: 'c-2', firstName: 'Bob', lastName: null }
+      vi.mocked(store.findContactByMethodValue).mockReturnValue(otherContact)
+
+      await enterEditMode(wrapper)
+      await wrapper.find('.method-fields input[type="tel"]').setValue('+41 79 999 88 77')
+      await wrapper.find('.form-actions .base-button--primary').trigger('click')
+      await flushPromises()
+
+      expect(store.relationshipsForPhone).not.toHaveBeenCalled()
+      expect(wrapper.find('.duplicate-disclaimer').exists()).toBe(true)
+      expect(wrapper.find('.method-delete-confirm').exists()).toBe(false)
+      expect(store.updateMethodOnContact).not.toHaveBeenCalled()
+    })
+
+    it('does not call relationshipsForPhone when the phone value is unchanged', async () => {
+      const wrapper = mountDetail()
+      const store = useContactsStore()
+      vi.mocked(store.updateContact).mockResolvedValue(undefined as never)
+
+      await enterEditMode(wrapper)
+      await wrapper.find('.form-actions .base-button--primary').trigger('click')
+      await flushPromises()
+
+      expect(store.relationshipsForPhone).not.toHaveBeenCalled()
     })
   })
 

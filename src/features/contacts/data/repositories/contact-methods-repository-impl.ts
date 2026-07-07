@@ -3,14 +3,16 @@ import type {
   ContactMethodsRepository,
   NewContactMethod,
 } from '@/features/contacts/domain/repositories/contact-methods-repository'
-import { DuplicateContactMethodError } from '@/core/exceptions'
+import { DuplicateContactAcrossContactsError, DuplicateContactMethodError } from '@/core/exceptions'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import { supabase } from '@/core/utils/supabase'
 import { contactMethodRowSchema } from '@/features/contacts/data/models/contact-method-schema'
 
-function mapMethodInsertError(error: { code: string, message: string }): Error {
+function mapMethodWriteError(error: { code: string, message: string }): Error {
   if (error.code === '23505' && error.message.includes('contact_methods_unique_per_contact'))
     return new DuplicateContactMethodError()
+  if (error.code === '23505' && error.message.includes('contact_methods_value_unique_per_user'))
+    return new DuplicateContactAcrossContactsError()
   return new Error(error.message)
 }
 
@@ -38,7 +40,7 @@ export class ContactMethodsRepositoryImpl implements ContactMethodsRepository {
       .single()
 
     if (error)
-      throw mapMethodInsertError(error)
+      throw mapMethodWriteError(error)
 
     return contactMethodRowSchema.parse(data)
   }
@@ -73,7 +75,7 @@ export class ContactMethodsRepositoryImpl implements ContactMethodsRepository {
       .single()
 
     if (error)
-      throw new Error(error.message)
+      throw mapMethodWriteError(error)
 
     return contactMethodRowSchema.parse(row)
   }

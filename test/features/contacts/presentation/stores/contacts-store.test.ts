@@ -131,6 +131,7 @@ describe('useContactsStore', () => {
 
     expect(mockCreateContact).toHaveBeenCalledWith(
       expect.objectContaining({ firstName: 'Charlie', lastName: null }),
+      [],
     )
   })
 
@@ -141,30 +142,28 @@ describe('useContactsStore', () => {
       firstName: 'Dave',
       lastName: null,
       displayName: null,
-      contactMethods: [],
+      contactMethods: [
+        {
+          id: 'method-2',
+          contactId: '3',
+          methodType: 'phone',
+          value: '+41799990011',
+          label: null,
+          isPrimary: true,
+          isValid: true,
+        },
+      ],
     }
     mockCreateContact.mockResolvedValue(newContact)
-    mockAddMethod.mockResolvedValue({
-      id: 'method-2',
-      contactId: '3',
-      methodType: 'phone',
-      value: '+41799990011',
-      label: null,
-      isPrimary: true,
-      isValid: true,
-    })
     mockFetchContacts.mockResolvedValue([])
 
     const store = useContactsStore()
     await store.loadContacts()
     await store.addContact('Dave', null, null, [{ value: '+41799990011', isPrimary: true }])
 
-    expect(mockAddMethod).toHaveBeenCalledWith('3', {
-      methodType: 'phone',
-      value: '+41799990011',
-      label: null,
-      isPrimary: true,
-    })
+    expect(mockCreateContact).toHaveBeenCalledWith(expect.objectContaining({ firstName: 'Dave' }), [
+      { methodType: 'phone', value: '+41799990011', label: null, isPrimary: true },
+    ])
     expect(store.contacts[0]!.contactMethods).toHaveLength(1)
   })
 
@@ -194,28 +193,28 @@ describe('useContactsStore', () => {
       firstName: 'Frank',
       lastName: null,
       displayName: null,
-      contactMethods: [],
+      contactMethods: [
+        {
+          id: 'm1',
+          contactId: '5',
+          methodType: 'phone',
+          value: '+41791234567',
+          label: null,
+          isPrimary: true,
+          isValid: true,
+        },
+        {
+          id: 'm2',
+          contactId: '5',
+          methodType: 'phone',
+          value: '+41442223344',
+          label: 'Home',
+          isPrimary: false,
+          isValid: true,
+        },
+      ],
     }
     mockCreateContact.mockResolvedValue(newContact)
-    mockAddMethod
-      .mockResolvedValueOnce({
-        id: 'm1',
-        contactId: '5',
-        methodType: 'phone',
-        value: '+41791234567',
-        label: null,
-        isPrimary: true,
-        isValid: true,
-      })
-      .mockResolvedValueOnce({
-        id: 'm2',
-        contactId: '5',
-        methodType: 'phone',
-        value: '+41442223344',
-        label: 'Home',
-        isPrimary: false,
-        isValid: true,
-      })
 
     const store = useContactsStore()
     await store.loadContacts()
@@ -224,7 +223,10 @@ describe('useContactsStore', () => {
       { value: '+41 44 222 33 44', label: 'Home', isPrimary: false },
     ])
 
-    expect(mockAddMethod).toHaveBeenCalledTimes(2)
+    expect(mockCreateContact).toHaveBeenCalledWith(expect.objectContaining({ firstName: 'Frank' }), [
+      { methodType: 'phone', value: '+41791234567', label: null, isPrimary: true },
+      { methodType: 'phone', value: '+41442223344', label: 'Home', isPrimary: false },
+    ])
     expect(store.contacts[0]!.contactMethods).toHaveLength(2)
   })
 
@@ -251,22 +253,26 @@ describe('useContactsStore', () => {
       firstName: 'G',
       lastName: null,
       displayName: null,
-      contactMethods: [],
-    })
-    mockAddMethod.mockResolvedValue({
-      id: 'm3',
-      contactId: '6',
-      methodType: 'phone',
-      value: '+41 79 123 45 67',
-      label: null,
-      isPrimary: true,
+      contactMethods: [
+        {
+          id: 'm3',
+          contactId: '6',
+          methodType: 'phone',
+          value: '+41791234567',
+          label: null,
+          isPrimary: true,
+        },
+      ],
     })
 
     const store = useContactsStore()
     await store.loadContacts()
     await store.addContact('G', null, null, [{ value: '+41 79 123 45 67', isPrimary: false }])
 
-    expect(mockAddMethod).toHaveBeenCalledWith('6', expect.objectContaining({ isPrimary: true }))
+    expect(mockCreateContact).toHaveBeenCalledWith(
+      expect.objectContaining({ firstName: 'G' }),
+      expect.arrayContaining([expect.objectContaining({ isPrimary: true })]),
+    )
   })
 
   it('should clear contacts', () => {
@@ -431,15 +437,19 @@ describe('useContactsStore', () => {
         displayName: null,
         contactMethods: [],
       }
-      mockCreateContact.mockResolvedValue(newContact)
-      mockAddMethod.mockResolvedValue({
-        id: 'm1',
-        contactId: '10',
-        methodType: 'phone',
-        value: '+41791234567',
-        label: null,
-        isPrimary: true,
-        isValid: true,
+      mockCreateContact.mockResolvedValue({
+        ...newContact,
+        contactMethods: [
+          {
+            id: 'm1',
+            contactId: '10',
+            methodType: 'phone',
+            value: '+41791234567',
+            label: null,
+            isPrimary: true,
+            isValid: true,
+          },
+        ],
       })
 
       const store = useContactsStore()
@@ -449,8 +459,9 @@ describe('useContactsStore', () => {
         { value: '+41791234567', isPrimary: false },
       ])
 
-      expect(mockAddMethod).toHaveBeenCalledTimes(1)
-      expect(mockAddMethod).toHaveBeenCalledWith('10', expect.objectContaining({ value: '+41791234567', isPrimary: true }))
+      expect(mockCreateContact).toHaveBeenCalledWith(expect.objectContaining({ firstName: 'DedupTest' }), [
+        { methodType: 'phone', value: '+41791234567', label: null, isPrimary: true },
+      ])
     })
   })
 
@@ -463,25 +474,26 @@ describe('useContactsStore', () => {
         firstName: 'Frank',
         lastName: null,
         displayName: null,
-        contactMethods: [],
-      })
-      mockAddMethod.mockResolvedValue({
-        id: 'method-x',
-        contactId: '5',
-        methodType: 'phone',
-        value: '+41799991122',
-        label: null,
-        isPrimary: true,
-        isValid: true,
+        contactMethods: [
+          {
+            id: 'method-x',
+            contactId: '5',
+            methodType: 'phone',
+            value: '+41799991122',
+            label: null,
+            isPrimary: true,
+            isValid: true,
+          },
+        ],
       })
 
       const store = useContactsStore()
       await store.loadContacts()
       await store.addContact('Frank', null, null, [{ value: '0799991122', isPrimary: true }])
 
-      expect(mockAddMethod).toHaveBeenCalledWith(
-        '5',
-        expect.objectContaining({ value: '+41799991122' }),
+      expect(mockCreateContact).toHaveBeenCalledWith(
+        expect.objectContaining({ firstName: 'Frank' }),
+        expect.arrayContaining([expect.objectContaining({ value: '+41799991122' })]),
       )
     })
 

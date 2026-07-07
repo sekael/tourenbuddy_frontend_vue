@@ -107,13 +107,6 @@ export const useContactsStore = defineStore('contacts', () => {
       }
     }
 
-    const contact = await repository.createContact({
-      userId,
-      firstName: firstName.trim(),
-      lastName: lastName?.trim() || null,
-      displayName: displayName?.trim() || null,
-    })
-
     const preparedPhones = phoneList
       .map((phone) => {
         const normalized = normalizePhoneValue(phone.value)
@@ -130,23 +123,20 @@ export const useContactsStore = defineStore('contacts', () => {
     if (preparedPhones.length === 1)
       preparedPhones[0]!.isPrimary = true
 
-    // Insert primary first so any DB-side "first phone becomes primary" rule
-    // aligns with the caller-selected primary. Preserve original order otherwise.
-    const primaryIdx = preparedPhones.findIndex(p => p.isPrimary)
-    const orderedPhones
-      = primaryIdx > 0
-        ? [preparedPhones[primaryIdx]!, ...preparedPhones.filter((_, i) => i !== primaryIdx)]
-        : preparedPhones
-
-    for (const phone of orderedPhones) {
-      const method = await contactMethodsRepository.addMethod(contact.id, {
+    const contact = await repository.createContact(
+      {
+        userId,
+        firstName: firstName.trim(),
+        lastName: lastName?.trim() || null,
+        displayName: displayName?.trim() || null,
+      },
+      preparedPhones.map(phone => ({
         methodType: 'phone',
         value: phone.value,
         label: phone.label,
         isPrimary: phone.isPrimary,
-      })
-      contact.contactMethods.push(method)
-    }
+      })),
+    )
 
     contacts.value = [...contacts.value, contact].sort((a, b) =>
       a.firstName.localeCompare(b.firstName),
@@ -294,6 +284,19 @@ export const useContactsStore = defineStore('contacts', () => {
     }
   }
 
+  function findContactByMethodValue(
+    methodType: 'phone' | 'email',
+    value: string,
+    exceptContactId?: string,
+  ): Contact | undefined {
+    const normalized = methodType === 'phone' ? normalizePhoneValue(value) || value : value
+    return contacts.value.find(
+      c =>
+        c.id !== exceptContactId
+        && c.contactMethods.some(m => m.methodType === methodType && m.value === normalized),
+    )
+  }
+
   async function relationshipsForContact(contactId: string): Promise<{ hasPending: boolean, hasFriendship: boolean }> {
     const contact = contacts.value.find(c => c.id === contactId)
     if (!contact)
@@ -383,6 +386,7 @@ export const useContactsStore = defineStore('contacts', () => {
     removeMethodFromContact,
     relationshipsForContact,
     relationshipsForPhone,
+    findContactByMethodValue,
     clear,
   }
 })
