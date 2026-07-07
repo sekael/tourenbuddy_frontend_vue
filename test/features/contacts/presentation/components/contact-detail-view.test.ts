@@ -1,6 +1,7 @@
 import { createTestingPinia } from '@pinia/testing'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { formatPhoneDisplay } from '@/features/contacts/domain/entities/contact'
 import ContactDetailView from '@/features/contacts/presentation/components/contact-detail-view.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
@@ -150,15 +151,18 @@ describe('contactDetailView', () => {
       expect(wrapper.find('.error-text').exists()).toBe(true)
     })
 
-    it('should show validation error and stay in edit mode when first name is empty', async () => {
+    it('disables Save (rather than allowing a submit that would error) when first name is empty', async () => {
       const wrapper = mountDetail()
       await enterEditMode(wrapper)
       await wrapper.find('#dv-firstName').setValue('')
+
+      const saveButton = wrapper.find('.form-actions .base-button--primary').element as HTMLButtonElement
+      expect(saveButton.disabled).toBe(true)
+
       await wrapper.find('.form-actions .base-button--primary').trigger('click')
       await flushPromises()
 
       expect(wrapper.find('#dv-firstName').exists()).toBe(true)
-      expect(wrapper.find('.error-text').exists()).toBe(true)
     })
   })
 
@@ -329,6 +333,70 @@ describe('contactDetailView', () => {
     })
   })
 
+  describe('save button validation gate', () => {
+    function saveBtn(wrapper: ReturnType<typeof mountDetail>) {
+      return wrapper.find('.form-actions .base-button--primary').element as HTMLButtonElement
+    }
+
+    it('disables Save when the required first name is cleared, re-enabling once it is refilled', async () => {
+      const wrapper = mountDetail()
+      await enterEditMode(wrapper)
+      expect(saveBtn(wrapper).disabled).toBe(false)
+
+      await wrapper.find('#dv-firstName').setValue('')
+      expect(saveBtn(wrapper).disabled).toBe(true)
+
+      await wrapper.find('#dv-firstName').setValue('Annika')
+      expect(saveBtn(wrapper).disabled).toBe(false)
+    })
+
+    it('disables Save while a method phone value is invalid, re-enabling once fixed', async () => {
+      const wrapper = mountDetail()
+      await enterEditMode(wrapper)
+
+      await wrapper.find('.method-fields input[type="tel"]').setValue('123')
+      expect(saveBtn(wrapper).disabled).toBe(true)
+
+      await wrapper.find('.method-fields input[type="tel"]').setValue('+41 79 999 88 77')
+      expect(saveBtn(wrapper).disabled).toBe(false)
+    })
+
+    it('disables Save while a method phone value is emptied, re-enabling once restored', async () => {
+      const wrapper = mountDetail()
+      await enterEditMode(wrapper)
+
+      await wrapper.find('.method-fields input[type="tel"]').setValue('')
+      expect(saveBtn(wrapper).disabled).toBe(true)
+
+      await wrapper.find('.method-fields input[type="tel"]').setValue('+41 79 999 88 77')
+      expect(saveBtn(wrapper).disabled).toBe(false)
+    })
+
+    it('disables Save while the add-method form is open and blank, re-enabling once discarded', async () => {
+      const wrapper = mountDetail()
+      await enterEditMode(wrapper)
+      expect(saveBtn(wrapper).disabled).toBe(false)
+
+      await wrapper.find('.add-method-btn').trigger('click')
+      expect(saveBtn(wrapper).disabled).toBe(true)
+
+      await wrapper.find('.add-method-form .base-button--secondary').trigger('click')
+      expect(saveBtn(wrapper).disabled).toBe(false)
+    })
+
+    it('disables Save while the open add-method phone value is invalid, re-enabling once valid', async () => {
+      const wrapper = mountDetail()
+      await enterEditMode(wrapper)
+      await wrapper.find('.add-method-btn').trigger('click')
+
+      await wrapper.find('.add-method-form input[type="tel"]').setValue('123')
+      expect(saveBtn(wrapper).disabled).toBe(true)
+
+      await wrapper.find('.add-method-form input[type="tel"]').setValue('+41 79 999 88 77')
+      expect(saveBtn(wrapper).disabled).toBe(false)
+    })
+  })
+
   describe('edit-evict warning', () => {
     it('shows the warning and blocks the update until confirmed, then removes the friendship after persisting', async () => {
       const wrapper = mountDetail()
@@ -437,6 +505,42 @@ describe('contactDetailView', () => {
       await flushPromises()
 
       expect(store.relationshipsForPhone).not.toHaveBeenCalled()
+    })
+
+    it('cancelling the warning aborts the whole Save-All attempt: name edit stays unsaved and pending, edit mode stays open, only the phone field resets', async () => {
+      const wrapper = mountDetail()
+      const store = useContactsStore()
+      const friendships = useFriendshipsStore()
+      vi.mocked(store.relationshipsForPhone).mockResolvedValue({
+        hasFriendship: true,
+        hasPending: false,
+        userId: 'friend-1',
+      })
+
+      await enterEditMode(wrapper)
+      await wrapper.find('#dv-firstName').setValue('Annika')
+      await wrapper.find('.method-fields input[type="tel"]').setValue('+41 79 999 88 77')
+      wrapper.find('.form-actions .base-button--primary').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.find('.method-delete-confirm .delete-friend-warning').exists()).toBe(true)
+
+      await wrapper.find('.method-delete-confirm .base-button--secondary').trigger('click')
+      await flushPromises()
+
+      // Whole Save-All attempt aborted — nothing from this attempt was persisted
+      expect(store.updateContact).not.toHaveBeenCalled()
+      expect(store.updateMethodOnContact).not.toHaveBeenCalled()
+      expect(friendships.removeFriendship).not.toHaveBeenCalled()
+
+      // Still in edit mode, with the name edit preserved for a retry
+      expect(wrapper.find('#dv-firstName').exists()).toBe(true)
+      expect((wrapper.find('#dv-firstName').element as HTMLInputElement).value).toBe('Annika')
+
+      // Only the phone field was reset, back to the original contact value
+      expect((wrapper.find('.method-fields input[type="tel"]').element as HTMLInputElement).value).toBe(
+        formatPhoneDisplay(mockContact.contactMethods[0]!.value),
+      )
     })
   })
 

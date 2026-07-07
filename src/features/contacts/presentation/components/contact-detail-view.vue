@@ -202,6 +202,18 @@ function getMethodEdit(m: ContactMethod): MethodEditState {
   return methodEdits.value[m.id]!
 }
 
+function resetMethodEdit(methodId: string): void {
+  const original = props.contact.contactMethods.find(cm => cm.id === methodId)
+  if (original) {
+    methodEdits.value[methodId] = {
+      value: methodDisplayValue(original),
+      label: original.label ?? '',
+      saving: false,
+      error: null,
+    }
+  }
+}
+
 watch(
   () => props.contact.contactMethods,
   (methods) => {
@@ -252,12 +264,24 @@ function confirmMethodEvict() {
 }
 
 function cancelMethodEvict() {
+  if (methodEvictConfirm.value)
+    resetMethodEdit(methodEvictConfirm.value.methodId)
   methodEvictConfirm.value = null
   evictConfirmResolve?.(false)
   evictConfirmResolve = null
 }
 
-async function saveMethod(method: ContactMethod) {
+function discardMethodEditDuplicate() {
+  if (methodEditDuplicate.value)
+    resetMethodEdit(methodEditDuplicate.value.methodId)
+  methodEditDuplicate.value = null
+}
+
+// Returns false when the method edit was blocked or the user backed out of
+// the evict-confirm — saveAll must stop there and stay in edit mode, rather
+// than silently persisting the other fields that were part of the same
+// Save-All attempt.
+async function saveMethod(method: ContactMethod): Promise<boolean> {
   const edit = getMethodEdit(method)
   edit.error = null
   methodEditDuplicate.value = null
@@ -268,7 +292,7 @@ async function saveMethod(method: ContactMethod) {
     const result = normalizePhone(newValue)
     if (!result.ok) {
       edit.error = t('contacts.detailView.invalidPhone')
-      return
+      return false
     }
     newValue = result.e164
   }
@@ -279,14 +303,14 @@ async function saveMethod(method: ContactMethod) {
     const conflict = store.findContactByMethodValue('phone', newValue, props.contact.id)
     if (conflict) {
       methodEditDuplicate.value = { methodId: method.id, contact: conflict }
-      return
+      return false
     }
 
     const rel = await store.relationshipsForPhone(method.value)
     if (rel.hasFriendship || rel.hasPending) {
       const confirm = await waitForEvictConfirm({ methodId: method.id, linkedUserId: rel.userId!, hasFriendship: rel.hasFriendship, hasPending: rel.hasPending })
       if (!confirm) {
-        return
+        return false
       }
       if (rel.hasFriendship)
         evictFriendUserId = rel.userId
@@ -304,12 +328,14 @@ async function saveMethod(method: ContactMethod) {
     const updated = props.contact.contactMethods.find(m => m.id === method.id)
     if (updated)
       edit.value = methodDisplayValue(updated)
+    return true
   }
   catch (err) {
     if (err instanceof DuplicateContactAcrossContactsError)
       methodEditDuplicate.value = { methodId: method.id, contact: 'generic' }
     else
       edit.error = err instanceof Error ? err.message : 'Failed to save'
+    return false
   }
   finally {
     edit.saving = false
@@ -473,6 +499,34 @@ async function confirmAddMethod() {
   }
 }
 
+const canSave = computed<boolean>(() => {
+  if (!firstName.value.trim()) {
+    return false
+  }
+
+  for (const m of props.contact.contactMethods) {
+    const edit = methodEdits.value[m.id]
+    if (!edit || !edit.value.trim()) {
+      return false
+    }
+
+    if (m.methodType === 'phone' && !normalizePhone(edit.value).ok) {
+      return false
+    }
+  }
+
+  if (showAddMethod.value) {
+    if (!newMethodValue.value.trim()) {
+      return false
+    }
+
+    if (newMethodType.value === 'phone' && !normalizePhone(newMethodValue.value).ok) {
+      return false
+    }
+  }
+  return true
+})
+
 // ── Cancel edit (after all its dependencies: name, methodEdits, addMethod refs) ──
 function cancelEdit() {
   firstName.value = props.contact.firstName
@@ -501,7 +555,10 @@ async function saveAll(): Promise<boolean> {
   saveError.value = null
   try {
     for (const method of props.contact.contactMethods) {
-      await saveMethod(method)
+      const ok = await saveMethod(method)
+      if (!ok) {
+        return false
+      }
     }
     if (showAddMethod.value && newMethodValue.value.trim()) {
       await confirmAddMethod()
@@ -782,7 +839,7 @@ defineExpose({
             }}
           </p>
           <div class="duplicate-actions">
-            <BaseButton type="button" variant="secondary" size="sm" @click="methodEditDuplicate = null">
+            <BaseButton type="button" variant="secondary" size="sm" @click="discardMethodEditDuplicate">
               {{ t('contacts.shared.discardBtn') }}
             </BaseButton>
             <BaseButton
@@ -981,7 +1038,7 @@ defineExpose({
         <BaseButton type="button" variant="secondary" :disabled="isSaving" @click="cancelEdit">
           {{ t('contacts.detailView.cancelBtn') }}
         </BaseButton>
-        <BaseButton type="button" variant="primary" :disabled="isSaving" @click="saveAll">
+        <BaseButton type="button" variant="primary" :disabled="isSaving || !canSave" @click="saveAll">
           {{ isSaving ? t('contacts.detailView.savingBtn') : t('contacts.detailView.saveBtn') }}
         </BaseButton>
       </div>

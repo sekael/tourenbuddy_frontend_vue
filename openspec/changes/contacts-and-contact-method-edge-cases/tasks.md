@@ -74,5 +74,5 @@
 
 - [x] 13.1 `npx eslint . --fix` and confirm the diff stays minimal (guard against editor reformatting)
 - [x] 13.2 `npm run type-check` and `npm run test` — all green
-- [ ] 13.3 Prompt the user to commit (do not commit): `feat(contacts): unique contact methods per user, evict friends on phone edit, fix stale save error (#208)`
-- [ ] 13.4 Prompt the user to push and open a PR; do NOT `supabase db push` unprompted (separate deploy step after review, verified against a prod snapshot given the destructive dedupe)
+- [x] 13.3 Prompt the user to commit (do not commit): `feat(contacts): unique contact methods per user, evict friends on phone edit, fix stale save error (#208)`
+- [x] 13.4 Prompt the user to push and open a PR; do NOT `supabase db push` unprompted (separate deploy step after review, verified against a prod snapshot given the destructive dedupe)
