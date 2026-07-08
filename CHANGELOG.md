@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.34.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.34.0...tourenbuddy-frontend-v0.34.1) (2026-07-08)
+
+
+### Bug Fixes
+
+* Remove group messaging ([#241](https://github.com/sekael/tourenbuddy_frontend_vue/issues/241)) ([8f5493e](https://github.com/sekael/tourenbuddy_frontend_vue/commit/8f5493e50672ca94e823c236ac560f22d9ecb899))
+* Self-host Inter and render icons as SVG, drop Google Fonts CDN  ([#246](https://github.com/sekael/tourenbuddy_frontend_vue/issues/246)) ([be51863](https://github.com/sekael/tourenbuddy_frontend_vue/commit/be5186305c69928c7325b778b947611e54629aa4))
+
 ## [0.34.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.33.0...tourenbuddy-frontend-v0.34.0) (2026-07-07)
 
 
