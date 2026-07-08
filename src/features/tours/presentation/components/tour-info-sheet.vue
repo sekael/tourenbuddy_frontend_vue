@@ -940,7 +940,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   cursor: not-allowed;
 }
 
-.action-btn .material-symbols-outlined {
+.action-btn .base-icon {
   font-size: 16px;
 }
 

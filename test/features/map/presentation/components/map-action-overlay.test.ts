@@ -1,6 +1,7 @@
 import { createTestingPinia } from '@pinia/testing'
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import BaseIcon from '@/core/components/base-icon.vue'
 import MapActionOverlay from '@/features/map/presentation/components/map-action-overlay.vue'
 
 function mountOverlay(
@@ -100,15 +101,15 @@ describe('mapActionOverlay', () => {
   describe('trigger icon', () => {
     it('should render menu glyph when collapsed', () => {
       const wrapper = mountOverlay()
-      const icon = wrapper.find('.material-symbols-outlined')
-      expect(icon.text()).toBe('menu')
+      const icon = wrapper.find('[aria-haspopup="menu"]').findComponent(BaseIcon)
+      expect(icon.props('name')).toBe('menu')
     })
 
     it('should render menu glyph (no swap) when expanded', async () => {
       const wrapper = mountOverlay()
       await wrapper.find('[aria-haspopup="menu"]').trigger('click')
       const fabButton = wrapper.find('.fab')
-      expect(fabButton.find('.material-symbols-outlined').text()).toBe('menu')
+      expect(fabButton.findComponent(BaseIcon).props('name')).toBe('menu')
     })
 
     it('should apply open class to trigger when menu is open', async () => {

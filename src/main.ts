@@ -7,34 +7,13 @@ import { installZodErrorMap } from './core/i18n/zod-error-map'
 import { useAuthStore } from './features/auth/presentation/stores/auth-store'
 import { useNotificationsStore } from './features/notifications/presentation/stores/notifications-store'
 import { useUserProfileStore } from './features/user/presentation/stores/user-profile-store'
+// Self-hosted Inter (weights used by --font-family-base). Bundled + precached,
+// no Google Fonts CDN. To add a weight, import its @fontsource/inter/<n>.css
+// here and confirm the woff2 is covered by the injectManifest glob.
+import '@fontsource/inter/400.css'
+import '@fontsource/inter/500.css'
+import '@fontsource/inter/600.css'
 import './app/theme/global.css'
-
-// Icon-font fail-safe: reveal Material Symbols glyphs only once the font is
-// actually loaded (see global.css `.fonts-ready` gate). Runs outside bootstrap
-// so a slow auth init can't delay it. The timeout matches font-display: block's
-// ~3s window — if the font CDN hangs, show whatever we have rather than hiding
-// icons forever.
-async function markFontsReadyOnLoad() {
-  const reveal = () => document.documentElement.classList.add('fonts-ready')
-  // Safety net first: never hide icons past font-display: block's ~3s window,
-  // even if the font CDN stalls or document.fonts is unavailable.
-  window.setTimeout(reveal, 3000)
-  if (!document.fonts?.load)
-    return reveal()
-  try {
-    // Force-request the icon font specifically, then await the FontFaceSet to
-    // settle. Awaiting both guards the slow-stylesheet case where fonts.ready
-    // would resolve before the icon @font-face is even enumerated.
-    await Promise.all([
-      document.fonts.load('20px "Material Symbols Outlined"'),
-      document.fonts.ready,
-    ])
-  }
-  finally {
-    reveal()
-  }
-}
-void markFontsReadyOnLoad()
 
 async function bootstrap() {
   const app = createApp(App)

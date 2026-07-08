@@ -738,7 +738,7 @@ defineExpose({
                 ? t('contacts.detailView.primaryPhoneTooltip')
                 : t('contacts.detailView.setAsPrimaryTooltip')"
             >
-              <BaseIcon name="star" />
+              <BaseIcon :name="method.isPrimary ? 'star_filled' : 'star'" />
             </BaseTooltip>
           </button>
           <span
@@ -746,7 +746,7 @@ defineExpose({
             class="primary-star"
             :class="{ 'primary-star--selected': method.isPrimary }"
           >
-            <BaseIcon name="star" />
+            <BaseIcon :name="method.isPrimary ? 'star_filled' : 'star'" />
           </span>
 
           <div class="method-type-badge">
@@ -1299,17 +1299,12 @@ defineExpose({
   transition: color 0.15s;
 }
 
-.primary-star .material-symbols-outlined {
+.primary-star .base-icon {
   font-size: var(--icon-size-sm);
-  font-variation-settings: 'FILL' 0;
 }
 
 .primary-star--selected {
   color: var(--color-primary);
-}
-
-.primary-star--selected .material-symbols-outlined {
-  font-variation-settings: 'FILL' 1;
 }
 
 button.primary-star:hover {
@@ -1328,7 +1323,7 @@ button.primary-star:hover {
   margin-top: 2px;
 }
 
-.method-type-badge .material-symbols-outlined {
+.method-type-badge .base-icon {
   font-size: var(--icon-size-sm);
   color: var(--color-on-surface-variant);
 }
@@ -1389,7 +1384,7 @@ button.primary-star:hover {
   transition: all 0.15s;
 }
 
-.type-btn .material-symbols-outlined {
+.type-btn .base-icon {
   font-size: var(--icon-size-xs);
 }
 

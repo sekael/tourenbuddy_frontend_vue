@@ -1,6 +1,7 @@
 import type { Plugin } from 'vite'
 import { fileURLToPath, URL } from 'node:url'
 import vue from '@vitejs/plugin-vue'
+import Icons from 'unplugin-icons/vite'
 import { defineConfig } from 'vitest/config'
 
 function virtualPwaRegisterStub(): Plugin {
@@ -24,7 +25,7 @@ export function useRegisterSW() {
 }
 
 export default defineConfig({
-  plugins: [vue(), virtualPwaRegisterStub()],
+  plugins: [vue(), Icons({ compiler: 'vue3' }), virtualPwaRegisterStub()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

@@ -1,6 +1,7 @@
 import { fileURLToPath, URL } from 'node:url'
 import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite'
 import vue from '@vitejs/plugin-vue'
+import Icons from 'unplugin-icons/vite'
 import VueRouter from 'unplugin-vue-router/vite'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -12,6 +13,10 @@ export default defineConfig({
       dts: 'src/typed-router.d.ts',
     }),
     vue(),
+    // Bundled, tree-shaken SVG icons (Material Symbols via Iconify). Each
+    // `~icons/material-symbols/<name>` import resolves to a Vue3 component at
+    // build time — no runtime icon font, no CDN. See src/core/components/icons.ts.
+    Icons({ compiler: 'vue3' }),
     VueI18nPlugin({
       include: [fileURLToPath(new URL('./src/locales/**', import.meta.url))],
       compositionOnly: true,
