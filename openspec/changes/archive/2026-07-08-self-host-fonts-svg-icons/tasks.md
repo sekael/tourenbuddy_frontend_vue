@@ -29,9 +29,9 @@
 
 ## 6. Verify
 
-- [ ] 6.1 Issue #232: cold-load the map page with network throttled/offline — the pill sizes to its content and never spans the full viewport.
-- [ ] 6.2 Offline: load online once, go offline, reload — Inter and all icons still render; DevTools Network shows zero requests to `fonts.googleapis.com` / `fonts.gstatic.com`.
-- [ ] 6.3 Visual parity: eyeball map action bar, tour info sheet, and contact detail against `main` — icons match today's weight/outline; no clipping or size regressions.
+- [x] 6.1 Issue #232: cold-load the map page with network throttled/offline — the pill sizes to its content and never spans the full viewport.
+- [x] 6.2 Offline: load online once, go offline, reload — Inter and all icons still render; DevTools Network shows zero requests to `fonts.googleapis.com` / `fonts.gstatic.com`.
+- [x] 6.3 Visual parity: eyeball map action bar, tour info sheet, and contact detail against `main` — icons match today's weight/outline; no clipping or size regressions.
 - [x] 6.4 `npm run test` — all pass.
 - [x] 6.5 `npm run type-check` — clean.
 
@@ -43,6 +43,6 @@
 ## 8. Finalize
 
 - [x] 8.1 `npx eslint . --fix` then review the diff size (guard against editor reformat outside antfu style).
-- [ ] 8.2 Prompt the user to commit with a ready-to-copy conventional commit message, e.g. `fix: self-host Inter and render icons as SVG, drop Google Fonts CDN (#232)`.
-- [ ] 8.3 Prompt the user to push the branch and open a PR to `main`.
-- [ ] 8.4 Prompt the user to archive this change with the `openspec-archive` skill once merged.
+- [x] 8.2 Prompt the user to commit with a ready-to-copy conventional commit message, e.g. `fix: self-host Inter and render icons as SVG, drop Google Fonts CDN (#232)`.
+- [x] 8.3 Prompt the user to push the branch and open a PR to `main`.
+- [x] 8.4 Prompt the user to archive this change with the `openspec-archive` skill once merged.
