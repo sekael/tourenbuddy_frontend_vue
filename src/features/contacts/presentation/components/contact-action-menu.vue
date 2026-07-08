@@ -255,7 +255,7 @@ onUnmounted(() => {
   color: var(--color-primary);
 }
 
-.menu-action-btn .material-symbols-outlined {
+.menu-action-btn .base-icon {
   font-size: 18px;
 }
 

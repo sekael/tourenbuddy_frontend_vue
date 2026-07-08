@@ -1,9 +1,7 @@
 ## Purpose
 
 Installable Progressive Web App with offline-capable shell, manifest, service worker, and runtime tile caching.
-
 ## Requirements
-
 ### Requirement: Service worker push handler
 The service worker SHALL handle `push` events by displaying a notification with the title and body provided by the Worker payload.
 
@@ -74,3 +72,23 @@ Action bars, floating action buttons, bottom sheets, and any future bottom navig
 
 - **WHEN** an interactive control's CSS sets its bottom safe-area clearance
 - **THEN** it references `var(--safe-bottom)` and contains no inline `env(safe-area-inset-bottom)`
+
+### Requirement: Self-contained app shell (no external font origin)
+
+The app shell SHALL be self-contained: all fonts and icons SHALL be bundled and precached by the service worker, with no runtime dependency on an external font CDN or any third-party origin for fonts or icons. Fonts and icons SHALL render on first paint and while offline.
+
+#### Scenario: Icons and text render offline
+
+- **WHEN** the app is opened offline (after installation)
+- **THEN** Inter text and all icons render from precached bundle assets, with no failed third-party font requests
+
+#### Scenario: No third-party font request on load
+
+- **WHEN** the app loads with network access
+- **THEN** no request is made to `fonts.googleapis.com` or `fonts.gstatic.com` (or any external font host)
+
+#### Scenario: Icons present on first paint
+
+- **WHEN** the first frame of the UI paints, before any deferred bootstrap work completes
+- **THEN** icons already render at their correct size (bundled SVG), with no font-load race that could alter layout
+

@@ -236,7 +236,7 @@ defineExpose({ submit, validateAndCollect })
               ? t('contacts.form.primaryPhoneTooltip')
               : t('contacts.form.setAsPrimaryTooltip')"
           >
-            <BaseIcon name="star" />
+            <BaseIcon :name="row.isPrimary ? 'star_filled' : 'star'" />
           </BaseTooltip>
         </button>
         <div class="phone-inputs">
@@ -368,17 +368,12 @@ defineExpose({ submit, validateAndCollect })
   transition: color 0.15s;
 }
 
-.primary-star .material-symbols-outlined {
+.primary-star .base-icon {
   font-size: 20px;
-  font-variation-settings: 'FILL' 0;
 }
 
 .primary-star--selected {
   color: var(--color-primary);
-}
-
-.primary-star--selected .material-symbols-outlined {
-  font-variation-settings: 'FILL' 1;
 }
 
 .primary-star:hover {

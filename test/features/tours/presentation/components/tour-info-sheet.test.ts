@@ -2,6 +2,7 @@ import { createTestingPinia } from '@pinia/testing'
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import TourInfoSheet from '@/features/tours/presentation/components/tour-info-sheet.vue'
 
@@ -269,14 +270,14 @@ describe('tourInfoSheet', () => {
 
     it('should show check_circle icon when completed', () => {
       const wrapper = mountSheet({ completed: true })
-      const icon = wrapper.find('.completion-toggle .material-symbols-outlined')
-      expect(icon.text()).toBe('check_circle')
+      const icon = wrapper.find('.completion-toggle').findComponent(BaseIcon)
+      expect(icon.props('name')).toBe('check_circle')
     })
 
     it('should show radio_button_unchecked icon when not completed', () => {
       const wrapper = mountSheet({ completed: false })
-      const icon = wrapper.find('.completion-toggle .material-symbols-outlined')
-      expect(icon.text()).toBe('radio_button_unchecked')
+      const icon = wrapper.find('.completion-toggle').findComponent(BaseIcon)
+      expect(icon.props('name')).toBe('radio_button_unchecked')
     })
   })
 

@@ -31,9 +31,19 @@
 
 - CSS custom properties: slate primary, blue accent
 - Design tokens: spacing (xxs–xxl), radius (sm/md/lg), shadows (sm/md/lg)
-- Inter font (400/500/600), Material Symbols icons
 - Scoped styles by default
 - Prefer native CSS (nesting, `:has()`, container queries) over preprocessors
+
+### Fonts & icons (self-hosted, NO CDN)
+
+IMPORTANT: The app ships **all** fonts and icons in its own bundle. There is **no Google Fonts CDN** and no icon font — this is deliberate (fixes a FOUT layout bug, removes the client-IP leak to Google, and works offline). Do NOT reintroduce a `fonts.googleapis.com` / `fonts.gstatic.com` `<link>`.
+
+- **Fonts:** Inter, self-hosted via `@fontsource/inter`, weights **400/500/600**, imported in `src/main.ts`. `--font-family-base` = `'Inter', <system stack>`. The woff2 files are precached by the existing `injectManifest` `woff2` glob in `vite.config.ts`.
+- **Icons:** bundled, tree-shaken **SVGs** via `unplugin-icons` + Iconify `@iconify-json/material-symbols` (Outlined variant, weight 400). Rendered through the shared `<BaseIcon name="…">` component (`src/core/components/base-icon.vue`), which resolves the name through a **central registry** (`src/core/components/icons.ts`). The registry is required because icon names are chosen at runtime (`:name` bindings, `TOUR_TYPE_ICONS`) and `unplugin-icons` only resolves `~icons/…` imports statically at build time.
+
+**To add a new icon:** add one import + one entry to `src/core/components/icons.ts`, mapping the internal underscore name to `~icons/material-symbols/<kebab-name>` (append `-outline` for the unfilled variant to match the design; glyph-only icons like `add`/`close` ship a single variant). Then use `<BaseIcon name="internal_name" />`. A name not in the registry renders nothing — never rely on an unregistered name.
+
+**To add a new font weight:** `npm i @fontsource/inter` already provides all static weights — import `@fontsource/inter/<weight>.css` in `src/main.ts` and confirm the emitted woff2 is covered by the `injectManifest` `woff2` glob so it precaches.
 
 ## Supabase / Database
 

@@ -11,6 +11,7 @@ Vue 3 tour-planning app. Users pin tour objectives on Swiss topo map (Swisstopo)
 - **Backend:** Supabase (PostgreSQL + PostgREST + Auth via email/OTP) — use `@supabase/supabase-js` directly, no Axios
   - IMPORTANT: ALL DB changes (schema/RLS/functions/storage) MUST go through migrations in `supabase/migrations/`, applied to LOCAL DB first, pushed to prod only after verification. See `.claude/conventions.md` → Supabase / Database
 - **Map:** MapLibre GL JS with Swisstopo vector/WMTS tiles (free, no API key)
+- **Design system:** Inter self-hosted via `@fontsource/inter` (400/500/600); icons are bundled tree-shaken **SVGs** (`unplugin-icons` + Iconify `material-symbols`) via a central registry (`src/core/components/icons.ts`) behind `<BaseIcon>`. **No Google Fonts CDN, no icon font** — do NOT reintroduce either. See `.claude/conventions.md` → Fonts & icons for how to add an icon or font weight.
 - **Testing:** Vitest + happy-dom for unit/component tests. Playwright installed but no E2E config yet
 - **Linting:** ESLint `@antfu/eslint-config` (strict) + Prettier (no semicolons, single quotes, 100 char width)
 - **Logging:** `useLogger` composable wrapping `consola` — no `console.log()`

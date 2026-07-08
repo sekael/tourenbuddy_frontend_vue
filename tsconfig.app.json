@@ -6,7 +6,7 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "types": ["vite/client", "vite-plugin-pwa/client"],
+    "types": ["vite/client", "vite-plugin-pwa/client", "unplugin-icons/types/vue"],
     "strict": true,
     "exactOptionalPropertyTypes": false,
     "noUnusedLocals": true,

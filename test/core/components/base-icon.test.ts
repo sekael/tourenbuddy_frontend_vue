@@ -13,18 +13,18 @@ describe('baseIcon', () => {
     expect(wrapper.classes()).toContain('base-icon--xl')
   })
 
-  it('should not emit an inline variation-settings style when weight is omitted', () => {
-    const wrapper = mount(BaseIcon, { props: { name: 'close' } })
-    expect(wrapper.attributes('style')).toBeUndefined()
-  })
-
-  it('should override the weight axis only when a weight is provided', () => {
-    const wrapper = mount(BaseIcon, { props: { name: 'close', weight: 600 } })
-    expect(wrapper.attributes('style')).toContain('\'wght\' 600')
-  })
-
   it('should keep the glyph decorative via aria-hidden', () => {
     const wrapper = mount(BaseIcon, { props: { name: 'map' } })
     expect(wrapper.attributes('aria-hidden')).toBe('true')
+  })
+
+  it('should render nothing for an empty name (valid unselected state)', () => {
+    const wrapper = mount(BaseIcon, { props: { name: '' } })
+    expect(wrapper.find('svg').exists()).toBe(false)
+  })
+
+  it('should render nothing for an unregistered name instead of crashing', () => {
+    const wrapper = mount(BaseIcon, { props: { name: 'does_not_exist' } })
+    expect(wrapper.find('svg').exists()).toBe(false)
   })
 })
