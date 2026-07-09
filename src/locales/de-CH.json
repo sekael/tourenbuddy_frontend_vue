@@ -17,6 +17,7 @@
     "seasons": {
       "title": "Saisonplaner",
       "empty": "Keine Saisons geplant",
+      "scrollHint": "Scrollen für das ganze Jahr",
       "range": {
         "winter": "DEZ – FEB",
         "spring": "MÄR – MAI",

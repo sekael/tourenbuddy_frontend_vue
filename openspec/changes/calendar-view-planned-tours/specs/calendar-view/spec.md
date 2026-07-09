@@ -65,7 +65,17 @@ with: adjacent tagged seasons SHALL merge into a single bar spanning their
 columns, non-contiguous runs SHALL render as separate bars, and untagged season
 columns SHALL never be bridged. The view SHALL draw a thin vertical marker line
 at the position of the current month along the season axis, indicating the
-current season. Friend tours SHALL NOT appear on the Seasons view.
+current season. Friend tours SHALL NOT appear on the Seasons view. On narrow
+(mobile) viewports the four season columns MAY exceed the viewport width; the
+chart SHALL then scroll horizontally with the header row pinned, and SHALL show
+an affordance indicating more columns are available by scrolling.
+
+#### Scenario: Narrow viewport scrolls the season columns
+
+- **WHEN** the Seasons view is shown on a viewport too narrow for all four season
+  columns
+- **THEN** the chart scrolls horizontally to reveal the remaining columns and
+  displays a hint that scrolling reveals the full year
 
 #### Scenario: Contiguous seasons merge into one bar
 
@@ -97,15 +107,25 @@ current season. Friend tours SHALL NOT appear on the Seasons view.
 ### Requirement: Planned view shows a month calendar
 
 The Planned view SHALL render a monthly calendar, plotting each displayed tour on
-its planned date as a pill carrying the tour's type icon and name. It SHALL render
-a Monday-start grid with days from adjacent months de-emphasised. Month
-navigation SHALL be unbounded and SHALL provide a "Today" control, right-aligned
-alongside the previous/next month controls, that returns the calendar to the
-month containing the current date. The cell for the current date SHALL be
+its planned date as a pill carrying the tour's type icon and name. On desktop it
+SHALL render a Monday-start grid with days from adjacent months de-emphasised. On
+narrow (mobile) viewports it SHALL instead render a month-bounded vertical list
+with one tile per day of the visible month — **including days without tours**, so
+free dates stay visible for planning — each day's tours shown as full-width pills.
+Both layouts are driven by the same month cursor and header navigation. Month
+navigation SHALL be unbounded, presenting previous/next month controls flanking
+a centered month-and-year label, plus a "Today" control that returns the calendar
+to the month containing the current date. The cell for the current date SHALL be
 visually distinguished from other days (a darker tile border and a light
 background tint). The calendar SHALL display the user's own tours that have a
 planned date **and** friend tours where the user is a marked partner that have a
 planned date. Tours without a planned date SHALL NOT be displayed.
+
+#### Scenario: Mobile renders a day-tile list
+
+- **WHEN** the Planned view is shown on a narrow (mobile) viewport
+- **THEN** it renders one tile per day of the visible month, including days with
+  no tours, rather than the desktop grid
 
 #### Scenario: Tour without a planned date is hidden
 

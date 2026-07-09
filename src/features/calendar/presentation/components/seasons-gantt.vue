@@ -18,77 +18,107 @@ const { tours } = storeToRefs(toursStore)
 // "You are here" marker: a vertical line at the current month's position across
 // the 4-season axis, which lands inside the current season's column. The axis
 // runs Dec→Nov (winter first), so month 11 (Dec) maps to axis index 0. The line
-// is centered on the current month's slot; the leading 240px is the label column.
+// is centered on the current month's slot. The leading offset is the label
+// column width (`--label-w`), so the same calc stays aligned in both the desktop
+// and the narrower mobile layout — 100% resolves to the rows track in each.
 const nowLineLeft = computed(() => {
   const axisMonthIndex = (new Date().getMonth() + 1) % 12
   const fraction = (axisMonthIndex + 0.5) / 12
-  return `calc(240px + (100% - 240px) * ${fraction})`
+  return `calc(var(--label-w) + (100% - var(--label-w)) * ${fraction})`
 })
 </script>
 
 <template>
-  <div class="gantt">
-    <!-- Header: label column + 4 season columns with month ranges. -->
-    <div class="gantt-row gantt-header">
-      <div class="header-label">
-        {{ t('calendar.title') }}
-      </div>
-      <div v-for="season in SEASON_AXIS" :key="season" class="header-season">
-        <span class="season-name">{{ t(`tours.season.${season}`) }}</span>
-        <span class="season-range">{{ t(`calendar.seasons.range.${season}`) }}</span>
-      </div>
-    </div>
-
-    <!-- Body -->
-    <div class="gantt-body">
-      <!-- Rows wrapper shrinks to its content, so the current-season marker
-           (below the header) ends exactly at the last tour row. -->
-      <div class="gantt-rows">
-        <div class="season-now-line" :style="{ left: nowLineLeft }" aria-hidden="true" />
-        <button
-          v-for="tour in tours"
-          :key="tour.id"
-          type="button"
-          class="gantt-row gantt-tour-row"
-          @click="emit('select', tour.id)"
-        >
-          <div class="row-label">
-            <span class="tour-name">{{ tour.name ?? t('tours.infoSheet.unnamedTour') }}</span>
-            <span v-if="tour.tourType" class="tour-type">
-              <BaseIcon :name="TOUR_TYPE_ICONS[tour.tourType]" size="xs" />
-              {{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[tour.tourType]}`) }}
-            </span>
+  <div class="gantt-wrap">
+    <!-- Single scroll container (both axes on mobile). The track holds the whole
+         chart at its natural width so narrow viewports scroll horizontally. -->
+    <div class="gantt">
+      <div class="gantt-track">
+        <!-- Header: label column + 4 season columns with month ranges. Sticky so
+             it pins to the top while the tour rows scroll under it. -->
+        <div class="gantt-row gantt-header">
+          <div class="header-label">
+            {{ t('calendar.title') }}
           </div>
+          <div v-for="season in SEASON_AXIS" :key="season" class="header-season">
+            <span class="season-name">{{ t(`tours.season.${season}`) }}</span>
+            <span class="season-range">{{ t(`calendar.seasons.range.${season}`) }}</span>
+          </div>
+        </div>
 
-          <!-- One bar per contiguous run; empty state when nothing is tagged. -->
-          <template v-if="seasonRuns(tour.seasons).length > 0">
-            <div
-              v-for="(run, i) in seasonRuns(tour.seasons)"
-              :key="i"
-              class="season-bar"
-              :style="{ gridColumn: `${run.start + 2} / span ${run.span}` }"
-            />
-          </template>
-          <span v-else class="no-seasons">{{ t('calendar.seasons.empty') }}</span>
-        </button>
+        <!-- Rows wrapper shrinks to its content, so the current-season marker
+             (below the header) ends exactly at the last tour row. -->
+        <div class="gantt-rows">
+          <div class="season-now-line" :style="{ left: nowLineLeft }" aria-hidden="true" />
+          <button
+            v-for="tour in tours"
+            :key="tour.id"
+            type="button"
+            class="gantt-row gantt-tour-row"
+            @click="emit('select', tour.id)"
+          >
+            <div class="row-label">
+              <span class="tour-name">{{ tour.name ?? t('tours.infoSheet.unnamedTour') }}</span>
+              <span v-if="tour.tourType" class="tour-type">
+                <BaseIcon :name="TOUR_TYPE_ICONS[tour.tourType]" size="xs" />
+                {{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[tour.tourType]}`) }}
+              </span>
+            </div>
+
+            <!-- One bar per contiguous run; empty state when nothing is tagged. -->
+            <template v-if="seasonRuns(tour.seasons).length > 0">
+              <div
+                v-for="(run, i) in seasonRuns(tour.seasons)"
+                :key="i"
+                class="season-bar"
+                :style="{ gridColumn: `${run.start + 2} / span ${run.span}` }"
+              />
+            </template>
+            <span v-else class="no-seasons">{{ t('calendar.seasons.empty') }}</span>
+          </button>
+        </div>
       </div>
     </div>
+
+    <!-- Mobile-only affordance: the season columns overflow and scroll sideways. -->
+    <p class="scroll-hint">
+      <BaseIcon name="sync_alt" size="xs" />
+      {{ t('calendar.seasons.scrollHint') }}
+    </p>
   </div>
 </template>
 
 <style scoped>
-.gantt {
+.gantt-wrap {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
   border: 1px solid var(--color-outline-variant);
   border-radius: var(--radius-md);
   overflow: hidden;
   background-color: var(--color-background);
 }
 
+/* The scroll container. `--label-w` drives both the grid's label column and the
+   marker offset; `--season-min` is the per-season floor that forces horizontal
+   overflow once the columns no longer fit (see the mobile override below). */
+.gantt {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  --label-w: 240px;
+  --season-min: 0px;
+}
+
+/* Sized to its widest row (max-content), so on narrow viewports the four season
+   columns push past the container and the .gantt scrolls sideways. */
+.gantt-track {
+  min-width: max-content;
+}
+
 /* Content-height wrapper: the marker below the header spans only the rows and
-   ends at the last one, rather than the full (flex-filled) body height. */
+   ends at the last one, rather than the full track height. */
 .gantt-rows {
   position: relative;
 }
@@ -107,11 +137,14 @@ const nowLineLeft = computed(() => {
 
 .gantt-row {
   display: grid;
-  grid-template-columns: 240px repeat(4, 1fr);
+  grid-template-columns: var(--label-w) repeat(4, minmax(var(--season-min), 1fr));
   align-items: center;
 }
 
 .gantt-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   border-bottom: 1px solid var(--color-outline-variant);
   background-color: var(--color-surface);
 }
@@ -143,11 +176,6 @@ const nowLineLeft = computed(() => {
   font-size: 10px;
   color: var(--color-on-surface-variant);
   opacity: 0.7;
-}
-
-.gantt-body {
-  flex: 1;
-  overflow-y: auto;
 }
 
 .gantt-tour-row {
@@ -188,11 +216,10 @@ const nowLineLeft = computed(() => {
 }
 
 .season-bar {
-  height: 32px;
-  margin: 0 var(--spacing-md);
-  border-radius: var(--radius-sm);
-  background-color: color-mix(in srgb, var(--color-primary) 18%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+  height: 28px;
+  margin: 0 var(--spacing-sm);
+  border-radius: var(--radius-pill);
+  background-color: var(--color-primary);
 }
 
 .no-seasons {
@@ -202,5 +229,30 @@ const nowLineLeft = computed(() => {
   font-style: italic;
   color: var(--color-on-surface-variant);
   opacity: 0.6;
+}
+
+/* Hidden on desktop (everything fits); revealed on mobile by the override below. */
+.scroll-hint {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xxs);
+  padding: var(--spacing-xs);
+  flex-shrink: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
+  border-top: 1px solid var(--color-outline-variant);
+}
+
+/* Mobile: narrow the label and give the season columns a floor so they overflow
+   and the chart scrolls sideways; reveal the scroll hint. */
+@media (max-width: 599px) {
+  .gantt {
+    --label-w: 140px;
+    --season-min: 120px;
+  }
+  .scroll-hint {
+    display: flex;
+  }
 }
 </style>
