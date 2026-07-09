@@ -2,6 +2,22 @@ import type { TourType } from '@/features/tours/data/models/tour-type'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
+/**
+ * Transient handoff from the calendar route to the map page. The calendar lives
+ * on its own route while tour detail is overlay state on `/map`, so a selection
+ * or a return-to-list must survive one navigation. Set before `router.push`,
+ * consumed once in the map page's `onMounted`, then dropped — it is deliberately
+ * NOT a URL param (a bare `/map` deep link carrying these flags is meaningless).
+ */
+export interface PendingIntent {
+  /** Open the tour-list overlay on arrival (calendar back button). */
+  openTours?: boolean
+  /** Select this tour and open its detail on arrival. */
+  selectTourId?: string
+  /** Which calendar view the selection came from, so detail-back can return. */
+  origin?: 'cal-seasons' | 'cal-planned'
+}
+
 export const useMapStore = defineStore('map', () => {
   const isPickingLocation = ref(false)
   const currentStyleIndex = ref(0)
@@ -13,6 +29,19 @@ export const useMapStore = defineStore('map', () => {
   /** Re-picked, not-yet-saved start/end coordinates shown as lighter-tone draft detail markers. */
   const previewStart = ref<{ lng: number, lat: number } | null>(null)
   const previewEnd = ref<{ lng: number, lat: number } | null>(null)
+  /** One-shot cross-route intent from the calendar (see PendingIntent). */
+  const pendingIntent = ref<PendingIntent | null>(null)
+
+  function setPendingIntent(intent: PendingIntent) {
+    pendingIntent.value = intent
+  }
+
+  /** Returns the pending intent (if any) and clears it — read exactly once. */
+  function consumePendingIntent(): PendingIntent | null {
+    const intent = pendingIntent.value
+    pendingIntent.value = null
+    return intent
+  }
 
   function setPickingLocation(picking: boolean) {
     isPickingLocation.value = picking
@@ -50,6 +79,9 @@ export const useMapStore = defineStore('map', () => {
     previewTourType,
     previewStart,
     previewEnd,
+    pendingIntent,
+    setPendingIntent,
+    consumePendingIntent,
     setPickingLocation,
     setStyleIndex,
     selectTour,

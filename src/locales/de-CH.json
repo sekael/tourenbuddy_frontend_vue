@@ -1,4 +1,30 @@
 {
+  "calendar": {
+    "title": "Geplante Touren",
+    "subtitle": "Tourenplanung",
+    "back": "Zurück zur Karte",
+    "openAriaLabel": "Kalender öffnen",
+    "nav": {
+      "planned": "Kalender",
+      "seasons": "Saisons"
+    },
+    "planned": {
+      "prevMonth": "Vorheriger Monat",
+      "nextMonth": "Nächster Monat",
+      "today": "Heute",
+      "more": "+{count} weitere"
+    },
+    "seasons": {
+      "title": "Saisonplaner",
+      "empty": "Keine Saisons geplant",
+      "range": {
+        "winter": "DEZ – FEB",
+        "spring": "MÄR – MAI",
+        "summer": "JUN – AUG",
+        "autumn": "SEP – NOV"
+      }
+    }
+  },
   "validation": {
     "required": "Dieses Feld ist erforderlich",
     "invalidType": "Ungültiger Wert",
