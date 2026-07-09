@@ -53,7 +53,9 @@ const items: { view: CalendarView, icon: string, labelKey: string }[] = [
       :aria-current="active === item.view ? 'page' : undefined"
       @click="emit('select', item.view)"
     >
-      <BaseIcon :name="item.icon" />
+      <span class="nav-icon-pill">
+        <BaseIcon :name="item.icon" />
+      </span>
       <span>{{ t(item.labelKey) }}</span>
     </button>
   </nav>
@@ -141,6 +143,22 @@ const items: { view: CalendarView, icon: string, labelKey: string }[] = [
 
 .bottom-nav-item--active {
   color: var(--color-primary);
+}
+
+/* Material-style active indicator: a filled pill behind the icon only (the
+   label stays put), mirroring the design reference. */
+.nav-icon-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 28px;
+  border-radius: var(--radius-pill);
+  transition: background-color 0.15s;
+}
+
+.bottom-nav-item--active .nav-icon-pill {
+  background-color: var(--color-surface-variant);
 }
 
 @media (min-width: 600px) {

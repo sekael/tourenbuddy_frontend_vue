@@ -86,8 +86,8 @@
 ## 9. Finalize
 
 - [x] 9.1 Run `npx eslint . --fix` and `npm run type-check` — both clean.
-- [ ] 9.2 Prompt the user to commit (do NOT commit automatically). Suggested:
+- [x] 9.2 Prompt the user to commit (do NOT commit automatically). Suggested:
   `feat(calendar): add calendar view of planned tours and seasons (#240)`
-- [ ] 9.3 Prompt the user to push the branch and open a PR to `main` referencing
+- [x] 9.3 Prompt the user to push the branch and open a PR to `main` referencing
   #240 (and epic #20).
-- [ ] 9.4 Prompt the user to archive this change with `/opsx:archive` once merged.
+- [x] 9.4 Prompt the user to archive this change with `/opsx:archive` once merged.

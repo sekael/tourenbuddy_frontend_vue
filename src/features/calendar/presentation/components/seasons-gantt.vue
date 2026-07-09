@@ -30,9 +30,16 @@ const nowLineLeft = computed(() => {
 
 <template>
   <div class="gantt-wrap">
+    <!-- No owned tours: nothing to chart, so show a friendly disclaimer instead
+         of an empty axis. -->
+    <div v-if="tours.length === 0" class="gantt-empty">
+      <BaseIcon name="wb_sunny" size="lg" />
+      <p>{{ t('calendar.seasons.emptyState') }}</p>
+    </div>
+
     <!-- Single scroll container (both axes on mobile). The track holds the whole
          chart at its natural width so narrow viewports scroll horizontally. -->
-    <div class="gantt">
+    <div v-else class="gantt">
       <div class="gantt-track">
         <!-- Header: label column + 4 season columns with month ranges. Sticky so
              it pins to the top while the tour rows scroll under it. -->
@@ -81,7 +88,7 @@ const nowLineLeft = computed(() => {
     </div>
 
     <!-- Mobile-only affordance: the season columns overflow and scroll sideways. -->
-    <p class="scroll-hint">
+    <p v-if="tours.length > 0" class="scroll-hint">
       <BaseIcon name="sync_alt" size="xs" />
       {{ t('calendar.seasons.scrollHint') }}
     </p>
@@ -114,7 +121,37 @@ const nowLineLeft = computed(() => {
 /* Sized to its widest row (max-content), so on narrow viewports the four season
    columns push past the container and the .gantt scrolls sideways. */
 .gantt-track {
+  position: relative;
   min-width: max-content;
+}
+
+/* The label/seasons divider as ONE continuous line. Hanging it off each cell's
+   border-right left gaps, because `.gantt-row` centers cells to their content
+   height. This spans the full track (header → last row) at the column boundary,
+   staying aligned via --label-w. z-index beats the sticky header (z:5) so it
+   isn't hidden behind the header's opaque background. */
+.gantt-track::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--label-w);
+  width: 1px;
+  background-color: var(--color-outline-variant);
+  pointer-events: none;
+  z-index: 6;
+}
+
+.gantt-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-xxl);
+  text-align: center;
+  color: var(--color-on-surface-variant);
 }
 
 /* Content-height wrapper: the marker below the header spans only the rows and
@@ -156,7 +193,6 @@ const nowLineLeft = computed(() => {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-on-surface-variant);
-  border-right: 1px solid var(--color-outline-variant);
 }
 
 .header-season {
@@ -196,23 +232,36 @@ const nowLineLeft = computed(() => {
   flex-direction: column;
   gap: var(--spacing-xxs);
   padding: var(--spacing-md);
-  border-right: 1px solid var(--color-outline-variant);
+  min-width: 0;
 }
 
+/* Single-word names can't wrap, so they'd bleed across the divider — truncate
+   instead. The column is widened (see --label-w) so real names rarely hit this. */
 .tour-name {
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
   color: var(--color-on-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tour-type {
   display: flex;
   align-items: center;
   gap: var(--spacing-xxs);
+  min-width: 0;
   font-size: 11px;
   font-weight: var(--font-weight-medium);
   text-transform: uppercase;
+  white-space: nowrap;
   color: var(--color-on-surface-variant);
+}
+
+/* Keep the type icon at its intrinsic size — without this it shrinks to make
+   room for a long type label in the flex row. */
+.tour-type > :first-child {
+  flex-shrink: 0;
 }
 
 .season-bar {
@@ -248,7 +297,7 @@ const nowLineLeft = computed(() => {
    and the chart scrolls sideways; reveal the scroll hint. */
 @media (max-width: 599px) {
   .gantt {
-    --label-w: 140px;
+    --label-w: 200px;
     --season-min: 120px;
   }
   .scroll-hint {
