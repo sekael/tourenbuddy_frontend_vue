@@ -1,9 +1,7 @@
 ## Purpose
 
 Tour list page with filtering, sorting, and quick navigation to tour detail or map view.
-
 ## Requirements
-
 ### Requirement: Tours list overlay
 
 A `TourListSheet` component SHALL render inside `AdaptiveOverlay` with the title "Tours" and display every tour returned by `useToursStore.tours` for the authenticated user. The component SHALL emit a `close` event when the user dismisses the overlay.
@@ -192,3 +190,20 @@ Filter controls SHALL be collapsed behind a "Filters" disclosure trigger by defa
 
 - **WHEN** the user taps the "Filters" trigger
 - **THEN** the filter controls SHALL expand in-place within the overlay, without closing the overlay or navigating away
+
+### Requirement: Calendar entry point in the tour list
+
+The tour-list overview SHALL provide a calendar icon button in its header that
+navigates the user to the `/calendar` calendar view.
+
+#### Scenario: Opening the calendar from the tour list
+
+- **WHEN** the user taps the calendar icon button in the tour-list header
+- **THEN** the app navigates to the `/calendar` route and displays the calendar
+  view
+
+#### Scenario: Calendar button available regardless of active list tab
+
+- **WHEN** the tour list is on either the Owned or the Friends tab
+- **THEN** the calendar icon button remains visible and functional in the header
+
