@@ -42,6 +42,12 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresCompleteProfile: true },
     },
     {
+      path: '/calendar',
+      name: 'calendar',
+      component: () => import('@/features/calendar/presentation/pages/calendar-page.vue'),
+      meta: { requiresAuth: true, requiresCompleteProfile: true },
+    },
+    {
       path: '/friends/:friendshipId/backfill-collisions',
       name: 'backfill-collisions',
       component: () =>

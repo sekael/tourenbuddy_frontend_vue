@@ -1,4 +1,32 @@
 {
+  "calendar": {
+    "title": "Planned Tours",
+    "subtitle": "Adventure Planner",
+    "back": "Back to map",
+    "openAriaLabel": "Open calendar",
+    "nav": {
+      "planned": "Calendar",
+      "seasons": "Seasons"
+    },
+    "planned": {
+      "prevMonth": "Previous month",
+      "nextMonth": "Next month",
+      "today": "Today",
+      "more": "+{count} more"
+    },
+    "seasons": {
+      "title": "Seasonal Planner",
+      "empty": "No seasons scheduled",
+      "emptyState": "No tours yet — add some to see your seasonal overview",
+      "scrollHint": "Scroll to view full year",
+      "range": {
+        "winter": "DEC – FEB",
+        "spring": "MAR – MAY",
+        "summer": "JUN – AUG",
+        "autumn": "SEP – NOV"
+      }
+    }
+  },
   "validation": {
     "required": "This field is required",
     "invalidType": "Invalid value",

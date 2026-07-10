@@ -5,6 +5,7 @@ import type { CompletionFilter } from '@/features/tours/presentation/composables
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
@@ -23,6 +24,7 @@ import TourListRow from './tour-list-row.vue'
 const emit = defineEmits<{ close: [], selectTour: [id: string], addTour: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
+const router = useRouter()
 
 const authStore = useAuthStore()
 const { isAuthenticated } = storeToRefs(authStore)
@@ -96,6 +98,12 @@ function handleRowClick(tourId: string) {
     @close="emit('close')"
   >
     <template #header-actions>
+      <BaseIconButton
+        name="calendar_today"
+        :label="t('calendar.openAriaLabel')"
+        data-testid="header-open-calendar"
+        @click="router.push({ name: 'calendar' })"
+      />
       <BaseTooltip
         v-if="!isAuthenticated"
         :text="t('map.overlay.signInToAddToursTooltip')"

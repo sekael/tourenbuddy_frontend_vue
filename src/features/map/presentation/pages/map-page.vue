@@ -5,7 +5,7 @@ import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { onBeforeRouteLeave } from 'vue-router'
+import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import FeedbackSheet from '@/core/components/feedback-sheet.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
@@ -46,6 +46,7 @@ type OverlayName
     | 'friend-requests'
 
 const { t } = useI18n({ useScope: 'global' })
+const router = useRouter()
 
 const mapStore = useMapStore()
 const toursStore = useToursStore()
@@ -130,8 +131,10 @@ const isPickingForEdit = ref(false)
 // Set when flyToSelectedTour is called before sheetContainerRef has mounted
 const pendingFlyTo = ref(false)
 
-// Whether the tour info sheet was opened by selecting a row from the tours list
-const tourOpenedFromList = ref(false)
+// Where the currently-open tour detail was entered from — drives the info
+// sheet's back button target. `list` returns to the tours overlay; `cal-*`
+// returns to the calendar route on the matching view; `null` = no back offered.
+const tourDetailOrigin = ref<'list' | 'cal-seasons' | 'cal-planned' | null>(null)
 
 // Contact id to auto-open in the contacts sheet (from tour chip edit-contact action)
 const editContactId = ref<string | null>(null)
@@ -168,7 +171,7 @@ function openOverlay(name: OverlayName) {
   if (activeOverlay.value === 'tour' && name !== 'tour') {
     mapStore.selectTour(null)
     clearTourPreview()
-    tourOpenedFromList.value = false
+    tourDetailOrigin.value = null
   }
   if (activeOverlay.value === 'tour-creation' && name !== 'tour-creation') {
     resetTourCreationState()
@@ -181,7 +184,7 @@ function closeOverlay() {
   if (activeOverlay.value === 'tour') {
     mapStore.selectTour(null)
     clearTourPreview()
-    tourOpenedFromList.value = false
+    tourDetailOrigin.value = null
   }
   if (activeOverlay.value === 'tour-creation') {
     resetTourCreationState()
@@ -313,15 +316,25 @@ watch(reopenSignal, () => {
 })
 
 function handleTourSelectedFromList(tourId: string) {
-  tourOpenedFromList.value = true
+  tourDetailOrigin.value = 'list'
   mapStore.selectTour(tourId)
   openOverlay('tour')
 }
 
 function handleTourInfoBack() {
-  tourOpenedFromList.value = false
+  const origin = tourDetailOrigin.value
+  tourDetailOrigin.value = null
   mapStore.selectTour(null)
   clearTourPreview()
+  // Calendar-originated detail returns to the calendar on its originating view;
+  // list-originated returns to the tours overlay (today's behavior).
+  if (origin === 'cal-seasons' || origin === 'cal-planned') {
+    router.push({
+      name: 'calendar',
+      query: { view: origin === 'cal-seasons' ? 'seasons' : 'planned' },
+    })
+    return
+  }
   activeOverlay.value = 'tours'
 }
 
@@ -365,6 +378,20 @@ onMounted(async () => {
     await userProfileStore.loadProfile()
   onboardingTour.maybeStartTour()
   await Promise.all([toursStore.loadTours(), contactsStore.loadContacts()])
+
+  // Consume a one-shot handoff from the calendar route (open the tours list, or
+  // select a tour and remember its calendar origin). Tours are loaded above, and
+  // the Pinia stores persist across the route change, so friend tours picked on
+  // the calendar are already present. Selecting a tour trips the selectedTourId
+  // watch → opens detail + flies to it.
+  const intent = mapStore.consumePendingIntent()
+  if (intent?.openTours) {
+    activeOverlay.value = 'tours'
+  }
+  else if (intent?.selectTourId) {
+    tourDetailOrigin.value = intent.origin ?? null
+    mapStore.selectTour(intent.selectTourId)
+  }
 })
 
 async function flyToSelectedTour() {
@@ -715,7 +742,7 @@ function handleDialogClose() {
     <Transition name="sheet" mode="out-in">
       <div v-if="selectedTour && activeOverlay === 'tour'" key="tour" ref="sheetContainerRef" class="sheet-container">
         <TourInfoSheet
-          :tour="selectedTour" :edit-picked-point="editPickedPoint" :show-back="tourOpenedFromList"
+          :tour="selectedTour" :edit-picked-point="editPickedPoint" :show-back="tourDetailOrigin !== null"
           :active-pick-type="isPickingForEdit ? pendingPickType : null" @close="closeOverlay" @back="handleTourInfoBack"
           @pick-point="(t: 'start' | 'end' | 'goal') => handleInfoSheetPickPoint(t)"
           @point-consumed="handlePointConsumed" @edit-mode-change="handleEditModeChange"
