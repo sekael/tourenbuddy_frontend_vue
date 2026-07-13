@@ -36,3 +36,19 @@ export function dayKey(date: Date): string {
   const d = String(date.getDate()).padStart(2, '0')
   return `${y}-${m}-${d}`
 }
+
+/**
+ * Today's day key — the single source of truth for the availability past/future
+ * cutoff and for "is this cell selectable". Deliberately the same `dayKey`
+ * (device-local) the calendar already uses to place tours on days, so the cutoff
+ * and the cells it compares against can never disagree.
+ *
+ * Client/DB agreement does not rely on a shared timezone constant: the DB never
+ * derives "now" for availability (the query cutoff is passed in and the RPC only
+ * applies the day arrays it's given), so a plain calendar date means the same day
+ * everywhere. If any DB code later needs "today", it MUST take it from the client
+ * — not `current_date` — to preserve this.
+ */
+export function todayKey(): string {
+  return dayKey(new Date())
+}

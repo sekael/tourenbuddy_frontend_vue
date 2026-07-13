@@ -1,9 +1,13 @@
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
+import BaseIcon from '@/core/components/base-icon.vue'
+import ExtendedFab from '@/core/components/extended-fab.vue'
+import { useAvailabilityStore } from '@/features/calendar/presentation/stores/availability-store'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import CalendarNav from '../components/calendar-nav.vue'
@@ -17,13 +21,23 @@ const route = useRoute()
 const router = useRouter()
 const mapStore = useMapStore()
 const toursStore = useToursStore()
+const availabilityStore = useAvailabilityStore()
+const { editing, saving } = storeToRefs(availabilityStore)
 
 // View is a query param (deep-linkable, restored by the detail back button).
 // Defaults to Planned; never persisted across visits.
 const activeView = computed<CalendarView>(() => (route.query.view === 'seasons' ? 'seasons' : 'planned'))
 
 function setView(view: CalendarView) {
+  // Leaving the Planned view discards an in-progress availability edit (Cancel
+  // semantics, no prompt).
+  if (availabilityStore.editing)
+    availabilityStore.cancel()
   router.replace({ name: 'calendar', query: { view } })
+}
+
+async function saveAvailability() {
+  await availabilityStore.save()
 }
 
 // Planned-view month cursor (first of the visible month). Month is the default,
@@ -46,6 +60,8 @@ const monthLabel = computed(() =>
 // Back → the tour-list overlay on the map. Selecting a tour → its detail on the
 // map, carrying the originating view so the detail back button can return here.
 function goBack() {
+  if (availabilityStore.editing)
+    availabilityStore.cancel()
   mapStore.setPendingIntent({ openTours: true })
   router.push({ name: 'map' })
 }
@@ -62,6 +78,9 @@ onMounted(() => {
   // (e.g. deep link straight to /calendar).
   if (toursStore.tours.length === 0)
     toursStore.loadTours()
+  // Own availability drives the view-mode overlay, so load it up front (not only
+  // when the editor opens).
+  availabilityStore.load()
 })
 </script>
 
@@ -89,7 +108,7 @@ onMounted(() => {
         </div>
 
         <div class="bar-right">
-          <BaseButton v-if="activeView === 'planned'" variant="secondary" size="sm" @click="goToday">
+          <BaseButton v-if="activeView === 'planned' && !editing" variant="secondary" size="sm" @click="goToday">
             {{ t('calendar.planned.today') }}
           </BaseButton>
         </div>
@@ -99,6 +118,33 @@ onMounted(() => {
         <PlannedCalendar v-if="activeView === 'planned'" ref="plannedCalendar" :view-date="currentMonth" @select="selectTour" />
         <SeasonsGantt v-else @select="selectTour" />
       </div>
+
+      <!-- Availability edit entry (Planned, view mode). Hidden while editing. -->
+      <ExtendedFab
+        v-if="activeView === 'planned' && !editing"
+        class="availability-fab"
+        :label="t('calendar.availability.edit')"
+        @click="availabilityStore.enterEdit"
+      >
+        <template #icon>
+          <BaseIcon name="edit" />
+        </template>
+      </ExtendedFab>
+
+      <!-- Edit mode: friend-visibility disclaimer + Save/Cancel bar. -->
+      <div v-if="editing" class="availability-bar">
+        <p class="availability-disclaimer">
+          {{ t('calendar.availability.disclaimer') }}
+        </p>
+        <div class="availability-actions">
+          <BaseButton variant="secondary" size="sm" @click="availabilityStore.cancel">
+            {{ t('calendar.availability.cancel') }}
+          </BaseButton>
+          <BaseButton variant="primary" size="sm" :disabled="saving" @click="saveAvailability">
+            {{ t('calendar.availability.save') }}
+          </BaseButton>
+        </div>
+      </div>
     </main>
   </div>
 </template>
@@ -107,8 +153,13 @@ onMounted(() => {
 .calendar-page {
   display: flex;
   flex-direction: column-reverse;
-  width: 100%;
-  height: 100lvh;
+  /* Pin to the viewport so the PAGE itself never scrolls — the bottom nav clamps
+     above the browser URL bar and only .calendar-canvas scrolls. `fixed` also
+     decouples from `#app { min-height: 100lvh }`, whose lvh−dvh tail otherwise
+     hangs below the page in-browser as a dead zone the document scrolls into.
+     The bottom nav owns its safe-area-inset-bottom, so PWA is unchanged. */
+  position: fixed;
+  inset: 0;
   overflow: hidden;
   background-color: var(--color-background);
 }
@@ -119,6 +170,45 @@ onMounted(() => {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  /* Anchor for the availability FAB. The main column sits ABOVE the mobile
+     bottom-nav in the layout, so anchoring here clears the nav for free. */
+  position: relative;
+}
+
+/* Floats over the calendar; bottom-right of the main column (above the nav).
+   Offset = canvas padding (--spacing-md here) + the desired even gap to the
+   calendar border, so the gap reads equal on the right and bottom edges. */
+.availability-fab {
+  position: absolute;
+  right: var(--spacing-xl);
+  bottom: var(--spacing-xl);
+  z-index: 10;
+}
+
+/* Edit-mode bar: in normal flow as the last child of main, so it sits below the
+   calendar and above the bottom nav without any positioning math. */
+.availability-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-top: 1px solid var(--color-outline-variant);
+  background-color: var(--color-surface);
+}
+
+.availability-disclaimer {
+  flex: 1;
+  min-width: 12rem;
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
+}
+
+.availability-actions {
+  display: flex;
+  gap: var(--spacing-sm);
 }
 
 /* Three slots: back (left), nav group (center), Today (right). Equal 1fr sides
@@ -179,6 +269,13 @@ onMounted(() => {
 
   .top-bar {
     padding: var(--spacing-md) var(--spacing-xxl);
+  }
+
+  /* Desktop canvas padding is --spacing-xxl, so add one more step for the same
+     even gap to the border. */
+  .availability-fab {
+    right: var(--spacing-3xl);
+    bottom: var(--spacing-3xl);
   }
 }
 
