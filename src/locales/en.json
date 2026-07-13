@@ -14,6 +14,12 @@
       "today": "Today",
       "more": "+{count} more"
     },
+    "availability": {
+      "edit": "Edit availability",
+      "save": "Save",
+      "cancel": "Cancel",
+      "disclaimer": "Your availability will be visible to your friends."
+    },
     "seasons": {
       "title": "Seasonal Planner",
       "empty": "No seasons scheduled",

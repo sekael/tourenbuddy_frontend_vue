@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/core/components/base-icon.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { buildMonthGrid, dayKey } from '@/features/calendar/domain/calendar-dates'
+import { useAvailabilityStore } from '@/features/calendar/presentation/stores/availability-store'
 import { TOUR_TYPE_COLORS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
@@ -16,6 +17,9 @@ const { t, locale } = useI18n({ useScope: 'global' })
 
 const toursStore = useToursStore()
 const { tours, friendTours } = storeToRefs(toursStore)
+
+const availabilityStore = useAvailabilityStore()
+const { displayDays, editing } = storeToRefs(availabilityStore)
 
 const listEl = ref<HTMLElement | null>(null)
 
@@ -90,6 +94,56 @@ function scrollTodayIntoView() {
   listEl.value?.querySelector('.day-row--today')?.scrollIntoView({ block: 'start' })
 }
 defineExpose({ scrollTodayIntoView })
+
+// ── Availability overlay + edit interaction ────────────────────────────────
+function isAvailable(date: Date): boolean {
+  return displayDays.value.has(dayKey(date))
+}
+
+// Selectable in edit mode: in-month and today-or-future (string compare is safe
+// for YYYY-MM-DD). `todayKey` above is this component's local cutoff.
+function isSelectable(date: Date, inMonth: boolean): boolean {
+  return editing.value && inMonth && dayKey(date) >= todayKey
+}
+
+// Drag-to-select: the first day pressed fixes the direction (mark vs clear) for
+// the whole gesture; every day the pointer enters gets the same direction. A
+// plain tap is a one-day gesture, so it toggles.
+const dragging = ref(false)
+const dragMode = ref<'mark' | 'clear'>('mark')
+
+function applyTo(date: Date, inMonth: boolean) {
+  if (!isSelectable(date, inMonth))
+    return
+  const key = dayKey(date)
+  const has = displayDays.value.has(key)
+  if (dragMode.value === 'mark' ? !has : has)
+    availabilityStore.toggleDay(key)
+}
+
+function onDayDown(event: PointerEvent, date: Date, inMonth: boolean) {
+  if (!isSelectable(date, inMonth))
+    return
+  // Touch pointers get implicit capture on the origin cell, which stops
+  // pointerenter firing on the days the finger slides over — so a swipe would
+  // only mark the first day. Release it so the gesture hit-tests each cell.
+  // (Mouse has no implicit capture, hence the guard: releasing throws otherwise.)
+  const el = event.target as Element
+  if (el.hasPointerCapture(event.pointerId))
+    el.releasePointerCapture(event.pointerId)
+  dragMode.value = displayDays.value.has(dayKey(date)) ? 'clear' : 'mark'
+  dragging.value = true
+  applyTo(date, inMonth)
+}
+
+function onDayEnter(date: Date, inMonth: boolean) {
+  if (dragging.value)
+    applyTo(date, inMonth)
+}
+
+function endDrag() {
+  dragging.value = false
+}
 </script>
 
 <template>
@@ -101,7 +155,7 @@ defineExpose({ scrollTodayIntoView })
       </div>
     </div>
 
-    <div class="day-grid">
+    <div class="day-grid" @pointerup="endDrag" @pointerleave="endDrag" @pointercancel="endDrag">
       <div
         v-for="(cell, i) in cells"
         :key="i"
@@ -109,7 +163,11 @@ defineExpose({ scrollTodayIntoView })
         :class="{
           'day-cell--muted': !cell.inMonth,
           'day-cell--today': dayKey(cell.date) === todayKey,
+          'day-cell--available': cell.inMonth && isAvailable(cell.date),
+          'day-cell--selectable': isSelectable(cell.date, cell.inMonth),
         }"
+        @pointerdown="onDayDown($event, cell.date, cell.inMonth)"
+        @pointerenter="onDayEnter(cell.date, cell.inMonth)"
       >
         <span class="day-number">{{ cell.date.getDate() }}</span>
         <div v-if="cell.inMonth" class="pills">
@@ -134,12 +192,18 @@ defineExpose({ scrollTodayIntoView })
 
   <!-- Mobile: vertical day-tile list — every day a row (incl. empty), so tour
        chips have full width to be legible and free days stay visible. -->
-  <ul v-else ref="listEl" class="day-list">
+  <ul v-else ref="listEl" class="day-list" @pointerup="endDrag" @pointerleave="endDrag" @pointercancel="endDrag">
     <li
       v-for="row in monthDays"
       :key="dayKey(row.date)"
       class="day-row"
-      :class="{ 'day-row--today': row.isToday }"
+      :class="{
+        'day-row--today': row.isToday,
+        'day-row--available': isAvailable(row.date),
+        'day-row--selectable': isSelectable(row.date, true),
+      }"
+      @pointerdown="onDayDown($event, row.date, true)"
+      @pointerenter="onDayEnter(row.date, true)"
     >
       <div class="day-head">
         <span class="day-weekday">{{ weekdayLabel(row.date) }}</span>
@@ -222,6 +286,20 @@ defineExpose({ scrollTodayIntoView })
   opacity: 1;
 }
 
+/* Own availability: light-green background. After --today so it wins on a day
+   that is both today and available. */
+.day-cell--available {
+  background-color: color-mix(in srgb, var(--color-success) 16%, transparent);
+  opacity: 1;
+}
+
+/* Editable future day: pointer + suppress scroll/selection so drag marks a run. */
+.day-cell--selectable {
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
 .day-number {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
@@ -295,6 +373,16 @@ defineExpose({ scrollTodayIntoView })
   /* Land below the container's rounded top corner when scrolled to, so the
      outline isn't clipped. scrollIntoView honours scroll-margin. */
   scroll-margin-top: var(--radius-md);
+}
+
+.day-row--available {
+  background-color: color-mix(in srgb, var(--color-success) 16%, transparent);
+}
+
+.day-row--selectable {
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
 }
 
 .day-head {
