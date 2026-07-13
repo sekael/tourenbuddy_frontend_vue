@@ -185,7 +185,7 @@ function onDayTap(date: Date) {
             :key="entry.tour.id"
             type="button"
             class="pill"
-            :class="{ 'pill--friend': entry.isFriend }"
+            :style="entry.tour.tourType ? { backgroundColor: TOUR_TYPE_COLORS[entry.tour.tourType] } : undefined"
             @click="emit('select', entry.tour.id)"
           >
             <BaseIcon v-if="entry.tour.tourType" :name="TOUR_TYPE_ICONS[entry.tour.tourType]" size="xs" />
@@ -333,10 +333,6 @@ function onDayTap(date: Date) {
   font-weight: var(--font-weight-medium);
   cursor: pointer;
   min-width: 0;
-}
-
-.pill--friend {
-  background-color: var(--color-friend);
 }
 
 .pill-name {
