@@ -108,13 +108,20 @@ shown (matching the mockup's bottom "Cancel / Save Changes").
 - **Alternative**: top-bar button — rejected, crowds an already-tight bar and is
   out of thumb reach on mobile.
 
-### D6: Drag/swipe selection
-Pointer events on the day grid/list: `pointerdown` on a selectable day starts a
-drag and records the intended direction (mark vs clear) from that first day;
-`pointerenter`/`pointermove` hit-testing applies the same direction to each
-consecutive day entered until `pointerup`. Past days are skipped.
-- **Why**: pointer events unify mouse + touch; deriving direction from the first
-  day matches the issue's "swipe across to mark them all available".
+### D6: Selection — desktop drag, mobile tap
+**Desktop grid:** pointer events. `pointerdown` on a selectable day starts a drag
+and records the intended direction (mark vs clear) from that first day;
+`pointerenter` hit-testing applies the same direction to each consecutive day
+entered until `pointerup`. Past days are skipped.
+
+**Mobile list:** single tap only (`@click` toggle), no swipe-select. Swipe would
+require `touch-action: none` on day rows, which kills native list scrolling — the
+day list must stay scrollable in edit mode. `click` also naturally distinguishes
+a tap from a scroll (the browser suppresses `click` when the touch becomes a
+scroll), so a scroll gesture never toggles a day.
+- **Why**: on a phone-first app, keeping the list scrollable in edit mode beats
+  swipe-select; the issue's "swipe across to mark them all" is honored on the
+  desktop grid where there is no scroll conflict.
 
 ### D7: One canonical timezone for availability dates
 An availability `date` is a plain SQL `date` with no time. To keep "today" (the

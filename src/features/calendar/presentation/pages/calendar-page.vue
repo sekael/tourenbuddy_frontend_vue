@@ -153,11 +153,13 @@ onMounted(() => {
 .calendar-page {
   display: flex;
   flex-direction: column-reverse;
-  width: 100%;
-  /* dvh (not lvh): tracks the CURRENT visible viewport so the bottom nav clears
-     the mobile browser URL bar. lvh = chrome-retracted height, which pushes the
-     nav under Safari's bottom bar in-browser (PWA has no chrome, so identical). */
-  height: 100dvh;
+  /* Pin to the viewport so the PAGE itself never scrolls — the bottom nav clamps
+     above the browser URL bar and only .calendar-canvas scrolls. `fixed` also
+     decouples from `#app { min-height: 100lvh }`, whose lvh−dvh tail otherwise
+     hangs below the page in-browser as a dead zone the document scrolls into.
+     The bottom nav owns its safe-area-inset-bottom, so PWA is unchanged. */
+  position: fixed;
+  inset: 0;
   overflow: hidden;
   background-color: var(--color-background);
 }

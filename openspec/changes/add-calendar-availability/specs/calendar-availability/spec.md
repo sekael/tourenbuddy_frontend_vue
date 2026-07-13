@@ -88,19 +88,22 @@ previously marked future day can be cleared in the same session.
 ### Requirement: Toggle and drag day selection
 
 In edit mode, tapping a selectable day SHALL toggle its availability: an unmarked
-day becomes marked, a marked day becomes unmarked. Dragging or swiping across a
-run of consecutive days SHALL mark all days in the run as available. Days before
-today SHALL NOT be selectable.
+day becomes marked, a marked day becomes unmarked. On the desktop grid, dragging
+across a run of consecutive days SHALL apply the first day's direction (mark or
+clear) to all days in the run. On mobile the calendar list SHALL remain
+scrollable in edit mode, so selection is by single tap only (no swipe-select).
+Days before today SHALL NOT be selectable.
 
 #### Scenario: Tap toggles a day on and off
 
 - **WHEN** the user taps an unmarked future day, then taps it again
 - **THEN** the first tap marks it available and the second tap clears it
 
-#### Scenario: Drag marks a consecutive run
+#### Scenario: Drag marks a consecutive run (desktop)
 
-- **WHEN** the user drags across three consecutive future days
-- **THEN** all three days are marked available
+- **WHEN** the user drags the mouse across three consecutive future days on the
+  desktop grid
+- **THEN** all three days take the first day's direction (marked available)
 
 #### Scenario: Past days are not selectable
 
