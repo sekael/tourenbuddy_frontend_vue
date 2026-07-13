@@ -788,10 +788,14 @@ function handleDialogClose() {
 
 <style scoped>
 .map-page {
-  position: relative;
-  width: 100%;
-  height: -webkit-fill-available;
-  height: 100lvh;
+  /* fixed (not relative + 100lvh): pin the page to the viewport so the document
+     never scrolls. Under `#app { min-height: 100lvh }`, a 100lvh page is taller
+     than the visible browser viewport (lvh = chrome-hidden height), so the
+     document scrolled and the map slid under the fixed sheet, opening a gap above
+     the URL bar. `fixed inset:0` still fills the safe areas in PWA (viewport-fit
+     cover) and stays a containing block for the absolutely-positioned overlays. */
+  position: fixed;
+  inset: 0;
   overflow: hidden;
 }
 
