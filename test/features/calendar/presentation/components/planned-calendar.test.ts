@@ -2,6 +2,7 @@ import { createTestingPinia } from '@pinia/testing'
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PlannedCalendar from '@/features/calendar/presentation/components/planned-calendar.vue'
+import { TOUR_TYPE_COLORS } from '@/features/tours/data/models/tour-type'
 
 // The component renders a grid on desktop and a day-tile list on mobile, gated by
 // `useIsDesktop()` (matchMedia). Pin the viewport so each suite is deterministic.
@@ -65,8 +66,10 @@ describe('plannedCalendar — desktop grid', () => {
     )
     expect(wrapper.text()).toContain('Partner Trip')
     expect(wrapper.text()).not.toContain('Stranger Trip')
-    // Partner pill carries the friend styling variant.
-    expect(wrapper.find('.pill--friend').exists()).toBe(true)
+    // Pills are colored by tour type (matching mobile), not by friend/own — the
+    // partner pill's background is its hiking color, with no friend variant.
+    expect(wrapper.find('.pill--friend').exists()).toBe(false)
+    expect(wrapper.find('.pill').attributes('style')).toContain(TOUR_TYPE_COLORS.hiking)
   })
 
   it('overflows to a "+N more" affordance past the pill cap', () => {
