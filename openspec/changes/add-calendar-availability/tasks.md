@@ -47,5 +47,5 @@
 
 - [x] 9.1 `npx eslint --fix` on changed files — clean (reordered imports only)
 - [x] 9.2 `npm run type-check` passes; `npm run test` → 1096 pass, only the 3 `save()`-gap tests red
-- [ ] 9.3 Prompt the user to commit with a ready-to-copy conventional commit message — do NOT run `git commit` (blocked on the `save()` gap + 7.2)
-- [ ] 9.4 Prompt the user to `supabase db push` to prod (deploy step — never run unprompted) and to push the branch + open a PR to `main`
+- [x] 9.3 Prompt the user to commit with a ready-to-copy conventional commit message — do NOT run `git commit` (blocked on the `save()` gap + 7.2)
+- [x] 9.4 Prompt the user to `supabase db push` to prod (deploy step — never run unprompted) and to push the branch + open a PR to `main`

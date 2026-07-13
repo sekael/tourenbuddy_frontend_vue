@@ -144,6 +144,15 @@ function onDayEnter(date: Date, inMonth: boolean) {
 function endDrag() {
   dragging.value = false
 }
+
+// Mobile: single-tap toggle only (no drag). `click` fires on a genuine tap but
+// is suppressed when the touch turns into a scroll — so the day list stays
+// scrollable in edit mode, unlike a pointerdown-driven gesture.
+function onDayTap(date: Date) {
+  if (!isSelectable(date, true))
+    return
+  availabilityStore.toggleDay(dayKey(date))
+}
 </script>
 
 <template>
@@ -192,7 +201,7 @@ function endDrag() {
 
   <!-- Mobile: vertical day-tile list — every day a row (incl. empty), so tour
        chips have full width to be legible and free days stay visible. -->
-  <ul v-else ref="listEl" class="day-list" @pointerup="endDrag" @pointerleave="endDrag" @pointercancel="endDrag">
+  <ul v-else ref="listEl" class="day-list">
     <li
       v-for="row in monthDays"
       :key="dayKey(row.date)"
@@ -202,8 +211,7 @@ function endDrag() {
         'day-row--available': isAvailable(row.date),
         'day-row--selectable': isSelectable(row.date, true),
       }"
-      @pointerdown="onDayDown($event, row.date, true)"
-      @pointerenter="onDayEnter(row.date, true)"
+      @click="onDayTap(row.date)"
     >
       <div class="day-head">
         <span class="day-weekday">{{ weekdayLabel(row.date) }}</span>
@@ -216,7 +224,7 @@ function endDrag() {
           type="button"
           class="pill"
           :style="entry.tour.tourType ? { backgroundColor: TOUR_TYPE_COLORS[entry.tour.tourType] } : undefined"
-          @click="emit('select', entry.tour.id)"
+          @click.stop="emit('select', entry.tour.id)"
         >
           <BaseIcon v-if="entry.tour.tourType" :name="TOUR_TYPE_ICONS[entry.tour.tourType]" size="xs" />
           <span class="pill-name">{{ entry.tour.name ?? t('tours.infoSheet.unnamedTour') }}</span>
@@ -379,10 +387,10 @@ function endDrag() {
   background-color: color-mix(in srgb, var(--color-success) 16%, transparent);
 }
 
+/* Mobile toggles on tap only (no drag), so keep native scroll — no
+   `touch-action: none` here, unlike the desktop grid cells. */
 .day-row--selectable {
   cursor: pointer;
-  touch-action: none;
-  user-select: none;
 }
 
 .day-head {

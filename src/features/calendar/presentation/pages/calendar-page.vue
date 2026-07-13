@@ -154,7 +154,10 @@ onMounted(() => {
   display: flex;
   flex-direction: column-reverse;
   width: 100%;
-  height: 100lvh;
+  /* dvh (not lvh): tracks the CURRENT visible viewport so the bottom nav clears
+     the mobile browser URL bar. lvh = chrome-retracted height, which pushes the
+     nav under Safari's bottom bar in-browser (PWA has no chrome, so identical). */
+  height: 100dvh;
   overflow: hidden;
   background-color: var(--color-background);
 }
