@@ -23,7 +23,7 @@
 
 ## 5. Edit-mode UI (`calendar-page.vue`)
 
-- [x] 5.1 Add an extended FAB (icon + visible localized "Edit availability" text) — new `core/components/extended-fab.vue` reusing round-action-button's surface/shadow tokens
+- [x] 5.1 Add an extended FAB (icon + visible localized "Edit availability" text) — new `core/components/extended-fab.vue` reusing round-action-button's surface/shadow tokens; corner radius set to `--radius-md` to match the calendar surface (not a detached pill)
 - [x] 5.2 Show the FAB bottom-right on the Planned view only; anchored to `.calendar-main` (which sits above the mobile bottom nav), so it clears the nav without hardcoding its height; hidden on Seasons and while editing
 - [x] 5.3 In edit mode, show a bottom action bar with **Save**/**Cancel** and the friend-visibility disclaimer
 - [x] 5.4 Wire Save/Cancel to the store's diff-save / discard actions; view-switch + back also discard silently
@@ -37,7 +37,7 @@
 ## 7. Tests
 
 - [x] 7.1 Store unit tests (`test/features/calendar/.../availability-store.test.ts`) for edge cases: correct added/removed diff arrays, no RPC when unchanged, failed RPC keeps editing open + sets error, cancel discards. Repository mocked via `vi.hoisted` double. **3 of 4 are RED until the `save()` gap is filled** — that is their purpose.
-- [ ] 7.2 Component test for edit-mode toggle + cancel discarding, and navigating away (view switch) discarding without a prompt (edge/failure paths) — still to write
+- [x] 7.2 Component tests: `planned-calendar-availability.test.ts` (edit-mode selectable-day gating, past-day + not-editing pointerdown ignored, overlay from saved set) and `calendar-page.test.ts` (FAB → enterEdit; view-switch + back discard via cancel, not called when not editing)
 
 ## 8. i18n
 

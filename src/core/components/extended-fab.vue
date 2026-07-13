@@ -20,7 +20,9 @@ const emit = defineEmits<{ click: [] }>()
   gap: var(--spacing-xs);
   height: 52px;
   padding: 0 var(--spacing-lg);
-  border-radius: var(--radius-pill);
+  /* Match the calendar surface's corner radius so the FAB reads as part of it,
+     not a detached pill. */
+  border-radius: var(--radius-md);
   background-color: var(--color-primary);
   color: var(--color-on-primary);
   box-shadow: var(--shadow-md);

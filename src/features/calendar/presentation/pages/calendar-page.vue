@@ -170,11 +170,13 @@ onMounted(() => {
   position: relative;
 }
 
-/* Floats over the calendar; bottom-right of the main column (above the nav). */
+/* Floats over the calendar; bottom-right of the main column (above the nav).
+   Offset = canvas padding (--spacing-md here) + the desired even gap to the
+   calendar border, so the gap reads equal on the right and bottom edges. */
 .availability-fab {
   position: absolute;
-  right: var(--spacing-lg);
-  bottom: var(--spacing-lg);
+  right: var(--spacing-xl);
+  bottom: var(--spacing-xl);
   z-index: 10;
 }
 
@@ -264,9 +266,11 @@ onMounted(() => {
     padding: var(--spacing-md) var(--spacing-xxl);
   }
 
+  /* Desktop canvas padding is --spacing-xxl, so add one more step for the same
+     even gap to the border. */
   .availability-fab {
-    right: var(--spacing-xxl);
-    bottom: var(--spacing-xxl);
+    right: var(--spacing-3xl);
+    bottom: var(--spacing-3xl);
   }
 }
 
