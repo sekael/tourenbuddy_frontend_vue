@@ -16,6 +16,8 @@ export interface PendingIntent {
   selectTourId?: string
   /** Which calendar view the selection came from, so detail-back can return. */
   origin?: 'cal-seasons' | 'cal-planned'
+  /** Planned-calendar dayKey the tour was opened from, so back re-opens its detail list. */
+  originDay?: string
 }
 
 export const useMapStore = defineStore('map', () => {

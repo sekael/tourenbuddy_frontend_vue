@@ -128,4 +128,17 @@ describe('plannedCalendar — mobile day-tile list', () => {
     const wrapper = mountCalendar([], [], new Date())
     expect(wrapper.findAll('.day-row--today')).toHaveLength(1)
   })
+
+  it('scrolls the list to a day when its detail is re-opened (back-navigation)', async () => {
+    const day = new Date(2024, 5, 15)
+    const spy = vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(() => {})
+    const wrapper = mountCalendar([tour('t1', 'Solo', day)], [])
+
+    ;(wrapper.vm as any).openDetailForDay(day)
+    await wrapper.vm.$nextTick()
+
+    expect(spy).toHaveBeenCalled()
+    expect((spy.mock.instances[0] as Element).getAttribute('data-day')).toBe('2024-06-15')
+    spy.mockRestore()
+  })
 })

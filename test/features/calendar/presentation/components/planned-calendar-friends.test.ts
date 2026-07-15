@@ -163,4 +163,22 @@ describe('plannedCalendar — friends\' availability', () => {
     await emptyCell.trigger('click')
     expect(wrapper.find('.detail-body').exists()).toBe(false)
   })
+
+  it('emits select with the tour id and its dayKey from the detail list', async () => {
+    const day = new Date(2024, 5, 15)
+    const wrapper = mountCalendar([], [], [tour('t1', 'Ridge Loop', day)])
+    await contentCell(wrapper).trigger('click') // open the day-detail list
+    await wrapper.find('.detail-row').trigger('click') // tap the tour row
+
+    // dayKey lets the page re-open this day's detail list on back-navigation.
+    expect(wrapper.emitted('select')?.[0]).toEqual(['t1', '2024-06-15'])
+  })
+
+  it('re-opens a day\'s detail list via the exposed openDetailForDay', async () => {
+    const wrapper = mountCalendar([{ user_id: 'u1', date: '2024-06-15' }], [['u1', 'Alice']])
+    expect(wrapper.find('.detail-body').exists()).toBe(false)
+    ;(wrapper.vm as any).openDetailForDay(new Date(2024, 5, 15))
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('.detail-body').exists()).toBe(true)
+  })
 })

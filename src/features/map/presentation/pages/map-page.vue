@@ -135,6 +135,9 @@ const pendingFlyTo = ref(false)
 // sheet's back button target. `list` returns to the tours overlay; `cal-*`
 // returns to the calendar route on the matching view; `null` = no back offered.
 const tourDetailOrigin = ref<'list' | 'cal-seasons' | 'cal-planned' | null>(null)
+// Planned-calendar dayKey the tour was opened from — carried back so the detail
+// list re-opens on that day.
+const tourDetailOriginDay = ref<string | null>(null)
 
 // Contact id to auto-open in the contacts sheet (from tour chip edit-contact action)
 const editContactId = ref<string | null>(null)
@@ -323,15 +326,21 @@ function handleTourSelectedFromList(tourId: string) {
 
 function handleTourInfoBack() {
   const origin = tourDetailOrigin.value
+  const originDay = tourDetailOriginDay.value
   tourDetailOrigin.value = null
+  tourDetailOriginDay.value = null
   mapStore.selectTour(null)
   clearTourPreview()
   // Calendar-originated detail returns to the calendar on its originating view;
-  // list-originated returns to the tours overlay (today's behavior).
+  // list-originated returns to the tours overlay (today's behavior). For a planned
+  // selection, carry the dayKey so the calendar re-opens that day's detail list.
   if (origin === 'cal-seasons' || origin === 'cal-planned') {
     router.push({
       name: 'calendar',
-      query: { view: origin === 'cal-seasons' ? 'seasons' : 'planned' },
+      query: {
+        view: origin === 'cal-seasons' ? 'seasons' : 'planned',
+        ...(origin === 'cal-planned' && originDay ? { day: originDay } : {}),
+      },
     })
     return
   }
@@ -390,6 +399,7 @@ onMounted(async () => {
   }
   else if (intent?.selectTourId) {
     tourDetailOrigin.value = intent.origin ?? null
+    tourDetailOriginDay.value = intent.originDay ?? null
     mapStore.selectTour(intent.selectTourId)
   }
 })

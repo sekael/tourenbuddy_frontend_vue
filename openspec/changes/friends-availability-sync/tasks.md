@@ -51,11 +51,13 @@
 - [x] 8.4 Whole non-empty day cell/row opens a per-day detail list (view mode); edit mode still toggles availability
 - [x] 8.5 Detail list = tours first, then available friends; `AdaptiveOverlay` (bottom sheet mobile / dialog desktop) over the calendar; tour row → open on map, friend row → contact-action menu; close returns to calendar
 - [x] 8.6 Replace friend-only "and more" sheet + i18n (`toursHeading`/`friendsHeading`); update component tests for cap-1 + detail-list behavior
+- [x] 8.7 Bug: friend chip name crashed the sort when a profile `firstName` was null — null-safe `[firstName, lastName].filter(Boolean).join(' ')`
+- [x] 8.8 Returning from a tour opened off the calendar re-opens that day's detail list: thread the `dayKey` through the map intent (`originDay`) → back-nav `?day=` query → `openDetailForDay` on the planned calendar (one-shot, param cleared on consume). Also scrolls the mobile day-list to that day (`data-day` row anchor) so closing the sheet lands where it started
 
 ## 7. Finalize
 
 - [x] 7.1 `npx eslint . --fix` — zero warnings; review diff size (editor format-on-save fights antfu)
 - [x] 7.2 `npm run type-check`
-- [ ] 7.3 Prompt user to commit (do NOT commit) with message: `feat(calendar): sync and show friends' availability (#244)`
-- [ ] 7.4 Prompt user to push branch and open a PR to `main`
-- [ ] 7.5 Prompt user (do NOT run unprompted) to `supabase db push` the new migration to prod after PR review
+- [x] 7.3 Prompt user to commit (do NOT commit) with message: `feat(calendar): sync and show friends' availability (#244)`
+- [x] 7.4 Prompt user to push branch and open a PR to `main`
+- [x] 7.5 Prompt user (do NOT run unprompted) to `supabase db push` the new migration to prod after PR review

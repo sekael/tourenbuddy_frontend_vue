@@ -2,7 +2,7 @@
 import type { Contact } from '@/features/contacts/domain/entities/contact'
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
@@ -20,7 +20,12 @@ import { TOUR_TYPE_COLORS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
 const props = defineProps<{ viewDate: Date }>()
-const emit = defineEmits<{ select: [tourId: string], editContact: [contactId: string] }>()
+const emit = defineEmits<{
+  // dayKey lets the page restore this day's detail list when the user navigates
+  // back from the tour it opened.
+  select: [tourId: string, dayKey?: string]
+  editContact: [contactId: string]
+}>()
 
 const { t, locale } = useI18n({ useScope: 'global' })
 
@@ -108,10 +113,21 @@ const monthDays = computed<DayRow[]>(() =>
     })),
 )
 
-function scrollTodayIntoView() {
-  listEl.value?.querySelector('.day-row--today')?.scrollIntoView({ block: 'start' })
+// Scroll the mobile day-list to a given row (no-op on the desktop grid, which
+// has no list). Rows carry `data-day` = their dayKey.
+function scrollDayIntoView(key: string) {
+  listEl.value?.querySelector(`[data-day="${key}"]`)?.scrollIntoView({ block: 'start' })
 }
-defineExpose({ scrollTodayIntoView })
+function scrollTodayIntoView() {
+  scrollDayIntoView(todayKey)
+}
+// Exposed so the page can re-open a day's detail list on back-navigation, with the
+// mobile list scrolled to that day (so closing the sheet lands where it started).
+function openDetailForDay(date: Date) {
+  openDetail(date)
+  nextTick(() => scrollDayIntoView(dayKey(date)))
+}
+defineExpose({ scrollTodayIntoView, openDetailForDay })
 
 // ── Availability overlay + edit interaction ────────────────────────────────
 function isAvailable(date: Date): boolean {
@@ -305,10 +321,12 @@ function closeDetail() {
   detailDate.value = null
 }
 
-// Tour row → open the tour (on the map), closing the detail list first.
+// Tour row → open the tour (on the map), carrying the day so the page can
+// re-open this detail list on back-navigation.
 function selectFromDetail(tourId: string) {
+  const day = detailDate.value ? dayKey(detailDate.value) : undefined
   closeDetail()
-  emit('select', tourId)
+  emit('select', tourId, day)
 }
 </script>
 
@@ -353,6 +371,7 @@ function selectFromDetail(tourId: string) {
     <li
       v-for="row in monthDays"
       :key="dayKey(row.date)"
+      :data-day="dayKey(row.date)"
       class="day-row"
       :class="{
         'day-row--today': row.isToday,

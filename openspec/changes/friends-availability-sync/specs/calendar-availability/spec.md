@@ -56,8 +56,9 @@ Each friend chip SHALL be labelled with the viewer's own contact name for that
 friend (the name as stored in the viewer's contacts), because every friend is by
 construction one of the viewer's contacts. When a friend's `userId` has not yet
 been resolved to a contact, the chip SHALL fall back to the friend's registered
-profile name (resolved by user id) and render without an actionable menu, rather
-than showing a blank chip or erroring.
+profile name (resolved by user id), never showing a blank chip or erroring. Friend
+chips in the cell are display-only — contact actions are offered from the per-day
+detail list (see "Friend rows expose call and message actions from a contact").
 
 #### Scenario: Friend chip on a day the viewer is not available
 
@@ -78,9 +79,9 @@ than showing a blank chip or erroring.
 
 #### Scenario: Friend chips coexist with planned tours on the same day
 
-- **WHEN** a day has both a planned tour and an available friend
+- **WHEN** a day has exactly one planned tour and exactly one available friend
 - **THEN** the tour is shown as a tour pill and the friend as a separate neutral
-  chip, each capped independently, without one suppressing the other
+  chip (each kind rendered independently, neither suppressing the other)
 
 ### Requirement: Crowded days collapse into a per-day detail list
 
@@ -105,6 +106,12 @@ scroll position.
 
 - **WHEN** a day has exactly one tour and exactly one available friend
 - **THEN** the cell shows that tour's pill and that friend's chip (no count chips)
+
+#### Scenario: Returning from a tour re-opens its day
+
+- **WHEN** the viewer opens a tour from a day's detail list and then navigates
+  back to the calendar
+- **THEN** the detail list re-opens for the day that tour was on
 
 #### Scenario: Tapping a non-empty day opens its detail list
 

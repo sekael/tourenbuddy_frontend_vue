@@ -62,7 +62,10 @@ function shiftMonth(delta: number) {
 }
 // Ref to the Planned view so "Today" can also scroll the mobile list to the
 // current day after the month has switched (and the list re-rendered).
-const plannedCalendar = ref<{ scrollTodayIntoView: () => void } | null>(null)
+const plannedCalendar = ref<{
+  scrollTodayIntoView: () => void
+  openDetailForDay: (date: Date) => void
+} | null>(null)
 function goToday() {
   currentMonth.value = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
   nextTick(() => plannedCalendar.value?.scrollTodayIntoView?.())
@@ -79,10 +82,11 @@ function goBack() {
   mapStore.setPendingIntent({ openTours: true })
   router.push({ name: 'map' })
 }
-function selectTour(tourId: string) {
+function selectTour(tourId: string, day?: string) {
   mapStore.setPendingIntent({
     selectTourId: tourId,
     origin: activeView.value === 'seasons' ? 'cal-seasons' : 'cal-planned',
+    originDay: day,
   })
   router.push({ name: 'map' })
 }
@@ -99,9 +103,25 @@ onMounted(() => {
   availabilityStore.loadFriends()
   if (contactsStore.contacts.length === 0)
     contactsStore.loadContacts()
-  // Open on today, same as the Today button (no-op on desktop's month grid).
-  if (activeView.value === 'planned')
+
+  // Returning from a tour opened off the calendar: re-open that day's detail list.
+  // The `day` query param is a one-shot handoff — consume it and drop it so it
+  // doesn't re-fire on later interactions.
+  const focusDay = typeof route.query.day === 'string' ? route.query.day : null
+  if (activeView.value !== 'planned')
+    return
+  if (focusDay) {
+    const [y, m, d] = focusDay.split('-').map(Number)
+    currentMonth.value = new Date(y!, m! - 1, 1) // show the month that day lives in
+    nextTick(() => {
+      plannedCalendar.value?.openDetailForDay(new Date(y!, m! - 1, d!))
+      router.replace({ name: 'calendar', query: { view: 'planned' } })
+    })
+  }
+  else {
+    // Open on today, same as the Today button (no-op on desktop's month grid).
     nextTick(() => plannedCalendar.value?.scrollTodayIntoView?.())
+  }
 })
 </script>
 
