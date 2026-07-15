@@ -12,7 +12,10 @@
       "prevMonth": "Vorheriger Monat",
       "nextMonth": "Nächster Monat",
       "today": "Heute",
-      "more": "+{count} weitere"
+      "tourCount": "{count} Touren",
+      "friendCount": "{count} Freunde",
+      "toursHeading": "Touren",
+      "friendsHeading": "Verfügbare Freunde"
     },
     "availability": {
       "edit": "Verfügbarkeit angeben",

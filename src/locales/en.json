@@ -12,7 +12,10 @@
       "prevMonth": "Previous month",
       "nextMonth": "Next month",
       "today": "Today",
-      "more": "+{count} more"
+      "tourCount": "{count} tours",
+      "friendCount": "{count} friends",
+      "toursHeading": "Tours",
+      "friendsHeading": "Available friends"
     },
     "availability": {
       "edit": "Edit availability",

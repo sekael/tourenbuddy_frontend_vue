@@ -72,15 +72,15 @@ describe('plannedCalendar — desktop grid', () => {
     expect(wrapper.find('.pill').attributes('style')).toContain(TOUR_TYPE_COLORS.hiking)
   })
 
-  it('overflows to a "+N more" affordance past the pill cap', () => {
+  it('collapses multiple tours into a single count chip (no individual pill)', () => {
     const day = new Date(2024, 5, 10)
     const wrapper = mountCalendar(
       [tour('a', 'One', day), tour('b', 'Two', day), tour('c', 'Three', day)],
       [],
     )
-    // Cap is 2 pills; the third collapses into the overflow affordance.
-    expect(wrapper.findAll('.pill')).toHaveLength(2)
-    expect(wrapper.find('.pill-more').exists()).toBe(true)
+    // >1 tour → one generic count chip, no individual pill; the cell opens the list.
+    expect(wrapper.find('.pill').exists()).toBe(false)
+    expect(wrapper.findAll('.count-chip')).toHaveLength(1)
   })
 
   it('highlights exactly one cell — today — when viewing the current month', () => {
@@ -104,15 +104,15 @@ describe('plannedCalendar — mobile day-tile list', () => {
     expect(wrapper.findAll('.day-row')).toHaveLength(30)
   })
 
-  it('shows every tour on a busy day with no overflow cap', () => {
+  it('collapses multiple tours into a single count chip (no individual pill)', () => {
     const day = new Date(2024, 5, 10)
     const wrapper = mountCalendar(
       [tour('a', 'One', day), tour('b', 'Two', day), tour('c', 'Three', day)],
       [],
     )
-    // Unlike the grid, the list has vertical room — all three show, no "+N more".
-    expect(wrapper.findAll('.pill')).toHaveLength(3)
-    expect(wrapper.find('.pill-more').exists()).toBe(false)
+    // Same collapse as the grid; the row opens the day-detail list for the rest.
+    expect(wrapper.find('.pill').exists()).toBe(false)
+    expect(wrapper.findAll('.count-chip')).toHaveLength(1)
   })
 
   it('still drops own tours without a planned date', () => {
@@ -127,5 +127,18 @@ describe('plannedCalendar — mobile day-tile list', () => {
   it('highlights exactly one row — today — when viewing the current month', () => {
     const wrapper = mountCalendar([], [], new Date())
     expect(wrapper.findAll('.day-row--today')).toHaveLength(1)
+  })
+
+  it('scrolls the list to a day when its detail is re-opened (back-navigation)', async () => {
+    const day = new Date(2024, 5, 15)
+    const spy = vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(() => {})
+    const wrapper = mountCalendar([tour('t1', 'Solo', day)], [])
+
+    ;(wrapper.vm as any).openDetailForDay(day)
+    await wrapper.vm.$nextTick()
+
+    expect(spy).toHaveBeenCalled()
+    expect((spy.mock.instances[0] as Element).getAttribute('data-day')).toBe('2024-06-15')
+    spy.mockRestore()
   })
 })
