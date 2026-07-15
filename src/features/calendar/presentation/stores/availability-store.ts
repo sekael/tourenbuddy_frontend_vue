@@ -1,19 +1,33 @@
+import type { AvailabilityRow } from '@/features/calendar/data/models/availability'
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useLogger } from '@/core/logging/use-logger'
+import { useRealtimeBroadcast } from '@/core/realtime/use-realtime-broadcast'
+import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
+import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { SupabaseAvailabilityRepository } from '@/features/calendar/data/repositories/availability-repository-impl'
 import { todayKey } from '@/features/calendar/domain/calendar-dates'
+import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 
 const repository = new SupabaseAvailabilityRepository()
 
 export const useAvailabilityStore = defineStore('availability', () => {
   const logger = useLogger('AvailabilityStore')
+  const authStore = useAuthStore()
+  const friendshipsStore = useFriendshipsStore()
 
   // Saved own availability (dayKeys), drives the view-mode overlay.
   const savedDays = ref<Set<string>>(new Set())
   // In-edit working selection; the baseline is the set captured on enterEdit.
   const workingDays = ref<Set<string>>(new Set())
   let baseline = new Set<string>()
+
+  // Accepted friends' future availability (raw rows), synced via realtime. The
+  // component derives the per-day, per-friend view; the store just holds the set.
+  const friendDays = ref<AvailabilityRow[]>([])
+  // Monotonic token: only the latest-initiated loadFriends assigns, so a slow
+  // stale refetch (racing an optimistic friend-set change) can't blank the list.
+  let friendsSeq = 0
 
   const editing = ref(false)
   const loading = ref(false)
@@ -40,6 +54,84 @@ export const useAvailabilityStore = defineStore('availability', () => {
       loading.value = false
     }
   }
+
+  /** Load accepted friends' future availability — synced live thereafter. */
+  async function loadFriends() {
+    if (!authStore.currentUser?.id)
+      return
+    const req = ++friendsSeq
+    try {
+      const rows = await repository.listFriendsFrom(todayKey())
+      if (req === friendsSeq)
+        friendDays.value = rows
+    }
+    catch (err) {
+      logger.error('Failed to load friend availability', err)
+    }
+  }
+
+  const realtimeEnabled = computed(() => authStore.isAuthenticated)
+
+  // Own availability across the viewer's devices: postgres_changes on own rows.
+  useRealtimeSubscription({
+    key: () => {
+      const uid = authStore.currentUser?.id
+      return authStore.isAuthenticated && uid ? `availability-${uid}` : null
+    },
+    enabled: () => realtimeEnabled.value,
+    bindings: () => {
+      const uid = authStore.currentUser?.id
+      return uid ? [{ event: '*', table: 'user_availability', filter: `user_id=eq.${uid}` }] : []
+    },
+    onChange: load,
+    onSubscribed: () => load(),
+  })
+
+  // Friends' availability: a friend's write pings availability:<uid> to refetch.
+  useRealtimeBroadcast({
+    topic: () => {
+      const uid = authStore.currentUser?.id
+      return uid ? `availability:${uid}` : null
+    },
+    enabled: () => realtimeEnabled.value,
+    event: 'refetch',
+    onMessage: loadFriends,
+    onSubscribed: loadFriends,
+  })
+
+  // Friend-set change (add / remove) → refetch, dropping any ex-friend's rows.
+  watch(
+    () => [...friendshipsStore.friendUserIds].sort().join(','),
+    (n, o) => {
+      if (n !== o)
+        loadFriends()
+    },
+  )
+
+  // accept / removeFriendship mutate friendUserIds optimistically (pre-commit), so
+  // the watch above can fire before RLS sees the row — refetch post-commit too.
+  friendshipsStore.$onAction(({ name, after }) => {
+    if (name !== 'accept' && name !== 'removeFriendship')
+      return
+    after(() => loadFriends())
+  })
+
+  // Clear friend state on sign-out (channel teardown handled by the primitives).
+  watch(
+    () => authStore.isAuthenticated,
+    (authed) => {
+      if (!authed) {
+        friendDays.value = []
+        friendsSeq++
+      }
+    },
+  )
+
+  // Store is created lazily by the first Planned view; if the session is already
+  // live, the friend-broadcast onSubscribed will refetch, but kick an initial load
+  // so friends show even before the channel subscribes.
+  if (authStore.isAuthenticated)
+    void loadFriends()
 
   /** Enter edit mode, seeding the working set from what's already loaded. */
   function enterEdit() {
@@ -95,11 +187,13 @@ export const useAvailabilityStore = defineStore('availability', () => {
     savedDays,
     workingDays,
     displayDays,
+    friendDays,
     editing,
     loading,
     saving,
     error,
     load,
+    loadFriends,
     enterEdit,
     toggleDay,
     cancel,

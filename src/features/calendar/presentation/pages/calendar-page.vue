@@ -8,6 +8,8 @@ import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import ExtendedFab from '@/core/components/extended-fab.vue'
 import { useAvailabilityStore } from '@/features/calendar/presentation/stores/availability-store'
+import ContactsListSheet from '@/features/contacts/presentation/components/contacts-list-sheet.vue'
+import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import CalendarNav from '../components/calendar-nav.vue'
@@ -21,8 +23,20 @@ const route = useRoute()
 const router = useRouter()
 const mapStore = useMapStore()
 const toursStore = useToursStore()
+const contactsStore = useContactsStore()
 const availabilityStore = useAvailabilityStore()
 const { editing, saving } = storeToRefs(availabilityStore)
+
+// Friend chip → contact-action menu → Edit opens the contact over the calendar,
+// mirroring map-page. `initial-contact-id` deep-links the sheet to that contact;
+// closing returns to the calendar.
+const editContactId = ref<string | null>(null)
+function handleEditContact(contactId: string) {
+  editContactId.value = contactId
+}
+function handleContactsClose() {
+  editContactId.value = null
+}
 
 // View is a query param (deep-linkable, restored by the detail back button).
 // Defaults to Planned; never persisted across visits.
@@ -81,6 +95,13 @@ onMounted(() => {
   // Own availability drives the view-mode overlay, so load it up front (not only
   // when the editor opens).
   availabilityStore.load()
+  // Friends' availability + the contacts that resolve friend chips to names/actions.
+  availabilityStore.loadFriends()
+  if (contactsStore.contacts.length === 0)
+    contactsStore.loadContacts()
+  // Open on today, same as the Today button (no-op on desktop's month grid).
+  if (activeView.value === 'planned')
+    nextTick(() => plannedCalendar.value?.scrollTodayIntoView?.())
 })
 </script>
 
@@ -115,7 +136,7 @@ onMounted(() => {
       </header>
 
       <div class="calendar-canvas">
-        <PlannedCalendar v-if="activeView === 'planned'" ref="plannedCalendar" :view-date="currentMonth" @select="selectTour" />
+        <PlannedCalendar v-if="activeView === 'planned'" ref="plannedCalendar" :view-date="currentMonth" @select="selectTour" @edit-contact="handleEditContact" />
         <SeasonsGantt v-else @select="selectTour" />
       </div>
 
@@ -144,6 +165,12 @@ onMounted(() => {
             {{ t('calendar.availability.save') }}
           </BaseButton>
         </div>
+      </div>
+
+      <!-- Contact opened from a friend chip's action menu. Self-adapting: dialog on
+           desktop, bottom sheet on mobile. Closing returns to the calendar. -->
+      <div v-if="editContactId !== null" class="sheet-container">
+        <ContactsListSheet :initial-contact-id="editContactId" @close="handleContactsClose" />
       </div>
     </main>
   </div>
@@ -255,6 +282,25 @@ onMounted(() => {
   min-height: 0;
   padding: 0 var(--spacing-md) var(--spacing-md);
   overflow: hidden;
+}
+
+/* Host for the contact sheet/dialog (same pattern as map-page): fixed to the
+   visual-viewport bottom on mobile; on desktop the child dialog self-centers. */
+.sheet-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+@media (min-width: 600px) {
+  .sheet-container {
+    display: contents;
+  }
 }
 
 /* Desktop: sidebar sits to the left of the main column. */

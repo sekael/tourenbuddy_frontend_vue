@@ -72,15 +72,15 @@ describe('plannedCalendar — desktop grid', () => {
     expect(wrapper.find('.pill').attributes('style')).toContain(TOUR_TYPE_COLORS.hiking)
   })
 
-  it('overflows to a "+N more" affordance past the pill cap', () => {
+  it('collapses multiple tours into a single count chip (no individual pill)', () => {
     const day = new Date(2024, 5, 10)
     const wrapper = mountCalendar(
       [tour('a', 'One', day), tour('b', 'Two', day), tour('c', 'Three', day)],
       [],
     )
-    // Cap is 2 pills; the third collapses into the overflow affordance.
-    expect(wrapper.findAll('.pill')).toHaveLength(2)
-    expect(wrapper.find('.pill-more').exists()).toBe(true)
+    // >1 tour → one generic count chip, no individual pill; the cell opens the list.
+    expect(wrapper.find('.pill').exists()).toBe(false)
+    expect(wrapper.findAll('.count-chip')).toHaveLength(1)
   })
 
   it('highlights exactly one cell — today — when viewing the current month', () => {
@@ -104,15 +104,15 @@ describe('plannedCalendar — mobile day-tile list', () => {
     expect(wrapper.findAll('.day-row')).toHaveLength(30)
   })
 
-  it('shows every tour on a busy day with no overflow cap', () => {
+  it('collapses multiple tours into a single count chip (no individual pill)', () => {
     const day = new Date(2024, 5, 10)
     const wrapper = mountCalendar(
       [tour('a', 'One', day), tour('b', 'Two', day), tour('c', 'Three', day)],
       [],
     )
-    // Unlike the grid, the list has vertical room — all three show, no "+N more".
-    expect(wrapper.findAll('.pill')).toHaveLength(3)
-    expect(wrapper.find('.pill-more').exists()).toBe(false)
+    // Same collapse as the grid; the row opens the day-detail list for the rest.
+    expect(wrapper.find('.pill').exists()).toBe(false)
+    expect(wrapper.findAll('.count-chip')).toHaveLength(1)
   })
 
   it('still drops own tours without a planned date', () => {

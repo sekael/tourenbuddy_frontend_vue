@@ -5,13 +5,14 @@ import { useAvailabilityStore } from '@/features/calendar/presentation/stores/av
 // Repository test double (mock the interface, not supabase). The store news the
 // concrete impl at module load, so replace that module with a stub whose methods
 // are shared vi.fns we can assert against.
-const { listOwnFrom, applyDiff } = vi.hoisted(() => ({
+const { listOwnFrom, applyDiff, listFriendsFrom } = vi.hoisted(() => ({
   listOwnFrom: vi.fn(),
   applyDiff: vi.fn(),
+  listFriendsFrom: vi.fn(),
 }))
 
 vi.mock('@/features/calendar/data/repositories/availability-repository-impl', () => ({
-  SupabaseAvailabilityRepository: vi.fn(() => ({ listOwnFrom, applyDiff })),
+  SupabaseAvailabilityRepository: vi.fn(() => ({ listOwnFrom, applyDiff, listFriendsFrom })),
 }))
 
 // Freeze "today" so future/past reasoning is deterministic.
