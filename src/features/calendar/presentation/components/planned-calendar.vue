@@ -19,7 +19,16 @@ import { useFriendshipsStore } from '@/features/friendships/presentation/stores/
 import { TOUR_TYPE_COLORS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
-const props = defineProps<{ viewDate: Date }>()
+const props = defineProps<{
+  viewDate: Date
+  /**
+   * Calendar-tour demo chips for the today cell. Non-null ONLY while the tour is
+   * running (calendar-page gates it on `isRunning`). Rendered through a dedicated
+   * branch, kept out of the real `entriesFor`/`friendsFor` path so demo data can
+   * never surface outside the tour.
+   */
+  demoChips?: { entries: DayEntry[], friends: { userId: string, name: string }[] } | null
+}>()
 const emit = defineEmits<{
   // dayKey lets the page restore this day's detail list when the user navigates
   // back from the tour it opened.
@@ -350,14 +359,21 @@ function selectFromDetail(tourId: string) {
           'day-cell--available': cell.inMonth && isAvailable(cell.date),
           'day-cell--selectable': isSelectable(cell.date, cell.inMonth),
         }"
+        :data-tour="demoChips && dayKey(cell.date) === todayKey ? 'demo-chips' : undefined"
         @pointerdown="onDayDown($event, cell.date, cell.inMonth)"
         @pointerenter="onDayEnter(cell.date, cell.inMonth)"
         @click="onCellActivate(cell.date, cell.inMonth)"
       >
         <span class="day-number">{{ cell.date.getDate() }}</span>
-        <!-- Preview only (non-interactive). The whole cell opens the detail list. -->
+        <!-- Preview only (non-interactive). The whole cell opens the detail list.
+             Today, while the tour runs, shows the isolated demo chips instead. -->
         <DayPreview
-          v-if="cell.inMonth"
+          v-if="demoChips && dayKey(cell.date) === todayKey"
+          :entries="demoChips.entries"
+          :friends="demoChips.friends"
+        />
+        <DayPreview
+          v-else-if="cell.inMonth"
           :entries="entriesFor(cell.date)"
           :friends="friendsFor(cell.date)"
         />
@@ -378,15 +394,22 @@ function selectFromDetail(tourId: string) {
         'day-row--available': isAvailable(row.date),
         'day-row--selectable': isSelectable(row.date, true),
       }"
+      :data-tour="demoChips && row.isToday ? 'demo-chips' : undefined"
       @click="onRowActivate(row.date)"
     >
       <div class="day-head">
         <span class="day-weekday">{{ weekdayLabel(row.date) }}</span>
         <span class="day-num">{{ row.date.getDate() }}</span>
       </div>
-      <!-- Preview only. The whole row opens the detail list (or toggles in edit mode). -->
+      <!-- Preview only. The whole row opens the detail list (or toggles in edit mode).
+           Today, while the tour runs, shows the isolated demo chips instead. -->
       <div class="day-entries">
-        <DayPreview :entries="row.entries" :friends="friendsFor(row.date)" />
+        <DayPreview
+          v-if="demoChips && row.isToday"
+          :entries="demoChips.entries"
+          :friends="demoChips.friends"
+        />
+        <DayPreview v-else :entries="row.entries" :friends="friendsFor(row.date)" />
       </div>
     </li>
   </ul>

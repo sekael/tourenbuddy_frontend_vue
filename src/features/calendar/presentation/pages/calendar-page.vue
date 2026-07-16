@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import type { StageContext } from '@/features/onboarding/presentation/composables/use-onboarding-tour'
+import type { TourSurface } from '@/features/onboarding/presentation/onboarding-steps'
 import { storeToRefs } from 'pinia'
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
@@ -11,7 +13,13 @@ import { useAvailabilityStore } from '@/features/calendar/presentation/stores/av
 import ContactsListSheet from '@/features/contacts/presentation/components/contacts-list-sheet.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
+import OnboardingTourBanner from '@/features/onboarding/presentation/components/onboarding-tour-banner.vue'
+import OnboardingWelcome from '@/features/onboarding/presentation/components/onboarding-welcome.vue'
+import { useOnboardingTour } from '@/features/onboarding/presentation/composables/use-onboarding-tour'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
+import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
+import { makeDemoChips, makeDemoSeason } from '../calendar-tour-demo'
+import { CALENDAR_TOUR_STEPS } from '../calendar-tour-steps'
 import CalendarNav from '../components/calendar-nav.vue'
 import PlannedCalendar from '../components/planned-calendar.vue'
 import SeasonsGantt from '../components/seasons-gantt.vue'
@@ -25,6 +33,7 @@ const mapStore = useMapStore()
 const toursStore = useToursStore()
 const contactsStore = useContactsStore()
 const availabilityStore = useAvailabilityStore()
+const userProfileStore = useUserProfileStore()
 const { editing, saving } = storeToRefs(availabilityStore)
 
 // Friend chip → contact-action menu → Edit opens the contact over the calendar,
@@ -91,7 +100,105 @@ function selectTour(tourId: string, day?: string) {
   router.push({ name: 'map' })
 }
 
+// ── Calendar spotlight tour ─────────────────────────────────────────────────
+// A second instance of the onboarding tour composable, hosting the calendar
+// steps (see Decision 1). This page owns the concrete `stage` — it translates
+// each abstract surface into a view switch + waypoint spotlight.
+async function stageCalendarSurface(surface: TourSurface, ctx: StageContext) {
+  switch (surface) {
+    case 'availability':
+    case 'day-chips':
+      // Both live on the planned view (the default); make sure we're there.
+      if (activeView.value !== 'planned')
+        setView('planned')
+      break
+    case 'seasons':
+      // Spotlight the seasons nav control, then switch to the seasons view so the
+      // demo season bar (below) can be highlighted.
+      await ctx.spotlight('[data-tour="nav-seasons"]', 'calendar.tour.nav.seasons')
+      setView('seasons')
+      break
+  }
+  await nextTick()
+}
+
+const calendarTour = useOnboardingTour({
+  steps: CALENDAR_TOUR_STEPS,
+  stage: stageCalendarSurface,
+  // Any exit path returns to the planned view (Decision 6), so the user never
+  // lands on an emptied seasons chart and the demo season bar is off-screen.
+  cleanup: () => {
+    if (activeView.value !== 'planned')
+      setView('planned')
+  },
+  // 3 steps, no mid-tour resume: dismissing simply flips the gate.
+  saveTourStep: () => {},
+  getResumeStep: () => 0,
+  // Welcome "Start" / "Don't show again" flip the calendar gate off.
+  dismissTourAtSignIn: () => userProfileStore.dismissCalendarTour(),
+  // Drives the STANDALONE welcome (no hand-off intent): show it iff the gate is
+  // fresh. The hand-off path is handled explicitly in the gate rule below.
+  canAutoStart: () =>
+    userProfileStore.profile != null
+    && userProfileStore.profile.calendarTourShowOnFirstOpen === true,
+})
+
+const {
+  isRunning: tourRunning,
+  isStaging: tourStaging,
+  currentIndex: tourIndex,
+  currentTitle: tourTitle,
+  showWelcome: tourWelcome,
+} = calendarTour
+const tourTotal = calendarTour.totalSteps
+
+// Demo content (chips + season bar) is derived ONLY from `isRunning`: null when
+// the tour is not active, so it can never render outside the tour (7.4).
+const demoChips = computed(() => (tourRunning.value ? makeDemoChips(t) : null))
+const demoSeason = computed(() => (tourRunning.value ? makeDemoSeason(t) : null))
+
+// Same body-level scroll-lock as the map tour (the rule lives in
+// onboarding-tour.css) — viewport-fixed spotlight + popovers must pin together.
+const tourLockActive = computed(() => tourRunning.value || tourWelcome.value)
+watch(tourLockActive, (locked) => {
+  document.documentElement.classList.toggle('tour-scroll-locked', locked)
+}, { immediate: true })
+
+// driver.js' overlay lives on <body> outside Vue: tear it down before leaving /
+// on unmount so it never orphans onto another route.
+onBeforeRouteLeave(() => calendarTour.stop())
+onUnmounted(() => {
+  calendarTour.stop()
+  document.documentElement.classList.remove('tour-scroll-locked')
+})
+
+// The calendar-tour gate rule (Decision 2). One rule keyed on the
+// `calendar_tour_show_on_first_open` gate governs every automatic trigger:
+//   hand-off + fresh gate → start directly (no welcome) + flip the gate
+//   hand-off + spent gate → nothing
+//   no intent + fresh gate → welcome (maybeStartTour self-guards on the gate)
+//   no intent + spent gate → nothing
+// The intent is consumed on EVERY mount — even the do-nothing branches — so it
+// can never survive to re-fire on a later visit.
+function applyCalendarTourGate() {
+  const handoff = mapStore.consumePendingIntent()?.startCalendarTour === true
+  if (handoff) {
+    if (userProfileStore.profile?.calendarTourShowOnFirstOpen === true) {
+      userProfileStore.dismissCalendarTour()
+      calendarTour.startTour(0)
+    }
+    return
+  }
+  // Standalone open: maybeStartTour opens the welcome iff the gate is fresh
+  // (canAutoStart is wired to the gate above).
+  calendarTour.maybeStartTour()
+}
+
 onMounted(() => {
+  // Decide the calendar tour first — it consumes the hand-off intent and must run
+  // regardless of the focus-day early return below.
+  applyCalendarTourGate()
+
   // The map page normally populated the stores already; this is the cold path
   // (e.g. deep link straight to /calendar).
   if (toursStore.tours.length === 0)
@@ -127,6 +234,28 @@ onMounted(() => {
 
 <template>
   <div class="calendar-page">
+    <!-- Teleported to <body> so they share driver.js' top-level stacking context
+         (driver appends its overlay to body), same as the map tour. -->
+    <Teleport to="body">
+      <Transition name="tour-slide">
+        <OnboardingTourBanner
+          v-if="tourRunning" :title="tourTitle" :current="tourIndex + 1" :total="tourTotal"
+          :can-back="tourIndex > 0" :busy="tourStaging" @back="calendarTour.back()" @next="calendarTour.next()"
+          @finish="calendarTour.finish()"
+        />
+      </Transition>
+    </Teleport>
+    <Teleport to="body">
+      <OnboardingWelcome
+        v-if="tourWelcome"
+        title-key="calendar.tour.welcome.title"
+        body-key="calendar.tour.welcome.body"
+        @start="calendarTour.startFromWelcome()"
+        @skip="calendarTour.skipWelcome()"
+        @dismiss="calendarTour.dismissWelcome()"
+      />
+    </Teleport>
+
     <CalendarNav :active="activeView" @select="setView" />
 
     <main class="calendar-main">
@@ -152,18 +281,22 @@ onMounted(() => {
           <BaseButton v-if="activeView === 'planned' && !editing" variant="secondary" size="sm" @click="goToday">
             {{ t('calendar.planned.today') }}
           </BaseButton>
+          <!-- Always-visible replay: starts the calendar tour on demand, bypassing
+               the gate (the calendar analogue of the profile "Show app tour"). -->
+          <BaseIconButton name="replay" size="sm" :label="t('calendar.tour.replay')" @click="calendarTour.startTour(0)" />
         </div>
       </header>
 
       <div class="calendar-canvas">
-        <PlannedCalendar v-if="activeView === 'planned'" ref="plannedCalendar" :view-date="currentMonth" @select="selectTour" @edit-contact="handleEditContact" />
-        <SeasonsGantt v-else @select="selectTour" />
+        <PlannedCalendar v-if="activeView === 'planned'" ref="plannedCalendar" :view-date="currentMonth" :demo-chips="demoChips" @select="selectTour" @edit-contact="handleEditContact" />
+        <SeasonsGantt v-else :demo-tour="demoSeason" @select="selectTour" />
       </div>
 
       <!-- Availability edit entry (Planned, view mode). Hidden while editing. -->
       <ExtendedFab
         v-if="activeView === 'planned' && !editing"
         class="availability-fab"
+        data-tour="availability-edit"
         :label="t('calendar.availability.edit')"
         @click="availabilityStore.enterEdit"
       >
@@ -282,6 +415,9 @@ onMounted(() => {
 
 .bar-right {
   justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xxs);
 }
 
 .top-title {

@@ -55,6 +55,7 @@ export const useUserProfileStore = defineStore('userProfile', () => {
           locale: null,
           onboardingTourShowAtSignIn: true,
           onboardingTourLastStep: 0,
+          calendarTourShowOnFirstOpen: true,
         })
       }
 
@@ -201,6 +202,20 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     }
   }
 
+  /**
+   * Flip the calendar-tour auto-show gate off once it has first been shown
+   * (auto-chain from the map tour OR standalone first calendar open). Non-blocking,
+   * mirroring dismissTourAtSignIn.
+   */
+  async function dismissCalendarTour() {
+    try {
+      await updateProfile({ calendarTourShowOnFirstOpen: false })
+    }
+    catch (err) {
+      logger.error('Failed to dismiss calendar tour auto-show', err)
+    }
+  }
+
   function clear() {
     profile.value = null
     error.value = null
@@ -251,6 +266,7 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     skipOnboarding,
     dismissTourAtSignIn,
     saveTourStep,
+    dismissCalendarTour,
     clear,
   }
 })

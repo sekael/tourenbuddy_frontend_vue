@@ -3,6 +3,18 @@ import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 
+// Copy is parameterized so the same welcome hosts the app-onboarding tour and the
+// calendar tour. Defaults to the onboarding keys; the calendar page overrides
+// title/body with calendar-specific copy. The three action labels stay shared —
+// they are generic (Start / Skip / Don't show again).
+const props = withDefaults(
+  defineProps<{ titleKey?: string, bodyKey?: string }>(),
+  {
+    titleKey: 'onboarding.tour.welcome.title',
+    bodyKey: 'onboarding.tour.welcome.body',
+  },
+)
+
 // Pre-tour welcome screen. Shown once on auto-start (before the driver.js tour
 // runs), so it renders its own dark backdrop rather than relying on the tour
 // overlay. The three actions map to the auto-start gate — see the handlers in
@@ -13,14 +25,14 @@ const { t } = useI18n({ useScope: 'global' })
 </script>
 
 <template>
-  <div class="welcome-backdrop" role="dialog" aria-modal="true" :aria-label="t('onboarding.tour.welcome.title')">
+  <div class="welcome-backdrop" role="dialog" aria-modal="true" :aria-label="t(props.titleKey)">
     <div class="welcome-card">
       <BaseIcon name="explore" class="welcome-icon" />
       <h2 class="welcome-title">
-        {{ t('onboarding.tour.welcome.title') }}
+        {{ t(props.titleKey) }}
       </h2>
       <p class="welcome-body">
-        {{ t('onboarding.tour.welcome.body') }}
+        {{ t(props.bodyKey) }}
       </p>
 
       <div class="welcome-actions">

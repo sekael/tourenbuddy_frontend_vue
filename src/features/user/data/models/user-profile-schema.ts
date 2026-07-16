@@ -12,6 +12,8 @@ export const userProfileSchema = z.object({
   // Onboarding tour state (see migration add_onboarding_tour_state).
   onboardingTourShowAtSignIn: z.boolean(),
   onboardingTourLastStep: z.number().int(),
+  // Calendar-tour auto-show gate (see migration add_calendar_tour_gate).
+  calendarTourShowOnFirstOpen: z.boolean(),
 })
 
 /** Raw shape returned from Supabase (snake_case). */
@@ -25,6 +27,7 @@ export const userProfileRowSchema = z
     // the live DB always returns them (NOT NULL defaults).
     onboarding_tour_show_at_sign_in: z.boolean().default(true),
     onboarding_tour_last_step: z.number().int().default(0),
+    calendar_tour_show_on_first_open: z.boolean().default(true),
   })
   .transform(row => ({
     id: row.id,
@@ -33,4 +36,5 @@ export const userProfileRowSchema = z
     locale: row.locale,
     onboardingTourShowAtSignIn: row.onboarding_tour_show_at_sign_in,
     onboardingTourLastStep: row.onboarding_tour_last_step,
+    calendarTourShowOnFirstOpen: row.calendar_tour_show_on_first_open,
   }))

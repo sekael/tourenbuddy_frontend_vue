@@ -23,6 +23,7 @@ import { useNotificationsStore } from '@/features/notifications/presentation/sto
 import OnboardingTourBanner from '@/features/onboarding/presentation/components/onboarding-tour-banner.vue'
 import OnboardingWelcome from '@/features/onboarding/presentation/components/onboarding-welcome.vue'
 import { useOnboardingTour } from '@/features/onboarding/presentation/composables/use-onboarding-tour'
+import { ONBOARDING_STEPS } from '@/features/onboarding/presentation/onboarding-steps'
 import { useOnboardingTourStore } from '@/features/onboarding/presentation/stores/onboarding-tour-store'
 import { getElevation } from '@/features/tours/data/services/swisstopo-elevation-service'
 import { suggestTourName } from '@/features/tours/data/services/swisstopo-name-service'
@@ -259,10 +260,17 @@ async function stageTourSurface(surface: TourSurface, ctx: StageContext) {
 }
 
 const onboardingTour = useOnboardingTour({
+  steps: ONBOARDING_STEPS,
   stage: stageTourSurface,
   cleanup: () => {
     closeOverlay()
     mapOverlayRef.value?.closeMenu()
+  },
+  // Ran to completion (not an early dismissal): hand off to the calendar route.
+  // The calendar's own gate decides whether the calendar tour actually starts.
+  onCompleted: () => {
+    mapStore.setPendingIntent({ startCalendarTour: true })
+    router.push({ name: 'calendar' })
   },
   saveTourStep: n => userProfileStore.saveTourStep(n),
   dismissTourAtSignIn: () => userProfileStore.dismissTourAtSignIn(),

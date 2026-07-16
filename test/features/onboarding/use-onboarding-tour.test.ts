@@ -59,6 +59,7 @@ function mountAllAnchors() {
 
 function makeOptions(overrides: Partial<Parameters<typeof useOnboardingTour>[0]> = {}) {
   return {
+    steps: ONBOARDING_STEPS,
     stage: vi.fn(() => Promise.resolve()),
     cleanup: vi.fn(),
     saveTourStep: vi.fn(() => Promise.resolve()),
@@ -249,6 +250,32 @@ describe('useOnboardingTour — persistence', () => {
 
     expect(opts.saveTourStep).toHaveBeenCalledWith(0)
     expect(lastDriver().destroyed).toBe(true)
+  })
+
+  it('fires onCompleted only when the tour runs to the end', async () => {
+    mountAllAnchors()
+    const onCompleted = vi.fn()
+    const tour = useOnboardingTour(makeOptions({ onCompleted }))
+    tour.startTour(LAST)
+    await flush()
+
+    tour.next() // advance past the last step → completed
+    await flush()
+
+    expect(onCompleted).toHaveBeenCalledTimes(1)
+  })
+
+  it('does NOT fire onCompleted on an early "Finish tour" dismissal', async () => {
+    mountAllAnchors()
+    const onCompleted = vi.fn()
+    const tour = useOnboardingTour(makeOptions({ onCompleted }))
+    tour.startTour(0)
+    await flush()
+
+    tour.finish() // dismissed before the final step
+    await flush()
+
+    expect(onCompleted).not.toHaveBeenCalled()
   })
 })
 

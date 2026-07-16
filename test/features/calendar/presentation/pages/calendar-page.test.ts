@@ -12,7 +12,12 @@ const push = vi.fn()
 vi.mock('vue-router', () => ({
   useRoute: () => ({ query: {} }),
   useRouter: () => ({ replace, push }),
+  onBeforeRouteLeave: vi.fn(),
 }))
+// The page hosts a driver.js tour; stub the lib + its CSS so mounting doesn't
+// touch a real spotlight overlay.
+vi.mock('driver.js', () => ({ driver: () => ({ highlight: vi.fn(), destroy: vi.fn(), refresh: vi.fn() }) }))
+vi.mock('driver.js/dist/driver.css', () => ({}))
 
 function mountPage(editing: boolean) {
   const pinia = createTestingPinia({

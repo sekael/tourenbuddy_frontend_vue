@@ -34,6 +34,38 @@
         "summer": "JUN – AUG",
         "autumn": "SEP – NOV"
       }
+    },
+    "tour": {
+      "welcome": {
+        "title": "Get to know your calendar",
+        "body": "A quick tour of planning by date, sharing your availability, and the seasonal overview. Click anywhere to continue or use the buttons at the top."
+      },
+      "availability": {
+        "title": "Share your availability",
+        "body": "Tap here to mark the days you're free. Your friends can see them and plan tours with you."
+      },
+      "dayChips": {
+        "title": "Tours and friends at a glance",
+        "body": "Each day shows your planned tours and which friends are available — like the examples on today."
+      },
+      "seasons": {
+        "title": "Seasonal overview",
+        "body": "See which seasons your tours fall in, so you can plan the whole year ahead."
+      },
+      "labels": {
+        "availability": "Availability",
+        "dayChips": "Day chips",
+        "seasons": "Seasons"
+      },
+      "nav": {
+        "seasons": "Open seasons"
+      },
+      "demo": {
+        "tourName": "Matterhorn",
+        "friendName": "Alex",
+        "seasonTourName": "Piz Palü"
+      },
+      "replay": "Replay calendar tour"
     }
   },
   "validation": {
@@ -667,7 +699,8 @@
         "friendRequests": "Friend requests",
         "tours": "Your tours",
         "addLocation": "Add a tour",
-        "basemap": "Switch maps"
+        "basemap": "Switch maps",
+        "openCalendar": "Open calendar"
       },
       "nav": {
         "openMenu": "Open menu",
@@ -684,6 +717,10 @@
         "done": "Done",
         "finish": "Finish tour",
         "reopen": "Show app tour"
+      },
+      "openCalendar": {
+        "title": "Open the calendar",
+        "body": "Plan tours by date, set your availability, and see when friends are free — all in the calendar."
       }
     }
   }

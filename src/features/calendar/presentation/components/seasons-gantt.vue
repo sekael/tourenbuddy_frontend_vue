@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { Season } from '@/features/tours/data/models/season'
 import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -7,6 +8,15 @@ import { SEASON_AXIS, seasonRuns } from '@/features/calendar/domain/season-runs'
 import { TOUR_TYPE_I18N_KEYS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
+defineProps<{
+  /**
+   * Calendar-tour demo season bar. Non-null ONLY while the tour is running (the
+   * seasons view otherwise shows just a "no tours" disclaimer for a new user, so
+   * the seasonal-overview step would spotlight an empty message). Rendered as an
+   * isolated gated row, never sourced from the tours store.
+   */
+  demoTour?: { name: string, seasons: Season[] } | null
+}>()
 const emit = defineEmits<{ select: [tourId: string] }>()
 
 const { t } = useI18n({ useScope: 'global' })
@@ -31,8 +41,8 @@ const nowLineLeft = computed(() => {
 <template>
   <div class="gantt-wrap">
     <!-- No owned tours: nothing to chart, so show a friendly disclaimer instead
-         of an empty axis. -->
-    <div v-if="tours.length === 0" class="gantt-empty">
+         of an empty axis. Suppressed while the tour runs (a demo bar renders). -->
+    <div v-if="tours.length === 0 && !demoTour" class="gantt-empty">
       <BaseIcon name="wb_sunny" size="lg" />
       <p>{{ t('calendar.seasons.emptyState') }}</p>
     </div>
@@ -57,6 +67,20 @@ const nowLineLeft = computed(() => {
              (below the header) ends exactly at the last tour row. -->
         <div class="gantt-rows">
           <div class="season-now-line" :style="{ left: nowLineLeft }" aria-hidden="true" />
+
+          <!-- Calendar-tour demo row: non-interactive, isolated, tour-gated. -->
+          <div v-if="demoTour" class="gantt-row gantt-tour-row" data-tour="demo-season">
+            <div class="row-label">
+              <span class="tour-name">{{ demoTour.name }}</span>
+            </div>
+            <div
+              v-for="(run, i) in seasonRuns(demoTour.seasons)"
+              :key="i"
+              class="season-bar"
+              :style="{ gridColumn: `${run.start + 2} / span ${run.span}` }"
+            />
+          </div>
+
           <button
             v-for="tour in tours"
             :key="tour.id"
@@ -88,7 +112,7 @@ const nowLineLeft = computed(() => {
     </div>
 
     <!-- Mobile-only affordance: the season columns overflow and scroll sideways. -->
-    <p v-if="tours.length > 0" class="scroll-hint">
+    <p v-if="tours.length > 0 || demoTour" class="scroll-hint">
       <BaseIcon name="sync_alt" size="xs" />
       {{ t('calendar.seasons.scrollHint') }}
     </p>

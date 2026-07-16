@@ -4,7 +4,6 @@ import { driver } from 'driver.js'
 import { computed, nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useLogger } from '@/core/logging/use-logger'
-import { ONBOARDING_STEPS } from '../onboarding-steps'
 import 'driver.js/dist/driver.css'
 import '../onboarding-tour.css'
 
@@ -23,6 +22,12 @@ export interface StageContext {
 
 export interface UseOnboardingTourOptions {
   /**
+   * The steps this instance drives, in presentation order. Injected (not
+   * imported) so the same choreography can host the map tour (`ONBOARDING_STEPS`)
+   * or the calendar tour (`CALENDAR_TOUR_STEPS`).
+   */
+  steps: OnboardingStep[]
+  /**
    * Make a step's surface visible (open the right overlay / speed-dial view).
    * May be async — staging an overlay animates it in. Use `ctx.spotlight` to
    * highlight each control on the navigation path before opening the next one.
@@ -30,6 +35,12 @@ export interface UseOnboardingTourOptions {
   stage: (surface: TourSurface, ctx: StageContext) => void | Promise<void>
   /** Close whatever the tour opened once it ends. */
   cleanup: () => void
+  /**
+   * Fired ONLY when the tour is run to completion (advanced past the last step),
+   * not on an early "Finish tour" dismissal. The map tour uses this to hand off
+   * to the calendar route; the calendar tour omits it. Runs after teardown.
+   */
+  onCompleted?: () => void
   /** Persist the resume index. Non-blocking (swallows/logs its own errors). */
   saveTourStep: (n: number) => void | Promise<void>
   /** Flip the auto-start gate off. Non-blocking. */
@@ -50,12 +61,14 @@ export interface TourPace {
   gapMs: number
 }
 
-const LAST_INDEX = ONBOARDING_STEPS.length - 1
 const DEFAULT_PACE: TourPace = { holdMs: 2000, gapMs: 500 }
 
 export function useOnboardingTour(options: UseOnboardingTourOptions) {
   const { t } = useI18n({ useScope: 'global' })
   const logger = useLogger('OnboardingTour')
+
+  const steps = options.steps
+  const LAST_INDEX = steps.length - 1
 
   const isRunning = ref(false)
   // True while the pre-tour welcome screen is showing (auto-start only, before
@@ -73,7 +86,7 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
 
   // Short label for the current step, shown in the top banner (distinct from the
   // benefit-oriented popover title).
-  const currentTitle = computed(() => t(ONBOARDING_STEPS[currentIndex.value].labelKey))
+  const currentTitle = computed(() => t(steps[currentIndex.value].labelKey))
 
   /**
    * Resolve the first element matching `selector`, or null if it never appears
@@ -138,6 +151,7 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
   function finishCompleted() {
     options.saveTourStep(0)
     teardown()
+    options.onCompleted?.()
   }
 
   /** Next button / backdrop tap. */
@@ -158,7 +172,7 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
   }
 
   function buildPopover(index: number): Popover {
-    const step = ONBOARDING_STEPS[index]
+    const step = steps[index]
     // No footer buttons: all navigation (back / next / finish + progress) lives
     // in the top banner (`onboarding-tour-banner.vue`), driven via the exposed
     // `back` / `next` / `finish` actions. Tap-away still advances (overlay
@@ -320,7 +334,7 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
     try {
       const clamped = clamp(index)
       currentIndex.value = clamped
-      const step: OnboardingStep = ONBOARDING_STEPS[clamped]
+      const step: OnboardingStep = steps[clamped]
 
       // 1. Remove the dark mask completely while we navigate.
       await maskOffAndBreathe()
@@ -427,7 +441,7 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
     showWelcome,
     currentIndex,
     currentTitle,
-    totalSteps: ONBOARDING_STEPS.length,
+    totalSteps: steps.length,
     startTour,
     maybeStartTour,
     stop,
