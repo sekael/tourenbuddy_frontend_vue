@@ -116,6 +116,7 @@ describe('useUserProfileStore', () => {
         onboardingTourShowAtSignIn: true,
         onboardingTourLastStep: 0,
         calendarTourShowOnFirstOpen: true,
+        calendarFeatureNoticeShowAtSignIn: false,
       })
       expect(store.profile).toEqual(newProfile)
     })
@@ -249,6 +250,8 @@ describe('useUserProfileStore', () => {
       locale: 'en' as const,
       onboardingTourShowAtSignIn: true,
       onboardingTourLastStep: 0,
+      calendarTourShowOnFirstOpen: true,
+      calendarFeatureNoticeShowAtSignIn: false,
     }
 
     it('saveTourStep persists the resume index', async () => {
@@ -285,6 +288,22 @@ describe('useUserProfileStore', () => {
 
       await expect(store.saveTourStep(2)).resolves.toBeUndefined()
     })
+
+    it('dismissCalendarFeatureNotice flips only the notice gate off', async () => {
+      mockGetUserById.mockResolvedValue({ ...base, calendarFeatureNoticeShowAtSignIn: true })
+      mockUpsertProfile.mockResolvedValue({ ...base, calendarFeatureNoticeShowAtSignIn: false })
+      const store = useUserProfileStore()
+      await store.loadProfile()
+
+      await store.dismissCalendarFeatureNotice()
+
+      expect(mockUpsertProfile).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          calendarFeatureNoticeShowAtSignIn: false,
+          calendarTourShowOnFirstOpen: true,
+        }),
+      )
+    })
   })
 
   describe('skipOnboarding', () => {
@@ -306,6 +325,8 @@ describe('useUserProfileStore', () => {
         locale: null,
         onboardingTourShowAtSignIn: true,
         onboardingTourLastStep: 0,
+        calendarTourShowOnFirstOpen: true,
+        calendarFeatureNoticeShowAtSignIn: false,
       }
       store.clear()
 

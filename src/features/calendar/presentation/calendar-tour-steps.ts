@@ -23,14 +23,14 @@ export const CALENDAR_TOUR_STEPS: OnboardingStep[] = [
   },
   {
     // The demo chips render on the today cell while the tour runs (belt-and-
-    // suspenders gated). The cell carries the `demo-chips` anchor.
+    // suspenders gated). The cell is a waypoint; the opened detail overview is
+    // the final target for the explanatory popover.
     surface: 'day-chips',
-    target: '[data-tour="demo-chips"]',
+    target: '[data-tour="demo-detail"]',
     titleKey: 'calendar.tour.dayChips.title',
     bodyKey: 'calendar.tour.dayChips.body',
     labelKey: 'calendar.tour.labels.dayChips',
-    // The mobile day list pins its top under the tour banner — center the today
-    // row so its spotlight cutout clears the banner.
+    // The detail overview may open as a mobile sheet; center it below the banner.
     scrollBlock: 'center',
   },
   {

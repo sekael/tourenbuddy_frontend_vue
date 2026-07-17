@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MapPage from '@/features/map/presentation/pages/map-page.vue'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
+import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
 vi.mock('@/features/tours/data/services/swisstopo-elevation-service', () => ({
   getElevation: vi.fn().mockResolvedValue(1234),
@@ -58,10 +59,10 @@ const STUB_TOUR = {
   createdAt: new Date(),
 }
 
-function mountMapPage() {
+function mountMapPage(initialState = {}) {
   return mount(MapPage, {
     global: {
-      plugins: [createTestingPinia({ createSpy: vi.fn, stubActions: true })],
+      plugins: [createTestingPinia({ createSpy: vi.fn, stubActions: true, initialState })],
       stubs: {
         TourenbuddyMap: TourenbuddyMapStub,
         MapActionOverlay: { template: '<div />' },
@@ -277,6 +278,35 @@ describe('mapPage', () => {
       ].filter(Boolean)
 
       expect(visibleSheets).toHaveLength(1)
+    })
+  })
+
+  describe('calendar feature notice', () => {
+    it('shows the one-time notice and dismisses only the notice gate', async () => {
+      const wrapper = mountMapPage({
+        userProfile: {
+          profile: {
+            id: 'user-123',
+            firstName: 'Max',
+            lastName: 'Muster',
+            locale: 'en',
+            onboardingTourShowAtSignIn: false,
+            onboardingTourLastStep: 0,
+            calendarTourShowOnFirstOpen: true,
+            calendarFeatureNoticeShowAtSignIn: true,
+          },
+        },
+      })
+      const userProfileStore = useUserProfileStore()
+
+      expect(wrapper.vm.showCalendarFeatureNotice).toBe(true)
+
+      wrapper.vm.dismissCalendarFeatureNotice()
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.vm.showCalendarFeatureNotice).toBe(false)
+      expect(userProfileStore.dismissCalendarFeatureNotice).toHaveBeenCalledTimes(1)
+      expect(userProfileStore.dismissCalendarTour).not.toHaveBeenCalled()
     })
   })
 

@@ -23,6 +23,10 @@ describe('userProfileRepositoryImpl.upsertProfile', () => {
       first_name: 'A',
       last_name: 'B',
       locale: 'de-CH',
+      onboarding_tour_show_at_sign_in: true,
+      onboarding_tour_last_step: 0,
+      calendar_tour_show_on_first_open: true,
+      calendar_feature_notice_show_at_sign_in: false,
     }
 
     const chain = {
@@ -46,6 +50,8 @@ describe('userProfileRepositoryImpl.upsertProfile', () => {
       locale: 'de-CH',
       onboardingTourShowAtSignIn: true,
       onboardingTourLastStep: 0,
+      calendarTourShowOnFirstOpen: true,
+      calendarFeatureNoticeShowAtSignIn: false,
     })
 
     expect(mockUpsert).toHaveBeenCalledWith(
@@ -65,10 +71,33 @@ describe('userProfileRepositoryImpl.upsertProfile', () => {
       locale: null,
       onboardingTourShowAtSignIn: true,
       onboardingTourLastStep: 0,
+      calendarTourShowOnFirstOpen: true,
+      calendarFeatureNoticeShowAtSignIn: false,
     })
 
     expect(mockUpsert).toHaveBeenCalledWith(
       expect.objectContaining({ locale: null }),
+    )
+  })
+
+  it('should include calendar feature notice gate in upsert payload', async () => {
+    const { UserProfileRepositoryImpl } = await import(
+      '@/features/user/data/repositories/user-profile-repository-impl'
+    )
+    const repo = new UserProfileRepositoryImpl()
+    await repo.upsertProfile({
+      id: 'u1',
+      firstName: 'A',
+      lastName: 'B',
+      locale: 'de-CH',
+      onboardingTourShowAtSignIn: true,
+      onboardingTourLastStep: 0,
+      calendarTourShowOnFirstOpen: true,
+      calendarFeatureNoticeShowAtSignIn: true,
+    })
+
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ calendar_feature_notice_show_at_sign_in: true }),
     )
   })
 })

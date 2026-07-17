@@ -136,7 +136,7 @@ function openDetailForDay(date: Date) {
   openDetail(date)
   nextTick(() => scrollDayIntoView(dayKey(date)))
 }
-defineExpose({ scrollTodayIntoView, openDetailForDay })
+defineExpose({ scrollTodayIntoView, openDetailForDay, closeDetail })
 
 // ── Availability overlay + edit interaction ────────────────────────────────
 function isAvailable(date: Date): boolean {
@@ -315,8 +315,19 @@ function handleEditContact(contactId: string) {
 // ── Per-day detail list (tours first, then available friends) ────────────────
 // A bottom sheet on mobile / dialog on desktop, layered over the calendar.
 const detailDate = ref<Date | null>(null)
-const detailEntries = computed(() => (detailDate.value ? entriesFor(detailDate.value) : []))
-const detailFriends = computed(() => (detailDate.value ? friendsFor(detailDate.value) : []))
+const isDemoDetail = computed(() => props.demoChips != null && detailDate.value != null && dayKey(detailDate.value) === todayKey)
+const detailEntries = computed(() => {
+  if (!detailDate.value)
+    return []
+  return isDemoDetail.value ? props.demoChips!.entries : entriesFor(detailDate.value)
+})
+const detailFriends = computed<FriendChip[]>(() => {
+  if (!detailDate.value)
+    return []
+  return isDemoDetail.value
+    ? props.demoChips!.friends.map(friend => ({ ...friend, contact: null }))
+    : friendsFor(detailDate.value)
+})
 const detailLabel = computed(() =>
   detailDate.value
     ? new Intl.DateTimeFormat(locale.value, { weekday: 'long', day: 'numeric', month: 'long' }).format(detailDate.value)
@@ -418,7 +429,7 @@ function selectFromDetail(tourId: string) {
        mobile, dialog on desktop, over the calendar. -->
   <div v-if="detailDate" class="sheet-container">
     <AdaptiveOverlay :title="detailLabel" @close="closeDetail">
-      <div class="detail-body">
+      <div class="detail-body" :data-tour="isDemoDetail ? 'demo-detail' : undefined">
         <template v-if="detailEntries.length">
           <h3 class="detail-heading">
             {{ t('calendar.planned.toursHeading') }}

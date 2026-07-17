@@ -6,6 +6,8 @@ import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
+import BaseButton from '@/core/components/base-button.vue'
+import DialogWindow from '@/core/components/dialog-window.vue'
 import FeedbackSheet from '@/core/components/feedback-sheet.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
@@ -290,12 +292,29 @@ const {
   showWelcome: tourWelcome,
 } = onboardingTour
 const tourTotal = onboardingTour.totalSteps
+const showCalendarFeatureNotice = ref(false)
+
+function maybeShowCalendarFeatureNotice() {
+  if (
+    !tourRunning.value
+    && !tourWelcome.value
+    && userProfileStore.profile?.calendarFeatureNoticeShowAtSignIn === true
+  ) {
+    showCalendarFeatureNotice.value = true
+  }
+}
+
+function dismissCalendarFeatureNotice() {
+  showCalendarFeatureNotice.value = false
+  userProfileStore.dismissCalendarFeatureNotice()
+}
 
 // The router guard blocks /map until the profile is loaded, so the auto-start
 // gate is already decidable in setup — open the welcome synchronously, before
 // the first paint, so a tour-eligible user never sees the bare map flash first.
 // (No-op when the gate is off; `onMounted` re-checks for a cold profile.)
 onboardingTour.maybeStartTour()
+maybeShowCalendarFeatureNotice()
 
 // Lock document scroll for the whole tour + welcome. `.map-page` is overflow:
 // hidden, but iOS Safari still rubber-band/address-bar scrolls the document
@@ -394,6 +413,7 @@ onMounted(async () => {
   if (!userProfileStore.profile)
     await userProfileStore.loadProfile()
   onboardingTour.maybeStartTour()
+  maybeShowCalendarFeatureNotice()
   await Promise.all([toursStore.loadTours(), contactsStore.loadContacts()])
 
   // Consume a one-shot handoff from the calendar route (open the tours list, or
@@ -732,6 +752,21 @@ function handleDialogClose() {
       />
     </Teleport>
 
+    <Teleport to="body">
+      <DialogWindow
+        v-if="showCalendarFeatureNotice"
+        :title="t('calendar.featureNotice.title')"
+        @close="dismissCalendarFeatureNotice"
+      >
+        <div class="calendar-feature-notice">
+          <p>{{ t('calendar.featureNotice.body') }}</p>
+          <BaseButton size="md" @click="dismissCalendarFeatureNotice">
+            {{ t('calendar.featureNotice.cta') }}
+          </BaseButton>
+        </div>
+      </DialogWindow>
+    </Teleport>
+
     <TourenbuddyMap ref="mapRef" @tour-clicked="handleTourClicked" @map-background-click="handleMapBackgroundClick" />
 
     <MapActionOverlay
@@ -844,6 +879,14 @@ function handleDialogClose() {
   /* Allow clicks to pass through transparent areas around the sheet so FABs
      remain interactive even when an overlay is open */
   pointer-events: none;
+}
+
+.calendar-feature-notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  color: var(--color-on-surface-variant);
+  line-height: 1.5;
 }
 
 /* On desktop, make the container a layout no-op so fixed-position dialogs and

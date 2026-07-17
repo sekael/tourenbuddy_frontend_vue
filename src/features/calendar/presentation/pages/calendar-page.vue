@@ -74,6 +74,7 @@ function shiftMonth(delta: number) {
 const plannedCalendar = ref<{
   scrollTodayIntoView: () => void
   openDetailForDay: (date: Date) => void
+  closeDetail: () => void
 } | null>(null)
 function goToday() {
   currentMonth.value = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
@@ -122,12 +123,21 @@ function selectTour(tourId: string, day?: string) {
 async function stageCalendarSurface(surface: TourSurface, ctx: StageContext) {
   switch (surface) {
     case 'availability':
-    case 'day-chips':
-      // Both live on the planned view (the default); make sure we're there.
+      // Availability lives on the planned view (the default); make sure we're there.
       if (activeView.value !== 'planned')
         setView('planned')
       break
+    case 'day-chips':
+      // First spotlight the demo day cell/row as a waypoint, then open the same
+      // day's detail overview; the step's final target is the opened detail panel.
+      if (activeView.value !== 'planned')
+        setView('planned')
+      await nextTick()
+      await ctx.spotlight('[data-tour="demo-chips"]', 'calendar.tour.nav.dayDetails')
+      plannedCalendar.value?.openDetailForDay(new Date())
+      break
     case 'seasons':
+      plannedCalendar.value?.closeDetail()
       // Spotlight the seasons nav control, then switch to the seasons view so the
       // demo season bar (below) can be highlighted.
       await ctx.spotlight('[data-tour="nav-seasons"]', 'calendar.tour.nav.seasons')
@@ -143,6 +153,7 @@ const calendarTour = useOnboardingTour({
   // Any exit path returns to the planned view (Decision 6), so the user never
   // lands on an emptied seasons chart and the demo season bar is off-screen.
   cleanup: () => {
+    plannedCalendar.value?.closeDetail()
     if (activeView.value !== 'planned')
       setView('planned')
   },

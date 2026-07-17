@@ -64,7 +64,7 @@ Two demo artifacts are needed because a brand-new user has no data: **demo day-c
 2. **Render gate** — a dedicated branch gated on the tour-active flag (e.g. `v-if="demoChips && isDemoCell(date)"` on the today cell; `v-if="tourActive"` for the season bar), separate from the real render, so a real render can never fall through to it.
 3. **Lifecycle tie** — the tour-active flag is the tour instance's `isRunning`, forwarded by prop from `calendar-page.vue` (which owns the tour) down to `planned-calendar.vue` / `seasons-gantt.vue`. The composable drives `isRunning` to `false` on teardown/route-leave/unmount, so both demo artifacts vanish the instant the tour ends by any exit path — and cleanup resets the view to planned (Decision 6), so a stale demo season bar never lingers.
 
-The planned demo chips reuse `<DayPreview>` (fed hardcoded demo `entries` / `friends` for the today cell) — identical rendering is the point, since the step teaches what *real* chips look like. The demo cell carries a `data-tour="demo-chips"` anchor; the season bar container carries `data-tour="demo-season"`.
+The planned demo chips reuse `<DayPreview>` (fed hardcoded demo `entries` / `friends` for the today cell) — identical rendering is the point, since the step teaches what *real* chips look like. The day-chip step first spotlights the demo cell (`data-tour="demo-chips"`) as a waypoint, then opens that day's detail overview and spotlights the detail panel (`data-tour="demo-detail"`) so the user sees the same tour/friend chips expanded. The demo season row carries `data-tour="demo-row"`.
 
 ### Decision 6: Calendar-tour cleanup resets to the planned view
 
@@ -74,17 +74,24 @@ The seasonal-overview step ends on the seasons view. On any tour exit, `cleanup(
 
 The calendar page gains a "replay calendar tour" control — the calendar analogue of the profile-sheet "Show app tour". Because it lives *on* the calendar page, it calls the tour instance's `startTour(0)` directly and bypasses the gate; it needs no cross-route `reopenSignal` (unlike onboarding's profile→map reopen). It is always visible, placed with the existing calendar chrome (near the top bar / view nav). This is the sanctioned way for a returning user to see the calendar tour again, since automatic triggers respect the gate (Decision 2).
 
+### Decision 8: One-time sign-in notice for already-onboarded users
+
+Existing users who completed the previous onboarding tour can have `onboarding_tour_show_at_sign_in = false` and `onboarding_tour_last_step = 0`, so they will not see the new final map step that points to the calendar. Do **not** reuse `calendar_tour_show_on_first_open` for the sign-in notice: dismissing the notice must not suppress the real calendar tour that starts when they later open `/calendar`.
+
+Add `user_profile.calendar_feature_notice_show_at_sign_in boolean not null default false`. Backfill it to `true` only for rows with `onboarding_tour_show_at_sign_in = false`, `onboarding_tour_last_step = 0`, and `calendar_tour_show_on_first_open = true`. New/future users default to `false` because they see the normal onboarding calendar step. The map page shows a small dismissible notice on startup when this flag is `true`, explaining My Tours -> Calendar. Any exit from the notice flips only this notice flag to `false`; the calendar-tour gate stays untouched, so navigating to the calendar still starts the calendar tour naturally.
+
 ## Risks / Trade-offs
 
 - **Two progress counters** ("step 1 of 3" on calendar after "step 8 of 8" on the map) → Accepted per the architecture choice; the auto-navigation + a fresh banner reads as "next chapter," not a bug.
 - **Auto-navigating a new user to another route on onboarding finish** could feel abrupt → Mitigation: the calendar tour starts immediately on arrival so there is no bare-calendar flash; the hop is framed by the first calendar step.
 - **Demo data (chips + season bar) leaking into real views** → Mitigation: the three-layer isolation in Decision 5; add tests asserting both demo artifacts are absent when the tour is not running.
+- **Notice dismissal suppressing the actual calendar tour** → Mitigation: separate notice gate from `calendar_tour_show_on_first_open`; notice dismissal updates only the notice flag.
 - **Composable refactor (inject `steps`) regressing the map tour** → Mitigation: mechanical change (import → option); existing onboarding tests cover the map instance.
 - **Returning user replays the map tour and is surprised by a calendar chapter** → Resolved by Decision 2 (automatic triggers respect the gate, so no surprise chain) + Decision 7 (an explicit calendar-page replay button for deliberate re-viewing).
 
 ## Migration Plan
 
-1. `supabase migration new add_calendar_tour_gate` → `alter table public.user_profile add column calendar_tour_show_on_first_open boolean not null default true;` (no grants, no backfill).
+1. `supabase migration new add_calendar_tour_gate` → add `calendar_tour_show_on_first_open boolean not null default true` and `calendar_feature_notice_show_at_sign_in boolean not null default false`; backfill the notice flag to `true` only for already-onboarded rows (`onboarding_tour_show_at_sign_in = false`, `onboarding_tour_last_step = 0`, `calendar_tour_show_on_first_open = true`).
 2. `supabase db reset` locally, verify column + defaults.
 3. Ship frontend. `supabase db push` to prod is a prompted deploy step, run after review.
 4. Rollback: the column is additive and defaulted; reverting the frontend leaves an unused column (harmless). No data migration to undo.

@@ -56,6 +56,7 @@ export const useUserProfileStore = defineStore('userProfile', () => {
           onboardingTourShowAtSignIn: true,
           onboardingTourLastStep: 0,
           calendarTourShowOnFirstOpen: true,
+          calendarFeatureNoticeShowAtSignIn: false,
         })
       }
 
@@ -216,6 +217,16 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     }
   }
 
+  /** Flip only the legacy calendar-feature notice gate; leave the calendar tour gate intact. */
+  async function dismissCalendarFeatureNotice() {
+    try {
+      await updateProfile({ calendarFeatureNoticeShowAtSignIn: false })
+    }
+    catch (err) {
+      logger.error('Failed to dismiss calendar feature notice', err)
+    }
+  }
+
   function clear() {
     profile.value = null
     error.value = null
@@ -267,6 +278,7 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     dismissTourAtSignIn,
     saveTourStep,
     dismissCalendarTour,
+    dismissCalendarFeatureNotice,
     clear,
   }
 })

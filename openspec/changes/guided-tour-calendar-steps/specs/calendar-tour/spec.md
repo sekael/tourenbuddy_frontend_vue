@@ -59,7 +59,7 @@ On the standalone first-open path, the system SHALL present a welcome screen off
 
 ### Requirement: Guided calendar step sequence
 
-The calendar tour SHALL present three steps in order, each spotlighting the real control with an explanatory popover: (1) edit availability — the availability edit entry control; (2) day-chip meaning — a demo cell showing a fake tour chip and a fake friend chip; (3) seasonal overview — navigating to and displaying the seasons view. The seasonal-overview step SHALL actuate the seasons navigation control (spotlighting it with a short hint) and switch the calendar to the seasons view before spotlighting the seasonal overview content.
+The calendar tour SHALL present three steps in order, each spotlighting the real control with an explanatory popover: (1) edit availability — the availability edit entry control; (2) day-chip meaning — a demo cell showing a fake tour chip and a fake friend chip, then the opened day-detail overview for that same date showing the tour and friend entries; (3) seasonal overview — navigating to and displaying the seasons view. The day-chip step SHALL spotlight the demo calendar cell as an intermediate waypoint, open that day's detail overview, and then spotlight the detail overview with the explanatory popover. The seasonal-overview step SHALL actuate the seasons navigation control (spotlighting it with a short hint) and switch the calendar to the seasons view before spotlighting the seasonal overview content.
 
 #### Scenario: Availability edit step
 
@@ -70,6 +70,11 @@ The calendar tour SHALL present three steps in order, each spotlighting the real
 
 - **WHEN** the calendar tour reaches the seasonal-overview step
 - **THEN** the seasons navigation control is spotlighted with a hint, the calendar switches to the seasons view, a demo season bar is rendered so the seasonal axis is populated (rather than the zero-tour "no tours" disclaimer), and the seasonal overview content is spotlighted with an explanatory popover
+
+#### Scenario: Day-chip step opens detail overview
+
+- **WHEN** the calendar tour reaches the day-chip step
+- **THEN** the demo calendar cell is spotlighted with a hint, that day's detail overview opens, and the detail overview showing the demo tour and friend entries is spotlighted with the explanatory popover
 
 #### Scenario: Cleanup returns to the planned view
 
@@ -88,7 +93,7 @@ The calendar tour SHALL present three steps in order, each spotlighting the real
 
 ### Requirement: Demo content renders only during the tour
 
-For the day-chip step the system SHALL render demo chips (one fake tour chip and one fake friend chip) on a single designated demo cell (today), and for the seasonal-overview step it SHALL render a demo season bar on the seasons view. Both use hardcoded demo data that is never written to the tours or availability stores and never persisted. All demo content SHALL render only while the calendar tour is active, and SHALL disappear whenever the tour ends by any exit path (finish, dismiss, navigation away, unmount).
+For the day-chip step the system SHALL render demo chips (one fake tour chip and one fake friend chip) on a single designated demo cell (today) and in that day's opened detail overview, and for the seasonal-overview step it SHALL render a demo season bar on the seasons view. Both use hardcoded demo data that is never written to the tours or availability stores and never persisted. All demo content SHALL render only while the calendar tour is active, and SHALL disappear whenever the tour ends by any exit path (finish, dismiss, navigation away, unmount).
 
 #### Scenario: Demo chips visible during the tour
 
@@ -137,3 +142,22 @@ The `calendar_tour_show_on_first_open` gate SHALL persist on `user_profile` so t
 
 - **WHEN** the migration adds the column with `default true`
 - **THEN** every existing user's first calendar open after deploy auto-shows the calendar tour once
+
+### Requirement: One-time calendar feature sign-in notice
+
+The system SHALL persist a separate one-time `calendar_feature_notice_show_at_sign_in` notice gate on `user_profile`. The migration SHALL default this gate to `false` for future users, and SHALL backfill it to `true` only for users whose existing onboarding tour is already spent (`onboarding_tour_show_at_sign_in = false`) and reset to the beginning (`onboarding_tour_last_step = 0`) while `calendar_tour_show_on_first_open = true`. On map startup, when the notice gate is `true`, the system SHALL show a dismissible notice explaining that the calendar is available via My Tours -> Calendar. Dismissing or closing this notice SHALL persist only `calendar_feature_notice_show_at_sign_in = false` and SHALL NOT change `calendar_tour_show_on_first_open`.
+
+#### Scenario: Existing completed-onboarding user sees the notice once
+
+- **WHEN** a user has `calendar_feature_notice_show_at_sign_in = true` and arrives on the map
+- **THEN** the calendar feature notice is shown
+
+#### Scenario: Notice dismissal does not disable the calendar tour
+
+- **WHEN** the user dismisses the calendar feature notice
+- **THEN** `calendar_feature_notice_show_at_sign_in` is persisted as `false` and `calendar_tour_show_on_first_open` remains unchanged
+
+#### Scenario: Future users do not get the legacy notice
+
+- **WHEN** a newly created user profile uses database defaults
+- **THEN** `calendar_feature_notice_show_at_sign_in` is `false`

@@ -4,6 +4,11 @@
     "subtitle": "Tourenplanung",
     "back": "Zurück zur Karte",
     "openAriaLabel": "Kalender öffnen",
+    "featureNotice": {
+      "title": "Neu: Planung im Kalender",
+      "body": "Du kannst Touren jetzt nach Datum planen, deine Verfügbarkeit teilen und die Saisonübersicht nutzen. Öffne Meine Touren und tippe dann auf den Kalender-Button.",
+      "cta": "Verstanden"
+    },
     "nav": {
       "planned": "Kalender",
       "seasons": "Saisons"
@@ -37,7 +42,7 @@
     "tour": {
       "welcome": {
         "title": "Lerne deinen Kalender kennen",
-        "body": "Eine kurze Tour durch die Planung nach Datum, deine Verfügbarkeit und die Saisonübersicht. Klicke irgendwo, um fortzufahren, oder nutze die Navigation oben."
+        "body": "Eine kurze Tour durch den Kalender, deine Verfügbarkeit und die Saisonübersicht. Klicke irgendwo, um fortzufahren, oder nutze die Navigation oben."
       },
       "availability": {
         "title": "Verfügbarkeit teilen",
@@ -57,7 +62,8 @@
         "seasons": "Saison"
       },
       "nav": {
-        "seasons": "Saison öffnen"
+        "seasons": "Saison öffnen",
+        "dayDetails": "Tagesdetails öffnen"
       },
       "demo": {
         "tourName": "Matterhorn",

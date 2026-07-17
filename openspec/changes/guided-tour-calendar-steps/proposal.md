@@ -8,6 +8,7 @@ The calendar and availability features (planned view, availability editing, frie
 - Introduce a new **calendar-hosted spotlight tour** covering three steps: editing availability, the meaning of friend/tour day-chips (shown as demo chips, since a new user has no real data), and navigating to the seasonal overview (issue steps 2–4).
 - **Auto-chain**: when the onboarding tour is completed (advanced past its last step), it hands off toward `/calendar`; the calendar tour then starts **only if** the calendar gate is still set (see below), so a returning user who replays only the map tour is not surprised by a repeat.
 - **Standalone first-open trigger**: for users who already completed onboarding before this feature, the calendar tour's welcome appears the first time they open the calendar.
+- Add a one-time sign-in notice for existing users whose prior onboarding gate is already spent and whose resume index is `0`, informing them that the calendar feature is available via My Tours -> Calendar; dismissing the notice prevents future notices without disabling the calendar tour itself.
 - **Manual replay**: a "replay calendar tour" button on the calendar page (the calendar analogue of the profile-sheet "Show app tour") starts the calendar tour on demand, bypassing the gate.
 - Persist a new gate `user_profile.calendar_tour_show_on_first_open` (default `true`, flips `false` once the tour is shown) mirroring the existing `onboarding_tour_show_at_sign_in` gate. This one gate governs every *automatic* trigger uniformly.
 - Render **demo content** only while the calendar tour is active — **demo day-chips** (one fake tour chip + one fake friend chip on the today cell) for the chip step, and a **demo season bar** for the seasonal-overview step (the seasons view otherwise shows only a "no tours" disclaimer for a new user). Belt-and-suspenders gated so demo data never renders outside the tour and never touches the stores or DB.
@@ -22,9 +23,9 @@ The calendar and availability features (planned view, availability editing, frie
 
 ## Impact
 
-- **DB**: new migration adding `user_profile.calendar_tour_show_on_first_open` (column-add on an already-granted table; no new grants needed).
+- **DB**: new migration adding `user_profile.calendar_tour_show_on_first_open` plus a separate one-time `user_profile.calendar_feature_notice_show_at_sign_in` backfill gate (column-add on an already-granted table; no new grants needed).
 - **Frontend**:
-  - `features/user`: profile schema, store, repository — new gate field + a `dismissCalendarTour` action.
+  - `features/user`: profile schema, store, repository — new gate fields + `dismissCalendarTour` / `dismissCalendarFeatureNotice` actions.
   - `features/onboarding`: `onboarding-steps.ts` (+1 step), `use-onboarding-tour.ts` (parameterize the steps array so the composable is reusable), completion hand-off wiring; `onboarding-welcome.vue` gains optional `titleKey`/`bodyKey` props.
   - `features/calendar`: `calendar-page.vue` instantiates the reused tour composable with new `calendar-tour-steps.ts`, its own stage function, banner, welcome, gate/trigger rule, cleanup-to-planned, and a replay button; `planned-calendar.vue` gains a gated demo-chips prop fed into `<DayPreview>` on the today cell; `seasons-gantt.vue` gains a gated demo season bar; both plus `calendar-nav.vue` gain `data-tour` anchors.
   - `map-store` (or equivalent) `pendingIntent` gains a `startCalendarTour` flag for the hand-off.

@@ -14,6 +14,8 @@ export const userProfileSchema = z.object({
   onboardingTourLastStep: z.number().int(),
   // Calendar-tour auto-show gate (see migration add_calendar_tour_gate).
   calendarTourShowOnFirstOpen: z.boolean(),
+  // One-time sign-in notice for legacy users who missed the calendar step.
+  calendarFeatureNoticeShowAtSignIn: z.boolean(),
 })
 
 /** Raw shape returned from Supabase (snake_case). */
@@ -28,6 +30,7 @@ export const userProfileRowSchema = z
     onboarding_tour_show_at_sign_in: z.boolean().default(true),
     onboarding_tour_last_step: z.number().int().default(0),
     calendar_tour_show_on_first_open: z.boolean().default(true),
+    calendar_feature_notice_show_at_sign_in: z.boolean().default(false),
   })
   .transform(row => ({
     id: row.id,
@@ -37,4 +40,5 @@ export const userProfileRowSchema = z
     onboardingTourShowAtSignIn: row.onboarding_tour_show_at_sign_in,
     onboardingTourLastStep: row.onboarding_tour_last_step,
     calendarTourShowOnFirstOpen: row.calendar_tour_show_on_first_open,
+    calendarFeatureNoticeShowAtSignIn: row.calendar_feature_notice_show_at_sign_in,
   }))
