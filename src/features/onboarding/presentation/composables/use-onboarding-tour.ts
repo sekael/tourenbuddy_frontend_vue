@@ -211,6 +211,9 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
       overlayClickBehavior: () => advance(), // backdrop tap advances
       disableActiveInteraction: true, // highlighted control is inert
       stageRadius: 18, // softer spotlight cutout corners (default 5)
+      // Tighter than driver's default 10: an edge-flush target (the mobile
+      // bottom-nav tabs) otherwise pushes the cutout past the viewport edge.
+      stagePadding: 4,
       popoverClass: 'onboarding-tour-popover',
     })
   }

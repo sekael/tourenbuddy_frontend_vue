@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onMounted, onUnmounted, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
@@ -19,10 +20,27 @@ defineProps<{
 const emit = defineEmits<{ back: [], next: [], finish: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
+
+// Published as a CSS var so content underneath (e.g. the seasons Gantt sticky
+// header) can reserve clearance instead of guessing a fixed height — the
+// banner's actual height varies with locale/title-wrap. Consumers must gate
+// on `html.tour-scroll-locked` themselves; this var alone doesn't scope them.
+const bannerEl = useTemplateRef<HTMLElement>('bannerEl')
+let observer: ResizeObserver | null = null
+onMounted(() => {
+  observer = new ResizeObserver(([entry]) => {
+    document.documentElement.style.setProperty('--onboarding-tour-banner-h', `${entry!.borderBoxSize[0]!.blockSize}px`)
+  })
+  observer.observe(bannerEl.value!)
+})
+onUnmounted(() => {
+  observer?.disconnect()
+  document.documentElement.style.removeProperty('--onboarding-tour-banner-h')
+})
 </script>
 
 <template>
-  <div class="tour-banner" role="region" :aria-label="t('onboarding.tour.bannerLabel')">
+  <div ref="bannerEl" class="tour-banner" role="region" :aria-label="t('onboarding.tour.bannerLabel')">
     <span class="step-title">{{ title }}</span>
 
     <div class="controls">

@@ -77,8 +77,23 @@ const plannedCalendar = ref<{
 } | null>(null)
 function goToday() {
   currentMonth.value = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-  nextTick(() => plannedCalendar.value?.scrollTodayIntoView?.())
+  // nextTick lets the (re-rendered) list commit; the rAF then waits for layout so
+  // scrollIntoView measures the final row positions — a bare nextTick scrolls
+  // before the mobile list has its final height and silently no-ops on open.
+  nextTick(() => requestAnimationFrame(() => plannedCalendar.value?.scrollTodayIntoView?.()))
 }
+
+// The calendar nav tab is a double action: from the seasons view it switches
+// back to the planned view; when already on the planned view it scrolls to today
+// (the Today button used to do this). The seasons tab always just switches.
+function onNavSelect(view: CalendarView) {
+  if (view === 'planned' && activeView.value === 'planned') {
+    goToday()
+    return
+  }
+  setView(view)
+}
+
 const monthLabel = computed(() =>
   new Intl.DateTimeFormat(locale.value, { month: 'long', year: 'numeric' }).format(currentMonth.value),
 )
@@ -157,12 +172,28 @@ const tourTotal = calendarTour.totalSteps
 const demoChips = computed(() => (tourRunning.value ? makeDemoChips(t) : null))
 const demoSeason = computed(() => (tourRunning.value ? makeDemoSeason(t) : null))
 
+// Banner-clearance padding on the canvas applies ONLY while the seasons chart is
+// spotlit — the planned view handles its own clearance (day-chips centers the
+// today row), so padding it there would drop the whole list under the banner.
+const seasonsTourActive = computed(() => tourRunning.value && activeView.value === 'seasons')
+
 // Same body-level scroll-lock as the map tour (the rule lives in
 // onboarding-tour.css) — viewport-fixed spotlight + popovers must pin together.
 const tourLockActive = computed(() => tourRunning.value || tourWelcome.value)
 watch(tourLockActive, (locked) => {
   document.documentElement.classList.toggle('tour-scroll-locked', locked)
 }, { immediate: true })
+
+// Entering the planned view from seasons (nav tab or back) scrolls to today, the
+// same default as a fresh open. Only fires on a real transition — a fresh mount
+// starts on planned with no change, so onMounted handles that case. Suppressed
+// while the tour runs: the tour drives its own (centered) scroll to the target,
+// and goToday's block:'start' scroll would otherwise race it and win, dumping
+// the day-chips step's today row at the top under the banner (back-nav 3→2).
+watch(activeView, (v, prev) => {
+  if (v === 'planned' && prev !== 'planned' && !tourRunning.value)
+    goToday()
+})
 
 // driver.js' overlay lives on <body> outside Vue: tear it down before leaving /
 // on unmount so it never orphans onto another route.
@@ -226,8 +257,8 @@ onMounted(() => {
     })
   }
   else {
-    // Open on today, same as the Today button (no-op on desktop's month grid).
-    nextTick(() => plannedCalendar.value?.scrollTodayIntoView?.())
+    // Fresh open defaults to today (no-op on desktop's month grid).
+    goToday()
   }
 })
 </script>
@@ -256,39 +287,35 @@ onMounted(() => {
       />
     </Teleport>
 
-    <CalendarNav :active="activeView" @select="setView" />
+    <CalendarNav :active="activeView" @select="onNavSelect" />
 
     <main class="calendar-main">
       <header class="top-bar">
-        <!-- Row 1: navigation chrome (back) + tour replay. -->
-        <div class="top-row">
+        <div class="bar-left">
           <BaseIconButton name="arrow_back" :label="t('calendar.back')" @click="goBack" />
-          <!-- Always-visible replay: starts the calendar tour on demand, bypassing
-               the gate (the calendar analogue of the profile "Show app tour"). -->
-          <BaseIconButton name="help" size="md" :label="t('calendar.tour.replay')" @click="calendarTour.startTour(0)" />
         </div>
 
-        <!-- Row 2: month navigation / view name + Today. -->
-        <div class="month-row">
+        <div class="bar-center">
           <template v-if="activeView === 'planned'">
-            <div class="month-nav">
-              <BaseIconButton name="chevron_left" size="sm" :label="t('calendar.planned.prevMonth')" @click="shiftMonth(-1)" />
-              <h2 class="top-title">
-                {{ monthLabel }}
-              </h2>
-              <BaseIconButton name="chevron_right" size="sm" :label="t('calendar.planned.nextMonth')" @click="shiftMonth(1)" />
-            </div>
-            <BaseButton v-if="!editing" variant="secondary" size="sm" @click="goToday">
-              {{ t('calendar.planned.today') }}
-            </BaseButton>
+            <BaseIconButton name="chevron_left" size="sm" :label="t('calendar.planned.prevMonth')" @click="shiftMonth(-1)" />
+            <h2 class="top-title">
+              {{ monthLabel }}
+            </h2>
+            <BaseIconButton name="chevron_right" size="sm" :label="t('calendar.planned.nextMonth')" @click="shiftMonth(1)" />
           </template>
           <h2 v-else class="top-title">
             {{ t('calendar.seasons.title') }}
           </h2>
         </div>
+
+        <div class="bar-right">
+          <!-- Always-visible replay: starts the calendar tour on demand, bypassing
+               the gate (the calendar analogue of the profile "Show app tour"). -->
+          <BaseIconButton name="help" size="md" :label="t('calendar.tour.replay')" @click="calendarTour.startTour(0)" />
+        </div>
       </header>
 
-      <div class="calendar-canvas">
+      <div class="calendar-canvas" :class="{ 'tour-seasons': seasonsTourActive }">
         <PlannedCalendar v-if="activeView === 'planned'" ref="plannedCalendar" :view-date="currentMonth" :demo-chips="demoChips" @select="selectTour" @edit-contact="handleEditContact" />
         <SeasonsGantt v-else :demo-tour="demoSeason" @select="selectTour" />
       </div>
@@ -392,43 +419,31 @@ onMounted(() => {
   gap: var(--spacing-sm);
 }
 
-/* Two stacked rows: back + replay on top, month nav / view name + Today below —
-   the top bar is too crowded for a single row once the replay button is added. */
+/* Three slots: back (left), month nav / view name (center), replay (right).
+   Equal 1fr sides keep the auto-width center group centered no matter what the
+   sides hold. */
 .top-bar {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--spacing-sm);
   padding: calc(var(--safe-top) + var(--spacing-sm)) var(--spacing-md) var(--spacing-sm);
   flex-shrink: 0;
 }
 
-/* Row 1: back pinned left, replay pinned right. */
-.top-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.bar-left {
+  justify-self: start;
 }
 
-/* Row 2: the month-nav group grows to center itself; Today sits at the right.
-   In seasons view the lone title centers via the same flex fill. */
-.month-row {
+/* < Month Year > — chevrons flank the centered label. */
+.bar-center {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-}
-
-/* < Month Year > — chevrons flank the centered label; fills the row so the label
-   stays centered regardless of the Today button beside it. */
-.month-nav {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   gap: var(--spacing-xxs);
 }
 
-.month-row > .top-title {
-  flex: 1;
+.bar-right {
+  justify-self: end;
 }
 
 .top-title {
@@ -449,6 +464,26 @@ onMounted(() => {
   min-height: 0;
   padding: 0 var(--spacing-md) var(--spacing-md);
   overflow: hidden;
+}
+
+/* Seasons-tour only (`.tour-seasons` is bound solely while the seasons chart is
+   spotlit — the planned view is left untouched so its own day-chips clearance
+   isn't fought). Two jobs:
+   1. Reserve clearance so the spotlit track drops below the `position: fixed`
+      banner. Padding on the CONTAINER (not the track) keeps the cutout — which
+      hugs the track — snug: the reserved space sits above the cutout, not in it,
+      and the track's absolute `::after` divider isn't dragged up through it.
+      Down to the banner's bottom = its top offset (safe-top + spacing-md, see
+      onboarding-tour-banner.vue) + height. The height comes from the banner's
+      ResizeObserver var; the 7rem fallback covers the 2-line banner if the var
+      hasn't published yet, so clearance never collapses to ~0.
+   2. Fit all four season columns in the viewport (drop the mobile per-season
+      floor, shrink the label — both inherit down into SeasonsGantt) so the snug
+      track cutout can't overflow sideways. */
+.calendar-canvas.tour-seasons {
+  padding-top: calc(var(--onboarding-tour-banner-h, 7rem) + var(--safe-top) + var(--spacing-md));
+  --season-min: 0px;
+  --label-w: 128px;
 }
 
 /* Host for the contact sheet/dialog (same pattern as map-page): fixed to the

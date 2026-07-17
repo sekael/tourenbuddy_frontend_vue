@@ -60,4 +60,12 @@ describe('calendarPage — availability edit lifecycle', () => {
     wrapper.findComponent(CalendarNav).vm.$emit('select', 'seasons')
     expect(store.cancel).not.toHaveBeenCalled()
   })
+
+  it('scrolls to today (no navigation) when the calendar tab is tapped while already on planned', () => {
+    // Default route has no view query → already on the planned view. Tapping the
+    // calendar tab again must scroll to today, not re-navigate.
+    const { wrapper } = mountPage(false)
+    wrapper.findComponent(CalendarNav).vm.$emit('select', 'planned')
+    expect(replace).not.toHaveBeenCalled()
+  })
 })

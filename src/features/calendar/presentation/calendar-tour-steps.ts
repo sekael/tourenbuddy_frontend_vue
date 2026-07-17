@@ -37,13 +37,17 @@ export const CALENDAR_TOUR_STEPS: OnboardingStep[] = [
     // The stage switches to the seasons view (spotlighting the seasons nav first)
     // and a demo season bar renders so the axis isn't the zero-tour disclaimer.
     surface: 'seasons',
-    target: '[data-tour="demo-season"]',
+    // Spotlight the demo ROW itself (not the whole track). Banner clearance +
+    // column fit come from the `.calendar-canvas.tour-seasons` overrides in
+    // calendar-page.vue (padding-top pushes the sticky header below the fixed
+    // banner; the narrowed label + zero season-floor keep all four columns in
+    // view so the tour-name label shows without horizontal scroll). The demo row
+    // is the first row, so driver.js' center-scroll clamps to the top and leaves
+    // the header visible. `block:'nearest'` minimizes our own pre-scroll motion.
+    target: '[data-tour="demo-row"]',
+    scrollBlock: 'nearest',
     titleKey: 'calendar.tour.seasons.title',
     bodyKey: 'calendar.tour.seasons.body',
     labelKey: 'calendar.tour.labels.seasons',
-    // Center the demo bar both ways: vertically to clear the banner, horizontally
-    // so it's in view on the sideways-scrolling mobile gantt.
-    scrollBlock: 'center',
-    scrollInline: 'center',
   },
 ]

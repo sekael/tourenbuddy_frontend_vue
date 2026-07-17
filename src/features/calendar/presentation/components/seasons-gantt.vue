@@ -48,7 +48,9 @@ const nowLineLeft = computed(() => {
     </div>
 
     <!-- Single scroll container (both axes on mobile). The track holds the whole
-         chart at its natural width so narrow viewports scroll horizontally. -->
+         chart at its natural width so narrow viewports scroll horizontally.
+         During the tour, tour-locked overrides fit the columns (no h-scroll) and
+         the sticky header is pinned below the banner — see the styles below. -->
     <div v-else class="gantt">
       <div class="gantt-track">
         <!-- Header: label column + 4 season columns with month ranges. Sticky so
@@ -68,8 +70,9 @@ const nowLineLeft = computed(() => {
         <div class="gantt-rows">
           <div class="season-now-line" :style="{ left: nowLineLeft }" aria-hidden="true" />
 
-          <!-- Calendar-tour demo row: non-interactive, isolated, tour-gated. -->
-          <div v-if="demoTour" class="gantt-row gantt-tour-row" data-tour="demo-season">
+          <!-- Calendar-tour demo row: non-interactive, isolated, tour-gated. The
+               seasonal-overview step spotlights THIS row (data-tour="demo-row"). -->
+          <div v-if="demoTour" class="gantt-row gantt-tour-row" data-tour="demo-row">
             <div class="row-label">
               <span class="tour-name">{{ demoTour.name }}</span>
             </div>
@@ -208,6 +211,10 @@ const nowLineLeft = computed(() => {
   z-index: 5;
   border-bottom: 1px solid var(--color-outline-variant);
   background-color: var(--color-surface);
+}
+
+html.tour-scroll-locked .gantt-track {
+  min-width: 0;
 }
 
 .header-label {
