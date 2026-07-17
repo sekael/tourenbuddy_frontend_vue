@@ -44,6 +44,10 @@
         "title": "Lerne deinen Kalender kennen",
         "body": "Eine kurze Tour durch den Kalender, deine Verfügbarkeit und die Saisonübersicht. Klicke irgendwo, um fortzufahren, oder nutze die Navigation oben."
       },
+      "todayNav": {
+        "title": "Zurück zu heute springen",
+        "body": "Tippe auf Kalender, um jederzeit direkt zum heutigen Tag zu scrollen."
+      },
       "availability": {
         "title": "Verfügbarkeit teilen",
         "body": "Tippe hier, um die Tage zu markieren, an denen du Zeit hast. Deine Freunde sehen sie und können Touren mit dir planen."
@@ -57,6 +61,7 @@
         "body": "Sieh, in welche Saison deine Touren fallen, damit du stets weisst, was zur Jahreszeit lohnend ist."
       },
       "labels": {
+        "todayNav": "Heute",
         "availability": "Verfügbarkeit",
         "dayChips": "Tagesinfos",
         "seasons": "Saison"

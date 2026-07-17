@@ -34,7 +34,7 @@ const items: { view: CalendarView, icon: string, labelKey: string }[] = [
         class="nav-item"
         :class="{ 'nav-item--active': active === item.view }"
         :aria-current="active === item.view ? 'page' : undefined"
-        :data-tour="item.view === 'seasons' ? 'nav-seasons' : undefined"
+        :data-tour="item.view === 'seasons' ? 'nav-seasons' : 'nav-planned'"
         @click="emit('select', item.view)"
       >
         <BaseIcon :name="item.icon" />
@@ -52,7 +52,7 @@ const items: { view: CalendarView, icon: string, labelKey: string }[] = [
       class="bottom-nav-item"
       :class="{ 'bottom-nav-item--active': active === item.view }"
       :aria-current="active === item.view ? 'page' : undefined"
-      :data-tour="item.view === 'seasons' ? 'nav-seasons' : undefined"
+      :data-tour="item.view === 'seasons' ? 'nav-seasons' : 'nav-planned'"
       @click="emit('select', item.view)"
     >
       <BaseIcon :name="item.icon" />

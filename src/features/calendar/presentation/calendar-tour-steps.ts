@@ -11,6 +11,22 @@ import type { OnboardingStep } from '@/features/onboarding/presentation/onboardi
  */
 export const CALENDAR_TOUR_STEPS: OnboardingStep[] = [
   {
+    // Opening step: teach the calendar nav tab's double action (tap-again on the
+    // planned view scrolls back to today). Purely informational — the tour can't
+    // trigger the scroll itself; it points at the tab and explains. `side:'bottom'`
+    // drops the popover below the tab: on the desktop sidebar the tab sits high
+    // (right under the pinned banner), so a `top` placement gets clipped by the
+    // banner and reflowed to the side — `bottom` clears it. On mobile the tab is
+    // in the viewport-pinned bottom nav, where driver.js auto-flips the popover up
+    // (no room below), landing it mid-screen clear of the banner.
+    surface: 'today-nav',
+    target: '[data-tour="nav-planned"]',
+    titleKey: 'calendar.tour.todayNav.title',
+    bodyKey: 'calendar.tour.todayNav.body',
+    labelKey: 'calendar.tour.labels.todayNav',
+    side: 'bottom',
+  },
+  {
     // Planned view is the default; the FAB is always visible there.
     surface: 'availability',
     target: '[data-tour="availability-edit"]',

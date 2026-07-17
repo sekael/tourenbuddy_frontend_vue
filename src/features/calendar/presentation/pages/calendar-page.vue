@@ -121,6 +121,12 @@ function selectTour(tourId: string) {
 // each abstract surface into a view switch + waypoint spotlight.
 async function stageCalendarSurface(surface: TourSurface, ctx: StageContext) {
   switch (surface) {
+    case 'today-nav':
+      // The nav tab lives on both views, but its tap-again-to-today action only
+      // applies to the planned view — land there so the copy matches the state.
+      if (activeView.value !== 'planned')
+        setView('planned')
+      break
     case 'availability':
       // Availability lives on the planned view (the default); make sure we're there.
       if (activeView.value !== 'planned')

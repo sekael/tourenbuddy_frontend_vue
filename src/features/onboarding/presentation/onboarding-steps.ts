@@ -25,6 +25,7 @@ export type TourSurface
     | 'tours' // My Tours list sheet (own / friends tabs)
     | 'tour-bar' // always-visible bottom tour action bar
     | 'base-map-panel' // speed-dial base-map switcher panel
+    | 'today-nav' // calendar: the planned/calendar nav tab (tap-again jumps to today)
     | 'availability' // calendar: availability edit FAB (planned view)
     | 'day-chips' // calendar: the today cell's demo tour/friend chips (planned view)
     | 'seasons' // calendar: the seasonal overview (seasons view)
