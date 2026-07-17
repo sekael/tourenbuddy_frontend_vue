@@ -29,6 +29,9 @@ export const CALENDAR_TOUR_STEPS: OnboardingStep[] = [
     titleKey: 'calendar.tour.dayChips.title',
     bodyKey: 'calendar.tour.dayChips.body',
     labelKey: 'calendar.tour.labels.dayChips',
+    // The mobile day list pins its top under the tour banner — center the today
+    // row so its spotlight cutout clears the banner.
+    scrollBlock: 'center',
   },
   {
     // The stage switches to the seasons view (spotlighting the seasons nav first)
@@ -38,5 +41,9 @@ export const CALENDAR_TOUR_STEPS: OnboardingStep[] = [
     titleKey: 'calendar.tour.seasons.title',
     bodyKey: 'calendar.tour.seasons.body',
     labelKey: 'calendar.tour.labels.seasons',
+    // Center the demo bar both ways: vertically to clear the banner, horizontally
+    // so it's in view on the sideways-scrolling mobile gantt.
+    scrollBlock: 'center',
+    scrollInline: 'center',
   },
 ]

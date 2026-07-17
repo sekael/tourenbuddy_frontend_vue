@@ -38,7 +38,7 @@
     "tour": {
       "welcome": {
         "title": "Lerne deinen Kalender kennen",
-        "body": "Eine kurze Tour durch die Planung nach Datum, deine Verfügbarkeit und die Saisonübersicht. Klicke irgendwo, um fortzufahren, oder nutze die Schaltflächen oben."
+        "body": "Eine kurze Tour durch die Planung nach Datum, deine Verfügbarkeit und die Saisonübersicht. Klicke irgendwo, um fortzufahren, oder nutze die Navigation oben."
       },
       "availability": {
         "title": "Verfügbarkeit teilen",
@@ -46,11 +46,11 @@
       },
       "dayChips": {
         "title": "Touren und Freunde auf einen Blick",
-        "body": "Jeder Tag zeigt deine geplanten Touren und welche Freunde verfügbar sind – wie die Beispiele bei Heute."
+        "body": "Jeder Tag zeigt deine geplanten Touren und welche Freunde verfügbar sind."
       },
       "seasons": {
         "title": "Saisonübersicht",
-        "body": "Sieh, in welche Saison deine Touren fallen, damit du das ganze Jahr im Voraus planen kannst."
+        "body": "Sieh, in welche Saison deine Touren fallen, damit du stets weisst, was zur Jahreszeit lohnend ist."
       },
       "labels": {
         "availability": "Verfügbarkeit",

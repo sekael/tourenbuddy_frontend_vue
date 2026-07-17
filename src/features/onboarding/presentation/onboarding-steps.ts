@@ -50,6 +50,14 @@ export interface OnboardingStep {
    */
   side?: Popover['side']
   align?: Popover['align']
+  /**
+   * How the target is scrolled into view before highlighting (defaults to
+   * `start` / `nearest`). A target inside a scroll container whose top is pinned
+   * under the fixed tour banner (e.g. the calendar's today row / seasons bar on
+   * mobile) overrides to `center` so the spotlight cutout clears the banner.
+   */
+  scrollBlock?: ScrollLogicalPosition
+  scrollInline?: ScrollLogicalPosition
 }
 
 /** The onboarding steps, in presentation order. */

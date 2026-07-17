@@ -33,7 +33,7 @@ function mountPage() {
 }
 
 function replayButton(wrapper: ReturnType<typeof mountPage>) {
-  return wrapper.findAllComponents(BaseIconButton).find(b => b.props('name') === 'replay')!
+  return wrapper.findAllComponents(BaseIconButton).find(b => b.props('name') === 'help')!
 }
 
 describe('calendarPage — demo content gating', () => {

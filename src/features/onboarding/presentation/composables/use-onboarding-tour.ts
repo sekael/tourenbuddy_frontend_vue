@@ -89,21 +89,34 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
   const currentTitle = computed(() => t(steps[currentIndex.value].labelKey))
 
   /**
-   * Resolve the first element matching `selector`, or null if it never appears
-   * within `timeoutMs`. A staged overlay animates in (Transition mode="out-in"),
-   * so the target is often not in the DOM the instant we stage it.
+   * Resolve the first *visible* element matching `selector`, or the first match
+   * if none is visible. Responsive components render both layouts and hide one
+   * with `display:none` (e.g. calendar-nav's desktop sidebar + mobile bottom
+   * bar share `data-tour="nav-seasons"`); a plain `querySelector` would return
+   * the hidden DOM-first one, anchoring the spotlight to a zero rect. A
+   * `display:none` element has no client rects, so filter on that.
+   */
+  function findVisible(selector: string): Element | null {
+    const els = [...document.querySelectorAll(selector)]
+    return els.find(el => el.getClientRects().length > 0) ?? els[0] ?? null
+  }
+
+  /**
+   * Resolve the first visible element matching `selector`, or null if it never
+   * appears within `timeoutMs`. A staged overlay animates in (Transition
+   * mode="out-in"), so the target is often not in the DOM the instant we stage it.
    */
   function waitForElement(selector: string, timeoutMs = 1000): Promise<Element | null> {
     return new Promise((resolve) => {
       nextTick(() => {
-        const existing = document.querySelector(selector)
+        const existing = findVisible(selector)
         if (existing)
           return resolve(existing)
 
         let timer: ReturnType<typeof setTimeout>
 
         const observer = new MutationObserver(() => {
-          const el = document.querySelector(selector)
+          const el = findVisible(selector)
           if (el) {
             observer.disconnect()
             clearTimeout(timer)
@@ -370,7 +383,11 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
       // stability check below can pass before it even begins — the popover
       // then first paints at the stale pre-scroll position and visibly jumps.
       // The mask is down here, so there is nothing to animate for anyway.
-      el.scrollIntoView({ behavior: 'instant', block: 'start' })
+      el.scrollIntoView({
+        behavior: 'instant',
+        block: step.scrollBlock ?? 'start',
+        inline: step.scrollInline ?? 'nearest',
+      })
       await waitForPosition(el)
       if (!isRunning.value)
         return

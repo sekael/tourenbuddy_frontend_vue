@@ -260,30 +260,31 @@ onMounted(() => {
 
     <main class="calendar-main">
       <header class="top-bar">
-        <div class="bar-left">
+        <!-- Row 1: navigation chrome (back) + tour replay. -->
+        <div class="top-row">
           <BaseIconButton name="arrow_back" :label="t('calendar.back')" @click="goBack" />
+          <!-- Always-visible replay: starts the calendar tour on demand, bypassing
+               the gate (the calendar analogue of the profile "Show app tour"). -->
+          <BaseIconButton name="help" size="md" :label="t('calendar.tour.replay')" @click="calendarTour.startTour(0)" />
         </div>
 
-        <div class="bar-center">
+        <!-- Row 2: month navigation / view name + Today. -->
+        <div class="month-row">
           <template v-if="activeView === 'planned'">
-            <BaseIconButton name="chevron_left" size="sm" :label="t('calendar.planned.prevMonth')" @click="shiftMonth(-1)" />
-            <h2 class="top-title">
-              {{ monthLabel }}
-            </h2>
-            <BaseIconButton name="chevron_right" size="sm" :label="t('calendar.planned.nextMonth')" @click="shiftMonth(1)" />
+            <div class="month-nav">
+              <BaseIconButton name="chevron_left" size="sm" :label="t('calendar.planned.prevMonth')" @click="shiftMonth(-1)" />
+              <h2 class="top-title">
+                {{ monthLabel }}
+              </h2>
+              <BaseIconButton name="chevron_right" size="sm" :label="t('calendar.planned.nextMonth')" @click="shiftMonth(1)" />
+            </div>
+            <BaseButton v-if="!editing" variant="secondary" size="sm" @click="goToday">
+              {{ t('calendar.planned.today') }}
+            </BaseButton>
           </template>
           <h2 v-else class="top-title">
             {{ t('calendar.seasons.title') }}
           </h2>
-        </div>
-
-        <div class="bar-right">
-          <BaseButton v-if="activeView === 'planned' && !editing" variant="secondary" size="sm" @click="goToday">
-            {{ t('calendar.planned.today') }}
-          </BaseButton>
-          <!-- Always-visible replay: starts the calendar tour on demand, bypassing
-               the gate (the calendar analogue of the profile "Show app tour"). -->
-          <BaseIconButton name="replay" size="sm" :label="t('calendar.tour.replay')" @click="calendarTour.startTour(0)" />
         </div>
       </header>
 
@@ -391,33 +392,43 @@ onMounted(() => {
   gap: var(--spacing-sm);
 }
 
-/* Three slots: back (left), nav group (center), Today (right). Equal 1fr sides
-   keep the auto-width center group centered no matter what the sides hold. */
+/* Two stacked rows: back + replay on top, month nav / view name + Today below —
+   the top bar is too crowded for a single row once the replay button is added. */
 .top-bar {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: var(--spacing-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
   padding: calc(var(--safe-top) + var(--spacing-sm)) var(--spacing-md) var(--spacing-sm);
   flex-shrink: 0;
 }
 
-.bar-left {
-  justify-self: start;
-}
-
-/* < Month Year > — chevrons flank the centered label. */
-.bar-center {
+/* Row 1: back pinned left, replay pinned right. */
+.top-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+}
+
+/* Row 2: the month-nav group grows to center itself; Today sits at the right.
+   In seasons view the lone title centers via the same flex fill. */
+.month-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* < Month Year > — chevrons flank the centered label; fills the row so the label
+   stays centered regardless of the Today button beside it. */
+.month-nav {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   gap: var(--spacing-xxs);
 }
 
-.bar-right {
-  justify-self: end;
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xxs);
+.month-row > .top-title {
+  flex: 1;
 }
 
 .top-title {
@@ -481,13 +492,8 @@ onMounted(() => {
   }
 }
 
-/* Mobile: the reserved title box + back + chevrons + Today is a lot for a narrow
-   bar — tighten the gap and drop the title a step so it all fits ~375px. */
+/* Mobile: drop the title a step so the month row fits ~375px. */
 @media (max-width: 599px) {
-  .top-bar {
-    gap: var(--spacing-xs);
-  }
-
   .top-title {
     font-size: var(--font-size-lg);
   }
