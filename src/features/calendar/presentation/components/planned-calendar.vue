@@ -30,9 +30,7 @@ const props = defineProps<{
   demoChips?: { entries: DayEntry[], friends: { userId: string, name: string }[] } | null
 }>()
 const emit = defineEmits<{
-  // dayKey lets the page restore this day's detail list when the user navigates
-  // back from the tour it opened.
-  select: [tourId: string, dayKey?: string]
+  select: [tourId: string]
   editContact: [contactId: string]
 }>()
 
@@ -341,12 +339,11 @@ function closeDetail() {
   detailDate.value = null
 }
 
-// Tour row → open the tour (on the map), carrying the day so the page can
-// re-open this detail list on back-navigation.
+// Tour row → open the tour (on the map). Back-nav returns to the tour's current
+// planned day, derived live on the map side (map-page handleTourInfoBack).
 function selectFromDetail(tourId: string) {
-  const day = detailDate.value ? dayKey(detailDate.value) : undefined
   closeDetail()
-  emit('select', tourId, day)
+  emit('select', tourId)
 }
 </script>
 

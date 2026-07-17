@@ -107,11 +107,10 @@ function goBack() {
   mapStore.setPendingIntent({ openTours: true })
   router.push({ name: 'map' })
 }
-function selectTour(tourId: string, day?: string) {
+function selectTour(tourId: string) {
   mapStore.setPendingIntent({
     selectTourId: tourId,
     origin: activeView.value === 'seasons' ? 'cal-seasons' : 'cal-planned',
-    originDay: day,
   })
   router.push({ name: 'map' })
 }

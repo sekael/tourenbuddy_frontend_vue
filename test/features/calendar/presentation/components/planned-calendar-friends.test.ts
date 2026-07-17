@@ -164,14 +164,15 @@ describe('plannedCalendar — friends\' availability', () => {
     expect(wrapper.find('.detail-body').exists()).toBe(false)
   })
 
-  it('emits select with the tour id and its dayKey from the detail list', async () => {
+  it('emits select with the tour id from the detail list', async () => {
     const day = new Date(2024, 5, 15)
     const wrapper = mountCalendar([], [], [tour('t1', 'Ridge Loop', day)])
     await contentCell(wrapper).trigger('click') // open the day-detail list
     await wrapper.find('.detail-row').trigger('click') // tap the tour row
 
-    // dayKey lets the page re-open this day's detail list on back-navigation.
-    expect(wrapper.emitted('select')?.[0]).toEqual(['t1', '2024-06-15'])
+    // Back-nav day is derived live from the tour's plannedDate on the map side,
+    // so the emit carries only the tour id.
+    expect(wrapper.emitted('select')?.[0]).toEqual(['t1'])
   })
 
   it('re-opens a day\'s detail list via the exposed openDetailForDay', async () => {

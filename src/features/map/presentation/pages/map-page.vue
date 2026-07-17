@@ -11,6 +11,7 @@ import DialogWindow from '@/core/components/dialog-window.vue'
 import FeedbackSheet from '@/core/components/feedback-sheet.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
+import { dayKey } from '@/features/calendar/domain/calendar-dates'
 import ContactsListSheet from '@/features/contacts/presentation/components/contacts-list-sheet.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import FriendRequestsSheet from '@/features/friendships/presentation/components/friend-requests-sheet.vue'
@@ -138,9 +139,6 @@ const pendingFlyTo = ref(false)
 // sheet's back button target. `list` returns to the tours overlay; `cal-*`
 // returns to the calendar route on the matching view; `null` = no back offered.
 const tourDetailOrigin = ref<'list' | 'cal-seasons' | 'cal-planned' | null>(null)
-// Planned-calendar dayKey the tour was opened from — carried back so the detail
-// list re-opens on that day.
-const tourDetailOriginDay = ref<string | null>(null)
 
 // Contact id to auto-open in the contacts sheet (from tour chip edit-contact action)
 const editContactId = ref<string | null>(null)
@@ -353,9 +351,12 @@ function handleTourSelectedFromList(tourId: string) {
 
 function handleTourInfoBack() {
   const origin = tourDetailOrigin.value
-  const originDay = tourDetailOriginDay.value
+  // Derive the return day from the tour's LIVE plannedDate (read before we clear
+  // the selection), not a value frozen when the detail was opened — the date may
+  // have been edited in the detail, and the calendar must re-open the new day.
+  const plannedDate = selectedTour.value?.plannedDate
+  const originDay = plannedDate ? dayKey(plannedDate) : null
   tourDetailOrigin.value = null
-  tourDetailOriginDay.value = null
   mapStore.selectTour(null)
   clearTourPreview()
   // Calendar-originated detail returns to the calendar on its originating view;
@@ -427,7 +428,6 @@ onMounted(async () => {
   }
   else if (intent?.selectTourId) {
     tourDetailOrigin.value = intent.origin ?? null
-    tourDetailOriginDay.value = intent.originDay ?? null
     mapStore.selectTour(intent.selectTourId)
   }
 })
