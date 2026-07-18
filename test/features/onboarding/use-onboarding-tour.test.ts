@@ -384,3 +384,30 @@ describe('useOnboardingTour — staging spotlights', () => {
     expect(popoverTitle()).toBe(ONBOARDING_STEPS[0].titleKey)
   })
 })
+
+describe('useOnboardingTour — teardown cleanup gating', () => {
+  // Regression: stop() runs on every host route-leave/unmount. cleanup may
+  // navigate (calendar returns to planned), so firing it when no tour/welcome
+  // was up hijacks the unrelated navigation (seasons→tour detail bounced to
+  // planned on mobile).
+  it('does NOT run cleanup when stopped while idle', () => {
+    const opts = makeOptions()
+    const tour = useOnboardingTour(opts)
+
+    tour.stop()
+
+    expect(opts.cleanup).not.toHaveBeenCalled()
+  })
+
+  it('runs cleanup when stopped while a tour is running', async () => {
+    mountAllAnchors()
+    const opts = makeOptions()
+    const tour = useOnboardingTour(opts)
+    tour.startTour(0)
+    await flush()
+
+    tour.stop()
+
+    expect(opts.cleanup).toHaveBeenCalledTimes(1)
+  })
+})

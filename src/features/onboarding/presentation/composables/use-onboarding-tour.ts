@@ -135,10 +135,20 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
   }
 
   function teardown() {
+    // Capture before resetting: cleanup restores host UI and MAY navigate (the
+    // calendar cleanup returns to the planned view). teardown fires on every host
+    // route-leave/unmount via stop(), so running cleanup unconditionally hijacks
+    // unrelated navigations — e.g. tapping a tour in the seasons view pushes to
+    // the map, then this cleanup's setView('planned') replace clobbers it (the
+    // race the mobile route transition loses). Only clean up if a tour/welcome
+    // was actually up.
+    const wasActive = isRunning.value || showWelcome.value
     driverObj?.destroy()
     driverObj = null
     isRunning.value = false
-    options.cleanup()
+    showWelcome.value = false
+    if (wasActive)
+      options.cleanup()
   }
 
   /** Dismiss via the "Finish tour" button: persist the current step. */
@@ -156,7 +166,6 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
   function stop() {
     if (isRunning.value)
       options.saveTourStep(currentIndex.value)
-    showWelcome.value = false
     teardown()
   }
 
