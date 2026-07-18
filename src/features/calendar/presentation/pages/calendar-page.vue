@@ -119,6 +119,20 @@ function selectTour(tourId: string) {
 // A second instance of the onboarding tour composable, hosting the calendar
 // steps (see Decision 1). This page owns the concrete `stage` — it translates
 // each abstract surface into a view switch + waypoint spotlight.
+// Center the demo today row in the mobile list so it (and its demo chips) sit
+// mid-screen, clear of the fixed banner, across every planned-view step — a
+// continuous position so advancing 1→2→3 never jumps the row. driver.js only
+// auto-scrolls a fully off-screen row; today sits at the list top (goToday's
+// block:'start'), "in view" but under the banner, so driver leaves it there —
+// hence the explicit center scroll. rAF lets the list commit its height first.
+async function centerDemoToday() {
+  if (activeView.value !== 'planned')
+    return
+  await nextTick()
+  await new Promise(requestAnimationFrame)
+  plannedCalendar.value?.scrollTodayIntoView?.('center')
+}
+
 async function stageCalendarSurface(surface: TourSurface, ctx: StageContext) {
   switch (surface) {
     case 'today-nav':
@@ -126,25 +140,20 @@ async function stageCalendarSurface(surface: TourSurface, ctx: StageContext) {
       // applies to the planned view — land there so the copy matches the state.
       if (activeView.value !== 'planned')
         setView('planned')
+      await centerDemoToday()
       break
     case 'availability':
       // Availability lives on the planned view (the default); make sure we're there.
       if (activeView.value !== 'planned')
         setView('planned')
+      await centerDemoToday()
       break
     case 'day-chips':
       // First spotlight the demo day cell/row as a waypoint, then open the same
       // day's detail overview; the step's final target is the opened detail panel.
       if (activeView.value !== 'planned')
         setView('planned')
-      await nextTick()
-      // Center the demo today row before spotlighting it. driver.js only
-      // auto-scrolls a row that's fully off-screen — today sits at the list top
-      // (goToday's block:'start'), technically "in view" but under the fixed
-      // banner, so driver leaves it there. Force it to the list centre (≈mid
-      // screen, clear of the banner). rAF lets the list commit its height first.
-      await new Promise(requestAnimationFrame)
-      plannedCalendar.value?.scrollTodayIntoView('center')
+      await centerDemoToday()
       await ctx.spotlight('[data-tour="demo-chips"]', 'calendar.tour.nav.dayDetails')
       plannedCalendar.value?.openDetailForDay(new Date())
       break
