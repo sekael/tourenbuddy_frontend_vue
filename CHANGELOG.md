@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.35.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.34.1...tourenbuddy-frontend-v0.35.0) (2026-07-18)
+
+
+### Features
+
+* Calendar availability ([#252](https://github.com/sekael/tourenbuddy_frontend_vue/issues/252)) ([b73f202](https://github.com/sekael/tourenbuddy_frontend_vue/commit/b73f202706d7723237c994e4095a99ac390fb52a))
+* Calendar view planned tours ([#249](https://github.com/sekael/tourenbuddy_frontend_vue/issues/249)) ([fb7a2c6](https://github.com/sekael/tourenbuddy_frontend_vue/commit/fb7a2c6076815765f453d762f0eada4a74ddc4ea))
+* Friends availability sync ([#254](https://github.com/sekael/tourenbuddy_frontend_vue/issues/254)) ([bb14bb5](https://github.com/sekael/tourenbuddy_frontend_vue/commit/bb14bb599dba18c056e8d27f2318ea27b9bab032))
+* Guided tour calendar steps ([#256](https://github.com/sekael/tourenbuddy_frontend_vue/issues/256)) ([9d97401](https://github.com/sekael/tourenbuddy_frontend_vue/commit/9d97401e9e9f2a411ac038f4af96f3fed41ff226))
+
+
+### Bug Fixes
+
+* **calendar:** Render tour-type color ([#253](https://github.com/sekael/tourenbuddy_frontend_vue/issues/253)) ([3e4e374](https://github.com/sekael/tourenbuddy_frontend_vue/commit/3e4e3745ff39320617d56510f243aa341920b199))
+
 ## [0.34.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.34.0...tourenbuddy-frontend-v0.34.1) (2026-07-08)
 
 
