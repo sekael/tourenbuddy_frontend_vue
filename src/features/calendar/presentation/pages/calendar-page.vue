@@ -72,7 +72,7 @@ function shiftMonth(delta: number) {
 // Ref to the Planned view so "Today" can also scroll the mobile list to the
 // current day after the month has switched (and the list re-rendered).
 const plannedCalendar = ref<{
-  scrollTodayIntoView: () => void
+  scrollTodayIntoView: (block?: ScrollLogicalPosition) => void
   openDetailForDay: (date: Date) => void
   closeDetail: () => void
 } | null>(null)
@@ -138,6 +138,13 @@ async function stageCalendarSurface(surface: TourSurface, ctx: StageContext) {
       if (activeView.value !== 'planned')
         setView('planned')
       await nextTick()
+      // Center the demo today row before spotlighting it. driver.js only
+      // auto-scrolls a row that's fully off-screen — today sits at the list top
+      // (goToday's block:'start'), technically "in view" but under the fixed
+      // banner, so driver leaves it there. Force it to the list centre (≈mid
+      // screen, clear of the banner). rAF lets the list commit its height first.
+      await new Promise(requestAnimationFrame)
+      plannedCalendar.value?.scrollTodayIntoView('center')
       await ctx.spotlight('[data-tour="demo-chips"]', 'calendar.tour.nav.dayDetails')
       plannedCalendar.value?.openDetailForDay(new Date())
       break

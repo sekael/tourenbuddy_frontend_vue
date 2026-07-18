@@ -122,11 +122,13 @@ const monthDays = computed<DayRow[]>(() =>
 
 // Scroll the mobile day-list to a given row (no-op on the desktop grid, which
 // has no list). Rows carry `data-day` = their dayKey.
-function scrollDayIntoView(key: string) {
-  listEl.value?.querySelector(`[data-day="${key}"]`)?.scrollIntoView({ block: 'start' })
+function scrollDayIntoView(key: string, block: ScrollLogicalPosition = 'start') {
+  // Instant, not smooth: the tour's spotlight measures the row right after this,
+  // so a mid-animation scroll would leave the mask/popover pinned to a stale rect.
+  listEl.value?.querySelector(`[data-day="${key}"]`)?.scrollIntoView({ behavior: 'instant', block })
 }
-function scrollTodayIntoView() {
-  scrollDayIntoView(todayKey)
+function scrollTodayIntoView(block: ScrollLogicalPosition = 'start') {
+  scrollDayIntoView(todayKey, block)
 }
 // Exposed so the page can re-open a day's detail list on back-navigation, with the
 // mobile list scrolled to that day (so closing the sheet lands where it started).
