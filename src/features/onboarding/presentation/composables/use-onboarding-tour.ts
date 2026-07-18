@@ -4,7 +4,6 @@ import { driver } from 'driver.js'
 import { computed, nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useLogger } from '@/core/logging/use-logger'
-import { ONBOARDING_STEPS } from '../onboarding-steps'
 import 'driver.js/dist/driver.css'
 import '../onboarding-tour.css'
 
@@ -23,6 +22,12 @@ export interface StageContext {
 
 export interface UseOnboardingTourOptions {
   /**
+   * The steps this instance drives, in presentation order. Injected (not
+   * imported) so the same choreography can host the map tour (`ONBOARDING_STEPS`)
+   * or the calendar tour (`CALENDAR_TOUR_STEPS`).
+   */
+  steps: OnboardingStep[]
+  /**
    * Make a step's surface visible (open the right overlay / speed-dial view).
    * May be async — staging an overlay animates it in. Use `ctx.spotlight` to
    * highlight each control on the navigation path before opening the next one.
@@ -30,6 +35,12 @@ export interface UseOnboardingTourOptions {
   stage: (surface: TourSurface, ctx: StageContext) => void | Promise<void>
   /** Close whatever the tour opened once it ends. */
   cleanup: () => void
+  /**
+   * Fired ONLY when the tour is run to completion (advanced past the last step),
+   * not on an early "Finish tour" dismissal. The map tour uses this to hand off
+   * to the calendar route; the calendar tour omits it. Runs after teardown.
+   */
+  onCompleted?: () => void
   /** Persist the resume index. Non-blocking (swallows/logs its own errors). */
   saveTourStep: (n: number) => void | Promise<void>
   /** Flip the auto-start gate off. Non-blocking. */
@@ -50,12 +61,14 @@ export interface TourPace {
   gapMs: number
 }
 
-const LAST_INDEX = ONBOARDING_STEPS.length - 1
 const DEFAULT_PACE: TourPace = { holdMs: 2000, gapMs: 500 }
 
 export function useOnboardingTour(options: UseOnboardingTourOptions) {
   const { t } = useI18n({ useScope: 'global' })
   const logger = useLogger('OnboardingTour')
+
+  const steps = options.steps
+  const LAST_INDEX = steps.length - 1
 
   const isRunning = ref(false)
   // True while the pre-tour welcome screen is showing (auto-start only, before
@@ -73,24 +86,37 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
 
   // Short label for the current step, shown in the top banner (distinct from the
   // benefit-oriented popover title).
-  const currentTitle = computed(() => t(ONBOARDING_STEPS[currentIndex.value].labelKey))
+  const currentTitle = computed(() => t(steps[currentIndex.value].labelKey))
 
   /**
-   * Resolve the first element matching `selector`, or null if it never appears
-   * within `timeoutMs`. A staged overlay animates in (Transition mode="out-in"),
-   * so the target is often not in the DOM the instant we stage it.
+   * Resolve the first *visible* element matching `selector`, or the first match
+   * if none is visible. Responsive components render both layouts and hide one
+   * with `display:none` (e.g. calendar-nav's desktop sidebar + mobile bottom
+   * bar share `data-tour="nav-seasons"`); a plain `querySelector` would return
+   * the hidden DOM-first one, anchoring the spotlight to a zero rect. A
+   * `display:none` element has no client rects, so filter on that.
+   */
+  function findVisible(selector: string): Element | null {
+    const els = [...document.querySelectorAll(selector)]
+    return els.find(el => el.getClientRects().length > 0) ?? els[0] ?? null
+  }
+
+  /**
+   * Resolve the first visible element matching `selector`, or null if it never
+   * appears within `timeoutMs`. A staged overlay animates in (Transition
+   * mode="out-in"), so the target is often not in the DOM the instant we stage it.
    */
   function waitForElement(selector: string, timeoutMs = 1000): Promise<Element | null> {
     return new Promise((resolve) => {
       nextTick(() => {
-        const existing = document.querySelector(selector)
+        const existing = findVisible(selector)
         if (existing)
           return resolve(existing)
 
         let timer: ReturnType<typeof setTimeout>
 
         const observer = new MutationObserver(() => {
-          const el = document.querySelector(selector)
+          const el = findVisible(selector)
           if (el) {
             observer.disconnect()
             clearTimeout(timer)
@@ -109,10 +135,20 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
   }
 
   function teardown() {
+    // Capture before resetting: cleanup restores host UI and MAY navigate (the
+    // calendar cleanup returns to the planned view). teardown fires on every host
+    // route-leave/unmount via stop(), so running cleanup unconditionally hijacks
+    // unrelated navigations — e.g. tapping a tour in the seasons view pushes to
+    // the map, then this cleanup's setView('planned') replace clobbers it (the
+    // race the mobile route transition loses). Only clean up if a tour/welcome
+    // was actually up.
+    const wasActive = isRunning.value || showWelcome.value
     driverObj?.destroy()
     driverObj = null
     isRunning.value = false
-    options.cleanup()
+    showWelcome.value = false
+    if (wasActive)
+      options.cleanup()
   }
 
   /** Dismiss via the "Finish tour" button: persist the current step. */
@@ -130,7 +166,6 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
   function stop() {
     if (isRunning.value)
       options.saveTourStep(currentIndex.value)
-    showWelcome.value = false
     teardown()
   }
 
@@ -138,6 +173,7 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
   function finishCompleted() {
     options.saveTourStep(0)
     teardown()
+    options.onCompleted?.()
   }
 
   /** Next button / backdrop tap. */
@@ -158,7 +194,7 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
   }
 
   function buildPopover(index: number): Popover {
-    const step = ONBOARDING_STEPS[index]
+    const step = steps[index]
     // No footer buttons: all navigation (back / next / finish + progress) lives
     // in the top banner (`onboarding-tour-banner.vue`), driven via the exposed
     // `back` / `next` / `finish` actions. Tap-away still advances (overlay
@@ -184,6 +220,9 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
       overlayClickBehavior: () => advance(), // backdrop tap advances
       disableActiveInteraction: true, // highlighted control is inert
       stageRadius: 18, // softer spotlight cutout corners (default 5)
+      // Tighter than driver's default 10: an edge-flush target (the mobile
+      // bottom-nav tabs) otherwise pushes the cutout past the viewport edge.
+      stagePadding: 4,
       popoverClass: 'onboarding-tour-popover',
     })
   }
@@ -320,7 +359,7 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
     try {
       const clamped = clamp(index)
       currentIndex.value = clamped
-      const step: OnboardingStep = ONBOARDING_STEPS[clamped]
+      const step: OnboardingStep = steps[clamped]
 
       // 1. Remove the dark mask completely while we navigate.
       await maskOffAndBreathe()
@@ -356,7 +395,11 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
       // stability check below can pass before it even begins — the popover
       // then first paints at the stale pre-scroll position and visibly jumps.
       // The mask is down here, so there is nothing to animate for anyway.
-      el.scrollIntoView({ behavior: 'instant', block: 'start' })
+      el.scrollIntoView({
+        behavior: 'instant',
+        block: step.scrollBlock ?? 'start',
+        inline: step.scrollInline ?? 'nearest',
+      })
       await waitForPosition(el)
       if (!isRunning.value)
         return
@@ -427,7 +470,7 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
     showWelcome,
     currentIndex,
     currentTitle,
-    totalSteps: ONBOARDING_STEPS.length,
+    totalSteps: steps.length,
     startTour,
     maybeStartTour,
     stop,

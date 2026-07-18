@@ -6,9 +6,12 @@ import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
+import BaseButton from '@/core/components/base-button.vue'
+import DialogWindow from '@/core/components/dialog-window.vue'
 import FeedbackSheet from '@/core/components/feedback-sheet.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
+import { dayKey } from '@/features/calendar/domain/calendar-dates'
 import ContactsListSheet from '@/features/contacts/presentation/components/contacts-list-sheet.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import FriendRequestsSheet from '@/features/friendships/presentation/components/friend-requests-sheet.vue'
@@ -23,6 +26,7 @@ import { useNotificationsStore } from '@/features/notifications/presentation/sto
 import OnboardingTourBanner from '@/features/onboarding/presentation/components/onboarding-tour-banner.vue'
 import OnboardingWelcome from '@/features/onboarding/presentation/components/onboarding-welcome.vue'
 import { useOnboardingTour } from '@/features/onboarding/presentation/composables/use-onboarding-tour'
+import { ONBOARDING_STEPS } from '@/features/onboarding/presentation/onboarding-steps'
 import { useOnboardingTourStore } from '@/features/onboarding/presentation/stores/onboarding-tour-store'
 import { getElevation } from '@/features/tours/data/services/swisstopo-elevation-service'
 import { suggestTourName } from '@/features/tours/data/services/swisstopo-name-service'
@@ -135,9 +139,6 @@ const pendingFlyTo = ref(false)
 // sheet's back button target. `list` returns to the tours overlay; `cal-*`
 // returns to the calendar route on the matching view; `null` = no back offered.
 const tourDetailOrigin = ref<'list' | 'cal-seasons' | 'cal-planned' | null>(null)
-// Planned-calendar dayKey the tour was opened from — carried back so the detail
-// list re-opens on that day.
-const tourDetailOriginDay = ref<string | null>(null)
 
 // Contact id to auto-open in the contacts sheet (from tour chip edit-contact action)
 const editContactId = ref<string | null>(null)
@@ -259,10 +260,17 @@ async function stageTourSurface(surface: TourSurface, ctx: StageContext) {
 }
 
 const onboardingTour = useOnboardingTour({
+  steps: ONBOARDING_STEPS,
   stage: stageTourSurface,
   cleanup: () => {
     closeOverlay()
     mapOverlayRef.value?.closeMenu()
+  },
+  // Ran to completion (not an early dismissal): hand off to the calendar route.
+  // The calendar's own gate decides whether the calendar tour actually starts.
+  onCompleted: () => {
+    mapStore.setPendingIntent({ startCalendarTour: true })
+    router.push({ name: 'calendar' })
   },
   saveTourStep: n => userProfileStore.saveTourStep(n),
   dismissTourAtSignIn: () => userProfileStore.dismissTourAtSignIn(),
@@ -282,12 +290,29 @@ const {
   showWelcome: tourWelcome,
 } = onboardingTour
 const tourTotal = onboardingTour.totalSteps
+const showCalendarFeatureNotice = ref(false)
+
+function maybeShowCalendarFeatureNotice() {
+  if (
+    !tourRunning.value
+    && !tourWelcome.value
+    && userProfileStore.profile?.calendarFeatureNoticeShowAtSignIn === true
+  ) {
+    showCalendarFeatureNotice.value = true
+  }
+}
+
+function dismissCalendarFeatureNotice() {
+  showCalendarFeatureNotice.value = false
+  userProfileStore.dismissCalendarFeatureNotice()
+}
 
 // The router guard blocks /map until the profile is loaded, so the auto-start
 // gate is already decidable in setup — open the welcome synchronously, before
 // the first paint, so a tour-eligible user never sees the bare map flash first.
 // (No-op when the gate is off; `onMounted` re-checks for a cold profile.)
 onboardingTour.maybeStartTour()
+maybeShowCalendarFeatureNotice()
 
 // Lock document scroll for the whole tour + welcome. `.map-page` is overflow:
 // hidden, but iOS Safari still rubber-band/address-bar scrolls the document
@@ -326,9 +351,12 @@ function handleTourSelectedFromList(tourId: string) {
 
 function handleTourInfoBack() {
   const origin = tourDetailOrigin.value
-  const originDay = tourDetailOriginDay.value
+  // Derive the return day from the tour's LIVE plannedDate (read before we clear
+  // the selection), not a value frozen when the detail was opened — the date may
+  // have been edited in the detail, and the calendar must re-open the new day.
+  const plannedDate = selectedTour.value?.plannedDate
+  const originDay = plannedDate ? dayKey(plannedDate) : null
   tourDetailOrigin.value = null
-  tourDetailOriginDay.value = null
   mapStore.selectTour(null)
   clearTourPreview()
   // Calendar-originated detail returns to the calendar on its originating view;
@@ -386,6 +414,7 @@ onMounted(async () => {
   if (!userProfileStore.profile)
     await userProfileStore.loadProfile()
   onboardingTour.maybeStartTour()
+  maybeShowCalendarFeatureNotice()
   await Promise.all([toursStore.loadTours(), contactsStore.loadContacts()])
 
   // Consume a one-shot handoff from the calendar route (open the tours list, or
@@ -399,7 +428,6 @@ onMounted(async () => {
   }
   else if (intent?.selectTourId) {
     tourDetailOrigin.value = intent.origin ?? null
-    tourDetailOriginDay.value = intent.originDay ?? null
     mapStore.selectTour(intent.selectTourId)
   }
 })
@@ -724,6 +752,21 @@ function handleDialogClose() {
       />
     </Teleport>
 
+    <Teleport to="body">
+      <DialogWindow
+        v-if="showCalendarFeatureNotice"
+        :title="t('calendar.featureNotice.title')"
+        @close="dismissCalendarFeatureNotice"
+      >
+        <div class="calendar-feature-notice">
+          <p>{{ t('calendar.featureNotice.body') }}</p>
+          <BaseButton size="md" @click="dismissCalendarFeatureNotice">
+            {{ t('calendar.featureNotice.cta') }}
+          </BaseButton>
+        </div>
+      </DialogWindow>
+    </Teleport>
+
     <TourenbuddyMap ref="mapRef" @tour-clicked="handleTourClicked" @map-background-click="handleMapBackgroundClick" />
 
     <MapActionOverlay
@@ -836,6 +879,14 @@ function handleDialogClose() {
   /* Allow clicks to pass through transparent areas around the sheet so FABs
      remain interactive even when an overlay is open */
   pointer-events: none;
+}
+
+.calendar-feature-notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  color: var(--color-on-surface-variant);
+  line-height: 1.5;
 }
 
 /* On desktop, make the container a layout no-op so fixed-position dialogs and

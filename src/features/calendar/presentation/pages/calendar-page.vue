@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import type { StageContext } from '@/features/onboarding/presentation/composables/use-onboarding-tour'
+import type { TourSurface } from '@/features/onboarding/presentation/onboarding-steps'
 import { storeToRefs } from 'pinia'
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
@@ -11,7 +13,13 @@ import { useAvailabilityStore } from '@/features/calendar/presentation/stores/av
 import ContactsListSheet from '@/features/contacts/presentation/components/contacts-list-sheet.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
+import OnboardingTourBanner from '@/features/onboarding/presentation/components/onboarding-tour-banner.vue'
+import OnboardingWelcome from '@/features/onboarding/presentation/components/onboarding-welcome.vue'
+import { useOnboardingTour } from '@/features/onboarding/presentation/composables/use-onboarding-tour'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
+import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
+import { makeDemoChips, makeDemoSeason } from '../calendar-tour-demo'
+import { CALENDAR_TOUR_STEPS } from '../calendar-tour-steps'
 import CalendarNav from '../components/calendar-nav.vue'
 import PlannedCalendar from '../components/planned-calendar.vue'
 import SeasonsGantt from '../components/seasons-gantt.vue'
@@ -25,6 +33,7 @@ const mapStore = useMapStore()
 const toursStore = useToursStore()
 const contactsStore = useContactsStore()
 const availabilityStore = useAvailabilityStore()
+const userProfileStore = useUserProfileStore()
 const { editing, saving } = storeToRefs(availabilityStore)
 
 // Friend chip → contact-action menu → Edit opens the contact over the calendar,
@@ -63,13 +72,29 @@ function shiftMonth(delta: number) {
 // Ref to the Planned view so "Today" can also scroll the mobile list to the
 // current day after the month has switched (and the list re-rendered).
 const plannedCalendar = ref<{
-  scrollTodayIntoView: () => void
+  scrollTodayIntoView: (block?: ScrollLogicalPosition) => void
   openDetailForDay: (date: Date) => void
+  closeDetail: () => void
 } | null>(null)
 function goToday() {
   currentMonth.value = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-  nextTick(() => plannedCalendar.value?.scrollTodayIntoView?.())
+  // nextTick lets the (re-rendered) list commit; the rAF then waits for layout so
+  // scrollIntoView measures the final row positions — a bare nextTick scrolls
+  // before the mobile list has its final height and silently no-ops on open.
+  nextTick(() => requestAnimationFrame(() => plannedCalendar.value?.scrollTodayIntoView?.()))
 }
+
+// The calendar nav tab is a double action: from the seasons view it switches
+// back to the planned view; when already on the planned view it scrolls to today
+// (the Today button used to do this). The seasons tab always just switches.
+function onNavSelect(view: CalendarView) {
+  if (view === 'planned' && activeView.value === 'planned') {
+    goToday()
+    return
+  }
+  setView(view)
+}
+
 const monthLabel = computed(() =>
   new Intl.DateTimeFormat(locale.value, { month: 'long', year: 'numeric' }).format(currentMonth.value),
 )
@@ -82,16 +107,161 @@ function goBack() {
   mapStore.setPendingIntent({ openTours: true })
   router.push({ name: 'map' })
 }
-function selectTour(tourId: string, day?: string) {
+function selectTour(tourId: string) {
   mapStore.setPendingIntent({
     selectTourId: tourId,
     origin: activeView.value === 'seasons' ? 'cal-seasons' : 'cal-planned',
-    originDay: day,
   })
   router.push({ name: 'map' })
 }
 
+// ── Calendar spotlight tour ─────────────────────────────────────────────────
+// A second instance of the onboarding tour composable, hosting the calendar
+// steps (see Decision 1). This page owns the concrete `stage` — it translates
+// each abstract surface into a view switch + waypoint spotlight.
+// Center the demo today row in the mobile list so it (and its demo chips) sit
+// mid-screen, clear of the fixed banner, across every planned-view step — a
+// continuous position so advancing 1→2→3 never jumps the row. driver.js only
+// auto-scrolls a fully off-screen row; today sits at the list top (goToday's
+// block:'start'), "in view" but under the banner, so driver leaves it there —
+// hence the explicit center scroll. rAF lets the list commit its height first.
+async function centerDemoToday() {
+  if (activeView.value !== 'planned')
+    return
+  await nextTick()
+  await new Promise(requestAnimationFrame)
+  plannedCalendar.value?.scrollTodayIntoView?.('center')
+}
+
+async function stageCalendarSurface(surface: TourSurface, ctx: StageContext) {
+  switch (surface) {
+    case 'today-nav':
+      // The nav tab lives on both views, but its tap-again-to-today action only
+      // applies to the planned view — land there so the copy matches the state.
+      if (activeView.value !== 'planned')
+        setView('planned')
+      await centerDemoToday()
+      break
+    case 'availability':
+      // Availability lives on the planned view (the default); make sure we're there.
+      if (activeView.value !== 'planned')
+        setView('planned')
+      await centerDemoToday()
+      break
+    case 'day-chips':
+      // First spotlight the demo day cell/row as a waypoint, then open the same
+      // day's detail overview; the step's final target is the opened detail panel.
+      if (activeView.value !== 'planned')
+        setView('planned')
+      await centerDemoToday()
+      await ctx.spotlight('[data-tour="demo-chips"]', 'calendar.tour.nav.dayDetails')
+      plannedCalendar.value?.openDetailForDay(new Date())
+      break
+    case 'seasons':
+      plannedCalendar.value?.closeDetail()
+      // Spotlight the seasons nav control, then switch to the seasons view so the
+      // demo season bar (below) can be highlighted.
+      await ctx.spotlight('[data-tour="nav-seasons"]', 'calendar.tour.nav.seasons')
+      setView('seasons')
+      break
+  }
+  await nextTick()
+}
+
+const calendarTour = useOnboardingTour({
+  steps: CALENDAR_TOUR_STEPS,
+  stage: stageCalendarSurface,
+  // Any exit path returns to the planned view (Decision 6), so the user never
+  // lands on an emptied seasons chart and the demo season bar is off-screen.
+  cleanup: () => {
+    plannedCalendar.value?.closeDetail()
+    if (activeView.value !== 'planned')
+      setView('planned')
+  },
+  // 3 steps, no mid-tour resume: dismissing simply flips the gate.
+  saveTourStep: () => {},
+  getResumeStep: () => 0,
+  // Welcome "Start" / "Don't show again" flip the calendar gate off.
+  dismissTourAtSignIn: () => userProfileStore.dismissCalendarTour(),
+  // Drives the STANDALONE welcome (no hand-off intent): show it iff the gate is
+  // fresh. The hand-off path is handled explicitly in the gate rule below.
+  canAutoStart: () =>
+    userProfileStore.profile != null
+    && userProfileStore.profile.calendarTourShowOnFirstOpen === true,
+})
+
+const {
+  isRunning: tourRunning,
+  isStaging: tourStaging,
+  currentIndex: tourIndex,
+  currentTitle: tourTitle,
+  showWelcome: tourWelcome,
+} = calendarTour
+const tourTotal = calendarTour.totalSteps
+
+// Demo content (chips + season bar) is derived ONLY from `isRunning`: null when
+// the tour is not active, so it can never render outside the tour (7.4).
+const demoChips = computed(() => (tourRunning.value ? makeDemoChips(t) : null))
+const demoSeason = computed(() => (tourRunning.value ? makeDemoSeason(t) : null))
+
+// Banner-clearance padding on the canvas applies ONLY while the seasons chart is
+// spotlit — the planned view handles its own clearance (day-chips centers the
+// today row), so padding it there would drop the whole list under the banner.
+const seasonsTourActive = computed(() => tourRunning.value && activeView.value === 'seasons')
+
+// Same body-level scroll-lock as the map tour (the rule lives in
+// onboarding-tour.css) — viewport-fixed spotlight + popovers must pin together.
+const tourLockActive = computed(() => tourRunning.value || tourWelcome.value)
+watch(tourLockActive, (locked) => {
+  document.documentElement.classList.toggle('tour-scroll-locked', locked)
+}, { immediate: true })
+
+// Entering the planned view from seasons (nav tab or back) scrolls to today, the
+// same default as a fresh open. Only fires on a real transition — a fresh mount
+// starts on planned with no change, so onMounted handles that case. Suppressed
+// while the tour runs: the tour drives its own (centered) scroll to the target,
+// and goToday's block:'start' scroll would otherwise race it and win, dumping
+// the day-chips step's today row at the top under the banner (back-nav 3→2).
+watch(activeView, (v, prev) => {
+  if (v === 'planned' && prev !== 'planned' && !tourRunning.value)
+    goToday()
+})
+
+// driver.js' overlay lives on <body> outside Vue: tear it down before leaving /
+// on unmount so it never orphans onto another route.
+onBeforeRouteLeave(() => calendarTour.stop())
+onUnmounted(() => {
+  calendarTour.stop()
+  document.documentElement.classList.remove('tour-scroll-locked')
+})
+
+// The calendar-tour gate rule (Decision 2). One rule keyed on the
+// `calendar_tour_show_on_first_open` gate governs every automatic trigger:
+//   hand-off + fresh gate → start directly (no welcome) + flip the gate
+//   hand-off + spent gate → nothing
+//   no intent + fresh gate → welcome (maybeStartTour self-guards on the gate)
+//   no intent + spent gate → nothing
+// The intent is consumed on EVERY mount — even the do-nothing branches — so it
+// can never survive to re-fire on a later visit.
+function applyCalendarTourGate() {
+  const handoff = mapStore.consumePendingIntent()?.startCalendarTour === true
+  if (handoff) {
+    if (userProfileStore.profile?.calendarTourShowOnFirstOpen === true) {
+      userProfileStore.dismissCalendarTour()
+      calendarTour.startTour(0)
+    }
+    return
+  }
+  // Standalone open: maybeStartTour opens the welcome iff the gate is fresh
+  // (canAutoStart is wired to the gate above).
+  calendarTour.maybeStartTour()
+}
+
 onMounted(() => {
+  // Decide the calendar tour first — it consumes the hand-off intent and must run
+  // regardless of the focus-day early return below.
+  applyCalendarTourGate()
+
   // The map page normally populated the stores already; this is the cold path
   // (e.g. deep link straight to /calendar).
   if (toursStore.tours.length === 0)
@@ -119,15 +289,37 @@ onMounted(() => {
     })
   }
   else {
-    // Open on today, same as the Today button (no-op on desktop's month grid).
-    nextTick(() => plannedCalendar.value?.scrollTodayIntoView?.())
+    // Fresh open defaults to today (no-op on desktop's month grid).
+    goToday()
   }
 })
 </script>
 
 <template>
   <div class="calendar-page">
-    <CalendarNav :active="activeView" @select="setView" />
+    <!-- Teleported to <body> so they share driver.js' top-level stacking context
+         (driver appends its overlay to body), same as the map tour. -->
+    <Teleport to="body">
+      <Transition name="tour-slide">
+        <OnboardingTourBanner
+          v-if="tourRunning" :title="tourTitle" :current="tourIndex + 1" :total="tourTotal"
+          :can-back="tourIndex > 0" :busy="tourStaging" @back="calendarTour.back()" @next="calendarTour.next()"
+          @finish="calendarTour.finish()"
+        />
+      </Transition>
+    </Teleport>
+    <Teleport to="body">
+      <OnboardingWelcome
+        v-if="tourWelcome"
+        title-key="calendar.tour.welcome.title"
+        body-key="calendar.tour.welcome.body"
+        @start="calendarTour.startFromWelcome()"
+        @skip="calendarTour.skipWelcome()"
+        @dismiss="calendarTour.dismissWelcome()"
+      />
+    </Teleport>
+
+    <CalendarNav :active="activeView" @select="onNavSelect" />
 
     <main class="calendar-main">
       <header class="top-bar">
@@ -149,21 +341,22 @@ onMounted(() => {
         </div>
 
         <div class="bar-right">
-          <BaseButton v-if="activeView === 'planned' && !editing" variant="secondary" size="sm" @click="goToday">
-            {{ t('calendar.planned.today') }}
-          </BaseButton>
+          <!-- Always-visible replay: starts the calendar tour on demand, bypassing
+               the gate (the calendar analogue of the profile "Show app tour"). -->
+          <BaseIconButton name="help" size="md" :label="t('calendar.tour.replay')" @click="calendarTour.startTour(0)" />
         </div>
       </header>
 
-      <div class="calendar-canvas">
-        <PlannedCalendar v-if="activeView === 'planned'" ref="plannedCalendar" :view-date="currentMonth" @select="selectTour" @edit-contact="handleEditContact" />
-        <SeasonsGantt v-else @select="selectTour" />
+      <div class="calendar-canvas" :class="{ 'tour-seasons': seasonsTourActive }">
+        <PlannedCalendar v-if="activeView === 'planned'" ref="plannedCalendar" :view-date="currentMonth" :demo-chips="demoChips" @select="selectTour" @edit-contact="handleEditContact" />
+        <SeasonsGantt v-else :demo-tour="demoSeason" @select="selectTour" />
       </div>
 
       <!-- Availability edit entry (Planned, view mode). Hidden while editing. -->
       <ExtendedFab
         v-if="activeView === 'planned' && !editing"
         class="availability-fab"
+        data-tour="availability-edit"
         :label="t('calendar.availability.edit')"
         @click="availabilityStore.enterEdit"
       >
@@ -258,8 +451,9 @@ onMounted(() => {
   gap: var(--spacing-sm);
 }
 
-/* Three slots: back (left), nav group (center), Today (right). Equal 1fr sides
-   keep the auto-width center group centered no matter what the sides hold. */
+/* Three slots: back (left), month nav / view name (center), replay (right).
+   Equal 1fr sides keep the auto-width center group centered no matter what the
+   sides hold. */
 .top-bar {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -304,6 +498,26 @@ onMounted(() => {
   overflow: hidden;
 }
 
+/* Seasons-tour only (`.tour-seasons` is bound solely while the seasons chart is
+   spotlit — the planned view is left untouched so its own day-chips clearance
+   isn't fought). Two jobs:
+   1. Reserve clearance so the spotlit track drops below the `position: fixed`
+      banner. Padding on the CONTAINER (not the track) keeps the cutout — which
+      hugs the track — snug: the reserved space sits above the cutout, not in it,
+      and the track's absolute `::after` divider isn't dragged up through it.
+      Down to the banner's bottom = its top offset (safe-top + spacing-md, see
+      onboarding-tour-banner.vue) + height. The height comes from the banner's
+      ResizeObserver var; the 7rem fallback covers the 2-line banner if the var
+      hasn't published yet, so clearance never collapses to ~0.
+   2. Fit all four season columns in the viewport (drop the mobile per-season
+      floor, shrink the label — both inherit down into SeasonsGantt) so the snug
+      track cutout can't overflow sideways. */
+.calendar-canvas.tour-seasons {
+  padding-top: calc(var(--onboarding-tour-banner-h, 7rem) + var(--safe-top) + var(--spacing-md));
+  --season-min: 0px;
+  --label-w: 128px;
+}
+
 /* Host for the contact sheet/dialog (same pattern as map-page): fixed to the
    visual-viewport bottom on mobile; on desktop the child dialog self-centers. */
 .sheet-container {
@@ -345,13 +559,8 @@ onMounted(() => {
   }
 }
 
-/* Mobile: the reserved title box + back + chevrons + Today is a lot for a narrow
-   bar — tighten the gap and drop the title a step so it all fits ~375px. */
+/* Mobile: drop the title a step so the month row fits ~375px. */
 @media (max-width: 599px) {
-  .top-bar {
-    gap: var(--spacing-xs);
-  }
-
   .top-title {
     font-size: var(--font-size-lg);
   }

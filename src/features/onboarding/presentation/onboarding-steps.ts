@@ -13,7 +13,11 @@ import type { Popover } from 'driver.js'
  * lists), so steps don't silently skip on a fresh account.
  */
 
-/** The on-screen surface a step's target lives in. */
+/**
+ * The on-screen surface a step's target lives in. Map-tour and calendar-tour
+ * each handle only their own subset in their `stage` function; the union is
+ * shared because both reuse the same `OnboardingStep` shape + tour composable.
+ */
 export type TourSurface
   = | 'profile' // user profile sheet
     | 'contacts' // contacts list sheet
@@ -21,6 +25,10 @@ export type TourSurface
     | 'tours' // My Tours list sheet (own / friends tabs)
     | 'tour-bar' // always-visible bottom tour action bar
     | 'base-map-panel' // speed-dial base-map switcher panel
+    | 'today-nav' // calendar: the planned/calendar nav tab (tap-again jumps to today)
+    | 'availability' // calendar: availability edit FAB (planned view)
+    | 'day-chips' // calendar: the today cell's demo tour/friend chips (planned view)
+    | 'seasons' // calendar: the seasonal overview (seasons view)
 
 export interface OnboardingStep {
   /** Surface to stage before highlighting. */
@@ -43,6 +51,14 @@ export interface OnboardingStep {
    */
   side?: Popover['side']
   align?: Popover['align']
+  /**
+   * How the target is scrolled into view before highlighting (defaults to
+   * `start` / `nearest`). A target inside a scroll container whose top is pinned
+   * under the fixed tour banner (e.g. the calendar's today row / seasons bar on
+   * mobile) overrides to `center` so the spotlight cutout clears the banner.
+   */
+  scrollBlock?: ScrollLogicalPosition
+  scrollInline?: ScrollLogicalPosition
 }
 
 /** The onboarding steps, in presentation order. */
@@ -116,5 +132,16 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     titleKey: 'onboarding.tour.basemap.title',
     bodyKey: 'onboarding.tour.basemap.body',
     labelKey: 'onboarding.tour.labels.basemap',
+  },
+  {
+    // Final step: point at the calendar-open button in the My Tours sheet header
+    // (teaching where the calendar lives). The `tours` surface opens that sheet;
+    // this step spotlights the button WITHOUT navigating — the hand-off to
+    // /calendar happens on tour completion, not here.
+    surface: 'tours',
+    target: '[data-tour="open-calendar"]',
+    titleKey: 'onboarding.tour.openCalendar.title',
+    bodyKey: 'onboarding.tour.openCalendar.body',
+    labelKey: 'onboarding.tour.labels.openCalendar',
   },
 ]

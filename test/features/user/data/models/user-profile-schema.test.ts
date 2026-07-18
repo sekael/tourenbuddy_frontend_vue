@@ -27,4 +27,9 @@ describe('userProfileRowSchema', () => {
   it('should reject unsupported locale code', () => {
     expect(() => userProfileRowSchema.parse({ ...baseRow, locale: 'fr' })).toThrow()
   })
+
+  it('should default the calendar feature notice gate to false', () => {
+    const result = userProfileRowSchema.parse(baseRow)
+    expect(result.calendarFeatureNoticeShowAtSignIn).toBe(false)
+  })
 })

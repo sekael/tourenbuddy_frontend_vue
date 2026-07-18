@@ -4,6 +4,11 @@
     "subtitle": "Tourenplanung",
     "back": "Zurück zur Karte",
     "openAriaLabel": "Kalender öffnen",
+    "featureNotice": {
+      "title": "Neu: Planung im Kalender",
+      "body": "Du kannst Touren jetzt nach Datum planen, deine Verfügbarkeit teilen und die Saisonübersicht nutzen. Öffne Meine Touren und tippe dann auf den Kalender-Button.",
+      "cta": "Verstanden"
+    },
     "nav": {
       "planned": "Kalender",
       "seasons": "Saisons"
@@ -11,7 +16,6 @@
     "planned": {
       "prevMonth": "Vorheriger Monat",
       "nextMonth": "Nächster Monat",
-      "today": "Heute",
       "tourCount": "{count} Touren",
       "friendCount": "{count} Freunde",
       "toursHeading": "Touren",
@@ -34,6 +38,44 @@
         "summer": "JUN – AUG",
         "autumn": "SEP – NOV"
       }
+    },
+    "tour": {
+      "welcome": {
+        "title": "Lerne deinen Kalender kennen",
+        "body": "Eine kurze Tour durch den Kalender, deine Verfügbarkeit und die Saisonübersicht. Klicke irgendwo, um fortzufahren, oder nutze die Navigation oben."
+      },
+      "todayNav": {
+        "title": "Zurück zu heute springen",
+        "body": "Tippe auf Kalender, um jederzeit direkt zum heutigen Tag zu scrollen."
+      },
+      "availability": {
+        "title": "Verfügbarkeit teilen",
+        "body": "Tippe hier, um die Tage zu markieren, an denen du Zeit hast. Deine Freunde sehen sie und können Touren mit dir planen."
+      },
+      "dayChips": {
+        "title": "Touren und Freunde auf einen Blick",
+        "body": "Jeder Tag zeigt deine geplanten Touren und welche Freunde verfügbar sind."
+      },
+      "seasons": {
+        "title": "Saisonübersicht",
+        "body": "Sieh, in welche Saison deine Touren fallen, damit du stets weisst, was zur Jahreszeit lohnend ist."
+      },
+      "labels": {
+        "todayNav": "Heute",
+        "availability": "Verfügbarkeit",
+        "dayChips": "Tagesinfos",
+        "seasons": "Saison"
+      },
+      "nav": {
+        "seasons": "Saison öffnen",
+        "dayDetails": "Tagesdetails öffnen"
+      },
+      "demo": {
+        "tourName": "Matterhorn",
+        "friendName": "Alex",
+        "seasonTourName": "Piz Palü"
+      },
+      "replay": "Kalender-Tour wiederholen"
     }
   },
   "validation": {
@@ -667,7 +709,8 @@
         "friendRequests": "Freundschaftsanfragen",
         "tours": "Deine Touren",
         "addLocation": "Tour hinzufügen",
-        "basemap": "Karte wechseln"
+        "basemap": "Karte wechseln",
+        "openCalendar": "Kalender öffnen"
       },
       "nav": {
         "openMenu": "Menü öffnen",
@@ -684,6 +727,10 @@
         "done": "Fertig",
         "finish": "Tour beenden",
         "reopen": "App-Tour anzeigen"
+      },
+      "openCalendar": {
+        "title": "Kalender öffnen",
+        "body": "Plane Touren nach Datum, trage deine Verfügbarkeit ein und sieh, wann Freunde Zeit haben – alles im Kalender."
       }
     }
   }

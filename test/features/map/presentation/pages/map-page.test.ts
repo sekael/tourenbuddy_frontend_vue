@@ -4,12 +4,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MapPage from '@/features/map/presentation/pages/map-page.vue'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
+import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
 vi.mock('@/features/tours/data/services/swisstopo-elevation-service', () => ({
   getElevation: vi.fn().mockResolvedValue(1234),
 }))
 vi.mock('@/features/tours/data/services/swisstopo-name-service', () => ({
   suggestTourName: vi.fn().mockResolvedValue('Mocked Peak'),
+}))
+
+// No router is installed in the test harness, so mock vue-router to capture the
+// back-navigation target (and no-op the route-leave guard).
+const { push } = vi.hoisted(() => ({ push: vi.fn() }))
+vi.mock('vue-router', () => ({
+  useRouter: () => ({ push }),
+  onBeforeRouteLeave: vi.fn(),
 }))
 
 // Stubs for all heavy child components
@@ -23,7 +32,7 @@ const TourenbuddyMapStub = {
 const TourInfoSheetStub = {
   name: 'TourInfoSheet',
   template: '<div data-testid="tour-info-sheet" />',
-  emits: ['close'],
+  emits: ['close', 'back'],
   props: ['tour'],
 }
 const FeedbackSheetStub = {
@@ -58,10 +67,10 @@ const STUB_TOUR = {
   createdAt: new Date(),
 }
 
-function mountMapPage() {
+function mountMapPage(initialState = {}) {
   return mount(MapPage, {
     global: {
-      plugins: [createTestingPinia({ createSpy: vi.fn, stubActions: true })],
+      plugins: [createTestingPinia({ createSpy: vi.fn, stubActions: true, initialState })],
       stubs: {
         TourenbuddyMap: TourenbuddyMapStub,
         MapActionOverlay: { template: '<div />' },
@@ -280,6 +289,35 @@ describe('mapPage', () => {
     })
   })
 
+  describe('calendar feature notice', () => {
+    it('shows the one-time notice and dismisses only the notice gate', async () => {
+      const wrapper = mountMapPage({
+        userProfile: {
+          profile: {
+            id: 'user-123',
+            firstName: 'Max',
+            lastName: 'Muster',
+            locale: 'en',
+            onboardingTourShowAtSignIn: false,
+            onboardingTourLastStep: 0,
+            calendarTourShowOnFirstOpen: true,
+            calendarFeatureNoticeShowAtSignIn: true,
+          },
+        },
+      })
+      const userProfileStore = useUserProfileStore()
+
+      expect(wrapper.vm.showCalendarFeatureNotice).toBe(true)
+
+      wrapper.vm.dismissCalendarFeatureNotice()
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.vm.showCalendarFeatureNotice).toBe(false)
+      expect(userProfileStore.dismissCalendarFeatureNotice).toHaveBeenCalledTimes(1)
+      expect(userProfileStore.dismissCalendarTour).not.toHaveBeenCalled()
+    })
+  })
+
   describe('tour-creation overlay', () => {
     it('should show tour-creation dialog when tour-creation overlay is active', async () => {
       const wrapper = mountMapPage()
@@ -450,6 +488,43 @@ describe('mapPage', () => {
       // ...but the draft must not be left dangling on the map after a failed save.
       expect(mapStore.setPreviewGoal).toHaveBeenLastCalledWith(null)
       expect(mapStore.setPreviewTourType).toHaveBeenLastCalledWith(null)
+    })
+  })
+
+  describe('calendar-originated back navigation', () => {
+    // Open a planned-view tour, then emit the info sheet's back event.
+    async function openPlannedTourThenBack(plannedDate: Date | null) {
+      const wrapper = mountMapPage()
+      const toursStore = useToursStore()
+      const mapStore = useMapStore()
+
+      toursStore.$patch({ tours: [{ ...STUB_TOUR, plannedDate }] })
+      mapStore.$patch({ selectedTourId: STUB_TOUR.id })
+      wrapper.vm.tourDetailOrigin = 'cal-planned'
+      wrapper.vm.activeOverlay = 'tour'
+      await wrapper.vm.$nextTick()
+
+      push.mockClear()
+      await wrapper.findComponent({ name: 'TourInfoSheet' }).vm.$emit('back')
+      await wrapper.vm.$nextTick()
+      return push
+    }
+
+    it('returns to the tour\'s CURRENT planned day, not the day it was opened from', async () => {
+      // The date was edited to 2026-08-20 in the detail; back must open that day.
+      const back = await openPlannedTourThenBack(new Date(2026, 7, 20))
+      expect(back).toHaveBeenCalledWith({
+        name: 'calendar',
+        query: { view: 'planned', day: '2026-08-20' },
+      })
+    })
+
+    it('omits the day param when the tour was unplanned in the detail', async () => {
+      const back = await openPlannedTourThenBack(null)
+      expect(back).toHaveBeenCalledWith({
+        name: 'calendar',
+        query: { view: 'planned' },
+      })
     })
   })
 })

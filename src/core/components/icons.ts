@@ -33,6 +33,7 @@ import IconFilterHdr from '~icons/material-symbols/filter-hdr'
 import IconFlagOutline from '~icons/material-symbols/flag-outline'
 import IconGroupOutline from '~icons/material-symbols/group-outline'
 import IconHardwareOutline from '~icons/material-symbols/hardware-outline'
+import IconHelpOutline from '~icons/material-symbols/help-outline'
 import IconHiking from '~icons/material-symbols/hiking'
 import IconHomeOutline from '~icons/material-symbols/home-outline'
 import IconImageOutline from '~icons/material-symbols/image-outline'
@@ -129,6 +130,7 @@ export const iconRegistry: Record<string, Component> = {
   flag: IconFlagOutline,
   group: IconGroupOutline,
   hardware: IconHardwareOutline,
+  help: IconHelpOutline,
   hiking: IconHiking,
   home: IconHomeOutline,
   image: IconImageOutline,

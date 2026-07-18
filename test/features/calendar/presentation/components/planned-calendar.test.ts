@@ -27,9 +27,9 @@ function tour(id: string, name: string, plannedDate: Date | null, extra: object 
   return { id, name, plannedDate, tourType: 'hiking', ...extra } as any
 }
 
-function mountCalendar(tours: any[], friendTours: any[], viewDate = new Date(2024, 5, 1)) {
+function mountCalendar(tours: any[], friendTours: any[], viewDate = new Date(2024, 5, 1), extraProps: object = {}) {
   return mount(PlannedCalendar, {
-    props: { viewDate },
+    props: { viewDate, ...extraProps },
     global: {
       plugins: [
         createTestingPinia({
@@ -92,6 +92,21 @@ describe('plannedCalendar — desktop grid', () => {
     // A month far from today: the 6-week window never reaches the current date.
     const wrapper = mountCalendar([], [], new Date(2000, 0, 1))
     expect(wrapper.findAll('.day-cell--today')).toHaveLength(0)
+  })
+
+  it('renders demo tour and friend in the opened today detail during the tour', async () => {
+    const demoChips = {
+      entries: [{ tour: tour('demo-tour', 'Demo Tour', new Date()), isFriend: false }],
+      friends: [{ userId: 'demo-friend', name: 'Demo Friend' }],
+    }
+    const wrapper = mountCalendar([], [], new Date(), { demoChips })
+
+    ;(wrapper.vm as any).openDetailForDay(new Date())
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-tour="demo-detail"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Demo Tour')
+    expect(wrapper.text()).toContain('Demo Friend')
   })
 })
 

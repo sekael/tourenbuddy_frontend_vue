@@ -19,11 +19,18 @@ import { useFriendshipsStore } from '@/features/friendships/presentation/stores/
 import { TOUR_TYPE_COLORS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
-const props = defineProps<{ viewDate: Date }>()
+const props = defineProps<{
+  viewDate: Date
+  /**
+   * Calendar-tour demo chips for the today cell. Non-null ONLY while the tour is
+   * running (calendar-page gates it on `isRunning`). Rendered through a dedicated
+   * branch, kept out of the real `entriesFor`/`friendsFor` path so demo data can
+   * never surface outside the tour.
+   */
+  demoChips?: { entries: DayEntry[], friends: { userId: string, name: string }[] } | null
+}>()
 const emit = defineEmits<{
-  // dayKey lets the page restore this day's detail list when the user navigates
-  // back from the tour it opened.
-  select: [tourId: string, dayKey?: string]
+  select: [tourId: string]
   editContact: [contactId: string]
 }>()
 
@@ -115,11 +122,13 @@ const monthDays = computed<DayRow[]>(() =>
 
 // Scroll the mobile day-list to a given row (no-op on the desktop grid, which
 // has no list). Rows carry `data-day` = their dayKey.
-function scrollDayIntoView(key: string) {
-  listEl.value?.querySelector(`[data-day="${key}"]`)?.scrollIntoView({ block: 'start' })
+function scrollDayIntoView(key: string, block: ScrollLogicalPosition = 'start') {
+  // Instant, not smooth: the tour's spotlight measures the row right after this,
+  // so a mid-animation scroll would leave the mask/popover pinned to a stale rect.
+  listEl.value?.querySelector(`[data-day="${key}"]`)?.scrollIntoView({ behavior: 'instant', block })
 }
-function scrollTodayIntoView() {
-  scrollDayIntoView(todayKey)
+function scrollTodayIntoView(block: ScrollLogicalPosition = 'start') {
+  scrollDayIntoView(todayKey, block)
 }
 // Exposed so the page can re-open a day's detail list on back-navigation, with the
 // mobile list scrolled to that day (so closing the sheet lands where it started).
@@ -127,7 +136,7 @@ function openDetailForDay(date: Date) {
   openDetail(date)
   nextTick(() => scrollDayIntoView(dayKey(date)))
 }
-defineExpose({ scrollTodayIntoView, openDetailForDay })
+defineExpose({ scrollTodayIntoView, openDetailForDay, closeDetail })
 
 // ── Availability overlay + edit interaction ────────────────────────────────
 function isAvailable(date: Date): boolean {
@@ -306,8 +315,19 @@ function handleEditContact(contactId: string) {
 // ── Per-day detail list (tours first, then available friends) ────────────────
 // A bottom sheet on mobile / dialog on desktop, layered over the calendar.
 const detailDate = ref<Date | null>(null)
-const detailEntries = computed(() => (detailDate.value ? entriesFor(detailDate.value) : []))
-const detailFriends = computed(() => (detailDate.value ? friendsFor(detailDate.value) : []))
+const isDemoDetail = computed(() => props.demoChips != null && detailDate.value != null && dayKey(detailDate.value) === todayKey)
+const detailEntries = computed(() => {
+  if (!detailDate.value)
+    return []
+  return isDemoDetail.value ? props.demoChips!.entries : entriesFor(detailDate.value)
+})
+const detailFriends = computed<FriendChip[]>(() => {
+  if (!detailDate.value)
+    return []
+  return isDemoDetail.value
+    ? props.demoChips!.friends.map(friend => ({ ...friend, contact: null }))
+    : friendsFor(detailDate.value)
+})
 const detailLabel = computed(() =>
   detailDate.value
     ? new Intl.DateTimeFormat(locale.value, { weekday: 'long', day: 'numeric', month: 'long' }).format(detailDate.value)
@@ -321,12 +341,11 @@ function closeDetail() {
   detailDate.value = null
 }
 
-// Tour row → open the tour (on the map), carrying the day so the page can
-// re-open this detail list on back-navigation.
+// Tour row → open the tour (on the map). Back-nav returns to the tour's current
+// planned day, derived live on the map side (map-page handleTourInfoBack).
 function selectFromDetail(tourId: string) {
-  const day = detailDate.value ? dayKey(detailDate.value) : undefined
   closeDetail()
-  emit('select', tourId, day)
+  emit('select', tourId)
 }
 </script>
 
@@ -350,14 +369,21 @@ function selectFromDetail(tourId: string) {
           'day-cell--available': cell.inMonth && isAvailable(cell.date),
           'day-cell--selectable': isSelectable(cell.date, cell.inMonth),
         }"
+        :data-tour="demoChips && dayKey(cell.date) === todayKey ? 'demo-chips' : undefined"
         @pointerdown="onDayDown($event, cell.date, cell.inMonth)"
         @pointerenter="onDayEnter(cell.date, cell.inMonth)"
         @click="onCellActivate(cell.date, cell.inMonth)"
       >
         <span class="day-number">{{ cell.date.getDate() }}</span>
-        <!-- Preview only (non-interactive). The whole cell opens the detail list. -->
+        <!-- Preview only (non-interactive). The whole cell opens the detail list.
+             Today, while the tour runs, shows the isolated demo chips instead. -->
         <DayPreview
-          v-if="cell.inMonth"
+          v-if="demoChips && dayKey(cell.date) === todayKey"
+          :entries="demoChips.entries"
+          :friends="demoChips.friends"
+        />
+        <DayPreview
+          v-else-if="cell.inMonth"
           :entries="entriesFor(cell.date)"
           :friends="friendsFor(cell.date)"
         />
@@ -378,15 +404,22 @@ function selectFromDetail(tourId: string) {
         'day-row--available': isAvailable(row.date),
         'day-row--selectable': isSelectable(row.date, true),
       }"
+      :data-tour="demoChips && row.isToday ? 'demo-chips' : undefined"
       @click="onRowActivate(row.date)"
     >
       <div class="day-head">
         <span class="day-weekday">{{ weekdayLabel(row.date) }}</span>
         <span class="day-num">{{ row.date.getDate() }}</span>
       </div>
-      <!-- Preview only. The whole row opens the detail list (or toggles in edit mode). -->
+      <!-- Preview only. The whole row opens the detail list (or toggles in edit mode).
+           Today, while the tour runs, shows the isolated demo chips instead. -->
       <div class="day-entries">
-        <DayPreview :entries="row.entries" :friends="friendsFor(row.date)" />
+        <DayPreview
+          v-if="demoChips && row.isToday"
+          :entries="demoChips.entries"
+          :friends="demoChips.friends"
+        />
+        <DayPreview v-else :entries="row.entries" :friends="friendsFor(row.date)" />
       </div>
     </li>
   </ul>
@@ -395,7 +428,7 @@ function selectFromDetail(tourId: string) {
        mobile, dialog on desktop, over the calendar. -->
   <div v-if="detailDate" class="sheet-container">
     <AdaptiveOverlay :title="detailLabel" @close="closeDetail">
-      <div class="detail-body">
+      <div class="detail-body" :data-tour="isDemoDetail ? 'demo-detail' : undefined">
         <template v-if="detailEntries.length">
           <h3 class="detail-heading">
             {{ t('calendar.planned.toursHeading') }}

@@ -4,6 +4,11 @@
     "subtitle": "Adventure Planner",
     "back": "Back to map",
     "openAriaLabel": "Open calendar",
+    "featureNotice": {
+      "title": "New: Calendar planning",
+      "body": "You can now plan tours by date, share availability, and see a seasonal overview. Open My Tours, then tap the calendar button to try it.",
+      "cta": "Got it"
+    },
     "nav": {
       "planned": "Calendar",
       "seasons": "Seasons"
@@ -11,7 +16,6 @@
     "planned": {
       "prevMonth": "Previous month",
       "nextMonth": "Next month",
-      "today": "Today",
       "tourCount": "{count} tours",
       "friendCount": "{count} friends",
       "toursHeading": "Tours",
@@ -34,6 +38,44 @@
         "summer": "JUN – AUG",
         "autumn": "SEP – NOV"
       }
+    },
+    "tour": {
+      "welcome": {
+        "title": "Get to know your calendar",
+        "body": "A quick tour of the calendar, sharing your availability, and the seasonal overview. Click anywhere to continue or use the buttons at the top."
+      },
+      "todayNav": {
+        "title": "Jump back to today",
+        "body": "Tap the calendar tab anytime to scroll straight back to today."
+      },
+      "availability": {
+        "title": "Share your availability",
+        "body": "Tap here to mark the days you're free. Your friends can see them and plan tours with you."
+      },
+      "dayChips": {
+        "title": "Tours and friends at a glance",
+        "body": "Each day shows your planned tours and which friends are available."
+      },
+      "seasons": {
+        "title": "Seasonal overview",
+        "body": "See which seasons your tours fall in, so you always know where to find the goodies."
+      },
+      "labels": {
+        "todayNav": "Today",
+        "availability": "Availability",
+        "dayChips": "Day chips",
+        "seasons": "Seasons"
+      },
+      "nav": {
+        "seasons": "Open seasons",
+        "dayDetails": "Open day details"
+      },
+      "demo": {
+        "tourName": "Matterhorn",
+        "friendName": "Alex",
+        "seasonTourName": "Piz Palü"
+      },
+      "replay": "Replay calendar tour"
     }
   },
   "validation": {
@@ -667,7 +709,8 @@
         "friendRequests": "Friend requests",
         "tours": "Your tours",
         "addLocation": "Add a tour",
-        "basemap": "Switch maps"
+        "basemap": "Switch maps",
+        "openCalendar": "Open calendar"
       },
       "nav": {
         "openMenu": "Open menu",
@@ -684,6 +727,10 @@
         "done": "Done",
         "finish": "Finish tour",
         "reopen": "Show app tour"
+      },
+      "openCalendar": {
+        "title": "Open the calendar",
+        "body": "Plan tours by date, set your availability, and see when friends are free — all in the calendar."
       }
     }
   }

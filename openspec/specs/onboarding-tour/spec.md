@@ -1,6 +1,6 @@
 ## Purpose
 
-Introduce new users to TourenBuddy's core features via a guided spotlight tour. On first arrival at the map after profile onboarding, a welcome screen offers to start the tour, which walks through phone verification, notifications, contacts, friend requests, tours, and map controls. Tour progress and the auto-show gate persist on `user_profile` so state follows the user across devices, and the tour is reopenable from the profile sheet.
+Introduce new users to TourenBuddy's core features via a guided spotlight tour. On first arrival at the map after profile onboarding, a welcome screen offers to start the tour, which walks through phone verification, notifications, contacts, friend requests, tours, map controls, and the calendar. On completion, the tour hands off to the calendar with its own one-time welcome and spotlight sequence. Tour progress and the auto-show gate persist on `user_profile` so state follows the user across devices, and the tour is reopenable from the profile sheet.
 
 ## Requirements
 
@@ -92,12 +92,17 @@ The tour SHALL allow navigating steps both forward and backward. The system SHAL
 
 ### Requirement: Guided step sequence
 
-The tour SHALL present steps in this order, each opening/driving the real surface and highlighting the corresponding feature with a spotlight and an explanatory popover: (1) phone verification, (2) notification settings, (3) add a contact, (4) your contacts list, (5) friend requests, (6) my tours (own/friends tabs), (7) add a location, (8) switching maps. Steps whose surface is a page-level overlay (contacts, friend-requests, tours) SHALL open the actual sheet and target a stable anchor that exists even for a new user with empty lists. When driving the app to a step's surface, the tour SHALL spotlight each intermediate navigation control it actuates (e.g. the menu FAB, a menu item) with a short hint label naming that control (e.g. "Open menu", "Open contacts").
+The tour SHALL present steps in this order, each opening/driving the real surface and highlighting the corresponding feature with a spotlight and an explanatory popover: (1) phone verification, (2) notification settings, (3) add a contact, (4) your contacts list, (5) friend requests, (6) my tours (own/friends tabs), (7) add a location, (8) switching maps, (9) open the calendar. Steps whose surface is a page-level overlay (contacts, friend-requests, tours) SHALL open the actual sheet and target a stable anchor that exists even for a new user with empty lists. The final "open the calendar" step SHALL spotlight the calendar-open control in the My Tours sheet header (teaching the user where the calendar lives) without navigating away. When driving the app to a step's surface, the tour SHALL spotlight each intermediate navigation control it actuates (e.g. the menu FAB, a menu item) with a short hint label naming that control (e.g. "Open menu", "Open contacts").
 
 #### Scenario: Advancing through all steps
 
 - **WHEN** the user advances past the final step
 - **THEN** the tour ends and is marked completed
+
+#### Scenario: Final step points at the calendar
+
+- **WHEN** the tour reaches the "open the calendar" step
+- **THEN** the My Tours sheet is open and the calendar-open control in its header is spotlighted with an explanatory popover, and the map page is NOT navigated away from by the spotlight itself
 
 #### Scenario: Intermediate navigation controls are labelled
 
@@ -189,3 +194,22 @@ For each step the system SHALL position the popover so that it does not visibly 
 
 - **WHEN** a step's target is near the bottom of a tall surface such that a below-target popover would overflow the viewport
 - **THEN** the step's declared side keeps the popover within the viewport and clear of the top control banner
+
+### Requirement: Hand-off to the calendar route on completion
+
+When the onboarding (map) tour is completed by advancing past its final step, the system SHALL set a one-shot "start calendar tour" hand-off intent and navigate to the calendar route. Whether the calendar tour then actually starts is decided by the calendar tour's own gate (see the `calendar-tour` capability): it starts on a fresh gate and is suppressed once the gate is spent. This hand-off SHALL apply on both the first-run completion and the profile-sheet "Show app tour" reopen (which replays the map tour to completion). Dismissing the tour early via "Finish tour" SHALL NOT set the hand-off intent.
+
+#### Scenario: Completing the map tour navigates to the calendar with the hand-off intent
+
+- **WHEN** the user advances past the final map-tour step
+- **THEN** the map tour ends, a one-shot "start calendar tour" intent is set, and the app navigates to the calendar route
+
+#### Scenario: Reopened map tour completion also hands off
+
+- **WHEN** the user reopens the tour via "Show app tour", replays it to the end, and advances past the final step
+- **THEN** the same hand-off intent is set and the app navigates to the calendar route
+
+#### Scenario: Early dismissal does not hand off
+
+- **WHEN** the user ends the map tour early via "Finish tour" before the final step
+- **THEN** no hand-off intent is set and the app is NOT navigated to the calendar

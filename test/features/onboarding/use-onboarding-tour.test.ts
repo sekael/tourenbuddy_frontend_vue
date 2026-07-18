@@ -59,6 +59,7 @@ function mountAllAnchors() {
 
 function makeOptions(overrides: Partial<Parameters<typeof useOnboardingTour>[0]> = {}) {
   return {
+    steps: ONBOARDING_STEPS,
     stage: vi.fn(() => Promise.resolve()),
     cleanup: vi.fn(),
     saveTourStep: vi.fn(() => Promise.resolve()),
@@ -250,6 +251,32 @@ describe('useOnboardingTour — persistence', () => {
     expect(opts.saveTourStep).toHaveBeenCalledWith(0)
     expect(lastDriver().destroyed).toBe(true)
   })
+
+  it('fires onCompleted only when the tour runs to the end', async () => {
+    mountAllAnchors()
+    const onCompleted = vi.fn()
+    const tour = useOnboardingTour(makeOptions({ onCompleted }))
+    tour.startTour(LAST)
+    await flush()
+
+    tour.next() // advance past the last step → completed
+    await flush()
+
+    expect(onCompleted).toHaveBeenCalledTimes(1)
+  })
+
+  it('does NOT fire onCompleted on an early "Finish tour" dismissal', async () => {
+    mountAllAnchors()
+    const onCompleted = vi.fn()
+    const tour = useOnboardingTour(makeOptions({ onCompleted }))
+    tour.startTour(0)
+    await flush()
+
+    tour.finish() // dismissed before the final step
+    await flush()
+
+    expect(onCompleted).not.toHaveBeenCalled()
+  })
 })
 
 describe('useOnboardingTour — missing target', () => {
@@ -355,5 +382,32 @@ describe('useOnboardingTour — staging spotlights', () => {
     expect(hl).toHaveLength(2)
     expect(hl[0].popover).toBeUndefined()
     expect(popoverTitle()).toBe(ONBOARDING_STEPS[0].titleKey)
+  })
+})
+
+describe('useOnboardingTour — teardown cleanup gating', () => {
+  // Regression: stop() runs on every host route-leave/unmount. cleanup may
+  // navigate (calendar returns to planned), so firing it when no tour/welcome
+  // was up hijacks the unrelated navigation (seasons→tour detail bounced to
+  // planned on mobile).
+  it('does NOT run cleanup when stopped while idle', () => {
+    const opts = makeOptions()
+    const tour = useOnboardingTour(opts)
+
+    tour.stop()
+
+    expect(opts.cleanup).not.toHaveBeenCalled()
+  })
+
+  it('runs cleanup when stopped while a tour is running', async () => {
+    mountAllAnchors()
+    const opts = makeOptions()
+    const tour = useOnboardingTour(opts)
+    tour.startTour(0)
+    await flush()
+
+    tour.stop()
+
+    expect(opts.cleanup).toHaveBeenCalledTimes(1)
   })
 })

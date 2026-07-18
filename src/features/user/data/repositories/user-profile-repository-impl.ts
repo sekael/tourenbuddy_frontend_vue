@@ -37,6 +37,8 @@ export class UserProfileRepositoryImpl implements UserProfileRepository {
         locale: profile.locale,
         onboarding_tour_show_at_sign_in: profile.onboardingTourShowAtSignIn,
         onboarding_tour_last_step: profile.onboardingTourLastStep,
+        calendar_tour_show_on_first_open: profile.calendarTourShowOnFirstOpen,
+        calendar_feature_notice_show_at_sign_in: profile.calendarFeatureNoticeShowAtSignIn,
       })
       .select()
       .single()

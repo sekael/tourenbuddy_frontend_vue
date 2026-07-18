@@ -12,7 +12,12 @@ const push = vi.fn()
 vi.mock('vue-router', () => ({
   useRoute: () => ({ query: {} }),
   useRouter: () => ({ replace, push }),
+  onBeforeRouteLeave: vi.fn(),
 }))
+// The page hosts a driver.js tour; stub the lib + its CSS so mounting doesn't
+// touch a real spotlight overlay.
+vi.mock('driver.js', () => ({ driver: () => ({ highlight: vi.fn(), destroy: vi.fn(), refresh: vi.fn() }) }))
+vi.mock('driver.js/dist/driver.css', () => ({}))
 
 function mountPage(editing: boolean) {
   const pinia = createTestingPinia({
@@ -54,5 +59,13 @@ describe('calendarPage — availability edit lifecycle', () => {
     const { wrapper, store } = mountPage(false)
     wrapper.findComponent(CalendarNav).vm.$emit('select', 'seasons')
     expect(store.cancel).not.toHaveBeenCalled()
+  })
+
+  it('scrolls to today (no navigation) when the calendar tab is tapped while already on planned', () => {
+    // Default route has no view query → already on the planned view. Tapping the
+    // calendar tab again must scroll to today, not re-navigate.
+    const { wrapper } = mountPage(false)
+    wrapper.findComponent(CalendarNav).vm.$emit('select', 'planned')
+    expect(replace).not.toHaveBeenCalled()
   })
 })

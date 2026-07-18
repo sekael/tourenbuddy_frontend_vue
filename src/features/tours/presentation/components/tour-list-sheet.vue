@@ -102,6 +102,7 @@ function handleRowClick(tourId: string) {
         name="calendar_today"
         :label="t('calendar.openAriaLabel')"
         data-testid="header-open-calendar"
+        data-tour="open-calendar"
         @click="router.push({ name: 'calendar' })"
       />
       <BaseTooltip
