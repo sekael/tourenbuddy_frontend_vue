@@ -3,6 +3,8 @@ import { ExpirationPlugin } from 'workbox-expiration'
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
 import { registerRoute } from 'workbox-routing'
 import { CacheFirst, NetworkOnly, StaleWhileRevalidate } from 'workbox-strategies'
+import { OFFLINE_MAP_CACHE } from './features/map/data/services/offline-map-cache'
+import { pickTileResponse } from './features/map/data/services/pick-tile-response'
 
 declare const self: ServiceWorkerGlobalScope
 
@@ -24,13 +26,23 @@ registerRoute(
   }),
 )
 
-// Swisstopo vector tiles
+// Swisstopo vector tiles — runtime (opportunistic) cache
+const vectorTilesSwr = new StaleWhileRevalidate({
+  cacheName: 'swisstopo-tiles',
+  plugins: [new ExpirationPlugin({ maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 30 })],
+})
+
+// Offline-first base map: serve an explicitly-downloaded tile/asset from the
+// offline cache when present, else fall through to the runtime SWR handler.
+// Registered BEFORE the runtime route (Workbox evaluates in registration order)
+// and matches all shards (vectortiles0-4) + the bare host (style/sprite/glyphs).
 registerRoute(
-  ({ url }) => url.origin === 'https://vectortiles.geo.admin.ch',
-  new StaleWhileRevalidate({
-    cacheName: 'swisstopo-tiles',
-    plugins: [new ExpirationPlugin({ maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 30 })],
-  }),
+  ({ url }) => /^vectortiles\d?\.geo\.admin\.ch$/.test(url.host),
+  options =>
+    pickTileResponse(options.request, {
+      cacheMatch: async url => (await caches.open(OFFLINE_MAP_CACHE)).match(url),
+      swrHandler: () => vectorTilesSwr.handle(options) as Promise<Response>,
+    }),
 )
 
 // Swisstopo WMTS raster tiles

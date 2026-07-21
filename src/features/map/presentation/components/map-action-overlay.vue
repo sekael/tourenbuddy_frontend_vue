@@ -17,6 +17,7 @@ const emit = defineEmits<{
   openProfile: []
   openContacts: []
   openFeedback: []
+  openOfflineMap: []
   resetBearing: []
   dismissOverlay: []
 }>()
@@ -26,6 +27,7 @@ const {
   view,
   isOpen,
   isPickingLocation,
+  isDrawingRegion,
   currentStyleIndex,
   pendingIncomingCount,
   menuItems,
@@ -72,7 +74,7 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
 </script>
 
 <template>
-  <div v-if="!isPickingLocation" class="overlay" @keydown.esc="closeMenu">
+  <div v-if="!isPickingLocation && !isDrawingRegion" class="overlay" @keydown.esc="closeMenu">
     <div v-if="isOpen" class="backdrop" aria-hidden="true" @click="closeMenu" />
 
     <BaseTooltip v-if="showCompass" :text="t('map.overlay.compassTooltip')">

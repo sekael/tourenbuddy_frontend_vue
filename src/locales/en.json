@@ -524,7 +524,8 @@
       "contacts": "Contacts",
       "profile": "Profile",
       "changeBaseMap": "Change base map",
-      "feedback": "Feedback"
+      "feedback": "Feedback",
+      "offlineMap": "Offline maps"
     },
     "styles": {
       "pickerTooltip": "Change map style",
@@ -732,6 +733,39 @@
         "title": "Open the calendar",
         "body": "Plan tours by date, set your availability, and see when friends are free — all in the calendar."
       }
+    }
+  },
+  "offlineMap": {
+    "draw": {
+      "hint": "Drag on the map to outline a region",
+      "cancel": "Cancel",
+      "confirm": "Next"
+    },
+    "download": {
+      "title": "Download offline map",
+      "nameLabel": "Region name",
+      "estimate": "Estimated size: {size}",
+      "tooLarge": "Not enough free storage for this region.",
+      "nearQuota": "This will use most of your remaining storage.",
+      "start": "Download",
+      "cancel": "Cancel",
+      "untitled": "Offline region"
+    },
+    "manage": {
+      "title": "Offline maps",
+      "installHint": "Install the app to keep offline maps from being cleared by the browser.",
+      "usage": "{used} of {total} used",
+      "delete": "Delete region",
+      "empty": "No offline maps downloaded yet.",
+      "tip": "Tip: download several smaller regions rather than one very large one — they fit storage better and are cheaper to re-download.",
+      "drawRegion": "Download a region",
+      "wholeMap": "Download all of Switzerland"
+    },
+    "errors": {
+      "load": "Could not load offline maps.",
+      "delete": "Could not delete this region.",
+      "quota": "Not enough storage to download this region.",
+      "download": "Download failed. Please try again."
     }
   }
 }

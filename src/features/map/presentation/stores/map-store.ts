@@ -22,6 +22,8 @@ export interface PendingIntent {
 
 export const useMapStore = defineStore('map', () => {
   const isPickingLocation = ref(false)
+  /** On-canvas rectangle-draw mode for selecting an offline map region. */
+  const isDrawingRegion = ref(false)
   const currentStyleIndex = ref(0)
   const selectedTourId = ref<string | null>(null)
   /** Tentative goal coordinates shown as a lighter-tone preview marker while editing or creating a tour. */
@@ -47,6 +49,10 @@ export const useMapStore = defineStore('map', () => {
 
   function setPickingLocation(picking: boolean) {
     isPickingLocation.value = picking
+  }
+
+  function setDrawingRegion(drawing: boolean) {
+    isDrawingRegion.value = drawing
   }
 
   function setStyleIndex(index: number) {
@@ -75,6 +81,7 @@ export const useMapStore = defineStore('map', () => {
 
   return {
     isPickingLocation,
+    isDrawingRegion,
     currentStyleIndex,
     selectedTourId,
     previewGoal,
@@ -85,6 +92,7 @@ export const useMapStore = defineStore('map', () => {
     setPendingIntent,
     consumePendingIntent,
     setPickingLocation,
+    setDrawingRegion,
     setStyleIndex,
     selectTour,
     setPreviewGoal,
