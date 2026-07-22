@@ -13,7 +13,7 @@ const emit = defineEmits<{ close: [], startDraw: [], downloadWhole: [bbox: [numb
 
 const { t } = useI18n({ useScope: 'global' })
 const store = useOfflineMapStore()
-const { regions, usage, quota, usedRatio, durableStorageAvailable } = storeToRefs(store)
+const { regions, offlineUsage, quota, usedRatio, durableStorageAvailable } = storeToRefs(store)
 
 onMounted(() => store.loadRegions())
 </script>
@@ -30,7 +30,7 @@ onMounted(() => store.loadRegions())
           <div class="fill" :style="{ width: `${Math.min(100, usedRatio * 100)}%` }" />
         </div>
         <span class="usage-label">
-          {{ t('offlineMap.manage.usage', { used: formatBytes(usage), total: formatBytes(quota) }) }}
+          {{ t('offlineMap.manage.usage', { used: formatBytes(offlineUsage), total: formatBytes(quota) }) }}
         </span>
       </div>
 

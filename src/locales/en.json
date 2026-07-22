@@ -737,7 +737,10 @@
   },
   "offlineMap": {
     "draw": {
-      "hint": "Drag on the map to outline a region",
+      "hintStart": "Tap the map to set the first corner",
+      "hintExpand": "Tap again to set the opposite corner",
+      "hintMobile": "Move the map to frame your region · {size}",
+      "redraw": "Redraw",
       "cancel": "Cancel",
       "confirm": "Next"
     },

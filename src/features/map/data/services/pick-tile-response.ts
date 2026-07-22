@@ -30,5 +30,16 @@ export async function pickTileResponse(
   catch {
     // offline cache unreadable — treat as a miss
   }
-  return deps.swrHandler()
+  try {
+    return await deps.swrHandler()
+  }
+  catch {
+    // Offline AND not downloaded (e.g. panned outside a downloaded region): return
+    // an empty tile so MapLibre renders a blank area instead of rejecting the
+    // FetchEvent. A flood of rejections here is what freezes the tab.
+    return new Response(new ArrayBuffer(0), {
+      status: 200,
+      headers: { 'content-type': 'application/x-protobuf' },
+    })
+  }
 }

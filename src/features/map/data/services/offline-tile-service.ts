@@ -27,11 +27,31 @@ const FONT_STACKS = [
 const GLYPH_RANGES = ['0-255', '256-511', '512-767', '768-1023']
 
 /**
- * Blended average tile size from the spike (~44 KB across z0–14, both sources).
- * ponytail: a single blend, not a per-zoom table — the quota guard covers the
- * error, so estimate precision beyond order-of-magnitude buys nothing.
+ * Average stored bytes per tile. A flat blend badly under-fits a SINGLE region
+ * (a small region is dominated by large low-zoom tiles; the whole-CH blend is
+ * dominated by small z14 tiles), so we self-calibrate: after each download we
+ * fold the measured average back in (EWMA) and persist it. The default only
+ * seeds the very first estimate.
+ * ponytail: one learned scalar, not a per-zoom table — converges to the user's
+ * real regions with no calibration spike. Upgrade to per-zoom only if estimates
+ * across wildly different region sizes must be simultaneously tight.
  */
-const AVG_TILE_BYTES = 45_000
+const AVG_TILE_BYTES_DEFAULT = 120_000
+const AVG_TILE_STORAGE_KEY = 'offline-map:avg-tile-bytes'
+/** Bias the estimate high — under-promising storage is worse than over-. */
+const ESTIMATE_SAFETY = 1.5
+
+function loadAvgTileBytes(): number {
+  try {
+    const v = Number(globalThis.localStorage?.getItem(AVG_TILE_STORAGE_KEY))
+    return Number.isFinite(v) && v > 0 ? v : AVG_TILE_BYTES_DEFAULT
+  }
+  catch {
+    return AVG_TILE_BYTES_DEFAULT
+  }
+}
+
+let avgTileBytes = loadAvgTileBytes()
 /** Fixed allowance for style.json + sprites + glyph PBFs. */
 const ASSET_ALLOWANCE = 3_000_000
 
@@ -153,7 +173,9 @@ export function estimateBytes(
   minZoom: number,
   maxZoom: number,
 ): number {
-  return countTiles(bbox, minZoom, maxZoom) * AVG_TILE_BYTES + ASSET_ALLOWANCE
+  return Math.round(
+    (countTiles(bbox, minZoom, maxZoom) * avgTileBytes + ASSET_ALLOWANCE) * ESTIMATE_SAFETY,
+  )
 }
 
 /**
@@ -300,12 +322,18 @@ export async function downloadRegion(
   const written: string[] = []
   let done = 0
   let bytes = 0
+  let tileBytes = 0
+  let tileHits = 0
   try {
     await runPool(all, async (url) => {
       const n = await fetchAndStore(url, cache, signal)
       if (n > 0) {
         written.push(url)
         bytes += n
+        if (url.includes('/tiles/')) {
+          tileBytes += n
+          tileHits += 1
+        }
       }
       done += 1
       if (done % QUOTA_CHECK_EVERY === 0)
@@ -319,8 +347,22 @@ export async function downloadRegion(
     throw err
   }
 
+  // Self-calibrate the tile-size estimate from what we actually stored. Track the
+  // MAX observed average (never step down), so the estimate keeps erring high for
+  // future regions rather than lagging behind a dense one.
+  if (tileHits > 0) {
+    avgTileBytes = Math.max(avgTileBytes, Math.round(tileBytes / tileHits))
+    try {
+      globalThis.localStorage?.setItem(AVG_TILE_STORAGE_KEY, String(avgTileBytes))
+    }
+    catch { /* non-fatal — estimate just won't persist */ }
+  }
+
   const record: OfflineRegion = {
     ...region,
+    // Plain-copy the bbox: callers pass a Vue reactive Proxy, which IndexedDB's
+    // structured clone rejects with DataCloneError (silently losing the record).
+    bbox: [...region.bbox] as [number, number, number, number],
     tileCount: tileUrls.length,
     bytes,
     createdAt: Date.now(),

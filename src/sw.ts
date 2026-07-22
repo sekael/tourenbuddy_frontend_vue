@@ -40,7 +40,10 @@ registerRoute(
   ({ url }) => /^vectortiles\d?\.geo\.admin\.ch$/.test(url.host),
   options =>
     pickTileResponse(options.request, {
-      cacheMatch: async url => (await caches.open(OFFLINE_MAP_CACHE)).match(url),
+      // ignoreVary: stored tiles keep Swisstopo's `Vary` header, so a
+      // header-less match(url) would miss and fall through to the network.
+      cacheMatch: async url =>
+        (await caches.open(OFFLINE_MAP_CACHE)).match(url, { ignoreVary: true }),
       swrHandler: () => vectorTilesSwr.handle(options) as Promise<Response>,
     }),
 )

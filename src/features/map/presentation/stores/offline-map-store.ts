@@ -33,7 +33,12 @@ export const useOfflineMapStore = defineStore('offline-map', () => {
   const progress = ref<DownloadProgress>({ done: 0, total: 0, bytes: 0 })
   let controller: AbortController | null = null
 
-  const usedRatio = computed(() => (quota.value ? usage.value / quota.value : 0))
+  /**
+   * Bytes used by offline maps ALONE (sum of region records) — not whole-origin
+   * usage, which also counts the app shell, IndexedDB and other caches.
+   */
+  const offlineUsage = computed(() => regions.value.reduce((n, r) => n + r.bytes, 0))
+  const usedRatio = computed(() => (quota.value ? offlineUsage.value / quota.value : 0))
   /** Bytes we allow before the next download would breach the 90% safety line. */
   const freeHeadroom = computed(() => Math.max(0, quota.value * 0.9 - usage.value))
   /** Soft warning: estimate eats >70% of remaining headroom (button stays enabled). */
@@ -139,6 +144,7 @@ export const useOfflineMapStore = defineStore('offline-map', () => {
     loading,
     error,
     usage,
+    offlineUsage,
     quota,
     usedRatio,
     freeHeadroom,

@@ -737,7 +737,10 @@
   },
   "offlineMap": {
     "draw": {
-      "hint": "Auf der Karte ziehen, um eine Region zu umreissen",
+      "hintStart": "Tippe auf die Karte, um die erste Ecke zu setzen",
+      "hintExpand": "Tippe erneut, um die gegenüberliegende Ecke zu setzen",
+      "hintMobile": "Verschiebe die Karte, um deine Region einzurahmen · {size}",
+      "redraw": "Neu zeichnen",
       "cancel": "Abbrechen",
       "confirm": "Weiter"
     },
