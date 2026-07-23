@@ -737,8 +737,8 @@
   },
   "offlineMap": {
     "draw": {
-      "hintStart": "Tap the map to set the first corner",
-      "hintExpand": "Tap again to set the opposite corner",
+      "hintStart": "Tap on the map to start drawing",
+      "hintExpand": "Tap again to select the region for download",
       "hintMobile": "Move the map to frame your region · {size}",
       "redraw": "Redraw",
       "cancel": "Cancel",
@@ -760,7 +760,7 @@
       "usage": "{used} of {total} used",
       "delete": "Delete region",
       "empty": "No offline maps downloaded yet.",
-      "tip": "Tip: download several smaller regions rather than one very large one — they fit storage better and are cheaper to re-download.",
+      "tip": "Tip: download several smaller regions rather than one very large one.",
       "drawRegion": "Download a region",
       "wholeMap": "Download all of Switzerland"
     },

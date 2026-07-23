@@ -737,8 +737,8 @@
   },
   "offlineMap": {
     "draw": {
-      "hintStart": "Tippe auf die Karte, um die erste Ecke zu setzen",
-      "hintExpand": "Tippe erneut, um die gegenüberliegende Ecke zu setzen",
+      "hintStart": "Tippe auf die Karte, um zu starten",
+      "hintExpand": "Tippe erneut, um die Region zum Download auszuwählen",
       "hintMobile": "Verschiebe die Karte, um deine Region einzurahmen · {size}",
       "redraw": "Neu zeichnen",
       "cancel": "Abbrechen",
@@ -760,7 +760,7 @@
       "usage": "{used} von {total} belegt",
       "delete": "Region löschen",
       "empty": "Noch keine Offline-Karten heruntergeladen.",
-      "tip": "Tipp: Lade lieber mehrere kleinere Regionen als eine sehr grosse — sie passen besser in den Speicher und sind günstiger neu zu laden.",
+      "tip": "Tipp: Lade mehrere kleinere Regionen anstelle einer sehr grossen.",
       "drawRegion": "Region herunterladen",
       "wholeMap": "Ganze Schweiz herunterladen"
     },

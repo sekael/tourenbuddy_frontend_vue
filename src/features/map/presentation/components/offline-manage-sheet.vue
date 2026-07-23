@@ -38,7 +38,7 @@ onMounted(() => store.loadRegions())
         <li v-for="r in regions" :key="r.id" class="region">
           <div class="region-info">
             <span class="region-name">{{ r.label }}</span>
-            <span class="region-meta">{{ formatBytes(r.bytes) }} · z{{ r.minZoom }}–{{ r.maxZoom }}</span>
+            <span class="region-meta">{{ formatBytes(r.bytes) }}</span>
           </div>
           <button
             type="button"
