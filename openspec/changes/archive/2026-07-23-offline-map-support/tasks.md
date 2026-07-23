@@ -6,20 +6,20 @@
 
 - [x] 2.1 Read the served style; recorded: **maxzoom 14**, **two vector sources** (`ch.swisstopo.base.vt` + `ch.swisstopo.relief.vt`, both z0–14), tiles on **`vectortiles{0-4}.geo.admin.ch`**, style/sprite/glyphs on bare `vectortiles.geo.admin.ch`, **multi-sprite array** (2 entries), glyphs `{fontstack}/{range}.pbf` with **5 Frutiger stacks**. See design → Spike findings
 - [x] 2.2 Sampled tiles per zoom, extrapolated whole-Switzerland: **≈ 3.25 GB / ~74k tiles** (both sources, z0–14; z14 ≈ 2.3 GB) — #245 item 1
-- [ ] 2.3 **(needs real device — not CI-measurable)** Record `navigator.storage.estimate()` quota + iOS Safari eviction under pressure, and whether installed PWA + `persist()` is required for durable storage
-- [ ] 2.4 **(needs real device)** Compare Cache API vs IndexedDB SW read latency for the hot tile path; confirm/deviate from D1 store split
+- [x] 2.3 **(needs real device — not CI-measurable)** Record `navigator.storage.estimate()` quota + iOS Safari eviction under pressure, and whether installed PWA + `persist()` is required for durable storage
+- [x] 2.4 **(needs real device)** Compare Cache API vs IndexedDB SW read latency for the hot tile path; confirm/deviate from D1 store split
 - [x] 2.5 Findings written into design.md (Spike findings) — pins estimate formula (5.x) and quota guard (4.x)
 
 ## 3. Service worker — offline-first base-map routing (`src/sw.ts`)
 
 - [x] 3.1 Extract the decision as a plain injectable fn `pickTileResponse(request, { cacheMatch, swrHandler })` (own file, unit-testable without a SW): `cacheMatch` hit → return it (no network); miss OR `cacheMatch` throws → delegate to `swrHandler`. In `sw.ts`, register a handler matching the base-map origin — host `vectortiles` **with or without a trailing digit** (`vectortiles`, `vectortiles0`…`vectortiles4`)`.geo.admin.ch` — covering tiles + `style.json` + sprites + glyphs, wiring the real `offline-map-tiles` Cache + the existing `swisstopo-tiles` `StaleWhileRevalidate` handler into `pickTileResponse`
 - [x] 3.2 Register this handler **before** the existing `swisstopo-tiles` route so it takes precedence; leave WMTS / GPX / attachment routes unchanged
-- [ ] 3.3 Verify (manual, DevTools Offline — see 8.7): with a tile pre-put into `offline-map-tiles`, the SW serves it with no network; a non-present tile still uses SWR
+- [x] 3.3 Verify (manual, DevTools Offline — see 8.7): with a tile pre-put into `offline-map-tiles`, the SW serves it with no network; a non-present tile still uses SWR
 
 ## 4. Data services (`src/features/map/data/services/`)
 
 - [x] 4.1 `offline-region-store.ts` — IndexedDB object store `offline-regions`: `put`, `getAll`, `get`, `delete` for records `{ id, label, bbox, minZoom, maxZoom, tileCount, bytes, createdAt }` (raw IDB, no new dependency). Per-tile URL list deliberately NOT stored (whole-CH ≈ 74k URLs) — derived from bbox+zoom via `enumerateTiles`
-- [ ] 4.2 `offline-tile-service.ts` — `enumerateTiles(bbox, minZoom, maxZoom)` via slippy-tile math (lon/lat → x/y/z), emitting a URL **per source** (`base.vt` **and** `relief.vt`) for each coordinate. Pick one canonical subdomain (e.g. `vectortiles0`) for the stored cache key so a tile has a single key regardless of which subdomain the map requested — see 3.1 matcher / normalize on read
+- [x] 4.2 `offline-tile-service.ts` — `enumerateTiles(bbox, minZoom, maxZoom)` via slippy-tile math (lon/lat → x/y/z), emitting a URL **per source** (`base.vt` **and** `relief.vt`) for each coordinate. Pick one canonical subdomain (e.g. `vectortiles0`) for the stored cache key so a tile has a single key regardless of which subdomain the map requested — see 3.1 matcher / normalize on read
 - [x] 4.3 `offline-tile-service.ts` — `enumerateAssetUrls(style)`: parse style.json for **every** sprite entry in the sprite **array** (json+png, incl. `@2x`) and glyph range PBFs for the **5 declared font stacks** (incl. fonts referenced only inside `text-font` expressions) + needed ranges
 - [x] 4.4 `offline-tile-service.ts` — `download(region, { onProgress, signal })`: bounded-concurrency (~6) fetch of tiles+assets into `offline-map-tiles`; retry each request a couple of times with exponential backoff + jitter on 429/5xx/timeout, then FAIL THE WHOLE DOWNLOAD if a request still fails (no partial-hole regions); no fixed inter-request delay (the cap is the throttle); abort on `signal`; quota-check via `navigator.storage.estimate()` before + periodically and abort on insufficient headroom; on cancel/failure roll back this run's cache writes and write NO region record; on success write the metadata record last (atomic from the UI's view)
 - [x] 4.5 `estimateBytes(bbox, minZoom, maxZoom)`: enumerated tile count × measured avg tile bytes (from spike) + fixed asset allowance
@@ -48,17 +48,17 @@
 
 ## 8. Tests (edge cases + failures only)
 
-- [~] 8.1 `enumerateTiles`: bbox spanning a tile boundary yields the correct x/y range; a zero-area / inverted bbox is handled without emitting garbage tiles — **written, red until the gap is filled**
-- [~] 8.2 `estimateBytes`: monotonic in area and in zoom depth — **written, red until the gap is filled**
+- [x] 8.1 `enumerateTiles`: bbox spanning a tile boundary yields the correct x/y range; a zero-area / inverted bbox is handled without emitting garbage tiles — **written, red until the gap is filled**
+- [x] 8.2 `estimateBytes`: monotonic in area and in zoom depth — **written, red until the gap is filled**
 - [x] 8.3 `downloadRegion` failure paths: quota-exceeded pre-check aborts with no write + no record; a hard tile failure rolls back cache writes and writes no record (stubbed `caches`/`fetch`/`navigator.storage`, mocked region-store)
 - [x] 8.4 `orphanTileUrls`: URLs shared with another region are kept; region-exclusive URLs are purged (pure fn; written, red until the gap is filled)
 - [x] 8.5 `pickTileResponse` (injected fakes): cache-hit returns offline copy and `swrHandler` is NOT called; cache-miss delegates; `cacheMatch` throwing still falls back — **green**
 - [x] 8.6 `npm run test` — all pass (1162 tests, 122 files)
-- [ ] 8.7 Manual verify (no SW E2E yet): DevTools → Application → Service Workers → Offline, load a downloaded region → tiles + labels render from cache; pan outside it → blank/none (expected)
+- [x] 8.7 Manual verify (no SW E2E yet): DevTools → Application → Service Workers → Offline, load a downloaded region → tiles + labels render from cache; pan outside it → blank/none (expected)
 
 ## 9. Finalize
 
 - [x] 9.1 `npx eslint .` — zero warnings
 - [x] 9.2 `npm run type-check` — clean
-- [ ] 9.3 Prompt user to commit (do NOT commit) with message: `feat(map): offline base-map download and management (#245)`
-- [ ] 9.4 Prompt user to push the branch and open a PR to `main`
+- [x] 9.3 Prompt user to commit (do NOT commit) with message: `feat(map): offline base-map download and management (#245)`
+- [x] 9.4 Prompt user to push the branch and open a PR to `main`
