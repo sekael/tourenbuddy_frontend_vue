@@ -17,6 +17,10 @@ import { useContactsStore } from '@/features/contacts/presentation/stores/contac
 import FriendRequestsSheet from '@/features/friendships/presentation/components/friend-requests-sheet.vue'
 import LocationPicker from '@/features/map/presentation/components/location-picker.vue'
 import MapActionOverlay from '@/features/map/presentation/components/map-action-overlay.vue'
+import OfflineDownloadSheet from '@/features/map/presentation/components/offline-download-sheet.vue'
+import OfflineManageSheet from '@/features/map/presentation/components/offline-manage-sheet.vue'
+import OfflineRegionDraw from '@/features/map/presentation/components/offline-region-draw.vue'
+import OfflineRegionOutline from '@/features/map/presentation/components/offline-region-outline.vue'
 import TourActionBar from '@/features/map/presentation/components/tour-action-bar.vue'
 import TourenbuddyMap from '@/features/map/presentation/components/tourenbuddy-map.vue'
 import { computeBarState } from '@/features/map/presentation/composables/compute-bar-state'
@@ -48,6 +52,8 @@ type OverlayName
     | 'tour'
     | 'tour-creation'
     | 'friend-requests'
+    | 'offline-manage'
+    | 'offline-download'
 
 const { t } = useI18n({ useScope: 'global' })
 const router = useRouter()
@@ -62,7 +68,7 @@ const onboardingTourStore = useOnboardingTourStore()
 const notificationsStore = useNotificationsStore()
 const isDesktop = useIsDesktop()
 
-const { isPickingLocation, selectedTourId } = storeToRefs(mapStore)
+const { isPickingLocation, isDrawingRegion, selectedTourId } = storeToRefs(mapStore)
 const { tours, friendTours } = storeToRefs(toursStore)
 const { isAuthenticated } = storeToRefs(authStore)
 const { reopenSignal } = storeToRefs(onboardingTourStore)
@@ -73,6 +79,9 @@ const mapBearing = ref(0)
 
 // Single source of truth for which overlay is open (at most one at a time)
 const activeOverlay = ref<OverlayName | null>(null)
+
+// Bounding box confirmed for an offline-map download (drawn region or whole map).
+const offlineBbox = ref<[number, number, number, number] | null>(null)
 
 // Location picking state
 const pendingLocation = ref<{ lng: number, lat: number } | null>(null)
@@ -642,11 +651,39 @@ function handleEndPointChange(point: { lng: number, lat: number } | null) {
 }
 
 function handleMapBackgroundClick() {
-  // Suppress while location picker is active — map panning passes through the
-  // pointer-events:none overlay and would otherwise deselect the current tour.
-  if (isPickingLocation.value)
+  // Suppress while location picker or region-draw is active — map panning passes
+  // through the overlay and would otherwise deselect the current tour.
+  if (isPickingLocation.value || isDrawingRegion.value)
     return
   closeOverlay()
+}
+
+// --- Offline maps ------------------------------------------------------------
+// Flow: speed-dial → manage sheet → {draw a region | whole map} → download sheet.
+function handleStartDrawRegion() {
+  closeOverlay()
+  mapStore.setDrawingRegion(true)
+}
+
+function handleRegionDrawn(bbox: [number, number, number, number]) {
+  mapStore.setDrawingRegion(false)
+  offlineBbox.value = bbox
+  openOverlay('offline-download')
+}
+
+function handleRegionDrawCancel() {
+  mapStore.setDrawingRegion(false)
+  openOverlay('offline-manage')
+}
+
+function handleDownloadWhole(bbox: [number, number, number, number]) {
+  offlineBbox.value = bbox
+  openOverlay('offline-download')
+}
+
+function handleOfflineDownloadDone() {
+  offlineBbox.value = null
+  openOverlay('offline-manage')
 }
 
 function dismissActive() {
@@ -772,11 +809,12 @@ function handleDialogClose() {
     <MapActionOverlay
       ref="mapOverlayRef" :bearing="mapBearing" :overlay-active="activeOverlay !== null"
       @open-feedback="openOverlay('feedback')" @open-profile="openOverlay('profile')"
-      @open-contacts="openOverlay('contacts')" @reset-bearing="handleResetBearing" @dismiss-overlay="closeOverlay"
+      @open-contacts="openOverlay('contacts')" @open-offline-map="openOverlay('offline-manage')"
+      @reset-bearing="handleResetBearing" @dismiss-overlay="closeOverlay"
     />
 
     <TourActionBar
-      :visible="barState.visible" :tours-disabled="barState.toursAction === 'dismiss'"
+      :visible="barState.visible && !isDrawingRegion" :tours-disabled="barState.toursAction === 'dismiss'"
       :add-tour-disabled="barState.addTourAction === 'dismiss' || barState.addTourAction === 'disabled'"
       :add-tour-tooltip="addTourTooltip" :dismiss-mode="barState.toursAction === 'dismiss'" @tours="handleBarTours"
       @add-tour="handleBarAddTour"
@@ -786,6 +824,17 @@ function handleDialogClose() {
       v-if="isPickingLocation" :map="mapRef?.map ?? null"
       :actions-bottom="!isDesktop && (isPickingForEdit || showTourCreationDialog) ? 80 : undefined"
       @confirm="handleLocationConfirmed" @cancel="handleLocationCancelled"
+    />
+
+    <OfflineRegionDraw
+      v-if="isDrawingRegion" :map="mapRef?.map ?? null"
+      @confirm="handleRegionDrawn" @cancel="handleRegionDrawCancel"
+    />
+
+    <!-- Read-only outline of the confirmed extent while the download sheet is open. -->
+    <OfflineRegionOutline
+      v-if="offlineBbox && activeOverlay === 'offline-download'"
+      :map="mapRef?.map ?? null" :bbox="offlineBbox"
     />
 
     <!-- Overlays: only one visible at a time; mode="out-in" ensures the active overlay
@@ -822,6 +871,16 @@ function handleDialogClose() {
         <TourListSheet
           @close="closeOverlay" @select-tour="handleTourSelectedFromList"
           @add-tour="handleListSheetAddTour"
+        />
+      </div>
+      <div v-else-if="activeOverlay === 'offline-manage'" key="offline-manage" class="sheet-container">
+        <OfflineManageSheet
+          @close="closeOverlay" @start-draw="handleStartDrawRegion" @download-whole="handleDownloadWhole"
+        />
+      </div>
+      <div v-else-if="activeOverlay === 'offline-download' && offlineBbox" key="offline-download" class="sheet-container">
+        <OfflineDownloadSheet
+          :bbox="offlineBbox" @close="handleOfflineDownloadDone" @done="handleOfflineDownloadDone"
         />
       </div>
       <div v-else-if="showTourCreationDialog" key="tour-creation" class="sheet-container">

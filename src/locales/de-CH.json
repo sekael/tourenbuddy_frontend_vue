@@ -524,7 +524,8 @@
       "contacts": "Kontakte",
       "profile": "Profil",
       "changeBaseMap": "Karte ändern",
-      "feedback": "Feedback"
+      "feedback": "Feedback",
+      "offlineMap": "Offline-Karten"
     },
     "styles": {
       "pickerTooltip": "Kartenstil ändern",
@@ -732,6 +733,42 @@
         "title": "Kalender öffnen",
         "body": "Plane Touren nach Datum, trage deine Verfügbarkeit ein und sieh, wann Freunde Zeit haben – alles im Kalender."
       }
+    }
+  },
+  "offlineMap": {
+    "draw": {
+      "hintStart": "Tippe auf die Karte, um zu starten",
+      "hintExpand": "Tippe erneut, um die Region zum Download auszuwählen",
+      "hintMobile": "Verschiebe die Karte, um deine Region einzurahmen · {size}",
+      "redraw": "Neu zeichnen",
+      "cancel": "Abbrechen",
+      "confirm": "Weiter"
+    },
+    "download": {
+      "title": "Offline-Karte herunterladen",
+      "nameLabel": "Name der Region",
+      "estimate": "Geschätzte Grösse: {size}",
+      "tooLarge": "Nicht genügend freier Speicher für diese Region.",
+      "nearQuota": "Dies verbraucht einen Grossteil deines verbleibenden Speichers.",
+      "start": "Herunterladen",
+      "cancel": "Abbrechen",
+      "untitled": "Offline-Region"
+    },
+    "manage": {
+      "title": "Offline-Karten",
+      "installHint": "Installiere die App, damit Offline-Karten nicht vom Browser gelöscht werden.",
+      "usage": "{used} von {total} belegt",
+      "delete": "Region löschen",
+      "empty": "Noch keine Offline-Karten heruntergeladen.",
+      "tip": "Tipp: Lade mehrere kleinere Regionen anstelle einer sehr grossen.",
+      "drawRegion": "Region herunterladen",
+      "wholeMap": "Ganze Schweiz herunterladen"
+    },
+    "errors": {
+      "load": "Offline-Karten konnten nicht geladen werden.",
+      "delete": "Diese Region konnte nicht gelöscht werden.",
+      "quota": "Nicht genügend Speicher für diese Region.",
+      "download": "Download fehlgeschlagen. Bitte erneut versuchen."
     }
   }
 }

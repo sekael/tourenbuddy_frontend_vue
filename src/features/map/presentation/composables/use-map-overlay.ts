@@ -11,12 +11,13 @@ export function useMapOverlay(emit: {
   (e: 'openProfile'): void
   (e: 'openContacts'): void
   (e: 'openFeedback'): void
+  (e: 'openOfflineMap'): void
 }) {
   const { t } = useI18n({ useScope: 'global' })
 
   const mapStore = useMapStore()
   const friendshipsStore = useFriendshipsStore()
-  const { isPickingLocation, currentStyleIndex } = storeToRefs(mapStore)
+  const { isPickingLocation, isDrawingRegion, currentStyleIndex } = storeToRefs(mapStore)
   const { incomingRequests } = storeToRefs(friendshipsStore)
 
   const view = ref<OverlayView>('closed')
@@ -39,6 +40,7 @@ export function useMapOverlay(emit: {
       tooltip: t('map.overlay.feedbackTooltip'),
     },
     { id: 'base-map', icon: 'map', label: t('map.overlay.changeBaseMap') },
+    { id: 'offline-map', icon: 'download_for_offline', label: t('map.overlay.offlineMap') },
     {
       id: 'profile',
       icon: 'account_circle',
@@ -66,6 +68,10 @@ export function useMapOverlay(emit: {
     else if (id === 'base-map') {
       view.value = 'base-map'
     }
+    else if (id === 'offline-map') {
+      view.value = 'closed'
+      emit('openOfflineMap')
+    }
     else if (id === 'feedback') {
       view.value = 'closed'
       emit('openFeedback')
@@ -81,6 +87,7 @@ export function useMapOverlay(emit: {
     view,
     isOpen,
     isPickingLocation,
+    isDrawingRegion,
     currentStyleIndex,
     pendingIncomingCount,
     menuItems,

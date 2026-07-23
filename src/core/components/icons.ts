@@ -24,6 +24,7 @@ import IconDirectionsOutline from '~icons/material-symbols/directions-outline'
 import IconDoNotDisturbOnOutline from '~icons/material-symbols/do-not-disturb-on-outline'
 import IconDownhillSkiing from '~icons/material-symbols/downhill-skiing'
 import IconDownload from '~icons/material-symbols/download'
+import IconDownloadForOfflineOutline from '~icons/material-symbols/download-for-offline-outline'
 import IconDragIndicator from '~icons/material-symbols/drag-indicator'
 import IconEditOutline from '~icons/material-symbols/edit-outline'
 import IconExpandLess from '~icons/material-symbols/expand-less'
@@ -122,6 +123,7 @@ export const iconRegistry: Record<string, Component> = {
   directions_bike: IconDirectionsBike,
   downhill_skiing: IconDownhillSkiing,
   download: IconDownload,
+  download_for_offline: IconDownloadForOfflineOutline,
   drag_indicator: IconDragIndicator,
   edit: IconEditOutline,
   expand_less: IconExpandLess,

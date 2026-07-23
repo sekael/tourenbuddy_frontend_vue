@@ -57,7 +57,7 @@
   align-items: center;
   justify-content: center;
   pointer-events: none;
-  z-index: 10;
+  z-index: 15;
 }
 
 .crosshair {
