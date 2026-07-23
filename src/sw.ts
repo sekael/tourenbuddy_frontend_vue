@@ -17,6 +17,13 @@ self.addEventListener('message', (event) => {
     self.skipWaiting()
 })
 
+// Take control of already-open clients the moment this SW activates, so the
+// offline tile route intercepts fetches on the very FIRST visit — without it a
+// fresh install serves the page uncontrolled until a reload, which is why
+// offline tiles only appeared "after a reload". This is clients.claim (control),
+// NOT skipWaiting — the user still approves updates (registerType: 'prompt').
+self.addEventListener('activate', event => event.waitUntil(self.clients.claim()))
+
 // Welcome screen background images
 registerRoute(
   ({ url }) => /\/assets\/background-.*\.webp$/i.test(url.pathname),

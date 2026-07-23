@@ -20,6 +20,7 @@ import MapActionOverlay from '@/features/map/presentation/components/map-action-
 import OfflineDownloadSheet from '@/features/map/presentation/components/offline-download-sheet.vue'
 import OfflineManageSheet from '@/features/map/presentation/components/offline-manage-sheet.vue'
 import OfflineRegionDraw from '@/features/map/presentation/components/offline-region-draw.vue'
+import OfflineRegionOutline from '@/features/map/presentation/components/offline-region-outline.vue'
 import TourActionBar from '@/features/map/presentation/components/tour-action-bar.vue'
 import TourenbuddyMap from '@/features/map/presentation/components/tourenbuddy-map.vue'
 import { computeBarState } from '@/features/map/presentation/composables/compute-bar-state'
@@ -828,6 +829,12 @@ function handleDialogClose() {
     <OfflineRegionDraw
       v-if="isDrawingRegion" :map="mapRef?.map ?? null"
       @confirm="handleRegionDrawn" @cancel="handleRegionDrawCancel"
+    />
+
+    <!-- Read-only outline of the confirmed extent while the download sheet is open. -->
+    <OfflineRegionOutline
+      v-if="offlineBbox && activeOverlay === 'offline-download'"
+      :map="mapRef?.map ?? null" :bbox="offlineBbox"
     />
 
     <!-- Overlays: only one visible at a time; mode="out-in" ensures the active overlay

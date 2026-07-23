@@ -130,7 +130,7 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
   flex-direction: column;
   gap: var(--spacing-sm);
   align-items: flex-end;
-  z-index: 10;
+  z-index: 15;
 }
 
 .backdrop {
