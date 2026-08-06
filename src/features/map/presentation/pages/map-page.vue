@@ -717,7 +717,6 @@ function handleListSheetAddTour() {
 
 async function handleTourCreated(
   draft: TourDraft,
-  gpxFile: File | null,
   _gpxRemoved: boolean,
   preUploadedTourId: string | null = null,
   draftId: string = '',
@@ -731,20 +730,19 @@ async function handleTourCreated(
   // colored draft survives the create round-trip until performCreate swaps in the real marker.
   mapStore.setPreviewGoal(goal)
   mapStore.setPreviewTourType(draft.tourType)
-  await performCreate(draft, goal, gpxFile, preUploadedTourId, draftId)
+  await performCreate(draft, goal, preUploadedTourId, draftId)
 }
 
 async function performCreate(
   draft: TourDraft,
   goal: { lng: number, lat: number },
-  gpxFile: File | null,
   preUploadedTourId: string | null,
   draftId: string,
 ) {
   // Keep the re-asserted draft marker on screen through the round-trip; clear it in
   // `finally` so the real marker replaces it on success and no draft lingers on failure.
   try {
-    const newId = await toursStore.createTourFromDraft(draft, goal, gpxFile, preUploadedTourId)
+    const newId = await toursStore.createTourFromDraft(draft, goal, preUploadedTourId)
     if (newId) {
       mapStore.selectTour(newId)
       // Upload staged attachments now that the tour row exists
@@ -889,7 +887,7 @@ function handleDialogClose() {
           :initial-start-point="dialogInitialStartPoint" :initial-end-point="dialogInitialEndPoint"
           :initial-start-point-meta="dialogInitialStartPointMeta" :initial-end-point-meta="dialogInitialEndPointMeta"
           :initial-goal="pendingLocation" :active-pick-type="pendingPickType"
-          @confirm="(d, f, r, tid, did) => handleTourCreated(d, f, r, tid, did)" @close="handleDialogClose"
+          @confirm="(d, r, tid, did) => handleTourCreated(d, r, tid, did)" @close="handleDialogClose"
           @pick-point="handlePickPoint" @tour-type-change="mapStore.setPreviewTourType($event)"
           @start-point-change="handleStartPointChange" @end-point-change="handleEndPointChange"
         />

@@ -11,8 +11,8 @@ export interface ToursRepository {
     draft: TourDraft,
     goal: { lng: number, lat: number },
   ) => Promise<void>
-  updateTour: (id: string, draft: TourDraft, goal: { lng: number, lat: number }) => Promise<void>
-  patchGpxFilepath: (id: string, filepath: string | null) => Promise<void>
+  /** Returns false when no row was updated (tour gone) — update-only, never resurrects. */
+  updateTour: (id: string, draft: TourDraft, goal: { lng: number, lat: number }) => Promise<boolean>
   patchCompleted: (id: string, completed: boolean) => Promise<void>
   patchVisibility: (id: string, visibility: Visibility) => Promise<void>
   deleteTour: (id: string) => Promise<void>

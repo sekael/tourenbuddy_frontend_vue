@@ -50,6 +50,7 @@ export class ToursRepositoryImpl implements ToursRepository {
       p_end_point_elevation: draft.endPointElevation ?? null,
       p_equipment: draft.equipment ?? null,
       p_notes: draft.notes ?? null,
+      p_visibility: draft.visibility ?? null,
     })
 
     if (error)
@@ -60,8 +61,8 @@ export class ToursRepositoryImpl implements ToursRepository {
     id: string,
     draft: TourDraft,
     goal: { lng: number, lat: number },
-  ): Promise<void> {
-    const { error } = await supabase.rpc('update_tour_full', {
+  ): Promise<boolean> {
+    const { data, error } = await supabase.rpc('update_tour_full', {
       p_id: id,
       p_planned_date: draft.plannedDate?.toISOString().split('T')[0] ?? null,
       p_name: draft.name ?? null,
@@ -82,16 +83,14 @@ export class ToursRepositoryImpl implements ToursRepository {
       p_end_point_elevation: draft.endPointElevation ?? null,
       p_equipment: draft.equipment ?? null,
       p_notes: draft.notes ?? null,
+      p_visibility: draft.visibility ?? null,
     })
 
     if (error)
       throw new Error(error.message)
-  }
 
-  async patchGpxFilepath(id: string, filepath: string | null): Promise<void> {
-    const { error } = await supabase.from('tours').update({ gpx_filepath: filepath }).eq('id', id)
-    if (error)
-      throw new Error(error.message)
+    // update_tour_full returns false when the row is gone (update-only, no resurrect).
+    return data === true
   }
 
   async patchCompleted(id: string, completed: boolean): Promise<void> {

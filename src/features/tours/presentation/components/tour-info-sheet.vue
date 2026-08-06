@@ -190,7 +190,7 @@ function navigateToSibling(siblingId: string) {
 const saveError = ref<string | null>(null)
 const isSaving = ref(false)
 
-async function handleEditSubmit(draft: TourDraft, _gpxFile: File | null, gpxRemoved: boolean) {
+async function handleEditSubmit(draft: TourDraft, gpxRemoved: boolean) {
   if (mapStore.isPickingLocation) {
     log.debug('Ignoring edit submit while location picker is active')
     return
@@ -603,7 +603,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         :initial-name="pendingSuggestedName" :initial-start-point="pendingStartPoint"
         :initial-end-point="pendingEndPoint" :initial-start-point-meta="pendingStartPointMeta"
         :initial-end-point-meta="pendingEndPointMeta" :disabled="isPicking"
-        @submit="(d, f, r) => handleEditSubmit(d, f, r)" @cancel="cancelEdit" @pick-point="emit('pickPoint', $event)"
+        @submit="(d, r) => handleEditSubmit(d, r)" @cancel="cancelEdit" @pick-point="emit('pickPoint', $event)"
         @tour-type-change="emit('tourTypeChange', $event)"
         @start-point-change="emit('startPointChange', $event)"
         @end-point-change="emit('endPointChange', $event)"

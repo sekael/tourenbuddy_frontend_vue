@@ -164,7 +164,6 @@ export const useToursStore = defineStore('tours', () => {
   async function createTourFromDraft(
     draft: TourDraft,
     goal: { lng: number, lat: number },
-    gpxFile: File | null = null,
     preUploadedTourId: string | null = null,
   ): Promise<string | null> {
     const userId = authStore.currentUser?.id
@@ -172,21 +171,9 @@ export const useToursStore = defineStore('tours', () => {
       return null
 
     const id = preUploadedTourId ?? uuidv4()
+    // Single atomic write: tour + partners + visibility + gpx filepath in one RPC.
+    // (GPX is uploaded at file-pick time in the form; its path rides in via draft.)
     await repository.createTourWithPartners(id, draft, goal)
-
-    // Tours default to 'friends' server-side; only a non-default choice needs a write.
-    if (draft.visibility && draft.visibility !== 'friends')
-      await repository.patchVisibility(id, draft.visibility)
-
-    if (gpxFile) {
-      try {
-        const filepath = await uploadGpx(userId, id, gpxFile)
-        await repository.patchGpxFilepath(id, filepath)
-      }
-      catch (err) {
-        logger.warn('GPX upload failed after tour creation', err)
-      }
-    }
 
     await loadTours()
 
@@ -212,17 +199,22 @@ export const useToursStore = defineStore('tours', () => {
     const tourLinksStore = useTourLinksStore()
     const linkSnapshot = tourLinksStore.snapshotTourGroupContext(id)
 
+    let updated: boolean
     try {
-      await repository.updateTour(id, draft, goal)
-      // update_tour_full intentionally leaves visibility untouched; persist it separately
-      // so an edit through the form still applies a visibility change.
-      if (draft.visibility && draft.visibility !== existing?.visibility)
-        await repository.patchVisibility(id, draft.visibility)
+      // Single atomic write: row + partners + visibility folded into one RPC.
+      updated = await repository.updateTour(id, draft, goal)
     }
     catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update tour'
       logger.error('updateTour failed', err)
       throw err
+    }
+
+    // false ⇒ the tour is gone (concurrent delete). Abort BEFORE the eviction dispatch
+    // and the optimistic tours.value rewrite, else we'd resurrect a phantom row locally.
+    if (!updated) {
+      error.value = 'Failed to update tour'
+      throw new Error('Tour no longer exists')
     }
 
     // Mutation committed → if it tripped an eviction trigger, fire the

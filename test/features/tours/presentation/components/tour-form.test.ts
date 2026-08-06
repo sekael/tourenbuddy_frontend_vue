@@ -203,7 +203,7 @@ describe('tourForm', () => {
 
       const emitted = wrapper.emitted('submit')
       expect(emitted).toHaveLength(1)
-      const [, , gpxRemoved] = emitted![0] as [unknown, unknown, boolean]
+      const [, gpxRemoved] = emitted![0] as [unknown, boolean]
       expect(gpxRemoved).toBe(true)
     })
 
@@ -309,20 +309,6 @@ describe('tourForm', () => {
       await nextTick()
 
       expect(mockRemoveGpx).toHaveBeenCalledWith('user-abc/inflight.gpx')
-    })
-
-    it('should emit null for gpxFile in submit payload', async () => {
-      const wrapper = mountForm()
-      await pickFile(wrapper, new File([validGpxContent], 'track.gpx'))
-      await nextTick()
-
-      await wrapper.find('#tf-tourName').setValue('My Tour')
-      await wrapper.find('form').trigger('submit.prevent')
-
-      const emitted = wrapper.emitted('submit')
-      expect(emitted).toHaveLength(1)
-      const [, gpxFile] = emitted![0] as [unknown, unknown]
-      expect(gpxFile).toBeNull()
     })
   })
 
