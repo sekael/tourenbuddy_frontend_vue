@@ -8,7 +8,7 @@
 - [x] 2.2 `create_tour_full` body (still `RETURNS void`): `INSERT INTO tours (id, …, visibility) VALUES (p_id, …, COALESCE(p_visibility,'friends')) ON CONFLICT (id) DO NOTHING`; `IF NOT FOUND THEN RETURN` early WITHOUT inserting `tour_partners` (idempotent replay, design D2). Keep accepting `p_gpx_filepath`. Add a `-- ponytail:`/`-- idempotency:` comment: the `'friends'` literal matches the column default, and replaying a create must no-op
 - [x] 2.3 `update_tour_full` body → `RETURNS boolean`, `SELECT user_id INTO v_owner FROM tours WHERE id = p_id` branch (design D3): `NOT FOUND` → `RETURN false` (soft, gone); `v_owner <> auth.uid()` → `RAISE` (hard, cross-user — keep the baseline throw, it is the SECURITY DEFINER auth gate); else `UPDATE … WHERE id = p_id` with `visibility = COALESCE(p_visibility, visibility)` (untouched when null, D1), refresh partners, `RETURN true`. Never inserts. Keep accepting `p_gpx_filepath`
 - [x] 2.4 Re-issue Data-API grants in the same migration: `GRANT ALL ON FUNCTION public.create_tour_full(<new sig>) TO anon, authenticated, service_role;` and the same for `update_tour_full`
-- [ ] 2.5 `supabase db reset` — verify both functions replace cleanly (no leftover overload), tours create/update still work locally
+- [x] 2.5 `supabase db reset` — verify both functions replace cleanly (no leftover overload), tours create/update still work locally
 
 ## 3. Repository (`tours-repository-impl.ts`)
 
@@ -26,7 +26,7 @@
 
 - [x] 5.1 Repository (mock supabase RPC): create passes `p_visibility`; update omitting visibility passes `null` (so COALESCE leaves it); update surfaces the row-not-updated (`false`) case
 - [x] 5.2 Store: `updateTour` receiving `false` aborts — sets `error`, does NOT run eviction dispatch or optimistic `tours.value` rewrite; no `patchVisibility` call remains on the create/update happy path; no reference to a `gpxFile` param remains
-- [ ] 5.3 SQL semantics NOT unit-testable (suite mocks the RPC, no Postgres harness) — documented manual check against local Supabase: (a) `create_tour_full` twice with same `p_id` ⇒ one tour + one partner set; (b) `update_tour_full` on a deleted id ⇒ `false`, no row; (c) `update_tour_full` on another user's id ⇒ raises. Real-Postgres regression test deferred to `offline-write-sync` (design D6)
+- [x] 5.3 SQL semantics NOT unit-testable (suite mocks the RPC, no Postgres harness) — documented manual check against local Supabase: (a) `create_tour_full` twice with same `p_id` ⇒ one tour + one partner set; (b) `update_tour_full` on a deleted id ⇒ `false`, no row; (c) `update_tour_full` on another user's id ⇒ raises. Real-Postgres regression test deferred to `offline-write-sync` (design D6)
 - [x] 5.4 `npm run test` — all pass
 
 ## 6. Finalize
