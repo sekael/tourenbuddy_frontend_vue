@@ -33,7 +33,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   confirm: [
     draft: TourDraft,
-    gpxFile: File | null,
     gpxRemoved: boolean,
     preUploadedTourId: string | null,
     draftId: string,
@@ -83,7 +82,6 @@ const title = computed(() => pickTypeLabel.value ?? t('tours.creation.title'))
 
 function handleSubmit(
   draft: TourDraft,
-  gpxFile: File | null,
   gpxRemoved: boolean,
   preUploadedTourId: string | null,
   draftId: string,
@@ -92,7 +90,7 @@ function handleSubmit(
     log.debug('Ignoring create submit while location picker is active')
     return
   }
-  emit('confirm', draft, gpxFile, gpxRemoved, preUploadedTourId, draftId)
+  emit('confirm', draft, gpxRemoved, preUploadedTourId, draftId)
 }
 
 function handlePickPoint(type: 'start' | 'end' | 'goal') {
@@ -121,7 +119,7 @@ function handlePickPoint(type: 'start' | 'end' | 'goal') {
       :initial-start-point-meta="initialStartPointMeta"
       :initial-end-point-meta="initialEndPointMeta"
       :disabled="isPicking"
-      @submit="(d, f, r, tid, did) => handleSubmit(d, f, r, tid, did)"
+      @submit="(d, r, tid, did) => handleSubmit(d, r, tid, did)"
       @cancel="emit('close')"
       @pick-point="handlePickPoint"
       @tour-type-change="emit('tourTypeChange', $event)"

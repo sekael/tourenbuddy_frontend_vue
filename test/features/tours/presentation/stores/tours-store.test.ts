@@ -36,7 +36,6 @@ vi.mock('@/features/tours/data/repositories/tours-repository-impl', () => ({
     listToursForUser: mockListTours,
     createTourWithPartners: mockCreateTour,
     updateTour: mockUpdateTour,
-    patchGpxFilepath: vi.fn().mockResolvedValue(undefined),
     patchCompleted: mockPatchCompleted,
     deleteTour: mockDeleteTour,
   })),
@@ -246,7 +245,7 @@ describe('useToursStore', () => {
   describe('updateTour', () => {
     it('should store pre-uploaded gpxFilepath from draft without calling uploadGpx', async () => {
       const { uploadGpx } = await import('@/features/tours/data/services/gpx-storage-service')
-      mockUpdateTour.mockResolvedValue(undefined)
+      mockUpdateTour.mockResolvedValue(true)
 
       const store = useToursStore()
       store.tours = [...mockTours]
@@ -275,7 +274,7 @@ describe('useToursStore', () => {
     })
 
     it('should replace the updated tour in the local list on success', async () => {
-      mockUpdateTour.mockResolvedValue(undefined)
+      mockUpdateTour.mockResolvedValue(true)
 
       const store = useToursStore()
       store.tours = [...mockTours]
@@ -302,6 +301,39 @@ describe('useToursStore', () => {
       expect(store.tours[0]?.name).toBe('Rigi Updated')
       expect(store.tours[0]?.elevation).toBe(1800)
       expect(store.tours[0]?.goal).toEqual(newGoal)
+    })
+
+    it('should abort (set error, no optimistic rewrite) when the tour is gone (false)', async () => {
+      // update_tour_full returns false → the row no longer exists. The store must NOT
+      // rewrite tours.value (would resurrect a phantom row) and must surface the error.
+      mockUpdateTour.mockResolvedValue(false)
+
+      const store = useToursStore()
+      store.tours = [...mockTours]
+
+      await expect(
+        store.updateTour(
+          'tour-1',
+          {
+            name: 'Ghost Edit',
+            plannedDate: null,
+            partnerIds: [],
+            tourType: null,
+            elevation: null,
+            gpxFilepath: null,
+            description: null,
+            seasons: null,
+            startPoint: null,
+            endPoint: null,
+            equipment: null,
+            notes: null,
+          },
+          { lng: 8.2, lat: 46.8 },
+        ),
+      ).rejects.toThrow()
+
+      expect(store.error).toBeTruthy()
+      expect(store.tours[0]?.name).toBe('Rigi Tour')
     })
 
     it('should leave the list unchanged and re-throw on repository error', async () => {
@@ -336,7 +368,7 @@ describe('useToursStore', () => {
 
     it('should pass only newly-added partner contact ids to notifyTourChanged', async () => {
       const { notifyTourChanged } = await import('@/features/notifications/data/notify-dispatch')
-      mockUpdateTour.mockResolvedValue(undefined)
+      mockUpdateTour.mockResolvedValue(true)
 
       const store = useToursStore()
       // Existing tour already has contact-1 as a partner.
@@ -368,7 +400,7 @@ describe('useToursStore', () => {
 
     it('should pass an empty added-partner list when the partner set is unchanged', async () => {
       const { notifyTourChanged } = await import('@/features/notifications/data/notify-dispatch')
-      mockUpdateTour.mockResolvedValue(undefined)
+      mockUpdateTour.mockResolvedValue(true)
 
       const store = useToursStore()
       store.tours = [{ ...mockTours[0]!, partnerIds: ['contact-1'], visibility: 'friends' }]

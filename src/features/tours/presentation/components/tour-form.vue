@@ -69,7 +69,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   submit: [
     draft: TourDraft,
-    gpxFile: File | null,
     gpxRemoved: boolean,
     preUploadedTourId: string | null,
     draftId: string,
@@ -429,7 +428,7 @@ function handleSubmit() {
     equipment: equipment.value.trim() || null,
     notes: notes.value.trim() || null,
   }
-  emit('submit', draft, null, gpxRemoved.value, preUploadedTourId, draftId ?? '')
+  emit('submit', draft, gpxRemoved.value, preUploadedTourId, draftId ?? '')
 }
 
 // Let a full-screen page's top-bar cancel run the same cleanup as the in-form
