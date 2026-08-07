@@ -770,5 +770,9 @@
       "quota": "Nicht genügend Speicher für diese Region.",
       "download": "Download fehlgeschlagen. Bitte erneut versuchen."
     }
+  },
+  "offline": {
+    "indicator": "Du bist offline — gespeicherte Daten werden angezeigt",
+    "actionUnavailable": "Diese Aktion ist offline nicht verfügbar"
   }
 }

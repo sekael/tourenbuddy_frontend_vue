@@ -5,6 +5,9 @@ import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { InvalidPhoneNumberError, PhoneAlreadyRegisteredError } from '@/core/exceptions'
 import { useLogger } from '@/core/logging/use-logger'
+import { cachedLoad } from '@/core/offline/cached-load'
+import { mutate } from '@/core/offline/mutate'
+import { isOnline } from '@/core/offline/use-online-status'
 import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import { supabase } from '@/core/utils/supabase'
@@ -45,34 +48,42 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     error.value = null
 
     try {
-      let fetched = await repository.getUserById(userId)
+      // Hydrate from cache, then (online) refetch + overwrite (design D3). The
+      // upsert-on-missing lives in the fetcher so it only runs on the online path.
+      await cachedLoad(
+        `profile:${userId}`,
+        async () => {
+          const existing = await repository.getUserById(userId)
+          return existing ?? await repository.upsertProfile({
+            id: userId,
+            firstName: null,
+            lastName: null,
+            locale: null,
+            onboardingTourShowAtSignIn: true,
+            onboardingTourLastStep: 0,
+            calendarTourShowOnFirstOpen: true,
+            calendarFeatureNoticeShowAtSignIn: false,
+          })
+        },
+        (result) => { profile.value = result },
+      )
 
-      if (!fetched) {
-        fetched = await repository.upsertProfile({
-          id: userId,
-          firstName: null,
-          lastName: null,
-          locale: null,
-          onboardingTourShowAtSignIn: true,
-          onboardingTourLastStep: 0,
-          calendarTourShowOnFirstOpen: true,
-          calendarFeatureNoticeShowAtSignIn: false,
-        })
-      }
+      // Reconcile locale against whatever profile we now hold (cache or fresh).
+      const fetched = profile.value
+      if (fetched) {
+        const { useLocaleStore } = await import('@/features/i18n/presentation/stores/use-locale-store')
+        const localeStore = useLocaleStore()
 
-      profile.value = fetched
-
-      const { useLocaleStore } = await import('@/features/i18n/presentation/stores/use-locale-store')
-      const localeStore = useLocaleStore()
-
-      if (fetched.locale !== null && fetched.locale !== localeStore.locale) {
-        localeStore.setLocale(fetched.locale)
-      }
-      else if (fetched.locale === null) {
-        const seedLocale = localeStore.locale as SupportedLocaleCode
-        repository.upsertProfile({ ...fetched, locale: seedLocale }).then((updated) => {
-          profile.value = updated
-        }).catch(err => logger.error('Failed to seed locale on profile', err))
+        if (fetched.locale !== null && fetched.locale !== localeStore.locale) {
+          localeStore.setLocale(fetched.locale)
+        }
+        // Seed a null locale from the device — but only online (it's a DB write).
+        else if (fetched.locale === null && isOnline.value) {
+          const seedLocale = localeStore.locale as SupportedLocaleCode
+          repository.upsertProfile({ ...fetched, locale: seedLocale }).then((updated) => {
+            profile.value = updated
+          }).catch(err => logger.error('Failed to seed locale on profile', err))
+        }
       }
     }
     catch (err) {
@@ -85,7 +96,10 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     }
   }
 
-  async function updateProfile(fields: Partial<Omit<UserProfile, 'id'>>) {
+  // Raw profile write. NOT behind the offline seam: internal best-effort callers
+  // (onboarding / calendar gate flips) persist through here and must fail silently
+  // offline without surfacing a user-facing "unavailable offline" notice.
+  async function persistProfile(fields: Partial<Omit<UserProfile, 'id'>>) {
     const userId = authStore.currentUser?.id
     if (!userId || !profile.value)
       return
@@ -110,6 +124,11 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     finally {
       isLoading.value = false
     }
+  }
+
+  // User-facing profile edit: blocked + notified offline (design D5).
+  async function updateProfile(fields: Partial<Omit<UserProfile, 'id'>>) {
+    return mutate(() => persistProfile(fields))
   }
 
   async function setLocale(code: SupportedLocaleCode): Promise<void> {
@@ -149,16 +168,18 @@ export const useUserProfileStore = defineStore('userProfile', () => {
   }
 
   async function deletePhone() {
-    error.value = null
-    const { error: rpcError } = await supabase.rpc('delete_own_phone')
-    if (rpcError) {
-      error.value = rpcError.message
-      return
-    }
-    await authStore.refreshCurrentUser()
-    // DB trigger removed all friendships + pending requests for this user.
-    // Clear friendships store so badges and lists reflect the empty state immediately.
-    useFriendshipsStore().clear()
+    return mutate(async () => {
+      error.value = null
+      const { error: rpcError } = await supabase.rpc('delete_own_phone')
+      if (rpcError) {
+        error.value = rpcError.message
+        return
+      }
+      await authStore.refreshCurrentUser()
+      // DB trigger removed all friendships + pending requests for this user.
+      // Clear friendships store so badges and lists reflect the empty state immediately.
+      useFriendshipsStore().clear()
+    })
   }
 
   async function verifyPhone(phone: string, token: string) {
@@ -186,7 +207,7 @@ export const useUserProfileStore = defineStore('userProfile', () => {
    */
   async function dismissTourAtSignIn() {
     try {
-      await updateProfile({ onboardingTourShowAtSignIn: false })
+      await persistProfile({ onboardingTourShowAtSignIn: false })
     }
     catch (err) {
       logger.error('Failed to dismiss onboarding tour auto-start', err)
@@ -196,7 +217,7 @@ export const useUserProfileStore = defineStore('userProfile', () => {
   /** Persist the onboarding tour resume index. Non-blocking. */
   async function saveTourStep(n: number) {
     try {
-      await updateProfile({ onboardingTourLastStep: n })
+      await persistProfile({ onboardingTourLastStep: n })
     }
     catch (err) {
       logger.error('Failed to persist onboarding tour step', err)
@@ -210,7 +231,7 @@ export const useUserProfileStore = defineStore('userProfile', () => {
    */
   async function dismissCalendarTour() {
     try {
-      await updateProfile({ calendarTourShowOnFirstOpen: false })
+      await persistProfile({ calendarTourShowOnFirstOpen: false })
     }
     catch (err) {
       logger.error('Failed to dismiss calendar tour auto-show', err)
@@ -220,7 +241,7 @@ export const useUserProfileStore = defineStore('userProfile', () => {
   /** Flip only the legacy calendar-feature notice gate; leave the calendar tour gate intact. */
   async function dismissCalendarFeatureNotice() {
     try {
-      await updateProfile({ calendarFeatureNoticeShowAtSignIn: false })
+      await persistProfile({ calendarFeatureNoticeShowAtSignIn: false })
     }
     catch (err) {
       logger.error('Failed to dismiss calendar feature notice', err)

@@ -36,14 +36,24 @@ const viewUrl = ref<string | null>(null)
 const loadError = ref(false)
 const urlRetried = ref(false)
 
+/**
+ * Assign the current view URL, releasing the previous object URL (getViewUrl now
+ * hands back object URLs backed by the offline blob cache).
+ */
+function setViewUrl(url: string | null) {
+  if (viewUrl.value?.startsWith('blob:'))
+    URL.revokeObjectURL(viewUrl.value)
+  viewUrl.value = url
+}
+
 async function fetchViewUrl() {
   if (!current.value)
     return
-  viewUrl.value = null
+  setViewUrl(null)
   loadError.value = false
   urlRetried.value = false
   try {
-    viewUrl.value = await store.getViewUrl(current.value.storagePath)
+    setViewUrl(await store.getViewUrl(current.value.storagePath))
   }
   catch (err) {
     log.error('getViewUrl failed', err)
@@ -60,7 +70,7 @@ async function onImageError() {
   }
   urlRetried.value = true
   try {
-    viewUrl.value = await store.getViewUrl(current.value.storagePath)
+    setViewUrl(await store.getViewUrl(current.value.storagePath))
   }
   catch {
     loadError.value = true
@@ -80,6 +90,9 @@ async function downloadCurrent() {
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
+    // Object URL (offline blob cache) — release after the download has kicked off.
+    if (url.startsWith('blob:'))
+      setTimeout(() => URL.revokeObjectURL(url), 10_000)
   }
   catch (err) {
     log.error('download failed', err)
@@ -201,7 +214,10 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 onMounted(() => document.addEventListener('keydown', onKeydown))
-onUnmounted(() => document.removeEventListener('keydown', onKeydown))
+onUnmounted(() => {
+  document.removeEventListener('keydown', onKeydown)
+  setViewUrl(null)
+})
 </script>
 
 <template>

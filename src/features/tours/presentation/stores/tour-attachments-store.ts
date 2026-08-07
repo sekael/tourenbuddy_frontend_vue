@@ -4,6 +4,9 @@ import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useLogger } from '@/core/logging/use-logger'
+import { loadCachedBlob } from '@/core/offline/blob-cache'
+import { cachedLoad } from '@/core/offline/cached-load'
+import { mutate } from '@/core/offline/mutate'
 import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import {
@@ -70,7 +73,14 @@ export const useTourAttachmentsStore = defineStore('tourAttachments', () => {
     loading.value = true
     error.value = null
     try {
-      attachmentsByTour.value[tourId] = await repository.list(tourId)
+      // Hydrate from cache, then (online) refetch (design D3). Offline this uses the
+      // cached list and makes no request — so opening a tour to edit offline no longer
+      // surfaces a "failed to load attachments" error.
+      await cachedLoad(
+        `attachments:${tourId}`,
+        () => repository.list(tourId),
+        (result) => { attachmentsByTour.value[tourId] = result },
+      )
     }
     catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load attachments'
@@ -176,64 +186,93 @@ export const useTourAttachmentsStore = defineStore('tourAttachments', () => {
       return
     }
 
+    // Blocked offline (design D5): the seam drops the write and signals the global
+    // "unavailable offline" notice. Clear any prior error first so the picker banner
+    // doesn't linger; offline never sets a new one.
     error.value = null
-    loading.value = true
-
-    try {
-      const results = await Promise.all(
-        files.map(file =>
-          repository.add({
-            file,
-            mimeType: file.type as AllowedMimeType,
-            tourId,
-            userId,
-          }),
-        ),
-      )
-      attachmentsByTour.value[tourId] = [...current, ...results]
-    }
-    catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to add attachment'
-      logger.error('add attachment failed', err)
-    }
-    finally {
-      loading.value = false
-    }
+    return mutate(async () => {
+      loading.value = true
+      try {
+        const results = await Promise.all(
+          files.map(file =>
+            repository.add({
+              file,
+              mimeType: file.type as AllowedMimeType,
+              tourId,
+              userId,
+            }),
+          ),
+        )
+        attachmentsByTour.value[tourId] = [...current, ...results]
+      }
+      catch (err) {
+        error.value = err instanceof Error ? err.message : 'Failed to add attachment'
+        logger.error('add attachment failed', err)
+      }
+      finally {
+        loading.value = false
+      }
+    })
   }
 
   async function remove(attachment: TourAttachment) {
-    try {
-      await repository.remove(attachment)
-      const list = attachmentsByTour.value[attachment.tourId] ?? []
-      attachmentsByTour.value[attachment.tourId] = list.filter(a => a.id !== attachment.id)
-    }
-    catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to delete attachment'
-      logger.error('remove attachment failed', err)
-    }
+    error.value = null
+    return mutate(async () => {
+      try {
+        await repository.remove(attachment)
+        const list = attachmentsByTour.value[attachment.tourId] ?? []
+        attachmentsByTour.value[attachment.tourId] = list.filter(a => a.id !== attachment.id)
+      }
+      catch (err) {
+        error.value = err instanceof Error ? err.message : 'Failed to delete attachment'
+        logger.error('remove attachment failed', err)
+      }
+    })
   }
 
   async function reorder(tourId: string, orderedIds: string[]) {
-    try {
-      await repository.reorder(tourId, orderedIds)
-      const list = attachmentsByTour.value[tourId] ?? []
-      const byId = Object.fromEntries(list.map(a => [a.id, a]))
-      attachmentsByTour.value[tourId] = orderedIds
-        .filter(id => byId[id])
-        .map((id, idx) => ({ ...byId[id], sortOrder: idx }))
-    }
-    catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to reorder attachments'
-      logger.error('reorder attachments failed', err)
-    }
+    error.value = null
+    return mutate(async () => {
+      try {
+        await repository.reorder(tourId, orderedIds)
+        const list = attachmentsByTour.value[tourId] ?? []
+        const byId = Object.fromEntries(list.map(a => [a.id, a]))
+        attachmentsByTour.value[tourId] = orderedIds
+          .filter(id => byId[id])
+          .map((id, idx) => ({ ...byId[id], sortOrder: idx }))
+      }
+      catch (err) {
+        error.value = err instanceof Error ? err.message : 'Failed to reorder attachments'
+        logger.error('reorder attachments failed', err)
+      }
+    })
   }
 
+  /** Fetch an attachment's bytes via a fresh signed URL (used only when online). */
+  async function fetchBlob(storagePath: string): Promise<Blob> {
+    const signedUrl = await repository.getViewUrl(storagePath)
+    const res = await fetch(signedUrl)
+    if (!res.ok)
+      throw new Error(`HTTP ${res.status}`)
+    return res.blob()
+  }
+
+  /**
+   * Object URL for viewing/downloading an attachment, backed by the offline blob cache
+   * (keyed on the stable storage path). Online it caches the bytes on first view;
+   * offline it serves the cached copy. Callers own the returned object URL and must
+   * `URL.revokeObjectURL` it when done. Throws when the bytes were never cached and
+   * we're offline.
+   */
   async function getViewUrl(storagePath: string): Promise<string> {
-    return repository.getViewUrl(storagePath)
+    const blob = await loadCachedBlob(storagePath, () => fetchBlob(storagePath))
+    if (!blob)
+      throw new Error('Attachment unavailable offline')
+    return URL.createObjectURL(blob)
   }
 
-  async function getDownloadUrl(storagePath: string, originalFilename: string): Promise<string> {
-    return repository.getDownloadUrl(storagePath, originalFilename)
+  async function getDownloadUrl(storagePath: string, _originalFilename: string): Promise<string> {
+    return getViewUrl(storagePath)
   }
 
   function clear() {

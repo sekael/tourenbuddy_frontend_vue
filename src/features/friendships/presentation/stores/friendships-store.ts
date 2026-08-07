@@ -7,6 +7,8 @@ import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { BlockedBySenderError } from '@/core/exceptions'
 import { useLogger } from '@/core/logging/use-logger'
+import { cachedLoad } from '@/core/offline/cached-load'
+import { mutate } from '@/core/offline/mutate'
 import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { FriendshipRepositoryImpl } from '@/features/friendships/data/repositories/friendship-repository-impl'
@@ -82,6 +84,18 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     return [...serverRows, ...survivingOptimistic]
   }
 
+  /** Dedupe friendships by their composite PK (requestUserId, responseUserId). */
+  function dedupeFriendships(rows: Friendship[]): Friendship[] {
+    const seen = new Set<string>()
+    return rows.filter((f) => {
+      const key = `${f.requestUserId}:${f.responseUserId}`
+      if (seen.has(key))
+        return false
+      seen.add(key)
+      return true
+    })
+  }
+
   async function fetchAll() {
     if (!authStore.isAuthenticated || !isPhoneVerified.value)
       return
@@ -89,24 +103,32 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     isLoading.value = true
     error.value = null
     try {
-      const [allRequests, fships] = await Promise.all([
-        repository.listIncoming(),
-        repository.listFriendships(),
-      ])
       const uid = authStore.currentUser!.id
-      const serverIncoming = allRequests.filter(r => r.toUserId === uid)
-      const serverOutgoing = allRequests.filter(r => r.fromUserId === uid)
-      incomingRequests.value = reconcileRequests(serverIncoming, incomingRequests.value)
-      outgoingRequests.value = reconcileRequests(serverOutgoing, outgoingRequests.value)
-      // Dedupe friendships by composite PK (request_user_id, response_user_id)
-      const seen = new Set<string>()
-      friendships.value = fships.filter((f) => {
-        const key = `${f.requestUserId}:${f.responseUserId}`
-        if (seen.has(key))
-          return false
-        seen.add(key)
-        return true
-      })
+      // cachedLoad contract: the fetcher does ONLY server-data work and returns the
+      // snapshot (also what gets cached); the assign is the SOLE ref writer, since it
+      // runs for both the cache hydrate and the fresh fetch. Never assign a ref in the
+      // fetcher — a value not consumed by assign can't survive an offline hydrate.
+      await cachedLoad(
+        `friendships:${uid}`,
+        async () => {
+          const [allRequests, fships] = await Promise.all([
+            repository.listIncoming(),
+            repository.listFriendships(),
+          ])
+          return {
+            incoming: allRequests.filter(r => r.toUserId === uid),
+            outgoing: allRequests.filter(r => r.fromUserId === uid),
+            friendships: dedupeFriendships(fships),
+          }
+        },
+        (snapshot) => {
+          // Requests reconcile against local optimistic rows; friendships are
+          // server-authoritative, so assign the (already-deduped) snapshot directly.
+          incomingRequests.value = reconcileRequests(snapshot.incoming, incomingRequests.value)
+          outgoingRequests.value = reconcileRequests(snapshot.outgoing, outgoingRequests.value)
+          friendships.value = snapshot.friendships
+        },
+      )
     }
     catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load friendships'
@@ -172,34 +194,36 @@ export const useFriendshipsStore = defineStore('friendships', () => {
   }
 
   async function accept(requestId: string): Promise<void> {
-    const req = incomingRequests.value.find(r => r.id === requestId)
-    if (!req)
-      return
+    await mutate(async () => {
+      const req = incomingRequests.value.find(r => r.id === requestId)
+      if (!req)
+        return
 
-    // Optimistic: move from incoming to friendships
-    incomingRequests.value = incomingRequests.value.filter(r => r.id !== requestId)
-    const uid = authStore.currentUser!.id
-    const optimisticFriendship: Friendship = {
-      requestUserId: req.fromUserId,
-      responseUserId: uid,
-      createdAt: new Date().toISOString(),
-      requestId,
-    }
-    friendships.value = [...friendships.value, optimisticFriendship]
+      // Optimistic: move from incoming to friendships
+      incomingRequests.value = incomingRequests.value.filter(r => r.id !== requestId)
+      const uid = authStore.currentUser!.id
+      const optimisticFriendship: Friendship = {
+        requestUserId: req.fromUserId,
+        responseUserId: uid,
+        createdAt: new Date().toISOString(),
+        requestId,
+      }
+      friendships.value = [...friendships.value, optimisticFriendship]
 
-    try {
-      await repository.accept(requestId)
-      notifyFriendRequestResponded(requestId)
-    }
-    catch (err) {
-      // Rollback
-      incomingRequests.value = [...incomingRequests.value, req]
-      friendships.value = friendships.value.filter(
-        f => !(f.requestUserId === req.fromUserId && f.responseUserId === uid && f.requestId === requestId),
-      )
-      logger.error('Failed to accept friend request', err)
-      throw err
-    }
+      try {
+        await repository.accept(requestId)
+        notifyFriendRequestResponded(requestId)
+      }
+      catch (err) {
+        // Rollback
+        incomingRequests.value = [...incomingRequests.value, req]
+        friendships.value = friendships.value.filter(
+          f => !(f.requestUserId === req.fromUserId && f.responseUserId === uid && f.requestId === requestId),
+        )
+        logger.error('Failed to accept friend request', err)
+        throw err
+      }
+    })
   }
 
   async function deny(requestId: string): Promise<void> {
@@ -310,41 +334,43 @@ export const useFriendshipsStore = defineStore('friendships', () => {
   }
 
   async function removeFriendship(otherUserId: string): Promise<void> {
-    const uid = authStore.currentUser?.id
-    if (!uid)
-      return
-    const isMatch = (f: Friendship) =>
-      (f.requestUserId === uid && f.responseUserId === otherUserId)
-      || (f.requestUserId === otherUserId && f.responseUserId === uid)
-    const removed = friendships.value.find(isMatch)
-    friendships.value = friendships.value.filter(f => !isMatch(f))
+    await mutate(async () => {
+      const uid = authStore.currentUser?.id
+      if (!uid)
+        return
+      const isMatch = (f: Friendship) =>
+        (f.requestUserId === uid && f.responseUserId === otherUserId)
+        || (f.requestUserId === otherUserId && f.responseUserId === uid)
+      const removed = friendships.value.find(isMatch)
+      friendships.value = friendships.value.filter(f => !isMatch(f))
 
-    // Snapshot tour-link groups that will be cascade-evicted by the
-    // friendship-delete trigger. Must happen BEFORE delete: the trigger
-    // tears down members + dissolves groups in the same txn, and friend
-    // tours stop being visible the moment the friendship row is gone.
-    const tourLinksStore = useTourLinksStore()
-    const groupNotifications = tourLinksStore.snapshotFriendshipRemovalNotifications(otherUserId)
+      // Snapshot tour-link groups that will be cascade-evicted by the
+      // friendship-delete trigger. Must happen BEFORE delete: the trigger
+      // tears down members + dissolves groups in the same txn, and friend
+      // tours stop being visible the moment the friendship row is gone.
+      const tourLinksStore = useTourLinksStore()
+      const groupNotifications = tourLinksStore.snapshotFriendshipRemovalNotifications(otherUserId)
 
-    try {
-      await repository.removeFriendship(otherUserId)
-    }
-    catch (err) {
-      if (removed)
-        friendships.value = [...friendships.value, removed]
-      logger.error('Failed to remove friendship', err)
-      throw err
-    }
+      try {
+        await repository.removeFriendship(otherUserId)
+      }
+      catch (err) {
+        if (removed)
+          friendships.value = [...friendships.value, removed]
+        logger.error('Failed to remove friendship', err)
+        throw err
+      }
 
-    // Delete succeeded → fire one notification per affected group with the
-    // pre-eviction recipient snapshot. Best-effort; failures only warn.
-    for (const n of groupNotifications) {
-      notifyGroupMembershipEvent(n.groupId, n.event, {
-        affectedUserId: otherUserId,
-        recipients: n.recipients,
-        recipientTourNames: n.recipientTourNames,
-      })
-    }
+      // Delete succeeded → fire one notification per affected group with the
+      // pre-eviction recipient snapshot. Best-effort; failures only warn.
+      for (const n of groupNotifications) {
+        notifyGroupMembershipEvent(n.groupId, n.event, {
+          affectedUserId: otherUserId,
+          recipients: n.recipients,
+          recipientTourNames: n.recipientTourNames,
+        })
+      }
+    })
   }
 
   function clear() {

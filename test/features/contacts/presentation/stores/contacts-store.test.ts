@@ -1,5 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { offlineBlockedAt } from '@/core/offline/mutate'
+import { isOnline } from '@/core/offline/use-online-status'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 
 const {
@@ -86,6 +88,27 @@ const mockContacts = [
   },
 ]
 
+describe('useContactsStore offline write guard', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+  })
+  afterEach(() => {
+    isOnline.value = true
+  })
+
+  it('does not call the repository and signals the offline notice when a mutation runs offline', async () => {
+    isOnline.value = false
+    const store = useContactsStore()
+    const before = offlineBlockedAt.value
+
+    await store.deleteContact('1')
+
+    expect(mockDeleteContact).not.toHaveBeenCalled()
+    expect(offlineBlockedAt.value).toBeGreaterThan(before)
+  })
+})
+
 describe('useContactsStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -112,6 +135,20 @@ describe('useContactsStore', () => {
 
     expect(store.contacts[0]!.firstName).toBe('Anna')
     expect(store.contacts[1]!.firstName).toBe('Bob')
+  })
+
+  it('does not duplicate a new contact a concurrent refetch already inserted (slow-network race)', async () => {
+    const created = { ...mockContacts[0]!, id: 'dup', firstName: 'Zoe', contactMethods: [] }
+    // Realtime INSERT refetch won the race: the row is already in the list before
+    // createContact's (slow) response returns and addContact appends it.
+    mockFetchContacts.mockResolvedValue([created])
+    mockCreateContact.mockResolvedValue(created)
+
+    const store = useContactsStore()
+    await store.loadContacts()
+    await store.addContact('Zoe')
+
+    expect(store.contacts.filter(c => c.id === 'dup')).toHaveLength(1)
   })
 
   it('should trim contact name inputs', async () => {
@@ -535,6 +572,25 @@ describe('useContactsStore', () => {
         'method-1',
         expect.objectContaining({ value: '+41791234567' }),
       )
+    })
+  })
+
+  describe('findContactByMethodValue', () => {
+    it('matches a contact stored with a non-normalized phone against an E.164 query', async () => {
+      // Regression: a seeded/imported contact whose phone kept a spaced local format
+      // must still be found by an E.164 lookup, else the friend-accept dedupe guard
+      // misses and a duplicate contact is created.
+      mockFetchContacts.mockResolvedValue([
+        {
+          ...mockContacts[1]!,
+          contactMethods: [{ ...mockPhoneMethod, value: '+41 79 123 45 67' }],
+        },
+      ])
+
+      const store = useContactsStore()
+      await store.loadContacts()
+
+      expect(store.findContactByMethodValue('phone', '+41791234567')?.id).toBe('2')
     })
   })
 })

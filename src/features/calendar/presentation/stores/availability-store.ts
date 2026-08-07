@@ -2,6 +2,8 @@ import type { AvailabilityRow } from '@/features/calendar/data/models/availabili
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useLogger } from '@/core/logging/use-logger'
+import { cachedLoad } from '@/core/offline/cached-load'
+import { mutate } from '@/core/offline/mutate'
 import { useRealtimeBroadcast } from '@/core/realtime/use-realtime-broadcast'
 import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
@@ -40,11 +42,19 @@ export const useAvailabilityStore = defineStore('availability', () => {
 
   /** Load own future availability — call on Planned view mount. */
   async function load() {
+    // No uid early-return: load only runs authenticated in practice (Planned mount /
+    // realtime onSubscribed), and skipping would break the cache key. ponytail: the
+    // uid just namespaces the cache (design D1); RLS is the real per-user gate.
+    const uid = authStore.currentUser?.id
     loading.value = true
     error.value = null
     try {
-      const days = await repository.listOwnFrom(todayKey())
-      savedDays.value = new Set(days)
+      // Cache the raw day-key array; the store holds it as a Set (design D1/D3).
+      await cachedLoad(
+        `availability:${uid}`,
+        () => repository.listOwnFrom(todayKey()),
+        (days) => { savedDays.value = new Set(days) },
+      )
     }
     catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load availability'
@@ -160,27 +170,29 @@ export const useAvailabilityStore = defineStore('availability', () => {
    * working set intact so the user can retry without redoing their selection.
    */
   async function save() {
-    error.value = null
-    const added = [...workingDays.value].filter(day => !baseline.has(day))
-    const removed = [...baseline].filter(day => !workingDays.value.has(day))
-    if (added.length === 0 && removed.length === 0) {
-      editing.value = false
-      return
-    }
+    return mutate(async () => {
+      error.value = null
+      const added = [...workingDays.value].filter(day => !baseline.has(day))
+      const removed = [...baseline].filter(day => !workingDays.value.has(day))
+      if (added.length === 0 && removed.length === 0) {
+        editing.value = false
+        return
+      }
 
-    saving.value = true
-    try {
-      await repository.applyDiff(added, removed)
-      await load() // reconcile with what actually persisted
-      editing.value = false
-    }
-    catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to save availability'
-      logger.error('Failed to save availability', err)
-    }
-    finally {
-      saving.value = false
-    }
+      saving.value = true
+      try {
+        await repository.applyDiff(added, removed)
+        await load() // reconcile with what actually persisted
+        editing.value = false
+      }
+      catch (err) {
+        error.value = err instanceof Error ? err.message : 'Failed to save availability'
+        logger.error('Failed to save availability', err)
+      }
+      finally {
+        saving.value = false
+      }
+    })
   }
 
   return {

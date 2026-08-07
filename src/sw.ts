@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 import { ExpirationPlugin } from 'workbox-expiration'
-import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
-import { registerRoute } from 'workbox-routing'
+import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching'
+import { NavigationRoute, registerRoute } from 'workbox-routing'
 import { CacheFirst, NetworkOnly, StaleWhileRevalidate } from 'workbox-strategies'
 import { OFFLINE_MAP_CACHE } from './features/map/data/services/offline-map-cache'
 import { pickTileResponse } from './features/map/data/services/pick-tile-response'
@@ -10,6 +10,14 @@ declare const self: ServiceWorkerGlobalScope
 
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
+
+// SPA navigation fallback: serve the precached app shell (index.html) for ANY
+// in-app navigation. precacheAndRoute only maps assets to their own URLs, so a
+// hard reload of a client-side route (/tours, /calendar) or a cold offline launch
+// would otherwise miss the cache and hit the network → ERR_INTERNET_DISCONNECTED.
+// This is what makes the app boot offline; the offline data cache hydrates on top.
+// (devOptions.navigateFallback only configures the DEV worker — prod needs this.)
+registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html')))
 
 // Honor user-driven update prompt (vite-plugin-pwa registerType: 'prompt')
 self.addEventListener('message', (event) => {
