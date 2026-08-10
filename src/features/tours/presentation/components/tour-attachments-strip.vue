@@ -27,6 +27,12 @@ onMounted(() => {
 
 onUnmounted(() => {
   store.clearCurrent()
+  // Release object URLs handed out by getViewUrl (images kept as thumbnail src; PDF
+  // thumbnails are data URLs from the canvas and need no revoke).
+  for (const url of Object.values(thumbnailUrls.value)) {
+    if (url.startsWith('blob:'))
+      URL.revokeObjectURL(url)
+  }
 })
 
 // Fetch thumbnail signed URLs whenever attachment list changes
@@ -38,9 +44,13 @@ watch(
         continue
       try {
         const url = await store.getViewUrl(att.storagePath)
-        if (att.mimeType === 'application/pdf')
+        if (att.mimeType === 'application/pdf') {
+          // The object URL is only needed to render the thumbnail; the stored value is
+          // the canvas data URL, so release the object URL once rendered.
           thumbnailUrls.value[att.id] = await renderPdfThumbnail(url)
-        else thumbnailUrls.value[att.id] = url
+          URL.revokeObjectURL(url)
+        }
+        else { thumbnailUrls.value[att.id] = url }
       }
       catch {
         // Thumbnail load failure is non-critical

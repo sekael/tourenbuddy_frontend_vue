@@ -58,8 +58,19 @@ function mountSheet(opts: MountOpts = {}) {
       contacts: { contacts: opts.contacts ?? [], isLoading: false, error: null },
     },
   })
+  // stubActions replaces findContactByMethodValue with a no-op; the component now
+  // delegates its "contact already exists?" check (and outgoing name resolution) to
+  // it, so back it with a real lookup over the provided contacts. Wire it BEFORE
+  // mount — displayNameFor runs during the initial render. Exact match: tests use
+  // E.164 values (normalization is covered in the contacts-store unit test).
+  const contacts = useContactsStore(pinia)
+  vi.mocked(contacts.findContactByMethodValue).mockImplementation((type, value) =>
+    (opts.contacts ?? []).find(c =>
+      c.contactMethods.some(m => m.methodType === type && m.value === value),
+    ) as ReturnType<typeof contacts.findContactByMethodValue>,
+  )
   const wrapper = mount(FriendRequestsSheet, { global: { plugins: [pinia] } })
-  return { wrapper, friendships: useFriendshipsStore(), contacts: useContactsStore() }
+  return { wrapper, friendships: useFriendshipsStore(pinia), contacts }
 }
 
 async function triggerAccept(wrapper: ReturnType<typeof mount>) {

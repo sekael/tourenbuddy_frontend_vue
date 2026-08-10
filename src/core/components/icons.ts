@@ -16,6 +16,7 @@ import IconCheckCircleOutline from '~icons/material-symbols/check-circle-outline
 import IconChevronLeft from '~icons/material-symbols/chevron-left'
 import IconChevronRight from '~icons/material-symbols/chevron-right'
 import IconClose from '~icons/material-symbols/close'
+import IconCloudOffOutline from '~icons/material-symbols/cloud-off-outline'
 import IconContactsOutline from '~icons/material-symbols/contacts-outline'
 import IconDeleteOutline from '~icons/material-symbols/delete-outline'
 import IconDescriptionOutline from '~icons/material-symbols/description-outline'
@@ -116,6 +117,7 @@ export const iconRegistry: Record<string, Component> = {
   chevron_left: IconChevronLeft,
   chevron_right: IconChevronRight,
   close: IconClose,
+  cloud_off: IconCloudOffOutline,
   contacts: IconContactsOutline,
   delete: IconDeleteOutline,
   description: IconDescriptionOutline,

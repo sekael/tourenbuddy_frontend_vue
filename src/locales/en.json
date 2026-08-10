@@ -770,5 +770,9 @@
       "quota": "Not enough storage to download this region.",
       "download": "Download failed. Please try again."
     }
+  },
+  "offline": {
+    "indicator": "You're offline — showing saved data",
+    "actionUnavailable": "This action isn't available offline"
   }
 }

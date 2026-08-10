@@ -1,6 +1,7 @@
 import type { ExpressionSpecification, Map as MapLibreMap } from 'maplibre-gl'
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import { useLogger } from '@/core/logging/use-logger'
+import { loadCachedBlob } from '@/core/offline/blob-cache'
 import { useGpxCache } from '@/features/map/presentation/composables/use-gpx-cache'
 import { TOUR_TYPE_TRACK_COLORS } from '@/features/tours/data/models/tour-type'
 import { parseGpxFile } from '@/features/tours/data/services/gpx-parser'
@@ -87,11 +88,18 @@ export function useGpxTrackLayer(map: MapLibreMap) {
     }
 
     try {
-      const signedUrl = await getSignedUrl(tour.gpxFilepath)
-      const response = await fetch(signedUrl)
-      if (!response.ok)
-        throw new Error(`HTTP ${response.status}`)
-      const blob = await response.blob()
+      // Offline-first bytes: cached on first online view (keyed on the stable filepath),
+      // served from cache offline so the track still renders. undefined ⇒ never cached
+      // while online → fall through to the catch's empty-track fallback.
+      const blob = await loadCachedBlob(tour.gpxFilepath, async () => {
+        const signedUrl = await getSignedUrl(tour!.gpxFilepath!)
+        const response = await fetch(signedUrl)
+        if (!response.ok)
+          throw new Error(`HTTP ${response.status}`)
+        return response.blob()
+      })
+      if (!blob)
+        throw new Error('GPX unavailable offline')
       const file = new File([blob], `${tour.id}.gpx`, { type: 'application/gpx+xml' })
       const geojson = await parseGpxFile(file)
 

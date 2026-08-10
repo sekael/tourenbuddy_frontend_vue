@@ -2,6 +2,7 @@ import type { SpeedDialMenuItem } from '../components/map-speed-dial-menu.vue'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { isOnline } from '@/core/offline/use-online-status'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 
@@ -39,7 +40,8 @@ export function useMapOverlay(emit: {
       label: t('map.overlay.feedback'),
       tooltip: t('map.overlay.feedbackTooltip'),
     },
-    { id: 'base-map', icon: 'map', label: t('map.overlay.changeBaseMap') },
+    // Switching base map (Classic isn't cached) is network-only — greyed offline.
+    { id: 'base-map', icon: 'map', label: t('map.overlay.changeBaseMap'), disabled: !isOnline.value },
     { id: 'offline-map', icon: 'download_for_offline', label: t('map.overlay.offlineMap') },
     {
       id: 'profile',

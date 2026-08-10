@@ -34,7 +34,7 @@ Supabase email/OTP (no passwords). `onAuthStateChange` at bootstrap updates auth
 - Precache: app shell + static assets
 - Runtime cache: Swisstopo tiles (`StaleWhileRevalidate`, 500 entries, 30-day expiry)
 - Explicit offline base map: users download a chosen region (or all of Switzerland) of the `ch.swisstopo.basemap.vt` vector base map — tiles **plus** the style.json / sprite / glyph PBFs so labels render offline. Stored in a dedicated `offline-map-tiles` Cache (URL-keyed on the canonical bare host; tile shards `vectortiles0-4` normalized to one key), indexed by an `offline-regions` IndexedDB ledger. The SW serves these **offline-first** (route registered before the runtime SWR route); a miss falls through to the runtime cache unchanged. See `features/map/data/services/` + `openspec/changes/offline-map-support`.
-- Asset + tile caching only — no offline data **sync** (data sync is a separate future change)
+- Asset + tile caching, plus a **read-only offline data cache** (change: offline-app-cache-sync): the store-loaded collections (tours, contacts, profile, calendar availability, friendships) are cached in IndexedDB (`core/offline/`) and hydrate offline via a `cachedLoad` hydrate-then-refetch path; a module-level `isOnline` signal gates the network and drives the offline UI; writes are **blocked** offline through a single `mutate()` seam. Offline data **write sync** (queue + replay) is still a separate future change (offline-write-sync).
 
 ## Realtime (Supabase `postgres_changes`)
 

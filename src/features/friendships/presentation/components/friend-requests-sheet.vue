@@ -52,9 +52,7 @@ function displayNameFor(req: FriendRequest, direction: 'incoming' | 'outgoing'):
   const phone = userIdToPhoneMap.value.get(req.toUserId)
   if (!phone)
     return null
-  const contact = contacts.value.find(c =>
-    c.contactMethods.some(m => m.methodType === 'phone' && m.value === phone),
-  )
+  const contact = contactsStore.findContactByMethodValue('phone', phone)
   if (!contact)
     return null
   const name = `${contact.firstName ?? ''} ${contact.lastName ?? ''}`.trim()
@@ -85,10 +83,7 @@ async function maybeCreateContactForFriend(userId: string) {
   const phone = userIdToPhoneMap.value.get(userId)
   if (!phone)
     return
-  const alreadyExists = contacts.value.some(c =>
-    c.contactMethods.some(m => m.methodType === 'phone' && m.value === phone),
-  )
-  if (alreadyExists)
+  if (contactsStore.findContactByMethodValue('phone', phone))
     return
 
   const namesEntry = userIdToNamesMap.value.get(userId)

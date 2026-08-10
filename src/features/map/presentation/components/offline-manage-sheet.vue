@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
+import { isOnline } from '@/core/offline/use-online-status'
 import { formatBytes } from '@/core/utils/format-bytes'
 import { SWITZERLAND_BBOX } from '@/features/map/data/services/offline-tile-service'
 import { useOfflineMapStore } from '../stores/offline-map-store'
@@ -59,10 +60,10 @@ onMounted(() => store.loadRegions())
       </p>
 
       <div class="cta">
-        <BaseButton variant="primary" @click="emit('startDraw')">
+        <BaseButton variant="primary" :disabled="!isOnline" @click="emit('startDraw')">
           {{ t('offlineMap.manage.drawRegion') }}
         </BaseButton>
-        <BaseButton variant="secondary" @click="emit('downloadWhole', SWITZERLAND_BBOX)">
+        <BaseButton variant="secondary" :disabled="!isOnline" @click="emit('downloadWhole', SWITZERLAND_BBOX)">
           {{ t('offlineMap.manage.wholeMap') }}
         </BaseButton>
       </div>

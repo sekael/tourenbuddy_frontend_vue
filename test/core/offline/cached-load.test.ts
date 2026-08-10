@@ -1,0 +1,69 @@
+import type { Mock } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { cachedLoad } from '@/core/offline/cached-load'
+import { getCached, putCached } from '@/core/offline/entity-cache'
+import { isOnline } from '@/core/offline/use-online-status'
+
+vi.mock('@/core/offline/entity-cache', () => ({
+  getCached: vi.fn(),
+  putCached: vi.fn(),
+  clearCached: vi.fn(),
+}))
+
+const getCachedMock = getCached as Mock
+const putCachedMock = putCached as Mock
+
+describe('cachedLoad', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    isOnline.value = true
+    putCachedMock.mockResolvedValue(undefined)
+  })
+
+  it('offline: assigns the cached snapshot and never calls the fetcher or overwrites the cache', async () => {
+    isOnline.value = false
+    getCachedMock.mockResolvedValue(['cached'])
+    const fetcher = vi.fn()
+    const assign = vi.fn()
+
+    await cachedLoad('tours:u1', fetcher, assign)
+
+    expect(assign).toHaveBeenCalledExactlyOnceWith(['cached'])
+    expect(fetcher).not.toHaveBeenCalled()
+    expect(putCachedMock).not.toHaveBeenCalled()
+  })
+
+  it('online: overwrites the store and the cache with the fresh result', async () => {
+    getCachedMock.mockResolvedValue(undefined)
+    const fetcher = vi.fn().mockResolvedValue(['fresh'])
+    const assign = vi.fn()
+
+    await cachedLoad('tours:u1', fetcher, assign)
+
+    expect(assign).toHaveBeenLastCalledWith(['fresh'])
+    expect(putCachedMock).toHaveBeenCalledWith('tours:u1', ['fresh'])
+  })
+
+  it('online fetch failure: keeps the cached snapshot, does not overwrite the cache, and rethrows', async () => {
+    getCachedMock.mockResolvedValue(['cached'])
+    const boom = new Error('network down')
+    const fetcher = vi.fn().mockRejectedValue(boom)
+    const assign = vi.fn()
+
+    await expect(cachedLoad('tours:u1', fetcher, assign)).rejects.toThrow('network down')
+
+    // cached snapshot painted exactly once; never overwritten with anything else
+    expect(assign).toHaveBeenCalledExactlyOnceWith(['cached'])
+    expect(putCachedMock).not.toHaveBeenCalled()
+  })
+
+  it('unavailable IndexedDB on read degrades to a plain network load', async () => {
+    getCachedMock.mockRejectedValue(new Error('no indexeddb'))
+    const fetcher = vi.fn().mockResolvedValue(['fresh'])
+    const assign = vi.fn()
+
+    await cachedLoad('tours:u1', fetcher, assign)
+
+    expect(assign).toHaveBeenCalledExactlyOnceWith(['fresh'])
+  })
+})
