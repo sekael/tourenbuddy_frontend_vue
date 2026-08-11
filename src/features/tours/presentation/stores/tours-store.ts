@@ -244,23 +244,34 @@ export const useToursStore = defineStore('tours', () => {
     }
   }
 
-  // TODO(me): DC6 deferred notification + eviction dispatch, keyed on ctx.op.
-  //   See task list at the end of this response.
-  //
-  // Called by BOTH the online action body and the replay handler (identical by
-  // construction — the DC6 guarantee). Fire exactly one notification for the net op,
-  // best-effort, using the already-imported helpers (isShareableTour,
-  // isMeaningfulTourChange, notifyTourChanged, notifyTourInterest, notifyTourDeleted)
-  // + the tour-links store (useTourLinksStore(): dispatchEvictionIfHappened /
-  // dispatchEvictionNotification):
-  //   - create → notifyTourChanged(id, 'created') when isShareableTour
-  //   - update → dispatchEvictionIfHappened(linkSnapshot, id); then when shareable AND
-  //              isMeaningfulTourChange(previous, draft, { goal, gpxFilepath }):
-  //              notifyTourChanged(id, 'updated', <ONLY newly-added partner ids>);
-  //              plus notifyTourInterest(id) when effective visibility === 'friends'
-  //   - delete → notifyTourDeleted(previous.partnerIds, previous.name) when shareable;
-  //              plus dispatchEvictionNotification(linkSnapshot) when snapshot present
-  // Enqueue fires NOTHING — this runs only after a successful write.
+  /** Snapshot a tour back into a full draft, so field-toggles (completed/visibility) reuse the update path. */
+  function tourToDraft(tour: Tour): TourDraft {
+    return {
+      name: tour.name,
+      plannedDate: tour.plannedDate,
+      partnerIds: tour.partnerIds,
+      tourType: tour.tourType,
+      elevation: tour.elevation,
+      gpxFilepath: tour.gpxFilepath,
+      description: tour.description,
+      seasons: tour.seasons,
+      startPoint: tour.startPoint,
+      endPoint: tour.endPoint,
+      startPointName: tour.startPointName,
+      startPointElevation: tour.startPointElevation,
+      endPointName: tour.endPointName,
+      endPointElevation: tour.endPointElevation,
+      equipment: tour.equipment,
+      notes: tour.notes,
+      completed: tour.completed,
+      visibility: tour.visibility,
+    }
+  }
+
+  // DC6 deferred notification + eviction dispatch, keyed on ctx.op. Called by BOTH the
+  // online action body and the replay handler (identical by construction) — fires exactly
+  // one notification for the net op, best-effort, only after a successful write. Enqueue
+  // fires nothing.
   function dispatchTourWriteNotifications(ctx: TourNotifyContext): void {
     switch (ctx.op) {
       case 'create': {
@@ -278,16 +289,22 @@ export const useToursStore = defineStore('tours', () => {
           logger.warn('dispatchEvictionIfHappened (tour update notify) failed', err)
         })
         const effVis = draft?.visibility ?? previous?.visibility
-        if (
-          draft && previous && goal
-          && isShareableTour(effVis, draft.partnerIds)
-          && isMeaningfulTourChange(previous, draft, { goal, gpxFilepath })
-        ) {
-          const prevPartners = new Set(previous.partnerIds)
-          const addedIds = draft.partnerIds.filter(cid => !prevPartners.has(cid))
-          notifyTourChanged(ctx.id, 'updated', addedIds)
-          if (effVis === 'friends')
-            notifyTourInterest(ctx.id)
+        if (draft && previous && goal && isShareableTour(effVis, draft.partnerIds)) {
+          const meaningful = isMeaningfulTourChange(previous, draft, { goal, gpxFilepath })
+          // Completion is deliberately NOT part of isMeaningfulTourChange (a form edit
+          // never touches it), so a setCompleted-as-update flip needs its own trigger.
+          // `!= null` skips form edits that leave `completed` undefined — only a
+          // deliberate toggle sets it — so this can't spuriously fire on a plain edit.
+          const completionFlipped = draft.completed != null && draft.completed !== previous.completed
+          if (meaningful || completionFlipped) {
+            const prevPartners = new Set(previous.partnerIds)
+            const addedIds = draft.partnerIds.filter(cid => !prevPartners.has(cid))
+            notifyTourChanged(ctx.id, 'updated', addedIds)
+            // Interest scan stays gated on a meaningful edit — a completion/visibility
+            // toggle alone shouldn't re-scan colliding friend tours (avoids notify spam).
+            if (meaningful && effVis === 'friends')
+              notifyTourInterest(ctx.id)
+          }
         }
         break
       }
@@ -400,19 +417,26 @@ export const useToursStore = defineStore('tours', () => {
 
     return mutate<Tour>({
       run: async () => {
+        // Apply optimistically BEFORE the write so the edit (esp. a completed/visibility
+        // toggle) feels instant online; roll back to this snapshot on any failure.
+        const rollback = tours.value
+        tours.value = applyEdit(tours.value)
+
         let updated: boolean
         try {
           // Single atomic write: row + partners + visibility folded into one RPC.
           updated = await repository.updateTour(id, draftWithFilepath, goal)
         }
         catch (err) {
+          tours.value = rollback
           error.value = err instanceof Error ? err.message : 'Failed to update tour'
           logger.error('updateTour failed', err)
           throw err
         }
-        // false ⇒ the tour is gone (concurrent delete). Abort BEFORE the optimistic
-        // rewrite + notify, else we'd resurrect a phantom row locally.
+        // false ⇒ the tour is gone (concurrent delete). Roll back the optimistic rewrite
+        // (and skip notify), else we'd resurrect a phantom row locally.
         if (!updated) {
+          tours.value = rollback
           error.value = 'Failed to update tour'
           throw new Error('Tour no longer exists')
         }
@@ -424,7 +448,6 @@ export const useToursStore = defineStore('tours', () => {
             logger.warn('Tour updated but old GPX blob removal failed (orphan)', err)
           }
         }
-        tours.value = applyEdit(tours.value)
         dispatchTourWriteNotifications({
           op: 'update',
           id,
@@ -451,57 +474,23 @@ export const useToursStore = defineStore('tours', () => {
     })
   }
 
+  // setCompleted / setVisibility are field-toggles modelled as a full tour update
+  // (Path Y unification): they build a draft from the current tour with the one field
+  // changed and reuse updateTour — so they queue, replay, coalesce, notify (deferred
+  // seam) and evict through the exact same path as a form edit, online or offline.
   async function setCompleted(tourId: string, completed: boolean) {
-    return mutate(async () => {
-      const tour = tours.value.find(t => t.id === tourId)
-      if (!tour)
-        return
-
-      tours.value = tours.value.map(t => (t.id === tourId ? { ...t, completed } : t))
-      logger.debug('setCompleted', { tourId, completed })
-
-      try {
-        await repository.patchCompleted(tourId, completed)
-        // Completion flip is a partner-facing change.
-        if (isShareableTour(tour.visibility, tour.partnerIds))
-          notifyTourChanged(tourId, 'updated')
-      }
-      catch (err) {
-        error.value = err instanceof Error ? err.message : 'Failed to update tour'
-        logger.error('setCompleted failed, resyncing from server', err)
-        await loadTours()
-      }
-    })
+    const tour = tours.value.find(t => t.id === tourId)
+    if (!tour)
+      return
+    logger.debug('setCompleted', { tourId, completed })
+    return updateTour(tourId, { ...tourToDraft(tour), completed }, tour.goal)
   }
 
   async function setVisibility(tourId: string, visibility: Visibility) {
-    return mutate(async () => {
-      const tour = tours.value.find(t => t.id === tourId)
-      if (!tour)
-        return
-
-      const previous = tour.visibility
-      tours.value = tours.value.map(t => (t.id === tourId ? { ...t, visibility } : t))
-
-      // Same eviction snapshot pattern as updateTour: a friends → non-friends
-      // flip on a linked tour trips the eviction trigger.
-      const tourLinksStore = useTourLinksStore()
-      const linkSnapshot = tourLinksStore.snapshotTourGroupContext(tourId)
-
-      try {
-        await repository.patchVisibility(tourId, visibility)
-      }
-      catch (err) {
-        tours.value = tours.value.map(t => (t.id === tourId ? { ...t, visibility: previous } : t))
-        error.value = err instanceof Error ? err.message : 'Failed to update visibility'
-        logger.error('setVisibility failed', err)
-        return
-      }
-
-      tourLinksStore.dispatchEvictionIfHappened(linkSnapshot, tourId).catch((err) => {
-        logger.warn('dispatchEvictionIfHappened (setVisibility) failed', err)
-      })
-    })
+    const tour = tours.value.find(t => t.id === tourId)
+    if (!tour)
+      return
+    return updateTour(tourId, { ...tourToDraft(tour), visibility }, tour.goal)
   }
 
   async function deleteTour(id: string) {

@@ -1,4 +1,3 @@
-import type { Visibility } from '@/features/tours/data/models/visibility'
 import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 import type { ToursRepository } from '@/features/tours/domain/repositories/tours-repository'
 import { supabase } from '@/core/utils/supabase'
@@ -51,6 +50,7 @@ export class ToursRepositoryImpl implements ToursRepository {
       p_equipment: draft.equipment ?? null,
       p_notes: draft.notes ?? null,
       p_visibility: draft.visibility ?? null,
+      p_completed: draft.completed ?? null,
     })
 
     if (error)
@@ -84,6 +84,7 @@ export class ToursRepositoryImpl implements ToursRepository {
       p_equipment: draft.equipment ?? null,
       p_notes: draft.notes ?? null,
       p_visibility: draft.visibility ?? null,
+      p_completed: draft.completed ?? null,
     })
 
     if (error)
@@ -91,19 +92,6 @@ export class ToursRepositoryImpl implements ToursRepository {
 
     // update_tour_full returns false when the row is gone (update-only, no resurrect).
     return data === true
-  }
-
-  async patchCompleted(id: string, completed: boolean): Promise<void> {
-    const { error } = await supabase.from('tours').update({ completed }).eq('id', id)
-    if (error)
-      throw new Error(error.message)
-  }
-
-  async patchVisibility(id: string, visibility: Visibility): Promise<void> {
-    // Owner-only; enforced by the tours_update_own RLS policy.
-    const { error } = await supabase.from('tours').update({ visibility }).eq('id', id)
-    if (error)
-      throw new Error(error.message)
   }
 
   async deleteTour(id: string): Promise<void> {
