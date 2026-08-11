@@ -44,7 +44,7 @@ via the durable capability spec and code paths.
 
 ## 6. Reconnect ordering — flush before refetch
 
-- [ ] 6.1 The `onSubscribed` transition kickstarts `replayQueue()` (task 5.2) AND gates the refetch: each in-scope store's `onSubscribed` refetch `await`s `replayDone` before assigning, so the drain completes before the overwrite — one event, closing the offline-app-cache-sync D6 clobber hazard
+- [~] 6.1 The `onSubscribed` transition kickstarts `replayQueue()` (task 5.2) AND gates the refetch: each in-scope store's `onSubscribed` refetch `await`s `replayDone` before assigning, so the drain completes before the overwrite — one event, closing the offline-app-cache-sync D6 clobber hazard. Shared seam `core/offline/reconnect.ts` `flushThenRefetch(refetch)` (single-flight drain, then refetch; failed flush still refetches). Wired in tours-store; contacts/profile/availability/friendships wire it as they land (7.2–7.5)
 
 ## 7. Wire the stores (`features/*/presentation/stores/`)
 

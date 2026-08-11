@@ -112,4 +112,18 @@ export class ToursRepositoryImpl implements ToursRepository {
     if (error)
       throw new Error(error.message)
   }
+
+  async getUpdatedAt(id: string): Promise<string | null> {
+    // maybeSingle → null (not an error) when the row is gone; RLS scopes to the owner.
+    const { data, error } = await supabase
+      .from('tours')
+      .select('updated_at')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (error)
+      throw new Error(error.message)
+
+    return data?.updated_at ?? null
+  }
 }

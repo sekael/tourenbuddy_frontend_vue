@@ -16,4 +16,6 @@ export interface ToursRepository {
   patchCompleted: (id: string, completed: boolean) => Promise<void>
   patchVisibility: (id: string, visibility: Visibility) => Promise<void>
   deleteTour: (id: string) => Promise<void>
+  /** Current server `updated_at` for a tour, or null if the row is gone — the LWW read (DC5). */
+  getUpdatedAt: (id: string) => Promise<string | null>
 }
