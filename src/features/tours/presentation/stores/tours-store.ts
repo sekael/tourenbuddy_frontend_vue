@@ -5,8 +5,10 @@ import { defineStore } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
 import { computed, ref, watch } from 'vue'
 import { useLogger } from '@/core/logging/use-logger'
+import { clearPendingUpload, isPendingUpload, peekCachedBlob } from '@/core/offline/blob-cache'
 import { cachedLoad } from '@/core/offline/cached-load'
 import { mutate } from '@/core/offline/mutate'
+import { isOnline } from '@/core/offline/use-online-status'
 import { flushThenRefetch } from '@/core/offline/reconnect'
 import { PermanentReplayError, registerReplay } from '@/core/offline/replay'
 import { useRealtimeBroadcast } from '@/core/realtime/use-realtime-broadcast'
@@ -21,7 +23,7 @@ import {
 } from '@/features/notifications/data/notify-dispatch'
 import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
 import { ToursRepositoryImpl } from '@/features/tours/data/repositories/tours-repository-impl'
-import { removeGpx } from '@/features/tours/data/services/gpx-storage-service'
+import { removeGpx, uploadGpxToKey } from '@/features/tours/data/services/gpx-storage-service'
 import { isMeaningfulTourChange, isShareableTour } from '@/features/tours/domain/tour-notifications'
 
 const repository = new ToursRepositoryImpl()
@@ -322,6 +324,34 @@ export const useToursStore = defineStore('tours', () => {
     }
   }
 
+  /**
+   * The GPX blob to ride on a queue entry, iff it was staged offline and still needs
+   * uploading (pending mark). Gating on the mark — not mere cache presence — keeps a blob
+   * cached only for display (already in Storage) out of the queue, so an offline field
+   * toggle doesn't re-queue a multi-MB track.
+   */
+  async function stagedGpxBlobs(gpxFilepath: string | null): Promise<Record<string, Blob> | undefined> {
+    if (!gpxFilepath || !(await isPendingUpload(gpxFilepath)))
+      return undefined
+    const blob = await peekCachedBlob(gpxFilepath)
+    return blob ? { [gpxFilepath]: blob } : undefined
+  }
+
+  /** Approx bytes a blob set adds to the queue, for the DC2 quota guard. */
+  function blobBytes(blobs: Record<string, Blob> | undefined): number {
+    return blobs ? Object.values(blobs).reduce((n, b) => n + b.size, 0) : 0
+  }
+
+  /** Upload any GPX blob(s) staged offline to Storage before the row write (idempotent, upsert). */
+  async function uploadEntryBlobs(entry: WriteQueueEntry): Promise<void> {
+    if (!entry.blobs)
+      return
+    for (const [key, blob] of Object.entries(entry.blobs)) {
+      await uploadGpxToKey(key, blob)
+      await clearPendingUpload(key)
+    }
+  }
+
   /** Replay a queued tour write on reconnect (DC3): one idempotent call by op + deferred notify (DC6). */
   async function replayTourWrite(entry: WriteQueueEntry): Promise<void> {
     const payload = entry.payload as TourWritePayload
@@ -329,6 +359,8 @@ export const useToursStore = defineStore('tours', () => {
       await repository.deleteTour(entry.entityId)
     }
     else if (entry.op === 'create') {
+      // Blob first: a create referencing a never-uploaded GPX would leave a dangling path.
+      await uploadEntryBlobs(entry)
       await repository.createTourWithPartners(entry.entityId, payload.draft, payload.goal)
     }
     else {
@@ -338,6 +370,8 @@ export const useToursStore = defineStore('tours', () => {
         throw new PermanentReplayError('tour was deleted on the server')
       if (entry.baseUpdatedAt && new Date(serverTs) > new Date(entry.baseUpdatedAt))
         throw new PermanentReplayError('tour changed on the server since this edit (LWW loser)')
+      // Upload after the LWW gate so a losing update doesn't orphan a blob in Storage.
+      await uploadEntryBlobs(entry)
       const updated = await repository.updateTour(entry.entityId, payload.draft, payload.goal)
       if (!updated)
         throw new PermanentReplayError('tour was deleted on the server')
@@ -366,10 +400,13 @@ export const useToursStore = defineStore('tours', () => {
       return null
 
     const id = preUploadedTourId ?? uuidv4()
+    // A GPX picked offline is staged in the blob cache (not yet in Storage); ride it on the
+    // queue entry so replay uploads it. Online the form already uploaded → skip the lookup.
+    const blobs = isOnline.value ? undefined : await stagedGpxBlobs(draft.gpxFilepath ?? null)
     const result = await mutate<Tour>({
       run: async () => {
         // Single atomic write: tour + partners + visibility + gpx filepath in one RPC.
-        // (GPX is uploaded at file-pick time in the form; its path rides in via draft.)
+        // (Online, GPX is uploaded at file-pick time in the form; its path rides in via draft.)
         await repository.createTourWithPartners(id, draft, goal)
         await loadTours()
         dispatchTourWriteNotifications({
@@ -382,7 +419,8 @@ export const useToursStore = defineStore('tours', () => {
           linkSnapshot: null,
         })
       },
-      intent: { entityId: id, kind: 'tour', op: 'create', payload: { draft, goal }, linkSnapshot: null },
+      intent: { entityId: id, kind: 'tour', op: 'create', payload: { draft, goal }, blobs, linkSnapshot: null },
+      projectedBytes: blobBytes(blobs),
       cacheKey: cacheKey(),
       current: tours.value,
       apply: rows => [...rows, tourFromDraft(id, draft, goal, null)],
@@ -415,6 +453,8 @@ export const useToursStore = defineStore('tours', () => {
         ? rows.map(t => (t.id === id ? tourFromDraft(id, draftWithFilepath, goal, existing) : t))
         : rows
 
+    // A GPX replaced offline is staged in the blob cache — ride it on the queue entry.
+    const blobs = isOnline.value ? undefined : await stagedGpxBlobs(newFilepath)
     return mutate<Tour>({
       run: async () => {
         // Apply optimistically BEFORE the write so the edit (esp. a completed/visibility
@@ -463,10 +503,12 @@ export const useToursStore = defineStore('tours', () => {
         kind: 'tour',
         op: 'update',
         payload: { draft: draftWithFilepath, goal },
+        blobs,
         baseSnapshot: existing,
         baseUpdatedAt: existing?.updatedAt ?? undefined,
         linkSnapshot,
       },
+      projectedBytes: blobBytes(blobs),
       cacheKey: cacheKey(),
       current: tours.value,
       apply: applyEdit,
