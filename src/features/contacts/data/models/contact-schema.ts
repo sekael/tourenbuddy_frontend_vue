@@ -10,6 +10,7 @@ export const contactRowSchema = z
     last_name: z.string().nullable(),
     display_name: z.string().nullable(),
     contact_methods: z.array(contactMethodRowSchema).default([]),
+    updated_at: z.string().nullable().default(null),
   })
   .transform(row => ({
     id: row.id,
@@ -18,6 +19,7 @@ export const contactRowSchema = z
     lastName: row.last_name,
     displayName: row.display_name,
     contactMethods: row.contact_methods,
+    updatedAt: row.updated_at,
   }))
 
 /** Domain-level contact shape (camelCase). */
@@ -28,4 +30,6 @@ export const contactSchema = z.object({
   lastName: z.string().nullable(),
   displayName: z.string().nullable(),
   contactMethods: z.array(contactMethodSchema).default([]),
+  /** Server-stamped `updated_at` — the LWW baseline for offline write replay (DC5). Null offline-optimistic. */
+  updatedAt: z.string().nullable().default(null),
 })

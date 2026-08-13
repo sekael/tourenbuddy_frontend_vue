@@ -54,15 +54,6 @@ vi.mock('@/features/contacts/data/repositories/contacts-repository-impl', () => 
   })),
 }))
 
-vi.mock('@/features/contacts/data/repositories/contact-methods-repository-impl', () => ({
-  ContactMethodsRepositoryImpl: vi.fn().mockImplementation(() => ({
-    addMethod: vi.fn(),
-    updateMethod: vi.fn(),
-    removeMethod: vi.fn(),
-    setPrimaryPhone: vi.fn(),
-  })),
-}))
-
 vi.mock('@/core/utils/phone-normalize', () => ({
   normalizePhone: vi.fn().mockReturnValue({ ok: false }),
 }))

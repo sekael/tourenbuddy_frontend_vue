@@ -18,14 +18,6 @@ vi.mock('@/features/contacts/data/repositories/contacts-repository-impl', () => 
     deleteContact: vi.fn(),
   })),
 }))
-vi.mock('@/features/contacts/data/repositories/contact-methods-repository-impl', () => ({
-  ContactMethodsRepositoryImpl: vi.fn().mockImplementation(() => ({
-    addMethod: vi.fn(),
-    removeMethod: vi.fn().mockResolvedValue(undefined),
-    updateMethod: vi.fn(),
-    setPrimaryPhone: vi.fn().mockResolvedValue([]),
-  })),
-}))
 vi.mock('@/features/friendships/data/repositories/friendship-repository-impl', () => ({
   FriendshipRepositoryImpl: vi.fn().mockImplementation(() => ({
     sendRequest: vi.fn(),

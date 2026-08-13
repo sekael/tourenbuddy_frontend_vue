@@ -1,16 +1,19 @@
+import type { WriteQueueEntry } from '@/core/offline/write-queue'
 import type { Contact } from '@/features/contacts/domain/entities/contact'
 import type { ContactMethod } from '@/features/contacts/domain/entities/contact-method'
 import type { NewContactMethod } from '@/features/contacts/domain/repositories/contact-methods-repository'
 import { defineStore } from 'pinia'
+import { v4 as uuidv4 } from 'uuid'
 import { computed, ref, watch } from 'vue'
 import { useLogger } from '@/core/logging/use-logger'
 import { cachedLoad } from '@/core/offline/cached-load'
 import { mutate } from '@/core/offline/mutate'
+import { flushThenRefetch } from '@/core/offline/reconnect'
+import { PermanentReplayError, registerReplay } from '@/core/offline/replay'
 import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { dedupePhones } from '@/features/contacts/core/utils/dedupe'
-import { ContactMethodsRepositoryImpl } from '@/features/contacts/data/repositories/contact-methods-repository-impl'
 import { ContactsRepositoryImpl } from '@/features/contacts/data/repositories/contacts-repository-impl'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 
@@ -48,7 +51,11 @@ function resolvePrimaryByLabel(phones: PhoneEntry[]): PhoneEntry[] {
 }
 
 const repository = new ContactsRepositoryImpl()
-const contactMethodsRepository = new ContactMethodsRepositoryImpl()
+
+/** Serializable replay payload for a contact create/update — the desired aggregate to re-run (DC3). */
+interface ContactWritePayload {
+  contact: Contact
+}
 
 export const useContactsStore = defineStore('contacts', () => {
   const logger = useLogger('ContactsStore')
@@ -83,6 +90,84 @@ export const useContactsStore = defineStore('contacts', () => {
     }
   }
 
+  const cacheKey = () => `contacts:${authStore.currentUser?.id}`
+
+  function sortByName(rows: Contact[]): Contact[] {
+    return [...rows].sort((a, b) => a.firstName.localeCompare(b.firstName))
+  }
+
+  /** Insert-or-replace a contact by id (idempotent against a racing realtime refetch), re-sorted. */
+  function replaceContact(rows: Contact[], next: Contact): Contact[] {
+    return sortByName([...rows.filter(c => c.id !== next.id), next])
+  }
+
+  /** Replay a queued contact write on reconnect (DC3): one idempotent aggregate call by op. */
+  async function replayContactWrite(entry: WriteQueueEntry): Promise<void> {
+    const { contact } = entry.payload as ContactWritePayload
+    if (entry.op === 'delete') {
+      await repository.deleteContact(entry.entityId)
+      return
+    }
+    if (entry.op === 'create') {
+      await repository.createContactFull(contact)
+      return
+    }
+    // update: LWW (DC5) — a server row newer than our baseline won; don't clobber it.
+    const serverTs = await repository.getContactUpdatedAt(entry.entityId)
+    if (serverTs === null)
+      throw new PermanentReplayError('contact was deleted on the server')
+    if (entry.baseUpdatedAt && new Date(serverTs) > new Date(entry.baseUpdatedAt))
+      throw new PermanentReplayError('contact changed on the server since this edit (LWW loser)')
+    const updated = await repository.updateContactFull(contact)
+    if (updated === null)
+      throw new PermanentReplayError('contact was deleted on the server')
+  }
+  registerReplay('contact', replayContactWrite)
+
+  /** Idempotent create of the whole aggregate. Online runs it + refetches canonical; offline queues it. */
+  async function createContactAggregate(contact: Contact) {
+    return mutate<Contact>({
+      run: async () => {
+        const created = await repository.createContactFull(contact)
+        contacts.value = replaceContact(contacts.value, created)
+      },
+      intent: { entityId: contact.id, kind: 'contact', op: 'create', payload: { contact } },
+      cacheKey: cacheKey(),
+      current: contacts.value,
+      apply: rows => replaceContact(rows, contact),
+      assign: (rows) => { contacts.value = rows },
+    })
+  }
+
+  /**
+   * The single update seam: EVERY contact-field or method mutation builds the full desired
+   * aggregate and routes here (contacts' "Path Y") — so they queue, replay, coalesce and LWW
+   * through one path, online or offline, and the server RPC reconciles the whole method set.
+   */
+  async function updateContactAggregate(contact: Contact) {
+    const existing = contacts.value.find(c => c.id === contact.id) ?? null
+    return mutate<Contact>({
+      run: async () => {
+        const updated = await repository.updateContactFull(contact)
+        if (updated === null)
+          throw new Error('Contact no longer exists')
+        contacts.value = replaceContact(contacts.value, updated)
+      },
+      intent: {
+        entityId: contact.id,
+        kind: 'contact',
+        op: 'update',
+        payload: { contact },
+        baseSnapshot: existing,
+        baseUpdatedAt: existing?.updatedAt ?? undefined,
+      },
+      cacheKey: cacheKey(),
+      current: contacts.value,
+      apply: rows => replaceContact(rows, contact),
+      assign: (rows) => { contacts.value = rows },
+    })
+  }
+
   async function addContact(
     firstName: string,
     lastName?: string | null,
@@ -90,69 +175,61 @@ export const useContactsStore = defineStore('contacts', () => {
     phones?: PhoneEntry[],
     source: 'manual' | 'import' = 'manual',
   ) {
-    return mutate(async () => {
-      const userId = authStore.currentUser?.id
-      if (!userId)
-        return
+    const userId = authStore.currentUser?.id
+    if (!userId)
+      return
 
-      let phoneList = phones ?? []
+    let phoneList = phones ?? []
 
-      // Dedupe by value before any further processing (belt-and-suspenders)
-      const beforeDedupeCount = phoneList.length
-      phoneList = dedupePhones(phoneList)
-      if (phoneList.length < beforeDedupeCount) {
-        logger.debug(`addContact: collapsed ${beforeDedupeCount - phoneList.length} duplicate phone(s) for "${firstName}"`)
+    // Dedupe by value before any further processing (belt-and-suspenders)
+    const beforeDedupeCount = phoneList.length
+    phoneList = dedupePhones(phoneList)
+    if (phoneList.length < beforeDedupeCount) {
+      logger.debug(`addContact: collapsed ${beforeDedupeCount - phoneList.length} duplicate phone(s) for "${firstName}"`)
+    }
+
+    if (phoneList.length > 1) {
+      if (source === 'import') {
+        phoneList = resolvePrimaryByLabel(phoneList)
       }
-
-      if (phoneList.length > 1) {
-        if (source === 'import') {
-          phoneList = resolvePrimaryByLabel(phoneList)
-        }
-        else {
-          const primaryCount = phoneList.filter(p => p.isPrimary).length
-          if (primaryCount !== 1)
-            throw new Error('Exactly one phone must be marked as primary when adding multiple phones')
-        }
+      else {
+        const primaryCount = phoneList.filter(p => p.isPrimary).length
+        if (primaryCount !== 1)
+          throw new Error('Exactly one phone must be marked as primary when adding multiple phones')
       }
+    }
 
-      const preparedPhones = phoneList
-        .map((phone) => {
-          const normalized = normalizePhoneValue(phone.value)
-          if (!normalized)
-            return null
-          return {
-            value: normalized,
-            label: phone.label ?? null,
-            isPrimary: phone.isPrimary,
-          }
-        })
-        .filter((p): p is { value: string, label: string | null, isPrimary: boolean } => p !== null)
+    const preparedPhones = phoneList
+      .map((phone) => {
+        const normalized = normalizePhoneValue(phone.value)
+        if (!normalized)
+          return null
+        return { value: normalized, label: phone.label ?? null, isPrimary: phone.isPrimary }
+      })
+      .filter((p): p is { value: string, label: string | null, isPrimary: boolean } => p !== null)
 
-      if (preparedPhones.length === 1)
-        preparedPhones[0]!.isPrimary = true
+    if (preparedPhones.length === 1)
+      preparedPhones[0]!.isPrimary = true
 
-      const contact = await repository.createContact(
-        {
-          userId,
-          firstName: firstName.trim(),
-          lastName: lastName?.trim() || null,
-          displayName: displayName?.trim() || null,
-        },
-        preparedPhones.map(phone => ({
-          methodType: 'phone',
-          value: phone.value,
-          label: phone.label,
-          isPrimary: phone.isPrimary,
-        })),
-      )
+    const contactId = uuidv4()
+    const contactMethods: ContactMethod[] = preparedPhones.map(phone => ({
+      id: uuidv4(),
+      contactId,
+      methodType: 'phone',
+      value: phone.value,
+      label: phone.label,
+      isPrimary: phone.isPrimary,
+      isValid: true,
+    }))
 
-      // Insert-or-replace by id, not a blind append: on a slow network the realtime
-      // INSERT can trigger a refetch that already put this row into contacts.value
-      // before createContact's response returns here — appending again would show it
-      // twice until the next reload. Dropping any existing copy first is idempotent.
-      contacts.value = [...contacts.value.filter(c => c.id !== contact.id), contact].sort((a, b) =>
-        a.firstName.localeCompare(b.firstName),
-      )
+    return createContactAggregate({
+      id: contactId,
+      userId,
+      firstName: firstName.trim(),
+      lastName: lastName?.trim() || null,
+      displayName: displayName?.trim() || null,
+      contactMethods,
+      updatedAt: null,
     })
   }
 
@@ -160,66 +237,54 @@ export const useContactsStore = defineStore('contacts', () => {
     id: string,
     data: Partial<Omit<Contact, 'id' | 'userId' | 'contactMethods'>>,
   ) {
-    return mutate(async () => {
-      const updated = await repository.updateContact(id, data)
-      contacts.value = contacts.value
-        .map(c => (c.id === id ? updated : c))
-        .sort((a, b) => a.firstName.localeCompare(b.firstName))
+    const contact = contacts.value.find(c => c.id === id)
+    if (!contact)
+      return
+    return updateContactAggregate({
+      ...contact,
+      firstName: data.firstName ?? contact.firstName,
+      lastName: data.lastName !== undefined ? data.lastName : contact.lastName,
+      displayName: data.displayName !== undefined ? data.displayName : contact.displayName,
     })
   }
 
   async function deleteContact(id: string) {
-    return mutate(async () => {
-      await repository.deleteContact(id)
-      contacts.value = contacts.value.filter(c => c.id !== id)
+    const existing = contacts.value.find(c => c.id === id) ?? null
+    return mutate<Contact>({
+      run: async () => {
+        await repository.deleteContact(id)
+        contacts.value = contacts.value.filter(c => c.id !== id)
+      },
+      intent: { entityId: id, kind: 'contact', op: 'delete', payload: {}, baseSnapshot: existing },
+      cacheKey: cacheKey(),
+      current: contacts.value,
+      apply: rows => rows.filter(c => c.id !== id),
+      assign: (rows) => { contacts.value = rows },
     })
   }
 
-  async function addMethodToContact(
-    contactId: string,
-    method: NewContactMethod,
-  ): Promise<ContactMethod | undefined> {
-    return mutate(async () => {
-      const contact = contacts.value.find(c => c.id === contactId)
-      const existingPhones = contact?.contactMethods.filter(m => m.methodType === 'phone') ?? []
-
-      let normalizedMethod: NewContactMethod = method
-      if (method.methodType === 'phone') {
-        const normalized = normalizePhoneValue(method.value)
-        normalizedMethod = { ...method, value: normalized || method.value }
-      }
-
-      if (method.methodType === 'phone') {
-        if (existingPhones.length === 0) {
-          normalizedMethod = { ...normalizedMethod, isPrimary: true }
-        }
-        else if (method.isPrimary) {
-          const newMethod = await contactMethodsRepository.addMethod(contactId, {
-            ...normalizedMethod,
-            isPrimary: false,
-          })
-          const updatedRows = await contactMethodsRepository.setPrimaryPhone(contactId, newMethod.id)
-          contacts.value = contacts.value.map(c =>
-            c.id === contactId
-              ? {
-                  ...c,
-                  contactMethods: [
-                    ...c.contactMethods.filter(m => m.methodType !== 'phone'),
-                    ...updatedRows,
-                  ],
-                }
-              : c,
-          )
-          return updatedRows.find(r => r.id === newMethod.id)!
-        }
-      }
-
-      const newMethod = await contactMethodsRepository.addMethod(contactId, normalizedMethod)
-      contacts.value = contacts.value.map(c =>
-        c.id === contactId ? { ...c, contactMethods: [...c.contactMethods, newMethod] } : c,
-      )
-      return newMethod
-    })
+  async function addMethodToContact(contactId: string, method: NewContactMethod) {
+    const contact = contacts.value.find(c => c.id === contactId)
+    if (!contact)
+      return
+    const isPhone = method.methodType === 'phone'
+    const value = isPhone ? (normalizePhoneValue(method.value) || method.value) : method.value
+    const existingPhones = contact.contactMethods.filter(m => m.methodType === 'phone')
+    // First phone is implicitly primary; an explicitly-primary add demotes the others.
+    const makePrimary = isPhone && (existingPhones.length === 0 || method.isPrimary === true)
+    const newMethod: ContactMethod = {
+      id: uuidv4(),
+      contactId,
+      methodType: method.methodType,
+      value,
+      label: method.label ?? null,
+      isPrimary: makePrimary,
+      isValid: true,
+    }
+    const base = makePrimary && isPhone
+      ? contact.contactMethods.map(m => (m.methodType === 'phone' ? { ...m, isPrimary: false } : m))
+      : contact.contactMethods
+    return updateContactAggregate({ ...contact, contactMethods: [...base, newMethod] })
   }
 
   async function updateMethodOnContact(
@@ -227,86 +292,57 @@ export const useContactsStore = defineStore('contacts', () => {
     methodId: string,
     data: Partial<Omit<ContactMethod, 'id' | 'contactId'>>,
   ) {
-    return mutate(async () => {
-      const contact = contacts.value.find(c => c.id === contactId)
-      const existingMethod = contact?.contactMethods.find(m => m.id === methodId)
-      const isPhoneMethod = existingMethod?.methodType === 'phone' || data.methodType === 'phone'
-
-      const normalizedData
-        = isPhoneMethod && data.value !== undefined
-          ? { ...data, value: normalizePhoneValue(data.value) || data.value }
-          : data
-
-      if (isPhoneMethod && data.isPrimary === true && existingMethod && !existingMethod.isPrimary) {
-        const updatedRows = await contactMethodsRepository.setPrimaryPhone(contactId, methodId)
-        contacts.value = contacts.value.map(c =>
-          c.id === contactId
-            ? {
-                ...c,
-                contactMethods: [
-                  ...c.contactMethods.filter(m => m.methodType !== 'phone'),
-                  ...updatedRows,
-                ],
-              }
-            : c,
-        )
-        return
+    const contact = contacts.value.find(c => c.id === contactId)
+    const method = contact?.contactMethods.find(m => m.id === methodId)
+    if (!contact || !method)
+      return
+    const isPhone = method.methodType === 'phone'
+    const nextValue = data.value !== undefined
+      ? (isPhone ? (normalizePhoneValue(data.value) || data.value) : data.value)
+      : method.value
+    // A promote demotes every other phone (method_type itself is immutable server-side).
+    const promote = isPhone && data.isPrimary === true && !method.isPrimary
+    const methods = contact.contactMethods.map((m) => {
+      if (m.id === methodId) {
+        return {
+          ...m,
+          value: nextValue,
+          label: data.label !== undefined ? data.label : m.label,
+          isPrimary: promote ? true : (data.isPrimary ?? m.isPrimary),
+          isValid: true,
+        }
       }
-
-      const updated = await contactMethodsRepository.updateMethod(methodId, normalizedData)
-      contacts.value = contacts.value.map(c =>
-        c.id === contactId
-          ? { ...c, contactMethods: c.contactMethods.map(m => (m.id === methodId ? updated : m)) }
-          : c,
-      )
+      return promote && m.methodType === 'phone' ? { ...m, isPrimary: false } : m
     })
+    return updateContactAggregate({ ...contact, contactMethods: methods })
   }
 
   async function setPrimaryPhoneOnContact(contactId: string, methodId: string) {
-    return mutate(async () => {
-      const updatedRows = await contactMethodsRepository.setPrimaryPhone(contactId, methodId)
-      contacts.value = contacts.value.map(c =>
-        c.id === contactId
-          ? {
-              ...c,
-              contactMethods: [
-                ...c.contactMethods.filter(m => m.methodType !== 'phone'),
-                ...updatedRows,
-              ],
-            }
-          : c,
-      )
-    })
+    const contact = contacts.value.find(c => c.id === contactId)
+    if (!contact)
+      return
+    const target = contact.contactMethods.find(m => m.id === methodId)
+    if (!target || target.methodType !== 'phone')
+      throw new Error('method not found or is not a phone method')
+    const methods = contact.contactMethods.map(m =>
+      m.methodType === 'phone' ? { ...m, isPrimary: m.id === methodId } : m,
+    )
+    return updateContactAggregate({ ...contact, contactMethods: methods })
   }
 
   async function removeMethodFromContact(contactId: string, methodId: string) {
-    return mutate(async () => {
-      const contact = contacts.value.find(c => c.id === contactId)
-      const removingMethod = contact?.contactMethods.find(m => m.id === methodId)
-      const isRemovingPrimary = removingMethod?.methodType === 'phone' && removingMethod.isPrimary
-
-      await contactMethodsRepository.removeMethod(methodId)
-
-      contacts.value = contacts.value.map(c =>
-        c.id === contactId
-          ? { ...c, contactMethods: c.contactMethods.filter(m => m.id !== methodId) }
-          : c,
-      )
-
-      if (isRemovingPrimary) {
-        const updatedContact = contacts.value.find(c => c.id === contactId)
-        const remainingPhones
-          = updatedContact?.contactMethods.filter(m => m.methodType === 'phone') ?? []
-        if (remainingPhones.length > 0) {
-          try {
-            await setPrimaryPhoneOnContact(contactId, remainingPhones[0]!.id)
-          }
-          catch (err) {
-            logger.error('Failed to promote next phone to primary after removal', err)
-          }
-        }
-      }
-    })
+    const contact = contacts.value.find(c => c.id === contactId)
+    if (!contact)
+      return
+    const removing = contact.contactMethods.find(m => m.id === methodId)
+    let methods = contact.contactMethods.filter(m => m.id !== methodId)
+    // Promote the next phone to primary when we removed the primary one.
+    if (removing?.methodType === 'phone' && removing.isPrimary) {
+      const idx = methods.findIndex(m => m.methodType === 'phone')
+      if (idx >= 0)
+        methods = methods.map((m, i) => (i === idx ? { ...m, isPrimary: true } : m))
+    }
+    return updateContactAggregate({ ...contact, contactMethods: methods })
   }
 
   function findContactByMethodValue(
@@ -394,7 +430,9 @@ export const useContactsStore = defineStore('contacts', () => {
       ]
     },
     onChange: loadContacts,
-    onSubscribed: () => loadContacts(),
+    // DC4: drain the write queue BEFORE the reconnect refetch so a replayed offline
+    // write lands server-side before the fresh snapshot overwrites the store.
+    onSubscribed: () => flushThenRefetch(loadContacts),
   })
 
   watch(

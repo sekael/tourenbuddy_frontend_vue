@@ -25,15 +25,6 @@ vi.mock('@/features/contacts/data/repositories/contacts-repository-impl', () => 
   })),
 }))
 
-vi.mock('@/features/contacts/data/repositories/contact-methods-repository-impl', () => ({
-  ContactMethodsRepositoryImpl: vi.fn().mockImplementation(() => ({
-    addMethod: vi.fn(),
-    removeMethod: vi.fn(),
-    updateMethod: vi.fn(),
-    setPrimaryPhone: vi.fn(),
-  })),
-}))
-
 vi.mock('@/features/auth/presentation/stores/auth-store', () => ({
   useAuthStore: vi.fn().mockReturnValue({
     isAuthenticated: true,
