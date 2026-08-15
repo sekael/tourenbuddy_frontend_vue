@@ -50,6 +50,6 @@ npx eslint           # zero warnings — enforced in CI
 
 - Supabase free tier — expect higher auth latency
 - Swisstopo free WMTS vector tiles, no API key needed
-- PWA caches assets + map tiles only — no offline-first data sync
+- PWA caches assets + map tiles, plus an offline data cache with queued write sync (change: offline-write-sync)
 - Backlog: https://github.com/users/sekael/projects/1
 - Values: thoughtful development, understand before changing, small reviewable PRs

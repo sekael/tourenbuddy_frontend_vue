@@ -117,6 +117,7 @@ describe('useUserProfileStore', () => {
         onboardingTourLastStep: 0,
         calendarTourShowOnFirstOpen: true,
         calendarFeatureNoticeShowAtSignIn: false,
+        updatedAt: null,
       })
       expect(store.profile).toEqual(newProfile)
     })

@@ -42,6 +42,8 @@ export interface WriteQueueEntry {
   seq: number
   /** Replay attempts so far — drives capped backoff / dead-letter (DC9). */
   attempts: number
+  /** Dead-letter only: why it gave up, so the review surface can distinguish an LWW conflict (DC5). */
+  deadReason?: 'conflict' | 'permanent'
 }
 
 /**
@@ -91,14 +93,58 @@ export async function bumpAttempt(entityId: string): Promise<void> {
 }
 
 /** Move a permanently-failed entry to the dead-letter store so it stops blocking the drain (DC9). */
-export async function deadLetter(entityId: string): Promise<void> {
+export async function deadLetter(entityId: string, reason: 'conflict' | 'permanent' = 'permanent'): Promise<void> {
   const db = await openDataCacheDb()
   try {
     const tx = db.transaction([QUEUE_STORE, DEAD_LETTER_STORE], 'readwrite')
     const entry = await promisify(tx.objectStore(QUEUE_STORE).get(entityId) as IDBRequest<WriteQueueEntry | undefined>)
     if (entry) {
+      entry.deadReason = reason
       tx.objectStore(DEAD_LETTER_STORE).put(entry)
       tx.objectStore(QUEUE_STORE).delete(entityId)
+    }
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+  }
+  finally {
+    db.close()
+  }
+}
+
+/** Count of pending (not dead-lettered) entries — drives the durable pending-sync indicator (8.1). */
+export function countPending(): Promise<number> {
+  return withStore(QUEUE_STORE, 'readonly', s => s.count() as IDBRequest<number>)
+}
+
+/** All dead-lettered entries for the review surface (8.2). */
+export function listDeadLetters(): Promise<WriteQueueEntry[]> {
+  return withStore(DEAD_LETTER_STORE, 'readonly', s => s.getAll() as IDBRequest<WriteQueueEntry[]>)
+}
+
+/**
+ * Discard a dead-lettered entry (8.2): give up on the write.
+ * // ponytail: does NOT revert the optimistic entity cache — the stale edit self-heals
+ * on the next `cachedLoad` refetch (imminent, since the user is online to see this surface).
+ * Add a cache-revert-from-baseSnapshot path only if a discard must show instantly offline.
+ */
+export function discardDeadLetter(entityId: string): Promise<undefined> {
+  return withStore(DEAD_LETTER_STORE, 'readwrite', s => s.delete(entityId) as IDBRequest<undefined>)
+}
+
+/** Retry a dead-lettered entry (8.2): move it back to the live queue with a fresh attempt budget. */
+export async function retryDeadLetter(entityId: string): Promise<void> {
+  const db = await openDataCacheDb()
+  try {
+    const tx = db.transaction([DEAD_LETTER_STORE, QUEUE_STORE], 'readwrite')
+    const entry = await promisify(
+      tx.objectStore(DEAD_LETTER_STORE).get(entityId) as IDBRequest<WriteQueueEntry | undefined>,
+    )
+    if (entry) {
+      entry.attempts = 0
+      tx.objectStore(QUEUE_STORE).put(entry)
+      tx.objectStore(DEAD_LETTER_STORE).delete(entityId)
     }
     await new Promise<void>((resolve, reject) => {
       tx.oncomplete = () => resolve()

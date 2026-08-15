@@ -774,5 +774,19 @@
   "offline": {
     "indicator": "Du bist offline — gespeicherte Daten werden angezeigt",
     "actionUnavailable": "Diese Aktion ist offline nicht verfügbar"
+  },
+  "offlineSync": {
+    "savedOffline": "Offline gespeichert — wird synchronisiert, sobald du wieder online bist",
+    "pendingCount": "{count} Änderung wartet auf Synchronisierung | {count} Änderungen warten auf Synchronisierung",
+    "conflictLost": "Auf einem anderen Gerät geändert — deine Offline-Änderung wurde nicht übernommen",
+    "attachmentsOnlineOnly": "Anhänge sind nur online verfügbar",
+    "deadLetter": {
+      "title": "Änderungen, die nicht synchronisiert werden konnten",
+      "banner": "{count} Änderung konnte nicht synchronisiert werden | {count} Änderungen konnten nicht synchronisiert werden",
+      "review": "Überprüfen",
+      "entry": "{kind} ({op})",
+      "retry": "Erneut versuchen",
+      "discard": "Verwerfen"
+    }
   }
 }

@@ -1,9 +1,12 @@
+import type { WriteQueueEntry } from '@/core/offline/write-queue'
 import type { AvailabilityRow } from '@/features/calendar/data/models/availability'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useLogger } from '@/core/logging/use-logger'
 import { cachedLoad } from '@/core/offline/cached-load'
 import { mutate } from '@/core/offline/mutate'
+import { flushThenRefetch } from '@/core/offline/reconnect'
+import { registerReplay } from '@/core/offline/replay'
 import { useRealtimeBroadcast } from '@/core/realtime/use-realtime-broadcast'
 import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
@@ -94,7 +97,9 @@ export const useAvailabilityStore = defineStore('availability', () => {
       return uid ? [{ event: '*', table: 'user_availability', filter: `user_id=eq.${uid}` }] : []
     },
     onChange: load,
-    onSubscribed: () => load(),
+    // DC4: drain the write queue BEFORE the reconnect refetch so a replayed offline
+    // availability write lands server-side before the fresh snapshot overwrites it.
+    onSubscribed: () => flushThenRefetch(load),
   })
 
   // Friends' availability: a friend's write pings availability:<uid> to refetch.
@@ -165,35 +170,80 @@ export const useAvailabilityStore = defineStore('availability', () => {
   }
 
   /**
-   * Persist the edit as a diff (added/removed vs the pre-edit baseline) via one
-   * atomic RPC, then leave edit mode. On failure edit mode stays open with the
-   * working set intact so the user can retry without redoing their selection.
+   * Persist the edit via the offline seam (DC2). Online: apply the diff via one atomic
+   * RPC + reconcile. Offline: enqueue the whole desired day-set (absolute state, so
+   * coalescing a later offline save is a trivial replace) + optimistically paint it.
+   * On an online failure edit mode stays open with the working set intact so the user
+   * can retry without redoing their selection.
    */
   async function save() {
-    return mutate(async () => {
-      error.value = null
-      const added = [...workingDays.value].filter(day => !baseline.has(day))
-      const removed = [...baseline].filter(day => !workingDays.value.has(day))
-      if (added.length === 0 && removed.length === 0) {
-        editing.value = false
-        return
-      }
+    // ponytail: no uid early-return (mirrors `load`) — uid only namespaces the cache
+    // key / queue entity; the online path never reads it, and an offline save always
+    // runs authenticated. RLS is the real per-user gate.
+    const uid = authStore.currentUser?.id
 
-      saving.value = true
-      try {
-        await repository.applyDiff(added, removed)
-        await load() // reconcile with what actually persisted
-        editing.value = false
-      }
-      catch (err) {
-        error.value = err instanceof Error ? err.message : 'Failed to save availability'
-        logger.error('Failed to save availability', err)
-      }
-      finally {
-        saving.value = false
-      }
+    const added = [...workingDays.value].filter(day => !baseline.has(day))
+    const removed = [...baseline].filter(day => !workingDays.value.has(day))
+    if (added.length === 0 && removed.length === 0) {
+      editing.value = false
+      return
+    }
+
+    const desired = [...workingDays.value]
+    const preEdit = [...savedDays.value] // server-synced baseline, for optimistic revert (DC9)
+
+    const outcome = await mutate<string>({
+      run: async () => {
+        error.value = null
+        saving.value = true
+        try {
+          await repository.applyDiff(added, removed)
+          await load() // reconcile with what actually persisted
+          editing.value = false
+        }
+        catch (err) {
+          error.value = err instanceof Error ? err.message : 'Failed to save availability'
+          logger.error('Failed to save availability', err)
+        }
+        finally {
+          saving.value = false
+        }
+      },
+      intent: {
+        entityId: uid ?? '',
+        kind: 'availability',
+        op: 'update',
+        payload: desired,
+        baseSnapshot: preEdit,
+      },
+      cacheKey: `availability:${uid}`,
+      current: preEdit,
+      apply: () => desired,
+      assign: (rows) => { savedDays.value = new Set(rows) },
     })
+
+    // Offline: the write is queued + optimistically applied — leave edit mode (it's saved).
+    if (outcome.queued) {
+      error.value = null
+      editing.value = false
+    }
   }
+
+  /** Replay a queued availability write on reconnect (DC3): whole-set, offline-wins reconcile. */
+  async function replayAvailabilityWrite(entry: WriteQueueEntry): Promise<void> {
+    const desired = new Set<string>(entry.payload as string[])
+    const savedBaseline = new Set<string>(await repository.listOwnFrom(todayKey()))
+
+    const added = [...desired].filter(day => !savedBaseline.has(day))
+    const removed = [...savedBaseline].filter(day => !desired.has(day))
+    if (added.length === 0 && removed.length === 0)
+      return
+
+    // await is load-bearing: a rejection must propagate to the drain so it retries /
+    // dead-letters, and the entry must not be removed as "done" before the RPC settles.
+    await repository.applyDiff(added, removed)
+  }
+  registerReplay('availability', replayAvailabilityWrite)
 
   return {
     savedDays,

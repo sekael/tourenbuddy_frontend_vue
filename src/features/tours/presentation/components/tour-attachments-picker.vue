@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
+import { isOnline } from '@/core/offline/use-online-status'
 import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 
 const props = defineProps<{
@@ -142,9 +143,14 @@ async function onDrop(toIndex: number) {
       </li>
     </ul>
 
-    <!-- Add button / upload spinner -->
+    <!-- Add button / upload spinner. Attachments are online-only (DC10): while offline
+         the control is disabled and replaced by a hint — reading existing ones is unaffected. -->
     <div class="picker__add-row">
-      <span v-if="loading" class="picker__spinner" />
+      <p v-if="!isOnline" class="picker__limit-reached">
+        <BaseIcon name="cloud_off" size="sm" />
+        {{ t('offlineSync.attachmentsOnlineOnly') }}
+      </p>
+      <span v-else-if="loading" class="picker__spinner" />
       <BaseButton
         v-else-if="attachments.length < 5"
         type="button"

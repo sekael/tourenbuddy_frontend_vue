@@ -52,6 +52,10 @@ vi.mock('@/core/logging/use-logger', () => ({
   useLogger: () => ({ error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() }),
 }))
 
+vi.mock('@/core/offline/reconnect', () => ({
+  flushThenRefetch: (refetch: () => Promise<void>) => refetch(),
+}))
+
 vi.mock('@/core/realtime/use-realtime-subscription', () => ({
   useRealtimeSubscription: vi.fn().mockImplementation((opts: { onSubscribed?: () => void }) => {
     opts.onSubscribed?.()

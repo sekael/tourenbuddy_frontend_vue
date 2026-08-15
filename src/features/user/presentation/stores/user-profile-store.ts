@@ -1,3 +1,4 @@
+import type { WriteQueueEntry } from '@/core/offline/write-queue'
 import type { SupportedLocaleCode } from '@/features/user/data/models/user-profile-schema'
 import type { FullUserProfile } from '@/features/user/domain/entities/full-user-profile'
 import type { UserProfile } from '@/features/user/domain/entities/user-profile'
@@ -7,6 +8,8 @@ import { InvalidPhoneNumberError, PhoneAlreadyRegisteredError } from '@/core/exc
 import { useLogger } from '@/core/logging/use-logger'
 import { cachedLoad } from '@/core/offline/cached-load'
 import { mutate } from '@/core/offline/mutate'
+import { flushThenRefetch } from '@/core/offline/reconnect'
+import { PermanentReplayError, registerReplay } from '@/core/offline/replay'
 import { isOnline } from '@/core/offline/use-online-status'
 import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { normalizePhone } from '@/core/utils/phone-normalize'
@@ -50,11 +53,14 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     try {
       // Hydrate from cache, then (online) refetch + overwrite (design D3). The
       // upsert-on-missing lives in the fetcher so it only runs on the online path.
-      await cachedLoad(
+      // ponytail: profile is a singleton but rides the collection-shaped mutate seam
+      // (DC2) — cache it as a one-element array so the cache/queue write-through and the
+      // hydrate agree on shape; unwrap to the single object for the store ref.
+      await cachedLoad<UserProfile[]>(
         `profile:${userId}`,
         async () => {
           const existing = await repository.getUserById(userId)
-          return existing ?? await repository.upsertProfile({
+          return [existing ?? await repository.upsertProfile({
             id: userId,
             firstName: null,
             lastName: null,
@@ -63,9 +69,10 @@ export const useUserProfileStore = defineStore('userProfile', () => {
             onboardingTourLastStep: 0,
             calendarTourShowOnFirstOpen: true,
             calendarFeatureNoticeShowAtSignIn: false,
-          })
+            updatedAt: null,
+          })]
         },
-        (result) => { profile.value = result },
+        (rows) => { profile.value = rows[0] ?? null },
       )
 
       // Reconcile locale against whatever profile we now hold (cache or fresh).
@@ -126,10 +133,43 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     }
   }
 
-  // User-facing profile edit: blocked + notified offline (design D5).
+  /** The single profile-write seam: build the whole desired profile and route through mutate. */
   async function updateProfile(fields: Partial<Omit<UserProfile, 'id'>>) {
-    return mutate(() => persistProfile(fields))
+    const userId = authStore.currentUser?.id
+    if (!userId || !profile.value)
+      return
+
+    const desired = { ...profile.value, ...fields, id: userId }
+
+    return mutate<UserProfile>({
+      run: () => persistProfile(fields),
+      intent: {
+        entityId: userId,
+        kind: 'profile',
+        op: 'update',
+        payload: desired,
+        baseSnapshot: profile.value,
+        baseUpdatedAt: profile.value.updatedAt ?? undefined,
+      },
+      cacheKey: `profile:${userId}`,
+      current: [profile.value],
+      apply: () => [desired],
+      assign: (rows) => { profile.value = rows[0] ?? null },
+    })
   }
+
+  /** Replay a queued profile write on reconnect (DC3): LWW gate, then upsert the desired state. */
+  async function replayProfileWrite(entry: WriteQueueEntry): Promise<void> {
+    const desired = entry.payload as UserProfile
+    // LWW (DC5): a server row newer than our baseline won — don't clobber it.
+    const serverTs = await repository.getProfileUpdatedAt(entry.entityId)
+    if (serverTs === null)
+      throw new PermanentReplayError('profile row is gone')
+    if (entry.baseUpdatedAt && new Date(serverTs) > new Date(entry.baseUpdatedAt))
+      throw new PermanentReplayError('profile changed on the server since this edit (LWW loser)')
+    await repository.upsertProfile(desired)
+  }
+  registerReplay('profile', replayProfileWrite)
 
   async function setLocale(code: SupportedLocaleCode): Promise<void> {
     if (!profile.value || profile.value.locale === code)
@@ -271,7 +311,9 @@ export const useUserProfileStore = defineStore('userProfile', () => {
       return [{ event: '*', table: 'user_profile', filter: `id=eq.${uid}` }]
     },
     onChange: loadProfile,
-    onSubscribed: () => loadProfile(),
+    // DC4: drain the write queue BEFORE the reconnect refetch so a replayed offline
+    // profile write lands server-side before the fresh snapshot overwrites the store.
+    onSubscribed: () => flushThenRefetch(loadProfile),
   })
 
   watch(

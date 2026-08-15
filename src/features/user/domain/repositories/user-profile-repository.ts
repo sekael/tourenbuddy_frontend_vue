@@ -4,4 +4,6 @@ import type { UserProfile } from '@/features/user/domain/entities/user-profile'
 export interface UserProfileRepository {
   getUserById: (userId: string) => Promise<UserProfile | null>
   upsertProfile: (profile: UserProfile) => Promise<UserProfile>
+  /** Current server `updated_at`, or null if the row is gone — the LWW read (DC5). */
+  getProfileUpdatedAt: (id: string) => Promise<string | null>
 }

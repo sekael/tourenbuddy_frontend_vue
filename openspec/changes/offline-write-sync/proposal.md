@@ -15,8 +15,10 @@ planned slice:
 offline-app-cache-sync deliberately blocks offline writes rather than losing them: standing at
 a trailhead with no signal, a user can *read* their planned tour but cannot edit
 it. This change closes that gap — create/edit a tour, contact, profile field,
-availability, or send/respond to a friend request offline, and it syncs
-automatically once back online, with the user never having to remember to retry.
+availability, respond to (accept/decline) a friend request, or unfriend offline, and
+it syncs automatically once back online, with the user never having to remember to
+retry. (Sending a *new* friend request stays online-only — it needs a live
+phone-registration lookup to find the target.)
 
 offline-app-cache-sync's design (D6) already recorded every stance and hazard this change
 inherits — the `mutate()` enqueue seam, the cache second-writer, the reconnect
@@ -88,8 +90,11 @@ prerequisite's change folder — references use durable capability/code anchors 
   LWW-loser) move to a dead-letter surfaced to the user ("N changes couldn't
   sync — retry / discard"), and do **not** block the rest of the queue.
 - **Terminal read-only unchanged:** friend **tours** get no queue (they are other
-  users' tours — never writable). Friendship **actions** (send / accept / decline a
-  friend request) **do** queue, with deferred notify.
+  users' tours — never writable). Friendship **responses** (accept / decline a pending
+  request) and **unfriend** (`removeFriendship`) **do** queue, with deferred notify.
+  Friend-request **send** stays online-only (block-form) — resolving the target needs
+  an online phone-registration lookup (`findUsersByPhones`) that can't run offline, so
+  a "connect" is never actionable without a connection in the first place.
 - **Architecture doc:** the PWA section's "no offline data sync" line is removed —
   read cache + write sync now both exist.
 
@@ -139,7 +144,9 @@ prerequisite's change folder — references use durable capability/code anchors 
 - **No new npm dependency. No Worker code change** (notifications still dispatch via
   the existing `notify-dispatch` surface; only their *timing* moves to replay).
 - **Explicitly out of scope:** per-field / CRDT merge (LWW only), offline writes to
-  friend tours (terminal read-only), offline writes to **tour attachments** (large
+  friend tours (terminal read-only), **friend-request send / outgoing-request cancel**
+  (send needs an online phone-registration lookup to resolve the target; both stay
+  block-form), offline writes to **tour attachments** (large
   blobs; stay blocked offline with an online-only UI hint, DC10), Service Worker
   Background Sync API (unsupported on iOS Safari — the primary target — so replay is
   in-app on reachability), and any new offline **read** caching (that is

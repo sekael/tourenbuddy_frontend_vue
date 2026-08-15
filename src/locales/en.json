@@ -774,5 +774,19 @@
   "offline": {
     "indicator": "You're offline — showing saved data",
     "actionUnavailable": "This action isn't available offline"
+  },
+  "offlineSync": {
+    "savedOffline": "Saved offline — will sync when you're back online",
+    "pendingCount": "{count} change waiting to sync | {count} changes waiting to sync",
+    "conflictLost": "Changed on another device — your offline edit was not applied",
+    "attachmentsOnlineOnly": "Attachments are available online only",
+    "deadLetter": {
+      "title": "Changes that couldn't sync",
+      "banner": "{count} change couldn't sync | {count} changes couldn't sync",
+      "review": "Review",
+      "entry": "{kind} ({op})",
+      "retry": "Retry",
+      "discard": "Discard"
+    }
   }
 }

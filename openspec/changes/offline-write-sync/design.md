@@ -338,7 +338,10 @@ state honestly visible beats a promise the platform won't keep.
 
 ### DC8 — Queue scope: writable entities only
 Enqueue applies to tours (owned), contacts, profile, availability, and **friendship
-actions** (send / accept / decline a friend request — with deferred notify, DC6).
+actions** (accept / decline a pending request + unfriend `removeFriendship` — with
+deferred notify, DC6). Friend-request **send** and outgoing-request **cancel** stay
+online-only (block-form): send needs a live phone-registration lookup to resolve the
+target, so it is never actionable offline in the first place.
 **Friend tours are never enqueued** — no writable action exists on them; they stay
 pure read cache from offline-app-cache-sync. This keeps the replay registry to the actions that can
 truly originate offline.

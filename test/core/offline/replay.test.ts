@@ -70,7 +70,7 @@ describe('replayQueue drain', () => {
 
     await replayQueue()
 
-    expect(deadLetter).toHaveBeenCalledWith('a')
+    expect(deadLetter).toHaveBeenCalledWith('a', 'permanent')
     expect(remove).toHaveBeenCalledWith('b') // not head-of-line blocked
   })
 
@@ -82,8 +82,19 @@ describe('replayQueue drain', () => {
 
     await replayQueue()
 
-    expect(deadLetter).toHaveBeenCalledWith('a')
+    expect(deadLetter).toHaveBeenCalledWith('a', 'permanent')
     expect(bumpAttempt).not.toHaveBeenCalled()
+  })
+
+  it('an LWW-loser (PermanentReplayError mentioning LWW) dead-letters as a conflict', async () => {
+    registerReplay('tour', async () => {
+      throw new PermanentReplayError('tour changed on the server since this edit (LWW loser)')
+    })
+    vi.mocked(peekAllOrdered).mockResolvedValue([entry({ entityId: 'a' })])
+
+    await replayQueue()
+
+    expect(deadLetter).toHaveBeenCalledWith('a', 'conflict')
   })
 
   it('a dead-lettered create cascades to a pending entry that references it', async () => {
@@ -102,8 +113,8 @@ describe('replayQueue drain', () => {
 
     await replayQueue()
 
-    expect(deadLetter).toHaveBeenCalledWith('contact-1')
-    expect(deadLetter).toHaveBeenCalledWith('tour-9') // cascaded
+    expect(deadLetter).toHaveBeenCalledWith('contact-1', 'permanent')
+    expect(deadLetter).toHaveBeenCalledWith('tour-9', 'permanent') // cascaded
     expect(dispatched).not.toContain('tour-9') // never even dispatched
   })
 })

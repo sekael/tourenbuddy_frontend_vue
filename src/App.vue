@@ -2,6 +2,7 @@
 import { onMounted, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import OfflineIndicator from '@/core/components/offline-indicator.vue'
+import OfflineSyncStatus from '@/core/components/offline-sync-status.vue'
 import PwaInstallBanner from '@/core/components/pwa-install-banner.vue'
 import UpdatePrompt from '@/core/components/update-prompt.vue'
 import { registerFlushTriggers } from '@/core/offline/flush-triggers'
@@ -23,6 +24,7 @@ onMounted(registerFlushTriggers)
 <template>
   <RouterView />
   <OfflineIndicator />
+  <OfflineSyncStatus />
   <PwaInstallBanner />
   <UpdatePrompt />
 </template>

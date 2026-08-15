@@ -16,6 +16,8 @@ export const userProfileSchema = z.object({
   calendarTourShowOnFirstOpen: z.boolean(),
   // One-time sign-in notice for legacy users who missed the calendar step.
   calendarFeatureNoticeShowAtSignIn: z.boolean(),
+  /** Server-stamped `updated_at` — the LWW baseline for offline write replay (DC5). Null offline-optimistic. */
+  updatedAt: z.string().nullable().default(null),
 })
 
 /** Raw shape returned from Supabase (snake_case). */
@@ -31,6 +33,7 @@ export const userProfileRowSchema = z
     onboarding_tour_last_step: z.number().int().default(0),
     calendar_tour_show_on_first_open: z.boolean().default(true),
     calendar_feature_notice_show_at_sign_in: z.boolean().default(false),
+    updated_at: z.string().nullable().default(null),
   })
   .transform(row => ({
     id: row.id,
@@ -41,4 +44,5 @@ export const userProfileRowSchema = z
     onboardingTourLastStep: row.onboarding_tour_last_step,
     calendarTourShowOnFirstOpen: row.calendar_tour_show_on_first_open,
     calendarFeatureNoticeShowAtSignIn: row.calendar_feature_notice_show_at_sign_in,
+    updatedAt: row.updated_at,
   }))

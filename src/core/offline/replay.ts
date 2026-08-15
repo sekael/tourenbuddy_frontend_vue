@@ -1,4 +1,5 @@
 import type { WriteQueueEntry } from '@/core/offline/write-queue'
+import { ref } from 'vue'
 import {
   bumpAttempt,
   deadLetter,
@@ -32,6 +33,9 @@ export class PermanentReplayError extends Error {
 }
 
 const handlers = new Map<string, ReplayHandler>()
+
+/** Bumped after each drain so the queue-status UI can refresh its counts. */
+export const drainedAt = ref(0)
 
 /** Stores call this at init to wire their `kind` to a replay handler (DC3). */
 export function registerReplay(kind: string, handler: ReplayHandler): void {
@@ -76,8 +80,8 @@ async function runDrain(): Promise<void> {
   const entries = await peekAllOrdered()
   const deadIds = new Set<string>()
   let nextRetryDelay = Number.POSITIVE_INFINITY
-  const kill = async (id: string) => {
-    await deadLetter(id)
+  const kill = async (id: string, reason: 'conflict' | 'permanent' = 'permanent') => {
+    await deadLetter(id, reason)
     deadIds.add(id)
   }
 
@@ -100,7 +104,10 @@ async function runDrain(): Promise<void> {
     }
     catch (err) {
       if (err instanceof PermanentReplayError || entry.attempts + 1 >= MAX_ATTEMPTS) {
-        await kill(entry.entityId)
+        // LWW losers throw PermanentReplayError with an "LWW loser" message (DC5) — tag them
+        // 'conflict' so the dead-letter surface shows the conflict copy, not a generic failure.
+        const reason = err instanceof PermanentReplayError && /LWW/i.test(err.message) ? 'conflict' : 'permanent'
+        await kill(entry.entityId, reason)
       }
       else {
         await bumpAttempt(entry.entityId)
@@ -112,6 +119,8 @@ async function runDrain(): Promise<void> {
   // A transient failure remained → schedule one backed-off retry sweep (no polling loop, DC7).
   if (nextRetryDelay !== Number.POSITIVE_INFINITY)
     scheduleRetry(nextRetryDelay)
+
+  drainedAt.value = Date.now() // nudge the pending-sync / dead-letter UI to re-read (8.1/8.2)
 }
 
 let drain: Promise<void> | null = null
