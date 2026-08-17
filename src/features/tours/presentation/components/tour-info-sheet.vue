@@ -13,7 +13,6 @@ import FullScreenPage from '@/core/components/full-screen-page.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useLogger } from '@/core/logging/use-logger'
-import { isOnline } from '@/core/offline/use-online-status'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import ContactActionMenu from '@/features/contacts/presentation/components/contact-action-menu.vue'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
@@ -398,17 +397,10 @@ async function confirmDelete() {
   deleteError.value = null
   deleteState.value = 'loading'
   try {
+    // Queue-form delete: online it deletes; offline it enqueues and removes the tour
+    // optimistically. Both resolve with the tour already gone from the UI, so close
+    // the sheet either way (the queued delete replays on reconnect).
     await toursStore.deleteTour(props.tour.id)
-
-    // Offline the mutate seam blocked the delete: it resolved with `undefined`
-    // without throwing, and already surfaced the "action unavailable" notice.
-    // The tour still exists, so bail out — emitting 'close' here would half-close
-    // the sheet and leave an empty white bar over a tour that wasn't deleted.
-    if (!isOnline.value) {
-      deleteState.value = 'idle'
-      return
-    }
-
     emit('close')
   }
   catch (err) {

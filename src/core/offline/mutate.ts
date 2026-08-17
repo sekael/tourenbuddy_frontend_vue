@@ -1,5 +1,5 @@
 import type { IncomingWrite, WriteQueueEntry } from '@/core/offline/write-queue'
-import { ref } from 'vue'
+import { ref, toRaw } from 'vue'
 import {
   ENTITY_STORE,
   openDataCacheDb,
@@ -84,6 +84,28 @@ export async function mutate(arg: unknown): Promise<unknown> {
 }
 
 /**
+ * Strip Vue reactivity so IndexedDB's structured clone can serialize the value.
+ * A `reactive()` graph is backed by Proxies, and structured clone throws
+ * `DataCloneError` on a Proxy — so BOTH the queue entry (its `baseSnapshot`/payload
+ * come straight off store refs) AND the cache write-through (the store's reactive
+ * collection) must be de-proxied first, or every offline update fails silently.
+ * Recurse through plain objects/arrays and `toRaw` each level; Blobs and Dates are
+ * cloneable as-is and pass through untouched.
+ */
+function toStorable<T>(value: T): T {
+  const raw = toRaw(value as unknown as object) as unknown
+  if (Array.isArray(raw))
+    return raw.map(v => toStorable(v)) as unknown as T
+  if (raw && typeof raw === 'object' && !(raw instanceof Blob) && !(raw instanceof Date)) {
+    const out: Record<string, unknown> = {}
+    for (const key of Object.keys(raw))
+      out[key] = toStorable((raw as Record<string, unknown>)[key])
+    return out as T
+  }
+  return raw as T
+}
+
+/**
  * DC2 atomic offline enqueue: write the transformed collection to the cache and the
  * coalesced intent to the queue in ONE transaction. Quota is checked first so a full
  * disk refuses the write cleanly instead of half-applying it.
@@ -102,11 +124,11 @@ async function enqueueOffline(spec: MutateSpec<unknown>): Promise<void> {
     const seq = existing?.seq ?? (all.reduce((m, e) => Math.max(m, e.seq), 0) + 1)
     const merged = coalesce(existing, { ...spec.intent, seq, attempts: 0 })
 
-    tx.objectStore(ENTITY_STORE).put(next, spec.cacheKey)
+    tx.objectStore(ENTITY_STORE).put(toStorable(next), spec.cacheKey)
     if (merged === null)
       queue.delete(spec.intent.entityId) // annihilated create+delete
     else
-      queue.put(merged)
+      queue.put(toStorable(merged))
 
     await new Promise<void>((resolve, reject) => {
       tx.oncomplete = () => resolve()

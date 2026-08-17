@@ -1,5 +1,6 @@
 import type { MutateSpec } from '@/core/offline/mutate'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { reactive, ref } from 'vue'
 import 'fake-indexeddb/auto'
 
 // Real IndexedDB (fake-indexeddb) so the DC2 single-transaction enqueue is exercised
@@ -100,6 +101,26 @@ describe('mutate queue-form offline enqueue (DC2)', () => {
     expect(all).toHaveLength(1)
     expect(all[0].op).toBe('create') // create + update stays a create
     expect(all[0].payload).toEqual({ id: 't1', renamed: true }) // newer payload won
+  })
+
+  it('enqueues an update whose baseSnapshot is a live Vue reactive object (no DataCloneError)', async () => {
+    // Regression: an update intent carries `baseSnapshot` straight off a store ref, and
+    // the cache write-through persists the reactive collection — both are Proxy-backed and
+    // throw DataCloneError under structured clone unless de-proxied. This is exactly the
+    // offline-edit path (a create has no baseSnapshot, so it slipped through before).
+    const rows = ref([reactive({ id: 't1', name: 'a' })])
+    const existing = rows.value[0]
+
+    await mutate<Row>(spec({
+      entityId: 't1',
+      intent: { entityId: 't1', kind: 'tour', op: 'update', payload: { id: 't1' }, baseSnapshot: existing },
+      current: rows.value, // reactive array — the write-through must strip its reactivity too
+      apply: rs => rs.map(r => ({ ...r, name: 'b' })),
+    }))
+
+    const stored = await getEntry('t1')
+    expect(stored?.op).toBe('update')
+    expect(stored?.baseSnapshot).toEqual({ id: 't1', name: 'a' }) // plain clone persisted
   })
 
   it('atomicity: a queue-put failure rolls back the cache write (neither lands)', async () => {
