@@ -357,6 +357,17 @@ export const useToursStore = defineStore('tours', () => {
     const payload = entry.payload as TourWritePayload
     if (entry.op === 'delete') {
       await repository.deleteTour(entry.entityId)
+      // Mirror the online delete: drop the tour's GPX from Storage so it isn't orphaned.
+      // The path rides on the baseSnapshot captured when the delete was queued.
+      const gpxFilepath = (entry.baseSnapshot as Tour | undefined)?.gpxFilepath
+      if (gpxFilepath) {
+        try {
+          await removeGpx(gpxFilepath)
+        }
+        catch (err) {
+          logger.warn('Tour deleted on replay but GPX blob removal failed (orphan)', err)
+        }
+      }
     }
     else if (entry.op === 'create') {
       // Blob first: a create referencing a never-uploaded GPX would leave a dangling path.

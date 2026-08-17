@@ -51,14 +51,14 @@ For each, the pattern is: offline → mutate → optimistic UI + saved toast + p
 → reconnect → pending count↓ → server reflects the change.
 
 ### 2.1 Tours
-- [ ] **Create** a tour offline → reconnect → it exists on the server with the SAME id
+- [x] **Create** a tour offline → reconnect → it exists on the server with the SAME id
   (client-minted; no duplicate created).
-- [ ] **Create then edit** the same new tour offline (rename, change date) → reconnect →
+- [x] **Create then edit** the same new tour offline (rename, change date) → reconnect →
   ONE tour with the final state (coalesced create, not create+update).
-- [ ] **Create then delete** the same new tour offline → reconnect → nothing hits the
+- [x] **Create then delete** the same new tour offline → reconnect → nothing hits the
   server (annihilated), pending count returns to 0.
-- [ ] **Mark completed** / **toggle visibility** offline → reconnect → persisted.
-- [ ] **Pick a GPX file offline** on a tour → the track renders offline (from blob cache) →
+- [x] **Mark completed** / **toggle visibility** offline → reconnect → persisted.
+- [x] **Pick a GPX file offline** on a tour → the track renders offline (from blob cache) →
   reconnect → the GPX is uploaded to Storage, then the row write lands.
 - [ ] **Delete** an existing tour offline → reconnect → gone on the server.
 

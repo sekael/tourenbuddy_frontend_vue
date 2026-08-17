@@ -90,6 +90,8 @@ vi.mock('@/features/tour-links/presentation/stores/tour-links-store', () => ({
 const { isOnline } = await import('@/core/offline/use-online-status')
 const { replayQueue } = await import('@/core/offline/replay')
 const { useToursStore } = await import('@/features/tours/presentation/stores/tours-store')
+const { removeGpx } = await import('@/features/tours/data/services/gpx-storage-service')
+const removeGpxMock = vi.mocked(removeGpx)
 
 function draft(over: Partial<TourDraft> = {}): TourDraft {
   return {
@@ -196,5 +198,34 @@ describe('tours-store offline write → replay', () => {
     expect(mockUpdate).toHaveBeenCalledTimes(1) // won the race → the write is applied
     expect(remove).toHaveBeenCalledWith('t-x')
     expect(deadLetter).not.toHaveBeenCalled()
+  })
+
+  it('replaying a delete drops the tour GPX from Storage so it is not orphaned', async () => {
+    useToursStore()
+    peekAllOrdered.mockResolvedValue([entry({
+      entityId: 't-del',
+      op: 'delete',
+      payload: {},
+      baseSnapshot: { id: 't-del', gpxFilepath: 'user-1/t-del.gpx', visibility: 'private', partnerIds: [] },
+    })])
+
+    await replayQueue()
+
+    expect(removeGpxMock).toHaveBeenCalledWith('user-1/t-del.gpx')
+    expect(remove).toHaveBeenCalledWith('t-del') // entry cleared from the queue
+  })
+
+  it('replaying a delete for a tour with no GPX never calls Storage removal', async () => {
+    useToursStore()
+    peekAllOrdered.mockResolvedValue([entry({
+      entityId: 't-del2',
+      op: 'delete',
+      payload: {},
+      baseSnapshot: { id: 't-del2', gpxFilepath: null, visibility: 'private', partnerIds: [] },
+    })])
+
+    await replayQueue()
+
+    expect(removeGpxMock).not.toHaveBeenCalled()
   })
 })

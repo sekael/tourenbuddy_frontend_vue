@@ -26,7 +26,7 @@ describe('cachedLoad', () => {
     const fetcher = vi.fn()
     const assign = vi.fn()
 
-    await cachedLoad('tours:u1', fetcher, assign)
+    await cachedLoad('tours:offline', fetcher, assign)
 
     expect(assign).toHaveBeenCalledExactlyOnceWith(['cached'])
     expect(fetcher).not.toHaveBeenCalled()
@@ -38,10 +38,10 @@ describe('cachedLoad', () => {
     const fetcher = vi.fn().mockResolvedValue(['fresh'])
     const assign = vi.fn()
 
-    await cachedLoad('tours:u1', fetcher, assign)
+    await cachedLoad('tours:fresh', fetcher, assign)
 
     expect(assign).toHaveBeenLastCalledWith(['fresh'])
-    expect(putCachedMock).toHaveBeenCalledWith('tours:u1', ['fresh'])
+    expect(putCachedMock).toHaveBeenCalledWith('tours:fresh', ['fresh'])
   })
 
   it('online fetch failure: keeps the cached snapshot, does not overwrite the cache, and rethrows', async () => {
@@ -50,7 +50,7 @@ describe('cachedLoad', () => {
     const fetcher = vi.fn().mockRejectedValue(boom)
     const assign = vi.fn()
 
-    await expect(cachedLoad('tours:u1', fetcher, assign)).rejects.toThrow('network down')
+    await expect(cachedLoad('tours:fail', fetcher, assign)).rejects.toThrow('network down')
 
     // cached snapshot painted exactly once; never overwritten with anything else
     expect(assign).toHaveBeenCalledExactlyOnceWith(['cached'])
@@ -62,8 +62,28 @@ describe('cachedLoad', () => {
     const fetcher = vi.fn().mockResolvedValue(['fresh'])
     const assign = vi.fn()
 
-    await cachedLoad('tours:u1', fetcher, assign)
+    await cachedLoad('tours:noidb', fetcher, assign)
 
     expect(assign).toHaveBeenCalledExactlyOnceWith(['fresh'])
+  })
+
+  it('warm online reload: skips the cache paint so a stale snapshot never flickers in', async () => {
+    // Cold load seeds "seen fresh" for the key.
+    getCachedMock.mockResolvedValue(undefined)
+    const fetcher = vi.fn().mockResolvedValue(['fresh'])
+    const assign = vi.fn()
+    await cachedLoad('tours:warm', fetcher, assign)
+
+    // Warm reload: the cache now holds a STALE snapshot (e.g. after an online optimistic
+    // write the cache never received). It must NOT be painted — only the fresh result is.
+    vi.clearAllMocks()
+    putCachedMock.mockResolvedValue(undefined)
+    getCachedMock.mockResolvedValue(['stale'])
+    fetcher.mockResolvedValue(['fresh2'])
+
+    await cachedLoad('tours:warm', fetcher, assign)
+
+    expect(getCachedMock).not.toHaveBeenCalled() // cache read skipped entirely
+    expect(assign).toHaveBeenCalledExactlyOnceWith(['fresh2']) // only the network result painted
   })
 })
