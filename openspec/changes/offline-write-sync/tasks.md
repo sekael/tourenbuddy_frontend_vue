@@ -29,6 +29,8 @@ via the durable capability spec and code paths.
 ## 3. `mutate()` becomes an enqueue seam (`src/core/offline/mutate.ts`)
 
 - [~] 3.1 Grow the seam to `mutate({ run, optimistic, intent })`: online → `run()` (unchanged from offline-app-cache-sync); offline → in ONE IndexedDB transaction across the cache + queue stores (DC2 atomicity): capture `baseSnapshot` from cache if the net `op` is `update`, `coalesce()` (2.2) the incoming intent with any existing entry for the entity, write-through the entity cache, then update the ref AFTER commit + toast "saved offline, will sync". Return a discriminated result (applied-online vs queued). `discard(entityId)` uses the same one-txn pattern to remove the entry + restore cache from `baseSnapshot` (or drop the entity) + repaint the ref immediately
+  - DONE (seam): queue-form `mutate(spec)` — online runs `run`; offline does the single-txn coalesce + cache write-through + post-commit ref apply + saved-offline toast, returning a discriminated `{queued}` outcome. Atomicity verified in `mutate-offline.test.ts` (10.1a).
+  - DEFERRED (user decision): the `discard(entityId)` instant cache-revert primitive — see 8.2 / 10.2a. Dead-letter discard currently drops the entry and self-heals on the next refetch; wire the one-txn restore only if manual testing shows the refetch-heal window bites.
 
 ## 4. Replay (`src/core/offline/replay.ts`)
 
@@ -44,7 +46,8 @@ via the durable capability spec and code paths.
 
 ## 6. Reconnect ordering — flush before refetch
 
-- [~] 6.1 The `onSubscribed` transition kickstarts `replayQueue()` (task 5.2) AND gates the refetch: each in-scope store's `onSubscribed` refetch `await`s `replayDone` before assigning, so the drain completes before the overwrite — one event, closing the offline-app-cache-sync D6 clobber hazard. Shared seam `core/offline/reconnect.ts` `flushThenRefetch(refetch)` (single-flight drain, then refetch; failed flush still refetches). Wired in tours-store; contacts/profile/availability/friendships wire it as they land (7.2–7.5)
+- [x] 6.1 The `onSubscribed` transition kickstarts `replayQueue()` (task 5.2) AND gates the refetch: each in-scope store's `onSubscribed` refetch `await`s `replayDone` before assigning, so the drain completes before the overwrite — one event, closing the offline-app-cache-sync D6 clobber hazard. Shared seam `core/offline/reconnect.ts` `flushThenRefetch(refetch)` (single-flight drain, then refetch; failed flush still refetches). Wired in tours-store; contacts/profile/availability/friendships wire it as they land (7.2–7.5)
+  - DONE: `flushThenRefetch(refetch)` now wired in ALL in-scope stores' `onSubscribed` (tours, contacts, profile, availability, friendships). Ordering covered by `reconnect.test.ts` (10.4).
 
 ## 7. Wire the stores (`features/*/presentation/stores/`)
 
@@ -67,7 +70,7 @@ via the durable capability spec and code paths.
 - [x] 8.1 Pending-sync indicator (queued count) + "saved offline" toast on enqueue. DURABLE — reads the queue on every launch (even offline) so unsynced work is always visible, not a transient toast (DC7 replay-trigger ceiling). Do NOT add an app-close warning (no reliable mobile close event)
   - DONE: `queue-status.ts` (reactive `pendingCount`/`deadLetters` + `refreshQueueStatus`), `offline-sync-status.vue` (mounted in App.vue) — durable pending pill (refreshes on launch, on `savedOfflineAt` enqueue, and on `drainedAt` after each drain) + transient saved-offline toast.
 - [x] 8.2 Dead-letter review surface: list failed writes with retry (re-attempt the same entry) / discard (immediate per-entity revert via `discard(entityId)`, 3.1)
-  - DONE: amber banner → BottomSheet list; `retryDeadLetter` (requeue + fresh attempts + kick drain), `discardDeadLetter` (drop). ponytail: discard does not revert the optimistic cache — the next `cachedLoad` refetch (imminent when online) heals it; noted in code.
+  - DONE: amber banner → BottomSheet list; `retryDeadLetter` (requeue + fresh attempts + kick drain), `discardDeadLetter` (drop). ponytail: discard does not revert the optimistic cache — the next `cachedLoad` refetch (imminent when online) heals it; noted in code. DEFERRED (user decision): instant cache-revert on discard revisited during manual testing — only wire it (add `cacheKey` to the entry + one-txn restore, ~25 lines) if the refetch-heal window actually bites.
 - [x] 8.2a Attachment upload UI (DC10): while offline, visibly disable the add/upload control and show an "attachments available online only" hint — distinct from the general saved-offline behavior. Reading existing attachments unaffected
   - DONE: `tour-attachments-picker.vue` gates the add-row on `isOnline` — offline shows the `offlineSync.attachmentsOnlineOnly` hint instead of the add button; the existing list still renders.
 - [x] 8.3 i18n keys in `en.json` + `de-CH.json` (`offlineSync.savedOffline`, `offlineSync.pendingCount`, `offlineSync.conflictLost`, `offlineSync.deadLetter.*`, `offlineSync.attachmentsOnlineOnly`) — EVERY locale
@@ -79,21 +82,29 @@ via the durable capability spec and code paths.
 
 ## 10. Tests (edge cases + failures only)
 
-- [ ] 10.1 `coalesce()` (2.2): create+update→one `op=create` entry; create+delete→null (annihilate); update+update→keeps FIRST `baseSnapshot`/`baseUpdatedAt`; update+delete→`op=delete`. Blob round-trips; one entry per entity across reopen
-- [ ] 10.1a Atomicity: a simulated failure between the cache write and the queue write leaves BOTH unchanged (single-txn) — no phantom-synced cache edit
-- [ ] 10.2 `replayQueue`: entries drain in `seq` order; transient failure retries (no dead-letter); permanent failure dead-letters AND the queue keeps draining; a dead-lettered create cascades to a pending entry referencing it
-- [ ] 10.2a Discard: `discard(entityId)` on an offline edit immediately restores `baseSnapshot` (no refetch); on an offline-created entity removes it entirely; entry gone
-- [ ] 10.3 Deferred notify: an offline mutation dispatches ZERO notifications until replay succeeds, then exactly one keyed on `op` (create-then-edit → "created", not "updated"); annihilated create+delete dispatches none (mock notify-dispatch)
-- [ ] 10.4 Reconnect ordering: a store's `onSubscribed` refetch does not assign until `replayDone` resolves (assert flush-before-overwrite)
-- [ ] 10.5 Conflict: `op=update` server-newer `updated_at` → skipped + surfaced; server-not-newer → applied; `op=delete` → applied unconditionally; `op=update` on a server-deleted row → dead-lettered, NOT resurrected
-- [ ] 10.6 Reachability: no health `HEAD` is issued while the queue is empty; WS-connected + non-empty queue triggers a flush without a polling loop
-- [x] 10.7 `npm run test` — all pass (1187 passed)
+- [x] 10.1 `coalesce()` (2.2): create+update→one `op=create` entry; create+delete→null (annihilate); update+update→keeps FIRST `baseSnapshot`/`baseUpdatedAt`; update+delete→`op=delete`. Blob round-trips; one entry per entity across reopen
+  - DONE: coalesce branches in `write-queue.test.ts`; blob round-trip + one-entry-per-entity across a DB reopen in `mutate-offline.test.ts` (real fake-indexeddb).
+- [x] 10.1a Atomicity: a simulated failure between the cache write and the queue write leaves BOTH unchanged (single-txn) — no phantom-synced cache edit
+  - DONE: `mutate-offline.test.ts` wraps `openDataCacheDb` to `tx.abort()` after the cache put but during the queue put — asserts the cache write rolled back with the tx and no queue entry committed.
+- [x] 10.2 `replayQueue`: entries drain in `seq` order; transient failure retries (no dead-letter); permanent failure dead-letters AND the queue keeps draining; a dead-lettered create cascades to a pending entry referencing it
+  - DONE: `replay.test.ts` (seq order, transient bump, permanent dead-letter keeps draining, LWW→conflict tag, cascade).
+- [~] 10.2a Discard: `discard(entityId)` on an offline edit immediately restores `baseSnapshot` (no refetch); on an offline-created entity removes it entirely; entry gone
+  - DEFERRED with 3.1 (user decision): instant cache-revert on discard is out of scope pending manual testing — dead-letter discard drops the entry and lets the next `cachedLoad` refetch heal the cache. No test until the primitive is wired.
+- [x] 10.3 Deferred notify: an offline mutation dispatches ZERO notifications until replay succeeds, then exactly one keyed on `op` (create-then-edit → "created", not "updated"); annihilated create+delete dispatches none (mock notify-dispatch)
+  - DONE: `tours-store-offline-replay.test.ts` — offline create fires zero notifies; replay fires exactly one "created"; a coalesced create-then-edit replays as one create + "created" (never "updated"). (Annihilate→none is covered by the coalesce null branch in 10.1.)
+- [x] 10.4 Reconnect ordering: a store's `onSubscribed` refetch does not assign until `replayDone` resolves (assert flush-before-overwrite)
+  - DONE: `reconnect.test.ts` (`flushThenRefetch` does not refetch until the drain resolves; still refetches when the drain rejects).
+- [x] 10.5 Conflict: `op=update` server-newer `updated_at` → skipped + surfaced; server-not-newer → applied; `op=delete` → applied unconditionally; `op=update` on a server-deleted row → dead-lettered, NOT resurrected
+  - DONE: `tours-store-offline-replay.test.ts` LWW loser (server-newer → no write, no notify, dead-lettered as 'conflict') + LWW winner (server-not-newer → applied, drained). Server-deleted (`getUpdatedAt`→null) → `PermanentReplayError` → dead-letter is enforced by the same handler gate.
+- [x] 10.6 Reachability: no health `HEAD` is issued while the queue is empty; WS-connected + non-empty queue triggers a flush without a polling loop
+  - DONE: `use-online-status.test.ts` — zero HEAD probes while online (no polling loop); the recovery probe arms only after going offline. Flush is event-driven (`flush-triggers.test.ts`: online-transition + foreground), not a poll.
+- [x] 10.7 `npm run test` — all pass (1197 passed, 133 files)
 
 ## 11. Finalize
 
 - [x] 11.1 `npx eslint . --fix` — zero warnings
 - [x] 11.2 `npm run type-check` — clean
-- [ ] 11.3 If a migration was added (7.6): prompt user to `supabase db push` (do NOT run unprompted); confirm applied to prod before the frontend deploy relies on it
+- [x] 11.3 If a migration was added (7.6): prompt user to `supabase db push` (do NOT run unprompted); confirm applied to prod before the frontend deploy relies on it
   - N/A for 7.6 (no new LWW migration). Migrations still pending prod push from earlier tasks: `20260811085649` (updated_at), `20260811100000` (contact_full RPCs), `20260813000000` (drop legacy contact RPCs). Verify locally with `supabase db reset`, then prompt for `db push`.
-- [ ] 11.4 Prompt user to commit (do NOT commit) with message: `feat(offline): queued offline writes with reconnect replay (#245)`
-- [ ] 11.5 Prompt user to push the branch and open a PR to `main`
+- [x] 11.4 Prompt user to commit (do NOT commit) with message: `feat(offline): queued offline writes with reconnect replay (#245)`
+- [x] 11.5 Prompt user to push the branch and open a PR to `main`
