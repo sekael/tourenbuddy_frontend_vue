@@ -321,8 +321,20 @@ async function handleGpxUpload(event: Event) {
   // this blob still needs uploading (vs. one merely cached for display).
   if (!isOnline.value) {
     const key = gpxStorageKey(userId, newTourId)
-    await cacheBlob(key, file)
-    await markPendingUpload(key)
+    try {
+      // Staging the blob touches IndexedDB — a full/unavailable store must fail gracefully
+      // here (not as an uncaught rejection) and drop the GPX rather than half-staging it.
+      await cacheBlob(key, file)
+      await markPendingUpload(key)
+    }
+    catch {
+      evictCachedBlob(key).catch(() => {})
+      clearPendingUpload(key).catch(() => {})
+      gpxError.value = t('tours.form.gpxUploadFailed')
+      gpxFile.value = null
+      pendingTourId.value = null
+      return
+    }
     pendingGpxKey.value = key
     return
   }

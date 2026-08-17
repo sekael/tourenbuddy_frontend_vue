@@ -13,6 +13,7 @@ import FullScreenPage from '@/core/components/full-screen-page.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useLogger } from '@/core/logging/use-logger'
+import { clearOfflineWriteError } from '@/core/offline/mutate'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import ContactActionMenu from '@/features/contacts/presentation/components/contact-action-menu.vue'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
@@ -97,6 +98,9 @@ const pendingStartPointMeta = ref<{ name: string | null, elevation: number | nul
 const pendingEndPointMeta = ref<{ name: string | null, elevation: number | null } | null>(null)
 
 function enterEditMode() {
+  // Clean slate: any prior offline-write error is dismissed so it never resurfaces on the
+  // next edit (it re-appears only if THIS edit fails again).
+  clearOfflineWriteError()
   pendingGoal.value = { ...props.tour.goal }
   pendingStartPoint.value = null
   pendingEndPoint.value = null
@@ -119,6 +123,7 @@ async function cancelEdit() {
   for (const att of toRemove) {
     await attachmentsStore.remove(att)
   }
+  clearOfflineWriteError()
   mode.value = 'view'
   emit('editModeChange', false)
 }

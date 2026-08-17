@@ -42,7 +42,7 @@ vi.mock('@/core/offline/data-cache-db', async (importOriginal) => {
   }
 })
 
-const { mutate } = await import('@/core/offline/mutate')
+const { mutate, offlineWriteError } = await import('@/core/offline/mutate')
 const { isOnline } = await import('@/core/offline/use-online-status')
 const { getCached, clearCached } = await import('@/core/offline/entity-cache')
 const { getEntry, peekAllOrdered, remove } = await import('@/core/offline/write-queue')
@@ -66,6 +66,7 @@ describe('mutate queue-form offline enqueue (DC2)', () => {
   beforeEach(() => {
     isOnline.value = false
     sabotage.enabled = false
+    offlineWriteError.value = null
   })
   afterEach(async () => {
     isOnline.value = true
@@ -123,17 +124,17 @@ describe('mutate queue-form offline enqueue (DC2)', () => {
     expect(stored?.baseSnapshot).toEqual({ id: 't1', name: 'a' }) // plain clone persisted
   })
 
-  it('atomicity: a queue-put failure rolls back the cache write (neither lands)', async () => {
+  it('atomicity: a queue-put failure rolls back the cache write and is swallowed gracefully', async () => {
     sabotage.enabled = true
+    const assign = vi.fn()
 
-    // A manual tx.abort() rejects the enqueue (with a null tx.error) — assert it threw at all.
-    let threw = false
-    await mutate<Row>(spec({ entityId: 't1' })).catch(() => {
-      threw = true
-    })
-    expect(threw).toBe(true)
+    // The IDB failure must NOT propagate — it's caught into the signal, not thrown at the caller.
+    const outcome = await mutate<Row>(spec({ entityId: 't1', assign }))
 
     sabotage.enabled = false
+    expect(outcome).toEqual({ queued: false, failed: true }) // failure reported, not a rejection
+    expect(assign).not.toHaveBeenCalled() // ref left at pre-edit state (no phantom optimistic row)
+    expect(offlineWriteError.value).toBe('offline.writeError.generic') // user-facing signal set
     expect(await getCached('tours:me')).toBeUndefined() // cache write rolled back with the tx
     expect(await getEntry('t1')).toBeUndefined() // queue write never committed
   })

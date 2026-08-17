@@ -773,7 +773,11 @@
   },
   "offline": {
     "indicator": "Du bist offline — gespeicherte Daten werden angezeigt",
-    "actionUnavailable": "Diese Aktion ist offline nicht verfügbar"
+    "actionUnavailable": "Diese Aktion ist offline nicht verfügbar",
+    "writeError": {
+      "generic": "Deine Änderung konnte offline nicht gespeichert werden — bitte versuche es erneut",
+      "storageFull": "Offline-Speichern fehlgeschlagen — der Gerätespeicher ist voll. Gib Speicher frei und versuche es erneut"
+    }
   },
   "offlineSync": {
     "savedOffline": "Offline gespeichert — wird synchronisiert, sobald du wieder online bist",

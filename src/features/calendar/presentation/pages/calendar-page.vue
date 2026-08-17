@@ -9,6 +9,7 @@ import BaseButton from '@/core/components/base-button.vue'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import ExtendedFab from '@/core/components/extended-fab.vue'
+import { isOnline } from '@/core/offline/use-online-status'
 import { useAvailabilityStore } from '@/features/calendar/presentation/stores/availability-store'
 import ContactsListSheet from '@/features/contacts/presentation/components/contacts-list-sheet.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
@@ -184,9 +185,13 @@ const calendarTour = useOnboardingTour({
   // Welcome "Start" / "Don't show again" flip the calendar gate off.
   dismissTourAtSignIn: () => userProfileStore.dismissCalendarTour(),
   // Drives the STANDALONE welcome (no hand-off intent): show it iff the gate is
-  // fresh. The hand-off path is handled explicitly in the gate rule below.
+  // fresh AND we're online. Offline the guided tour is suppressed entirely so the
+  // calendar is always reachable on a first-ever offline visit; the gate stays fresh
+  // so the welcome still shows on the first ONLINE visit. The hand-off path is
+  // handled explicitly in the gate rule below.
   canAutoStart: () =>
-    userProfileStore.profile != null
+    isOnline.value
+    && userProfileStore.profile != null
     && userProfileStore.profile.calendarTourShowOnFirstOpen === true,
 })
 
@@ -246,7 +251,9 @@ onUnmounted(() => {
 function applyCalendarTourGate() {
   const handoff = mapStore.consumePendingIntent()?.startCalendarTour === true
   if (handoff) {
-    if (userProfileStore.profile?.calendarTourShowOnFirstOpen === true) {
+    // Offline: consume the intent but never start the driver tour (it would mask the
+    // calendar). Gate stays fresh so the tour still shows on the first online visit.
+    if (isOnline.value && userProfileStore.profile?.calendarTourShowOnFirstOpen === true) {
       userProfileStore.dismissCalendarTour()
       calendarTour.startTour(0)
     }

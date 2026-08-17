@@ -1,5 +1,6 @@
 import type { IncomingWrite, WriteQueueEntry } from '@/core/offline/write-queue'
 import { ref, toRaw } from 'vue'
+import { useLogger } from '@/core/logging/use-logger'
 import {
   ENTITY_STORE,
   openDataCacheDb,
@@ -12,6 +13,8 @@ import {
   coalesce,
 
 } from '@/core/offline/write-queue'
+
+const logger = useLogger('Mutate')
 
 /**
  * The single seam every in-scope mutation store action passes through (change:
@@ -36,6 +39,19 @@ export const offlineBlockedAt = ref(0)
 export const savedOfflineAt = ref(0)
 
 /**
+ * i18n KEY of the last offline-write failure (IndexedDB unavailable / near-quota / a value
+ * structured-clone can't serialize), or `null` when clear. The seam swallows the raw IDB
+ * error into this signal so callers never surface a `DataCloneError` to the user; a snackbar
+ * watches it and edit surfaces clear it on enter/exit (via `clearOfflineWriteError`).
+ */
+export const offlineWriteError = ref<string | null>(null)
+
+/** Clear the offline-write error signal — called on entering / leaving an edit surface. */
+export function clearOfflineWriteError(): void {
+  offlineWriteError.value = null
+}
+
+/**
  * Queue-form spec. The action expresses its change as a pure transform over the
  * cached collection (`apply`), reused for both the durable cache and the ref so the
  * two can't drift.
@@ -58,8 +74,9 @@ export interface MutateSpec<Row> {
 }
 
 export type MutateOutcome<T>
-  = | { queued: false, value: T }
-    | { queued: true }
+  = | { queued: false, failed: false, value: T } // ran online
+    | { queued: true, failed: false } // enqueued offline
+    | { queued: false, failed: true } // offline enqueue failed (IDB) — swallowed to the signal
 
 export function mutate<T>(fn: () => T | Promise<T>): Promise<T | undefined>
 export function mutate<Row>(spec: MutateSpec<Row>): Promise<MutateOutcome<Row[] | void>>
@@ -74,13 +91,28 @@ export async function mutate(arg: unknown): Promise<unknown> {
   }
 
   const spec = arg as MutateSpec<unknown>
+  // Online failures still throw out of `run` (the store's own try/catch owns them); the
+  // seam only intercepts the OFFLINE path, where an IndexedDB error is ours to handle.
   if (isOnline.value)
-    return { queued: false, value: await spec.run() }
+    return { queued: false, failed: false, value: await spec.run() }
 
-  await enqueueOffline(spec)
-  spec.assign(spec.apply(spec.current)) // ref AFTER commit (below)
+  try {
+    await enqueueOffline(spec)
+  }
+  catch (err) {
+    // Swallow the raw IDB error (DataCloneError / quota / tx failure) into the signal so no
+    // caller surfaces it directly. The ref is UNTOUCHED here — `assign` runs only after a
+    // clean commit — so the store still shows the pre-edit state (no phantom optimistic row).
+    logger.error('Offline write enqueue failed', err)
+    offlineWriteError.value
+      = err instanceof Error && err.message === 'offline-queue-storage-full'
+        ? 'offline.writeError.storageFull'
+        : 'offline.writeError.generic'
+    return { queued: false, failed: true }
+  }
+  spec.assign(spec.apply(spec.current)) // ref AFTER commit (above)
   savedOfflineAt.value = Date.now()
-  return { queued: true }
+  return { queued: true, failed: false }
 }
 
 /**
