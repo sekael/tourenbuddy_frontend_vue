@@ -4,6 +4,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
+import { isOnline } from '@/core/offline/use-online-status'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useUserBlocksStore } from '@/features/friendships/presentation/stores/user-blocks-store'
 
@@ -115,6 +116,9 @@ async function handleDismiss() {
         <p v-if="state === 'error'" class="error-text">
           {{ errorMsg }}
         </p>
+        <p v-else-if="!isOnline" class="offline-text">
+          {{ t('offlineSync.friendshipsOnlineOnly') }}
+        </p>
       </div>
       <div class="prompt-actions">
         <BaseButton
@@ -132,7 +136,7 @@ async function handleDismiss() {
           type="button"
           variant="primary"
           size="sm"
-          :disabled="state === 'sending'"
+          :disabled="state === 'sending' || !isOnline"
           @click="handleAccept"
         >
           {{ state === 'sending' ? '…' : t('friendships.accept') }}
@@ -142,7 +146,7 @@ async function handleDismiss() {
           type="button"
           variant="primary"
           size="sm"
-          :disabled="state === 'sending'"
+          :disabled="state === 'sending' || !isOnline"
           @click="handleSend"
         >
           {{ state === 'sending' ? '…' : t('friendships.sendRequest') }}
@@ -184,6 +188,11 @@ async function handleDismiss() {
 .error-text {
   font-size: var(--font-size-xs, 11px);
   color: var(--color-error);
+}
+
+.offline-text {
+  font-size: var(--font-size-xs, 11px);
+  color: var(--color-on-surface-variant);
 }
 
 .prompt-actions {

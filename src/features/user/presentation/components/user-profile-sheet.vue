@@ -11,6 +11,8 @@ import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { InvalidPhoneNumberError, PhoneAlreadyRegisteredError } from '@/core/exceptions'
 import { SUPPORTED_LOCALES } from '@/core/i18n/supported'
+import { offlineBlockedAt } from '@/core/offline/mutate'
+import { isOnline } from '@/core/offline/use-online-status'
 import { formatPhoneForDisplay } from '@/core/utils/phone-normalize'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
@@ -115,7 +117,15 @@ async function handleSave() {
     const phone = editPhone.value.trim()
     const phoneChanged = phone !== (full.value?.phoneNumber ?? '')
 
-    if (phoneChanged && phone) {
+    // The name update above already queued offline. The phone half below hits the
+    // network directly (checkPhoneAvailability + OTP verification), so offline it
+    // must NOT run — bump the shared block signal so the global "unavailable
+    // offline" snackbar fires, and close edit like the non-phone branch.
+    if (phoneChanged && phone && !isOnline.value) {
+      offlineBlockedAt.value = Date.now()
+      isEditing.value = false
+    }
+    else if (phoneChanged && phone) {
       // Pre-check availability so user isn't shown the discoverability notice
       // for a number that will be rejected as already registered.
       await userProfileStore.checkPhoneAvailability(phone)
@@ -256,11 +266,11 @@ async function handleSignOut() {
             <BaseTooltip v-if="full.phoneVerified" :text="t('user.profile.verifiedTooltip')">
               <BaseIcon name="verified" class="verified-icon" />
             </BaseTooltip>
-            <BaseButton v-else variant="text" size="sm" data-testid="verify-btn" @click="startEdit">
+            <BaseButton v-else variant="text" size="sm" data-testid="verify-btn" :disabled="!isOnline" @click="startEdit">
               {{ t('user.profile.verifyBtn') }}
             </BaseButton>
           </template>
-          <BaseButton v-else variant="text" size="sm" data-testid="add-phone-btn" @click="handleAddPhone">
+          <BaseButton v-else variant="text" size="sm" data-testid="add-phone-btn" :disabled="!isOnline" @click="handleAddPhone">
             <BaseIcon name="add" />
             {{ t('user.profile.addPhoneBtn') }}
           </BaseButton>
@@ -348,6 +358,7 @@ async function handleSignOut() {
                 class="input"
                 :placeholder="t('user.shared.phonePlaceholder')"
                 autocomplete="tel"
+                :disabled="!isOnline"
                 @input="onEditPhoneInput"
               >
               <BaseTooltip v-if="full?.phoneNumber" :text="t('user.profile.removePhoneBtn')">
@@ -357,7 +368,7 @@ async function handleSignOut() {
                   data-testid="remove-phone-btn"
                   shape="square"
                   tone="danger"
-                  :disabled="isRemovingPhone || showRemovePhoneConfirm"
+                  :disabled="isRemovingPhone || showRemovePhoneConfirm || !isOnline"
                   @click="handleRemovePhone"
                 />
               </BaseTooltip>

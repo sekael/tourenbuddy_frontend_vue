@@ -48,10 +48,6 @@ vi.mock('@/core/logging/use-logger', () => ({
   useLogger: () => ({ error: vi.fn(), info: vi.fn(), warn: vi.fn() }),
 }))
 
-vi.mock('@/core/offline/reconnect', () => ({
-  flushThenRefetch: (refetch: () => Promise<void>) => refetch(),
-}))
-
 vi.mock('@/core/realtime/use-realtime-subscription', () => ({
   useRealtimeSubscription: vi.fn().mockImplementation((opts: { onSubscribed?: () => void }) => {
     opts.onSubscribed?.()
@@ -77,12 +73,11 @@ describe('useFriendshipsStore offline hydrate (gap)', () => {
 
   it('hydrates friendships from cache offline without calling the repository', async () => {
     isOnline.value = false
-    // Cache holds the composite snapshot as a one-element array (matches the queue seam).
-    getCachedMock.mockResolvedValue([{
+    getCachedMock.mockResolvedValue({
       incoming: [],
       outgoing: [],
       friendships: [makeFriendship('user-them', 'user-me')],
-    }])
+    })
 
     mockCurrentUser.value = { id: 'user-me', phone_confirmed_at: '2024-01-01T00:00:00Z' }
     const store = useFriendshipsStore()

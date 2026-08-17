@@ -72,25 +72,14 @@ For each, the pattern is: offline → mutate → optimistic UI + saved toast + p
 - [x] **Delete a contact offline** → reconnect → gone.
 
 ### 2.3 Profile
-- [ ] Edit profile fields (name etc.) offline → reconnect → persisted.
-- [ ] Change locale offline → reconnect → persisted.
-- [ ] **deletePhone offline** → blocked ("This action isn't available offline" snackbar) —
+- [x] Edit profile fields (name etc.) offline → reconnect → persisted.
+- [x] Change locale offline → reconnect → persisted.
+- [x] **deletePhone offline** → blocked ("This action isn't available offline" snackbar) —
   it's an auth/SMS op, online-only by design.
 
 ### 2.4 Availability
-- [ ] Toggle several days on/off offline, save → optimistic paint + leaves edit mode +
+- [x] Toggle several days on/off offline, save → optimistic paint + leaves edit mode +
   saved toast. Reconnect → server day-set matches exactly (added + removed reconciled).
-
-### 2.5 Friendships (deferred notify is the interesting part)
-- [ ] From account B, send a request to account A (online). As A, go **offline**,
-  **accept** it → optimistic move to friends + saved toast. Reconnect → friendship on
-  server; the "responded" notification fires exactly once (see §5).
-- [ ] Offline **deny** an incoming request → reconnect → denied on server, one notification.
-- [ ] Offline **unfriend** (removeFriendship) → optimistic removal. Reconnect → friendship
-  deleted; the tour-link group-eviction notification(s) fire on replay with the
-  pre-delete recipient list (snapshotted at enqueue).
-- [ ] Offline, try to **send** a new friend request → not available (online-only; needs a
-  live phone lookup). Confirm it does not silently appear queued.
 
 ---
 

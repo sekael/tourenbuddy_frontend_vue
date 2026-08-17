@@ -7,6 +7,7 @@ import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import { useSnackbar } from '@/core/composables/use-snackbar'
+import { isOnline } from '@/core/offline/use-online-status'
 import { formatPhoneForDisplay } from '@/core/utils/phone-normalize'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import BlockConfirmDialog from '@/features/friendships/presentation/components/block-confirm-dialog.vue'
@@ -205,6 +206,13 @@ async function handleCancel(requestId: string) {
       </div>
 
       <template v-if="activeTab === 'pending'">
+        <div v-if="!isOnline" class="offline-note">
+          <BaseIcon name="cloud_off" class="note-icon" />
+          <p class="note-text">
+            {{ t('offlineSync.friendshipsOnlineOnly') }}
+          </p>
+        </div>
+
         <div class="deny-rights-note">
           <BaseIcon name="info" class="note-icon" />
           <p class="note-text">
@@ -260,7 +268,7 @@ async function handleCancel(requestId: string) {
                         size="sm"
                         class="action-btn"
                         data-testid="req-accept"
-                        :disabled="isAccepting"
+                        :disabled="isAccepting || !isOnline"
                         @click="handleAccept(req.id)"
                       >
                         {{ isAccepting ? t('friendships.acceptingBtn') : t('friendships.accept') }}
@@ -286,6 +294,7 @@ async function handleCancel(requestId: string) {
                       size="sm"
                       class="action-btn"
                       data-testid="req-block"
+                      :disabled="!isOnline"
                       @click="startBlock(req)"
                     >
                       {{ t('blocks.blockAction') }}
@@ -295,6 +304,7 @@ async function handleCancel(requestId: string) {
                       size="sm"
                       class="action-btn"
                       data-testid="req-deny"
+                      :disabled="!isOnline"
                       @click="handleDeny(req.id)"
                     >
                       {{ t('friendships.deny') }}
@@ -304,6 +314,7 @@ async function handleCancel(requestId: string) {
                       size="sm"
                       class="action-btn"
                       data-testid="req-accept"
+                      :disabled="!isOnline"
                       @click="startAcceptConfirm(req.id)"
                     >
                       {{ t('friendships.accept') }}
@@ -340,6 +351,7 @@ async function handleCancel(requestId: string) {
                   size="sm"
                   class="action-btn"
                   data-testid="req-cancel"
+                  :disabled="!isOnline"
                   @click="handleCancel(req.id)"
                 >
                   {{ t('friendships.cancel') }}
@@ -396,6 +408,16 @@ async function handleCancel(requestId: string) {
   border-radius: var(--radius-md);
   background-color: color-mix(in srgb, var(--color-primary) 8%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.offline-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  background-color: color-mix(in srgb, var(--color-on-surface-variant) 8%, transparent);
+  border: 1px solid var(--color-outline-variant);
 }
 
 .note-icon {

@@ -1,4 +1,3 @@
-import type { WriteQueueEntry } from '@/core/offline/write-queue'
 import type {
   FriendRequest,
   Friendship,
@@ -10,8 +9,6 @@ import { BlockedBySenderError } from '@/core/exceptions'
 import { useLogger } from '@/core/logging/use-logger'
 import { cachedLoad } from '@/core/offline/cached-load'
 import { mutate } from '@/core/offline/mutate'
-import { flushThenRefetch } from '@/core/offline/reconnect'
-import { registerReplay } from '@/core/offline/replay'
 import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { FriendshipRepositoryImpl } from '@/features/friendships/data/repositories/friendship-repository-impl'
@@ -24,27 +21,6 @@ import {
 import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
 
 type FriendRequestVM = FriendRequest & { _optimistic?: boolean }
-
-/** The composite cache value under `friendships:<uid>` — the whole store snapshot (DC2). */
-interface FriendshipsSnapshot {
-  incoming: FriendRequestVM[]
-  outgoing: FriendRequestVM[]
-  friendships: Friendship[]
-}
-
-/** Replay payload for a queued friend-request response (accept/deny). */
-interface FriendRequestReplay { action: 'accept' | 'deny', requestId: string }
-
-/** One pre-delete tour-link eviction notice, snapshotted at enqueue (DC6). */
-interface GroupEvictionNotice {
-  groupId: string
-  event: 'evicted_external' | 'dissolved'
-  recipients: string[]
-  recipientTourNames: Record<string, string>
-}
-
-/** Replay payload for a queued unfriend: the target + the pre-delete notices to fire. */
-interface FriendshipRemovalReplay { otherUserId: string, groupNotifications: GroupEvictionNotice[] }
 
 const repository: FriendshipRepository = new FriendshipRepositoryImpl()
 
@@ -132,26 +108,20 @@ export const useFriendshipsStore = defineStore('friendships', () => {
       // snapshot (also what gets cached); the assign is the SOLE ref writer, since it
       // runs for both the cache hydrate and the fresh fetch. Never assign a ref in the
       // fetcher — a value not consumed by assign can't survive an offline hydrate.
-      // ponytail: the snapshot is a composite singleton but rides the collection-shaped
-      // mutate seam (DC2) — cache it as a one-element array so the cache write-through
-      // (accept/deny/removeFriendship) and this hydrate agree on shape.
-      await cachedLoad<FriendshipsSnapshot[]>(
+      await cachedLoad(
         `friendships:${uid}`,
         async () => {
           const [allRequests, fships] = await Promise.all([
             repository.listIncoming(),
             repository.listFriendships(),
           ])
-          return [{
+          return {
             incoming: allRequests.filter(r => r.toUserId === uid),
             outgoing: allRequests.filter(r => r.fromUserId === uid),
             friendships: dedupeFriendships(fships),
-          }]
+          }
         },
-        (rows) => {
-          const snapshot = rows[0]
-          if (!snapshot)
-            return
+        (snapshot) => {
           // Requests reconcile against local optimistic rows; friendships are
           // server-authoritative, so assign the (already-deduped) snapshot directly.
           incomingRequests.value = reconcileRequests(snapshot.incoming, incomingRequests.value)
@@ -190,67 +160,6 @@ export const useFriendshipsStore = defineStore('friendships', () => {
 
   const scheduleRefetch = debounce(fetchAll, 150)
 
-  /** Snapshot the three ref collections into the composite cache value. */
-  function snapshotRefs(): FriendshipsSnapshot {
-    return {
-      incoming: incomingRequests.value,
-      outgoing: outgoingRequests.value,
-      friendships: friendships.value,
-    }
-  }
-
-  /** Paint a composite snapshot back onto the three refs (optimistic apply / hydrate). */
-  function assignSnapshot(s: FriendshipsSnapshot) {
-    incomingRequests.value = s.incoming
-    outgoingRequests.value = s.outgoing
-    friendships.value = s.friendships
-  }
-
-  /**
-   * Deferred-notify seam (DC6): a request response fires ONE "responded" notification —
-   * inline when online (from `run`), or on successful replay (from the handler) — never
-   * at enqueue time (offline can't reach the Worker).
-   */
-  function notifyResponded(requestId: string) {
-    notifyFriendRequestResponded(requestId)
-  }
-
-  /** Replay a queued accept/deny on reconnect (DC3): idempotent server call + deferred notify. */
-  async function replayFriendRequestWrite(entry: WriteQueueEntry): Promise<void> {
-    const { action, requestId } = entry.payload as FriendRequestReplay
-    // accept_friend_request is idempotent (early-returns if already accepted); deny is an
-    // idempotent status UPDATE — so a retried replay is safe.
-    if (action === 'accept')
-      await repository.accept(requestId)
-    else
-      await repository.deny(requestId)
-    notifyResponded(requestId)
-  }
-  registerReplay('friend-request', replayFriendRequestWrite)
-
-  /**
-   * Deferred-notify seam (DC6) for unfriend: fire one group-membership event per affected
-   * tour-link group with the PRE-delete recipient snapshot — inline when online, or on
-   * successful replay. The groups are gone server-side by now, hence the carried recipients.
-   */
-  function notifyGroupEvictions(otherUserId: string, notices: GroupEvictionNotice[]) {
-    for (const n of notices) {
-      notifyGroupMembershipEvent(n.groupId, n.event, {
-        affectedUserId: otherUserId,
-        recipients: n.recipients,
-        recipientTourNames: n.recipientTourNames,
-      })
-    }
-  }
-
-  /** Replay a queued unfriend on reconnect (DC3): idempotent delete + deferred eviction notify. */
-  async function replayFriendshipWrite(entry: WriteQueueEntry): Promise<void> {
-    const { otherUserId, groupNotifications } = entry.payload as FriendshipRemovalReplay
-    await repository.removeFriendship(otherUserId)
-    notifyGroupEvictions(otherUserId, groupNotifications)
-  }
-  registerReplay('friendship', replayFriendshipWrite)
-
   async function sendRequest(toUserId: string): Promise<FriendRequest | null> {
     if (!isPhoneVerified.value)
       return null
@@ -285,95 +194,52 @@ export const useFriendshipsStore = defineStore('friendships', () => {
   }
 
   async function accept(requestId: string): Promise<void> {
-    const req = incomingRequests.value.find(r => r.id === requestId)
-    if (!req)
-      return
-    const uid = authStore.currentUser!.id
-    const optimisticFriendship: Friendship = {
-      requestUserId: req.fromUserId,
-      responseUserId: uid,
-      createdAt: new Date().toISOString(),
-      requestId,
-    }
-    // Move from incoming → friendships (the optimistic transform, reused for ref + cache).
-    const applied: FriendshipsSnapshot = {
-      incoming: incomingRequests.value.filter(r => r.id !== requestId),
-      outgoing: outgoingRequests.value,
-      friendships: [...friendships.value, optimisticFriendship],
-    }
+    await mutate(async () => {
+      const req = incomingRequests.value.find(r => r.id === requestId)
+      if (!req)
+        return
 
-    await mutate<FriendshipsSnapshot>({
-      run: async () => {
-        assignSnapshot(applied)
-        try {
-          await repository.accept(requestId)
-          notifyResponded(requestId)
-        }
-        catch (err) {
-          // Rollback the optimistic move.
-          incomingRequests.value = [...incomingRequests.value, req]
-          friendships.value = friendships.value.filter(
-            f => !(f.requestUserId === req.fromUserId && f.responseUserId === uid && f.requestId === requestId),
-          )
-          logger.error('Failed to accept friend request', err)
-          throw err
-        }
-      },
-      intent: {
-        entityId: requestId,
-        kind: 'friend-request',
-        op: 'update',
-        payload: { action: 'accept', requestId } satisfies FriendRequestReplay,
-        baseSnapshot: snapshotRefs(),
-      },
-      cacheKey: `friendships:${uid}`,
-      current: [snapshotRefs()],
-      apply: () => [applied],
-      assign: ([s]) => {
-        if (s)
-          assignSnapshot(s)
-      },
+      // Optimistic: move from incoming to friendships
+      incomingRequests.value = incomingRequests.value.filter(r => r.id !== requestId)
+      const uid = authStore.currentUser!.id
+      const optimisticFriendship: Friendship = {
+        requestUserId: req.fromUserId,
+        responseUserId: uid,
+        createdAt: new Date().toISOString(),
+        requestId,
+      }
+      friendships.value = [...friendships.value, optimisticFriendship]
+
+      try {
+        await repository.accept(requestId)
+        notifyFriendRequestResponded(requestId)
+      }
+      catch (err) {
+        // Rollback
+        incomingRequests.value = [...incomingRequests.value, req]
+        friendships.value = friendships.value.filter(
+          f => !(f.requestUserId === req.fromUserId && f.responseUserId === uid && f.requestId === requestId),
+        )
+        logger.error('Failed to accept friend request', err)
+        throw err
+      }
     })
   }
 
   async function deny(requestId: string): Promise<void> {
-    const uid = authStore.currentUser!.id
     const req = incomingRequests.value.find(r => r.id === requestId)
-    const applied: FriendshipsSnapshot = {
-      incoming: incomingRequests.value.filter(r => r.id !== requestId),
-      outgoing: outgoingRequests.value,
-      friendships: friendships.value,
-    }
+    incomingRequests.value = incomingRequests.value.filter(r => r.id !== requestId)
 
-    await mutate<FriendshipsSnapshot>({
-      run: async () => {
-        incomingRequests.value = incomingRequests.value.filter(r => r.id !== requestId)
-        try {
-          await repository.deny(requestId)
-          notifyResponded(requestId)
-        }
-        catch (err) {
-          if (req)
-            incomingRequests.value = [...incomingRequests.value, req]
-          logger.error('Failed to deny friend request', err)
-          throw err
-        }
-      },
-      intent: {
-        entityId: requestId,
-        kind: 'friend-request',
-        op: 'update',
-        payload: { action: 'deny', requestId } satisfies FriendRequestReplay,
-        baseSnapshot: snapshotRefs(),
-      },
-      cacheKey: `friendships:${uid}`,
-      current: [snapshotRefs()],
-      apply: () => [applied],
-      assign: ([s]) => {
-        if (s)
-          assignSnapshot(s)
-      },
-    })
+    try {
+      await repository.deny(requestId)
+      notifyFriendRequestResponded(requestId)
+    }
+    catch (err) {
+      if (req)
+        incomingRequests.value = [...incomingRequests.value, req]
+      logger.error('Failed to deny friend request', err)
+      throw err
+    }
   }
 
   async function cancel(requestId: string): Promise<void> {
@@ -468,55 +334,42 @@ export const useFriendshipsStore = defineStore('friendships', () => {
   }
 
   async function removeFriendship(otherUserId: string): Promise<void> {
-    const uid = authStore.currentUser?.id
-    if (!uid)
-      return
-    const isMatch = (f: Friendship) =>
-      (f.requestUserId === uid && f.responseUserId === otherUserId)
-      || (f.requestUserId === otherUserId && f.responseUserId === uid)
-    const removed = friendships.value.find(isMatch)
-    if (!removed)
-      return
+    await mutate(async () => {
+      const uid = authStore.currentUser?.id
+      if (!uid)
+        return
+      const isMatch = (f: Friendship) =>
+        (f.requestUserId === uid && f.responseUserId === otherUserId)
+        || (f.requestUserId === otherUserId && f.responseUserId === uid)
+      const removed = friendships.value.find(isMatch)
+      friendships.value = friendships.value.filter(f => !isMatch(f))
 
-    // Snapshot tour-link groups that will be cascade-evicted by the friendship-delete
-    // trigger. MUST happen at enqueue, before the delete: the trigger tears down members +
-    // dissolves groups in the same txn, and friend tours stop being visible the moment the
-    // friendship row is gone — so the recipients are unrecoverable afterwards. Carried in the
-    // queue payload and fired on successful replay (mirrors tours' linkSnapshot, DC6).
-    const groupNotifications = useTourLinksStore().snapshotFriendshipRemovalNotifications(otherUserId)
-    const applied: FriendshipsSnapshot = {
-      incoming: incomingRequests.value,
-      outgoing: outgoingRequests.value,
-      friendships: friendships.value.filter(f => !isMatch(f)),
-    }
+      // Snapshot tour-link groups that will be cascade-evicted by the
+      // friendship-delete trigger. Must happen BEFORE delete: the trigger
+      // tears down members + dissolves groups in the same txn, and friend
+      // tours stop being visible the moment the friendship row is gone.
+      const tourLinksStore = useTourLinksStore()
+      const groupNotifications = tourLinksStore.snapshotFriendshipRemovalNotifications(otherUserId)
 
-    await mutate<FriendshipsSnapshot>({
-      run: async () => {
-        friendships.value = applied.friendships
-        try {
-          await repository.removeFriendship(otherUserId)
-          notifyGroupEvictions(otherUserId, groupNotifications)
-        }
-        catch (err) {
+      try {
+        await repository.removeFriendship(otherUserId)
+      }
+      catch (err) {
+        if (removed)
           friendships.value = [...friendships.value, removed]
-          logger.error('Failed to remove friendship', err)
-          throw err
-        }
-      },
-      intent: {
-        entityId: `friendship:${otherUserId}`,
-        kind: 'friendship',
-        op: 'delete',
-        payload: { otherUserId, groupNotifications } satisfies FriendshipRemovalReplay,
-        baseSnapshot: snapshotRefs(),
-      },
-      cacheKey: `friendships:${uid}`,
-      current: [snapshotRefs()],
-      apply: () => [applied],
-      assign: ([s]) => {
-        if (s)
-          assignSnapshot(s)
-      },
+        logger.error('Failed to remove friendship', err)
+        throw err
+      }
+
+      // Delete succeeded → fire one notification per affected group with the
+      // pre-eviction recipient snapshot. Best-effort; failures only warn.
+      for (const n of groupNotifications) {
+        notifyGroupMembershipEvent(n.groupId, n.event, {
+          affectedUserId: otherUserId,
+          recipients: n.recipients,
+          recipientTourNames: n.recipientTourNames,
+        })
+      }
     })
   }
 
@@ -551,9 +404,7 @@ export const useFriendshipsStore = defineStore('friendships', () => {
       ]
     },
     onChange: scheduleRefetch,
-    // DC4: drain the write queue BEFORE the reconnect refetch so a replayed accept/deny/
-    // unfriend lands server-side before the fresh snapshot overwrites the store.
-    onSubscribed: () => flushThenRefetch(fetchAll),
+    onSubscribed: () => fetchAll(),
   })
 
   // Clear local state on sign-out (channel teardown handled by primitive)

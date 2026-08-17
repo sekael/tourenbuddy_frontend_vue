@@ -88,7 +88,7 @@ succeeds, and exactly once.
 
 #### Scenario: No notification while offline
 
-- **WHEN** a shareable tour is created or a friend request is sent offline
+- **WHEN** a shareable tour is created offline
 - **THEN** no notification is dispatched until the write replays successfully
 
 #### Scenario: Notification fires once on replay

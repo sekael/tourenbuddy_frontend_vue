@@ -18,8 +18,9 @@ them. Key inherited facts: the app mints client-side UUIDs *before* the DB write
 (`uuidv4()` in `createTourFromDraft`), so **no temp-ID→server-ID remapping is
 needed** — an offline-created row already carries its final id and FKs resolve.
 The replay unit is the **whole store action** (DB write + GPX upload + notify), not
-a row diff. Friend tours are terminal read-only (no queue); friendship *actions*
-queue. Several actions dispatch notifications inline and must defer them to replay.
+a row diff. Friend tours are terminal read-only (no queue); friendship *actions* stay
+online-only (block-form). Several actions dispatch notifications inline and must defer
+them to replay.
 
 ## Goals / Non-Goals
 
@@ -40,6 +41,8 @@ queue. Several actions dispatch notifications inline and must defer them to repl
 **Non-Goals**
 - Per-field / CRDT merge — LWW-row only (DC5).
 - Offline writes to **friend tours** — terminal read-only (DC8).
+- Offline **friendship actions** (send / accept / decline / cancel / unfriend) —
+  online-only (block-form), each needs a live lookup that can't run offline (DC8).
 - Offline writes to **tour attachments** — out of scope. Attachments are a separate
   store, not in the offline-read set, and are large binary blobs (photos/PDFs) that
   would pressure the queue's IndexedDB quota far harder than GPX's small XML. They
@@ -194,7 +197,7 @@ disk doesn't have.
 `seq`** (cross-entity FK order, DC1): dispatch each → on success remove the entry →
 on failure apply DC9. Each handler makes a **single idempotent server call**
 determined by `entry.op`: `create` → `create_tour_full` (`ON CONFLICT DO NOTHING`)
-or equivalent create for contacts / profile / availability / friendships;
+or equivalent create for contacts / profile / availability;
 `update` → `update_tour_full` (update-only, never resurrects) or equivalent;
 `delete` → the delete; + best-effort GPX where relevant. Then the **deferred**
 notify (DC6), keyed on `entry.op`. A retried replay of the same entry is safe
@@ -253,7 +256,7 @@ compare:
 
 ### DC6 — Deferred notification dispatch, keyed on coalesced `op`
 Inline `notify*` calls (`notifyTourChanged` in `createTourFromDraft`/`updateTour`,
-`notifyFriendRequestReceived` in the friend-request path, etc.) move into the shared
+`notifyTourInterest` in the tour-links path, etc.) move into the shared
 success path that **both** the online `run` and the replay handler call — so for a
 queued write the notification fires on **successful replay**, when the Worker is
 reachable, and exactly once. Enqueue fires **no** notification. The **net** effect
@@ -281,7 +284,7 @@ member is deferred, and it is already best-effort (`.catch()` + warn) online, so
 stale snapshot means a possibly-missed eviction **notification**, never wrong
 eviction **state**.
 - *Principle:* notifications are **secondary** in offline features — every deferred
-  dispatch (change, interest, eviction, friend-request) is best-effort on replay.
+  dispatch (change, interest, eviction) is best-effort on replay.
   Offline never blocks or fails a write because a notification might not land.
 
 ### DC7 — Energy-efficient reachability, native-first, ping last resort
@@ -337,11 +340,14 @@ mitigation precisely because we *can't* guarantee eventual sync; making the pend
 state honestly visible beats a promise the platform won't keep.
 
 ### DC8 — Queue scope: writable entities only
-Enqueue applies to tours (owned), contacts, profile, availability, and **friendship
-actions** (accept / decline a pending request + unfriend `removeFriendship` — with
-deferred notify, DC6). Friend-request **send** and outgoing-request **cancel** stay
-online-only (block-form): send needs a live phone-registration lookup to resolve the
-target, so it is never actionable offline in the first place.
+Enqueue applies to tours (owned), contacts, profile, and availability. **All
+friendship actions stay online-only** (block-form `mutate`): sending, accepting,
+declining, or cancelling a friend request, and unfriend (`removeFriendship`). Each
+depends on a live lookup that can't run offline — send needs a phone-registration
+lookup to resolve the target; responding needs the requester's identity/name RPCs to
+render and act on the request — so a friendship action is never actionable offline in
+the first place. Their action buttons are disabled offline (friend-requests sheet +
+connect prompt), and the block-form seam drops any that slip through.
 **Friend tours are never enqueued** — no writable action exists on them; they stay
 pure read cache from offline-app-cache-sync. This keeps the replay registry to the actions that can
 truly originate offline.
@@ -415,6 +421,3 @@ already cached).
   the local-first workflow.
 - **Does the health-ping tier (DC7.4) ever fire in practice**, or do WS-state +
   flush-outcomes fully cover reachability? Measure; drop the tier if unused.
-- **Whether friendship-action replay needs idempotency keys** beyond LWW (a
-  double-sent friend request) — likely yes; confirmed against the friendship
-  uniqueness constraints during implementation.
