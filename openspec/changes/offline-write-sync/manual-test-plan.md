@@ -60,16 +60,16 @@ For each, the pattern is: offline → mutate → optimistic UI + saved toast + p
 - [x] **Mark completed** / **toggle visibility** offline → reconnect → persisted.
 - [x] **Pick a GPX file offline** on a tour → the track renders offline (from blob cache) →
   reconnect → the GPX is uploaded to Storage, then the row write lands.
-- [ ] **Delete** an existing tour offline → reconnect → gone on the server.
+- [x] **Delete** an existing tour offline → reconnect → gone on the server.
 
 ### 2.2 Contacts (aggregate — the key one)
-- [ ] Offline: on one contact, **rename it AND add a phone AND mark a different method
+- [x] Offline: on one contact, **rename it AND add a phone AND mark a different method
   primary AND remove a method** — several actions. Reconnect →
   ONE `update_contact_full` replay reconciles the whole method set; the primary you chose
   is the primary on the server; removed method is gone; no duplicate methods.
-- [ ] **Create a contact with methods offline** → reconnect → one `create_contact_full`,
+- [x] **Create a contact with methods offline** → reconnect → one `create_contact_full`,
   contact + methods present with client-minted ids.
-- [ ] **Delete a contact offline** → reconnect → gone.
+- [x] **Delete a contact offline** → reconnect → gone.
 
 ### 2.3 Profile
 - [ ] Edit profile fields (name etc.) offline → reconnect → persisted.

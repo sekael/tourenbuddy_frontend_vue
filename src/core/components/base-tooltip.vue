@@ -75,6 +75,17 @@ function onMouseLeave() {
   hideTooltip()
 }
 
+function onClick() {
+  // Dismiss on the activating click. When the click toggles the anchored control
+  // (e.g. the primary-phone star), the icon swaps / list re-renders in place and
+  // `mouseleave` may never fire — leaving the bubble stranded (the lingering
+  // "Haupttelefon" tooltip). Hiding here clears it the moment the icon is acted on;
+  // re-hovering shows it again. Touch keeps its tap-to-reveal + 3s auto-dismiss.
+  if (isTouch.value)
+    return
+  hideTooltip()
+}
+
 function onTouchStart() {
   if (!isTouch.value)
     return
@@ -99,6 +110,7 @@ onUnmounted(() => {
     :aria-describedby="tooltipId"
     @mouseenter="onMouseEnter"
     @mouseleave="onMouseLeave"
+    @click="onClick"
     @touchstart.passive="onTouchStart"
     @keydown.escape="onEscape"
   >
