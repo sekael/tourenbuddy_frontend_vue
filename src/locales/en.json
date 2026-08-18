@@ -789,9 +789,20 @@
       "title": "Changes that couldn't sync",
       "banner": "{count} change couldn't sync | {count} changes couldn't sync",
       "review": "Review",
-      "entry": "{kind} ({op})",
       "retry": "Retry",
-      "discard": "Discard"
+      "discard": "Discard",
+      "empty": "No more edits that haven't been synchronized",
+      "op": {
+        "create": "Create {entity}",
+        "update": "Update {entity}",
+        "delete": "Delete {entity}"
+      },
+      "kind": {
+        "tour": "tour",
+        "contact": "contact"
+      },
+      "permanentReason": "This change couldn't be applied and was not saved",
+      "transientReason": "The server couldn't be reached — you can try again"
     }
   }
 }

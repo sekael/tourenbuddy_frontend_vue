@@ -6,6 +6,7 @@ import {
   registerReplay,
   replayQueue,
 } from '@/core/offline/replay'
+import { isOnline } from '@/core/offline/use-online-status'
 
 // Mock the queue store so the drain LOGIC is tested in isolation — no IndexedDB.
 vi.mock('@/core/offline/write-queue', () => ({
@@ -30,9 +31,28 @@ beforeEach(() => {
   vi.mocked(deadLetter).mockClear()
 })
 
-afterEach(() => vi.useRealTimers())
+afterEach(() => {
+  vi.useRealTimers()
+  isOnline.value = true // restore the happy-dom default for the next test
+})
 
 describe('replayQueue drain', () => {
+  it('does NOT drain while offline — the pending write stays queued, never dead-lettered', async () => {
+    isOnline.value = false
+    registerReplay('tour', async () => {
+      throw new Error('network') // would burn attempts → dead-letter if the drain ran
+    })
+    vi.mocked(peekAllOrdered).mockResolvedValue([entry({ entityId: 'a', attempts: 4 })])
+
+    await replayQueue()
+
+    // Bailed before touching the queue: a false-positive-online cold boot can't strand an
+    // offline edit in dead-letter (the durability-test bug).
+    expect(peekAllOrdered).not.toHaveBeenCalled()
+    expect(deadLetter).not.toHaveBeenCalled()
+    expect(bumpAttempt).not.toHaveBeenCalled()
+  })
+
   it('removes each entry from the queue on successful dispatch, in seq order', async () => {
     const seen: number[] = []
     registerReplay('tour', async (e) => {
@@ -74,7 +94,7 @@ describe('replayQueue drain', () => {
     expect(remove).toHaveBeenCalledWith('b') // not head-of-line blocked
   })
 
-  it('a transient failure at the attempts cap becomes permanent (dead-letter, no bump)', async () => {
+  it('a transient failure at the attempts cap dead-letters as transient (retryable), no bump', async () => {
     registerReplay('tour', async () => {
       throw new Error('network')
     })
@@ -82,7 +102,9 @@ describe('replayQueue drain', () => {
 
     await replayQueue()
 
-    expect(deadLetter).toHaveBeenCalledWith('a', 'permanent')
+    // A network/5xx outage that exhausted its budget may recover later — tag it 'transient' so the
+    // review surface offers Retry, unlike a 'permanent' (validation/RLS) or 'conflict' (LWW) failure.
+    expect(deadLetter).toHaveBeenCalledWith('a', 'transient')
     expect(bumpAttempt).not.toHaveBeenCalled()
   })
 

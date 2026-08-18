@@ -42,8 +42,16 @@ export interface WriteQueueEntry {
   seq: number
   /** Replay attempts so far — drives capped backoff / dead-letter (DC9). */
   attempts: number
-  /** Dead-letter only: why it gave up, so the review surface can distinguish an LWW conflict (DC5). */
-  deadReason?: 'conflict' | 'permanent'
+  /**
+   * Dead-letter only: why it gave up, so the review surface can decide what to offer.
+   * - `conflict`  — LWW loser (DC5): server moved past our frozen baseUpdatedAt. Retry re-runs the
+   *   same losing comparison → never succeeds. Discard only.
+   * - `permanent` — non-retryable server rejection (validation / RLS / 404 / cascade). Same payload,
+   *   same result → never succeeds. Discard only.
+   * - `transient` — exhausted the attempt budget on a network/5xx error. The server may recover
+   *   later, so a manual retry can still land. Retry offered.
+   */
+  deadReason?: 'conflict' | 'permanent' | 'transient'
 }
 
 /**
@@ -93,7 +101,7 @@ export async function bumpAttempt(entityId: string): Promise<void> {
 }
 
 /** Move a permanently-failed entry to the dead-letter store so it stops blocking the drain (DC9). */
-export async function deadLetter(entityId: string, reason: 'conflict' | 'permanent' = 'permanent'): Promise<void> {
+export async function deadLetter(entityId: string, reason: 'conflict' | 'permanent' | 'transient' = 'permanent'): Promise<void> {
   const db = await openDataCacheDb()
   try {
     const tx = db.transaction([QUEUE_STORE, DEAD_LETTER_STORE], 'readwrite')

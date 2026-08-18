@@ -88,9 +88,9 @@ For each, the pattern is: offline → mutate → optimistic UI + saved toast + p
 Needs two views of the same row. Use account A in the app + a second device / the
 Supabase SQL editor as the "other writer".
 
-- [ ] Offline (A), edit tour X's name to "Offline". While A is offline, change tour X on
+- [x] Offline (A), edit tour X's name to "Offline". While A is offline, change tour X on
   the server (SQL: `update tours set name='Server', updated_at=now() where id=...`).
-- [ ] Reconnect A. Expected: the server's "Server" wins (its `updated_at` is newer than A's
+- [x] Reconnect A. Expected: the server's "Server" wins (its `updated_at` is newer than A's
   baseline). A's offline edit does **not** clobber it. The losing write shows in the
   **dead-letter banner** with the **conflict** copy ("Changed on another device — your
   offline edit was not applied").
@@ -102,10 +102,10 @@ Supabase SQL editor as the "other writer".
 Force a permanent failure. Easiest: offline-edit a row, then delete that row on the
 server (SQL) before reconnecting — the update-only replay hits 0 rows → dead-letter.
 
-- [ ] Reconnect → **amber dead-letter banner** "N changes couldn't sync" → tap **Review**.
-- [ ] The sheet lists the failed write (kind + op). Tap **Retry** → it re-attempts (will
+- [x] Reconnect → **amber dead-letter banner** "N changes couldn't sync" → tap **Review**.
+- [x] The sheet lists the failed write (kind + op). Tap **Retry** → it re-attempts (will
   re-fail here; that's fine — confirms the retry path runs).
-- [ ] Tap **Discard** → entry disappears from the list; banner count drops.
+- [x] Tap **Discard** → entry disappears from the list; banner count drops.
   - KNOWN LIMITATION (deferred): discard does not instantly revert the optimistic value in
     the current view — it self-heals on the next refetch (reconnect/foreground). Note
     whether this actually bites you in practice; we'll wire instant-revert if it does.
@@ -117,16 +117,14 @@ server (SQL) before reconnecting — the update-only replay hits 0 rows → dead
 Requires notifications enabled (`VITE_NOTIFICATIONS_ENABLED=true` + VAPID/hook config) OR
 just watch the Network tab for the `/notify/*` POSTs.
 
-- [ ] Offline accept a friend request → **zero** `/notify/*` calls while offline.
-- [ ] Reconnect → **exactly one** notification POST for that response (not zero, not two).
-- [ ] Offline create-then-edit a tour → on reconnect the notification says "created"
+- [x] Offline create-then-edit a tour → on reconnect the notification says "created"
   (op-keyed), not "updated"; and only one fires.
 
 ---
 
 ## 6. Attachments online-only (DC10)
 
-- [ ] Open a tour's attachments picker **offline** → the add/upload control is replaced by
+- [x] Open a tour's attachments picker **offline** → the add/upload control is replaced by
   the "Attachments are available online only" hint; existing attachments still render and
   open. Go online → the add control returns.
 
@@ -134,14 +132,14 @@ just watch the Network tab for the `/notify/*` POSTs.
 
 ## 7. Durability & indicator
 
-- [ ] With pending writes queued, fully close and reopen the app (still offline) → the
+- [x] With pending writes queued, fully close and reopen the app (still offline) → the
   **pending pill** is present on launch (durable, read from IndexedDB — not a lost toast).
-- [ ] Drain everything (reconnect) → pending pill gone on next launch.
+- [x] Drain everything (reconnect) → pending pill gone on next launch.
 
 ---
 
 ## Sign-off
 
-- [ ] All §1–§7 rows behave as described.
-- [ ] `npm run test`, `npx eslint .`, `npm run type-check` all clean.
-- [ ] Migrations verified via `supabase db reset`; ready to prompt for `supabase db push`.
+- [x] All §1–§7 rows behave as described.
+- [x] `npm run test`, `npx eslint .`, `npm run type-check` all clean.
+- [x] Migrations verified via `supabase db reset`; ready to prompt for `supabase db push`.

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import type { WriteQueueEntry } from '@/core/offline/write-queue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
-import BottomSheet from '@/core/components/bottom-sheet.vue'
 import { savedOfflineAt } from '@/core/offline/mutate'
 import {
   deadLetters,
@@ -16,7 +17,7 @@ import { drainedAt } from '@/core/offline/replay'
 // Section 8 UI: a DURABLE pending-sync indicator (reads the queue on every launch, even
 // offline, so unsynced work is always visible — DC7) and a dead-letter review surface
 // (retry / discard). The enqueue itself surfaces via the transient pending-count snackbar.
-const { t } = useI18n({ useScope: 'global' })
+const { t, te } = useI18n({ useScope: 'global' })
 
 // Refresh on launch and whenever an enqueue or a drain changes the queue.
 onMounted(refreshQueueStatus)
@@ -42,6 +43,70 @@ watch(pendingCount, (n, prev) => {
 })
 
 const reviewOpen = ref(false)
+
+// Dead-letter banner collapses to an icon; hover (desktop) or tap (mobile) expands it to
+// text + review. Expansion is sticky for 5s regardless of pointer position, so the label
+// doesn't vanish the instant the cursor drifts off.
+const deadLetterExpanded = ref(false)
+let expandTimer: ReturnType<typeof setTimeout> | null = null
+function expandDeadLetter() {
+  deadLetterExpanded.value = true
+  if (expandTimer)
+    clearTimeout(expandTimer)
+  expandTimer = setTimeout(() => {
+    deadLetterExpanded.value = false
+  }, 5000)
+}
+onUnmounted(() => {
+  if (expandTimer)
+    clearTimeout(expandTimer)
+})
+
+// core/ never imports feature domain types (layering), so read the entity name structurally
+// from the queued payload / pre-edit snapshot: `name` (tour), `displayName` or first+last (contact).
+function readName(o: unknown): string | null {
+  if (!o || typeof o !== 'object')
+    return null
+  const r = o as Record<string, unknown>
+  if (typeof r.name === 'string' && r.name.trim())
+    return r.name.trim()
+  if (typeof r.displayName === 'string' && r.displayName.trim())
+    return r.displayName.trim()
+  const first = typeof r.firstName === 'string' ? r.firstName.trim() : ''
+  const last = typeof r.lastName === 'string' ? r.lastName.trim() : ''
+  return `${first} ${last}`.trim() || null
+}
+
+function entityName(entry: WriteQueueEntry): string | null {
+  const p = entry.payload as Record<string, unknown> | null
+  // create/update wrap the entity (`{ draft }` tour, `{ contact }`); delete carries only baseSnapshot.
+  for (const candidate of [p?.draft, p?.contact, entry.baseSnapshot]) {
+    const name = readName(candidate)
+    if (name)
+      return name
+  }
+  return null
+}
+
+// Human-readable action, e.g. "Update tour Piz Buin" / "Delete contact Anna" — never "tour (update)".
+function entryLabel(entry: WriteQueueEntry): string {
+  const kindKey = `offlineSync.deadLetter.kind.${entry.kind}`
+  const kindLabel = te(kindKey) ? t(kindKey) : entry.kind
+  const name = entityName(entry)
+  const entity = name ? `${kindLabel} ${name}` : kindLabel
+  return t(`offlineSync.deadLetter.op.${entry.op}`, { entity })
+}
+
+// Why it failed — also gates the Retry button: only a transient outage can flip on retry.
+function reasonText(entry: WriteQueueEntry): string | null {
+  if (entry.deadReason === 'conflict')
+    return t('offlineSync.conflictLost')
+  if (entry.deadReason === 'transient')
+    return t('offlineSync.deadLetter.transientReason')
+  if (entry.deadReason === 'permanent')
+    return t('offlineSync.deadLetter.permanentReason')
+  return null
+}
 </script>
 
 <template>
@@ -66,48 +131,63 @@ const reviewOpen = ref(false)
     </div>
   </Transition>
 
-  <!-- Dead-letter banner -->
+  <!-- Dead-letter banner: bottom-left, collapsed to a warning icon. Hover (desktop) or
+       tap (mobile) expands it to the message + review action. Hidden while the review
+       surface is open so it never floats over the desktop dialog. -->
   <Transition name="sync-toast">
-    <button v-if="deadLetters.length > 0" class="sync-deadletter" @click="reviewOpen = true">
+    <div
+      v-if="deadLetters.length > 0 && !reviewOpen"
+      class="sync-deadletter"
+      :class="{ 'sync-deadletter--expanded': deadLetterExpanded }"
+      role="status"
+      @click="expandDeadLetter"
+      @mouseenter="expandDeadLetter"
+    >
       <BaseIcon name="warning" size="sm" />
-      <span>{{ t('offlineSync.deadLetter.banner', { count: deadLetters.length }) }}</span>
-      <span class="review">{{ t('offlineSync.deadLetter.review') }}</span>
-    </button>
+      <span class="dl-body">
+        <span class="dl-text">{{ t('offlineSync.deadLetter.banner', { count: deadLetters.length }) }}</span>
+        <button type="button" class="dl-review" @click.stop="reviewOpen = true">
+          {{ t('offlineSync.deadLetter.review') }}
+        </button>
+      </span>
+    </div>
   </Transition>
 
-  <!-- BottomSheet is unpositioned (width:100%); it needs a fixed, bottom-anchored host or
-       it renders in flow behind the full-screen route page. Teleport to body so no route's
-       `position: fixed` / stacking context can bury it, and back it with a click-to-close scrim. -->
+  <!-- Review surface: AdaptiveOverlay = bottom sheet on mobile, centered dialog on desktop
+       (same primitive as contacts / friend requests). Teleported to body over every route
+       surface. The host is a fixed, bottom-anchored scrim on mobile; on desktop it collapses
+       to `display: contents` so DialogWindow self-centers with its own backdrop. -->
   <Teleport to="body">
-    <div v-if="reviewOpen" class="review-scrim" @click="reviewOpen = false">
-      <div class="review-host" @click.stop>
-        <BottomSheet
-          :title="t('offlineSync.deadLetter.title')"
-          fit-content
-          @close="reviewOpen = false"
-        >
-          <ul class="deadletter-list">
-            <li v-for="entry in deadLetters" :key="entry.entityId" class="deadletter-item">
-              <div class="meta">
-                <span class="what">{{ t('offlineSync.deadLetter.entry', { kind: entry.kind, op: entry.op }) }}</span>
-                <span v-if="entry.deadReason === 'conflict'" class="reason">
-                  {{ t('offlineSync.conflictLost') }}
-                </span>
-              </div>
-              <div class="actions">
-                <button class="retry" @click="retryDeadLettered(entry.entityId)">
-                  <BaseIcon name="sync_alt" size="sm" />
-                  {{ t('offlineSync.deadLetter.retry') }}
-                </button>
-                <button class="discard" @click="discardDeadLettered(entry.entityId)">
-                  <BaseIcon name="delete" size="sm" />
-                  {{ t('offlineSync.deadLetter.discard') }}
-                </button>
-              </div>
-            </li>
-          </ul>
-        </BottomSheet>
-      </div>
+    <div v-if="reviewOpen" class="review-host" @click.self="reviewOpen = false">
+      <AdaptiveOverlay
+        :title="t('offlineSync.deadLetter.title')"
+        @close="reviewOpen = false"
+      >
+        <p v-if="deadLetters.length === 0" class="deadletter-empty">
+          {{ t('offlineSync.deadLetter.empty') }}
+        </p>
+        <ul v-else class="deadletter-list">
+          <li v-for="entry in deadLetters" :key="entry.entityId" class="deadletter-item">
+            <div class="meta">
+              <span class="what">{{ entryLabel(entry) }}</span>
+              <span v-if="reasonText(entry)" class="reason">
+                {{ reasonText(entry) }}
+              </span>
+            </div>
+            <div class="actions">
+              <!-- Retry only for a transient outage — a conflict/permanent failure re-fails identically. -->
+              <button v-if="entry.deadReason === 'transient'" class="retry" @click="retryDeadLettered(entry.entityId)">
+                <BaseIcon name="sync_alt" size="sm" />
+                {{ t('offlineSync.deadLetter.retry') }}
+              </button>
+              <button class="discard" @click="discardDeadLettered(entry.entityId)">
+                <BaseIcon name="delete" size="sm" />
+                {{ t('offlineSync.deadLetter.discard') }}
+              </button>
+            </div>
+          </li>
+        </ul>
+      </AdaptiveOverlay>
     </div>
   </Teleport>
 </template>
@@ -160,14 +240,19 @@ const reviewOpen = ref(false)
   font-variant-numeric: tabular-nums;
 }
 
+/* Collapsed = a warning icon anchored in the bottom-left corner (the offline-chip slot,
+   z-index above it so it wins the rare offline+dead-letter overlap). Expanding raises it
+   above the bottom action pill AND reveals the text/button — both animate together.
+   // ponytail: corner overlap with the offline/pending chips is left as-is — after the
+   // drain-connectivity fix, being offline WITH a dead letter is rare and transient. */
 .sync-deadletter {
   position: fixed;
-  bottom: calc(var(--spacing-md) + var(--safe-bottom, 0px) + 6rem);
+  bottom: calc(var(--spacing-md) + var(--safe-bottom, 0px));
   left: var(--spacing-md);
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-md);
+  gap: 0;
+  padding: var(--spacing-xs);
   border: none;
   border-radius: var(--radius-lg);
   background: var(--color-amber-600, #d97706);
@@ -178,15 +263,49 @@ const reviewOpen = ref(false)
   z-index: 210;
   max-width: 90vw;
   cursor: pointer;
+  transition:
+    bottom 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    padding 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.sync-deadletter .review {
+.sync-deadletter--expanded {
+  bottom: calc(var(--spacing-md) + var(--safe-bottom, 0px) + 6rem);
+  padding: var(--spacing-xs) var(--spacing-md);
+}
+
+/* Text + review action, clipped to zero width until the banner expands. */
+.sync-deadletter .dl-body {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transition:
+    max-width 0.25s ease,
+    opacity 0.2s ease;
+}
+
+.sync-deadletter--expanded .dl-body {
+  max-width: 70vw;
+  opacity: 1;
+}
+
+.sync-deadletter .dl-text {
+  margin-left: var(--spacing-xs);
+}
+
+.sync-deadletter .dl-review {
+  color: white;
   text-decoration: underline;
+  cursor: pointer;
 }
 
-/* Fixed, bottom-anchored modal host for the review sheet + a click-to-close scrim.
-   Above every route surface (the offline chips sit at ~190; routes/sheets well below 400). */
-.review-scrim {
+/* Fixed, bottom-anchored scrim host for the mobile bottom sheet. Above every route
+   surface (offline chips sit at ~210; routes/sheets well below 400). On desktop it
+   collapses to `display: contents` so DialogWindow self-centers with its own backdrop. */
+.review-host {
   position: fixed;
   inset: 0;
   z-index: 400;
@@ -196,9 +315,10 @@ const reviewOpen = ref(false)
   background: var(--color-backdrop-strong, rgba(15, 23, 42, 0.45));
 }
 
-.review-host {
-  width: 100%;
-  max-width: var(--bottom-sheet-max-width, 480px);
+@media (min-width: 600px) {
+  .review-host {
+    display: contents;
+  }
 }
 
 .deadletter-list {
@@ -208,6 +328,13 @@ const reviewOpen = ref(false)
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
+}
+
+.deadletter-empty {
+  padding: var(--spacing-md) 0;
+  font-size: 0.875rem;
+  color: var(--color-slate-500, #64748b);
+  text-align: center;
 }
 
 .deadletter-item {

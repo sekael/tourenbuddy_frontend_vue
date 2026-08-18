@@ -1,5 +1,6 @@
 import type { WriteQueueEntry } from '@/core/offline/write-queue'
 import { ref } from 'vue'
+import { isOnline } from '@/core/offline/use-online-status'
 import {
   bumpAttempt,
   deadLetter,
@@ -77,10 +78,19 @@ function referencesDeadEntity(entry: WriteQueueEntry, deadIds: Set<string>): boo
 }
 
 async function runDrain(): Promise<void> {
+  // Never drain without real connectivity. A drain kicked off during the cold-boot
+  // `navigator.onLine` false-positive window (or a probe flap) would hit the network, fail,
+  // and — because scheduleRetry re-fires regardless of connectivity — burn through
+  // MAX_ATTEMPTS within the backoff window and DEAD-LETTER a perfectly good pending offline
+  // write. Bailing here keeps it durably queued; the reconnect `watch(isOnline)` in
+  // flush-triggers re-kicks the drain once connectivity truly returns.
+  if (!isOnline.value)
+    return
+
   const entries = await peekAllOrdered()
   const deadIds = new Set<string>()
   let nextRetryDelay = Number.POSITIVE_INFINITY
-  const kill = async (id: string, reason: 'conflict' | 'permanent' = 'permanent') => {
+  const kill = async (id: string, reason: 'conflict' | 'permanent' | 'transient' = 'permanent') => {
     await deadLetter(id, reason)
     deadIds.add(id)
   }
@@ -104,9 +114,17 @@ async function runDrain(): Promise<void> {
     }
     catch (err) {
       if (err instanceof PermanentReplayError || entry.attempts + 1 >= MAX_ATTEMPTS) {
-        // LWW losers throw PermanentReplayError with an "LWW loser" message (DC5) — tag them
-        // 'conflict' so the dead-letter surface shows the conflict copy, not a generic failure.
-        const reason = err instanceof PermanentReplayError && /LWW/i.test(err.message) ? 'conflict' : 'permanent'
+        // Three terminal buckets, distinguished so the review surface only offers Retry when it
+        // can actually land (a manual retry re-runs the identical call, so only a transient outage
+        // can flip the outcome):
+        //   - LWW losers throw PermanentReplayError w/ an "LWW" message (DC5) → 'conflict' (frozen
+        //     baseUpdatedAt loses again on retry).
+        //   - other PermanentReplayError → 'permanent' (validation/RLS/404 — same payload, same no).
+        //   - exhausted attempt budget on a non-permanent (network/5xx) error → 'transient' (server
+        //     may recover; retry can succeed).
+        const reason = err instanceof PermanentReplayError
+          ? (/LWW/i.test(err.message) ? 'conflict' : 'permanent')
+          : 'transient'
         await kill(entry.entityId, reason)
       }
       else {
