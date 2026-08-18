@@ -18,8 +18,8 @@ them. Key inherited facts: the app mints client-side UUIDs *before* the DB write
 (`uuidv4()` in `createTourFromDraft`), so **no temp-ID→server-ID remapping is
 needed** — an offline-created row already carries its final id and FKs resolve.
 The replay unit is the **whole store action** (DB write + GPX upload + notify), not
-a row diff. Friend tours are terminal read-only (no queue); friendship *actions* stay
-online-only (block-form). Several actions dispatch notifications inline and must defer
+a row diff. Friend tours are terminal read-only (no queue); **unfriend** queues while
+friend-**request** actions stay online-only (block-form). Several actions dispatch notifications inline and must defer
 them to replay.
 
 ## Goals / Non-Goals
@@ -41,8 +41,9 @@ them to replay.
 **Non-Goals**
 - Per-field / CRDT merge — LWW-row only (DC5).
 - Offline writes to **friend tours** — terminal read-only (DC8).
-- Offline **friendship actions** (send / accept / decline / cancel / unfriend) —
-  online-only (block-form), each needs a live lookup that can't run offline (DC8).
+- Offline friend-**request** actions (send / accept / decline / cancel) — online-only
+  (block-form), each needs a live lookup that can't run offline. Unfriend
+  (`removeFriendship`) is **in scope** and queues (DC8).
 - Offline writes to **tour attachments** — out of scope. Attachments are a separate
   store, not in the offline-read set, and are large binary blobs (photos/PDFs) that
   would pressure the queue's IndexedDB quota far harder than GPX's small XML. They
@@ -340,14 +341,16 @@ mitigation precisely because we *can't* guarantee eventual sync; making the pend
 state honestly visible beats a promise the platform won't keep.
 
 ### DC8 — Queue scope: writable entities only
-Enqueue applies to tours (owned), contacts, profile, and availability. **All
-friendship actions stay online-only** (block-form `mutate`): sending, accepting,
-declining, or cancelling a friend request, and unfriend (`removeFriendship`). Each
-depends on a live lookup that can't run offline — send needs a phone-registration
-lookup to resolve the target; responding needs the requester's identity/name RPCs to
-render and act on the request — so a friendship action is never actionable offline in
-the first place. Their action buttons are disabled offline (friend-requests sheet +
-connect prompt), and the block-form seam drops any that slip through.
+Enqueue applies to tours (owned), contacts, profile, availability, and **unfriend**
+(`removeFriendship`, `kind='friendship'` op=delete — with the pre-delete tour-link
+eviction recipients snapshotted at enqueue and fired on replay, DC6). Friend
+**request** actions stay online-only (block-form `mutate`): sending, accepting,
+declining, or cancelling a request. Each depends on a live lookup that can't run
+offline — send needs a phone-registration lookup to resolve the target; responding
+needs the requester's identity/name RPCs to render and act on the request — so a
+request action is never actionable offline in the first place. Their action buttons
+are disabled offline (friend-requests sheet + connect prompt), and the block-form seam
+drops any that slip through.
 **Friend tours are never enqueued** — no writable action exists on them; they stay
 pure read cache from offline-app-cache-sync. This keeps the replay registry to the actions that can
 truly originate offline.

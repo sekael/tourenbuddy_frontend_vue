@@ -14,12 +14,12 @@ planned slice:
 
 offline-app-cache-sync deliberately blocks offline writes rather than losing them: standing at
 a trailhead with no signal, a user can *read* their planned tour but cannot edit
-it. This change closes that gap — create/edit a tour, contact, profile field, or
-availability offline, and it syncs automatically once back online, with the user
-never having to remember to retry. (**All friendship actions stay online-only** —
-sending, accepting, declining, cancelling a request, and unfriending each depend on
-live lookups (phone-registration, requester identity/name RPCs) that can't run
-offline, so they are never actionable without a connection.)
+it. This change closes that gap — create/edit a tour, contact, profile field,
+availability, or unfriend offline, and it syncs automatically once back online, with
+the user never having to remember to retry. (Friend **request** actions — sending,
+accepting, declining, cancelling a request — stay online-only: they depend on live
+lookups (phone-registration, requester identity/name RPCs) that can't run offline, so
+they are never actionable without a connection.)
 
 offline-app-cache-sync's design (D6) already recorded every stance and hazard this change
 inherits — the `mutate()` enqueue seam, the cache second-writer, the reconnect
@@ -90,14 +90,14 @@ prerequisite's change folder — references use durable capability/code anchors 
   backoff; permanently-failing entries (validation, RLS denial, deleted-entity,
   LWW-loser) move to a dead-letter surfaced to the user ("N changes couldn't
   sync — retry / discard"), and do **not** block the rest of the queue.
-- **Terminal read-only unchanged:** friend **tours** get no queue (they are other
-  users' tours — never writable). **All friendship actions stay online-only**
-  (block-form): sending, accepting, declining, or cancelling a friend request, and
-  unfriend (`removeFriendship`). They depend on live lookups (phone-registration via
-  `findUsersByPhones` to resolve a target, requester identity/name RPCs to render the
-  request) that can't run offline, so a friendship action is never actionable without
-  a connection. Their action buttons are disabled offline (friend-requests sheet +
-  connect prompt).
+- **Friendship scope split:** friend **tours** get no queue (they are other users'
+  tours — never writable). **Unfriend (`removeFriendship`) queues** like the other
+  writable entities, with deferred tour-link eviction notify (DC6). Friend **request**
+  actions stay online-only (block-form): sending, accepting, declining, or cancelling
+  a request. They depend on live lookups (phone-registration via `findUsersByPhones`
+  to resolve a target, requester identity/name RPCs to render the request) that can't
+  run offline, so a request action is never actionable without a connection — their
+  buttons are disabled offline (friend-requests sheet + connect prompt).
 - **Architecture doc:** the PWA section's "no offline data sync" line is removed —
   read cache + write sync now both exist.
 
@@ -134,8 +134,9 @@ prerequisite's change folder — references use durable capability/code anchors 
   supplies `mutate()` a serializable intent + an optimistic local apply + registers
   a replay handler; inline `notify*` calls move into the shared success path so
   replay can fire them. `tours-store`, `contacts-store`, `user-profile-store`,
-  `availability-store`. `friendships-store` stays online-only (block-form `mutate`);
-  friend-tour reads untouched.
+  `availability-store`, and `friendships-store` (unfriend `removeFriendship` only).
+  `friendships-store`'s friend-**request** actions stay online-only (block-form
+  `mutate`); friend-tour reads untouched.
 - **Reconnect sequencing:** the per-store realtime `onSubscribed` refetch awaits a
   shared "replay drained" gate so flush precedes overwrite.
 - **UI:** pending-sync indicator (queued count), a "saved offline" toast on enqueue,
@@ -148,9 +149,9 @@ prerequisite's change folder — references use durable capability/code anchors 
 - **No new npm dependency. No Worker code change** (notifications still dispatch via
   the existing `notify-dispatch` surface; only their *timing* moves to replay).
 - **Explicitly out of scope:** per-field / CRDT merge (LWW only), offline writes to
-  friend tours (terminal read-only), **all friendship actions** (send / accept /
-  decline / cancel / unfriend — each needs online lookups; stay block-form with
-  action buttons disabled offline), offline writes to **tour attachments** (large
+  friend tours (terminal read-only), friend **request** actions (send / accept /
+  decline / cancel — each needs online lookups; stay block-form with action buttons
+  disabled offline — but **unfriend queues**), offline writes to **tour attachments** (large
   blobs; stay blocked offline with an online-only UI hint, DC10), Service Worker
   Background Sync API (unsupported on iOS Safari — the primary target — so replay is
   in-app on reachability), and any new offline **read** caching (that is
