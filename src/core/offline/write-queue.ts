@@ -185,6 +185,23 @@ export async function assertQueueHeadroom(projectedBytes: number): Promise<void>
 }
 
 /**
+ * Order-insensitive structural equality via a key-sorted JSON canonical form. Used to
+ * detect an update that nets back to its pre-edit baseline. Arrays keep their order
+ * (significant); object key order is normalized so `{...profile, ...fields}` re-spreads
+ * compare equal to the cached baseline. Reads through Vue proxies fine; Dates serialize
+ * to a stable ISO string on both sides.
+ * // ponytail: JSON canonical, not a deep-equal lib — payloads here are plain serializable
+ * objects (they're structured-clone'd anyway). Swap for a real deep-equal only if a
+ * payload ever carries something JSON drops (a Map, a Blob compared by value, …).
+ */
+function canonical(value: unknown): string {
+  return JSON.stringify(value, (_k, v) =>
+    v && typeof v === 'object' && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b)))
+      : v)
+}
+
+/**
  * Fold an incoming offline mutation into an entity's pending queue entry (DC1).
  * Pure — no IDB, no clock. Returns the next entry, or null to ANNIHILATE.
  * Preserves existing.seq when folding; a brand-new entry keeps incoming's seq.
@@ -193,6 +210,7 @@ export async function assertQueueHeadroom(projectedBytes: number): Promise<void>
  *   (none) + update → op=update           update + update → newer payload, keep-first baseline
  *   (none) + delete → op=delete tombstone update + delete → op=delete tombstone
  *   create + update → newer payload, stays op=create
+ *   update + update back to baseline → null (annihilate — nothing left to sync)
  *   delete + (any)  → terminal (UUIDs never reused)
  */
 export function coalesce(
@@ -217,6 +235,12 @@ export function coalesce(
     }
   }
 
-  // Merge existing and incoming write ops
+  // Merge existing and incoming write ops. A queued update whose net payload equals the
+  // pre-edit server snapshot (the user toggled a field and toggled it back) leaves nothing
+  // to sync — annihilate it, mirroring create+delete, so it stops showing as pending.
+  if (existing.op === 'update' && existing.baseSnapshot !== undefined
+    && canonical(incoming.payload) === canonical(existing.baseSnapshot)) {
+    return null
+  }
   return { ...existing, attempts: 0, payload: incoming.payload, blobs: incoming.blobs }
 }

@@ -65,6 +65,27 @@ describe('coalesce', () => {
     expect(result.seq).toBe(3)
   })
 
+  it('update back to baseline → annihilates (toggle a field and toggle it back)', () => {
+    const existing = entry({
+      op: 'update',
+      payload: { push: true, email: false },
+      baseSnapshot: { push: false, email: false },
+      seq: 4,
+    })
+    // Net payload equals the pre-edit server snapshot, key order differs → still annihilates.
+    const incoming = entry({ op: 'update', payload: { email: false, push: false } })
+    expect(coalesce(existing, incoming)).toBeNull()
+  })
+
+  it('update to a DIFFERENT value than baseline → still queued (no false annihilate)', () => {
+    const existing = entry({
+      op: 'update',
+      payload: { push: true },
+      baseSnapshot: { push: false },
+    })
+    expect(coalesce(existing, entry({ op: 'update', payload: { push: true } }))).not.toBeNull()
+  })
+
   it('update + delete → tombstone (op=delete)', () => {
     const existing = entry({ op: 'update' })
     const incoming = entry({ op: 'delete' })

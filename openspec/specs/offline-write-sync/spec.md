@@ -29,6 +29,21 @@ atomically (a single transaction), so cached state and the queue never disagree.
 - **THEN** its queue entry is removed entirely and nothing is replayed for it (the
   row never reached the server)
 
+#### Scenario: Edit then revert to the server baseline annihilate
+
+- **WHEN** a field is edited offline and then edited back to its last-synced server
+  value (e.g. a notification toggle flipped and flipped back)
+- **THEN** the coalesced update nets to the pre-edit snapshot, its queue entry is
+  removed, and nothing shows as pending or replays
+
+#### Scenario: Notification preferences are queued offline
+
+- **WHEN** the push or email notification preference (or a per-type mute) is toggled
+  offline
+- **THEN** the change is applied optimistically, queued under its own entry, and
+  replayed on reconnect — the push browser/server subscription is reconciled to the
+  synced flag at replay time, since it cannot be registered while offline
+
 #### Scenario: Cross-entity dependency order
 
 - **WHEN** a contact is created offline and a tour referencing it is created offline
@@ -125,6 +140,24 @@ the server; it SHALL fail to the dead-letter instead.
 
 - **WHEN** a queued edit replays but the row was deleted on the server
 - **THEN** the row is not recreated and the entry is dead-lettered as no-longer-present
+
+### Requirement: A durable pending-sync indicator surfaces unsynced work
+
+The system SHALL surface the count of pending offline writes on a durable indicator
+read from the queue on every launch. The transient "N changes waiting to sync" text
+SHALL appear only when the queue transitions from empty to non-empty (the first
+pending change); while writes are already queued, subsequent changes SHALL only
+update the indicator's count, not re-show the text.
+
+#### Scenario: Text shown only on the first pending change
+
+- **WHEN** a first mutation is queued while the queue was empty
+- **THEN** the "waiting to sync" text is shown briefly, then collapses to the count chip
+
+#### Scenario: Later changes only bump the count
+
+- **WHEN** a further mutation is queued while writes are already pending
+- **THEN** the count increments without the text re-appearing
 
 ### Requirement: A reachability signal drives flushing energy-efficiently
 

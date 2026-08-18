@@ -136,7 +136,11 @@ prerequisite's change folder — references use durable capability/code anchors 
   replay can fire them. `tours-store`, `contacts-store`, `user-profile-store`,
   `availability-store`, and `friendships-store` (unfriend `removeFriendship` only).
   `friendships-store`'s friend-**request** actions stay online-only (block-form
-  `mutate`); friend-tour reads untouched.
+  `mutate`); friend-tour reads untouched. *(Follow-up:* `notifications-store` push/email/
+  per-type toggles wire the same pattern under their own `kind:'notif-prefs'` entity —
+  disjoint `user_profile` columns from `kind:'profile'`, replay reconciles the push
+  subscription and skips the LWW gate to avoid false-conflicting the user's own profile
+  replay on the shared row `updated_at`.)
 - **Reconnect sequencing:** the per-store realtime `onSubscribed` refetch awaits a
   shared "replay drained" gate so flush precedes overwrite.
 - **UI:** pending-sync indicator (queued count), a "saved offline" toast on enqueue,

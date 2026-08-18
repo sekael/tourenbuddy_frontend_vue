@@ -23,13 +23,14 @@ const { t, te } = useI18n({ useScope: 'global' })
 onMounted(refreshQueueStatus)
 watch([savedOfflineAt, drainedAt], refreshQueueStatus)
 
-// The persistent pill is now icon+count only (bottom-left) so it never covers the
-// tour list. The "N waiting to be synced" text shows briefly as a snackbar whenever the
-// pending count grows; it then collapses to the icon+count chip.
+// The persistent pill is icon+count only (bottom-left) so it never covers the tour list.
+// The "N waiting to be synced" text shows briefly as a snackbar only on the FIRST pending
+// change (queue 0 → >0); once something is already queued, later changes just bump the
+// icon+count chip. This keeps the text from re-firing on every single edit.
 const pendingText = ref(false)
 let pendingTimer: ReturnType<typeof setTimeout> | null = null
 watch(pendingCount, (n, prev) => {
-  if (n > 0 && n !== prev) {
+  if (prev === 0 && n > 0) {
     pendingText.value = true
     if (pendingTimer)
       clearTimeout(pendingTimer)
