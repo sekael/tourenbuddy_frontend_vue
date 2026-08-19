@@ -118,14 +118,9 @@
     }
   },
   "auth": {
-    "home": {
-      "subtitle": "Plan outdoor adventures with friends",
-      "getStartedBtn": "Get Started"
-    },
     "emailEntry": {
       "title": "Enter your email",
       "subtitle": "We'll send you a sign-in code",
-      "emailLabel": "Email address",
       "emailPlaceholder": "you{'@'}example.com",
       "invalidEmail": "Please enter a valid email address",
       "sendCodeBtn": "Send Code",
@@ -138,7 +133,6 @@
     "verifyOtp": {
       "title": "Enter your code",
       "subtitlePrefix": "We sent a 6-digit sign-in code to",
-      "inputLabel": "Sign-in code",
       "inputPlaceholder": "123456",
       "verifyBtn": "Verify",
       "verifyError": "Invalid or expired code. Please try again.",

@@ -18,12 +18,6 @@ const router = createRouter({
       meta: { redirectIfAuth: true },
     },
     {
-      path: '/auth/email',
-      name: 'email-entry',
-      component: () => import('@/features/auth/presentation/pages/email-entry-page.vue'),
-      meta: { redirectIfAuth: true },
-    },
-    {
       path: '/auth/verify-otp',
       name: 'verify-otp',
       component: () => import('@/features/auth/presentation/pages/verify-otp-page.vue'),

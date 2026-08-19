@@ -118,14 +118,9 @@
     }
   },
   "auth": {
-    "home": {
-      "subtitle": "Plane Outdoor-Abenteuer mit Freunden",
-      "getStartedBtn": "Loslegen"
-    },
     "emailEntry": {
       "title": "E-Mail-Adresse eingeben",
       "subtitle": "Wir senden Dir einen Anmeldecode",
-      "emailLabel": "E-Mail-Adresse",
       "emailPlaceholder": "du{'@'}tourenbuddy.ch",
       "invalidEmail": "Bitte gib eine gültige E-Mail-Adresse ein",
       "sendCodeBtn": "Code senden",
@@ -138,7 +133,6 @@
     "verifyOtp": {
       "title": "Code eingeben",
       "subtitlePrefix": "Wir haben einen 6-stelligen Anmeldecode gesendet an",
-      "inputLabel": "Anmeldecode",
       "inputPlaceholder": "123456",
       "verifyBtn": "Bestätigen",
       "verifyError": "Ungültiger oder abgelaufener Code. Bitte versuche es erneut.",
