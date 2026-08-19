@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.36.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.35.0...tourenbuddy-frontend-v0.36.0) (2026-08-19)
+
+
+### Features
+
+* Atomic tour write rpcs ([#266](https://github.com/sekael/tourenbuddy_frontend_vue/issues/266)) ([6173ac6](https://github.com/sekael/tourenbuddy_frontend_vue/commit/6173ac6f8a74f15b6b5a8644da46417777d3ec56))
+* **map:** Offline base-map download and management ([#245](https://github.com/sekael/tourenbuddy_frontend_vue/issues/245)) ([#258](https://github.com/sekael/tourenbuddy_frontend_vue/issues/258)) ([f4c68a4](https://github.com/sekael/tourenbuddy_frontend_vue/commit/f4c68a4f1072481acfc02e45b73bc7f504dff473))
+* Offline write sync ([#270](https://github.com/sekael/tourenbuddy_frontend_vue/issues/270)) ([5c297ca](https://github.com/sekael/tourenbuddy_frontend_vue/commit/5c297ca9fae00b8cbc0481d398ada1d55d5bbeee))
+* **offline:** Disable base map switching and offline map download when offline ([efa4a53](https://github.com/sekael/tourenbuddy_frontend_vue/commit/efa4a5338cf6f16dd833f97f2a6da34249fa1166))
+* **offline:** Read-only offline data cache ([#245](https://github.com/sekael/tourenbuddy_frontend_vue/issues/245)) ([#267](https://github.com/sekael/tourenbuddy_frontend_vue/issues/267)) ([efa4a53](https://github.com/sekael/tourenbuddy_frontend_vue/commit/efa4a5338cf6f16dd833f97f2a6da34249fa1166))
+
+
+### Bug Fixes
+
+* **contacts:** Prevent duplicate row when adding a contact on a slow network ([efa4a53](https://github.com/sekael/tourenbuddy_frontend_vue/commit/efa4a5338cf6f16dd833f97f2a6da34249fa1166))
+* **offline:** Boot shell offline, correct cold-boot online signal, desktop UX ([efa4a53](https://github.com/sekael/tourenbuddy_frontend_vue/commit/efa4a5338cf6f16dd833f97f2a6da34249fa1166))
+* **offline:** Cache attachments and GPX tracks for offline display ([efa4a53](https://github.com/sekael/tourenbuddy_frontend_vue/commit/efa4a5338cf6f16dd833f97f2a6da34249fa1166))
+
 ## [0.35.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.34.1...tourenbuddy-frontend-v0.35.0) (2026-07-18)
 
 
