@@ -1,5 +1,41 @@
-import { getCached, putCached } from '@/core/offline/entity-cache'
+import { clearCached, getCached, putCached } from '@/core/offline/entity-cache'
 import { isOnline } from '@/core/offline/use-online-status'
+
+/**
+ * Stage a blob (e.g. a GPX track picked offline) under its stable storage key BEFORE it
+ * exists in Supabase Storage, so it renders immediately from the same cache the online
+ * display path reads (`loadCachedBlob`) and can be uploaded on write-queue replay.
+ */
+export function cacheBlob(key: string, blob: Blob): Promise<IDBValidKey> {
+  return putCached(`blob:${key}`, blob)
+}
+
+/** Read a staged/cached blob by storage key (no network) — the bytes to upload on replay. */
+export function peekCachedBlob(key: string): Promise<Blob | undefined> {
+  return getCached<Blob>(`blob:${key}`)
+}
+
+/** Drop a staged blob (offline GPX removed/cancelled before it was ever uploaded). */
+export function evictCachedBlob(key: string): Promise<undefined> {
+  return clearCached(`blob:${key}`)
+}
+
+/**
+ * Mark a storage key as holding bytes staged offline that still need uploading — the
+ * signal that distinguishes an offline pick (upload on replay) from a blob merely cached
+ * for display after an online view (already in Storage). Cleared once the upload lands.
+ */
+export function markPendingUpload(key: string): Promise<IDBValidKey> {
+  return putCached(`pending-upload:${key}`, true)
+}
+
+export async function isPendingUpload(key: string): Promise<boolean> {
+  return (await getCached<boolean>(`pending-upload:${key}`)) === true
+}
+
+export function clearPendingUpload(key: string): Promise<undefined> {
+  return clearCached(`pending-upload:${key}`)
+}
 
 /**
  * Offline-capable binary read (change: offline-app-cache-sync). Attachment images /

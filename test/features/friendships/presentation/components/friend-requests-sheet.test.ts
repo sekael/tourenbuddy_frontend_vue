@@ -25,9 +25,6 @@ vi.mock('@/features/friendships/data/repositories/friendship-repository-impl', (
 vi.mock('@/features/contacts/data/repositories/contacts-repository-impl', () => ({
   ContactsRepositoryImpl: vi.fn().mockImplementation(() => ({})),
 }))
-vi.mock('@/features/contacts/data/repositories/contact-methods-repository-impl', () => ({
-  ContactMethodsRepositoryImpl: vi.fn().mockImplementation(() => ({})),
-}))
 vi.mock('@/core/components/adaptive-overlay.vue', () => ({
   default: { name: 'AdaptiveOverlay', props: ['title'], template: '<div><slot /></div>' },
 }))

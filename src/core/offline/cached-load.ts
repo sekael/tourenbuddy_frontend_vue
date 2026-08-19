@@ -1,18 +1,29 @@
 import { getCached, putCached } from '@/core/offline/entity-cache'
 import { isOnline } from '@/core/offline/use-online-status'
 
+// Keys that have already been served a fresh network result this session. The
+// cache-paint is a COLD-START optimization (instant paint on an empty ref / slow
+// signal); on a warm online reload the in-memory ref is at least as fresh as the
+// cache, so re-painting the (possibly stale) cache only flickers the UI back before
+// the imminent network result repaints it — e.g. an online optimistic write whose
+// value the cache doesn't hold yet. Track "seen fresh" so warm reloads skip the paint.
+const seenFresh = new Set<string>()
+
 /**
  * The whole offline read mechanism (change: offline-app-cache-sync, design D3):
  * hydrate-then-refetch. Every in-scope `loadX()` delegates here.
  *
- *   1. Read the cached snapshot; if present, `assign` it immediately (instant paint,
- *      including a cold start on slow signal).
+ *   1. On a COLD load (key not yet served fresh this session) or when offline, read the
+ *      cached snapshot and `assign` it immediately (instant paint on slow signal / offline).
+ *      A WARM online reload skips this paint: the in-memory ref is already at least as
+ *      fresh as the cache, so re-painting a stale cache would flicker the UI back before
+ *      the imminent network result repaints it (e.g. after an online optimistic write).
  *   2. If offline, stop — the cached snapshot is the answer; an offline fetch would
  *      hang, not fail fast.
- *   3. If online, run the fetcher, `assign` the fresh result, and overwrite the cache.
- *      Overwrite-on-refetch is the only reconciliation this slice needs: the server is
- *      authoritative on every successful load, so the cache never drifts past one
- *      refetch.
+ *   3. If online, run the fetcher, `assign` the fresh result, mark the key seen, and
+ *      overwrite the cache. Overwrite-on-refetch is the only reconciliation this slice
+ *      needs: the server is authoritative on every successful load, so the cache never
+ *      drifts past one refetch.
  *
  * On a fetcher error while online we keep the already-assigned cached snapshot (do
  * NOT blank the ref, do NOT overwrite the cache) and rethrow, so the caller's
@@ -35,9 +46,13 @@ export async function cachedLoad<T>(
   // window can't surface as an unhandledrejection — we still observe it at `await`.
   void fresh?.catch(() => {})
 
-  const cached = await readCache<T>(key)
-  if (cached !== undefined)
-    assign(cached)
+  // Cold start or offline paints the cache; a warm online reload skips it (see seenFresh).
+  // Offline (fresh === undefined) ALWAYS paints — the cache is the only answer there.
+  if (fresh === undefined || !seenFresh.has(key)) {
+    const cached = await readCache<T>(key)
+    if (cached !== undefined)
+      assign(cached)
+  }
 
   // Offline: no request was made; the cached snapshot (if any) stands.
   if (fresh === undefined)
@@ -45,6 +60,7 @@ export async function cachedLoad<T>(
 
   const result = await fresh
   assign(result)
+  seenFresh.add(key)
   await writeCache(key, result)
 }
 

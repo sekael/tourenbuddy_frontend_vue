@@ -3,13 +3,23 @@ import { supabase } from '@/core/utils/supabase'
 const BUCKET = 'tour-gpx'
 const SIGNED_URL_EXPIRES_IN = 3600
 
-export async function uploadGpx(userId: string, tourId: string, file: File): Promise<string> {
-  const key = `${userId}/${tourId}.gpx`
+/** Deterministic storage key for a tour's GPX — mintable client-side (offline) before upload. */
+export function gpxStorageKey(userId: string, tourId: string): string {
+  return `${userId}/${tourId}.gpx`
+}
+
+/** Upload GPX bytes to an already-known key (used by offline replay, where the key was minted at pick-time). */
+export async function uploadGpxToKey(key: string, file: Blob): Promise<void> {
   const { error } = await supabase.storage
     .from(BUCKET)
     .upload(key, file, { contentType: 'application/gpx+xml', upsert: true })
   if (error)
     throw new Error(error.message)
+}
+
+export async function uploadGpx(userId: string, tourId: string, file: File): Promise<string> {
+  const key = gpxStorageKey(userId, tourId)
+  await uploadGpxToKey(key, file)
   return key
 }
 

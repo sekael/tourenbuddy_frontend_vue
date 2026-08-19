@@ -41,6 +41,7 @@ export const tourRowSchema = z
     notes: z.string().nullable().default(null),
     completed: z.boolean().default(false),
     visibility: visibilitySchema.default('friends'),
+    updated_at: z.string().nullable().default(null),
   })
   .transform(row => ({
     id: row.id,
@@ -68,6 +69,7 @@ export const tourRowSchema = z
     notes: row.notes,
     completed: row.completed,
     visibility: row.visibility,
+    updatedAt: row.updated_at,
     isFriendTour: false,
   }))
 
@@ -94,6 +96,8 @@ export const tourSchema = z.object({
   notes: z.string().nullable(),
   completed: z.boolean(),
   visibility: visibilitySchema,
+  /** Server-stamped last-write time (ISO); the LWW baseline for offline-write-sync (DC5). Null for friend tours. */
+  updatedAt: z.string().nullable().default(null),
   /** True when this tour belongs to a friend (read via friend_tours_view), not the viewer. */
   isFriendTour: z.boolean().default(false),
   /** Friend-tour only: whether the viewer is a marked partner (drives detail gating). */
@@ -164,6 +168,7 @@ export const friendTourRowSchema = z
     notes: row.notes,
     completed: row.completed,
     visibility: row.visibility,
+    updatedAt: null, // friend tours are read-only — never queued, no LWW baseline
     isFriendTour: true,
     isPartner: row.is_partner,
     partnerNames: row.partner_names,

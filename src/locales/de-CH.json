@@ -773,6 +773,36 @@
   },
   "offline": {
     "indicator": "Du bist offline — gespeicherte Daten werden angezeigt",
-    "actionUnavailable": "Diese Aktion ist offline nicht verfügbar"
+    "actionUnavailable": "Diese Aktion ist offline nicht verfügbar",
+    "writeError": {
+      "generic": "Deine Änderung konnte offline nicht gespeichert werden — bitte versuche es erneut",
+      "storageFull": "Offline-Speichern fehlgeschlagen — der Gerätespeicher ist voll. Gib Speicher frei und versuche es erneut"
+    }
+  },
+  "offlineSync": {
+    "savedOffline": "Offline gespeichert — wird synchronisiert, sobald du wieder online bist",
+    "pendingCount": "{count} Änderung wartet auf Synchronisierung | {count} Änderungen warten auf Synchronisierung",
+    "conflictLost": "Auf einem anderen Gerät geändert — deine Offline-Änderung wurde nicht übernommen",
+    "attachmentsOnlineOnly": "Anhänge sind nur online verfügbar",
+    "friendshipsOnlineOnly": "Freundschaftsanfragen sind nur online verfügbar",
+    "deadLetter": {
+      "title": "Änderungen, die nicht synchronisiert werden konnten",
+      "banner": "{count} Änderung konnte nicht synchronisiert werden | {count} Änderungen konnten nicht synchronisiert werden",
+      "review": "Überprüfen",
+      "retry": "Erneut versuchen",
+      "discard": "Verwerfen",
+      "empty": "Keine nicht synchronisierten Änderungen mehr",
+      "op": {
+        "create": "{entity} erstellen",
+        "update": "{entity} aktualisieren",
+        "delete": "{entity} löschen"
+      },
+      "kind": {
+        "tour": "Tour",
+        "contact": "Kontakt"
+      },
+      "permanentReason": "Diese Änderung konnte nicht angewendet und nicht gespeichert werden",
+      "transientReason": "Der Server konnte nicht erreicht werden — du kannst es erneut versuchen"
+    }
   }
 }

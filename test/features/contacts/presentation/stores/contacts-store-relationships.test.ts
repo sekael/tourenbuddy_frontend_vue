@@ -25,15 +25,6 @@ vi.mock('@/features/contacts/data/repositories/contacts-repository-impl', () => 
   })),
 }))
 
-vi.mock('@/features/contacts/data/repositories/contact-methods-repository-impl', () => ({
-  ContactMethodsRepositoryImpl: vi.fn().mockImplementation(() => ({
-    addMethod: vi.fn(),
-    removeMethod: vi.fn(),
-    updateMethod: vi.fn(),
-    setPrimaryPhone: vi.fn(),
-  })),
-}))
-
 vi.mock('@/features/auth/presentation/stores/auth-store', () => ({
   useAuthStore: vi.fn().mockReturnValue({
     isAuthenticated: true,
@@ -59,6 +50,10 @@ vi.mock('@/features/friendships/data/repositories/friendship-repository-impl', (
 
 vi.mock('@/core/logging/use-logger', () => ({
   useLogger: () => ({ error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() }),
+}))
+
+vi.mock('@/core/offline/reconnect', () => ({
+  flushThenRefetch: (refetch: () => Promise<void>) => refetch(),
 }))
 
 vi.mock('@/core/realtime/use-realtime-subscription', () => ({

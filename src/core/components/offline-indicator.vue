@@ -3,32 +3,70 @@ import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/core/components/base-icon.vue'
 import ErrorSnackbar from '@/core/components/error-snackbar.vue'
-import { useIsDesktop } from '@/core/composables/use-is-desktop'
-import { offlineBlockedAt } from '@/core/offline/mutate'
+import { offlineBlockedAt, offlineWriteError } from '@/core/offline/mutate'
 import { isOnline } from '@/core/offline/use-online-status'
 
-// Global offline surface (change: offline-app-cache-sync): a persistent pill while
-// offline (so every route signals cached data), plus a transient notice each time a
-// mutation is blocked offline (the `mutate` seam bumps `offlineBlockedAt`).
+// Global offline surface (change: offline-app-cache-sync). The PERSISTENT indicator is
+// now icon-only and pinned bottom-left, so it never covers the tour list / creation pill
+// (the centered pill did). The explanatory text shows once, briefly, as a snackbar each
+// time we drop offline; a blocked mutation still raises its own transient notice.
 const { t } = useI18n({ useScope: 'global' })
-const isDesktop = useIsDesktop()
 
+// Transient explanatory snackbar, shown each time connectivity drops.
+const explainVisible = ref(false)
+let explainTimer: ReturnType<typeof setTimeout> | null = null
+watch(isOnline, (online) => {
+  if (online)
+    return
+  explainVisible.value = true
+  if (explainTimer)
+    clearTimeout(explainTimer)
+  explainTimer = setTimeout(() => {
+    explainVisible.value = false
+  }, 4000)
+})
+
+// Blocked-action notice (a mutation attempted while offline).
 const noticeVisible = ref(false)
-let timer: ReturnType<typeof setTimeout> | null = null
-
+let noticeTimer: ReturnType<typeof setTimeout> | null = null
 watch(offlineBlockedAt, () => {
   noticeVisible.value = true
-  if (timer)
-    clearTimeout(timer)
-  timer = setTimeout(() => {
+  if (noticeTimer)
+    clearTimeout(noticeTimer)
+  noticeTimer = setTimeout(() => {
     noticeVisible.value = false
   }, 4000)
+})
+
+// Offline-write failure (IndexedDB unavailable / full / unserializable value). The `mutate`
+// seam swallows the raw error into `offlineWriteError` (an i18n key); surface it understandably.
+const writeErrorVisible = ref(false)
+let writeErrorTimer: ReturnType<typeof setTimeout> | null = null
+watch(offlineWriteError, (key) => {
+  if (!key) {
+    writeErrorVisible.value = false
+    return
+  }
+  writeErrorVisible.value = true
+  if (writeErrorTimer)
+    clearTimeout(writeErrorTimer)
+  writeErrorTimer = setTimeout(() => {
+    writeErrorVisible.value = false
+  }, 5000)
 })
 </script>
 
 <template>
-  <Transition name="offline-pill">
-    <div v-if="!isOnline" class="offline-pill" :class="{ 'offline-pill--desktop': isDesktop }" role="status">
+  <!-- Persistent, icon-only offline chip (bottom-left) — minimal footprint. -->
+  <Transition name="chip">
+    <div v-if="!isOnline" class="offline-chip" role="status" :aria-label="t('offline.indicator')">
+      <BaseIcon name="cloud_off" size="sm" />
+    </div>
+  </Transition>
+
+  <!-- Transient explanatory snackbar, once per offline transition. -->
+  <Transition name="chip">
+    <div v-if="explainVisible" class="offline-snackbar" role="status">
       <BaseIcon name="cloud_off" size="sm" />
       <span>{{ t('offline.indicator') }}</span>
     </div>
@@ -39,15 +77,37 @@ watch(offlineBlockedAt, () => {
     :message="t('offline.actionUnavailable')"
     @dismiss="noticeVisible = false"
   />
+
+  <ErrorSnackbar
+    :visible="writeErrorVisible"
+    :message="offlineWriteError ? t(offlineWriteError) : ''"
+    @dismiss="writeErrorVisible = false"
+  />
 </template>
 
 <style scoped>
-.offline-pill {
+/* Bottom-left, clear of the top nav and the bottom-right FAB. Sits BELOW the sync
+   chip (offline-sync-status stacks above it) and below the transient snackbar. */
+.offline-chip {
   position: fixed;
-  /* Clear the top app-bar / sheet header (Save button lives there) on mobile — the
-     desktop variant overrides `top` to sit bottom-left. */
-  top: calc(var(--spacing-sm) + var(--safe-top, 0px) + 3.5rem);
+  left: var(--spacing-md);
+  bottom: calc(var(--spacing-md) + var(--safe-bottom, 0px));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-lg);
+  background: var(--color-slate-800, #1e293b);
+  color: white;
+  box-shadow: var(--shadow-md);
+  z-index: 190;
+}
+
+/* Bottom-center snackbar carrying the explanatory text (shown briefly only). */
+.offline-snackbar {
+  position: fixed;
   left: 50%;
+  bottom: calc(var(--spacing-xl) + var(--safe-bottom, 0px));
   transform: translateX(-50%);
   display: flex;
   align-items: center;
@@ -59,38 +119,17 @@ watch(offlineBlockedAt, () => {
   font-size: 0.8125rem;
   font-weight: 500;
   box-shadow: var(--shadow-md);
-  z-index: 300;
+  z-index: 210;
   max-width: 90vw;
 }
 
-.offline-pill-enter-active,
-.offline-pill-leave-active {
-  transition:
-    opacity 0.2s ease,
-    transform 0.2s ease;
+.chip-enter-active,
+.chip-leave-active {
+  transition: opacity 0.2s ease;
 }
 
-.offline-pill-enter-from,
-.offline-pill-leave-to {
+.chip-enter-from,
+.chip-leave-to {
   opacity: 0;
-  transform: translate(-50%, -100%);
-}
-
-/* Desktop: the top-center pill overlaps the top-nav back/help controls. Anchor it
-   bottom-left instead — clear of the top nav and the bottom-right FAB, and the
-   transient offline notice keeps its own bottom-center slot. */
-.offline-pill--desktop {
-  top: auto;
-  left: var(--spacing-md);
-  bottom: calc(var(--spacing-md) + var(--safe-bottom, 0px));
-  transform: none;
-  /* Below the transient offline notice (ErrorSnackbar, z-index 200) so a blocked-
-     action snackbar overlapping the bottom-left pill renders on top of it. */
-  z-index: 190;
-}
-
-.offline-pill--desktop.offline-pill-enter-from,
-.offline-pill--desktop.offline-pill-leave-to {
-  transform: translateY(100%);
 }
 </style>

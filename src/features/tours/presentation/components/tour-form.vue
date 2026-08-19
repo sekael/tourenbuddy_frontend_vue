@@ -12,6 +12,8 @@ import BaseButton from '@/core/components/base-button.vue'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
+import { cacheBlob, clearPendingUpload, evictCachedBlob, markPendingUpload } from '@/core/offline/blob-cache'
+import { isOnline } from '@/core/offline/use-online-status'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
@@ -27,7 +29,7 @@ import {
   GpxParseError,
   parseGpxFile,
 } from '@/features/tours/data/services/gpx-parser'
-import { removeGpx, uploadGpx } from '@/features/tours/data/services/gpx-storage-service'
+import { gpxStorageKey, removeGpx, uploadGpx } from '@/features/tours/data/services/gpx-storage-service'
 import TourAttachmentsPicker from '@/features/tours/presentation/components/tour-attachments-picker.vue'
 import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 
@@ -294,6 +296,8 @@ async function handleGpxUpload(event: Event) {
 
   if (pendingGpxKey.value) {
     removeGpx(pendingGpxKey.value).catch(() => {})
+    evictCachedBlob(pendingGpxKey.value).catch(() => {})
+    clearPendingUpload(pendingGpxKey.value).catch(() => {})
     pendingGpxKey.value = null
     pendingTourId.value = null
   }
@@ -310,6 +314,31 @@ async function handleGpxUpload(event: Event) {
 
   const newTourId = crypto.randomUUID()
   pendingTourId.value = newTourId
+
+  // Offline: stage the track under its client-minted storage key. It renders now from
+  // the same cache the display path reads, and the tour write queues with the blob so
+  // it uploads on replay (no network at pick-time). The pending mark tells the store
+  // this blob still needs uploading (vs. one merely cached for display).
+  if (!isOnline.value) {
+    const key = gpxStorageKey(userId, newTourId)
+    try {
+      // Staging the blob touches IndexedDB — a full/unavailable store must fail gracefully
+      // here (not as an uncaught rejection) and drop the GPX rather than half-staging it.
+      await cacheBlob(key, file)
+      await markPendingUpload(key)
+    }
+    catch {
+      evictCachedBlob(key).catch(() => {})
+      clearPendingUpload(key).catch(() => {})
+      gpxError.value = t('tours.form.gpxUploadFailed')
+      gpxFile.value = null
+      pendingTourId.value = null
+      return
+    }
+    pendingGpxKey.value = key
+    return
+  }
+
   isUploadingGpx.value = true
   wasCancelledDuringUpload.value = false
 
@@ -340,6 +369,8 @@ function handleCancel() {
   }
   else if (pendingGpxKey.value) {
     removeGpx(pendingGpxKey.value).catch(() => {})
+    evictCachedBlob(pendingGpxKey.value).catch(() => {})
+    clearPendingUpload(pendingGpxKey.value).catch(() => {})
     pendingGpxKey.value = null
   }
   // Clear any staged attachment files so no orphans remain
@@ -351,6 +382,8 @@ function handleCancel() {
 function handleRemoveGpx() {
   if (pendingGpxKey.value) {
     removeGpx(pendingGpxKey.value).catch(() => {})
+    evictCachedBlob(pendingGpxKey.value).catch(() => {})
+    clearPendingUpload(pendingGpxKey.value).catch(() => {})
     pendingGpxKey.value = null
     pendingTourId.value = null
   }

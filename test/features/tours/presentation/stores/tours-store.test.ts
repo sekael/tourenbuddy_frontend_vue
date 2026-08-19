@@ -7,7 +7,6 @@ const {
   mockListTours,
   mockCreateTour,
   mockUpdateTour,
-  mockPatchCompleted,
   mockDeleteTour,
   mockDeleteContact,
   mockDebug,
@@ -17,7 +16,6 @@ const {
   mockListTours: vi.fn(),
   mockCreateTour: vi.fn(),
   mockUpdateTour: vi.fn(),
-  mockPatchCompleted: vi.fn(),
   mockDeleteTour: vi.fn(),
   mockDeleteContact: vi.fn(),
   mockDebug: vi.fn(),
@@ -36,7 +34,6 @@ vi.mock('@/features/tours/data/repositories/tours-repository-impl', () => ({
     listToursForUser: mockListTours,
     createTourWithPartners: mockCreateTour,
     updateTour: mockUpdateTour,
-    patchCompleted: mockPatchCompleted,
     deleteTour: mockDeleteTour,
   })),
 }))
@@ -54,15 +51,6 @@ vi.mock('@/features/contacts/data/repositories/contacts-repository-impl', () => 
     createContact: vi.fn(),
     updateContact: vi.fn(),
     deleteContact: mockDeleteContact,
-  })),
-}))
-
-vi.mock('@/features/contacts/data/repositories/contact-methods-repository-impl', () => ({
-  ContactMethodsRepositoryImpl: vi.fn().mockImplementation(() => ({
-    addMethod: vi.fn(),
-    updateMethod: vi.fn(),
-    removeMethod: vi.fn(),
-    setPrimaryPhone: vi.fn(),
   })),
 }))
 
@@ -430,8 +418,8 @@ describe('useToursStore', () => {
   })
 
   describe('setCompleted', () => {
-    it('should optimistically update completed to true and call repository', async () => {
-      mockPatchCompleted.mockResolvedValue(undefined)
+    it('should flip completed through the unified update RPC (Path Y)', async () => {
+      mockUpdateTour.mockResolvedValue(true)
 
       const store = useToursStore()
       store.tours = [...mockTours]
@@ -439,38 +427,29 @@ describe('useToursStore', () => {
       await store.setCompleted('tour-1', true)
 
       expect(store.tours[0]?.completed).toBe(true)
-      expect(mockPatchCompleted).toHaveBeenCalledWith('tour-1', true)
+      // A field-toggle is a full tour update carrying the changed field.
+      expect(mockUpdateTour).toHaveBeenCalledWith(
+        'tour-1',
+        expect.objectContaining({ completed: true }),
+        { lng: 8.2, lat: 46.8 },
+      )
     })
 
-    it('should optimistically update completed to false', async () => {
-      mockPatchCompleted.mockResolvedValue(undefined)
-
-      const store = useToursStore()
-      store.tours = [{ ...mockTours[0]!, completed: true }]
-
-      await store.setCompleted('tour-1', false)
-
-      expect(store.tours[0]?.completed).toBe(false)
-      expect(mockPatchCompleted).toHaveBeenCalledWith('tour-1', false)
-    })
-
-    it('should call loadTours on repository failure (convergence over local rollback)', async () => {
-      mockPatchCompleted.mockRejectedValue(new Error('patch failed'))
-      mockListTours.mockResolvedValue(mockTours)
+    it('should surface an error and leave completed unchanged when the update fails', async () => {
+      mockUpdateTour.mockRejectedValue(new Error('update failed'))
 
       const store = useToursStore()
       store.tours = [...mockTours]
 
-      await store.setCompleted('tour-1', true)
-
-      // loadTours() is called to resync from server; it clears error on success
-      expect(mockListTours).toHaveBeenCalled()
-      // tours is back to server state (mockTours has completed: false)
+      // Behaves like updateTour: rejects on failure; the optimistic rewrite only lands
+      // after a confirmed write, so a failure never flips the local value.
+      await expect(store.setCompleted('tour-1', true)).rejects.toThrow()
       expect(store.tours[0]?.completed).toBe(false)
+      expect(store.error).toBeTruthy()
     })
 
     it('should emit a debug log on toggle', async () => {
-      mockPatchCompleted.mockResolvedValue(undefined)
+      mockUpdateTour.mockResolvedValue(true)
 
       const store = useToursStore()
       store.tours = [...mockTours]
@@ -486,7 +465,7 @@ describe('useToursStore', () => {
 
       await store.setCompleted('nonexistent', true)
 
-      expect(mockPatchCompleted).not.toHaveBeenCalled()
+      expect(mockUpdateTour).not.toHaveBeenCalled()
     })
   })
 

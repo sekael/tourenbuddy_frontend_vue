@@ -14,28 +14,11 @@ vi.mock('@/features/auth/presentation/stores/auth-store', () => ({
 vi.mock('@/features/contacts/data/repositories/contacts-repository-impl', () => ({
   ContactsRepositoryImpl: vi.fn().mockImplementation(() => ({
     fetchContacts: vi.fn().mockResolvedValue([]),
-    createContact: vi.fn().mockImplementation(async (c: { firstName: string }) => ({
-      id: `c-${c.firstName}`,
-      userId: 'u-1',
-      firstName: c.firstName,
-      lastName: null,
-      displayName: null,
-      contactMethods: [],
-    })),
-  })),
-}))
-
-vi.mock('@/features/contacts/data/repositories/contact-methods-repository-impl', () => ({
-  ContactMethodsRepositoryImpl: vi.fn().mockImplementation(() => ({
-    addMethod: vi.fn().mockImplementation(async (cid: string, m: { value: string }) => ({
-      id: `m-${m.value}`,
-      contactId: cid,
-      methodType: 'phone',
-      value: m.value,
-      label: null,
-      isPrimary: true,
-      isValid: true,
-    })),
+    // Aggregate write: the store passes the whole desired Contact — echo it back.
+    createContactFull: vi.fn().mockImplementation(async (c: unknown) => c),
+    updateContactFull: vi.fn().mockImplementation(async (c: unknown) => c),
+    getContactUpdatedAt: vi.fn().mockResolvedValue(null),
+    deleteContact: vi.fn(),
   })),
 }))
 

@@ -15,6 +15,22 @@ import '@fontsource/inter/500.css'
 import '@fontsource/inter/600.css'
 import './app/theme/global.css'
 
+// A lazy route chunk failed to load. This is almost always a STALE build: the
+// running app references chunk URLs that a newer deploy (or an updated service
+// worker serving a stale index) has replaced, so every dynamic import 404s and
+// navigation dead-ends with "Failed to fetch dynamically imported module".
+// Reload to pull the fresh index + chunks. Throttled to at most once per 10s via
+// sessionStorage so a chunk that's genuinely unfetchable (offline + uncached)
+// can't spin the page in a reload loop.
+window.addEventListener('vite:preloadError', () => {
+  const KEY = 'preloadErrorReloadAt'
+  const last = Number(sessionStorage.getItem(KEY) ?? 0)
+  if (Date.now() - last < 10_000)
+    return
+  sessionStorage.setItem(KEY, String(Date.now()))
+  window.location.reload()
+})
+
 async function bootstrap() {
   const app = createApp(App)
   const pinia = createPinia()

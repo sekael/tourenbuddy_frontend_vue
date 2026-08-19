@@ -69,6 +69,18 @@ describe('baseTooltip', () => {
       expect(getBubble()?.classList.contains('tooltip-bubble--visible')).toBe(false)
     })
 
+    it('should hide bubble on click (activating the anchored control)', async () => {
+      const wrapper = mount(BaseTooltip, {
+        props: { text: 'Hint' },
+        slots: { default: '<span>icon</span>' },
+        attachTo: container,
+      })
+      await wrapper.find('.tooltip-wrapper').trigger('mouseenter')
+      expect(getBubble()?.classList.contains('tooltip-bubble--visible')).toBe(true)
+      await wrapper.find('.tooltip-wrapper').trigger('click')
+      expect(getBubble()?.classList.contains('tooltip-bubble--visible')).toBe(false)
+    })
+
     it('should render bubble with correct text', () => {
       mount(BaseTooltip, {
         props: { text: 'My tooltip' },
@@ -111,6 +123,17 @@ describe('baseTooltip', () => {
       await wrapper.find('.tooltip-wrapper').trigger('touchstart')
       await wrapper.find('.tooltip-wrapper').trigger('keydown', { key: 'Escape' })
       expect(getBubble()?.classList.contains('tooltip-bubble--visible')).toBe(false)
+    })
+
+    it('should NOT hide on click (tap-to-reveal survives the activating tap)', async () => {
+      const wrapper = mount(BaseTooltip, {
+        props: { text: 'Hint' },
+        slots: { default: '<span>icon</span>' },
+        attachTo: container,
+      })
+      await wrapper.find('.tooltip-wrapper').trigger('touchstart')
+      await wrapper.find('.tooltip-wrapper').trigger('click')
+      expect(getBubble()?.classList.contains('tooltip-bubble--visible')).toBe(true)
     })
 
     it('should auto-dismiss after 3 seconds', async () => {

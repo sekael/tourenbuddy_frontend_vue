@@ -773,6 +773,36 @@
   },
   "offline": {
     "indicator": "You're offline — showing saved data",
-    "actionUnavailable": "This action isn't available offline"
+    "actionUnavailable": "This action isn't available offline",
+    "writeError": {
+      "generic": "Couldn't save your change offline — please try again",
+      "storageFull": "Couldn't save offline — device storage is full. Free up space and try again"
+    }
+  },
+  "offlineSync": {
+    "savedOffline": "Saved offline — will sync when you're back online",
+    "pendingCount": "{count} change waiting to sync | {count} changes waiting to sync",
+    "conflictLost": "Changed on another device — your offline edit was not applied",
+    "attachmentsOnlineOnly": "Attachments are available online only",
+    "friendshipsOnlineOnly": "Friend requests are available online only",
+    "deadLetter": {
+      "title": "Changes that couldn't sync",
+      "banner": "{count} change couldn't sync | {count} changes couldn't sync",
+      "review": "Review",
+      "retry": "Retry",
+      "discard": "Discard",
+      "empty": "No more edits that haven't been synchronized",
+      "op": {
+        "create": "Create {entity}",
+        "update": "Update {entity}",
+        "delete": "Delete {entity}"
+      },
+      "kind": {
+        "tour": "tour",
+        "contact": "contact"
+      },
+      "permanentReason": "This change couldn't be applied and was not saved",
+      "transientReason": "The server couldn't be reached — you can try again"
+    }
   }
 }

@@ -77,31 +77,10 @@ vi.mock('@/features/notifications/data/notify-dispatch', () => ({
 vi.mock('@/features/contacts/data/repositories/contacts-repository-impl', () => ({
   ContactsRepositoryImpl: vi.fn(() => ({
     fetchContacts: vi.fn().mockResolvedValue([]),
-    createContact: vi.fn().mockResolvedValue({
-      id: 'new-c',
-      firstName: 'C',
-      lastName: null,
-      displayName: null,
-      userId: 'user-me',
-      contactMethods: [],
-    }),
-    updateContact: vi.fn(),
+    createContactFull: vi.fn().mockImplementation(async (c: unknown) => c),
+    updateContactFull: vi.fn().mockImplementation(async (c: unknown) => c),
+    getContactUpdatedAt: vi.fn().mockResolvedValue(null),
     deleteContact: vi.fn(),
-  })),
-}))
-vi.mock('@/features/contacts/data/repositories/contact-methods-repository-impl', () => ({
-  ContactMethodsRepositoryImpl: vi.fn(() => ({
-    addMethod: vi.fn().mockResolvedValue({
-      id: 'm',
-      contactId: 'new-c',
-      methodType: 'phone',
-      value: '+41791111111',
-      label: null,
-      isPrimary: true,
-    }),
-    removeMethod: vi.fn(),
-    updateMethod: vi.fn(),
-    setPrimaryPhone: vi.fn(),
   })),
 }))
 
