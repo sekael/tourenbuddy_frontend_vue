@@ -50,6 +50,8 @@ async function handleSubmit() {
 
     <form class="form" @submit.prevent="handleSubmit">
       <div class="field">
+        <!-- Hidden, not absent: the placeholder is not an accessible name. -->
+        <label for="email" class="visually-hidden">{{ t('auth.emailEntry.emailLabel') }}</label>
         <input
           id="email"
           v-model="email"
@@ -93,12 +95,6 @@ async function handleSubmit() {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
-}
-
-.label {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
 }
 
 /* Opaque fill — input contrast must not depend on the photo behind the card. */

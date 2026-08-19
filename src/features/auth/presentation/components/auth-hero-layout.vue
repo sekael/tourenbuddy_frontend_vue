@@ -76,7 +76,7 @@ import bgMobile from '@/assets/background-mobile.webp'
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
-/* ponytail: 88% opacity keeps the card legible when backdrop-filter is
+/* ponytail: 60% opacity keeps the card legible when backdrop-filter is
    unsupported, so no @supports fallback branch is needed. */
 .card {
   display: flex;

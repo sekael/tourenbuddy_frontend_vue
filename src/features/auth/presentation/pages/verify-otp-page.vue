@@ -79,6 +79,8 @@ async function handleResend() {
 
     <form class="form" @submit.prevent="handleVerify">
       <div class="field">
+        <!-- Hidden, not absent: the placeholder is not an accessible name. -->
+        <label for="otp-code" class="visually-hidden">{{ t('auth.verifyOtp.inputLabel') }}</label>
         <input
           id="otp-code"
           v-model="code"
@@ -136,12 +138,6 @@ async function handleResend() {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
-}
-
-.label {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
 }
 
 .input {

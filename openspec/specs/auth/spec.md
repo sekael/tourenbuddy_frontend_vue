@@ -26,7 +26,7 @@ The app SHALL display an OTP verification page at `/auth/verify-otp` where users
 #### Scenario: Back to email entry
 
 - **WHEN** the user clicks the back button
-- **THEN** the app SHALL navigate to `/auth/email` and SHALL NOT call Supabase
+- **THEN** the app SHALL navigate to `/` and SHALL NOT call Supabase
 
 ### Requirement: OTP verification page layout
 
@@ -37,11 +37,56 @@ The OTP verification page SHALL include a title, a subtitle naming the recipient
 - **WHEN** the page mounts on a mobile device
 - **THEN** the input SHALL surface a numeric keyboard and SHALL accept the device's one-time-code autofill where supported
 
+### Requirement: Auth screens share a hero background layout
+
+Every signed-out auth screen SHALL render its content over the same hero background
+image with a darkening gradient overlay, presented through a single shared layout
+component. The layout SHALL carry the product title as the page's only top-level
+heading, SHALL extend the background edge-to-edge including the device safe-area zones,
+and SHALL place page content in a translucent card whose input fields keep an opaque
+fill. Screen-specific titles inside the card SHALL be third-level headings. Every input
+SHALL carry an associated `<label>` element, visually hidden where the design calls for
+a placeholder-only field — a placeholder alone SHALL NOT serve as an input's accessible
+name.
+
+#### Scenario: Background is continuous across the sign-in flow
+
+- **WHEN** a signed-out user submits their email on `/` and arrives at `/auth/verify-otp`
+- **THEN** the same hero background and overlay remain on screen, with no change to a
+  flat surface color between the two steps
+
+#### Scenario: Only one top-level heading per auth page
+
+- **WHEN** an auth page renders both the hero product title and its own screen title
+- **THEN** the hero title is the only first-level heading and the screen title is a
+  third-level heading
+
+#### Scenario: Input legibility over the photographic backdrop
+
+- **WHEN** the sign-in card renders over a light region of the background image
+- **THEN** the input fields render on an opaque surface fill, so text contrast never
+  depends on the pixels behind the card
+
+#### Scenario: Placeholder-only input is announced by assistive technology
+
+- **WHEN** a screen-reader user focuses the email or the sign-in-code field, which show
+  a placeholder and no visible label
+- **THEN** the field is announced by its associated visually-hidden `<label>`, and the
+  name remains available after the placeholder is replaced by typed input
+
 ## MODIFIED Requirements
 
 ### Requirement: Email entry page collects user email
 
-The app SHALL display an email entry page at `/auth/email` where users enter their email address to receive a one-time code.
+The app SHALL collect the user's email address on the landing page at `/`, presented
+immediately on arrival with no intermediate call-to-action screen. The form SHALL sit in
+the shared hero layout.
+
+#### Scenario: Signed-out user arrives at the app
+
+- **WHEN** an unauthenticated user opens `/`
+- **THEN** the email input and submit button are visible without any further navigation,
+  and no "Get Started" call-to-action step is presented
 
 #### Scenario: Valid email submission
 
@@ -52,6 +97,17 @@ The app SHALL display an email entry page at `/auth/email` where users enter the
 
 - **WHEN** a user enters an invalid email address and submits the form
 - **THEN** the app SHALL display a validation error and SHALL NOT call Supabase
+
+#### Scenario: OTP dispatch fails
+
+- **WHEN** the Supabase OTP request rejects
+- **THEN** the page SHALL display the error, SHALL remain on `/`, and SHALL NOT navigate
+  to `/auth/verify-otp`
+
+#### Scenario: `/auth/email` no longer resolves
+
+- **WHEN** a stale link to `/auth/email` is opened
+- **THEN** the route does not exist and the app does not serve an email entry page there
 
 ### Requirement: Auth store manages session state
 
@@ -94,11 +150,11 @@ The Vue Router SHALL use a `beforeEach` navigation guard that checks the user's 
 #### Scenario: Unauthenticated user visits protected route
 
 - **WHEN** an unauthenticated user navigates to `/map`
-- **THEN** the router SHALL redirect to `/` (home page)
+- **THEN** the router SHALL redirect to `/` (the sign-in page)
 
 #### Scenario: Authenticated user visits auth pages
 
-- **WHEN** an authenticated user navigates to `/`, `/auth/email`, or `/auth/verify-otp`
+- **WHEN** an authenticated user navigates to `/` or `/auth/verify-otp`
 - **THEN** the router SHALL redirect to `/map`
 
 ### Requirement: Locale captured in user metadata at sign-up
@@ -128,3 +184,9 @@ When the auth store calls `signInWithOtp` and the user does not yet exist, the r
 **Reason**: The `signInWithOtp` call no longer passes `emailRedirectTo`; see the MODIFIED variant above. This requirement is superseded.
 
 **Migration**: Update `email-entry-page.vue` to call `sendEmailOtp(email)` and navigate to `/auth/verify-otp?email=<email>` instead of `/auth/check-email`. The `check-email-page.vue` file SHALL be deleted.
+
+### Requirement: Home page presents a "Get Started" call to action
+
+**Reason**: Issue #260 — the intermediate landing screen carried no information the sign-in screen did not, costing every signed-out user an extra tap and page load before they could enter their email.
+
+**Migration**: The email form moved onto `/`; `src/features/auth/presentation/pages/email-entry-page.vue` and the `/auth/email` route were deleted, and the `auth.home` i18n block (`subtitle`, `getStartedBtn`) was removed from every locale.

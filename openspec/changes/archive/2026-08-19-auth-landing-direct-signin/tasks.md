@@ -33,9 +33,9 @@
 
 ## 7. Manual verification
 
-- [ ] 7.1 `npm run dev`, signed out: `/` shows the hero background with the email form on it — no "Get Started" step. Submit → `/auth/verify-otp` keeps the same background; back button returns to `/`
-- [ ] 7.2 Check card + input contrast at both breakpoints (≤768px uses the mobile asset, which crops differently) and confirm no `h1` duplication (`document.querySelectorAll('h1').length === 1` on both pages)
-- [ ] 7.3 Signed out from the profile sheet ⇒ lands on `/` and sees the form (the sign-out path pushes `{ name: 'home' }`)
+- [x] 7.1 `npm run dev`, signed out: `/` shows the hero background with the email form on it — no "Get Started" step. Submit → `/auth/verify-otp` keeps the same background; back button returns to `/`
+- [x] 7.2 Check card + input contrast at both breakpoints (≤768px uses the mobile asset, which crops differently) and confirm no `h1` duplication (`document.querySelectorAll('h1').length === 1` on both pages)
+- [x] 7.3 Signed out from the profile sheet ⇒ lands on `/` and sees the form (the sign-out path pushes `{ name: 'home' }`)
 
 ## 8. Finalize
 

@@ -7,7 +7,10 @@ image with a darkening gradient overlay, presented through a single shared layou
 component. The layout SHALL carry the product title as the page's only top-level
 heading, SHALL extend the background edge-to-edge including the device safe-area zones,
 and SHALL place page content in a translucent card whose input fields keep an opaque
-fill. Screen-specific titles inside the card SHALL be second-level headings.
+fill. Screen-specific titles inside the card SHALL be third-level headings. Every input
+SHALL carry an associated `<label>` element, visually hidden where the design calls for
+a placeholder-only field — a placeholder alone SHALL NOT serve as an input's accessible
+name.
 
 #### Scenario: Background is continuous across the sign-in flow
 
@@ -19,13 +22,20 @@ fill. Screen-specific titles inside the card SHALL be second-level headings.
 
 - **WHEN** an auth page renders both the hero product title and its own screen title
 - **THEN** the hero title is the only first-level heading and the screen title is a
-  second-level heading
+  third-level heading
 
 #### Scenario: Input legibility over the photographic backdrop
 
 - **WHEN** the sign-in card renders over a light region of the background image
-- **THEN** the card remains legible without relying on backdrop blur support, and the
-  input fields render on an opaque surface fill
+- **THEN** the input fields render on an opaque surface fill, so text contrast never
+  depends on the pixels behind the card
+
+#### Scenario: Placeholder-only input is announced by assistive technology
+
+- **WHEN** a screen-reader user focuses the email or the sign-in-code field, which show
+  a placeholder and no visible label
+- **THEN** the field is announced by its associated visually-hidden `<label>`, and the
+  name remains available after the placeholder is replaced by typed input
 
 ## MODIFIED Requirements
 
