@@ -1,8 +1,9 @@
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import { createTestingPinia } from '@pinia/testing'
 import { setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
+import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useTourFilters } from '@/features/tours/presentation/composables/use-tour-filters'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
@@ -127,6 +128,51 @@ describe('useTourFilters', () => {
       const tours = [makeTour({ id: '1', name: null, partnerIds: ['ghost-id'] })]
       const { filteredTours, searchQuery } = setup(tours)
       searchQuery.value = 'ghost'
+      expect(filteredTours.value).toHaveLength(0)
+    })
+  })
+
+  // The Friends tab renders "by <contact name>", so that name must be searchable from the
+  // SAME source the row displays — otherwise search shows a visible field nothing matches.
+  describe('friend-owner search', () => {
+    const PHONE = '+41791111111'
+
+    function setupFriends(ownerContactName: string | null) {
+      // stubActions:false + a call-through spy — the resolver must run through the REAL
+      // findContactByMethodValue, which is what normalizes both sides of the phone match.
+      setActivePinia(createTestingPinia({ createSpy: vi.fn, stubActions: false }))
+      const friends = useTourFilters('friends')
+      friends.clearAll()
+      const toursStore = useToursStore()
+      const contactsStore = useContactsStore()
+      const friendshipsStore = useFriendshipsStore()
+      toursStore.friendTours = [
+        makeTour({ id: 'f-1', name: 'Ridge', userId: 'owner-1', isFriendTour: true }),
+      ] as any
+      friendshipsStore.userIdToPhoneMap = new Map([['owner-1', PHONE]])
+      contactsStore.contacts = ownerContactName
+        ? ([{
+            id: 'c-owner',
+            firstName: ownerContactName,
+            lastName: null,
+            displayName: null,
+            contactMethods: [{ id: 'm1', methodType: 'phone', value: PHONE, isPrimary: true }],
+          }] as any)
+        : []
+      return friends
+    }
+
+    it('matches a friend tour by the owner\'s contact name', () => {
+      const { filteredTours, searchQuery } = setupFriends('Mum')
+      searchQuery.value = 'mum'
+      expect(filteredTours.value).toHaveLength(1)
+    })
+
+    it('does not match by the owner\'s profile name when no contact resolves', () => {
+      // Profile name is not a source anywhere in this change — an owner with no contact
+      // is unsearchable rather than findable under a name the row never displays.
+      const { filteredTours, searchQuery } = setupFriends(null)
+      searchQuery.value = 'mum'
       expect(filteredTours.value).toHaveLength(0)
     })
   })

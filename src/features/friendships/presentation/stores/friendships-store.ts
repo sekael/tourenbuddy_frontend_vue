@@ -9,6 +9,7 @@ import { computed, ref, watch } from 'vue'
 import { BlockedBySenderError } from '@/core/exceptions'
 import { useLogger } from '@/core/logging/use-logger'
 import { cachedLoad } from '@/core/offline/cached-load'
+import { getCached, putCached } from '@/core/offline/entity-cache'
 import { mutate } from '@/core/offline/mutate'
 import { flushThenRefetch } from '@/core/offline/reconnect'
 import { registerReplay } from '@/core/offline/replay'
@@ -58,6 +59,73 @@ export const useFriendshipsStore = defineStore('friendships', () => {
   const userIdToPhoneMap = ref(new Map<string, string>())
   /** userId → profile name, populated by get_user_names_by_ids RPC. */
   const userIdToNamesMap = ref(new Map<string, { firstName: string | null, lastName: string | null }>())
+  /** In-flight phone lookups by userId, so N consumers of one id share one RPC (D4a). */
+  const inFlightPhones = new Map<string, Promise<void>>()
+  /** Promise-singleton for the one-per-session hydrate of the cached phone map (D4). */
+  let directoryHydrate: Promise<void> | null = null
+
+  /** `friend-directory:<uid>` — the cached `Array<[userId, e164]>`; null when signed out. */
+  function directoryCacheKey(): string | null {
+    const uid = authStore.currentUser?.id
+    return uid ? `friend-directory:${uid}` : null
+  }
+
+  /**
+   * Write the phone map through to the offline cache so friend names resolve offline.
+   * Fire-and-forget by contract — the cache is best-effort and must never fail an RPC.
+   *
+   * ponytail: rewrites the whole map on every growth. It is bounded by the friend count,
+   * so an incremental store isn't worth the schema. Ceiling: a cached phone the friend has
+   * since changed resolves to the wrong contact or none — this widens that window (#273)
+   * from a session to a device lifetime; fix the link, not the cache.
+   */
+  function persistDirectory() {
+    const key = directoryCacheKey()
+    if (!key)
+      return
+    void putCached(key, [...userIdToPhoneMap.value.entries()]).catch((err) => {
+      logger.debug('friend directory cache write failed', err)
+    })
+  }
+
+  /**
+   * Hydrate the phone map from cache once per signed-in session. Merges
+   * cache-loses-to-memory: an in-session RPC answer is authoritative and is never
+   * overwritten. A cache miss or read failure resolves normally — it is not an error.
+   */
+  function ensureDirectory(): Promise<void> {
+    if (!directoryHydrate) {
+      const key = directoryCacheKey()
+      const read = key
+        ? getCached<Array<[string, string]>>(key)
+        : Promise.resolve(undefined)
+      directoryHydrate = read
+        .then((entries) => {
+          if (!entries?.length)
+            return
+          const next = new Map(userIdToPhoneMap.value)
+          for (const [id, phone] of entries) {
+            if (!next.has(id))
+              next.set(id, phone)
+          }
+          userIdToPhoneMap.value = next
+        })
+        .catch((err) => {
+          logger.debug('friend directory cache read failed', err)
+        })
+    }
+    return directoryHydrate
+  }
+
+  /**
+   * The batch seam for surfaces naming a list of users: hydrate the cache, then one
+   * batched lookup for whatever is still missing. Resolves once no better answer is
+   * coming — settled means resolved OR failed, so a render gate never hangs on it.
+   */
+  async function ensurePhones(ids: string[]): Promise<void> {
+    await ensureDirectory()
+    await findPhonesByUserIds(ids)
+  }
 
   /** Set of user IDs that are confirmed friends with the caller. */
   const friendUserIds = computed<Set<string>>(() => {
@@ -332,6 +400,7 @@ export const useFriendshipsStore = defineStore('friendships', () => {
         const next = new Map(userIdToPhoneMap.value)
         next.set(uid, phone)
         userIdToPhoneMap.value = next
+        persistDirectory()
       }
       return uid
     }
@@ -352,6 +421,7 @@ export const useFriendshipsStore = defineStore('friendships', () => {
         const next = new Map(userIdToPhoneMap.value)
         for (const r of results) next.set(r.userId, r.phone)
         userIdToPhoneMap.value = next
+        persistDirectory()
       }
       return results
     }
@@ -367,17 +437,36 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     const missing = userIds.filter(id => !userIdToPhoneMap.value.has(id))
     if (missing.length === 0)
       return
-    try {
-      const results = await repository.findPhonesByUserIds(missing)
-      if (results.length > 0) {
-        const next = new Map(userIdToPhoneMap.value)
-        for (const r of results) next.set(r.userId, r.phone)
-        userIdToPhoneMap.value = next
-      }
+
+    // `missing` is a has-LANDED check, not an in-flight one. Per-row resolution mounts N
+    // consumers of the same owner at once, none of whose lookups has landed — without the
+    // registry the burst scales with rows instead of distinct users (D4a).
+    const awaited = missing.filter(id => inFlightPhones.has(id)).map(id => inFlightPhones.get(id)!)
+    const fresh = missing.filter(id => !inFlightPhones.has(id))
+
+    if (fresh.length > 0) {
+      const lookup = (async () => {
+        try {
+          const results = await repository.findPhonesByUserIds(fresh)
+          if (results.length > 0) {
+            const next = new Map(userIdToPhoneMap.value)
+            for (const r of results) next.set(r.userId, r.phone)
+            userIdToPhoneMap.value = next
+            persistDirectory()
+          }
+        }
+        catch (err) {
+          logger.error('findPhonesByUserIds failed', err)
+        }
+        finally {
+          for (const id of fresh) inFlightPhones.delete(id)
+        }
+      })()
+      for (const id of fresh) inFlightPhones.set(id, lookup)
+      awaited.push(lookup)
     }
-    catch (err) {
-      logger.error('findPhonesByUserIds failed', err)
-    }
+
+    await Promise.all(awaited)
   }
 
   async function getNamesByUserIds(ids: string[]): Promise<void> {
@@ -459,6 +548,10 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     friendships.value = []
     userIdToPhoneMap.value = new Map()
     userIdToNamesMap.value = new Map()
+    // Reset the hydrate singleton so the next sign-in re-reads its own cache. The cached
+    // key stays — it is uid-namespaced, so re-login of the same account is instant.
+    directoryHydrate = null
+    inFlightPhones.clear()
     error.value = null
   }
 
@@ -518,6 +611,8 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     findUserByPhone,
     findUsersByPhones,
     findPhonesByUserIds,
+    ensureDirectory,
+    ensurePhones,
     getNamesByUserIds,
     removeFriendship,
     clear,

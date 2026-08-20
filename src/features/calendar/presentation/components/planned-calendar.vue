@@ -46,7 +46,7 @@ const contactsStore = useContactsStore()
 const { contacts } = storeToRefs(contactsStore)
 
 const friendshipsStore = useFriendshipsStore()
-const { userIdToNamesMap } = storeToRefs(friendshipsStore)
+const { userIdToPhoneMap } = storeToRefs(friendshipsStore)
 
 // phone→userId map for the viewer's contacts (async-populated). Inverted below to
 // resolve an availability row's userId back to the viewer's own contact card.
@@ -237,16 +237,27 @@ const contactByUserId = computed(() => {
   return map
 })
 
-// Fetch profile names for every friend userId in availability, so the fallback
-// (unresolved-contact) chip has a name to show. getNamesByUserIds dedupes/caches.
+// One batched phone lookup for every friend userId in availability, so a chip whose
+// contact this page's own phone→userId map missed still resolves.
 watch(friendDays, (rows) => {
   const ids = [...new Set(rows.map(r => r.user_id))]
   if (ids.length > 0)
-    friendshipsStore.getNamesByUserIds(ids)
+    void friendshipsStore.ensurePhones(ids)
 }, { immediate: true })
 
-// TODO(me): friendsByDay — dayKey → FriendChip[], the per-day friend list.
-//   See task list at the end of this response.
+/**
+ * The viewer's contact for a friend userId. This page builds phone→userId from its own
+ * address book; the friendships store holds the reverse, userId→phone. Both ends land on
+ * the same contact — trying both means a chip resolves whichever map happens to be warm.
+ */
+function contactFor(userId: string): Contact | null {
+  const fromLocalMap = contactByUserId.value.get(userId)
+  if (fromLocalMap)
+    return fromLocalMap
+  const phone = userIdToPhoneMap.value.get(userId)
+  return (phone ? contactsStore.findContactByMethodValue('phone', phone) : undefined) ?? null
+}
+
 const friendsByDay = computed<Map<string, FriendChip[]>>(() => {
   const mapByDay = new Map<string, Map<string, FriendChip>>()
   for (const ar of friendDays.value) {
@@ -255,20 +266,13 @@ const friendsByDay = computed<Map<string, FriendChip[]>>(() => {
       continue
     }
 
-    // Resolve name + contact, contact wins, profile name is fallback
-    const contact = contactByUserId.value.get(ar.user_id)
-    const profile = userIdToNamesMap.value.get(ar.user_id)
-    let name = ''
-    if (contact) {
-      name = resolveContactName(contact)
-    }
-    else if (profile) {
-      // firstName/lastName are both nullable — filter nulls so `name` is always a
-      // string (a null here crashed the localeCompare sort below).
-      name = [profile.firstName, profile.lastName].filter(Boolean).join(' ')
-    }
+    // One naming scheme: a friend is called what the viewer saved them as. The fallback
+    // is the render of a broken friendship↔contact link (#273), not a second name source,
+    // and it keeps `name` a string — a null here crashed the localeCompare sort below.
+    const contact = contactFor(ar.user_id)
+    const name = contact ? resolveContactName(contact) : t('tours.list.aFriend')
 
-    const chip: FriendChip = { userId: ar.user_id, name, contact: contact ?? null }
+    const chip: FriendChip = { userId: ar.user_id, name, contact }
 
     const inner = mapByDay.get(ar.date)
     if (inner) {

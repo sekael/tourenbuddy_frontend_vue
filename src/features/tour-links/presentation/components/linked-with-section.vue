@@ -2,6 +2,8 @@
 import { storeToRefs } from 'pinia'
 import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
+import { resolveFriendName } from '@/features/friendships/domain/resolve-friend-name'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
@@ -25,8 +27,9 @@ const { t } = useI18n({ useScope: 'global' })
 
 const toursStore = useToursStore()
 const friendshipsStore = useFriendshipsStore()
+const contactsStore = useContactsStore()
 const { tours, friendTours } = storeToRefs(toursStore)
-const { userIdToNamesMap } = storeToRefs(friendshipsStore)
+const { userIdToPhoneMap } = storeToRefs(friendshipsStore)
 
 /**
  * Sibling is unresolvable when neither own tours nor friend tours hold it.
@@ -55,8 +58,8 @@ function partnerName(id: string): string {
   const t2 = friendTours.value.find(t => t.id === id)
   if (!t2)
     return t('tourLinks.unknownPartner')
-  const name = userIdToNamesMap.value.get(t2.userId)
-  const resolved = [name?.firstName, name?.lastName].filter(Boolean).join(' ')
+  const resolved = resolveFriendName(t2.userId, userIdToPhoneMap.value, phone =>
+    contactsStore.findContactByMethodValue('phone', phone))
   return resolved || t('tourLinks.unknownPartner')
 }
 
@@ -86,17 +89,17 @@ const inlineIds = computed(() => orderedSiblings.value.slice(0, 2))
 const overflowIds = computed(() => orderedSiblings.value.slice(2))
 const overflowCount = computed(() => overflowIds.value.length)
 
-// Resolve owner profile names for sibling friend tours so pills aren't blank.
+// One batched phone lookup for the sibling owners so pills aren't blank.
 watch(
   () => props.siblings,
   (ids) => {
-    const missing = [...new Set(
+    const owners = [...new Set(
       ids
         .map(id => friendTours.value.find(t => t.id === id)?.userId)
-        .filter((uid): uid is string => !!uid && !userIdToNamesMap.value.has(uid)),
+        .filter((uid): uid is string => !!uid),
     )]
-    if (missing.length > 0)
-      friendshipsStore.getNamesByUserIds(missing)
+    if (owners.length > 0)
+      void friendshipsStore.ensurePhones(owners)
   },
   { immediate: true },
 )

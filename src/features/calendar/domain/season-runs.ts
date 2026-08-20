@@ -39,10 +39,6 @@ export function seasonRuns(seasons: Season[] | null): SeasonRun[] {
   if (!present.some(Boolean))
     return []
 
-  // TODO(me): walk `present` left→right and collapse each contiguous stretch of
-  //   `true` columns into one { start, span } run. A `false` always ends the
-  //   current run — gaps are never bridged, and there is no wraparound.
-  //   See task list at the end of this response.
   const runs: SeasonRun[] = []
   for (let i = 0; i < present.length; i++) {
     if (!present[i])

@@ -64,6 +64,12 @@ export const useContactsStore = defineStore('contacts', () => {
   const contacts = ref<Contact[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  /**
+   * Settle signal for name-resolution render gates: `true` once `loadContacts` has run
+   * to completion, success OR failure. `isLoading` cannot serve — it reads `false`
+   * before the first load starts, so a gate on it settles prematurely and flips.
+   */
+  const hasLoaded = ref(false)
 
   async function loadContacts() {
     const uid = authStore.currentUser?.id
@@ -87,6 +93,7 @@ export const useContactsStore = defineStore('contacts', () => {
     }
     finally {
       isLoading.value = false
+      hasLoaded.value = true
     }
   }
 
@@ -409,6 +416,7 @@ export const useContactsStore = defineStore('contacts', () => {
   function clear() {
     contacts.value = []
     error.value = null
+    hasLoaded.value = false
   }
 
   const channelKey = computed(() => {
@@ -446,6 +454,7 @@ export const useContactsStore = defineStore('contacts', () => {
   return {
     contacts,
     isLoading,
+    hasLoaded,
     error,
     loadContacts,
     addContact,

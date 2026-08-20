@@ -4,8 +4,10 @@ import { mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import PlannedCalendar from '@/features/calendar/presentation/components/planned-calendar.vue'
 
-// Friends resolve via userIdToNamesMap only (contacts left empty), so chips/rows
-// exercise the profile-name fallback path. Desktop grid throughout.
+// Friends are named by the VIEWER's contact for them — a friendship always resolves to a
+// contact — so each seeded friend gets a contact plus a userId→phone entry, which is the
+// pair the resolver walks. A friend seeded with NO contact is the broken-link state and
+// falls back to the generic label. Desktop grid throughout.
 
 function mockMatchMedia(matches: boolean) {
   Object.defineProperty(window, 'matchMedia', {
@@ -31,6 +33,22 @@ function tour(id: string, name: string, plannedDate: Date) {
   return { id, name, plannedDate, tourType: 'hiking' } as any
 }
 
+function phoneFor(userId: string) {
+  return `+4179000${userId.replace(/\D/g, '').padStart(4, '0')}`
+}
+
+function contactFor(userId: string, first: string | null, last: string | null) {
+  return {
+    id: `c-${userId}`,
+    firstName: first ?? '',
+    lastName: last ?? null,
+    displayName: null,
+    contactMethods: [
+      { id: `m-${userId}`, methodType: 'phone', value: phoneFor(userId), isPrimary: true },
+    ],
+  } as any
+}
+
 function mountCalendar(
   friendDays: FriendRow[],
   names: Array<[string, string | null, (string | null)?]>,
@@ -38,12 +56,14 @@ function mountCalendar(
 ) {
   const pinia = createTestingPinia({
     createSpy: vi.fn,
-    stubActions: true,
+    // The resolver runs through the real `findContactByMethodValue` (it normalizes both
+    // sides of the phone comparison); stubbing every store function would stub that too.
+    stubActions: false,
     initialState: {
       tours: { tours, friendTours: [], isLoading: false, error: null },
-      contacts: { contacts: [] },
+      contacts: { contacts: names.map(([id, first, last]) => contactFor(id, first, last ?? null)) },
       friendships: {
-        userIdToNamesMap: new Map(names.map(([id, first, last]) => [id, { firstName: first, lastName: last ?? null }])),
+        userIdToPhoneMap: new Map(names.map(([id]) => [id, phoneFor(id)])),
       },
       availability: {
         editing: false,
@@ -115,15 +135,14 @@ describe('plannedCalendar — friends\' availability', () => {
     expect(rows.slice(1).map(r => r.text())).toEqual(['Alice', 'Bob', 'Charlie']) // friends sorted
   })
 
-  it('renders an unresolved friend name-only in the detail list (static row, no crash)', async () => {
-    const wrapper = mountCalendar(
-      [{ user_id: 'u9', date: '2024-06-15' }],
-      [['u9', 'Dana']],
-    )
+  it('renders a friend with no resolvable contact as the generic label (static row, no crash)', async () => {
+    // Availability for a user the viewer has no contact for — the broken friendship↔contact
+    // link (#273). The row must still render, name-only, with no call/message actions.
+    const wrapper = mountCalendar([{ user_id: 'u9', date: '2024-06-15' }], [])
     await contentCell(wrapper).trigger('click')
 
     const row = wrapper.find('.detail-row')
-    expect(row.text()).toBe('Dana')
+    expect(row.text()).toBe('tours.list.aFriend')
     expect(row.classes()).toContain('detail-row--static')
   })
 
@@ -144,8 +163,8 @@ describe('plannedCalendar — friends\' availability', () => {
     expect(wrapper.findAll('.friend-chip')).toHaveLength(0)
   })
 
-  it('resolves a friend with a null profile first name without crashing the sort', () => {
-    // Two friends so the day-list sort runs; one has a null firstName (only a last
+  it('resolves a friend with no first name without crashing the sort', () => {
+    // Two friends so the day-list sort runs; one has no first name (only a last
     // name) — a null name previously threw in localeCompare.
     const wrapper = mountCalendar(
       [

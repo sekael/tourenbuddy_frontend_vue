@@ -74,14 +74,12 @@ watch(activeTab, (tab) => {
     toursStore.loadFriendTours()
 })
 
-// Resolve friend-tour owner profile names for the "owned by" row label.
-watch(friendTours, (list) => {
-  const ownerIds = [...new Set(list.map(tour => tour.userId))].filter(
-    id => !friendshipsStore.userIdToNamesMap.has(id),
-  )
-  if (ownerIds.length > 0)
-    friendshipsStore.getNamesByUserIds(ownerIds)
-}, { immediate: true })
+// ponytail: no owner-name prefetch here. Each row resolves its own owner through
+// `useFriendDisplayName`, and the store's in-flight registry collapses concurrent rows to
+// one lookup per DISTINCT owner — so a second writer would only reintroduce the two-writer
+// shape that makes the settle gate flicker. Ceiling: a friends list with many distinct
+// owners still fires one lookup each on first paint. If that ever measurably stalls, batch
+// it here with `friendshipsStore.ensurePhones(ownerIds)`; don't revive a name prefetch.
 
 const filtersExpanded = ref(false)
 

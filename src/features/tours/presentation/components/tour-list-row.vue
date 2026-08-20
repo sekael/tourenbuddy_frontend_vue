@@ -5,32 +5,33 @@ import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/core/components/base-icon.vue'
 import { resolveContactName } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
-import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
+import { useFriendDisplayName } from '@/features/friendships/presentation/composables/use-friend-display-name'
+import { TOUR_TYPE_COLORS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
 
 const props = defineProps<{ tour: Tour }>()
 const emit = defineEmits<{ click: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 const contactsStore = useContactsStore()
-const friendshipsStore = useFriendshipsStore()
 
 const displayName = computed(() => props.tour.name ?? t('tours.infoSheet.unnamedTour'))
 
-const initial = computed(() => props.tour.name?.[0]?.toUpperCase() ?? '?')
+// The activity type IS the row's identity at a glance — same icon+color language the
+// map markers and calendar already speak. A typeless tour keeps the neutral primary tint
+// via the CSS default, so the null case needs no template branch.
+const avatarIcon = computed(() => (props.tour.tourType ? TOUR_TYPE_ICONS[props.tour.tourType] : 'tour'))
+const avatarTint = computed(() =>
+  props.tour.tourType ? { '--avatar-tint': TOUR_TYPE_COLORS[props.tour.tourType] } : undefined,
+)
 
-function joinName(first: string | null, last: string | null): string {
-  return [first, last].filter(Boolean).join(' ').trim()
-}
-
-// Friend tours: surface the owner by profile name (resolved via the friendships
-// name map); non-partner viewers see a "limited info" hint instead of full detail.
-const ownerLabel = computed(() => {
-  if (!props.tour.isFriendTour)
-    return null
-  const owner = friendshipsStore.userIdToNamesMap.get(props.tour.userId)
-  const name = owner ? joinName(owner.firstName, owner.lastName) : ''
-  return t('tours.list.ownedByLabel', { name: name || t('tours.list.aFriend') })
-})
+// Friend tours: the owner is named by the viewer's OWN contact for them, gated so the
+// name renders once in final form (never "a friend" swapped for "Mum").
+const { displayName: ownerName, isResolved: ownerResolved } = useFriendDisplayName(
+  () => (props.tour.isFriendTour ? props.tour.userId : null),
+)
+const ownerLabel = computed(() =>
+  ownerName.value === null ? null : t('tours.list.ownedByLabel', { name: ownerName.value }),
+)
 
 // Friend-tour rows show only the goal name + owner ("by X"); partners stay
 // hidden in the list (privacy + clutter). Own tours still list their partners.
@@ -48,13 +49,14 @@ const partnerSubtitle = computed(() => {
 
 <template>
   <li class="tour-row" @click="emit('click')">
-    <div class="tour-avatar">
-      {{ initial }}
+    <div class="tour-avatar" :style="avatarTint">
+      <BaseIcon :name="avatarIcon" />
       <BaseIcon v-if="tour.isFriendTour" name="group" class="friend-badge" />
     </div>
     <div class="tour-info">
       <span class="tour-name">{{ displayName }}</span>
-      <span v-if="ownerLabel" class="tour-owner">{{ ownerLabel }}</span>
+      <span v-if="tour.isFriendTour && ownerResolved" class="tour-owner">{{ ownerLabel }}</span>
+      <span v-else-if="tour.isFriendTour" class="tour-owner-skeleton" aria-hidden="true" />
       <span v-if="partnerSubtitle" class="tour-subtitle">{{ partnerSubtitle }}</span>
     </div>
     <BaseIcon name="chevron_right" class="row-arrow" />
@@ -77,12 +79,14 @@ const partnerSubtitle = computed(() => {
 }
 
 .tour-avatar {
+  --avatar-tint: var(--color-primary);
+
   position: relative;
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background-color: color-mix(in srgb, var(--color-primary) 16%, transparent);
-  color: var(--color-primary);
+  background-color: color-mix(in srgb, var(--avatar-tint) 16%, transparent);
+  color: var(--avatar-tint);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
   display: flex;
@@ -108,6 +112,33 @@ const partnerSubtitle = computed(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Occupies the exact line box of the owner label so the swap causes no reflow, and
+   derives its fill from the slot's own color so it blends on both themes. */
+.tour-owner-skeleton {
+  font-size: var(--font-size-sm);
+  min-height: 1em;
+  width: 7ch;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, currentcolor 10%, transparent);
+  animation: owner-skeleton-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes owner-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-owner-skeleton {
+    animation: none;
+  }
 }
 
 .tour-info {
