@@ -68,11 +68,14 @@ import bgMobile from '@/assets/background-mobile.webp'
   padding-top: calc(var(--spacing-xl) + var(--safe-top));
 }
 
+/* Hero title carries the brand — it must outrank the card's form heading by a
+   full scale step *and* a weight step, otherwise the two read as siblings. */
 .hero-title {
-  font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
   color: var(--color-on-contrast);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 

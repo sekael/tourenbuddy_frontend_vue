@@ -76,12 +76,14 @@ async function handleSubmit() {
 
 <style scoped>
 .title {
-  font-size: var(--font-size-2xl);
+  font-size: var(--font-size-lg);
   font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
   letter-spacing: -0.01em;
 }
 
 .subtitle {
+  font-size: var(--font-size-sm);
   color: var(--color-on-surface-variant);
 }
 

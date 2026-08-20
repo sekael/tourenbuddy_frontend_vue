@@ -113,9 +113,13 @@ async function handleResend() {
 </template>
 
 <style scoped>
-/* Visual styling comes from BaseButton (text); only layout lives here. */
+/* Visual styling comes from BaseButton (text); only layout lives here.
+   Negative margin cancels the button's own horizontal padding so the arrow's
+   optical edge lines up with the card text below — without shrinking the tap
+   target by zeroing the padding. */
 .back-btn {
   align-self: flex-start;
+  margin-left: calc(-1 * var(--spacing-md));
 }
 
 .title {
