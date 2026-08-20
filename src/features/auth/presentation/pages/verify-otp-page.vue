@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
+import AuthHeroLayout from '@/features/auth/presentation/components/auth-hero-layout.vue'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
@@ -63,76 +64,62 @@ async function handleResend() {
 </script>
 
 <template>
-  <div class="page">
-    <div class="card">
-      <BaseButton variant="text" size="sm" class="back-btn" @click="router.push({ name: 'email-entry' })">
-        <BaseIcon name="arrow_back" size="sm" />
-        {{ t('auth.verifyOtp.backBtn') }}
-      </BaseButton>
-      <h1 class="title">
-        {{ t('auth.verifyOtp.title') }}
-      </h1>
-      <p class="subtitle">
-        {{ t('auth.verifyOtp.subtitlePrefix') }} <strong>{{ email }}</strong>
+  <AuthHeroLayout>
+    <BaseButton variant="text" size="sm" class="back-btn" @click="router.push({ name: 'home' })">
+      <BaseIcon name="arrow_back" size="sm" />
+      {{ t('auth.verifyOtp.backBtn') }}
+    </BaseButton>
+    <!-- h3, not h1 — the hero layout owns the page's only first-level heading. -->
+    <h3 class="title">
+      {{ t('auth.verifyOtp.title') }}
+    </h3>
+    <p class="subtitle">
+      {{ t('auth.verifyOtp.subtitlePrefix') }} <strong>{{ email }}</strong>
+    </p>
+
+    <form class="form" @submit.prevent="handleVerify">
+      <div class="field">
+        <!-- Hidden, not absent: the placeholder is not an accessible name. -->
+        <label for="otp-code" class="visually-hidden">{{ t('auth.verifyOtp.inputLabel') }}</label>
+        <input
+          id="otp-code"
+          v-model="code"
+          type="text"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          maxlength="6"
+          class="input"
+          :placeholder="t('auth.verifyOtp.inputPlaceholder')"
+          required
+        >
+      </div>
+
+      <p v-if="error" class="error-text">
+        {{ error }}
+      </p>
+      <p v-if="resendSuccess" class="success-text">
+        {{ t('auth.verifyOtp.resendSuccess') }}
       </p>
 
-      <form class="form" @submit.prevent="handleVerify">
-        <div class="field">
-          <label for="otp-code" class="label">{{ t('auth.verifyOtp.inputLabel') }}</label>
-          <input
-            id="otp-code"
-            v-model="code"
-            type="text"
-            inputmode="numeric"
-            autocomplete="one-time-code"
-            maxlength="6"
-            class="input"
-            :placeholder="t('auth.verifyOtp.inputPlaceholder')"
-            required
-          >
-        </div>
-
-        <p v-if="error" class="error-text">
-          {{ error }}
-        </p>
-        <p v-if="resendSuccess" class="success-text">
-          {{ t('auth.verifyOtp.resendSuccess') }}
-        </p>
-
-        <BaseButton type="submit" variant="primary" :disabled="isVerifying || code.length < 6">
-          {{ isVerifying ? t('auth.shared.sendingBtn') : t('auth.verifyOtp.verifyBtn') }}
-        </BaseButton>
-      </form>
-
-      <BaseButton variant="secondary" :disabled="isResending" @click="handleResend">
-        {{ isResending ? t('auth.shared.sendingBtn') : t('auth.verifyOtp.resendBtn') }}
+      <BaseButton type="submit" variant="primary" :disabled="isVerifying || code.length < 6">
+        {{ isVerifying ? t('auth.shared.sendingBtn') : t('auth.verifyOtp.verifyBtn') }}
       </BaseButton>
-    </div>
-  </div>
+    </form>
+
+    <BaseButton variant="secondary" :disabled="isResending" @click="handleResend">
+      {{ isResending ? t('auth.shared.sendingBtn') : t('auth.verifyOtp.resendBtn') }}
+    </BaseButton>
+  </AuthHeroLayout>
 </template>
 
 <style scoped>
-.page {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: -webkit-fill-available;
-  min-height: 100lvh;
-  padding: calc(var(--spacing-xl) + var(--safe-top)) var(--spacing-xl) calc(var(--spacing-xl) + var(--safe-bottom));
-  background-color: var(--color-background);
-}
-
-.card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-lg);
-  width: 100%;
-  max-width: 400px;
-}
-
-/* Visual styling comes from BaseButton (text); only layout lives here. */
+/* Visual styling comes from BaseButton (text); only layout lives here.
+   Negative margin cancels the button's own horizontal padding so the arrow's
+   optical edge lines up with the card text below — without shrinking the tap
+   target by zeroing the padding. */
 .back-btn {
   align-self: flex-start;
+  margin-left: calc(-1 * var(--spacing-md));
 }
 
 .title {
@@ -155,12 +142,6 @@ async function handleResend() {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
-}
-
-.label {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
 }
 
 .input {

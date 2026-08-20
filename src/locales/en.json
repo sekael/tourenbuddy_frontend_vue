@@ -118,10 +118,6 @@
     }
   },
   "auth": {
-    "home": {
-      "subtitle": "Plan outdoor adventures with friends",
-      "getStartedBtn": "Get Started"
-    },
     "emailEntry": {
       "title": "Enter your email",
       "subtitle": "We'll send you a sign-in code",

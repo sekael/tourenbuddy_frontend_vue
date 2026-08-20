@@ -118,10 +118,6 @@
     }
   },
   "auth": {
-    "home": {
-      "subtitle": "Plane Outdoor-Abenteuer mit Freunden",
-      "getStartedBtn": "Loslegen"
-    },
     "emailEntry": {
       "title": "E-Mail-Adresse eingeben",
       "subtitle": "Wir senden Dir einen Anmeldecode",

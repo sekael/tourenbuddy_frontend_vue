@@ -52,3 +52,17 @@ input,
 textarea {
   font-family: inherit;
 }
+
+/* Accessible name without visible chrome — for labels on placeholder-only
+   inputs. Clip rather than `display: none`, which hides it from AT too. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  overflow: hidden;
+}

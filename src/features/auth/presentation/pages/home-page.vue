@@ -1,96 +1,122 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import bgDesktop from '@/assets/background-desktop.webp'
-import bgMobile from '@/assets/background-mobile.webp'
 import BaseButton from '@/core/components/base-button.vue'
+import AuthHeroLayout from '@/features/auth/presentation/components/auth-hero-layout.vue'
+import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const { t } = useI18n({ useScope: 'global' })
+
+const email = ref('')
+const error = ref<string | null>(null)
+const isLoading = ref(false)
+
+const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/
+
+async function handleSubmit() {
+  error.value = null
+
+  if (!emailRegex.test(email.value)) {
+    error.value = t('auth.emailEntry.invalidEmail')
+    return
+  }
+
+  isLoading.value = true
+  try {
+    await authStore.sendEmailOtp(email.value)
+    router.push({ name: 'verify-otp', query: { email: email.value } })
+  }
+  catch (err) {
+    error.value = err instanceof Error ? err.message : t('auth.emailEntry.sendError')
+  }
+  finally {
+    isLoading.value = false
+  }
+}
 </script>
 
 <template>
-  <div class="home-page">
-    <picture class="background">
-      <source media="(max-width: 768px)" :srcset="bgMobile">
-      <img :src="bgDesktop" alt="" aria-hidden="true">
-    </picture>
-    <div class="overlay" aria-hidden="true" />
-    <div class="content">
-      <h1 class="title">
-        TourenBuddy
-      </h1>
-      <p class="subtitle">
-        {{ t('auth.home.subtitle') }}
+  <AuthHeroLayout>
+    <!-- h3, not h1 — the hero layout owns the page's only first-level heading. -->
+    <h3 class="title">
+      {{ t('auth.emailEntry.title') }}
+    </h3>
+    <p class="subtitle">
+      {{ t('auth.emailEntry.subtitle') }}
+    </p>
+
+    <form class="form" @submit.prevent="handleSubmit">
+      <div class="field">
+        <!-- Hidden, not absent: the placeholder is not an accessible name. -->
+        <label for="email" class="visually-hidden">{{ t('auth.emailEntry.emailLabel') }}</label>
+        <input
+          id="email"
+          v-model="email"
+          type="email"
+          class="input"
+          :placeholder="t('auth.emailEntry.emailPlaceholder')"
+          autocomplete="email"
+          required
+        >
+      </div>
+
+      <p v-if="error" class="error-text">
+        {{ error }}
       </p>
-      <BaseButton variant="primary" @click="router.push({ name: 'email-entry' })">
-        {{ t('auth.home.getStartedBtn') }}
+
+      <BaseButton type="submit" variant="primary" :disabled="isLoading">
+        {{ isLoading ? t('auth.shared.sendingBtn') : t('auth.emailEntry.sendCodeBtn') }}
       </BaseButton>
-    </div>
-  </div>
+    </form>
+  </AuthHeroLayout>
 </template>
 
 <style scoped>
-.home-page {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: -webkit-fill-available;
-  min-height: 100lvh;
-  /* No top padding — background image fills edge-to-edge including notch zone.
-     Inner .content handles notch clearance via padding-top. */
-  padding: 0 var(--spacing-xl) calc(var(--spacing-xl) + var(--safe-bottom));
-  background-color: var(--color-background);
-  overflow: hidden;
-}
-
-.background {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-}
-
-.background img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.6));
-}
-
-.content {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-lg);
-  max-width: 400px;
-  text-align: center;
-  /* Push content below notch with comfortable breathing room */
-  padding-top: calc(var(--spacing-xl) + var(--safe-top));
-}
-
 .title {
-  font-size: var(--font-size-3xl);
+  font-size: var(--font-size-lg);
   font-weight: var(--font-weight-medium);
-  color: var(--color-on-contrast);
-  letter-spacing: -0.02em;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  line-height: var(--line-height-tight);
+  letter-spacing: -0.01em;
 }
 
 .subtitle {
-  font-size: var(--font-size-lg);
-  color: rgba(255, 255, 255, 0.92);
-  line-height: var(--line-height-relaxed);
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
 }
 
-/* Hero "Get started" CTA uses the standard primary BaseButton. */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+/* Opaque fill — input contrast must not depend on the photo behind the card. */
+.input {
+  padding: var(--spacing-md);
+  border: 1.5px solid var(--color-outline-variant);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-base);
+  color: var(--color-on-surface);
+  background-color: var(--color-background);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input:focus {
+  border-color: var(--color-primary);
+}
+
+.error-text {
+  color: var(--color-error);
+  font-size: var(--font-size-sm);
+}
 </style>

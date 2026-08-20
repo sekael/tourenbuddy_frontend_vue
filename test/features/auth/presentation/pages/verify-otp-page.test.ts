@@ -101,9 +101,9 @@ describe('verifyOtpPage', () => {
     await vi.waitFor(() => expect(wrapper.text()).toContain('auth.verifyOtp.resendError'))
   })
 
-  it('should navigate to email-entry on back button click', async () => {
+  it('should navigate to home on back button click', async () => {
     const wrapper = mount(VerifyOtpPage)
     await wrapper.find('.back-btn').trigger('click')
-    expect(mockPush).toHaveBeenCalledWith({ name: 'email-entry' })
+    expect(mockPush).toHaveBeenCalledWith({ name: 'home' })
   })
 })
