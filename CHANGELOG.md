@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.37.0...tourenbuddy-frontend-v0.37.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* **auth:** Restore session on cold start and redirect off sign-in ([#277](https://github.com/sekael/tourenbuddy_frontend_vue/issues/277)) ([5804c40](https://github.com/sekael/tourenbuddy_frontend_vue/commit/5804c4016ae9ac2387914b8df0cc7181e0a5a41f))
+
 ## [0.37.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.36.0...tourenbuddy-frontend-v0.37.0) (2026-08-21)
 
 
