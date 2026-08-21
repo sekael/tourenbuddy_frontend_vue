@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.37.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.36.0...tourenbuddy-frontend-v0.37.0) (2026-08-21)
+
+
+### Features
+
+* Auth landing direct signin ([#271](https://github.com/sekael/tourenbuddy_frontend_vue/issues/271)) ([3d9b5af](https://github.com/sekael/tourenbuddy_frontend_vue/commit/3d9b5af075f633d9850231287d5589b3bfc2b0bf))
+* **tours:** Activity-type avatars in tour list and friend tour name display ([#274](https://github.com/sekael/tourenbuddy_frontend_vue/issues/274)) ([698efdd](https://github.com/sekael/tourenbuddy_frontend_vue/commit/698efdd4d7c0e207987f0b3364a5693581e9a03a))
+
 ## [0.36.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.35.0...tourenbuddy-frontend-v0.36.0) (2026-08-19)
 
 
