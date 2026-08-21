@@ -272,21 +272,23 @@ scroll position.
 
 ### Requirement: Friend rows expose call and message actions from a contact
 
-The system SHALL present, when the viewer taps an available friend in the per-day
-detail list, the same call / message options used elsewhere for a contact (the
-shared contact-action menu), resolved from that friend's contact. A friend whose
-contact cannot currently be resolved MUST NOT present broken actions.
+Friend availability rows SHALL resolve the friend's display name through the same shared
+resolver used by every other tour-related surface — the viewer's saved contact name for
+that user — rather than per-component resolution logic. Where no contact resolves, a
+generic "a friend" fallback SHALL be shown. The call and message actions SHALL continue to
+operate on the resolved contact, and SHALL be unavailable when no contact resolves.
 
-#### Scenario: Tapping a friend row offers contact actions
+#### Scenario: Availability chip names a friend by contact name
 
-- **WHEN** the viewer taps an available-friend row in the per-day detail list
-- **THEN** the shared contact-action menu opens with call / message options for
-  that friend
+- **WHEN** a friend's availability chip renders for a friend saved under a different name
+  than their profile name
+- **THEN** the chip shows the contact name
 
-#### Scenario: Unresolved friend row presents no broken actions
+#### Scenario: Unresolvable friend on an availability chip
 
-- **WHEN** the detail list contains a friend whose contact cannot be resolved
-- **THEN** that row shows the friend's profile name and offers no contact actions
+- **WHEN** a friend's availability chip renders and no contact resolves for that user
+- **THEN** the chip shows the generic "a friend" fallback, and the call and message actions
+  are not offered for that row
 
 ### Requirement: Availability synchronizes in realtime
 

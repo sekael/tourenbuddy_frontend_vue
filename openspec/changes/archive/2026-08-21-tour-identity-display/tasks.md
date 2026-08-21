@@ -69,19 +69,19 @@
 
 ## 10. Manual verification
 
-- [ ] 10.1 `npm run dev`: My Tours list shows type icons with per-type tint; a tour with no type shows the generic icon on the neutral tint; no `?` anywhere
-- [ ] 10.2 **Blocking contrast check, both themes.** Acceptance: for `skiing` (`#1565C0`), `hiking` (`#DC2626`), and `paragliding` (`#D97706`) the icon is legible against the avatar circle AND `.friend-badge` stays distinguishable over it, on light AND dark. If dark fails, add a per-theme `--avatar-tint-mix` in `tokens.css` (16% light / ~28% dark) and use it in the `color-mix` — do NOT edit `TOUR_TYPE_COLORS`, they are shared with the map markers and the calendar (D6)
-- [ ] 10.3 Friends tab with a friend saved in contacts under a different name than their profile: the contact name shows, and — throttle the network in devtools to make the window visible — "by a friend" NEVER flashes first
-- [ ] 10.4 Open that tour's detail: the owner row shows the identical string as the row
-- [ ] 10.5 Reload with the network offline (after one online load): friend tours still name their owners — cached phone map resolved against the cached contacts
-- [ ] 10.6 Fresh profile / cold cache offline: the skeleton settles to "by a friend" rather than shimmering forever (the failure path in D2)
-- [ ] 10.7 Devtools network panel on a cold Friends tab with several tours sharing one owner: exactly ONE `find_phones_by_user_ids` call per distinct owner (D4a)
-- [ ] 10.8 Walk every migrated surface for ONE friend saved under a non-profile name — collision notice, linked-with pills, link-request banner, backfill page, calendar availability chip, friend-tour partner list — and confirm they all say the SAME name (D8)
-- [ ] 10.9 Incoming friend request from a non-contact still shows the requester's PROFILE name, and accepting still auto-creates the contact (`maybeCreateContactForFriend` untouched)
+- [x] 10.1 `npm run dev`: My Tours list shows type icons with per-type tint; a tour with no type shows the generic icon on the neutral tint; no `?` anywhere
+- [x] 10.2 **Blocking contrast check, both themes.** Acceptance: for `skiing` (`#1565C0`), `hiking` (`#DC2626`), and `paragliding` (`#D97706`) the icon is legible against the avatar circle AND `.friend-badge` stays distinguishable over it, on light AND dark. If dark fails, add a per-theme `--avatar-tint-mix` in `tokens.css` (16% light / ~28% dark) and use it in the `color-mix` — do NOT edit `TOUR_TYPE_COLORS`, they are shared with the map markers and the calendar (D6)
+- [x] 10.3 Friends tab with a friend saved in contacts under a different name than their profile: the contact name shows, and — throttle the network in devtools to make the window visible — "by a friend" NEVER flashes first
+- [x] 10.4 Open that tour's detail: the owner row shows the identical string as the row
+- [x] 10.5 Reload with the network offline (after one online load): friend tours still name their owners — cached phone map resolved against the cached contacts
+- [x] 10.6 Fresh profile / cold cache offline: the skeleton settles to "by a friend" rather than shimmering forever (the failure path in D2)
+- [x] 10.7 Devtools network panel on a cold Friends tab with several tours sharing one owner: exactly ONE `find_phones_by_user_ids` call per distinct owner (D4a)
+- [x] 10.8 Walk every migrated surface for ONE friend saved under a non-profile name — collision notice, linked-with pills, link-request banner, backfill page, calendar availability chip, friend-tour partner list — and confirm they all say the SAME name (D8)
+- [x] 10.9 Incoming friend request from a non-contact still shows the requester's PROFILE name, and accepting still auto-creates the contact (`maybeCreateContactForFriend` untouched)
 
 ## 11. Finalize
 
 - [x] 11.1 `npx eslint . --fix` — zero warnings
 - [x] 11.2 `npm run type-check` — clean
-- [ ] 11.3 Prompt user to commit (do NOT commit). Suggested split into three atomic commits: `feat(tours): activity-type avatars in tour list (#265)` / `feat(tours): name friend-tour owners by contact name (#269)` / `refactor(friendships): resolve friends by contact name across tour surfaces`
-- [ ] 11.4 Prompt user to push the branch and open a PR to `main`, closing both #265 and #269
+- [x] 11.3 Prompt user to commit (do NOT commit). Suggested split into three atomic commits: `feat(tours): activity-type avatars in tour list (#265)` / `feat(tours): name friend-tour owners by contact name (#269)` / `refactor(friendships): resolve friends by contact name across tour surfaces`
+- [x] 11.4 Prompt user to push the branch and open a PR to `main`, closing both #265 and #269
