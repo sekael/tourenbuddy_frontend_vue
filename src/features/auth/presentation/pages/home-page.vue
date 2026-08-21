@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import BaseButton from '@/core/components/base-button.vue'
+import { isOnline } from '@/core/offline/use-online-status'
 import AuthHeroLayout from '@/features/auth/presentation/components/auth-hero-layout.vue'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 
@@ -21,6 +22,13 @@ async function handleSubmit() {
 
   if (!emailRegex.test(email.value)) {
     error.value = t('auth.emailEntry.invalidEmail')
+    return
+  }
+
+  // A first sign-in genuinely needs the network (the OTP is mailed). Say so, rather than
+  // letting the raw "Failed to fetch" through.
+  if (!isOnline.value) {
+    error.value = t('offline.actionUnavailable')
     return
   }
 

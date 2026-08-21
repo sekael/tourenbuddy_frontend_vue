@@ -197,7 +197,7 @@ describe('useAuthStore', () => {
       expect(store.isAuthenticated).toBe(false)
     })
 
-    it('clears the adopted user and the unverified flag on SIGNED_OUT', async () => {
+    async function initializeWithEmitter() {
       const { supabase } = await import('@/core/utils/supabase')
       await failGetSession({ name: 'AuthRetryableFetchError' })
       persist({ refresh_token: 'r1', user: { id: 'user-1' } })
@@ -209,9 +209,50 @@ describe('useAuthStore', () => {
 
       const store = useAuthStore()
       await store.initialize()
-      emit?.('SIGNED_OUT', null)
+      return { store, emit: emit! }
+    }
+
+    it('clears the adopted user and the unverified flag on SIGNED_OUT', async () => {
+      const { store, emit } = await initializeWithEmitter()
+
+      emit('SIGNED_OUT', null)
 
       expect(store.currentUser).toBeNull()
+      expect(sessionUnverified.value).toBe(false)
+    })
+
+    it('signs out locally even when the server is unreachable, so a reboot cannot re-adopt', async () => {
+      const { supabase } = await import('@/core/utils/supabase')
+      const { store } = await initializeWithEmitter()
+      vi.mocked(supabase.auth.signOut).mockResolvedValue({
+        error: { name: 'AuthRetryableFetchError' },
+      } as never)
+
+      await expect(store.signOut()).resolves.toBeUndefined() // must not throw offline
+
+      expect(store.currentUser).toBeNull()
+      expect(sessionUnverified.value).toBe(false)
+      expect(localStorage.getItem(STORAGE_KEY)).toBeNull() // else the next cold start adopts it
+    })
+
+    it('keeps the adopted user when INITIAL_SESSION replays the same failed refresh as null', async () => {
+      // auth-js re-runs the session load for every new subscriber; offline that repeats the
+      // refresh that already failed and delivers INITIAL_SESSION(null). Taking it at face
+      // value would undo the adoption and bounce the user to the sign-in form.
+      const { store, emit } = await initializeWithEmitter()
+
+      emit('INITIAL_SESSION', null)
+
+      expect(store.currentUser?.id).toBe('user-1')
+      expect(sessionUnverified.value).toBe(true)
+    })
+
+    it('upgrades the adopted user to verified once a real session arrives', async () => {
+      const { store, emit } = await initializeWithEmitter()
+
+      emit('TOKEN_REFRESHED', { user: { id: 'user-1', email: 'a@b.ch' } })
+
+      expect(store.currentUser?.email).toBe('a@b.ch')
       expect(sessionUnverified.value).toBe(false)
     })
   })

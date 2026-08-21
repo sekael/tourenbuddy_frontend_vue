@@ -39,7 +39,6 @@ async function bootstrap() {
   installZodErrorMap()
   setupI18nLocaleWatcher()
   app.use(pinia)
-  app.use(router)
 
   // Initialize auth store and await session check before first navigation
   const authStore = useAuthStore()
@@ -61,6 +60,13 @@ async function bootstrap() {
   setupAuthRedirect(authStore, profileStore, notificationsStore)
 
   setupRouterGuards(authStore, profileStore)
+
+  // AFTER the guards, deliberately: `app.use(router)` performs the first navigation as
+  // part of installing, so registering the router earlier would resolve the entry URL with
+  // an empty guard list — `/` would render the sign-in form for an already-authenticated
+  // user, and `setupAuthRedirect` can't rescue it because its watcher was created once
+  // `isAuthenticated` had already settled and so never fires.
+  app.use(router)
 
   app.mount('#app')
 }

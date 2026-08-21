@@ -90,7 +90,7 @@
 
 ## 8. Manual verification
 
-- [ ] 8.1 Reproduce the bug first on `main` (DevTools → Network → Slow 3G, expire the
+- [x] 8.1 Reproduce the bug first on `main` (DevTools → Network → Slow 3G, expire the
   stored `expires_at`, reload) so the fix is measured against a seen failure
 - [ ] 8.2 Installed PWA, signed in: close and reopen several times in quick succession ⇒
   `/map` every time, no email form, no OTP rate-limit error

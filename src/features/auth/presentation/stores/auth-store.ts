@@ -25,11 +25,15 @@ export const useAuthStore = defineStore('auth', () => {
    * fails closed — a stale pattern means "no adoption", i.e. the old behaviour.
    * One client per origin, so exactly one key can match.
    */
+  function findSessionKey(): string | undefined {
+    return Object.keys(localStorage).find(
+      k => k.startsWith('sb-') && k.endsWith('-auth-token'),
+    )
+  }
+
   function readPersistedUser(): User | null {
     try {
-      const key = Object.keys(localStorage).find(
-        k => k.startsWith('sb-') && k.endsWith('-auth-token'),
-      )
+      const key = findSessionKey()
       if (!key)
         return null
       const stored = localStorage.getItem(key)
@@ -73,12 +77,28 @@ export const useAuthStore = defineStore('auth', () => {
 
     isLoading.value = false
 
-    supabase.auth.onAuthStateChange((_event, session) => {
-      currentUser.value = session?.user ?? null
-      // Any event settles the question: a delivered session is verified, and no session
-      // means signed out — either way the adopted-session caveat no longer applies.
-      sessionUnverified.value = false
-      logger.debug('Auth state changed', { event: _event, userId: session?.user?.id })
+    supabase.auth.onAuthStateChange((event, session) => {
+      logger.debug('Auth state changed', { event, userId: session?.user?.id })
+
+      // A delivered session settles the question: verified, adopted-session caveat gone.
+      if (session) {
+        currentUser.value = session.user
+        sessionUnverified.value = false
+        return
+      }
+
+      // Only `_removeSession()` emits SIGNED_OUT, and only for an explicit sign-out or a
+      // PERMANENT refresh failure — so it's the one null we can trust.
+      if (event === 'SIGNED_OUT') {
+        currentUser.value = null
+        sessionUnverified.value = false
+      }
+
+      // Every other null is transient. `onAuthStateChange` replays INITIAL_SESSION to each
+      // new subscriber by re-running the session load, so offline it re-attempts the same
+      // refresh that already failed above and hands us `null` — taking that at face value
+      // would undo the adoption a few lines up and bounce an authenticated offline user to
+      // the sign-in form. Hold what we have; a real sign-out still arrives as SIGNED_OUT.
     })
   }
 
@@ -107,10 +127,29 @@ export const useAuthStore = defineStore('auth', () => {
     currentUser.value = data.user ?? currentUser.value
   }
 
+  /**
+   * Signing out must succeed offline — otherwise the one escape from an unverified
+   * session needs the network the user doesn't have.
+   *
+   * auth-js can't deliver that: `signOut()` loads the session first (offline that repeats
+   * the refresh that already failed and returns an error), and otherwise POSTs `/logout`
+   * and bails on anything that isn't a 401/403/404. Either way it returns early WITHOUT
+   * `_removeSession()`, leaving the session on disk — which the next cold start would
+   * adopt, signing the user straight back in.
+   *
+   * So: best-effort revoke, then drop the local session ourselves regardless. Never
+   * throws — a sign-out that reports failure while having destroyed local state is worse
+   * than one that quietly leaves a server session to expire on its own.
+   */
   async function signOut() {
     const { error } = await supabase.auth.signOut({ scope: 'local' })
     if (error)
-      throw error
+      logger.warn('Sign-out did not reach the server; clearing the local session anyway', error)
+
+    const key = findSessionKey()
+    if (key)
+      localStorage.removeItem(key)
+
     currentUser.value = null
     sessionUnverified.value = false
   }
