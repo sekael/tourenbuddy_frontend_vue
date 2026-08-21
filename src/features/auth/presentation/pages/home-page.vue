@@ -63,6 +63,7 @@ async function handleSubmit() {
         <input
           id="email"
           v-model="email"
+          name="email"
           type="email"
           class="input"
           :placeholder="t('auth.emailEntry.emailPlaceholder')"

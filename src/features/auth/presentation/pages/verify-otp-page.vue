@@ -24,7 +24,33 @@ const isVerifying = ref(false)
 const isResending = ref(false)
 const resendSuccess = ref(false)
 
+/** Last value handed to `verifyOtp`, so autofill never resubmits a rejected code. */
+const attempted = ref<string | null>(null)
+
+// One watcher normalizes AND auto-submits, in that order. Normalize on every change
+// rather than in a @paste handler: iOS autofill, the Android clipboard suggestion chip
+// and drag-drop all populate the field without firing a paste event. `123 456` and a
+// trailing newline from a mail client are the same code with formatting attached — strip
+// it rather than erroring on something the user did correctly.
+watch(code, (value) => {
+  const digits = value.replace(/\D/g, '').slice(0, 6)
+  if (digits !== value) {
+    // Write-back re-runs this watcher with the clean value, which is where the submit
+    // check below fires. Returning here keeps the two concerns on separate ticks.
+    code.value = digits
+    return
+  }
+  if (digits.length === 6 && !isVerifying.value && digits !== attempted.value)
+    handleVerify()
+})
+
 async function handleVerify() {
+  // Guards the explicit-submit path too: `handleVerify` clears `code` on failure, so a
+  // form submit after a rejection would otherwise verify an empty string.
+  if (isVerifying.value || code.value.length < 6)
+    return
+
+  attempted.value = code.value
   error.value = null
   isVerifying.value = true
   try {
