@@ -11,6 +11,19 @@ an ordering key so that, across different entities, replay honours foreign-key
 dependencies. The mutation of local state and its queue entry SHALL be persisted
 atomically (a single transaction), so cached state and the queue never disagree.
 
+A mutation SHALL also be queued — not attempted against the server — whenever the
+current session is unverified (restored from storage without a successful token
+refresh), regardless of the reachability signal. A write attempted on an unverified
+session would be rejected by the server and lost to an error state; queueing it keeps
+the user's edit durable until the session is real.
+
+#### Scenario: Write while the session is unverified but the device reports online
+
+- **WHEN** the user edits an entity while the app is running on a restored session whose
+  token refresh has not yet succeeded, and the connectivity signal reports online
+- **THEN** the mutation SHALL be queued and applied optimistically exactly as an offline
+  write, and SHALL NOT be sent to the server or surfaced as a failed edit
+
 #### Scenario: Queue persists across reloads
 
 - **WHEN** a mutation is queued offline and the app is closed and reopened
@@ -81,6 +94,11 @@ state, or a delete) plus its file upload and deferred notification, in cross-ent
 order. The drain SHALL complete before the reconnect refetch overwrites the store
 and cache, so freshly-flushed writes are never clobbered by a stale server snapshot.
 
+A drain SHALL NOT run without an authenticated session. When no session is available —
+including while a restored-but-unverified session is still awaiting its first successful
+token refresh — the drain SHALL abort without consuming an entry's retry budget, leaving
+every entry pending for a later attempt.
+
 #### Scenario: Flush precedes refetch
 
 - **WHEN** the device reconnects with queued writes and the realtime channels
@@ -94,6 +112,20 @@ and cache, so freshly-flushed writes are never clobbered by a stale server snaps
 - **THEN** it is written via a single idempotent create (or update), the GPX file uploaded
   (best-effort), and the notification dispatched — equivalent to having performed the
   action online, and safe to retry without duplication
+
+#### Scenario: Drain triggered while the session is still unverified
+
+- **WHEN** connectivity returns and a flush is triggered while the app is running on a
+  restored session whose token refresh has not yet succeeded
+- **THEN** the drain SHALL abort immediately, no entry's attempt count SHALL be
+  incremented, and no entry SHALL be dead-lettered as a result
+
+#### Scenario: Queued writes survive a re-authentication
+
+- **WHEN** a session restored offline is ultimately rejected, the user signs in again as
+  the same user, and writes are still pending in the queue
+- **THEN** those writes SHALL still be present and SHALL be replayed under the new
+  session
 
 ### Requirement: Notifications for queued writes are deferred until replay
 
@@ -168,8 +200,9 @@ explicit network health request only as a last tier when a write is pending and
 cheaper signals are inconclusive, and SHALL NOT run a fixed background polling loop.
 The authoritative event that kickstarts a flush SHALL be the realtime channel
 reaching its subscribed state (proven reachability), the same event that gates the
-reconnect refetch; app-foreground and a new enqueue while reachable SHALL also
-trigger a flush. The coarse online event SHALL NOT be the authoritative kickstart.
+reconnect refetch; app-foreground, a new enqueue while reachable, and **the arrival of a
+valid session** (sign-in or successful token refresh) SHALL also trigger a flush. The
+coarse online event SHALL NOT be the authoritative kickstart.
 
 #### Scenario: Flush kickstarted by proven reachability, not the coarse flag
 
@@ -181,6 +214,13 @@ trigger a flush. The coarse online event SHALL NOT be the authoritative kickstar
 
 - **WHEN** the app returns to the foreground with queued writes
 - **THEN** a flush is attempted
+
+#### Scenario: Flush when the session becomes valid
+
+- **WHEN** a token refresh succeeds, or the user completes a sign-in, while writes are
+  pending
+- **THEN** a flush is kickstarted at that moment rather than waiting for the next
+  reachability event
 
 ### Requirement: Permanent failures dead-letter without blocking the queue
 

@@ -92,7 +92,7 @@
 
 - [x] 8.1 Reproduce the bug first on `main` (DevTools → Network → Slow 3G, expire the
   stored `expires_at`, reload) so the fix is measured against a seen failure
-- [ ] 8.2 Installed PWA, signed in: close and reopen several times in quick succession ⇒
+- [x] 8.2 Installed PWA, signed in: close and reopen several times in quick succession ⇒
   `/map` every time, no email form, no OTP rate-limit error
 - [x] 8.3 Browser, throttled network: reload on `/` with an expired access token ⇒ ends on
   `/map` without input
