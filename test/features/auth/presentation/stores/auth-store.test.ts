@@ -221,6 +221,26 @@ describe('useAuthStore', () => {
       expect(sessionUnverified.value).toBe(false)
     })
 
+    it('adopts without waiting out the refresh retries when the session check stalls', async () => {
+      // auth-js retries an unreachable refresh for a full 30s tick before resolving. The
+      // app cannot mount until initialize() returns, so a stalled check must not be waited
+      // on — a blank screen for half a minute is indistinguishable from a broken app.
+      const { supabase } = await import('@/core/utils/supabase')
+      vi.useFakeTimers()
+      vi.mocked(supabase.auth.getSession).mockReturnValue(new Promise(() => {}) as never)
+      persist({ refresh_token: 'r1', user: { id: 'user-1' } })
+
+      const store = useAuthStore()
+      const done = store.initialize()
+      await vi.advanceTimersByTimeAsync(2000)
+      await done
+
+      expect(store.currentUser?.id).toBe('user-1')
+      expect(sessionUnverified.value).toBe(true)
+      expect(store.isLoading).toBe(false)
+      vi.useRealTimers()
+    })
+
     it('signs out locally even when the server is unreachable, so a reboot cannot re-adopt', async () => {
       const { supabase } = await import('@/core/utils/supabase')
       const { store } = await initializeWithEmitter()

@@ -49,9 +49,37 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  /**
+   * How long to wait for the session check before falling back to the persisted session.
+   *
+   * auth-js retries an unreachable token refresh with exponential backoff for a full
+   * AUTO_REFRESH_TICK_DURATION_MS (30s) before giving up, and the app can't mount until
+   * the session settles — so an offline cold start with an expired access token would sit
+   * on a blank screen for half a minute. We can answer that question locally in
+   * milliseconds, so cap the wait and let the retries finish in the background.
+   */
+  const SESSION_RESTORE_TIMEOUT_MS = 2000
+
   /** Initialize auth state from existing session and subscribe to changes. */
   async function initialize() {
-    const { data, error } = await supabase.auth.getSession()
+    // Whatever the refresh eventually decides still reaches us through onAuthStateChange:
+    // success emits TOKEN_REFRESHED, a permanent failure removes the session and emits
+    // SIGNED_OUT. Racing it only shortens the wait; it doesn't discard the outcome.
+    const pending = supabase.auth.getSession()
+    void pending.catch(() => {})
+    const timedOut = Symbol('timeout')
+    const raced = await Promise.race([
+      pending,
+      new Promise<typeof timedOut>(resolve =>
+        setTimeout(() => resolve(timedOut), SESSION_RESTORE_TIMEOUT_MS),
+      ),
+    ])
+
+    const { data, error } = raced === timedOut
+      // Indistinguishable from an unreachable refresh at this point, and treated as one.
+      ? { data: { session: null }, error: { name: 'AuthRetryableFetchError' } }
+      : raced
+
     currentUser.value = data.session?.user ?? null
 
     // No session, but the refresh may simply have been unreachable: `getSession()` hits

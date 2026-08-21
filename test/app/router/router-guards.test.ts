@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { reactive } from 'vue'
 import { setupAuthRedirect, setupRouterGuards } from '@/app/router'
+import { sessionUnverified } from '@/core/auth/session-trust'
 import { isOnline } from '@/core/offline/use-online-status'
 
 const { mockBeforeEach, mockPush, mockCurrentRoute } = vi.hoisted(() => ({
@@ -128,6 +129,20 @@ describe('setupRouterGuards', () => {
       { profile: null, sessionSkipped: false },
     )
     expect(result).toBeUndefined()
+  })
+
+  it('should NOT bounce to onboarding on an unverified session with no cached profile', () => {
+    // Reads are skipped while the session is unverified, so a null profile means "not
+    // loaded yet", not "incomplete" — same reasoning as the offline case.
+    isOnline.value = true
+    sessionUnverified.value = true
+    const result = runGuard(
+      makeRoute('map', { requiresAuth: true, requiresCompleteProfile: true }),
+      makeAuthStore(true),
+      { profile: null, sessionSkipped: false },
+    )
+    expect(result).toBeUndefined()
+    sessionUnverified.value = false
   })
 
   it('should still bounce to onboarding when online with no profile loaded', () => {

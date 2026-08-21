@@ -1,3 +1,4 @@
+import { sessionUnverified } from '@/core/auth/session-trust'
 import { getCached, putCached } from '@/core/offline/entity-cache'
 import { isOnline } from '@/core/offline/use-online-status'
 
@@ -41,7 +42,13 @@ export async function cachedLoad<T>(
   // Start the network immediately (when online) so it runs in PARALLEL with the
   // cache read rather than behind its latency. The cache still paints first below;
   // this only decides when the request leaves, not the assign order.
-  const fresh = isOnline.value ? fetcher() : undefined
+  // An unverified session counts as offline (design D9, matching `mutate`): every
+  // supabase-js request resolves its access token through `auth.getSession()` first, so
+  // fetching against a stale token doesn't fail fast — it queues behind auth-js's 30s
+  // refresh-retry loop and hangs the caller. The cached snapshot is the answer until a
+  // real token lands, at which point realtime's onSubscribed refetches.
+  const reachable = isOnline.value && !sessionUnverified.value
+  const fresh = reachable ? fetcher() : undefined
   // Mark the in-flight fetch handled so a rejection during the cache-read await
   // window can't surface as an unhandledrejection — we still observe it at `await`.
   void fresh?.catch(() => {})

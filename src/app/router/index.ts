@@ -1,5 +1,6 @@
 import { watch } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
+import { sessionUnverified } from '@/core/auth/session-trust'
 import { isOnline } from '@/core/offline/use-online-status'
 
 declare module 'vue-router' {
@@ -81,11 +82,13 @@ export function setupRouterGuards(
 
     if (to.meta.requiresCompleteProfile && authStore.isAuthenticated) {
       const profile = profileStore.profile
-      // Offline with nothing cached, the profile is UNKNOWN, not incomplete: `cachedLoad`
-      // paints the cache and returns without fetching, so `null` here means "couldn't
-      // load", and routing on it would send a fully-onboarded user to /onboarding — where
-      // retyping their name queues an update that overwrites the server profile on replay.
-      if (!isOnline.value && profile === null)
+      // Unreachable with nothing cached, the profile is UNKNOWN, not incomplete:
+      // `cachedLoad` paints the cache and returns without fetching, so `null` here means
+      // "couldn't load", and routing on it would send a fully-onboarded user to /onboarding
+      // — where retyping their name queues an update that overwrites the server profile on
+      // replay. An unverified session is unreachable for the same reason reads are skipped
+      // there: the token can't be used yet.
+      if ((!isOnline.value || sessionUnverified.value) && profile === null)
         return
 
       const isComplete = profile !== null && profile.firstName !== null && profile.lastName !== null

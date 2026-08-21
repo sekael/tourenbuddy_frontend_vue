@@ -4,6 +4,7 @@ import App from './App.vue'
 import router, { setupAuthRedirect, setupRouterGuards } from './app/router'
 import { i18n, setupI18nLocaleWatcher } from './core/i18n'
 import { installZodErrorMap } from './core/i18n/zod-error-map'
+import { useLogger } from './core/logging/use-logger'
 import { useAuthStore } from './features/auth/presentation/stores/auth-store'
 import { useNotificationsStore } from './features/notifications/presentation/stores/notifications-store'
 import { useUserProfileStore } from './features/user/presentation/stores/user-profile-store'
@@ -40,18 +41,25 @@ async function bootstrap() {
   setupI18nLocaleWatcher()
   app.use(pinia)
 
-  // Initialize auth store and await session check before first navigation
   const authStore = useAuthStore()
-  await authStore.initialize()
-
   const profileStore = useUserProfileStore()
-  if (authStore.isAuthenticated) {
-    await profileStore.loadProfile()
-  }
-
   const notificationsStore = useNotificationsStore()
-  if (authStore.isAuthenticated) {
-    notificationsStore.ensurePushSubscription()
+
+  // Session + profile are resolved BEFORE the first navigation so the guards read settled
+  // state. But none of it may keep the app from rendering: everything here touches the
+  // network, and an unreachable auth server must degrade to the sign-in form (or, with a
+  // persisted session, to the offline map) — never to a white screen. `initialize()` and
+  // `loadProfile()` handle their own expected failures; this catch is for the unexpected.
+  try {
+    await authStore.initialize()
+
+    if (authStore.isAuthenticated) {
+      await profileStore.loadProfile()
+      notificationsStore.ensurePushSubscription()
+    }
+  }
+  catch (err) {
+    useLogger('Bootstrap').error('Failed before mount; continuing with degraded state', err)
   }
 
   // Reload profile + redirect off the sign-in screen when a session lands mid-session;
@@ -71,4 +79,6 @@ async function bootstrap() {
   app.mount('#app')
 }
 
-bootstrap()
+bootstrap().catch((err) => {
+  useLogger('Bootstrap').error('Failed to start the app', err)
+})

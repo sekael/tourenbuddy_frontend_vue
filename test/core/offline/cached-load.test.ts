@@ -1,5 +1,6 @@
 import type { Mock } from 'vitest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { sessionUnverified } from '@/core/auth/session-trust'
 import { cachedLoad } from '@/core/offline/cached-load'
 import { getCached, putCached } from '@/core/offline/entity-cache'
 import { isOnline } from '@/core/offline/use-online-status'
@@ -17,7 +18,26 @@ describe('cachedLoad', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     isOnline.value = true
+    sessionUnverified.value = false
     putCachedMock.mockResolvedValue(undefined)
+  })
+
+  it('unverified session: serves the cache without fetching, even though the device is online', async () => {
+    // Every supabase-js request resolves its token through auth.getSession() first, so a
+    // fetch here would queue behind auth-js's 30s refresh-retry loop and hang the caller —
+    // which blocks the app from mounting at all.
+    isOnline.value = true
+    sessionUnverified.value = true
+    getCachedMock.mockResolvedValue(['cached'])
+    const fetcher = vi.fn()
+    const assign = vi.fn()
+
+    await cachedLoad('tours:unverified', fetcher, assign)
+
+    expect(fetcher).not.toHaveBeenCalled()
+    expect(assign).toHaveBeenCalledWith(['cached'])
+    expect(putCachedMock).not.toHaveBeenCalled()
+    sessionUnverified.value = false
   })
 
   it('offline: assigns the cached snapshot and never calls the fetcher or overwrites the cache', async () => {

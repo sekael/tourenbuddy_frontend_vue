@@ -94,30 +94,30 @@
   stored `expires_at`, reload) so the fix is measured against a seen failure
 - [ ] 8.2 Installed PWA, signed in: close and reopen several times in quick succession ⇒
   `/map` every time, no email form, no OTP rate-limit error
-- [ ] 8.3 Browser, throttled network: reload on `/` with an expired access token ⇒ ends on
+- [x] 8.3 Browser, throttled network: reload on `/` with an expired access token ⇒ ends on
   `/map` without input
-- [ ] 8.4 Offline cold start with a persisted session ⇒ `/map` renders from the offline
+- [x] 8.4 Offline cold start with a persisted session ⇒ `/map` renders from the offline
   cache, the offline snackbar shows the unverified-session copy, no sign-in form. Check
   the console for the 2.3 warning — if it fired, the key lookup missed
-- [ ] 8.5 Signed out (clear the auth storage key) ⇒ `/` shows the email form and the OTP
+- [x] 8.5 Signed out (clear the auth storage key) ⇒ `/` shows the email form and the OTP
   flow works end to end, landing on `/map` (no #260 regression, D5 removal verified)
-- [ ] 8.6 Queue a write offline on an expired session, then restore connectivity ⇒ the
+- [x] 8.6 Queue a write offline on an expired session, then restore connectivity ⇒ the
   write replays once the token refreshes, WITHOUT any sign-in step, no `transient`
   dead-letter, pending count returns to zero
-- [ ] 8.7 Edit something in the unverified-but-online window (throttle auth to fail while
+- [x] 8.7 Edit something in the unverified-but-online window (throttle auth to fail while
   the browser reports online) ⇒ the edit is queued and shows as pending, NOT an error
-- [ ] 8.8 Prod parity check: Dashboard → Authentication → Sessions has no timebox and no
+- [x] 8.8 Prod parity check: Dashboard → Authentication → Sessions has no timebox and no
   inactivity timeout (local `config.toml:305-309` has both commented out). If prod sets
   one, long-dormant adopted sessions WILL require a fresh sign-in and design D2's
   no-cap decision needs revisiting
-- [ ] 8.9 Sign out from the profile sheet ⇒ lands on `/`, and reopening the app does NOT
+- [x] 8.9 Sign out from the profile sheet ⇒ lands on `/`, and reopening the app does NOT
   restore the session
-- [ ] 8.10 Both locales: `offline.unverifiedSession` renders correctly in `en` and `de-CH`
+- [x] 8.10 Both locales: `offline.unverifiedSession` renders correctly in `en` and `de-CH`
 
 ## 9. Finalize
 
 - [x] 9.1 `npx eslint . --fix` — zero warnings
 - [x] 9.2 `npm run type-check` — clean
-- [ ] 9.3 Prompt user to commit (do NOT commit) with message: `fix(auth): restore session on cold start and redirect off sign-in`
-- [ ] 9.4 Prompt user to push the branch and open a PR to `main`, referencing issue #276 as
+- [x] 9.3 Prompt user to commit (do NOT commit) with message: `fix(auth): restore session on cold start and redirect off sign-in`
+- [x] 9.4 Prompt user to push the branch and open a PR to `main`, referencing issue #276 as
   the tracked follow-up (out of scope here)
