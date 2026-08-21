@@ -58,8 +58,30 @@ offline-capable app dead-ends on a sign-in form it cannot complete offline.
 - **`verify-otp-page.vue`'s local redirect watcher is deleted** — it is the same
   mechanism, per-page, and its tests move to `setupAuthRedirect`.
 - **Offline with no cached profile no longer means "incomplete".** The guard skips the
-  completeness check when `!isOnline && profile === null`, instead of routing a user to
-  `/onboarding` on data it could not load (and queueing a profile overwrite behind it).
+  completeness check when `(!isOnline || sessionUnverified) && profile === null`, instead
+  of routing a user to `/onboarding` on data it could not load (and queueing a profile
+  overwrite behind it).
+- **Reads respect the unverified session too, and recover when it clears.** Uncovered
+  during manual verification: a request issued on an unverified session does not fail
+  fast — every supabase-js call resolves its token through the auth client first, so it
+  blocks behind a 30-second refresh-retry loop. `cachedLoad` therefore gates its fetcher
+  on `isOnline && !sessionUnverified`, the same predicate `mutate` uses, and
+  `use-realtime-subscription` re-runs each consumer's existing `onSubscribed` refetch
+  when the session becomes verified.
+- **The session check no longer blocks the first render.** `initialize()` races
+  `getSession()` against a 4s cap and, on timeout, adopts the persisted session; the
+  refresh's eventual verdict still arrives via `onAuthStateChange`. Without this, an
+  offline cold start with an expired token showed a blank screen for the full retry loop.
+- **A null auth event no longer signs the user out.** Only a session-bearing event or
+  `SIGNED_OUT` writes session state — the auth client replays `INITIAL_SESSION` to each
+  new subscriber by re-running the failing session load, which otherwise undid the
+  adoption immediately.
+- **Sign-out works offline.** The auth client leaves the persisted session on disk when
+  it cannot reach the server, so the next cold start re-adopted it. `signOut()` now
+  removes the stored session itself and never throws.
+- **Guards are registered before the router's first navigation.** `app.use(router)`
+  performs the entry navigation during `install()`, so it must follow `setupRouterGuards`
+  — otherwise `/` resolves against an empty guard list.
 - **No change to the sign-in UI, the OTP flow, or the guard's auth rules.** `/` still
   shows the email form for a genuinely signed-out user; `requiresAuth` and
   `redirectIfAuth` are untouched.
@@ -73,6 +95,10 @@ offline-capable app dead-ends on a sign-in form it cannot complete offline.
 - `auth`: session restore survives a network-failed token refresh (offline cold start
   included), and an authenticated session that lands after the first navigation
   redirects off the sign-in screen instead of stranding the user there.
+- `offline-write-sync`: writes are queued while the session is unverified, and the drain
+  waits for a real token instead of dead-lettering good offline work.
+- `offline-data-cache`: reachability means "online **and** the session is verified", and
+  stores refetch when an unverified session is proven valid.
 
 ## Impact
 
@@ -91,9 +117,12 @@ offline-capable app dead-ends on a sign-in form it cannot complete offline.
   indicator (`core/` must not import a feature store).
 - **Offline (`core/offline/`):** `replay.ts` gains the session guard, `flush-triggers.ts`
   gains the auth-event trigger, `mutate.ts:95` requires `isOnline && !sessionUnverified`
-  for the online branch. The outbox, coalescing and cache write-through are untouched.
-  Residual exposure: **reads** in that window still 401 — `cachedLoad` keeps the painted
-  cache and records the error, so the user sees stale data rather than a blank screen.
+  for the online branch, and `cached-load.ts` gates its fetcher on the same predicate.
+  The outbox, coalescing and cache write-through are untouched.
+- **`src/core/realtime/use-realtime-subscription.ts`:** re-runs each consumer's
+  `onSubscribed` refetch on the unverified→verified edge, for consumers holding a
+  channel. Chosen over a parallel registry because every store already declares its
+  refetch there, so the DC4 drain-before-refetch ordering is preserved.
 - **`src/core/components/offline-indicator.vue`:** snackbar copy switches on
   `sessionUnverified`.
 - **Locales:** one new key (`offline.unverifiedSession`) in `en.json` AND `de-CH.json` —

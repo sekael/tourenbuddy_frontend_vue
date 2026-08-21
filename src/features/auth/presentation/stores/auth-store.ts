@@ -57,8 +57,14 @@ export const useAuthStore = defineStore('auth', () => {
    * the session settles — so an offline cold start with an expired access token would sit
    * on a blank screen for half a minute. We can answer that question locally in
    * milliseconds, so cap the wait and let the retries finish in the background.
+   *
+   * Erring long deliberately: a session wrongly marked unverified refuses the online-only
+   * actions (attachment upload, phone delete, friend-request accept) with an "unavailable
+   * offline" notice while the device is in fact online. Supabase's free tier is slow
+   * enough that a tight cap would hit that on an ordinary cold start, so this only wants
+   * to fire on genuine failure, not on slowness — a blank moment is cheaper than a lie.
    */
-  const SESSION_RESTORE_TIMEOUT_MS = 2000
+  const SESSION_RESTORE_TIMEOUT_MS = 4000
 
   /** Initialize auth state from existing session and subscribe to changes. */
   async function initialize() {

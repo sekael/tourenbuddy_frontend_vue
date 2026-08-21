@@ -13,7 +13,13 @@ expired, or revoked refresh token). A retryable failure SHALL NOT sign the user 
 store SHALL adopt the persisted session's user so the app boots authenticated and serves
 its offline caches. A permanent failure SHALL leave the user signed out. Adoption SHALL NOT be limited by the age of the
 persisted session — refresh-token lifetime is the server's to enforce.
-`onAuthStateChange` SHALL remain the only writer of session state after initialization.
+`onAuthStateChange` SHALL remain the only writer of session state after initialization,
+and SHALL write it only for an event that delivers a session or for an explicit sign-out.
+Any other event carrying no session SHALL leave the current session untouched.
+
+Session restore SHALL NOT delay the app's first render indefinitely: it SHALL be bounded,
+and a restore that does not settle within the bound SHALL be treated as a retryable
+failure. The eventual outcome SHALL still be applied when it arrives.
 
 While the app runs on an adopted session the store SHALL expose that the session is
 **unverified**, and the app SHALL tell the user their data may be out of date. The flag
@@ -69,10 +75,32 @@ SHALL clear as soon as any auth event delivers a verified session.
   `SIGNED_OUT` once connectivity returns
 - **THEN** the store SHALL clear `currentUser` and the app SHALL redirect to `/`
 
+#### Scenario: Session load is replayed to a new listener while the refresh is failing
+
+- **WHEN** the app is running on an adopted session and the auth client re-runs the
+  session load for a newly registered listener, which fails the same way and reports no
+  session
+- **THEN** the adopted session SHALL be retained and the user SHALL NOT be returned to
+  the sign-in screen
+
+#### Scenario: Session restore does not settle promptly
+
+- **WHEN** the token refresh neither succeeds nor fails within the restore bound (the
+  auth client retries an unreachable refresh with backoff for far longer)
+- **THEN** the app SHALL proceed to render on the persisted session rather than waiting,
+  and SHALL apply the refresh's eventual result when it arrives
+
 #### Scenario: Sign out
 
 - **WHEN** `signOut()` is called on the auth store
 - **THEN** the store SHALL call Supabase `signOut()`, clear the session, and the router guard SHALL redirect to `/`
+
+#### Scenario: Sign out while the auth server is unreachable
+
+- **WHEN** `signOut()` is called with no connectivity
+- **THEN** the locally persisted session SHALL be removed and the user signed out
+  without an error being raised, so that a subsequent cold start does NOT restore the
+  session
 
 #### Scenario: sendEmailOtp for new user
 
@@ -149,3 +177,16 @@ when the session state changes to authenticated.
 - **THEN** the profile-completeness check SHALL be skipped rather than treating the
   unloaded profile as incomplete, so the user is not routed to `/onboarding` and no
   profile overwrite is queued on their behalf
+
+#### Scenario: Unverified session with no cached profile
+
+- **WHEN** the session is unverified, the profile cache holds no entry, and the user
+  navigates to a route requiring a complete profile
+- **THEN** the profile-completeness check SHALL be skipped for the same reason — the
+  profile was never fetched, so it is unknown rather than incomplete
+
+#### Scenario: Entry URL is resolved before the guards exist
+
+- **WHEN** an authenticated user opens the app directly at `/`
+- **THEN** the guard SHALL evaluate that navigation and redirect to `/map`, i.e. the
+  guards SHALL be registered before the router performs its first navigation

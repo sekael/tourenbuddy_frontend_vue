@@ -89,6 +89,14 @@ isAuth === false → profileStore.clear() / notificationsStore.clear()
   `profileStore.profile`. Redirect first and it sees `null`, bouncing a complete profile
   to `/onboarding`. `loadProfile()` hydrates from IndexedDB first (`cachedLoad`), so
   offline this awaits a cache read, not a network round trip.
+- *`app.use(router)` must come after both setup calls.* Installing the router **performs
+  the entry navigation** as part of `install()`, so registering it before
+  `setupRouterGuards` resolves the entry URL against an empty guard list: `/` renders the
+  sign-in form to an authenticated user and `/map` renders without any `requiresAuth`
+  check. `setupAuthRedirect` cannot rescue that either — `initialize()` has already
+  settled `isAuthenticated`, and a non-`immediate` watcher never fires on a value that
+  never changes. This is why the bug reproduced on `/` but not on `/map`, which looked
+  like a caching problem and wasn't.
 
 ### D2 — Adopt the persisted session when the refresh fails *retryably*
 
@@ -99,9 +107,18 @@ In `authStore.initialize()`, when `getSession()` yields no session:
   and set `sessionUnverified = true` (D7).
 - Otherwise — permanent `AuthApiError`, or no stored session — stay signed out.
 
-`onAuthStateChange` remains the sole writer afterwards: a later successful refresh
-overwrites the adopted user and clears `sessionUnverified`; `SIGNED_OUT` clears both,
-and D1's false branch evicts auth-only views.
+`onAuthStateChange` remains the sole writer afterwards, but **only a session-bearing
+event or `SIGNED_OUT` may write `currentUser`**. A later successful refresh overwrites
+the adopted user and clears `sessionUnverified`; `SIGNED_OUT` clears both, and D1's
+false branch evicts auth-only views. Every *other* null session is ignored.
+
+That last rule is load-bearing, not defensive: `onAuthStateChange` replays
+`INITIAL_SESSION` to each new subscriber by re-running the session load
+(`_emitInitialSession`, `GoTrueClient.js:3378`). Offline that repeats the refresh which
+already failed, and its `catch` delivers `INITIAL_SESSION(null)` — undoing the adoption
+made moments earlier and bouncing the user to the sign-in form. `_removeSession()` is
+the only emitter of `SIGNED_OUT` (`:3981`) and runs only on an explicit sign-out or a
+**permanent** refresh failure, so it is the one null that carries information.
 
 - *Why include the online-but-auth-unreachable case, not just `!navigator.onLine`?*
   The reported symptom is mostly the **slow** case (free-tier auth cold start), not the
@@ -117,6 +134,16 @@ and D1's false branch evicts auth-only views.
 - *Why not treat every `getSession()` error as retryable?* A revoked refresh token must
   sign the user out. Adopting it strands the user in an authenticated-looking shell
   whose every request 401s, with no path back to the sign-in form.
+- *A **500** from the auth server signs the user out; 502/503/504 do not.* auth-js maps
+  only `NETWORK_ERROR_CODES = [502, 503, 504]` to `AuthRetryableFetchError`
+  (`lib/fetch.js:6`) despite the adjacent comment claiming the whole 5xx range — a bare
+  500 becomes a permanent `AuthApiError`. Worse, `_recoverAndRefresh` then calls
+  `_removeSession()` (`GoTrueClient.js:3822`), so auth-js **deletes the stored session**
+  and there is nothing left to adopt on the next boot. Accepted, not worked around:
+  hosted Supabase fronts GoTrue with a gateway that returns 502/503/504 when it is
+  unhealthy, so the realistic outage shape is already retryable, and a 500 from a
+  *responding* auth server is a genuine fault rather than a connectivity problem.
+  Adopting past it would mean fighting the library for a session it has already erased.
 - *Why no staleness cap (e.g. refuse sessions older than 30 days)?* The server owns
   refresh-token lifetime; a hardcoded window is a guess that drifts with project JWT
   settings, and guessing short signs out users who would have refreshed fine. The user
@@ -181,7 +208,9 @@ where the user retypes their name, `updateProfile` queues, and the replay **over
 the server profile** under LWW. That path is unreachable today (an offline cold start is
 signed out); D2 creates it.
 
-The guard therefore skips the completeness check when `!isOnline && profile === null`.
+The guard therefore skips the completeness check when
+`(!isOnline || sessionUnverified) && profile === null` — the unverified case for the same
+reason, since D11 skips reads there too, so a `null` profile is equally "not loaded".
 Routing on a fact we could not load is the actual defect. Accepted cost: a genuinely
 un-onboarded user opening offline reaches `/map`, self-correcting on the next online
 launch. This is the one guard rule that changes.
@@ -217,9 +246,9 @@ transaction (DC2), coalescing, `savedOfflineAt` — is reused untouched.
   one line, but the offline indicator would then claim there is no connectivity when
   there is. The signal means "can we reach the network"; overloading it with "do we
   trust our token" makes both meanings unreliable.
-- *Reads are deliberately left alone.* A read on a stale JWT fails and `cachedLoad`
-  already keeps the painted cache snapshot and rethrows into the store's `error` —
-  degradation, not data loss. Writes were the asymmetric risk.
+- *Reads follow, for a different reason (D11).* The original plan left reads alone,
+  reasoning that a stale JWT merely 401s and `cachedLoad` keeps the painted snapshot.
+  That reasoning was wrong about the failure mode — see D11.
 - *Why not a shared "can we write" predicate?* Two call sites (`mutate`, the D8 drain
   guard) with genuinely different checks — the drain wants a *live session object* to
   force a refresh, `mutate` wants the trust flag. One abstraction over two different
@@ -245,12 +274,76 @@ Not addressed here: queue entries carry no `userId`, so on a shared device the p
 user's entries drain under the next session (RLS should reject them into `permanent`
 dead-letters, unverified across all handlers). Tracked as **issue #276**.
 
+### D10 — The session check is bounded; the app never waits on it
+
+`bootstrap()` awaits `authStore.initialize()` before `app.use(router)` and `app.mount()`,
+so nothing renders until the session settles. That is fine when the answer is local and
+fatal when it isn't: `_refreshAccessToken` wraps the token POST in `retryable()` with
+exponential backoff and keeps going until the next backoff would overflow
+`AUTO_REFRESH_TICK_DURATION_MS` — a full **30 seconds** (`GoTrueClient.js`). An offline
+cold start with an expired access token therefore showed a blank screen for 30s.
+
+`initialize()` races `getSession()` against `SESSION_RESTORE_TIMEOUT_MS = 4000` and, on
+timeout, takes the same branch as an unreachable refresh (D2). The race discards nothing:
+whatever the retries eventually decide still arrives via `onAuthStateChange` — success as
+`TOKEN_REFRESHED` (upgrading to verified and triggering a drain, D8), permanent failure
+as `SIGNED_OUT`.
+
+- *Why 4s and not tighter?* A session wrongly marked unverified refuses the online-only
+  actions — attachment upload/delete, `deletePhone`, friend-request `accept` — with an
+  "unavailable offline" notice while the device is online. Supabase's free tier is slow
+  enough that a 1–2s cap would hit that on ordinary cold starts. This should fire on
+  genuine failure, not on slowness; a blank moment is cheaper than a lie.
+- *Why not a splash instead?* D4. A cap plus optimistic mount needs no new UI.
+
+### D11 — An unverified session skips reads too, and refetches when it clears
+
+D9's original reasoning — a read on a stale JWT just 401s — was wrong about *how* it
+fails. Every supabase-js request resolves its access token through `auth.getSession()`
+first, so a fetch during the unverified window does not fail fast: it queues behind the
+same 30s refresh-retry loop and **hangs**. With `bootstrap()` awaiting
+`profileStore.loadProfile()`, that reintroduced the D10 blank screen one layer down, and
+it would have stalled the first load of every other store identically.
+
+So `cachedLoad` gates its fetcher on `isOnline && !sessionUnverified` — the same predicate
+`mutate` uses for writes. Reads and writes now agree on what "reachable" means, in the two
+shared seams rather than at any call site.
+
+Skipping reads leaves the store on a cached snapshot with nothing scheduled to replace it:
+the realtime channel never dropped, so no re-SUBSCRIBE fires. `use-realtime-subscription`
+therefore watches `sessionUnverified` and calls the consumer's existing `onSubscribed` on
+the true→false edge, guarded to that direction and to consumers holding a channel (a
+hidden tab refetches on resubscribe anyway).
+
+- *Why that seam?* Every store already declares its refetch there — mostly
+  `flushThenRefetch(loadX)` — so one change reaches all seven subscribers and the DC4
+  drain-before-refetch ordering is preserved for free. A parallel registry would
+  duplicate that wiring and could drift from it.
+- *Why not rely on realtime reconnecting?* Only true when the socket actually dropped.
+  Unverified-but-online leaves it up, so recovery by convention silently doesn't happen.
+
+### D12 — Sign-out must succeed without the network
+
+auth-js cannot deliver this: `_signOut` loads the session first (offline, that repeats the
+failed refresh and errors out), and otherwise POSTs `/logout` and bails on any error that
+isn't 401/403/404. Both paths return **before** `_removeSession()`, leaving the session on
+disk — which D2 would then adopt on the next cold start, signing the user back in. The
+throw also stranded `handleSignOut` (`user-profile-sheet.vue:231`, no `try`/`catch`), so
+the sheet never closed.
+
+`signOut()` does a best-effort revoke, removes the persisted key itself, clears
+`currentUser` and `sessionUnverified`, and never throws. A sign-out reporting failure
+after destroying local state is worse than one leaving a server session to expire.
+
 ## Risks / Trade-offs
 
-- **Reads fail in the online-retryable window.** `isOnline` is true, the token is stale,
-  so a refetch 401s. `cachedLoad` keeps the cached snapshot and records the error — the
-  user sees stale data, not a blank screen. Writes are covered by D9; reads are not, by
-  choice.
+- **A stale-but-cached view during the unverified window.** Reads are skipped (D11), so
+  the user sees the last cached snapshot until a real token arrives. Bounded by the
+  refresh; recovery is explicit rather than conventional.
+- **A slow cold start (>4s) mounts as unverified** (D10) and refuses online-only actions
+  for that window. Self-heals on `TOKEN_REFRESHED`.
+- **A bare 500 from the auth server signs the user out** and auth-js erases the stored
+  session, so the next boot cannot adopt (D2). Accepted; gateways emit 502/503/504.
 - **Storage-key pattern goes stale.** Fails closed to "no adoption" and logs a warning
   (D3); path A stays fixed regardless.
 - **Double navigation.** If a navigation is in flight when the watcher fires, the push

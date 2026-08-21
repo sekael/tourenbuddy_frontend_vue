@@ -232,7 +232,7 @@ describe('useAuthStore', () => {
 
       const store = useAuthStore()
       const done = store.initialize()
-      await vi.advanceTimersByTimeAsync(2000)
+      await vi.advanceTimersByTimeAsync(4000)
       await done
 
       expect(store.currentUser?.id).toBe('user-1')

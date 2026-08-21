@@ -104,8 +104,21 @@
 - [x] 8.6 Queue a write offline on an expired session, then restore connectivity ⇒ the
   write replays once the token refreshes, WITHOUT any sign-in step, no `transient`
   dead-letter, pending count returns to zero
-- [x] 8.7 Edit something in the unverified-but-online window (throttle auth to fail while
-  the browser reports online) ⇒ the edit is queued and shows as pending, NOT an error
+- [x] 8.7 Edit something in the unverified-but-online window ⇒ the edit is queued and
+  shows as pending, NOT an error.
+  **Recipe:** `supabase stop` (NOT stopping the auth container alone — Kong stays up and
+  answers 500, which auth-js classifies as *permanent*: it signs the user out and erases
+  the stored session). With nothing on 54321 the refresh fails as a transport error,
+  while `isOnline` stays true because the probe hits the app's own origin. Then expire
+  `expires_at` in the `sb-*-auth-token` entry and reload in the same statement. Verify
+  the chip reads `offline.unverifiedSession` and that there are NO `__online_check__`
+  failures — that is what distinguishes this from 8.4. Drain: `supabase start`, then
+  blur/focus the tab (`isOnline` never flipped, so the `watch(isOnline)` trigger cannot
+  fire); confirm the row in the DB, not just a zero pending count.
+  **Found by this task:** reads hang rather than 401 on an unverified session (D11), the
+  30s refresh-retry loop blocks first render (D10), `INITIAL_SESSION(null)` undid the
+  adoption (D2), guards were registered after the entry navigation (D1), and sign-out
+  could not complete offline (D12).
 - [x] 8.8 Prod parity check: Dashboard → Authentication → Sessions has no timebox and no
   inactivity timeout (local `config.toml:305-309` has both commented out). If prod sets
   one, long-dormant adopted sessions WILL require a fresh sign-in and design D2's
@@ -121,3 +134,25 @@
 - [x] 9.3 Prompt user to commit (do NOT commit) with message: `fix(auth): restore session on cold start and redirect off sign-in`
 - [x] 9.4 Prompt user to push the branch and open a PR to `main`, referencing issue #276 as
   the tracked follow-up (out of scope here)
+
+## 10. Fixes found during manual verification
+
+- [x] 10.1 `auth-store.ts`: only a session-bearing event or `SIGNED_OUT` writes session
+  state, so the replayed `INITIAL_SESSION(null)` cannot undo the adoption (D2)
+- [x] 10.2 `main.ts`: `app.use(router)` moved after `setupRouterGuards` /
+  `setupAuthRedirect` so the entry navigation is guarded (D1)
+- [x] 10.3 `main.ts`: pre-mount work wrapped — an unreachable backend degrades to the
+  sign-in form or the offline map, never a white screen
+- [x] 10.4 `auth-store.ts`: `signOut()` removes the persisted session itself and never
+  throws, so it completes offline and a reboot cannot re-adopt (D12)
+- [x] 10.5 `home-page.vue`: requesting a code offline shows `offline.actionUnavailable`
+  instead of a raw fetch error
+- [x] 10.6 `auth-store.ts`: `SESSION_RESTORE_TIMEOUT_MS = 4000` bounds the session check
+  so the 30s refresh-retry loop cannot block first render (D10)
+- [x] 10.7 `cached-load.ts`: fetcher gated on `isOnline && !sessionUnverified` — a read
+  on an unverified session blocks behind the refresh retries rather than failing (D11)
+- [x] 10.8 `use-realtime-subscription.ts`: re-runs each consumer's `onSubscribed` on the
+  unverified→verified edge, so skipped reads recover by construction (D11)
+- [x] 10.9 `router/index.ts`: completeness skip covers `sessionUnverified` as well as
+  `!isOnline` (D6)
+- [x] 10.10 Tests for each of the above; `mutate.test.ts` same-millisecond flake fixed
