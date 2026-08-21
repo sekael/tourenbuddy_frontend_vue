@@ -5,6 +5,8 @@ import type { Tour } from '@/features/tours/domain/entities/tour'
 import { computed, reactive, ref, watch } from 'vue'
 import { resolveContactName } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
+import { resolveFriendName } from '@/features/friendships/domain/resolve-friend-name'
+import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
 export type CompletionFilter = 'all' | 'done' | 'open'
@@ -77,13 +79,20 @@ export function useTourFilters(tab: TourTab = 'owned') {
     tab === 'friends' ? toursStore.friendTours : toursStore.tours,
   )
   const contactsStore = useContactsStore()
+  const friendshipsStore = useFriendshipsStore()
+
+  const findContactByPhone = (phone: string) =>
+    contactsStore.findContactByMethodValue('phone', phone)
 
   function resolvePartnerNames(tour: Tour): string[] {
-    // Friend tours expose partners as server-resolved registered-user names, not the
-    // viewer's contact ids (which would resolve against the wrong address book).
+    // Friend tours: contact name where the viewer is connected to that partner, else the
+    // server-resolved profile name — the same two-step the info sheet displays, so search
+    // and display never disagree about what a partner is called.
     if (tour.isFriendTour) {
-      return (tour.partnerNames ?? []).map(p =>
-        [p.firstName, p.lastName].filter(Boolean).join(' '),
+      return (tour.partnerNames ?? []).map(
+        p =>
+          resolveFriendName(p.userId, friendshipsStore.userIdToPhoneMap, findContactByPhone)
+          ?? [p.firstName, p.lastName].filter(Boolean).join(' '),
       )
     }
     return tour.partnerIds.map((id) => {
@@ -100,6 +109,17 @@ export function useTourFilters(tab: TourTab = 'owned') {
       return true
     if (tour.name && tour.name.toLowerCase().includes(q))
       return true
+    // Friend rows display "by <contact name>", so that name must be searchable — read
+    // from the same resolver the row renders from, or search finds a visible field
+    // nothing matches.
+    // ponytail: reads the phone map as-is; a cold map means no owner match. A predicate
+    // must stay synchronous, and the rows' own resolution warms the map before a user
+    // can type. Await here only if that assumption is ever measured false.
+    if (tour.isFriendTour) {
+      const owner = resolveFriendName(tour.userId, friendshipsStore.userIdToPhoneMap, findContactByPhone)
+      if (owner && owner.toLowerCase().includes(q))
+        return true
+    }
     return resolvePartnerNames(tour).some(name => name.toLowerCase().includes(q))
   }
 

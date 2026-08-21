@@ -5,7 +5,11 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/core/components/base-icon.vue'
 import { SEASON_AXIS, seasonRuns } from '@/features/calendar/domain/season-runs'
-import { TOUR_TYPE_I18N_KEYS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
+import {
+  TOUR_TYPE_COLORS,
+  TOUR_TYPE_I18N_KEYS,
+  TOUR_TYPE_ICONS,
+} from '@/features/tours/data/models/tour-type'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
 defineProps<{
@@ -105,7 +109,11 @@ const nowLineLeft = computed(() => {
                 v-for="(run, i) in seasonRuns(tour.seasons)"
                 :key="i"
                 class="season-bar"
-                :style="{ gridColumn: `${run.start + 2} / span ${run.span}` }"
+                :style="{
+                  gridColumn: `${run.start + 2} / span ${run.span}`,
+                  // Untyped tours keep the CSS default (primary) — same as before.
+                  backgroundColor: tour.tourType ? TOUR_TYPE_COLORS[tour.tourType] : undefined,
+                }"
               />
             </template>
             <span v-else class="no-seasons">{{ t('calendar.seasons.empty') }}</span>

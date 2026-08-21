@@ -7,6 +7,8 @@ import { useRoute, useRouter } from 'vue-router'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
 import { useLogger } from '@/core/logging/use-logger'
+import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
+import { resolveFriendName } from '@/features/friendships/domain/resolve-friend-name'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { TourLinksRepositoryImpl } from '@/features/tour-links/data/repositories/tour-links-repository-impl'
 import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
@@ -26,6 +28,7 @@ const logger = useLogger('backfill-collisions-page')
 const tourLinksStore = useTourLinksStore()
 const toursStore = useToursStore()
 const friendshipsStore = useFriendshipsStore()
+const contactsStore = useContactsStore()
 const repository = new TourLinksRepositoryImpl()
 
 const { requestsByTourId, groupIdByTourId } = storeToRefs(tourLinksStore)
@@ -72,10 +75,6 @@ async function load() {
   try {
     if (props.mode === 'all') {
       pairs.value = await repository.listAllBackfillCollisions()
-      const ownerIds = [...new Set(pairs.value.map(p => p.friendUserId))]
-        .filter(id => !friendshipsStore.userIdToNamesMap.has(id))
-      if (ownerIds.length > 0)
-        await friendshipsStore.getNamesByUserIds(ownerIds)
     }
     else {
       const friendshipId = String(route.params.friendshipId ?? '')
@@ -85,6 +84,11 @@ async function load() {
       }
       pairs.value = await repository.listBackfillCollisionsForFriendship(friendshipId)
     }
+    // One batched lookup for both modes, so a friend is named the same way here as
+    // everywhere else the app names them.
+    const ownerIds = [...new Set(pairs.value.map(p => p.friendUserId))]
+    if (ownerIds.length > 0)
+      await friendshipsStore.ensurePhones(ownerIds)
   }
   catch (err) {
     logger.error('list backfill failed', err)
@@ -96,10 +100,9 @@ async function load() {
 }
 
 function friendNameOf(pair: BackfillCollisionPair): string {
-  const entry = friendshipsStore.userIdToNamesMap.get(pair.friendUserId)
-  if (!entry)
-    return ''
-  return [entry.firstName, entry.lastName].filter(Boolean).join(' ')
+  const name = resolveFriendName(pair.friendUserId, friendshipsStore.userIdToPhoneMap, phone =>
+    contactsStore.findContactByMethodValue('phone', phone))
+  return name ?? t('tours.list.aFriend')
 }
 
 async function requestLink(pair: BackfillCollisionPair) {
@@ -166,7 +169,9 @@ onMounted(() => {
               {{ pair.yourTourName ?? t('tours.infoSheet.unnamedTour') }}
             </dd>
           </div>
-          <div v-if="isAllMode && friendNameOf(pair)" class="field">
+          <!-- The name always resolves to something now (contact name or the generic
+               fallback), so the row is shown whenever the mode calls for it. -->
+          <div v-if="isAllMode" class="field">
             <dt class="field-label">
               {{ t('tourLinks.backfillFriendNameLabel') }}
             </dt>

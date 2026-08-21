@@ -5,6 +5,8 @@ import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import { useLogger } from '@/core/logging/use-logger'
+import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
+import { resolveFriendName } from '@/features/friendships/domain/resolve-friend-name'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
 import { COLLISION_RADIUS_M } from '@/features/tours/domain/collision'
@@ -21,9 +23,10 @@ const logger = useLogger('collision-notice')
 const toursStore = useToursStore()
 const tourLinksStore = useTourLinksStore()
 const friendshipsStore = useFriendshipsStore()
+const contactsStore = useContactsStore()
 const { tours, friendTours } = storeToRefs(toursStore)
 const { requestsByTourId, groupIdByTourId, members, pendingRequests } = storeToRefs(tourLinksStore)
-const { userIdToNamesMap, friendUserIds } = storeToRefs(friendshipsStore)
+const { userIdToPhoneMap, friendUserIds } = storeToRefs(friendshipsStore)
 
 // Defensive: friend-tours has no realtime sub yet (#198). Refresh on mount so
 // a freshly-saved owner-tour can see colliding friend tours without page reload.
@@ -140,23 +143,26 @@ const showBlockedDisclaimer = computed(() =>
   blockedCandidates.value.length > 0 && !foreverHidden.value && !sessionDismissed.value,
 )
 
+// Candidates here are always confirmed friends, so the viewer's own contact name is the
+// one name they are guaranteed to have. The old fallback rendered 'Unnamed tour' as a
+// person's name — a tour string in a people slot.
 function nameFor(userId: string): string {
-  const name = userIdToNamesMap.value.get(userId)
-  return [name?.firstName, name?.lastName].filter(Boolean).join(' ') || t('tours.infoSheet.unnamedTour')
+  const name = resolveFriendName(userId, userIdToPhoneMap.value, phone =>
+    contactsStore.findContactByMethodValue('phone', phone))
+  return name ?? t('tours.list.aFriend')
 }
 
 const linkableNames = computed(() => linkableCandidates.value.map(f => nameFor(f.userId)))
 const blockedNames = computed(() => blockedCandidates.value.map(f => nameFor(f.userId)))
 
-// Ensure owner profile names are resolved for each candidate (linkable + blocked).
+// One batched phone lookup for the whole candidate list; the store dedupes against what
+// has already landed and what is already in flight.
 watch(
   () => [...linkableCandidates.value, ...blockedCandidates.value],
   (list) => {
-    const missing = [...new Set(list.map(f => f.userId))].filter(
-      id => !userIdToNamesMap.value.has(id),
-    )
-    if (missing.length > 0)
-      friendshipsStore.getNamesByUserIds(missing)
+    const ids = [...new Set(list.map(f => f.userId))]
+    if (ids.length > 0)
+      void friendshipsStore.ensurePhones(ids)
   },
   { immediate: true },
 )

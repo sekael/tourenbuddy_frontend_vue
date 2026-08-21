@@ -554,6 +554,39 @@ describe('tourInfoSheet', () => {
     })
   })
 
+  describe('friend-tour identity', () => {
+    it('holds a skeleton for the owner rather than showing the fallback first', () => {
+      const wrapper = mountSheet({ isFriendTour: true }, 'user-2')
+
+      // Nothing resolvable yet — the slot must be a placeholder, not "Created by a friend"
+      // that gets replaced once the lookups land.
+      expect(wrapper.find('.owner-skeleton').exists()).toBe(true)
+      expect(wrapper.text()).not.toContain('createdByLabel')
+    })
+
+    it('renders no owner row on the viewer\'s own tour', () => {
+      const wrapper = mountSheet({ isFriendTour: false }, 'user-1')
+      expect(wrapper.find('.owner-skeleton').exists()).toBe(false)
+    })
+
+    it('falls back to the profile name for a partner the viewer cannot resolve', () => {
+      // A friend tour's partners are the OWNER's partners; find_phones_by_user_ids is
+      // friendship-gated, so for an unconnected partner there is no phone to match and the
+      // server-resolved profile name is the only name available — NOT the generic fallback.
+      const wrapper = mountSheet(
+        {
+          isFriendTour: true,
+          partnerNames: [{ userId: 'u-9', firstName: 'Ana', lastName: 'B' }],
+          unresolvedPartnerCount: 0,
+        },
+        'user-2',
+      )
+      const chips = wrapper.findAll('.friend-partner-chip')
+      expect(chips.length).toBeGreaterThan(0)
+      expect(chips.every(c => c.text() === 'Ana B')).toBe(true)
+    })
+  })
+
   describe('unresolved partner pill (friend tour)', () => {
     it('renders the "and X more" pill when unresolvedPartnerCount > 0', () => {
       const wrapper = mountSheet(

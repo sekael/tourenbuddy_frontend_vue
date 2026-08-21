@@ -18,6 +18,9 @@ import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import ContactActionMenu from '@/features/contacts/presentation/components/contact-action-menu.vue'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
+import { resolveFriendName } from '@/features/friendships/domain/resolve-friend-name'
+import { useFriendDisplayName } from '@/features/friendships/presentation/composables/use-friend-display-name'
+import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import CollisionNotice from '@/features/tour-links/presentation/components/collision-notice.vue'
 import LinkEditWarningDialog from '@/features/tour-links/presentation/components/link-edit-warning-dialog.vue'
@@ -70,6 +73,7 @@ const mapStore = useMapStore()
 const authStore = useAuthStore()
 const attachmentsStore = useTourAttachmentsStore()
 const tourLinksStore = useTourLinksStore()
+const friendshipsStore = useFriendshipsStore()
 const { siblingsByTourId, requestsByTourId, groupIdByTourId } = storeToRefs(tourLinksStore)
 const { tours, friendTours } = storeToRefs(toursStore)
 const { contacts } = storeToRefs(contactsStore)
@@ -486,20 +490,47 @@ const formattedDate = computed(() => {
 
 const partners = computed(() => contacts.value.filter(c => props.tour.partnerIds.includes(c.id)))
 
-// Friend tours surface partners as registered-user profile names (the viewer is
-// not in the owner's address book and never sees raw contacts), so render them
-// read-only — no contact action menu, no group SMS. Populated only when the
-// viewer is a partner; gated to [] otherwise by friend_tours_view.
+// Friend tours name their owner by the viewer's OWN contact for them, gated so the name
+// renders once in final form. Owner identity is not part of what non-partner gating
+// withholds — friend_tours_view exposes user_id to every permitted reader.
+const { displayName: ownerName, isResolved: ownerResolved } = useFriendDisplayName(
+  () => (props.tour.isFriendTour ? props.tour.userId : null),
+)
+
+// Friend tours surface partners contact-name-first, falling back to the server-resolved
+// profile name: a friend tour's partners are the OWNER's partners, and the viewer need
+// not be connected to them — find_phones_by_user_ids is friendship-gated, so for an
+// unconnected partner there is no phone to match and the profile name is the only name
+// available. Render read-only — no contact action menu, no group SMS. Populated only
+// when the viewer is a partner; gated to [] otherwise by friend_tours_view.
 const friendPartnerNames = computed(() =>
   props.tour.isFriendTour
     ? (props.tour.partnerNames ?? [])
-        .map(p =>
-          p.userId === currentUser.value?.id
-            ? t('tours.infoSheet.partnerSelf')
-            : [p.firstName, p.lastName].filter(Boolean).join(' ').trim(),
-        )
+        .map((p) => {
+          if (p.userId === currentUser.value?.id)
+            return t('tours.infoSheet.partnerSelf')
+          const contactName = resolveFriendName(
+            p.userId,
+            friendshipsStore.userIdToPhoneMap,
+            phone => contactsStore.findContactByMethodValue('phone', phone),
+          )
+          return contactName ?? [p.firstName, p.lastName].filter(Boolean).join(' ').trim()
+        })
         .filter(Boolean)
     : [],
+)
+
+// Warm the phone map for the partner list in ONE batched lookup. Partners resolve
+// reactively (null → name) rather than behind a settle gate: the no-flip guarantee is for
+// the owner, where the name is the row's identity; a partner pill already renders
+// progressively today and gating it would add a layout cost per pill.
+watch(
+  () => props.tour.partnerNames?.map(p => p.userId) ?? [],
+  (ids) => {
+    if (ids.length > 0)
+      void friendshipsStore.ensurePhones(ids)
+  },
+  { immediate: true },
 )
 
 // Partner contacts the owner added that resolve to no registered user — surfaced
@@ -660,6 +691,15 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
               : t('tours.infoSheet.visibilityMakePrivate')
           }}
         </button>
+
+        <!-- Owner (friend tours only) -->
+        <div v-if="tour.isFriendTour" class="detail-row">
+          <BaseTooltip :text="t('tours.infoSheet.iconTooltipOwner')">
+            <BaseIcon name="person" class="detail-icon" />
+          </BaseTooltip>
+          <span v-if="ownerResolved">{{ t('tours.infoSheet.createdByLabel', { name: ownerName }) }}</span>
+          <span v-else class="owner-skeleton" aria-hidden="true" />
+        </div>
 
         <!-- Tour type -->
         <div v-if="tour.tourType" class="detail-row">
@@ -1014,6 +1054,32 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 .detail-icon {
   flex-shrink: 0;
   color: var(--color-outline);
+}
+
+/* Same line box as the resolved owner text, so the swap causes no reflow. Fill derives
+   from the row's own color — blends on both themes without a new token. */
+.owner-skeleton {
+  min-height: 1em;
+  width: 12ch;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, currentcolor 10%, transparent);
+  animation: owner-skeleton-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes owner-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .owner-skeleton {
+    animation: none;
+  }
 }
 
 .coords {
