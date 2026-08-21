@@ -772,6 +772,7 @@
   "offline": {
     "indicator": "You're offline — showing saved data",
     "actionUnavailable": "This action isn't available offline",
+    "unverifiedSession": "You're signed in offline — your data may be out of date",
     "writeError": {
       "generic": "Couldn't save your change offline — please try again",
       "storageFull": "Couldn't save offline — device storage is full. Free up space and try again"

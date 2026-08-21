@@ -1,4 +1,6 @@
+import { watch } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
+import { isOnline } from '@/core/offline/use-online-status'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -79,12 +81,62 @@ export function setupRouterGuards(
 
     if (to.meta.requiresCompleteProfile && authStore.isAuthenticated) {
       const profile = profileStore.profile
+      // Offline with nothing cached, the profile is UNKNOWN, not incomplete: `cachedLoad`
+      // paints the cache and returns without fetching, so `null` here means "couldn't
+      // load", and routing on it would send a fully-onboarded user to /onboarding — where
+      // retyping their name queues an update that overwrites the server profile on replay.
+      if (!isOnline.value && profile === null)
+        return
+
       const isComplete = profile !== null && profile.firstName !== null && profile.lastName !== null
       if (!isComplete && !profileStore.sessionSkipped) {
         return { name: 'onboarding' }
       }
     }
   })
+}
+
+/**
+ * The reactive half of the auth gate (change: auth-session-restore-redirect, design D1).
+ *
+ * `beforeEach` only runs on navigation, so a session that arrives WITHOUT one — a token
+ * refresh landing after the app already rendered `/` — leaves an authenticated user
+ * parked on the sign-in form. (Before #260 the "Get Started" button hid this by
+ * triggering a navigation; afterwards, pressing "Send code" did the same, at the cost of
+ * a rate-limited OTP on a session that was valid all along.)
+ *
+ * Both directions live here, together: auth-driven navigation split across two modules is
+ * how one half gets updated and the other missed.
+ */
+export function setupAuthRedirect(
+  authStore: { isAuthenticated: boolean },
+  profileStore: { loadProfile: () => Promise<void>, clear: () => void },
+  notificationsStore: { ensurePushSubscription: () => void, clear: () => void },
+): void {
+  watch(
+    () => authStore.isAuthenticated,
+    async (isAuth) => {
+      if (isAuth) {
+        // Order is load-bearing: the `requiresCompleteProfile` guard reads the profile, so
+        // navigating first makes it see `null` and bounce a complete profile to onboarding.
+        // Offline this awaits a cache read, not a network round trip.
+        await profileStore.loadProfile()
+        notificationsStore.ensurePushSubscription()
+        // Only rescue a user STANDING on a signed-out-only screen. Auth also flips true
+        // after an OTP verify and after a mid-session token rotation from deep in the app,
+        // where an unconditional push would yank them off the page they're using.
+        if (router.currentRoute.value.meta.redirectIfAuth)
+          await router.push({ name: 'map' })
+      }
+      else {
+        profileStore.clear()
+        notificationsStore.clear()
+        // Evict stale auth-only views when the session ends (e.g. sign-out in another tab).
+        if (router.currentRoute.value.meta.requiresAuth)
+          await router.push({ name: 'home' })
+      }
+    },
+  )
 }
 
 export default router

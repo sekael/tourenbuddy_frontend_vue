@@ -1,5 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { sessionUnverified } from '@/core/auth/session-trust'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 
 vi.mock('@/core/utils/supabase', () => ({
@@ -130,5 +131,88 @@ describe('useAuthStore', () => {
     await store.signOut()
     expect(localStorage.getItem('tb.locale')).toBe('de-CH')
     localStorage.removeItem('tb.locale')
+  })
+
+  describe('session restore when the token refresh is unreachable', () => {
+    const STORAGE_KEY = 'sb-abcdefg-auth-token'
+
+    function persist(value: unknown) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
+    }
+
+    async function failGetSession(error: { name: string }) {
+      const { supabase } = await import('@/core/utils/supabase')
+      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+        data: { session: null },
+        error,
+      } as never)
+    }
+
+    beforeEach(() => {
+      localStorage.removeItem(STORAGE_KEY)
+      sessionUnverified.value = false
+    })
+
+    it('adopts the persisted user when the refresh fails retryably', async () => {
+      await failGetSession({ name: 'AuthRetryableFetchError' })
+      persist({ refresh_token: 'r1', user: { id: 'user-1' } })
+
+      const store = useAuthStore()
+      await store.initialize()
+
+      expect(store.isAuthenticated).toBe(true)
+      expect(store.currentUser?.id).toBe('user-1')
+      expect(sessionUnverified.value).toBe(true)
+    })
+
+    it('stays signed out when the refresh fails permanently', async () => {
+      await failGetSession({ name: 'AuthApiError' })
+      persist({ refresh_token: 'r1', user: { id: 'user-1' } })
+
+      const store = useAuthStore()
+      await store.initialize()
+
+      expect(store.isAuthenticated).toBe(false)
+      expect(sessionUnverified.value).toBe(false)
+    })
+
+    it('stays signed out (and does not throw) when the stored session is malformed', async () => {
+      await failGetSession({ name: 'AuthRetryableFetchError' })
+      localStorage.setItem(STORAGE_KEY, '{not json')
+
+      const store = useAuthStore()
+      await expect(store.initialize()).resolves.toBeUndefined()
+
+      expect(store.isAuthenticated).toBe(false)
+      expect(sessionUnverified.value).toBe(false)
+    })
+
+    it('stays signed out when the stored session has no refresh token to revive', async () => {
+      await failGetSession({ name: 'AuthRetryableFetchError' })
+      persist({ user: { id: 'user-1' } })
+
+      const store = useAuthStore()
+      await store.initialize()
+
+      expect(store.isAuthenticated).toBe(false)
+    })
+
+    it('clears the adopted user and the unverified flag on SIGNED_OUT', async () => {
+      const { supabase } = await import('@/core/utils/supabase')
+      await failGetSession({ name: 'AuthRetryableFetchError' })
+      persist({ refresh_token: 'r1', user: { id: 'user-1' } })
+      let emit: ((event: string, session: unknown) => void) | undefined
+      vi.mocked(supabase.auth.onAuthStateChange).mockImplementation(((cb: never) => {
+        emit = cb
+        return { data: { subscription: { unsubscribe: vi.fn() } } }
+      }) as never)
+
+      const store = useAuthStore()
+      await store.initialize()
+      emit?.('SIGNED_OUT', null)
+
+      expect(store.currentUser).toBeNull()
+      expect(sessionUnverified.value).toBe(false)
+    })
   })
 })

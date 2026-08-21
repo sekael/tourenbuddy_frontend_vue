@@ -1,7 +1,7 @@
 import { createPinia } from 'pinia'
-import { createApp, watch } from 'vue'
+import { createApp } from 'vue'
 import App from './App.vue'
-import router, { setupRouterGuards } from './app/router'
+import router, { setupAuthRedirect, setupRouterGuards } from './app/router'
 import { i18n, setupI18nLocaleWatcher } from './core/i18n'
 import { installZodErrorMap } from './core/i18n/zod-error-map'
 import { useAuthStore } from './features/auth/presentation/stores/auth-store'
@@ -55,25 +55,10 @@ async function bootstrap() {
     notificationsStore.ensurePushSubscription()
   }
 
-  // Reload profile when user logs in mid-session; clear on sign-out
-  watch(
-    () => authStore.isAuthenticated,
-    async (isAuth) => {
-      if (isAuth) {
-        await profileStore.loadProfile()
-        notificationsStore.ensurePushSubscription()
-      }
-      else {
-        profileStore.clear()
-        notificationsStore.clear()
-        // Force redirect to home when session ends (e.g., sign-out in another tab).
-        // Router guards only fire on navigation, so a reactive watcher is needed
-        // to evict stale auth-only views.
-        if (router.currentRoute.value.meta.requiresAuth)
-          await router.push({ name: 'home' })
-      }
-    },
-  )
+  // Reload profile + redirect off the sign-in screen when a session lands mid-session;
+  // clear stores and evict auth-only views on sign-out. Router guards only fire on
+  // navigation, so this reactive half is what covers a session arriving without one.
+  setupAuthRedirect(authStore, profileStore, notificationsStore)
 
   setupRouterGuards(authStore, profileStore)
 

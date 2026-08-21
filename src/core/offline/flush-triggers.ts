@@ -1,4 +1,5 @@
 import { watch } from 'vue'
+import { supabase } from '@/core/utils/supabase'
 import { replayQueue } from './replay'
 import { isOnline } from './use-online-status'
 
@@ -22,6 +23,17 @@ export function registerFlushTriggers(): void {
   // Regained connectivity (offline → online) → drain now instead of on the next event.
   watch(isOnline, (online) => {
     if (online)
+      void replayQueue()
+  })
+
+  // A session arrived (sign-in, or the token refresh that follows a reconnect) → drain
+  // now. The drain guard in replay.ts bails while the session is unverified, so without
+  // this trigger a flush kicked off by the coarse online flag would abort and the queue
+  // would idle until the next reachability event. This is also what flushes work queued
+  // offline when the persisted session was ultimately rejected and the user signed in
+  // again — the outbox is durable and survives sign-out.
+  supabase.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')
       void replayQueue()
   })
 

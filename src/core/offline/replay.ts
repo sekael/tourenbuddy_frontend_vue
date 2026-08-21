@@ -7,6 +7,7 @@ import {
   peekAllOrdered,
   remove,
 } from '@/core/offline/write-queue'
+import { supabase } from '@/core/utils/supabase'
 
 /**
  * Drains the durable write queue on reconnect (change: offline-write-sync, DC3):
@@ -85,6 +86,20 @@ async function runDrain(): Promise<void> {
   // write. Bailing here keeps it durably queued; the reconnect `watch(isOnline)` in
   // flush-triggers re-kicks the drain once connectivity truly returns.
   if (!isOnline.value)
+    return
+
+  // Never drain without a real session. On reconnect the coarse online flag flips while
+  // the token refresh is still in flight, so an unguarded drain writes with a stale JWT,
+  // 401s on every entry, and burns MAX_ATTEMPTS into `transient` dead-letters — demoting
+  // perfectly good offline work to a manual retry surface.
+  //
+  // This call IS the token fetch: `getSession()` refreshes when the access token is
+  // inside the expiry margin, so a successful check leaves us holding a fresh token
+  // (auth-js's own auto-refresh ticker is ~30s and has no network listener, so waiting
+  // for it would stall the flush). A failed refresh returns no session → bail with every
+  // entry untouched; the flush triggers re-kick us once the session is real.
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session)
     return
 
   const entries = await peekAllOrdered()

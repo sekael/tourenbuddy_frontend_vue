@@ -2,6 +2,7 @@ import type { WriteQueueEntry } from '@/core/offline/write-queue'
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { supabase } from '@/core/utils/supabase'
 import 'fake-indexeddb/auto'
 
 // Deferred-notify (10.3) + conflict/LWW (10.5) at the store's registered replay handler.
@@ -127,6 +128,11 @@ describe('tours-store offline write → replay', () => {
     vi.clearAllMocks()
     peekAllOrdered.mockResolvedValue([])
     isOnline.value = true
+    // The drain now refuses to run without a session (it would write with a stale JWT and
+    // burn the retry budget), so give it one.
+    vi.spyOn(supabase.auth, 'getSession').mockResolvedValue(
+      { data: { session: { access_token: 't' } } } as never,
+    )
   })
 
   it('offline create dispatches ZERO notifications and never touches the server', async () => {

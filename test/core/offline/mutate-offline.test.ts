@@ -42,6 +42,7 @@ vi.mock('@/core/offline/data-cache-db', async (importOriginal) => {
   }
 })
 
+const { sessionUnverified } = await import('@/core/auth/session-trust')
 const { mutate, offlineWriteError } = await import('@/core/offline/mutate')
 const { isOnline } = await import('@/core/offline/use-online-status')
 const { getCached, clearCached } = await import('@/core/offline/entity-cache')
@@ -70,8 +71,24 @@ describe('mutate queue-form offline enqueue (DC2)', () => {
   })
   afterEach(async () => {
     isOnline.value = true
+    sessionUnverified.value = false
     await clearCached('tours:me')
     await remove('t1').catch(() => {})
+  })
+
+  it('queues the write while the session is unverified, even though the device is online', async () => {
+    // The restored-but-unrefreshed session holds a stale JWT: running `spec.run()` would
+    // 401 and the edit would die in the store's error state instead of the durable queue.
+    isOnline.value = true
+    sessionUnverified.value = true
+    const run = vi.fn()
+
+    const result = await mutate<Row>(spec({ entityId: 't1', run }))
+
+    expect(run).not.toHaveBeenCalled()
+    expect(result).toEqual({ queued: true, failed: false })
+    expect(await getEntry('t1')).toBeDefined()
+    sessionUnverified.value = false
   })
 
   it('round-trips a Blob on the queue entry and survives a DB reopen', async () => {
