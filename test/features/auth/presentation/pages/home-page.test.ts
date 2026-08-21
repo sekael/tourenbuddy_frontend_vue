@@ -2,6 +2,7 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { reactive } from 'vue'
+import { isOnline } from '@/core/offline/use-online-status'
 import HomePage from '@/features/auth/presentation/pages/home-page.vue'
 
 const mockSendEmailOtp = vi.fn()
@@ -22,6 +23,16 @@ describe('homePage', () => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
     mockAuthStore.sendEmailOtp = mockSendEmailOtp
+    isOnline.value = true
+  })
+
+  it('should refuse to request a code offline instead of leaking a raw fetch error', async () => {
+    isOnline.value = false
+    const wrapper = mount(HomePage)
+    await wrapper.find('input').setValue('user@example.com')
+    await wrapper.find('form').trigger('submit')
+    expect(wrapper.text()).toContain('offline.actionUnavailable')
+    expect(mockSendEmailOtp).not.toHaveBeenCalled()
   })
 
   it('should show validation error and not send code when email is invalid', async () => {

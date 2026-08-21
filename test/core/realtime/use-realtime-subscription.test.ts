@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { effectScope, nextTick, ref } from 'vue'
+import { sessionUnverified } from '@/core/auth/session-trust'
 
 const mockChannel = {
   on: vi.fn().mockReturnThis(),
@@ -132,6 +133,37 @@ describe('useRealtimeSubscription', () => {
     subscribeCb?.('SUBSCRIBED')
 
     expect(onSubscribed).toHaveBeenCalledTimes(1)
+  })
+
+  it('(f2) refetches when an unverified session is proven real, and only on that edge', async () => {
+    // Reads are skipped for the whole unverified window, and the channel never dropped —
+    // so without this the store keeps serving the cached snapshot indefinitely.
+    const onSubscribed = vi.fn()
+    sessionUnverified.value = true
+    useRealtimeSubscription(makeOpts({ onSubscribed }))
+    await nextTick()
+
+    sessionUnverified.value = false
+    await nextTick()
+    expect(onSubscribed).toHaveBeenCalledTimes(1)
+
+    // Going unverified again must not refetch — the token is unusable in that direction.
+    sessionUnverified.value = true
+    await nextTick()
+    expect(onSubscribed).toHaveBeenCalledTimes(1)
+    sessionUnverified.value = false
+  })
+
+  it('(f3) does not refetch when the consumer has no channel (hidden tab)', async () => {
+    const onSubscribed = vi.fn()
+    sessionUnverified.value = true
+    useRealtimeSubscription(makeOpts({ enabled: () => false, onSubscribed }))
+    await nextTick()
+
+    sessionUnverified.value = false
+    await nextTick()
+
+    expect(onSubscribed).not.toHaveBeenCalled()
   })
 
   it('(g) stopping effectScope triggers removeChannel even when enabled stays true', async () => {

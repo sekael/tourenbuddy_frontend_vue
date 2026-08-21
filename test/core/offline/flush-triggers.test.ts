@@ -5,6 +5,18 @@ import { isOnline } from '@/core/offline/use-online-status'
 
 vi.mock('@/core/offline/replay', () => ({ replayQueue: vi.fn() }))
 
+let emitAuthEvent: ((event: string) => void) | undefined
+vi.mock('@/core/utils/supabase', () => ({
+  supabase: {
+    auth: {
+      onAuthStateChange: vi.fn((cb: (event: string) => void) => {
+        emitAuthEvent = cb
+        return { data: { subscription: { unsubscribe: vi.fn() } } }
+      }),
+    },
+  },
+}))
+
 const mockReplayQueue = vi.mocked(replayQueue)
 const tick = () => new Promise(resolve => setTimeout(resolve))
 
@@ -50,5 +62,18 @@ describe('registerFlushTriggers', () => {
     setVisibility('hidden')
     setVisibility('visible')
     expect(mockReplayQueue).toHaveBeenCalledTimes(1)
+  })
+
+  it('drains when a session arrives — the drain guard bails until the token is real', () => {
+    emitAuthEvent?.('TOKEN_REFRESHED')
+    expect(mockReplayQueue).toHaveBeenCalledTimes(1)
+
+    emitAuthEvent?.('SIGNED_IN')
+    expect(mockReplayQueue).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not drain on an auth event that carries no session', () => {
+    emitAuthEvent?.('SIGNED_OUT')
+    expect(mockReplayQueue).not.toHaveBeenCalled()
   })
 })

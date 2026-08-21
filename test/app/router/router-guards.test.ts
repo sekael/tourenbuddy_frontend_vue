@@ -1,8 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { setupRouterGuards } from '@/app/router'
+import { reactive } from 'vue'
+import { setupAuthRedirect, setupRouterGuards } from '@/app/router'
+import { sessionUnverified } from '@/core/auth/session-trust'
+import { isOnline } from '@/core/offline/use-online-status'
 
-const { mockBeforeEach } = vi.hoisted(() => ({
+const { mockBeforeEach, mockPush, mockCurrentRoute } = vi.hoisted(() => ({
   mockBeforeEach: vi.fn(),
+  mockPush: vi.fn(async () => {}),
+  mockCurrentRoute: { value: { meta: {} as Record<string, boolean> } },
 }))
 
 vi.mock('vue-router', async (importOriginal) => {
@@ -11,6 +16,8 @@ vi.mock('vue-router', async (importOriginal) => {
     ...actual,
     createRouter: () => ({
       beforeEach: mockBeforeEach,
+      push: mockPush,
+      currentRoute: mockCurrentRoute,
     }),
     createWebHistory: vi.fn(),
   }
@@ -112,5 +119,109 @@ describe('setupRouterGuards', () => {
       makeProfileStore('Max', 'Doe'),
     )
     expect(result).toEqual({ name: 'map' })
+  })
+
+  it('should NOT bounce to onboarding when offline with no cached profile (unknown ≠ incomplete)', () => {
+    isOnline.value = false
+    const result = runGuard(
+      makeRoute('map', { requiresAuth: true, requiresCompleteProfile: true }),
+      makeAuthStore(true),
+      { profile: null, sessionSkipped: false },
+    )
+    expect(result).toBeUndefined()
+  })
+
+  it('should NOT bounce to onboarding on an unverified session with no cached profile', () => {
+    // Reads are skipped while the session is unverified, so a null profile means "not
+    // loaded yet", not "incomplete" — same reasoning as the offline case.
+    isOnline.value = true
+    sessionUnverified.value = true
+    const result = runGuard(
+      makeRoute('map', { requiresAuth: true, requiresCompleteProfile: true }),
+      makeAuthStore(true),
+      { profile: null, sessionSkipped: false },
+    )
+    expect(result).toBeUndefined()
+    sessionUnverified.value = false
+  })
+
+  it('should still bounce to onboarding when online with no profile loaded', () => {
+    isOnline.value = true
+    const result = runGuard(
+      makeRoute('map', { requiresAuth: true, requiresCompleteProfile: true }),
+      makeAuthStore(true),
+      { profile: null, sessionSkipped: false },
+    )
+    expect(result).toEqual({ name: 'onboarding' })
+  })
+})
+
+describe('setupAuthRedirect', () => {
+  const flush = () => new Promise(resolve => setTimeout(resolve))
+
+  function wire(routeMeta: Record<string, boolean>) {
+    mockCurrentRoute.value = { meta: routeMeta }
+    const authStore = reactive({ isAuthenticated: false })
+    const profileStore = { loadProfile: vi.fn(async () => {}), clear: vi.fn() }
+    const notificationsStore = { ensurePushSubscription: vi.fn(), clear: vi.fn() }
+    setupAuthRedirect(authStore, profileStore, notificationsStore)
+    return { authStore, profileStore, notificationsStore }
+  }
+
+  beforeEach(() => {
+    mockPush.mockClear()
+  })
+
+  it('should redirect to map when a session lands while the user sits on the sign-in page', async () => {
+    const { authStore, profileStore } = wire({ redirectIfAuth: true })
+
+    authStore.isAuthenticated = true
+    await flush()
+
+    expect(profileStore.loadProfile).toHaveBeenCalled()
+    expect(mockPush).toHaveBeenCalledWith({ name: 'map' })
+  })
+
+  it('should load the profile BEFORE navigating, so the guard is not fed a null profile', async () => {
+    const order: string[] = []
+    mockCurrentRoute.value = { meta: { redirectIfAuth: true } }
+    const authStore = reactive({ isAuthenticated: false })
+    const profileStore = {
+      loadProfile: vi.fn(async () => { order.push('load') }),
+      clear: vi.fn(),
+    }
+    mockPush.mockImplementation(async () => {
+      order.push('push')
+    })
+    setupAuthRedirect(authStore, profileStore, { ensurePushSubscription: vi.fn(), clear: vi.fn() })
+
+    authStore.isAuthenticated = true
+    await flush()
+
+    expect(order).toEqual(['load', 'push'])
+    mockPush.mockImplementation(async () => {})
+  })
+
+  it('should NOT navigate when the session lands while the user is deep in the app', async () => {
+    const { authStore } = wire({ requiresAuth: true })
+
+    authStore.isAuthenticated = true
+    await flush()
+
+    expect(mockPush).not.toHaveBeenCalled()
+  })
+
+  it('should evict an auth-only view and clear stores when the session ends', async () => {
+    const { authStore, profileStore, notificationsStore } = wire({ requiresAuth: true })
+    authStore.isAuthenticated = true
+    await flush()
+    mockPush.mockClear()
+
+    authStore.isAuthenticated = false
+    await flush()
+
+    expect(profileStore.clear).toHaveBeenCalled()
+    expect(notificationsStore.clear).toHaveBeenCalled()
+    expect(mockPush).toHaveBeenCalledWith({ name: 'home' })
   })
 })

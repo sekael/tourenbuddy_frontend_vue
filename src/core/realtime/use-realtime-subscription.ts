@@ -6,6 +6,7 @@
  */
 import type { RealtimeChannel, RealtimePostgresChangesFilter } from '@supabase/supabase-js'
 import { effectScope, onScopeDispose, ref, watch } from 'vue'
+import { sessionUnverified } from '@/core/auth/session-trust'
 import { supabase } from '@/core/utils/supabase'
 
 export interface PostgresChangesBinding {
@@ -150,6 +151,17 @@ export function useRealtimeSubscription(opts: RealtimeSubscriptionOptions) {
       },
       { immediate: true },
     )
+
+    // A session that was adopted unverified has just been proven real. Reads were skipped
+    // for its whole duration (`cachedLoad` treats an unverified session as unreachable),
+    // so the store is sitting on a cached snapshot with nothing scheduled to replace it:
+    // the channel never dropped, so no re-SUBSCRIBE will fire. Reuse the same refetch the
+    // (re-)subscribe path uses. Consumers whose channel is torn down (hidden tab) are
+    // skipped — they refetch on resubscribe anyway.
+    watch(sessionUnverified, (unverified, wasUnverified) => {
+      if (!unverified && wasUnverified && currentKey !== null)
+        opts.onSubscribed?.()
+    })
   })
 
   return { status, stop }

@@ -1,5 +1,6 @@
 import type { IncomingWrite, WriteQueueEntry } from '@/core/offline/write-queue'
 import { ref, toRaw } from 'vue'
+import { sessionUnverified } from '@/core/auth/session-trust'
 import { useLogger } from '@/core/logging/use-logger'
 import {
   ENTITY_STORE,
@@ -83,7 +84,10 @@ export function mutate<Row>(spec: MutateSpec<Row>): Promise<MutateOutcome<Row[] 
 export async function mutate(arg: unknown): Promise<unknown> {
   // Block form — a bare function. Preserves offline-app-cache-sync behaviour.
   if (typeof arg === 'function') {
-    if (!isOnline.value) {
+    // Same rule as the spec form below: an unverified session can't reach the server.
+    // Block-form actions have no queue representation, so they're refused rather than
+    // deferred — the user is told, instead of watching the call fail.
+    if (!isOnline.value || sessionUnverified.value) {
       offlineBlockedAt.value = Date.now()
       return undefined
     }
@@ -93,7 +97,12 @@ export async function mutate(arg: unknown): Promise<unknown> {
   const spec = arg as MutateSpec<unknown>
   // Online failures still throw out of `run` (the store's own try/catch owns them); the
   // seam only intercepts the OFFLINE path, where an IndexedDB error is ours to handle.
-  if (isOnline.value)
+  //
+  // An UNVERIFIED session counts as offline for writes (design D9): the token is stale,
+  // so the server would reject the call and the edit would die in the store's error
+  // state instead of landing in the durable queue. Reads stay on the online path — a
+  // failed refetch keeps the painted cache snapshot, which is degradation, not loss.
+  if (isOnline.value && !sessionUnverified.value)
     return { queued: false, failed: false, value: await spec.run() }
 
   try {

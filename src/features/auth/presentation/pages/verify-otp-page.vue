@@ -1,28 +1,21 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import AuthHeroLayout from '@/features/auth/presentation/components/auth-hero-layout.vue'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
-import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
-const profileStore = useUserProfileStore()
 const { t } = useI18n({ useScope: 'global' })
 
-// Navigate only after auth is confirmed AND profile has finished loading so the
-// router guard can make an informed decision about onboarding vs map.
-watch(
-  [() => authStore.isAuthenticated, () => profileStore.isLoading],
-  ([isAuth, isLoading]) => {
-    if (isAuth && !isLoading)
-      router.push({ name: 'map' })
-  },
-)
+// Post-verify navigation is NOT handled here: `setupAuthRedirect` watches the same
+// transition for every `redirectIfAuth` route, this one included. A local copy would
+// double-push (swallowed as a NavigationDuplicated failure) and re-create the per-page
+// patching that left `home-page.vue` stranded in the first place.
 
 const email = (route.query.email as string) ?? ''
 const code = ref('')

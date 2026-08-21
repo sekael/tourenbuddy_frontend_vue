@@ -8,6 +8,12 @@ import {
 } from '@/core/offline/replay'
 import { isOnline } from '@/core/offline/use-online-status'
 
+vi.mock('@/core/utils/supabase', () => ({
+  supabase: {
+    auth: { getSession: vi.fn().mockResolvedValue({ data: { session: { access_token: 't' } } }) },
+  },
+}))
+
 // Mock the queue store so the drain LOGIC is tested in isolation — no IndexedDB.
 vi.mock('@/core/offline/write-queue', () => ({
   peekAllOrdered: vi.fn(),
@@ -37,6 +43,21 @@ afterEach(() => {
 })
 
 describe('replayQueue drain', () => {
+  it('does NOT drain without a session — no attempt is burned while the token refresh is pending', async () => {
+    const { supabase } = await import('@/core/utils/supabase')
+    vi.mocked(supabase.auth.getSession).mockResolvedValueOnce({ data: { session: null } } as never)
+    registerReplay('tour', async () => {
+      throw new Error('401') // a stale JWT would fail every entry
+    })
+    vi.mocked(peekAllOrdered).mockResolvedValue([entry({ entityId: 'a', attempts: 4 })])
+
+    await replayQueue()
+
+    expect(bumpAttempt).not.toHaveBeenCalled()
+    expect(deadLetter).not.toHaveBeenCalled()
+    expect(remove).not.toHaveBeenCalled()
+  })
+
   it('does NOT drain while offline — the pending write stays queued, never dead-lettered', async () => {
     isOnline.value = false
     registerReplay('tour', async () => {

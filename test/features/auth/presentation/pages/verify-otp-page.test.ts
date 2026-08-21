@@ -14,14 +14,8 @@ const mockAuthStore = reactive({
   isAuthenticated: false,
 })
 
-const mockProfileStore = reactive({ isLoading: false })
-
 vi.mock('@/features/auth/presentation/stores/auth-store', () => ({
   useAuthStore: vi.fn(() => mockAuthStore),
-}))
-
-vi.mock('@/features/user/presentation/stores/user-profile-store', () => ({
-  useUserProfileStore: vi.fn(() => mockProfileStore),
 }))
 
 vi.mock('vue-router', () => ({
@@ -36,7 +30,6 @@ describe('verifyOtpPage', () => {
     mockAuthStore.isAuthenticated = false
     mockAuthStore.verifyOtp = mockVerifyOtp
     mockAuthStore.sendEmailOtp = mockSendEmailOtp
-    mockProfileStore.isLoading = false
   })
 
   it('should render email in subtitle', () => {
@@ -54,16 +47,10 @@ describe('verifyOtpPage', () => {
     )
   })
 
-  it('should navigate to map when authenticated and profile finished loading', async () => {
+  // Post-verify navigation is asserted against `setupAuthRedirect`
+  // (test/app/router/router-guards.test.ts) — the page no longer owns a redirect watcher.
+  it('should not navigate on its own when the session lands', async () => {
     mount(VerifyOtpPage)
-    mockAuthStore.isAuthenticated = true
-    mockProfileStore.isLoading = false
-    await vi.waitFor(() => expect(mockPush).toHaveBeenCalledWith({ name: 'map' }))
-  })
-
-  it('should not navigate while profile is still loading', async () => {
-    mount(VerifyOtpPage)
-    mockProfileStore.isLoading = true
     mockAuthStore.isAuthenticated = true
     await new Promise(r => setTimeout(r, 50))
     expect(mockPush).not.toHaveBeenCalled()

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { sessionUnverified } from '@/core/auth/session-trust'
 import BaseIcon from '@/core/components/base-icon.vue'
 import ErrorSnackbar from '@/core/components/error-snackbar.vue'
 import { offlineBlockedAt, offlineWriteError } from '@/core/offline/mutate'
@@ -12,11 +13,21 @@ import { isOnline } from '@/core/offline/use-online-status'
 // time we drop offline; a blocked mutation still raises its own transient notice.
 const { t } = useI18n({ useScope: 'global' })
 
-// Transient explanatory snackbar, shown each time connectivity drops.
+// A session restored from storage without a successful token refresh: we're serving
+// cached data on an unproven session, which reads as "offline" to the user even when the
+// device claims connectivity (change: auth-session-restore-redirect, design D7).
+const statusMessage = computed(() =>
+  sessionUnverified.value ? t('offline.unverifiedSession') : t('offline.indicator'),
+)
+const degraded = computed(() => !isOnline.value || sessionUnverified.value)
+
+// Transient explanatory snackbar, shown each time we drop into a degraded state.
+// `immediate` matters for the unverified session: it's true from the first render on a
+// cold start, so there is no transition to catch.
 const explainVisible = ref(false)
 let explainTimer: ReturnType<typeof setTimeout> | null = null
-watch(isOnline, (online) => {
-  if (online)
+watch(degraded, (isDegraded) => {
+  if (!isDegraded)
     return
   explainVisible.value = true
   if (explainTimer)
@@ -24,7 +35,7 @@ watch(isOnline, (online) => {
   explainTimer = setTimeout(() => {
     explainVisible.value = false
   }, 4000)
-})
+}, { immediate: true })
 
 // Blocked-action notice (a mutation attempted while offline).
 const noticeVisible = ref(false)
@@ -59,7 +70,7 @@ watch(offlineWriteError, (key) => {
 <template>
   <!-- Persistent, icon-only offline chip (bottom-left) — minimal footprint. -->
   <Transition name="chip">
-    <div v-if="!isOnline" class="offline-chip" role="status" :aria-label="t('offline.indicator')">
+    <div v-if="degraded" class="offline-chip" role="status" :aria-label="statusMessage">
       <BaseIcon name="cloud_off" size="sm" />
     </div>
   </Transition>
@@ -68,7 +79,7 @@ watch(offlineWriteError, (key) => {
   <Transition name="chip">
     <div v-if="explainVisible" class="offline-snackbar" role="status">
       <BaseIcon name="cloud_off" size="sm" />
-      <span>{{ t('offline.indicator') }}</span>
+      <span>{{ statusMessage }}</span>
     </div>
   </Transition>
 

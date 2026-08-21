@@ -1,9 +1,10 @@
 import { createPinia } from 'pinia'
-import { createApp, watch } from 'vue'
+import { createApp } from 'vue'
 import App from './App.vue'
-import router, { setupRouterGuards } from './app/router'
+import router, { setupAuthRedirect, setupRouterGuards } from './app/router'
 import { i18n, setupI18nLocaleWatcher } from './core/i18n'
 import { installZodErrorMap } from './core/i18n/zod-error-map'
+import { useLogger } from './core/logging/use-logger'
 import { useAuthStore } from './features/auth/presentation/stores/auth-store'
 import { useNotificationsStore } from './features/notifications/presentation/stores/notifications-store'
 import { useUserProfileStore } from './features/user/presentation/stores/user-profile-store'
@@ -39,45 +40,45 @@ async function bootstrap() {
   installZodErrorMap()
   setupI18nLocaleWatcher()
   app.use(pinia)
-  app.use(router)
 
-  // Initialize auth store and await session check before first navigation
   const authStore = useAuthStore()
-  await authStore.initialize()
-
   const profileStore = useUserProfileStore()
-  if (authStore.isAuthenticated) {
-    await profileStore.loadProfile()
-  }
-
   const notificationsStore = useNotificationsStore()
-  if (authStore.isAuthenticated) {
-    notificationsStore.ensurePushSubscription()
+
+  // Session + profile are resolved BEFORE the first navigation so the guards read settled
+  // state. But none of it may keep the app from rendering: everything here touches the
+  // network, and an unreachable auth server must degrade to the sign-in form (or, with a
+  // persisted session, to the offline map) — never to a white screen. `initialize()` and
+  // `loadProfile()` handle their own expected failures; this catch is for the unexpected.
+  try {
+    await authStore.initialize()
+
+    if (authStore.isAuthenticated) {
+      await profileStore.loadProfile()
+      notificationsStore.ensurePushSubscription()
+    }
+  }
+  catch (err) {
+    useLogger('Bootstrap').error('Failed before mount; continuing with degraded state', err)
   }
 
-  // Reload profile when user logs in mid-session; clear on sign-out
-  watch(
-    () => authStore.isAuthenticated,
-    async (isAuth) => {
-      if (isAuth) {
-        await profileStore.loadProfile()
-        notificationsStore.ensurePushSubscription()
-      }
-      else {
-        profileStore.clear()
-        notificationsStore.clear()
-        // Force redirect to home when session ends (e.g., sign-out in another tab).
-        // Router guards only fire on navigation, so a reactive watcher is needed
-        // to evict stale auth-only views.
-        if (router.currentRoute.value.meta.requiresAuth)
-          await router.push({ name: 'home' })
-      }
-    },
-  )
+  // Reload profile + redirect off the sign-in screen when a session lands mid-session;
+  // clear stores and evict auth-only views on sign-out. Router guards only fire on
+  // navigation, so this reactive half is what covers a session arriving without one.
+  setupAuthRedirect(authStore, profileStore, notificationsStore)
 
   setupRouterGuards(authStore, profileStore)
+
+  // AFTER the guards, deliberately: `app.use(router)` performs the first navigation as
+  // part of installing, so registering the router earlier would resolve the entry URL with
+  // an empty guard list — `/` would render the sign-in form for an already-authenticated
+  // user, and `setupAuthRedirect` can't rescue it because its watcher was created once
+  // `isAuthenticated` had already settled and so never fires.
+  app.use(router)
 
   app.mount('#app')
 }
 
-bootstrap()
+bootstrap().catch((err) => {
+  useLogger('Bootstrap').error('Failed to start the app', err)
+})
