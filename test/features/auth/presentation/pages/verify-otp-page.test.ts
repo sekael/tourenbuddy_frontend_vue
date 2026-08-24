@@ -67,6 +67,53 @@ describe('verifyOtpPage', () => {
     })
   })
 
+  it('should strip non-digits from a pasted code and verify exactly once', async () => {
+    mockVerifyOtp.mockResolvedValue(undefined)
+    const wrapper = mount(VerifyOtpPage)
+    await wrapper.find('input').setValue('123 456\n')
+    await vi.waitFor(() =>
+      expect(mockVerifyOtp).toHaveBeenCalledWith('test@example.com', '123456'),
+    )
+    expect(mockVerifyOtp).toHaveBeenCalledTimes(1)
+  })
+
+  it('should truncate an over-long value to six digits', async () => {
+    mockVerifyOtp.mockResolvedValue(undefined)
+    const wrapper = mount(VerifyOtpPage)
+    await wrapper.find('input').setValue('1234567890')
+    await vi.waitFor(() =>
+      expect(mockVerifyOtp).toHaveBeenCalledWith('test@example.com', '123456'),
+    )
+  })
+
+  it('should not resubmit a rejected code after the field is cleared', async () => {
+    mockVerifyOtp.mockRejectedValue(new Error('invalid token'))
+    const wrapper = mount(VerifyOtpPage)
+    await wrapper.find('input').setValue('000000')
+    await vi.waitFor(() => expect(mockVerifyOtp).toHaveBeenCalledTimes(1))
+    await wrapper.find('form').trigger('submit')
+    await new Promise(r => setTimeout(r, 50))
+    expect(mockVerifyOtp).toHaveBeenCalledTimes(1)
+  })
+
+  it('should not verify while fewer than six digits are entered', async () => {
+    const wrapper = mount(VerifyOtpPage)
+    await wrapper.find('input').setValue('12345')
+    await new Promise(r => setTimeout(r, 50))
+    expect(mockVerifyOtp).not.toHaveBeenCalled()
+    expect(wrapper.find('.base-button--primary').attributes('disabled')).toBeDefined()
+  })
+
+  it('should not start a second verification while one is in flight', async () => {
+    mockVerifyOtp.mockImplementation(() => new Promise(() => {}))
+    const wrapper = mount(VerifyOtpPage)
+    await wrapper.find('input').setValue('123456')
+    await vi.waitFor(() => expect(mockVerifyOtp).toHaveBeenCalledTimes(1))
+    await wrapper.find('form').trigger('submit')
+    await new Promise(r => setTimeout(r, 50))
+    expect(mockVerifyOtp).toHaveBeenCalledTimes(1)
+  })
+
   it('should call sendEmailOtp on resend click', async () => {
     mockSendEmailOtp.mockResolvedValue(undefined)
     const wrapper = mount(VerifyOtpPage)
