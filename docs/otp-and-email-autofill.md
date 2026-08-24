@@ -4,19 +4,21 @@ Investigation for [#261](https://github.com/sekael/tourenbuddy/issues/261): can 
 emailed verification code auto-fill instead of forcing an app-switch and copy-paste, and
 does email autofill / alias creation need special configuration?
 
-**Short answer:** the markup is already correct and cannot be improved further. Autofill
-of an _emailed_ code exists on exactly one platform combination (Apple), and whether it
-fires there depends on the wording of the email body — which lives in Brevo, not in this
-repo. On Android and desktop it is **not implementable at all**.
+**Short answer:** yes, but on exactly one platform combination — iOS/macOS Safari with the
+mail read in **Apple Mail**. That path is **confirmed working on a real device** after the
+email templates were reworded to fit Apple's body heuristic. Everywhere else it is **not
+implementable at all**: Android and desktop have no API for it, and a code read in Proton
+Mail / Gmail / Outlook is invisible to the OS scanner regardless of wording. The markup was
+already correct before this change; the email body was the part that mattered.
 
 ## Platform support matrix
 
 | Platform                                                                      | Emailed-code autofill | Mechanism                                                                                                               |
 | ----------------------------------------------------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| iOS 16+ / iPadOS 16+ Safari, macOS 13+ Safari, **reading mail in Apple Mail** | **Yes**               | The OS scans incoming Mail for a code and offers it above the keyboard on a field marked `autocomplete="one-time-code"` |
+| iOS 16+ / iPadOS 16+ Safari, macOS 13+ Safari, **reading mail in Apple Mail** | **Yes — verified**    | The OS scans incoming Mail for a code and offers it above the keyboard on a field marked `autocomplete="one-time-code"` |
 | Android / Chrome                                                              | **No**                | WebOTP is the only API, and it does not accept email                                                                    |
 | Desktop Chrome / Edge / Firefox                                               | **No**                | No API exists                                                                                                           |
-| Any platform, mail read in Gmail / Proton Mail / Outlook                      | **No**                | Only Apple Mail feeds the iOS heuristic                                                                                 |
+| Any platform, mail read in Gmail / Proton Mail / Outlook                      | **No — verified**     | Third-party mail apps are sandboxed; only Apple Mail's store feeds the iOS scanner                                      |
 
 Both inputs already carry the attribute the platform documentation asks for:
 
@@ -91,9 +93,10 @@ same-paragraph adjacency. Reverted: it left two visually different renderings of
 it's there. Word-immediately-before-code in DOM order is very likely sufficient on its own;
 the device test in 6.2 is what actually confirms it, not further wording debate.
 
-**Still required and still manual:** paste the updated files into the live Brevo templates
-(no git-driven deploy exists for this), then verify on a physical iOS device. Record both
-below.
+**Both done:** the updated files were pasted into the live Brevo templates and verified on
+a physical iOS device (see "Device test results"). Note for future edits — this paste step
+has no git-driven deploy and no rollback, so a repo-only change to these templates silently
+does nothing in production until someone repeats it.
 
 ## Password managers and email aliases
 
@@ -170,17 +173,30 @@ Friction that _is_ fixable on every platform:
   reworded to fit Apple's Mail heuristic: the sentence introducing the code now ends
   immediately before it, so "code"/"Code" is the last word read before the digits, and the
   `60 minutes` numeral was reworded to `one hour` so it stops competing with the code as a
-  candidate number. The code itself still appears exactly once, at its original size. Not
-  yet live — see the note above and 6.1 in the task list.
+  candidate number. The code itself still appears exactly once, at its original size. Live
+  in Brevo and **verified working in Apple Mail** — see "Device test results" below.
 
 ## Device test results
 
 Apple's heuristic can only be verified on hardware. Record every attempt here — **a
 negative result is the valuable output**, because it stops the next person theorising.
 
-| Date      | iOS version | Locale / template | Template wording (subject) | Code offered? |
-| --------- | ----------- | ----------------- | -------------------------- | ------------- |
-| _pending_ |             |                   |                            |               |
+| Date       | Mail client     | Reworded template live? | Code offered?   |
+| ---------- | --------------- | ----------------------- | --------------- |
+| 2026-08-24 | **Apple Mail**  | Yes                     | **Yes** — works |
+| 2026-08-24 | **Proton Mail** | Yes                     | **No** — cannot |
 
-<!-- Fill this in as part of the Brevo template audit. If wording was changed, record the
-     before and after text — the Brevo edit has no git history. -->
+**Apple Mail: confirmed working.** Safari offered the code above the keyboard on the
+verification page, and combined with the auto-submit below it, signing in costs one tap.
+This is the acceptance evidence for #261 and it confirms the reworded templates clear
+Apple's heuristic.
+
+**Proton Mail: confirmed not working, and not fixable.** Proton's iOS app is a sandboxed
+third-party app; Apple's scanner reads the **Mail** app's message store and never sees a
+body sitting in Proton's own database. No template wording changes this — the text is not
+being read. Proton exposes IMAP only via Proton Mail Bridge, which is desktop-only and
+cannot back the iOS Mail app, so there is no configuration in which a Proton mailbox
+reaches this feature on iPhone.
+
+> Do not attempt to "fix" the Proton case by editing the templates. The failure is upstream
+> of the wording. The same applies to Gmail's and Outlook's own iOS apps.

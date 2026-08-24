@@ -31,11 +31,11 @@
 - [x] 5.4 Do NOT write a test asserting that OS autofill works — happy-dom models no credential provider, so such a test asserts the mock (design D7)
 - [x] 5.5 `npm run test` — all pass
 
-## 6. Brevo template audit (only the paste step is manual/out of repo — the only remaining task that affects real autofill)
+## 6. Brevo template audit (the task that affects real autofill — **verified working**)
 
 - [x] 6.1a Reword `services/email-hook/templates/otp_{en,de}.{txt,html}` to fit the heuristic in 2.3: code inline beside the word "code"/"Code", `60 minutes`/`60 Minuten` reworded to `one hour`/`eine Stunde` to remove a competing number. Recorded in `docs/otp-and-email-autofill.md`
 - [x] 6.1b Paste the updated `otp_en.txt` / `otp_en.html` / `otp_de.txt` / `otp_de.html` into the live Brevo EN (`BREVO_TEMPLATE_EN`) and DE (`BREVO_TEMPLATE_DE`) templates — this repo has no Brevo deploy hook, so 6.1a alone changes nothing in production (design "Risks")
-- [ ] 6.2 Trigger a real sign-in on a physical **iOS 16+ device** with the account's mail in **Apple Mail**, and observe whether the code is offered above the keyboard. Record the result in the findings doc **either way** — a negative result is the valuable output, and it is the acceptance evidence for issue #261
+- [x] 6.2 Trigger a real sign-in on a physical **iOS 16+ device** with the account's mail in **Apple Mail**, and observe whether the code is offered above the keyboard. Record the result in the findings doc **either way** — a negative result is the valuable output, and it is the acceptance evidence for issue #261 — **PASSED**: code offered above the keyboard in Apple Mail. Proton Mail also tested and cannot work (sandboxed third-party app — not a wording problem). Both recorded in `docs/otp-and-email-autofill.md`
 - [x] 6.3 Confirm no `wrangler deploy` is needed: `services/email-hook/` has no code change, and the Worker→Brevo contract (`{ otp, email }`) is unchanged
 
 ## 7. Manual verification

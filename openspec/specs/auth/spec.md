@@ -6,7 +6,7 @@ Email-based OTP authentication: users sign in by receiving a 6-digit code via em
 
 ### Requirement: OTP verification page verifies the code
 
-The app SHALL display an OTP verification page at `/auth/verify-otp` where users enter the 6-digit code received by email and submit it for verification.
+The app SHALL display an OTP verification page at `/auth/verify-otp` where users enter the 6-digit code received by email and submit it for verification. The page SHALL normalize the entered value to digits before verifying, SHALL submit automatically once six digits are present, and SHALL NOT submit the same value twice or overlap two verification requests.
 
 #### Scenario: Successful OTP submission
 
@@ -17,6 +17,16 @@ The app SHALL display an OTP verification page at `/auth/verify-otp` where users
 
 - **WHEN** Supabase returns an error from `verifyOtp` (wrong code, expired, used)
 - **THEN** the page SHALL display a localized error message under the input, clear the input, and remain on `/auth/verify-otp`
+
+#### Scenario: Rejected code is not resubmitted unchanged
+
+- **WHEN** a code has been submitted and rejected, and the field is repopulated with that same value without the user editing it
+- **THEN** the page SHALL NOT issue a second verification request for that value, and the user SHALL still be able to retry it deliberately via the submit button
+
+#### Scenario: Verification requests do not overlap
+
+- **WHEN** the field reaches six digits while a verification request is already in flight
+- **THEN** the page SHALL NOT issue a second concurrent request
 
 #### Scenario: Resend code
 
@@ -30,12 +40,27 @@ The app SHALL display an OTP verification page at `/auth/verify-otp` where users
 
 ### Requirement: OTP verification page layout
 
-The OTP verification page SHALL include a title, a subtitle naming the recipient email, a single 6-digit numeric input with `inputmode="numeric"` and `autocomplete="one-time-code"`, a verify button, a resend button, and a back button.
+The OTP verification page SHALL include a title, a subtitle naming the recipient email, a single 6-digit numeric input with `inputmode="numeric"` and `autocomplete="one-time-code"`, a verify button, a resend button, and a back button. The input SHALL remain a single field rather than one box per digit, and SHALL NOT carry a `name` attribute, so that password managers do not treat the one-time code as a storable credential.
 
 #### Scenario: Numeric-only input on mobile
 
 - **WHEN** the page mounts on a mobile device
 - **THEN** the input SHALL surface a numeric keyboard and SHALL accept the device's one-time-code autofill where supported
+
+#### Scenario: Code arrives with surrounding whitespace or separators
+
+- **WHEN** the field is populated with a value containing spaces, newlines, or other non-digit characters — by paste, by drag-drop, by an OS autofill suggestion, or by typing
+- **THEN** the page SHALL reduce the value to its digits, truncate it to six, and treat the result as the code to verify
+
+#### Scenario: Filled code submits without a further action
+
+- **WHEN** the normalized value reaches six digits, no verification is in flight, and that value has not already been attempted
+- **THEN** the page SHALL start verification without requiring the user to activate the submit button
+
+#### Scenario: Incomplete code never submits
+
+- **WHEN** the normalized value holds fewer than six digits
+- **THEN** the page SHALL NOT call `verifyOtp`, and the submit button SHALL remain disabled
 
 ### Requirement: Auth screens share a hero background layout
 
@@ -80,7 +105,9 @@ name.
 
 The app SHALL collect the user's email address on the landing page at `/`, presented
 immediately on arrival with no intermediate call-to-action screen. The form SHALL sit in
-the shared hero layout.
+the shared hero layout. The email input SHALL carry both `autocomplete="email"` and a
+`name` attribute, so that password managers and email-alias providers can classify the
+field and offer autofill.
 
 #### Scenario: Signed-out user arrives at the app
 
@@ -103,6 +130,13 @@ the shared hero layout.
 - **WHEN** the Supabase OTP request rejects
 - **THEN** the page SHALL display the error, SHALL remain on `/`, and SHALL NOT navigate
   to `/auth/verify-otp`
+
+#### Scenario: Password manager offers a stored or generated address
+
+- **WHEN** a user focuses the email field with a password manager or OS credential
+  provider active
+- **THEN** the field is classified as an email field via its `autocomplete` and `name`
+  attributes, and a filled value is accepted by the form exactly as a typed one is
 
 #### Scenario: `/auth/email` no longer resolves
 
