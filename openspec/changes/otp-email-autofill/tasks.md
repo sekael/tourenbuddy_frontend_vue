@@ -36,18 +36,18 @@
 - [x] 6.1a Reword `services/email-hook/templates/otp_{en,de}.{txt,html}` to fit the heuristic in 2.3: code inline beside the word "code"/"Code", `60 minutes`/`60 Minuten` reworded to `one hour`/`eine Stunde` to remove a competing number. Recorded in `docs/otp-and-email-autofill.md`
 - [x] 6.1b Paste the updated `otp_en.txt` / `otp_en.html` / `otp_de.txt` / `otp_de.html` into the live Brevo EN (`BREVO_TEMPLATE_EN`) and DE (`BREVO_TEMPLATE_DE`) templates — this repo has no Brevo deploy hook, so 6.1a alone changes nothing in production (design "Risks")
 - [ ] 6.2 Trigger a real sign-in on a physical **iOS 16+ device** with the account's mail in **Apple Mail**, and observe whether the code is offered above the keyboard. Record the result in the findings doc **either way** — a negative result is the valuable output, and it is the acceptance evidence for issue #261
-- [ ] 6.3 Confirm no `wrangler deploy` is needed: `services/email-hook/` has no code change, and the Worker→Brevo contract (`{ otp, email }`) is unchanged
+- [x] 6.3 Confirm no `wrangler deploy` is needed: `services/email-hook/` has no code change, and the Worker→Brevo contract (`{ otp, email }`) is unchanged
 
 ## 7. Manual verification
 
-- [ ] 7.1 `npm run dev`: paste `123 456` into the OTP field ⇒ it becomes `123456` and verification starts with no extra tap
-- [ ] 7.2 Enter a wrong 6-digit code ⇒ error shows, field clears, and no submit loop occurs (watch the network tab: exactly one `verify` request)
-- [ ] 7.3 Focus the email field on `/` with a password manager active ⇒ it is offered as an email field; a filled value submits identically to a typed one
+- [x] 7.1 `npm run dev`: paste `123 456` into the OTP field ⇒ it becomes `123456` and verification starts with no extra tap
+- [x] 7.2 Enter a wrong 6-digit code ⇒ error shows, field clears, and no submit loop occurs (watch the network tab: exactly one `verify` request)
+- [x] 7.3 Focus the email field on `/` with a password manager active ⇒ it is offered as an email field; a filled value submits identically to a typed one
 
 ## 8. Finalize
 
 - [x] 8.1 `npx eslint . --fix` — zero warnings
 - [x] 8.2 `npm run type-check` — clean
-- [ ] 8.3 Prompt user to commit (do NOT commit) with message: `feat(auth): normalize and auto-submit OTP code, document email autofill limits (#261)`
-- [ ] 8.4 Prompt user to push the branch and open a PR to `main`
-- [ ] 8.5 Prompt user to archive this change with the `openspec-archive` skill
+- [x] 8.3 Prompt user to commit (do NOT commit) with message: `feat(auth): normalize and auto-submit OTP code, document email autofill limits (#261)`
+- [x] 8.4 Prompt user to push the branch and open a PR to `main`
+- [x] 8.5 Prompt user to archive this change with the `openspec-archive` skill
