@@ -28,12 +28,12 @@
 
 ## 5. Manual verification (the acceptance evidence for #263)
 
-- [ ] 5.1 `npm run dev`, then on the map tap the **very top edge and very bottom edge** of the "My Tours" segment and of the add-tour segment — both must activate. Before the fix, roughly the outer 14px of each does nothing
-- [ ] 5.2 Check on a touch device or with device emulation, since that is where the report originated and where finger imprecision makes the dead strip bite
-- [ ] 5.3 Confirm the enlarged `.segment:hover` highlight still looks right at desktop width — it now spans the full pill height rather than the content box (design "Risks")
-- [ ] 5.4 Confirm the disabled state still reads correctly: a disabled segment shows the 0.45 opacity and does not respond anywhere in its envelope
-- [ ] 5.5 Start a new tour to open the location picker, and pan over each of: a **glacier / snowfield**, a **rock face or scree** (warm red-brown), **forest**, and **water**. The crosshair must stay legible over all four — that spread is the whole point of the halo, and testing only over ice would validate the wrong half of the change
-- [ ] 5.6 Verify the crosshair still sits exactly at the map centre and that `getCrosshairCoordinates` (`location-picker.vue:32`) still returns the point under the mark — the SVG rewrite must not shift the visual centre
+- [x] 5.1 `npm run dev`, then on the map tap the **very top edge and very bottom edge** of the "My Tours" segment and of the add-tour segment — both must activate. Before the fix, roughly the outer 14px of each does nothing
+- [x] 5.2 Check on a touch device or with device emulation, since that is where the report originated and where finger imprecision makes the dead strip bite
+- [x] 5.3 Confirm the enlarged `.segment:hover` highlight still looks right at desktop width — it now spans the full pill height rather than the content box (design "Risks")
+- [x] 5.4 Confirm the disabled state still reads correctly: a disabled segment shows the 0.45 opacity and does not respond anywhere in its envelope
+- [x] 5.5 Start a new tour to open the location picker, and pan over each of: a **glacier / snowfield**, a **rock face or scree** (warm red-brown), **forest**, and **water**. The crosshair must stay legible over all four — that spread is the whole point of the halo, and testing only over ice would validate the wrong half of the change
+- [x] 5.6 Verify the crosshair still sits exactly at the map centre and that `getCrosshairCoordinates` (`location-picker.vue:32`) still returns the point under the mark — the SVG rewrite must not shift the visual centre
 
 ## 6. Finalize
 
