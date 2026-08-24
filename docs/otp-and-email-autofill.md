@@ -56,18 +56,44 @@ email body, not the markup. It wants:
 - with as few competing numbers nearby as possible (dates, prices, order numbers, phone
   numbers, and long unsubscribe URLs all reduce confidence).
 
-**The body is not in this repository.** The delivery path is:
+**Correction to an earlier draft of this doc:** the body source _is_ in this repository,
+at `services/email-hook/templates/otp_{en,de}.{txt,html}`. It is a copy-paste source, not
+an auto-synced one — Brevo has no API deploy hook here (see `SETUP-NOTIFICATIONS.md`), so
+editing the repo file changes nothing in production until someone pastes it into the Brevo
+template editor. The delivery path:
 
 ```
 signInWithOtp (src/features/auth/presentation/stores/auth-store.ts)
   → Supabase send-email hook
     → services/email-hook/src/index.ts   (posts { otp, email } to Brevo)
       → Brevo hosted template (env: BREVO_TEMPLATE_EN / BREVO_TEMPLATE_DE)
+        ← pasted by hand from services/email-hook/templates/otp_*.{txt,html}
 ```
 
-The Worker only passes the token through. Changing the mail's wording is a **Brevo
-dashboard edit** — no commit, no review trail, no rollback. Record any such edit in the
-"Device test results" section below.
+The Worker only passes the token through; the wording lives in the repo templates. All
+four (`otp_en.txt`, `otp_en.html`, `otp_de.txt`, `otp_de.html`) were reworded for the Apple
+heuristic in 2.3, with the code appearing **exactly once** — no duplicated code text, only
+the surrounding sentence changed:
+
+- The lead-in now ends right where the code appears, so the word "code"/"Code" sits
+  immediately before it in reading order: `"Your TourenBuddy verification code is:"` /
+  `"Dein TourenBuddy-Code lautet:"`, then the code (the plain-text token on its own line in
+  `.txt`; the existing large styled `<span class="code">` in `.html` — unchanged design,
+  just no longer preceded by a paragraph that never says "code" until after it).
+- The `60 minutes` / `60 Minuten` validity numeral — a second digit run near the code — was
+  reworded to `one hour` / `eine Stunde` to remove a competing number from the heuristic's
+  scan window.
+
+An earlier draft of this edit also repeated the code as bold inline text right before the
+styled block, on the theory that same-sentence adjacency is a stronger signal than
+same-paragraph adjacency. Reverted: it left two visually different renderings of the same
+6-digit number a few lines apart, which reads as a mistake to anyone who doesn't know why
+it's there. Word-immediately-before-code in DOM order is very likely sufficient on its own;
+the device test in 6.2 is what actually confirms it, not further wording debate.
+
+**Still required and still manual:** paste the updated files into the live Brevo templates
+(no git-driven deploy exists for this), then verify on a physical iOS device. Record both
+below.
 
 ## Password managers and email aliases
 
@@ -140,6 +166,12 @@ Friction that _is_ fixable on every platform:
   A code arriving as `123 456` or with a trailing newline is accepted.
 - Verification submits automatically once six digits are present, so autofill and paste
   do not still require hunting for a button.
+- The OTP email templates (`services/email-hook/templates/otp_{en,de}.{txt,html}`) were
+  reworded to fit Apple's Mail heuristic: the sentence introducing the code now ends
+  immediately before it, so "code"/"Code" is the last word read before the digits, and the
+  `60 minutes` numeral was reworded to `one hour` so it stops competing with the code as a
+  candidate number. The code itself still appears exactly once, at its original size. Not
+  yet live — see the note above and 6.1 in the task list.
 
 ## Device test results
 

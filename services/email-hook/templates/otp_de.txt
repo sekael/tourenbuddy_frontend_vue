@@ -1,11 +1,9 @@
 TourenBuddy – Bei deinem Konto anmelden
 ========================================
 
-Gib diesen Code in der App ein:
+Dein TourenBuddy-Code lautet {{ params.otp }}
 
-    {{ params.otp }}
-
-Dieser Code ist 60 Minuten gültig und kann nur einmal verwendet werden.
+Gib ihn in der App ein, um dich anzumelden. Er ist eine Stunde gültig und kann nur einmal verwendet werden.
 
 Teile diesen Code mit niemandem. TourenBuddy wird dich niemals nach deinem Anmeldecode fragen.
 
