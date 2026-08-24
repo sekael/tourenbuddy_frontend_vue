@@ -82,6 +82,11 @@ const { t } = useI18n({ useScope: 'global' })
 
 .segment {
   display: flex;
+  /* Fill the pill's full height. BaseTooltip's wrapper centers its slot at content
+     height, which left ~14px of pill above and below each button looking clickable
+     but inert. `align-self` is what overrides the wrapper's `align-items: center`
+     — same form `.divider` uses below. */
+  align-self: stretch;
   align-items: center;
   justify-content: center;
   gap: var(--spacing-xs);
