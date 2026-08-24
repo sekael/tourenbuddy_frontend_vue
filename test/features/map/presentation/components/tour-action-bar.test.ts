@@ -54,6 +54,22 @@ describe('tourActionBar', () => {
     expect(addBtn.attributes('aria-label')).toBeTruthy()
   })
 
+  it('should reach the segment when the click lands on the tooltip wrapper strip', async () => {
+    const wrapper = mountBar()
+    const strip = wrapper.find('.tooltip-wrapper')
+    expect(strip.find('.segment--tours').exists()).toBe(true)
+    await strip.find('.segment--tours').trigger('click')
+    expect(wrapper.emitted('tours')).toHaveLength(1)
+  })
+
+  it('should emit nothing when a disabled segment envelope is clicked', async () => {
+    const wrapper = mountBar({ toursDisabled: true, addTourDisabled: true })
+    await wrapper.find('.segment--tours').trigger('click')
+    await wrapper.find('.segment--add').trigger('click')
+    expect(wrapper.emitted('tours')).toBeUndefined()
+    expect(wrapper.emitted('addTour')).toBeUndefined()
+  })
+
   it('should pass addTourTooltip to the add-tour BaseTooltip', () => {
     const wrapper = mountBar({ addTourTooltip: 'Sign in to add tours' })
     const tooltips = wrapper.findAllComponents({ name: 'BaseTooltip' })
