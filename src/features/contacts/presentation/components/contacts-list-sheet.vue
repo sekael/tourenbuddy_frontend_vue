@@ -10,7 +10,7 @@ import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
-import { DuplicateContactAcrossContactsError } from '@/core/exceptions'
+import { DuplicateContactAcrossContactsError, VCardImportError } from '@/core/exceptions'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import {
   formatPhoneDisplay,
@@ -28,6 +28,7 @@ import { useFriendshipsStore } from '@/features/friendships/presentation/stores/
 import { useUserBlocksStore } from '@/features/friendships/presentation/stores/user-blocks-store'
 import ContactDetailView from './contact-detail-view.vue'
 import ContactForm from './contact-form.vue'
+import ContactImportHelp from './contact-import-help.vue'
 
 const props = defineProps<{
   /** When provided, auto-opens detail view for the given contact id. */
@@ -382,7 +383,12 @@ async function handleFileChange(event: Event) {
     await processImportedContacts(parsed)
   }
   catch (err) {
-    addError.value = err instanceof Error ? err.message : t('contacts.addDialog.fileImportError')
+    // A validated failure names its own cause; anything else (an I/O rejection from
+    // file.text()) stays generic. Either way the view stays on the form — advancing to
+    // an empty results screen is the bug this replaces.
+    addError.value = err instanceof VCardImportError
+      ? t(`contacts.addDialog.fileError.${err.reason}`)
+      : err instanceof Error ? err.message : t('contacts.addDialog.fileImportError')
   }
   finally {
     isAddLoading.value = false
@@ -583,17 +589,19 @@ function onFormPhoneInput(phone: string) {
               <span v-if="result.primaryPhone" class="result-phone">
                 <BaseIcon name="star" class="star-icon-sm" />
                 {{ formatPhoneDisplay(result.primaryPhone) }}
-                <span v-if="result.extraPhoneCount > 0" class="extra-phones">+{{ result.extraPhoneCount }} more</span>
+                <span v-if="result.extraPhoneCount > 0" class="extra-phones">
+                  {{ t('contacts.addDialog.extraPhones', { count: result.extraPhoneCount }) }}
+                </span>
               </span>
               <BaseTooltip
                 v-if="result.rawPhoneNumbers.length > 0"
-                :text="`Couldn't parse: ${result.rawPhoneNumbers.join(', ')}`"
+                :text="t('contacts.addDialog.unparseableTooltip', { values: result.rawPhoneNumbers.join(', ') })"
               >
                 <span class="result-phone result-phone-warning">
                   ⚠ {{ t('contacts.list.invalidPhoneWarning') }}: {{ result.rawPhoneNumbers[0]
                   }}{{
                     result.rawPhoneNumbers.length > 1
-                      ? ` +${result.rawPhoneNumbers.length - 1} more`
+                      ? ` ${t('contacts.addDialog.extraPhones', { count: result.rawPhoneNumbers.length - 1 })}`
                       : ''
                   }}
                 </span>
@@ -659,11 +667,16 @@ function onFormPhoneInput(phone: string) {
           <input
             ref="fileInput"
             type="file"
-            accept=".vcf,.vcard"
+            accept=".vcf,.vcard,text/vcard,text/x-vcard"
             class="file-input-hidden"
             @change="handleFileChange"
           ><!-- no multiple attribute: single file only -->
         </div>
+
+        <p class="format-hint">
+          {{ t('contacts.addDialog.help.formatHint') }}
+        </p>
+        <ContactImportHelp />
 
         <div class="divider" />
 
@@ -892,6 +905,12 @@ function onFormPhoneInput(phone: string) {
 
 .file-input-hidden {
   display: none;
+}
+
+.format-hint {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
 }
 
 .divider {

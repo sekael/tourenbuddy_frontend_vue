@@ -260,7 +260,33 @@
       "summaryPhoneDuplicate": "{count} bereits bei einem anderen Kontakt",
       "summaryPhoneDuplicateBadge": "Duplikat",
       "summaryNameDuplicate": "{count} bereits in Kontakten",
-      "summaryUnparseable": "{count} nicht lesbar"
+      "summaryUnparseable": "{count} nicht lesbar",
+      "extraPhones": "+{count} weitere",
+      "unparseableTooltip": "Nicht lesbar: {values}",
+      "fileError": {
+        "emptyFile": "Diese Datei ist leer. Exportiere deine Kontakte nochmals und wähle die neue Datei.",
+        "notVCard": "Das ist keine vCard-Datei. Exportiere eine .vcf aus deiner Kontakte-App und versuche es nochmals.",
+        "noContacts": "Diese vCard enthält keinen brauchbaren Kontakt — allen Einträgen fehlen Name und Telefonnummer. Exportiere den Kontakt nochmals und wähle dann diese Datei."
+      },
+      "help": {
+        "formatHint": "Akzeptiert eine vCard-Datei (.vcf oder .vcard). Eine einzelne Datei kann viele Kontakte enthalten.",
+        "summary": "Wie exportiere ich meine Kontakte?",
+        "tabIos": "iPhone / iPad",
+        "tabAndroid": "Android",
+        "tabDesktop": "Computer",
+        "iosStep1": "Öffne die Kontakte-App und tippe auf den gewünschten Kontakt.",
+        "iosStep2": "Scrolle nach unten und tippe auf «Kontakt teilen».",
+        "iosStep3": "Wähle «In Dateien sichern» und einen Ordner, den du wiederfindest.",
+        "iosStep4": "Komm hierher zurück, tippe auf «Aus Datei importieren» und wähle die gespeicherte .vcf.",
+        "androidStep1": "Falls oben ein Button «Aus Kontakten importieren» erscheint, nimm diesen — er wählt Kontakte direkt aus, ganz ohne Datei.",
+        "androidStep2": "Sonst öffne die Kontakte-App und wähle den gewünschten Kontakt.",
+        "androidStep3": "Tippe auf das Menü, dann auf «Teilen» oder «Exportieren», und sichere ihn als .vcf-Datei.",
+        "androidStep4": "Komm hierher zurück, tippe auf «Aus Datei importieren» und wähle diese Datei.",
+        "desktopStep1": "macOS Kontakte: Kontakte auswählen, dann Ablage → Exportieren → vCard exportieren.",
+        "desktopStep2": "Google Kontakte: Kontakte auswählen, dann Exportieren und das vCard-Format wählen.",
+        "desktopStep3": "Outlook: Kontakt öffnen, dann Datei → Speichern unter und vCard wählen.",
+        "desktopStep4": "Sende die .vcf an dein Handy, oder öffne TourenBuddy am Computer und importiere sie dort."
+      }
     },
     "detailView": {
       "title": "Kontakt bearbeiten",

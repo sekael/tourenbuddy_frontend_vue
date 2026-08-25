@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { VCardImportError } from '@/core/exceptions'
 import {
   parseVCardText,
   useVCardImport,
@@ -382,5 +383,94 @@ END:VCARD`
     expect(result).toHaveLength(2)
     expect(result.map(c => c.firstName)).toContain('Alice')
     expect(result.map(c => c.firstName)).toContain('Bob')
+  })
+
+  describe('rejected files', () => {
+    async function reasonOf(file: File): Promise<string> {
+      const { parseVCardFile } = useVCardImport()
+      try {
+        await parseVCardFile(file)
+        return 'no-error'
+      }
+      catch (err) {
+        return err instanceof VCardImportError ? err.reason : 'wrong-error-type'
+      }
+    }
+
+    it('should reject a zero-byte file as emptyFile', async () => {
+      expect(await reasonOf(makeFile(''))).toBe('emptyFile')
+    })
+
+    it('should reject a whitespace-only file as emptyFile, not notVCard', async () => {
+      expect(await reasonOf(makeFile('  \n\t \r\n'))).toBe('emptyFile')
+    })
+
+    it('should reject content without a vCard marker as notVCard', async () => {
+      expect(await reasonOf(makeFile('name,phone\nMax,079 123 45 67'))).toBe('notVCard')
+    })
+
+    it('should accept vCard content in a file not named .vcf (content beats filename)', async () => {
+      const { parseVCardFile } = useVCardImport()
+      const result = await parseVCardFile(makeFile(vcfContent, 'contact.txt'))
+      expect(result).toHaveLength(1)
+      expect(result[0]!.firstName).toBe('Max')
+    })
+
+    it('should reject a card with no name and no phone as noContacts', async () => {
+      const junk = `BEGIN:VCARD
+VERSION:3.0
+ORG:Some Company
+NOTE:no name, no number
+END:VCARD`
+      expect(await reasonOf(makeFile(junk))).toBe('noContacts')
+    })
+
+    it('should accept lowercase vCard markers (property names are case-insensitive)', async () => {
+      const lowercase = `begin:vcard
+version:3.0
+fn:Max Muster
+tel;type=cell:+41791234567
+end:vcard`
+      const { parseVCardFile } = useVCardImport()
+      const result = await parseVCardFile(makeFile(lowercase))
+      expect(result).toHaveLength(1)
+      expect(result[0]!.firstName).toBe('Max')
+    })
+
+    it('should import a nameless card that carries a phone number', async () => {
+      const phoneOnly = `BEGIN:VCARD
+VERSION:3.0
+TEL;TYPE=CELL:+41791234567
+END:VCARD`
+      const { parseVCardFile } = useVCardImport()
+      const result = await parseVCardFile(makeFile(phoneOnly))
+      expect(result).toHaveLength(1)
+      expect(result[0]!.phones).toHaveLength(1)
+    })
+
+    it('should import a nameless card whose only phone is unparseable', async () => {
+      const rawOnly = `BEGIN:VCARD
+VERSION:3.0
+TEL;TYPE=CELL:ext. 1234
+END:VCARD`
+      const { parseVCardFile } = useVCardImport()
+      await expect(parseVCardFile(makeFile(rawOnly))).resolves.toHaveLength(1)
+    })
+
+    it('should import the usable contact when only some cards are junk', async () => {
+      const mixed = `BEGIN:VCARD
+VERSION:3.0
+ORG:Some Company
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+FN:Max Muster
+N:Muster;Max;;;
+TEL;TYPE=CELL:+41791234567
+END:VCARD`
+      const { parseVCardFile } = useVCardImport()
+      const result = await parseVCardFile(makeFile(mixed))
+      expect(result.map(c => c.firstName)).toContain('Max')
+    })
   })
 })

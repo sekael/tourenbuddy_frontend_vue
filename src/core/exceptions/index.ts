@@ -95,6 +95,20 @@ export class DuplicateContactMethodError extends Error {
   }
 }
 
+/** Why a picked file could not be imported as vCard. Ordered: emptiness beats format, format beats content. */
+export type VCardImportFailure = 'emptyFile' | 'notVCard' | 'noContacts'
+
+/** Thrown by `parseVCardFile` when the picked file cannot yield an importable contact. */
+export class VCardImportError extends Error {
+  readonly reason: VCardImportFailure
+
+  constructor(reason: VCardImportFailure) {
+    super(`vCard import failed: ${reason}`)
+    this.name = 'VCardImportError'
+    this.reason = reason
+  }
+}
+
 /** Thrown when a contact method value already belongs to another contact of the same user (contact_methods_value_unique_per_user). */
 export class DuplicateContactAcrossContactsError extends Error {
   readonly i18nKey = 'contacts.errors.duplicateAcrossContacts'

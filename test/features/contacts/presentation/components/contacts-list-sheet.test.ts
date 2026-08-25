@@ -7,8 +7,10 @@ vi.mock('@/features/contacts/presentation/composables/use-contact-picker', () =>
   useContactPicker: () => ({ isSupported: false, pickContacts: vi.fn() }),
 }))
 
+const { parseVCardFileMock } = vi.hoisted(() => ({ parseVCardFileMock: vi.fn() }))
+
 vi.mock('@/features/contacts/presentation/composables/use-vcard-import', () => ({
-  useVCardImport: () => ({ parseVCardFile: vi.fn() }),
+  useVCardImport: () => ({ parseVCardFile: parseVCardFileMock }),
 }))
 
 const mockContacts = [
@@ -224,6 +226,40 @@ describe('contactsListSheet', () => {
 
       expect(wrapper.find('[data-testid="contact-detail"]').exists()).toBe(false)
       expect(wrapper.find('.contact-row').exists()).toBe(true)
+    })
+  })
+
+  describe('file import failures', () => {
+    async function selectFile(wrapper: ReturnType<typeof mountSheet>) {
+      await wrapper.find('[data-testid="add-contact-btn"]').trigger('click')
+      const input = wrapper.find('input[type="file"]')
+      Object.defineProperty(input.element, 'files', {
+        value: [new File(['x'], 'contacts.vcf')],
+        configurable: true,
+      })
+      await input.trigger('change')
+      await wrapper.vm.$nextTick()
+    }
+
+    it('should show the reason-specific message and stay on the add form when the file is not a vCard', async () => {
+      const { VCardImportError } = await import('@/core/exceptions')
+      parseVCardFileMock.mockRejectedValueOnce(new VCardImportError('notVCard'))
+
+      const wrapper = mountSheet()
+      await selectFile(wrapper)
+
+      expect(wrapper.find('.error-text').text()).toBe('contacts.addDialog.fileError.notVCard')
+      expect(wrapper.find('.results-view').exists()).toBe(false)
+    })
+
+    it('should fall back to the generic message for a non-vCard error', async () => {
+      parseVCardFileMock.mockRejectedValueOnce(new Error('boom'))
+
+      const wrapper = mountSheet()
+      await selectFile(wrapper)
+
+      expect(wrapper.find('.error-text').text()).toBe('boom')
+      expect(wrapper.find('.results-view').exists()).toBe(false)
     })
   })
 

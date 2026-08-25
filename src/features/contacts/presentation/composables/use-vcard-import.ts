@@ -1,4 +1,5 @@
 import type { ParsedName } from '@/features/contacts/core/utils/parse-contact-name'
+import { VCardImportError } from '@/core/exceptions'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import { dedupePhones, dedupeRawPhones } from '@/features/contacts/core/utils/dedupe'
 import { parseContactName } from '@/features/contacts/core/utils/parse-contact-name'
@@ -13,6 +14,9 @@ export interface VCardContact extends ParsedName {
   phones: VCardPhone[]
   rawPhoneNumbers: string[]
 }
+
+/** Name given to a card carrying neither N nor FN. Not a name — a marker that one is missing. */
+export const UNNAMED_CONTACT = 'Unknown'
 
 function parseTelTypes(params: string): string[] {
   const seen = new Set<string>()
@@ -120,7 +124,7 @@ export function parseVCardText(text: string): VCardContact[] {
     }
 
     if (rawPhones.length === 0)
-      return { firstName: firstName || 'Unknown', lastName, phones: [], rawPhoneNumbers: [] }
+      return { firstName: firstName || UNNAMED_CONTACT, lastName, phones: [], rawPhoneNumbers: [] }
 
     // Normalize phones; route unparseable values to rawPhoneNumbers only
     interface ParsedPhone {
@@ -158,7 +162,7 @@ export function parseVCardText(text: string): VCardContact[] {
     const dedupedRaw = dedupeRawPhones(rawPhoneNumbers)
 
     if (dedupedPhones.length === 0)
-      return { firstName: firstName || 'Unknown', lastName, phones: [], rawPhoneNumbers: dedupedRaw }
+      return { firstName: firstName || UNNAMED_CONTACT, lastName, phones: [], rawPhoneNumbers: dedupedRaw }
 
     // Determine primary using PREF markers then type priority
     const v4PrefCandidates = dedupedPhones
@@ -198,15 +202,34 @@ export function parseVCardText(text: string): VCardContact[] {
       isPrimary: i === primaryParsedIdx,
     }))
 
-    return { firstName: firstName || 'Unknown', lastName, phones, rawPhoneNumbers: dedupedRaw }
+    return { firstName: firstName || UNNAMED_CONTACT, lastName, phones, rawPhoneNumbers: dedupedRaw }
   })
+}
+
+/** A card carrying no name, no usable phone and no unusable one either — nothing to import. */
+function isEmptyCard(contact: VCardContact): boolean {
+  return contact.firstName === UNNAMED_CONTACT
+    && contact.phones.length === 0
+    && contact.rawPhoneNumbers.length === 0
 }
 
 /** Composable for importing contacts from vCard (.vcf) files. */
 export function useVCardImport() {
   async function parseVCardFile(file: File): Promise<VCardContact[]> {
     const text = await file.text()
-    return parseVCardText(text)
+
+    // Order matters: whitespace-only is an empty export, not a malformed one, and the
+    // marker check reads the content — a valid card in a .txt must still import.
+    if (!text.trim())
+      throw new VCardImportError('emptyFile')
+    if (!/BEGIN:VCARD/i.test(text))
+      throw new VCardImportError('notVCard')
+
+    const contacts = parseVCardText(text)
+    if (contacts.every(isEmptyCard))
+      throw new VCardImportError('noContacts')
+
+    return contacts
   }
 
   async function parseVCardFiles(files: File[]): Promise<VCardContact[]> {
