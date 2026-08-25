@@ -9,6 +9,7 @@ function tour(overrides: Partial<Tour> = {}): Tour {
     id: 't1',
     userId: 'u1',
     plannedDate: new Date('2027-01-09'),
+    endDate: null,
     goal: GOAL,
     name: 'Gfroren Hora',
     partnerIds: ['c1'],
@@ -36,6 +37,7 @@ function draftFrom(t: Tour, overrides: Partial<TourDraft> = {}): TourDraft {
   return {
     name: t.name,
     plannedDate: t.plannedDate,
+    endDate: t.endDate,
     partnerIds: t.partnerIds,
     tourType: t.tourType,
     elevation: t.elevation,
@@ -67,6 +69,23 @@ describe('isMeaningfulTourChange', () => {
   it('detects a planned-date change', () => {
     const draft = draftFrom(prev, { plannedDate: new Date('2027-02-01') })
     expect(isMeaningfulTourChange(prev, draft, next)).toBe(true)
+  })
+
+  it('detects a one-day tour being extended into a span', () => {
+    const draft = draftFrom(prev, { endDate: new Date('2027-01-11') })
+    expect(isMeaningfulTourChange(prev, draft, next)).toBe(true)
+  })
+
+  it('detects a span being shortened back to a single day', () => {
+    const spanned = tour({ endDate: new Date('2027-01-11') })
+    const draft = draftFrom(spanned, { endDate: null })
+    expect(isMeaningfulTourChange(spanned, draft, next)).toBe(true)
+  })
+
+  it('is false when an unchanged span is re-submitted', () => {
+    const spanned = tour({ endDate: new Date('2027-01-11') })
+    const draft = draftFrom(spanned, { endDate: new Date('2027-01-11') })
+    expect(isMeaningfulTourChange(spanned, draft, next)).toBe(false)
   })
 
   it('detects a goal-location change via the next comparison', () => {

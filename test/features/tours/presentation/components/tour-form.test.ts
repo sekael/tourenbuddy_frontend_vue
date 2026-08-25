@@ -329,4 +329,37 @@ describe('tourForm', () => {
       expect(nameInput.value).toBe('Keep Me')
     })
   })
+
+  describe('end date (multi-day span)', () => {
+    async function fillAndSubmit(wrapper: ReturnType<typeof mountForm>, start: string, end: string) {
+      await wrapper.find('#tf-tourName').setValue('Hut Tour')
+      await wrapper.find('#tf-plannedDate').setValue(start)
+      await wrapper.find('#tf-endDate').setValue(end)
+      await wrapper.find('form').trigger('submit.prevent')
+    }
+
+    it('blocks submit and shows an error when the end date is before the start', async () => {
+      const wrapper = mountForm()
+      await fillAndSubmit(wrapper, '2026-08-25', '2026-08-20')
+      expect(wrapper.emitted('submit')).toBeUndefined()
+      expect(wrapper.find('#tf-endDate').classes()).toContain('input--error')
+    })
+
+    it('clears the end date when the planned date is cleared', async () => {
+      const wrapper = mountForm()
+      await wrapper.find('#tf-plannedDate').setValue('2026-08-25')
+      await wrapper.find('#tf-endDate').setValue('2026-08-27')
+      await wrapper.find('#tf-plannedDate').setValue('')
+      await nextTick()
+      expect((wrapper.find('#tf-endDate').element as HTMLInputElement).value).toBe('')
+    })
+
+    it('submits a null endDate when only the planned date is set', async () => {
+      const wrapper = mountForm()
+      await wrapper.find('#tf-tourName').setValue('Day Hike')
+      await wrapper.find('#tf-plannedDate').setValue('2026-08-25')
+      await wrapper.find('form').trigger('submit.prevent')
+      expect(wrapper.emitted('submit')![0]![0]).toMatchObject({ endDate: null })
+    })
+  })
 })

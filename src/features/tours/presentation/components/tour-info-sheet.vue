@@ -479,13 +479,18 @@ function handleSheetBack() {
 }
 
 const formattedDate = computed(() => {
-  if (!props.tour.plannedDate)
+  const start = props.tour.plannedDate
+  if (!start)
     return null
-  return new Intl.DateTimeFormat(locale.value, {
+  const fmt = new Intl.DateTimeFormat(locale.value, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
-  }).format(props.tour.plannedDate)
+  })
+  // formatRange collapses the shared parts per locale ("25.–27. August 2026" / "August
+  // 25 – 27, 2026") — no hand-built separator, no i18n key for it.
+  const end = props.tour.endDate
+  return end ? fmt.formatRange(start, end) : fmt.format(start)
 })
 
 const partners = computed(() => contacts.value.filter(c => props.tour.partnerIds.includes(c.id)))

@@ -140,11 +140,14 @@ export function useTourFilters(tab: TourTab = 'owned') {
         return false
     }
 
+    // Span overlap, not start-date containment: "what's happening next week" must find a
+    // tour that started the Friday before. Single-day tours collapse to the old behaviour.
     const { from, to } = filters.dateRange
     if (from || to) {
       if (!tour.plannedDate)
         return false
-      if (from && tour.plannedDate < from)
+      const end = tour.endDate ?? tour.plannedDate
+      if (from && end < from)
         return false
       if (to && tour.plannedDate > to)
         return false

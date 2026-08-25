@@ -51,6 +51,7 @@ export class ToursRepositoryImpl implements ToursRepository {
       p_notes: draft.notes ?? null,
       p_visibility: draft.visibility ?? null,
       p_completed: draft.completed ?? null,
+      p_end_date: draft.endDate?.toISOString().split('T')[0] ?? null,
     })
 
     if (error)
@@ -85,6 +86,7 @@ export class ToursRepositoryImpl implements ToursRepository {
       p_notes: draft.notes ?? null,
       p_visibility: draft.visibility ?? null,
       p_completed: draft.completed ?? null,
+      p_end_date: draft.endDate?.toISOString().split('T')[0] ?? null,
     })
 
     if (error)

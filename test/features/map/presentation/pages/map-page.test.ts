@@ -493,13 +493,19 @@ describe('mapPage', () => {
 
   describe('calendar-originated back navigation', () => {
     // Open a planned-view tour, then emit the info sheet's back event.
-    async function openPlannedTourThenBack(plannedDate: Date | null) {
+    async function openPlannedTourThenBack(
+      plannedDate: Date | null,
+      opts: { endDate?: Date | null, originDay?: string } = {},
+    ) {
       const wrapper = mountMapPage()
       const toursStore = useToursStore()
       const mapStore = useMapStore()
 
-      toursStore.$patch({ tours: [{ ...STUB_TOUR, plannedDate }] })
+      toursStore.$patch({
+        tours: [{ ...STUB_TOUR, plannedDate, endDate: opts.endDate ?? null }],
+      })
       mapStore.$patch({ selectedTourId: STUB_TOUR.id })
+      wrapper.vm.tourDetailOriginDay = opts.originDay ?? null
       wrapper.vm.tourDetailOrigin = 'cal-planned'
       wrapper.vm.activeOverlay = 'tour'
       await wrapper.vm.$nextTick()
@@ -524,6 +530,29 @@ describe('mapPage', () => {
       expect(back).toHaveBeenCalledWith({
         name: 'calendar',
         query: { view: 'planned' },
+      })
+    })
+
+    it('returns to the day a span was opened from, not the span\'s first day', async () => {
+      const back = await openPlannedTourThenBack(new Date(2026, 7, 25), {
+        endDate: new Date(2026, 7, 27),
+        originDay: '2026-08-27',
+      })
+      expect(back).toHaveBeenCalledWith({
+        name: 'calendar',
+        query: { view: 'planned', day: '2026-08-27' },
+      })
+    })
+
+    it('falls back to the start day when an edit shortened the span past the origin day', async () => {
+      // Opened from day 3, then the span was cut to a single day in the detail.
+      const back = await openPlannedTourThenBack(new Date(2026, 7, 25), {
+        endDate: null,
+        originDay: '2026-08-27',
+      })
+      expect(back).toHaveBeenCalledWith({
+        name: 'calendar',
+        query: { view: 'planned', day: '2026-08-25' },
       })
     })
   })

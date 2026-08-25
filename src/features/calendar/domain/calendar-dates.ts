@@ -1,3 +1,19 @@
+import type { Tour } from '@/features/tours/domain/entities/tour'
+
+/**
+ * One tour plotted on one calendar day. A multi-day tour yields one entry per day of its
+ * span, each knowing where it sits in that span — `dayIndex` is 1-based, so day 2 of 3 is
+ * `{ dayIndex: 2, dayCount: 3 }`. Both are required: "an entry knows its position" is the
+ * invariant the whole span rendering rests on, and optional fields would scatter `?? 1`
+ * across every read site. A single-day tour is an honest `{ dayIndex: 1, dayCount: 1 }`.
+ */
+export interface DayEntry {
+  tour: Tour
+  isFriend: boolean
+  dayIndex: number
+  dayCount: number
+}
+
 /** A single cell in the month grid. */
 export interface MonthCell {
   date: Date
@@ -35,6 +51,34 @@ export function dayKey(date: Date): string {
   const m = String(date.getMonth() + 1).padStart(2, '0')
   const d = String(date.getDate()).padStart(2, '0')
   return `${y}-${m}-${d}`
+}
+
+/**
+ * Every `dayKey` a tour's planned span covers, `start` through `end` inclusive. A null,
+ * undefined or not-after-start `end` collapses to the single start day, so a single-day
+ * tour behaves exactly as it did before spans existed.
+ *
+ * Walks LOCAL calendar date parts (`new Date(y, m, d + i)`) rather than adding 86_400_000 ms:
+ * a span crossing a DST transition would otherwise drop or duplicate a day. This is the only
+ * place span day keys are minted — no call site derives them itself.
+ */
+export function spanDayKeys(start: Date, end: Date | null): string[] {
+  const first = dayKey(start)
+  const last = end ? dayKey(end) : first
+  // Lexical compare is safe: `YYYY-MM-DD` sorts chronologically.
+  if (last <= first)
+    return [first]
+
+  const keys: string[] = []
+  const y = start.getFullYear()
+  const m = start.getMonth()
+  const d = start.getDate()
+  for (let i = 0; ; i++) {
+    const key = dayKey(new Date(y, m, d + i))
+    keys.push(key)
+    if (key >= last)
+      return keys
+  }
 }
 
 /**

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { DayEntry } from '@/features/calendar/domain/calendar-dates'
 import type { Contact } from '@/features/contacts/domain/entities/contact'
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import { storeToRefs } from 'pinia'
@@ -8,7 +9,7 @@ import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { normalizePhone } from '@/core/utils/phone-normalize'
-import { buildMonthGrid, dayKey } from '@/features/calendar/domain/calendar-dates'
+import { buildMonthGrid, dayKey, spanDayKeys } from '@/features/calendar/domain/calendar-dates'
 import DayPreview from '@/features/calendar/presentation/components/day-preview.vue'
 import { useAvailabilityStore } from '@/features/calendar/presentation/stores/availability-store'
 import { resolveContactName } from '@/features/contacts/domain/entities/contact'
@@ -30,7 +31,7 @@ const props = defineProps<{
   demoChips?: { entries: DayEntry[], friends: { userId: string, name: string }[] } | null
 }>()
 const emit = defineEmits<{
-  select: [tourId: string]
+  select: [tourId: string, originDay?: string]
   editContact: [contactId: string]
 }>()
 
@@ -54,22 +55,28 @@ const { phoneToUserIdMap } = useContactFriendshipMap(contacts)
 
 const listEl = ref<HTMLElement | null>(null)
 
-interface DayEntry { tour: Tour, isFriend: boolean }
-
 // Own planned tours + friend tours the viewer is a marked partner on. Anything
 // without a planned date is dropped.
 const entriesByDay = computed(() => {
   const map = new Map<string, DayEntry[]>()
+
   const add = (tour: Tour, isFriend: boolean) => {
     if (!tour.plannedDate)
       return
-    const key = dayKey(tour.plannedDate)
-    const bucket = map.get(key)
-    if (bucket)
-      bucket.push({ tour, isFriend })
-    else
-      map.set(key, [{ tour, isFriend }])
+
+    // One entry per day of the span, each knowing its position in the WHOLE span —
+    // a pill on the 1 October cell of a 30 Sep–2 Oct tour reads `2/3`, not `1/2`.
+    const keys = spanDayKeys(tour.plannedDate, tour.endDate)
+    keys.forEach((key, i) => {
+      const entry: DayEntry = { tour, isFriend, dayIndex: i + 1, dayCount: keys.length }
+      const bucket = map.get(key)
+      if (bucket)
+        bucket.push(entry)
+      else
+        map.set(key, [entry])
+    })
   }
+
   for (const tour of tours.value)
     add(tour, false)
   for (const tour of friendTours.value) {
@@ -345,11 +352,13 @@ function closeDetail() {
   detailDate.value = null
 }
 
-// Tour row → open the tour (on the map). Back-nav returns to the tour's current
-// planned day, derived live on the map side (map-page handleTourInfoBack).
+// Tour row → open the tour (on the map). The originating day rides along so back-nav
+// returns to the day the user was actually on — for a span, that is not the start day.
+// map-page validates it against the tour's live span before using it.
 function selectFromDetail(tourId: string) {
+  const originDay = detailDate.value ? dayKey(detailDate.value) : undefined
   closeDetail()
-  emit('select', tourId)
+  emit('select', tourId, originDay)
 }
 </script>
 
@@ -451,6 +460,19 @@ function selectFromDetail(tourId: string) {
               :style="{ color: TOUR_TYPE_COLORS[entry.tour.tourType] }"
             />
             <span class="pill-name">{{ entry.tour.name ?? t('tours.infoSheet.unnamedTour') }}</span>
+            <span
+              v-if="entry.dayCount > 1"
+              class="day-counter"
+              role="img"
+              :aria-label="
+                t('calendar.planned.dayCounterLabel', {
+                  day: entry.dayIndex,
+                  total: entry.dayCount,
+                })
+              "
+            >
+              {{ t('calendar.planned.dayCounter', { day: entry.dayIndex, total: entry.dayCount }) }}
+            </span>
           </button>
         </template>
         <template v-if="detailFriends.length">
@@ -571,6 +593,14 @@ function selectFromDetail(tourId: string) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Span position, e.g. `2/3`. Pushed to the row end in the detail list. */
+.day-counter {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-on-surface-variant);
 }
 
 /* ── Per-day detail list (sheet/dialog body) ─────────────────────────────── */

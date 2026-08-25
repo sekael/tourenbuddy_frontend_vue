@@ -1,3 +1,4 @@
+import type { DayEntry } from '@/features/calendar/domain/calendar-dates'
 import type { Season } from '@/features/tours/data/models/season'
 import type { Tour } from '@/features/tours/domain/entities/tour'
 
@@ -17,13 +18,14 @@ type Translate = (key: string) => string
 
 /** One demo tour chip + one demo friend chip for the today cell (planned view). */
 export function makeDemoChips(t: Translate): {
-  entries: { tour: Tour, isFriend: boolean }[]
+  entries: DayEntry[]
   friends: { userId: string, name: string }[]
 } {
   const tour: Tour = {
     id: 'demo-tour',
     userId: 'demo',
     plannedDate: new Date(),
+    endDate: null,
     goal: { lng: 8.0, lat: 46.8 },
     name: t('calendar.tour.demo.tourName'),
     partnerIds: [],
@@ -45,7 +47,7 @@ export function makeDemoChips(t: Translate): {
     isFriendTour: false,
   }
   return {
-    entries: [{ tour, isFriend: false }],
+    entries: [{ tour, isFriend: false, dayIndex: 1, dayCount: 1 }],
     friends: [{ userId: 'demo-friend', name: t('calendar.tour.demo.friendName') }],
   }
 }

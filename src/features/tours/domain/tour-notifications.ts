@@ -8,8 +8,18 @@ function partnerSetChanged(a: string[], b: string[]): boolean {
   return a.some(id => !setB.has(id))
 }
 
-function plannedDateChanged(a: Date | null, b: Date | null): boolean {
+function dateChanged(a: Date | null, b: Date | null): boolean {
   return (a?.getTime() ?? null) !== (b?.getTime() ?? null)
+}
+
+/**
+ * True when either endpoint of the planned span moved — a tour grown from one day to three
+ * is exactly the kind of change a partner must hear about.
+ */
+function plannedSpanChanged(prev: Tour, draft: TourDraft): boolean {
+  return (
+    dateChanged(prev.plannedDate, draft.plannedDate) || dateChanged(prev.endDate, draft.endDate)
+  )
 }
 
 export interface TourEditComparison {
@@ -22,7 +32,7 @@ export interface TourEditComparison {
 /**
  * Whether an edit touched a partner-facing field and therefore warrants notifying
  * friend partners. Partner-facing set (mission-critical for a mountain tour):
- * name, planned date, goal location, tour type, partners, GPX track, description,
+ * name, planned date span (either endpoint), goal location, tour type, partners, GPX track, description,
  * equipment. Cosmetic/owner-private fields (notes, elevation, seasons, start/end
  * detail) are intentionally excluded. Completion flips are handled at their own
  * call site, and visibility changes never notify.
@@ -34,7 +44,7 @@ export function isMeaningfulTourChange(
 ): boolean {
   return (
     prev.name !== draft.name
-    || plannedDateChanged(prev.plannedDate, draft.plannedDate)
+    || plannedSpanChanged(prev, draft)
     || prev.goal.lng !== next.goal.lng
     || prev.goal.lat !== next.goal.lat
     || prev.tourType !== draft.tourType
