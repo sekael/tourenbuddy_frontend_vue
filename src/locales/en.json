@@ -260,7 +260,34 @@
       "summaryPhoneDuplicate": "{count} already on another contact",
       "summaryPhoneDuplicateBadge": "Duplicate",
       "summaryNameDuplicate": "{count} already in contacts",
-      "summaryUnparseable": "{count} unparseable"
+      "summaryUnparseable": "{count} unparseable",
+      "extraPhones": "+{count} more",
+      "unparseableTooltip": "Could not read: {values}",
+      "discardedPhones": "Number not added",
+      "fileError": {
+        "emptyFile": "That file is empty. Export your contacts again and pick the new file.",
+        "notVCard": "That is not a vCard file. Export a .vcf from your contacts app and try again.",
+        "noContacts": "That vCard holds no usable contact — every entry is missing a name and a phone number. Export the contact again, then try that file."
+      },
+      "help": {
+        "formatHint": "Accepts one vCard file (.vcf or .vcard). A single file can hold multiple contacts.",
+        "summary": "How do I export my contacts?",
+        "tabIos": "iPhone / iPad",
+        "tabAndroid": "Android",
+        "tabDesktop": "Computer",
+        "iosStep1": "Open the Contacts app and select the contacts you want to import.",
+        "iosStep2": "Scroll down and tap \"Share Contact\".",
+        "iosStep3": "Choose \"Save to Files\" and save the contact on your device.",
+        "iosStep4": "In Tourenbuddy, tap \"Import from file\" and select the previously saved file.",
+        "androidStep1": "If you see an \"Import from contacts\" button above, click it to select contacts directly.",
+        "androidStep2": "Otherwise open the Contacts app and select the contact you want.",
+        "androidStep3": "Tap the menu, then \"Share\" or \"Export\", and save the file on your device.",
+        "androidStep4": "In Tourenbuddy, tap \"Import from file\" and select the previously saved file.",
+        "desktopStep1": "macOS Contacts: select the contacts, then File → Export → Export vCard.",
+        "desktopStep2": "Google Contacts: select the contacts, then Export and choose the vCard format.",
+        "desktopStep3": "Outlook: open the contact, then File → Save As and choose vCard.",
+        "desktopStep4": "Open TourenBuddy in your browser and import the saved file there."
+      }
     },
     "detailView": {
       "title": "Edit Contact",

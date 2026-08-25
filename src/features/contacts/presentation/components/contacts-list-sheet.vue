@@ -10,7 +10,7 @@ import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
-import { DuplicateContactAcrossContactsError } from '@/core/exceptions'
+import { DuplicateContactAcrossContactsError, VCardImportError } from '@/core/exceptions'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import {
   formatPhoneDisplay,
@@ -28,6 +28,7 @@ import { useFriendshipsStore } from '@/features/friendships/presentation/stores/
 import { useUserBlocksStore } from '@/features/friendships/presentation/stores/user-blocks-store'
 import ContactDetailView from './contact-detail-view.vue'
 import ContactForm from './contact-form.vue'
+import ContactImportHelp from './contact-import-help.vue'
 
 const props = defineProps<{
   /** When provided, auto-opens detail view for the given contact id. */
@@ -326,6 +327,29 @@ function handleAddConnectSent() {
   backToList()
 }
 
+/**
+ * A duplicate skip outranks any phone complaint: nothing was attempted, so the numbers
+ * were never rejected — saying so alongside "already in contacts" only reads as failure.
+ */
+function showsRawPhones(result: ImportResult): boolean {
+  return result.rawPhoneNumbers.length > 0
+    && result.skipReason !== 'nameDuplicate'
+    && result.skipReason !== 'phoneDuplicate'
+}
+
+/**
+ * Same data, two outcomes: on a skipped row nothing was created (error tone), on an
+ * imported row the contact exists and only these numbers were dropped (warning tone).
+ */
+function rawPhoneSummary(result: ImportResult): string {
+  const [first, ...rest] = result.rawPhoneNumbers
+  const extra = rest.length > 0 ? ` ${t('contacts.addDialog.extraPhones', { count: rest.length })}` : ''
+  const label = result.status === 'imported'
+    ? t('contacts.addDialog.discardedPhones')
+    : t('contacts.list.invalidPhoneWarning')
+  return `${label}: ${first}${extra}`
+}
+
 async function processImportedContacts(items: ParsedImportItem[]) {
   const results = await importContacts(items)
   importResults.value = results
@@ -382,7 +406,12 @@ async function handleFileChange(event: Event) {
     await processImportedContacts(parsed)
   }
   catch (err) {
-    addError.value = err instanceof Error ? err.message : t('contacts.addDialog.fileImportError')
+    // A validated failure names its own cause; anything else (an I/O rejection from
+    // file.text()) stays generic. Either way the view stays on the form — advancing to
+    // an empty results screen is the bug this replaces.
+    addError.value = err instanceof VCardImportError
+      ? t(`contacts.addDialog.fileError.${err.reason}`)
+      : err instanceof Error ? err.message : t('contacts.addDialog.fileImportError')
   }
   finally {
     isAddLoading.value = false
@@ -583,19 +612,19 @@ function onFormPhoneInput(phone: string) {
               <span v-if="result.primaryPhone" class="result-phone">
                 <BaseIcon name="star" class="star-icon-sm" />
                 {{ formatPhoneDisplay(result.primaryPhone) }}
-                <span v-if="result.extraPhoneCount > 0" class="extra-phones">+{{ result.extraPhoneCount }} more</span>
+                <span v-if="result.extraPhoneCount > 0" class="extra-phones">
+                  {{ t('contacts.addDialog.extraPhones', { count: result.extraPhoneCount }) }}
+                </span>
               </span>
               <BaseTooltip
-                v-if="result.rawPhoneNumbers.length > 0"
-                :text="`Couldn't parse: ${result.rawPhoneNumbers.join(', ')}`"
+                v-if="showsRawPhones(result)"
+                :text="t('contacts.addDialog.unparseableTooltip', { values: result.rawPhoneNumbers.join(', ') })"
               >
-                <span class="result-phone result-phone-warning">
-                  ⚠ {{ t('contacts.list.invalidPhoneWarning') }}: {{ result.rawPhoneNumbers[0]
-                  }}{{
-                    result.rawPhoneNumbers.length > 1
-                      ? ` +${result.rawPhoneNumbers.length - 1} more`
-                      : ''
-                  }}
+                <span
+                  class="result-phone"
+                  :class="result.status === 'imported' ? 'result-phone-discarded' : 'result-phone-warning'"
+                >
+                  ⚠ {{ rawPhoneSummary(result) }}
                 </span>
               </BaseTooltip>
               <template v-if="importRowMatches[i]">
@@ -659,11 +688,16 @@ function onFormPhoneInput(phone: string) {
           <input
             ref="fileInput"
             type="file"
-            accept=".vcf,.vcard"
+            accept=".vcf,.vcard,text/vcard,text/x-vcard"
             class="file-input-hidden"
             @change="handleFileChange"
           ><!-- no multiple attribute: single file only -->
         </div>
+
+        <p class="format-hint">
+          {{ t('contacts.addDialog.help.formatHint') }}
+        </p>
+        <ContactImportHelp />
 
         <div class="divider" />
 
@@ -894,6 +928,12 @@ function onFormPhoneInput(phone: string) {
   display: none;
 }
 
+.format-hint {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
+}
+
 .divider {
   height: 1px;
   background-color: var(--color-outline-variant);
@@ -1003,6 +1043,11 @@ function onFormPhoneInput(phone: string) {
 
 .result-phone-warning {
   color: var(--color-error);
+}
+
+/* Contact was created — the dropped numbers are a caveat, not a failure. */
+.result-phone-discarded {
+  color: var(--color-warning, var(--color-error));
 }
 
 .star-icon-sm {
