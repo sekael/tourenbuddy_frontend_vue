@@ -229,6 +229,62 @@ describe('contactsListSheet', () => {
     })
   })
 
+  describe('import results: discarded phone numbers', () => {
+    async function showResults(wrapper: ReturnType<typeof mountSheet>, contacts: Array<Record<string, unknown>>) {
+      parseVCardFileMock.mockResolvedValueOnce(contacts)
+      await wrapper.find('[data-testid="add-contact-btn"]').trigger('click')
+      const input = wrapper.find('input[type="file"]')
+      Object.defineProperty(input.element, 'files', {
+        value: [new File(['x'], 'contacts.vcf')],
+        configurable: true,
+      })
+      await input.trigger('change')
+      await wrapper.vm.$nextTick()
+      await wrapper.vm.$nextTick()
+    }
+
+    it('should use error tone when the contact was skipped because no phone was usable', async () => {
+      const wrapper = mountSheet()
+      await showResults(wrapper, [
+        { firstName: 'Not', lastName: 'Number', phones: [], rawPhoneNumbers: ['something else'] },
+      ])
+
+      const row = wrapper.find('.result-phone-warning')
+      expect(row.exists()).toBe(true)
+      expect(row.text()).toContain('contacts.list.invalidPhoneWarning')
+      expect(wrapper.find('.result-phone-discarded').exists()).toBe(false)
+    })
+
+    it('should suppress the phone notice entirely when the contact was skipped as a duplicate', async () => {
+      const wrapper = mountSheet()
+      // 'Anna Meier' is already in the store, so re-importing her skips on nameDuplicate
+      await showResults(wrapper, [
+        { firstName: 'Anna', lastName: 'Meier', phones: [], rawPhoneNumbers: ['not a phone number'] },
+      ])
+
+      expect(wrapper.find('.result-phone-warning').exists()).toBe(false)
+      expect(wrapper.find('.result-phone-discarded').exists()).toBe(false)
+      expect(wrapper.find('.result-badge').text()).toBe('contacts.list.skippedLabel')
+    })
+
+    it('should use the milder discarded tone when the contact was imported anyway', async () => {
+      const wrapper = mountSheet()
+      await showResults(wrapper, [
+        {
+          firstName: 'One',
+          lastName: 'Valid',
+          phones: [{ value: '+41 79 000 12 34', label: null, isPrimary: true }],
+          rawPhoneNumbers: ['not a phone number'],
+        },
+      ])
+
+      const row = wrapper.find('.result-phone-discarded')
+      expect(row.exists()).toBe(true)
+      expect(row.text()).toContain('contacts.addDialog.discardedPhones')
+      expect(wrapper.find('.result-phone-warning').exists()).toBe(false)
+    })
+  })
+
   describe('file import failures', () => {
     async function selectFile(wrapper: ReturnType<typeof mountSheet>) {
       await wrapper.find('[data-testid="add-contact-btn"]').trigger('click')

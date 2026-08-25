@@ -125,3 +125,30 @@ expression.
 
 - **WHEN** a result row carries `rawPhoneNumbers`
 - **THEN** the tooltip listing them SHALL resolve from a localized, parameterized key rather than a literal `Couldn't parse: …`
+
+### Requirement: Discarded phone numbers read differently on imported and skipped rows
+
+A result row carrying `rawPhoneNumbers` SHALL phrase and colour that notice according to the
+row's `status`. A skipped row SHALL keep the error wording and the error colour, because no
+contact was created. An imported row SHALL use separate, milder wording and the warning
+colour, because the contact exists and only the listed numbers were dropped.
+
+#### Scenario: Contact skipped because no phone was usable
+
+- **WHEN** a result row has `status: 'skipped'` and a non-empty `rawPhoneNumbers`
+- **THEN** the notice SHALL resolve `contacts.list.invalidPhoneWarning` and SHALL render in the error colour
+
+#### Scenario: Contact imported with some numbers discarded
+
+- **WHEN** a result row has `status: 'imported'` and a non-empty `rawPhoneNumbers`
+- **THEN** the notice SHALL resolve `contacts.addDialog.discardedPhones` and SHALL render in the warning colour, not the error colour
+
+#### Scenario: Contact skipped as a duplicate
+
+- **WHEN** a result row has `skipReason` of `'nameDuplicate'` or `'phoneDuplicate'`
+- **THEN** no phone notice SHALL be rendered at all, regardless of `rawPhoneNumbers`, because the duplicate skip is the whole reason the row was not imported
+
+#### Scenario: Re-importing the same file
+
+- **WHEN** a file is imported a second time and every contact in it is skipped as a duplicate
+- **THEN** the results list SHALL show only the skipped badges and the summary counts, with no error or warning notices on any row

@@ -327,6 +327,29 @@ function handleAddConnectSent() {
   backToList()
 }
 
+/**
+ * A duplicate skip outranks any phone complaint: nothing was attempted, so the numbers
+ * were never rejected — saying so alongside "already in contacts" only reads as failure.
+ */
+function showsRawPhones(result: ImportResult): boolean {
+  return result.rawPhoneNumbers.length > 0
+    && result.skipReason !== 'nameDuplicate'
+    && result.skipReason !== 'phoneDuplicate'
+}
+
+/**
+ * Same data, two outcomes: on a skipped row nothing was created (error tone), on an
+ * imported row the contact exists and only these numbers were dropped (warning tone).
+ */
+function rawPhoneSummary(result: ImportResult): string {
+  const [first, ...rest] = result.rawPhoneNumbers
+  const extra = rest.length > 0 ? ` ${t('contacts.addDialog.extraPhones', { count: rest.length })}` : ''
+  const label = result.status === 'imported'
+    ? t('contacts.addDialog.discardedPhones')
+    : t('contacts.list.invalidPhoneWarning')
+  return `${label}: ${first}${extra}`
+}
+
 async function processImportedContacts(items: ParsedImportItem[]) {
   const results = await importContacts(items)
   importResults.value = results
@@ -594,16 +617,14 @@ function onFormPhoneInput(phone: string) {
                 </span>
               </span>
               <BaseTooltip
-                v-if="result.rawPhoneNumbers.length > 0"
+                v-if="showsRawPhones(result)"
                 :text="t('contacts.addDialog.unparseableTooltip', { values: result.rawPhoneNumbers.join(', ') })"
               >
-                <span class="result-phone result-phone-warning">
-                  ⚠ {{ t('contacts.list.invalidPhoneWarning') }}: {{ result.rawPhoneNumbers[0]
-                  }}{{
-                    result.rawPhoneNumbers.length > 1
-                      ? ` ${t('contacts.addDialog.extraPhones', { count: result.rawPhoneNumbers.length - 1 })}`
-                      : ''
-                  }}
+                <span
+                  class="result-phone"
+                  :class="result.status === 'imported' ? 'result-phone-discarded' : 'result-phone-warning'"
+                >
+                  ⚠ {{ rawPhoneSummary(result) }}
                 </span>
               </BaseTooltip>
               <template v-if="importRowMatches[i]">
@@ -1022,6 +1043,11 @@ function onFormPhoneInput(phone: string) {
 
 .result-phone-warning {
   color: var(--color-error);
+}
+
+/* Contact was created — the dropped numbers are a caveat, not a failure. */
+.result-phone-discarded {
+  color: var(--color-warning, var(--color-error));
 }
 
 .star-icon-sm {

@@ -36,6 +36,9 @@
 - [x] 7.1 `contacts-list-sheet.vue:586` — replace `+{{ result.extraPhoneCount }} more` with the parameterized key from 2.4
 - [x] 7.2 `contacts-list-sheet.vue:590` — replace the `` `Couldn't parse: ${…}` `` tooltip binding with the parameterized key from 2.4
 - [x] 7.3 `contacts-list-sheet.vue:596` — replace the inline `` ` +${…} more` `` fragment with the same extra-count key used in 7.1
+- [x] 7.4 `contacts-list-sheet.vue` — split the discarded-number notice by `result.status`: skipped keeps `contacts.list.invalidPhoneWarning` in the error colour, imported uses the new `contacts.addDialog.discardedPhones` in the warning colour. Extracted as `rawPhoneSummary()` so the template loses the nested ternary
+- [x] 7.5 `contacts-list-sheet.vue` — suppress the phone notice entirely on rows skipped as `nameDuplicate` / `phoneDuplicate` (`showsRawPhones()`): a duplicate skip outranks any phone complaint, since nothing was attempted
+- [x] 7.6 Tests for all three row states in `contacts-list-sheet.test.ts`: skipped-unparseable (error tone), imported-with-discards (warning tone), skipped-duplicate (no notice)
 
 ## 8. Tests (edge cases and failures only)
 
@@ -48,17 +51,17 @@
 
 ## 9. Manual verification
 
-- [ ] 9.1 `npm run dev` → add contact → expand the disclosure: iOS tab active, switching tabs swaps every step, all three reachable by keyboard
-- [ ] 9.2 Import a `.csv`, an empty `.vcf`, an `ORG:`-only `.vcf`, and a real export: four distinct outcomes, no blank results screen, no contact named "Unknown"
-- [ ] 9.3 Switch locale to de-CH and complete one import: the results screen contains no English fragments
+- [x] 9.1 `npm run dev` → add contact → expand the disclosure: iOS tab active, switching tabs swaps every step, all three reachable by keyboard
+- [x] 9.2 Import a `.csv`, an empty `.vcf`, an `ORG:`-only `.vcf`, and a real export: four distinct outcomes, no blank results screen, no contact named "Unknown"
+- [x] 9.3 Switch locale to de-CH and complete one import: the results screen contains no English fragments
 
 ## 10. Finalize
 
 - [x] 10.1 `npx eslint . --fix` — zero warnings
 - [x] 10.2 `npm run type-check` — clean
-- [ ] 10.3 Prompt user to commit (do NOT commit) with message:
+- [x] 10.3 Prompt user to commit (do NOT commit) with message:
       `feat(contacts): explain vCard import per platform and report file failures distinctly (#262)`
       and a body declaring the two scope additions: results-screen localization (D8) and the
       `noContacts` behaviour change that stops creating "Unknown" rows (D4)
-- [ ] 10.4 Prompt user to push the branch and open a PR to `main`
-- [ ] 10.5 Prompt user to archive this change with the `openspec-archive` skill
+- [x] 10.4 Prompt user to push the branch and open a PR to `main`
+- [x] 10.5 Prompt user to archive this change with the `openspec-archive` skill
