@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.38.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.37.1...tourenbuddy-frontend-v0.38.0) (2026-08-25)
+
+
+### Features
+
+* **auth:** Normalize and auto-submit OTP code, document email autofill limits ([#275](https://github.com/sekael/tourenbuddy_frontend_vue/issues/275)) ([6fb9f04](https://github.com/sekael/tourenbuddy_frontend_vue/commit/6fb9f04e7e0e8457ae53e7ef7af62de338805e4c))
+* Contact import guidance ([#281](https://github.com/sekael/tourenbuddy_frontend_vue/issues/281)) ([6039ff7](https://github.com/sekael/tourenbuddy_frontend_vue/commit/6039ff71dd6c62dd24a41bf0770b8cf54d37def0))
+
+
+### Bug Fixes
+
+* **map:** Full-envelope tap targets on tour pill, high-contrast crosshair ([#263](https://github.com/sekael/tourenbuddy_frontend_vue/issues/263)) ([#280](https://github.com/sekael/tourenbuddy_frontend_vue/issues/280)) ([330fa1a](https://github.com/sekael/tourenbuddy_frontend_vue/commit/330fa1af247e3320bb7623ba193364312d865be7))
+
 ## [0.37.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.37.0...tourenbuddy-frontend-v0.37.1) (2026-08-21)
 
 
