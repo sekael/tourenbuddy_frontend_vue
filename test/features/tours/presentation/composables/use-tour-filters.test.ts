@@ -12,6 +12,7 @@ const baseTour: Tour = {
   userId: 'u-1',
   name: 'Alpine Hike',
   plannedDate: new Date('2024-06-15'),
+  endDate: null,
   goal: { lng: 8.5, lat: 47.5 },
   partnerIds: [],
   tourType: 'hiking',
@@ -279,6 +280,85 @@ describe('useTourFilters', () => {
       const tours = [makeTour({ id: '1', plannedDate: null })]
       const { filteredTours } = setup(tours)
       expect(filteredTours.value).toHaveLength(1)
+    })
+
+    // Overlap, not start-date containment: "what's happening next week" must find a tour
+    // that started the Friday before.
+    it('should include a span straddling the from bound (start before it, end inside)', () => {
+      const tours = [
+        makeTour({
+          id: '1',
+          plannedDate: new Date('2024-06-15'),
+          endDate: new Date('2024-06-18'),
+        }),
+      ]
+      const { filteredTours, filters } = setup(tours)
+      filters.dateRange.from = new Date('2024-06-17')
+      filters.dateRange.to = new Date('2024-06-30')
+      expect(filteredTours.value).toHaveLength(1)
+    })
+
+    it('should include a span straddling the to bound (start inside, end after)', () => {
+      const tours = [
+        makeTour({
+          id: '1',
+          plannedDate: new Date('2024-06-29'),
+          endDate: new Date('2024-07-04'),
+        }),
+      ]
+      const { filteredTours, filters } = setup(tours)
+      filters.dateRange.to = new Date('2024-06-30')
+      expect(filteredTours.value).toHaveLength(1)
+    })
+
+    it('should include a span that fully contains the filter range', () => {
+      const tours = [
+        makeTour({
+          id: '1',
+          plannedDate: new Date('2024-06-01'),
+          endDate: new Date('2024-06-30'),
+        }),
+      ]
+      const { filteredTours, filters } = setup(tours)
+      filters.dateRange.from = new Date('2024-06-10')
+      filters.dateRange.to = new Date('2024-06-12')
+      expect(filteredTours.value).toHaveLength(1)
+    })
+
+    it('should exclude a span that ends before the from bound', () => {
+      const tours = [
+        makeTour({
+          id: '1',
+          plannedDate: new Date('2024-06-01'),
+          endDate: new Date('2024-06-03'),
+        }),
+      ]
+      const { filteredTours, filters } = setup(tours)
+      filters.dateRange.from = new Date('2024-06-26')
+      filters.dateRange.to = new Date('2024-06-30')
+      expect(filteredTours.value).toHaveLength(0)
+    })
+
+    it('should exclude a span that starts after the to bound', () => {
+      const tours = [
+        makeTour({
+          id: '1',
+          plannedDate: new Date('2024-07-05'),
+          endDate: new Date('2024-07-09'),
+        }),
+      ]
+      const { filteredTours, filters } = setup(tours)
+      filters.dateRange.to = new Date('2024-06-30')
+      expect(filteredTours.value).toHaveLength(0)
+    })
+
+    it('should exclude an undated tour regardless of its endDate', () => {
+      const tours = [
+        makeTour({ id: '1', plannedDate: null, endDate: new Date('2024-06-20') }),
+      ]
+      const { filteredTours, filters } = setup(tours)
+      filters.dateRange.from = new Date('2024-06-01')
+      expect(filteredTours.value).toHaveLength(0)
     })
   })
 

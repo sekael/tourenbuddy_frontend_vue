@@ -16,6 +16,12 @@ export interface PendingIntent {
   selectTourId?: string
   /** Which calendar view the selection came from, so detail-back can return. */
   origin?: 'cal-seasons' | 'cal-planned'
+  /**
+   * Planned view only: the `dayKey` of the cell the detail was opened from. For a
+   * multi-day tour that is not necessarily its start day, so detail-back re-opens the
+   * day the user was on — provided the tour's span still covers it.
+   */
+  originDay?: string
   /** Auto-start the calendar tour on arrival: the map tour just ran to completion. */
   startCalendarTour?: boolean
 }

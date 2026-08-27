@@ -223,6 +223,7 @@ export const useToursStore = defineStore('tours', () => {
       id,
       userId: base?.userId ?? authStore.currentUser?.id ?? '',
       plannedDate: draft.plannedDate ?? null,
+      endDate: draft.endDate ?? null,
       goal,
       name: draft.name,
       partnerIds: draft.partnerIds,
@@ -251,6 +252,7 @@ export const useToursStore = defineStore('tours', () => {
     return {
       name: tour.name,
       plannedDate: tour.plannedDate,
+      endDate: tour.endDate,
       partnerIds: tour.partnerIds,
       tourType: tour.tourType,
       elevation: tour.elevation,

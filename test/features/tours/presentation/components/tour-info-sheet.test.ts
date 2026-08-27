@@ -141,6 +141,23 @@ describe('tourInfoSheet', () => {
     vi.clearAllMocks()
   })
 
+  describe('planned date rendering', () => {
+    it('renders a span as a date range carrying both endpoints', () => {
+      const wrapper = mountSheet({
+        plannedDate: new Date(2026, 7, 25),
+        endDate: new Date(2026, 7, 27),
+      })
+      // How much of the shared month/year `formatRange` collapses is ICU's call and
+      // varies by locale data — assert the endpoints and the range dash, not the shape.
+      expect(wrapper.text()).toMatch(/25[^-\n\r\u2013\u2028\u2029]*[-\u2013].*27/)
+    })
+
+    it('renders a single date when the tour has no end date', () => {
+      const wrapper = mountSheet({ plannedDate: new Date(2026, 7, 25), endDate: null })
+      expect(wrapper.text()).not.toContain('27')
+    })
+  })
+
   // ── Edit mode ──────────────────────────────────────────────────────────────
 
   describe('edit mode', () => {

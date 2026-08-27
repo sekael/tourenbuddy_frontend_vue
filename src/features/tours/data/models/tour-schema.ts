@@ -20,6 +20,7 @@ export const tourRowSchema = z
     id: z.string(),
     user_id: z.string(),
     planned_date: z.string().nullable(),
+    end_date: z.string().nullable().default(null),
     lon: z.number(),
     lat: z.number(),
     name: z.string().nullable(),
@@ -47,6 +48,7 @@ export const tourRowSchema = z
     id: row.id,
     userId: row.user_id,
     plannedDate: row.planned_date ? new Date(row.planned_date) : null,
+    endDate: row.end_date ? new Date(row.end_date) : null,
     goal: { lng: row.lon, lat: row.lat },
     name: row.name,
     partnerIds: row.partner_ids,
@@ -77,7 +79,19 @@ export const tourRowSchema = z
 export const tourSchema = z.object({
   id: z.string(),
   userId: z.string(),
+  /** Span START. Null means undated. */
   plannedDate: z.coerce.date().nullable(),
+  /**
+   * Span END, inclusive. Null means a single-day tour.
+   *
+   * ponytail: a `tours:<uid>` snapshot cached before multi-day-tours shipped hydrates with
+   * this key ABSENT, not null — `entity-cache.ts` structured-clones with no zod parse on
+   * read. Behaviourally identical: every consumer branches on truthiness (`?? plannedDate`,
+   * `spanDayKeys`, the notification diff's `?.getTime() ?? null`), none tests `=== null` or
+   * key presence, and `cachedLoad` is hydrate-then-refetch so the shape self-heals on the
+   * next online load. Do NOT add defensive `?? null` at read sites for it.
+   */
+  endDate: z.coerce.date().nullable().default(null),
   goal: pointSchema,
   name: z.string().nullable(),
   partnerIds: z.array(z.string()),
@@ -109,7 +123,7 @@ export const tourSchema = z.object({
 })
 
 /**
- * Raw shape from `friend_tours_view`. Gated columns (planned_date, gpx_filepath)
+ * Raw shape from `friend_tours_view`. Gated columns (planned_date, end_date, gpx_filepath)
  * arrive null for non-partner viewers; partners surface as `partner_names`, never
  * the owner's raw contact ids. Maps to the same domain `Tour` with `isFriendTour`.
  */
@@ -118,6 +132,7 @@ export const friendTourRowSchema = z
     id: z.string(),
     user_id: z.string(),
     planned_date: z.string().nullable(),
+    end_date: z.string().nullable().default(null),
     lon: z.number(),
     lat: z.number(),
     name: z.string().nullable(),
@@ -146,6 +161,7 @@ export const friendTourRowSchema = z
     id: row.id,
     userId: row.user_id,
     plannedDate: row.planned_date ? new Date(row.planned_date) : null,
+    endDate: row.end_date ? new Date(row.end_date) : null,
     goal: { lng: row.lon, lat: row.lat },
     name: row.name,
     partnerIds: [] as string[],

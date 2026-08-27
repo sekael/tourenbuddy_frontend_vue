@@ -11,6 +11,8 @@ export type Tour = z.infer<typeof tourSchema>
 export interface TourDraft {
   name: string | null
   plannedDate: Date | null
+  /** Span end, inclusive. Null = single-day tour. Never before `plannedDate`. */
+  endDate: Date | null
   partnerIds: string[]
   tourType: TourType | null
   elevation: number | null

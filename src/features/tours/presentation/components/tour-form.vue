@@ -93,6 +93,19 @@ const tourName = ref(props.initialDraft?.name ?? props.initialName ?? '')
 const plannedDate = ref(
   props.initialDraft?.plannedDate ? props.initialDraft.plannedDate.toISOString().split('T')[0] : '',
 )
+// Span end, optional. Empty = single-day tour.
+const endDate = ref(
+  props.initialDraft?.endDate ? props.initialDraft.endDate.toISOString().split('T')[0] : '',
+)
+const endDateError = ref(false)
+
+// An end date without a start has no span to bound — clearing the start clears it.
+watch(plannedDate, (value) => {
+  if (!value) {
+    endDate.value = ''
+    endDateError.value = false
+  }
+})
 const selectedPartnerIds = ref<Set<string>>(new Set(props.initialDraft?.partnerIds ?? []))
 const visibility = ref<Visibility>(props.initialDraft?.visibility ?? DEFAULT_VISIBILITY)
 const selectedTourType = ref<TourType | null>(props.initialDraft?.tourType ?? null)
@@ -438,6 +451,12 @@ function handleSubmit() {
     document.getElementById('tf-tourName')?.focus()
     return
   }
+  // `min` on the input is bypassable by typing; the DB CHECK is the backstop.
+  if (plannedDate.value && endDate.value && endDate.value < plannedDate.value) {
+    endDateError.value = true
+    document.getElementById('tf-endDate')?.focus()
+    return
+  }
 
   const effectiveGpxFilepath = gpxRemoved.value ? null : (pendingGpxKey.value ?? gpxFilepath.value)
   const preUploadedTourId = pendingTourId.value
@@ -445,6 +464,7 @@ function handleSubmit() {
   const draft: TourDraft = {
     name: tourName.value.trim(),
     plannedDate: plannedDate.value ? new Date(plannedDate.value) : null,
+    endDate: plannedDate.value && endDate.value ? new Date(endDate.value) : null,
     partnerIds: Array.from(selectedPartnerIds.value),
     visibility: visibility.value,
     tourType: selectedTourType.value,
@@ -746,6 +766,26 @@ defineExpose({ cancel: handleCancel })
           <div class="field">
             <label class="label" for="tf-plannedDate">{{ t('tours.form.plannedDateLabel') }}</label>
             <input id="tf-plannedDate" v-model="plannedDate" class="input" type="date">
+          </div>
+
+          <!-- Always rendered, labelled optional: two adjacent date inputs read as a range
+               with no toggle to discover. Empty = single-day tour. -->
+          <div class="field">
+            <label class="label" for="tf-endDate">{{ t('tours.form.endDateLabel') }}</label>
+            <input
+              id="tf-endDate"
+              v-model="endDate"
+              class="input"
+              :class="{ 'input--error': endDateError }"
+              type="date"
+              :min="plannedDate || undefined"
+              :disabled="!plannedDate"
+              :aria-invalid="endDateError"
+              @input="endDateError = false"
+            >
+            <p v-if="endDateError" class="field-error">
+              {{ t('tours.form.endDateBeforeStartError') }}
+            </p>
           </div>
 
           <div class="field">

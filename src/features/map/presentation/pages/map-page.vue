@@ -11,7 +11,7 @@ import DialogWindow from '@/core/components/dialog-window.vue'
 import FeedbackSheet from '@/core/components/feedback-sheet.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
-import { dayKey } from '@/features/calendar/domain/calendar-dates'
+import { spanDayKeys } from '@/features/calendar/domain/calendar-dates'
 import ContactsListSheet from '@/features/contacts/presentation/components/contacts-list-sheet.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import FriendRequestsSheet from '@/features/friendships/presentation/components/friend-requests-sheet.vue'
@@ -148,6 +148,8 @@ const pendingFlyTo = ref(false)
 // sheet's back button target. `list` returns to the tours overlay; `cal-*`
 // returns to the calendar route on the matching view; `null` = no back offered.
 const tourDetailOrigin = ref<'list' | 'cal-seasons' | 'cal-planned' | null>(null)
+// `cal-planned` only: the day cell the detail was opened from (a span covers several).
+const tourDetailOriginDay = ref<string | null>(null)
 
 // Contact id to auto-open in the contacts sheet (from tour chip edit-contact action)
 const editContactId = ref<string | null>(null)
@@ -185,6 +187,7 @@ function openOverlay(name: OverlayName) {
     mapStore.selectTour(null)
     clearTourPreview()
     tourDetailOrigin.value = null
+    tourDetailOriginDay.value = null
   }
   if (activeOverlay.value === 'tour-creation' && name !== 'tour-creation') {
     resetTourCreationState()
@@ -198,6 +201,7 @@ function closeOverlay() {
     mapStore.selectTour(null)
     clearTourPreview()
     tourDetailOrigin.value = null
+    tourDetailOriginDay.value = null
   }
   if (activeOverlay.value === 'tour-creation') {
     resetTourCreationState()
@@ -354,17 +358,23 @@ watch(reopenSignal, () => {
 
 function handleTourSelectedFromList(tourId: string) {
   tourDetailOrigin.value = 'list'
+  tourDetailOriginDay.value = null
   mapStore.selectTour(tourId)
   openOverlay('tour')
 }
 
 function handleTourInfoBack() {
   const origin = tourDetailOrigin.value
-  // Derive the return day from the tour's LIVE plannedDate (read before we clear
-  // the selection), not a value frozen when the detail was opened — the date may
-  // have been edited in the detail, and the calendar must re-open the new day.
+  // Return to the day the detail was opened from — for a multi-day tour that is not its
+  // start day. Validated against the tour's LIVE span (read before we clear the
+  // selection): the dates may have been edited in the detail, and an edit that moves the
+  // span out from under the stored day must not return the user to a day the tour no
+  // longer covers. Fall back to the start day then.
   const plannedDate = selectedTour.value?.plannedDate
-  const originDay = plannedDate ? dayKey(plannedDate) : null
+  const stored = tourDetailOriginDay.value
+  const spanKeys = plannedDate ? spanDayKeys(plannedDate, selectedTour.value?.endDate ?? null) : []
+  const originDay = stored && spanKeys.includes(stored) ? stored : (spanKeys[0] ?? null)
+  tourDetailOriginDay.value = null
   tourDetailOrigin.value = null
   mapStore.selectTour(null)
   clearTourPreview()
@@ -437,6 +447,7 @@ onMounted(async () => {
   }
   else if (intent?.selectTourId) {
     tourDetailOrigin.value = intent.origin ?? null
+    tourDetailOriginDay.value = intent.originDay ?? null
     mapStore.selectTour(intent.selectTourId)
   }
 })
