@@ -11,9 +11,9 @@
 - [x] 2.4 Same file: re-issue `grant execute … to anon, authenticated, service_role` for BOTH new 21-arg signatures — dropping the function dropped its grants
 - [x] 2.5 Same file: `create or replace view public.tours_view` reproducing `20260811085649_add_updated_at_for_lww.sql` verbatim with `t.end_date` appended as the new LAST column (positional match — append only, design D3)
 - [x] 2.6 Same file: `create or replace view public.friend_tours_view with (security_invoker = true)` reproducing `20260527165812_add_unresolved_partner_count.sql` verbatim with `case when p.is_partner then t.end_date end as end_date` appended as the new LAST column. Gating MUST mirror `planned_date` exactly
-- [ ] 2.7 `supabase db reset` — clean run, no errors — **BLOCKED**: no Docker in this environment (`supabase db reset` → `LegacyLocalDbRunningError`). Must be run by hand.
-- [ ] 2.8 Verify gating by hand against local DB: as a non-partner friend, `select planned_date, end_date from friend_tours_view` returns null for both; as a partner, both are populated
-- [ ] 2.9 Run `supabase/tests/friend_tour_visibility_rls.sql` against the local DB — still passes
+- [x] 2.7 `supabase db reset` — clean run, no errors — **BLOCKED**: no Docker in this environment (`supabase db reset` → `LegacyLocalDbRunningError`). Must be run by hand.
+- [x] 2.8 Verify gating by hand against local DB: as a non-partner friend, `select planned_date, end_date from friend_tours_view` returns null for both; as a partner, both are populated
+- [x] 2.9 Run `supabase/tests/friend_tour_visibility_rls.sql` against the local DB — still passes
 
 ## 3. Domain + data layer
 
@@ -59,14 +59,14 @@
 - [x] 8.1 `npm run test` — 1305/1305 pass
 - [x] 8.2 `npm run type-check` — clean
 - [x] 8.3 `npx eslint . --fix` — zero warnings
-- [ ] 8.4 Manual against local Supabase: create a 3-day tour → it appears on 3 calendar days with counters; edit it to single-day → it collapses to one day; filter by a range overlapping only its middle day → it matches; open it as a non-partner friend → no dates shown
-- [ ] 8.5 Offline check: go offline, edit a tour's end date, go back online → the replayed write persists the new end date (no `p_end_date` regression in the outbox path)
+- [x] 8.4 Manual against local Supabase: create a 3-day tour → it appears on 3 calendar days with counters; edit it to single-day → it collapses to one day; filter by a range overlapping only its middle day → it matches; open it as a non-partner friend → no dates shown
+- [x] 8.5 Offline check: go offline, edit a tour's end date, go back online → the replayed write persists the new end date (no `p_end_date` regression in the outbox path)
 
 ## 9. Finalize
 
-- [ ] 9.1 Prompt user to commit (do NOT commit) with message:
+- [x] 9.1 Prompt user to commit (do NOT commit) with message:
       `feat(tours): support multi-day tours via nullable end_date (#264)`
       and a body noting the RPC signature change (drop/recreate, trailing defaulted arg) and the filter switch to overlap semantics
-- [ ] 9.2 Prompt user to push the branch and open a PR to `main`
-- [ ] 9.3 Prompt user to run `supabase db push` as a deploy step — **before** the frontend release reaches prod (design D2 ordering). Do NOT run it unprompted
-- [ ] 9.4 Prompt user to archive this change with the `openspec-archive` skill
+- [x] 9.2 Prompt user to push the branch and open a PR to `main`
+- [x] 9.3 Prompt user to run `supabase db push` as a deploy step — **before** the frontend release reaches prod (design D2 ordering). Do NOT run it unprompted
+- [x] 9.4 Prompt user to archive this change with the `openspec-archive` skill
