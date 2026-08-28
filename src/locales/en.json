@@ -531,6 +531,60 @@
         "previous": "Previous",
         "page": "Page {page} of {total}"
       }
+    },
+    "suggestions": {
+      "suggestBtn": "Suggest changes",
+      "suggestTitlePrefix": "Suggest",
+      "submitBtn": "Suggest changes",
+      "reviewTitle": "Suggested changes",
+      "historyTitle": "Suggestion history",
+      "historyBtn": "Suggestion history",
+      "historyEmpty": "No suggestions have been resolved on this tour yet.",
+      "pendingCount": "{count} suggested change | {count} suggested change | {count} suggested changes",
+      "yourPendingCount": "Your proposal ({count}) | Your proposal ({count} change) | Your proposal ({count} changes)",
+      "fieldCount": "{count} field | {count} field | {count} fields",
+      "byAuthor": "Suggested by {name}",
+      "yourProposal": "Your proposal",
+      "aPartner": "a partner",
+      "acceptBtn": "Accept",
+      "declineBtn": "Decline",
+      "acceptAllBtn": "Accept all",
+      "withdrawBtn": "Withdraw",
+      "reviseBtn": "Revise",
+      "stale": "You changed this since",
+      "currentValue": "Current",
+      "baseValue": "They saw",
+      "originalValue": "Current",
+      "suggestedValue": "Suggested",
+      "emptyValue": "—",
+      "emptyOwner": "No open suggestions on this tour.",
+      "emptyAuthor": "You have no open suggestions on this tour.",
+      "capHint": "This tour already holds the maximum number of attachments. Accept a removal first, or use Accept all.",
+      "removalPropose": "Propose removal",
+      "removalMarked": "Removal proposed",
+      "offline": "Suggestions need a connection.",
+      "status": {
+        "accepted": "Accepted",
+        "declined": "Declined",
+        "withdrawn": "Withdrawn",
+        "pending": "Pending"
+      },
+      "fields": {
+        "name": "Name",
+        "dates": "Dates",
+        "goal": "Goal",
+        "tour_type": "Activity",
+        "elevation": "Elevation",
+        "description": "Description",
+        "seasons": "Seasons",
+        "equipment": "Equipment",
+        "notes": "Notes",
+        "start_point": "Start point",
+        "end_point": "End point",
+        "gpx": "GPX track",
+        "attachment_add": "New attachment",
+        "attachment_remove": "Remove attachment"
+      }
     }
   },
   "map": {
@@ -641,10 +695,12 @@
     "type": {
       "friend_requests": "Friend requests",
       "tour_updates": "Shared tour changes",
-      "tour_interest": "Same-tour collaboration suggestions"
+      "tour_interest": "Same-tour collaboration suggestions",
+      "tour_suggestions": "Tour change suggestions"
     },
     "typeDescription": {
-      "tour_interest": "Notifies when a friend plans the same tour, requests linking a tour, and tours overlap after a new friendship."
+      "tour_interest": "Notifies when a friend plans the same tour, requests linking a tour, and tours overlap after a new friendship.",
+      "tour_suggestions": "Notifies when a tour partner suggests changes to your tour, and when your own suggestions are decided."
     },
     "allOffDisclaimer": "You won't receive friend request notifications or other important updates. Enable at least one channel to stay informed.",
     "pushUnavailable": "Not available",

@@ -7,12 +7,21 @@ import { resolveContactName } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useFriendDisplayName } from '@/features/friendships/presentation/composables/use-friend-display-name'
 import { TOUR_TYPE_COLORS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
+import { useTourSuggestionsStore } from '@/features/tours/presentation/stores/tour-suggestions-store'
 
 const props = defineProps<{ tour: Tour }>()
 const emit = defineEmits<{ click: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 const contactsStore = useContactsStore()
+const suggestionsStore = useTourSuggestionsStore()
+
+// Fed by the one feature-wide query (design D15) — no per-row fetch. Offline it reads the
+// cached snapshot (D14): a stale-but-truthful count beats a silent zero, which would read
+// as "nobody suggested anything".
+const pendingSuggestions = computed(() =>
+  props.tour.isFriendTour ? 0 : (suggestionsStore.pendingCountByTour[props.tour.id] ?? 0),
+)
 
 const displayName = computed(() => props.tour.name ?? t('tours.infoSheet.unnamedTour'))
 
@@ -59,6 +68,13 @@ const partnerSubtitle = computed(() => {
       <span v-else-if="tour.isFriendTour" class="tour-owner-skeleton" aria-hidden="true" />
       <span v-if="partnerSubtitle" class="tour-subtitle">{{ partnerSubtitle }}</span>
     </div>
+    <span
+      v-if="pendingSuggestions > 0" class="suggestion-badge"
+      :title="t('tours.suggestions.pendingCount', { count: pendingSuggestions })"
+    >
+      <BaseIcon name="feedback" />
+      {{ pendingSuggestions }}
+    </span>
     <BaseIcon name="chevron_right" class="row-arrow" />
   </li>
 </template>
@@ -163,6 +179,15 @@ const partnerSubtitle = computed(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.suggestion-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xxs);
+  flex-shrink: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
 }
 
 .row-arrow {

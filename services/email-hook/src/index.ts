@@ -8,6 +8,7 @@ import {
   handleLinkRequestEvent,
   handleTourChanged,
   handleTourInterest,
+  handleTourSuggestion,
 } from './notify'
 
 interface SupabaseHookPayload {
@@ -131,6 +132,10 @@ export default {
 
       if (url.pathname === '/notify/link-request-event') {
         return withCors(await handleLinkRequestEvent(request, env), request)
+      }
+
+      if (url.pathname === '/notify/tour-suggestion') {
+        return withCors(await handleTourSuggestion(request, env), request)
       }
 
       if (url.pathname === '/notify/group-membership-event') {
