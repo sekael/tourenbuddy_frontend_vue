@@ -600,6 +600,10 @@ const sheetShowBack = computed(() => {
 const sheetBackLabel = computed(() => {
   if (linksView.value && isDesktop.value)
     return t('tourLinks.linkedWithHeader')
+  // The desktop drawer renders its back button ONLY when a label is set — without this the
+  // review/history views would offer nothing but Close, which discards the whole drawer.
+  if ((mode.value === 'review' || mode.value === 'history') && isDesktop.value)
+    return displayName.value
   return props.showBack && isDesktop.value ? t('tours.infoSheet.backToTours') : undefined
 })
 
@@ -836,36 +840,6 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         <LinkRequestBanner v-for="req in linkPendingRequests" :key="req.id" :request="req" />
         <CollisionNotice v-if="isOwner" :own-tour-id="tour.id" />
 
-        <!-- Suggestions: owner review workload, or the partner's own proposal (D15) -->
-        <button
-          v-if="isOwner && pendingSuggestionCount > 0" type="button" class="action-btn suggestion-entry"
-          data-testid="review-suggestions-btn" @click="mode = 'review'"
-        >
-          <BaseIcon name="feedback" />
-          {{ t('tours.suggestions.pendingCount', { count: pendingSuggestionCount }) }}
-        </button>
-        <button
-          v-if="canSuggest && myPendingSuggestions.length > 0" type="button"
-          class="action-btn suggestion-entry" data-testid="my-suggestions-btn" @click="mode = 'review'"
-        >
-          <BaseIcon name="feedback" />
-          {{ t('tours.suggestions.yourPendingCount', { count: myPendingSuggestions.length }) }}
-        </button>
-        <button
-          v-if="canSuggest" type="button" class="action-btn suggestion-entry"
-          data-testid="suggest-btn" @click="enterSuggestMode()"
-        >
-          <BaseIcon name="edit" />
-          {{ t('tours.suggestions.suggestBtn') }}
-        </button>
-        <button
-          v-if="isOwner || canSuggest" type="button" class="action-btn suggestion-entry"
-          data-testid="suggestion-history-btn" @click="mode = 'history'"
-        >
-          <BaseIcon name="schedule" />
-          {{ t('tours.suggestions.historyBtn') }}
-        </button>
-
         <!-- Completion toggle (owner only) -->
         <button
           v-if="isOwner" type="button" class="completion-toggle action-btn"
@@ -1073,6 +1047,47 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           </div>
         </div>
 
+        <!--
+          Suggestions live at the BOTTOM (owner review workload, or the partner's own
+          proposal, D15): they are actions on the tour, not facts about it, so they belong
+          after the detail rows rather than crowding the header.
+        -->
+        <div v-if="isOwner || canSuggest" class="suggestion-actions">
+          <button
+            v-if="isOwner && pendingSuggestionCount > 0" type="button" class="action-btn suggestion-entry"
+            data-testid="review-suggestions-btn" @click="mode = 'review'"
+          >
+            <BaseIcon name="feedback" />
+            {{ t('tours.suggestions.pendingCount', { count: pendingSuggestionCount }) }}
+          </button>
+          <button
+            v-if="canSuggest && myPendingSuggestions.length > 0" type="button"
+            class="action-btn suggestion-entry" data-testid="my-suggestions-btn" @click="mode = 'review'"
+          >
+            <BaseIcon name="feedback" />
+            {{ t('tours.suggestions.yourPendingCount', { count: myPendingSuggestions.length }) }}
+          </button>
+          <!--
+            One pending proposal per suggester at a time. While theirs is open the only
+            route in is "your proposal" → revise, which reopens the SAME batch (D12);
+            starting a fresh one would upsert over every field they already proposed.
+          -->
+          <button
+            v-if="canSuggest && myPendingSuggestions.length === 0" type="button"
+            class="action-btn suggestion-entry" data-testid="suggest-btn" @click="enterSuggestMode()"
+          >
+            <BaseIcon name="edit" />
+            {{ t('tours.suggestions.suggestBtn') }}
+          </button>
+          <button
+            v-if="isOwner || canSuggest" type="button" class="action-btn suggestion-entry"
+            data-testid="suggestion-history-btn" @click="mode = 'history'"
+          >
+            <BaseIcon name="schedule" />
+            {{ t('tours.suggestions.historyBtn') }}
+          </button>
+        </div>
+
         <!-- Contact action menu -->
         <ContactActionMenu
           v-if="activeMenuContact" :contact="activeMenuContact" :anchor-rect="activeChipRect"
@@ -1186,6 +1201,21 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   transition:
     background-color 0.15s,
     border-color 0.15s;
+}
+
+/* The divider spans the full surface: negative margins cancel the host's inline padding
+   (published by the drawer/sheet as --surface-pad-*), then the padding is re-applied
+   inside so the buttons stay aligned with the detail rows above. */
+.suggestion-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-xs);
+  margin-left: calc(-1 * var(--surface-pad-left, 0px));
+  margin-right: calc(-1 * var(--surface-pad-right, 0px));
+  padding: var(--spacing-sm) var(--surface-pad-right, 0px) 0 var(--surface-pad-left, 0px);
+  border-top: 1px solid var(--color-outline-variant);
 }
 
 .action-btn:hover:not(:disabled) {

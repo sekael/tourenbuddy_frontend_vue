@@ -108,6 +108,11 @@ function mountSheet(
   authUserId = 'user-1',
   initialContacts: unknown[] = [],
   mapState: Record<string, unknown> = {},
+  extraState: Record<string, unknown> = {},
+  // `createTestingPinia` stubs every function a setup store returns — including read-only
+  // helpers like `myPendingFor`, which then returns undefined. Tests that render off one
+  // opt out; the rest keep the stubs so action calls stay assertable.
+  stubActions = true,
 ) {
   return mount(TourInfoSheet, {
     props: { tour: { ...mockTour, ...tourOverrides } },
@@ -115,11 +120,13 @@ function mountSheet(
       plugins: [
         createTestingPinia({
           createSpy: vi.fn,
+          stubActions,
           initialState: {
             contacts: { contacts: initialContacts },
             tours: { tours: [mockTour] },
             auth: { currentUser: { id: authUserId }, isAuthenticated: true },
             map: { isPickingLocation: false, ...mapState },
+            ...extraState,
           },
         }),
       ],
@@ -640,6 +647,62 @@ describe('tourInfoSheet', () => {
     it('never renders the pill on the owner\'s own tour', () => {
       const wrapper = mountSheet({ isFriendTour: false, unresolvedPartnerCount: 4 }, 'user-1')
       expect(wrapper.find('.friend-partner-chip--more').exists()).toBe(false)
+    })
+  })
+
+  // ── Suggestions (change: tour-suggestions) ─────────────────────────────────
+
+  describe('suggestion entry points', () => {
+    const friendTour = { isFriendTour: true, isPartner: true }
+
+    function pending(overrides: Record<string, unknown> = {}) {
+      return {
+        id: 's1',
+        tourId: 'tour-1',
+        ownerId: 'user-1',
+        suggesterId: 'user-2',
+        batchId: 'b1',
+        field: 'notes',
+        value: 'Careful on the ridge',
+        baseValue: null,
+        currentValue: null,
+        targetId: null,
+        status: 'pending',
+        isStale: false,
+        createdAt: new Date('2026-08-01'),
+        resolvedAt: null,
+        suggesterFirstName: 'Jakob',
+        suggesterLastName: null,
+        ...overrides,
+      }
+    }
+
+    it('hides "suggest changes" while the partner already has a pending proposal', () => {
+      // Starting a second batch would upsert over every field of the first one — the only
+      // route back in must be revise, which reopens the SAME batch (D12).
+      const wrapper = mountSheet(friendTour, 'user-2', [], {}, {
+        tourSuggestions: { suggestions: [pending()] },
+      }, false)
+
+      expect(wrapper.find('[data-testid="suggest-btn"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="my-suggestions-btn"]').exists()).toBe(true)
+    })
+
+    it('offers "suggest changes" again once the owner has resolved the proposal', () => {
+      const wrapper = mountSheet(friendTour, 'user-2', [], {}, {
+        tourSuggestions: {
+          suggestions: [pending({ status: 'accepted', resolvedAt: new Date('2026-08-02') })],
+        },
+      }, false)
+
+      expect(wrapper.find('[data-testid="suggest-btn"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="my-suggestions-btn"]').exists()).toBe(false)
+    })
+
+    it('never offers a non-partner the suggest entry on a friend tour', () => {
+      const wrapper = mountSheet({ isFriendTour: true, isPartner: false }, 'user-2', [], {}, {}, false)
+
+      expect(wrapper.find('[data-testid="suggest-btn"]').exists()).toBe(false)
     })
   })
 })

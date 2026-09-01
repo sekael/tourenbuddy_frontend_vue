@@ -1354,11 +1354,12 @@ defineExpose({ cancel: handleCancel })
   color: inherit;
   cursor: pointer;
   text-align: left;
+}
 
-  &--marked {
-    border-color: var(--color-error);
-    color: var(--color-error);
-  }
+/* `&--suffix` is Sass, not CSS — the modifier is written out in full. */
+.removal-row--marked {
+  border-color: var(--color-error);
+  color: var(--color-error);
 }
 
 .removal-name {

@@ -70,7 +70,7 @@
 - [x] 9.3 `src/features/notifications/data/notify-dispatch.ts` — `notifyTourSuggestion(batchId, action)` for `'submitted' | 'resolved'`, fire-and-forget exactly like `notifyTourChanged`
 - [x] 9.4 `services/email-hook/src/notify.ts` — `/notify/tour-suggestion` endpoint. Resolves the recipient from the suggestion rows via service role: owner for `submitted`, author for `resolved` (with accepted/declined counts). Honors `notif_push_enabled` / `notif_email_enabled` / `notif_muted_types` including the new type. One notification per batch
 - [x] 9.5 `services/email-hook/src/email.ts` — widen the type union and add localized copy for both actions
-- [ ] 9.6 **Deploy the Worker manually**: `cd services/email-hook && npx wrangler@latest deploy`. NOT in CI — without this the endpoint 404s and every suggestion notification silently no-ops
+- [x] 9.6 **Deploy the Worker manually**: `cd services/email-hook && npx wrangler@latest deploy`. NOT in CI — without this the endpoint 404s and every suggestion notification silently no-ops
 
 ## 10. i18n
 

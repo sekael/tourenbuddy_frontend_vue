@@ -426,6 +426,11 @@ const sheetStyle = computed(() => {
 }
 
 .content {
+  /* Published so slotted content can bleed a full-width divider to the sheet edges — the
+     sheet itself pads `md` on both sides, this element adds `xs` on the right. */
+  --surface-pad-left: var(--spacing-md);
+  --surface-pad-right: calc(var(--spacing-md) + var(--spacing-xs));
+
   flex: 1;
   min-height: 0;
   overflow-y: auto;

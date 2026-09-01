@@ -584,7 +584,11 @@
         "gpx": "GPX track",
         "attachment_add": "New attachment",
         "attachment_remove": "Remove attachment"
-      }
+      },
+      "gpxNew": "New GPX track",
+      "gpxExisting": "Existing GPX track",
+      "anAttachment": "An attachment",
+      "byYou": "Suggested by you"
     }
   },
   "map": {

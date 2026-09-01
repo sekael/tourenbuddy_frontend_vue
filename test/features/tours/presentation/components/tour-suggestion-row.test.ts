@@ -2,6 +2,7 @@ import { createTestingPinia } from '@pinia/testing'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import TourSuggestionRow from '@/features/tours/presentation/components/tour-suggestion-row.vue'
+import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 
 function makeSuggestion(overrides: Record<string, unknown> = {}) {
   return {
@@ -117,5 +118,68 @@ describe('tourSuggestionRow', () => {
     })
 
     expect(wrapper.find('.value--new').text()).toContain('–')
+  })
+
+  it('never renders a raw enum token — a German reader must not see "climbing"', () => {
+    const wrapper = mountRow({
+      suggestion: makeSuggestion({ field: 'tour_type', value: 'climbing', baseValue: 'skitour' }),
+    })
+
+    expect(wrapper.find('.value--new').text()).toBe('tours.type.climbing')
+    expect(wrapper.find('.value--old').text()).toBe('tours.type.skitour')
+  })
+
+  it('localizes every entry of a seasons list, not just the first', () => {
+    const wrapper = mountRow({
+      suggestion: makeSuggestion({
+        field: 'seasons',
+        value: ['summer', 'autumn'],
+        baseValue: ['winter'],
+      }),
+    })
+
+    expect(wrapper.find('.value--new').text()).toBe('tours.season.summer, tours.season.autumn')
+  })
+
+  it('describes a GPX generically instead of leaking its storage key', () => {
+    const wrapper = mountRow({
+      suggestion: makeSuggestion({
+        field: 'gpx',
+        value: { storagePath: 'u1/suggestions/t1/9f3c.gpx' },
+        baseValue: { storagePath: 'owner/cccccccc-0000-0000-0000-000000000003.gpx' },
+      }),
+    })
+
+    expect(wrapper.text()).not.toContain('9f3c')
+    expect(wrapper.find('.value--new').text()).toBe('tours.suggestions.gpxNew')
+    expect(wrapper.find('.value--old').text()).toBe('tours.suggestions.gpxExisting')
+  })
+
+  it('names the attachment a removal targets, resolved from its id', async () => {
+    // The row carries only `target_id` — the filename lives on the attachment itself.
+    const wrapper = mountRow({
+      suggestion: makeSuggestion({ field: 'attachment_remove', value: null, targetId: 'att-1' }),
+    })
+    const attachments = useTourAttachmentsStore()
+    attachments.attachmentsByTour = {
+      t1: [{ id: 'att-1', originalFilename: 'gipfelfoto.jpg' }],
+    } as never
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('.value--old').text()).toBe('gipfelfoto.jpg')
+  })
+
+  it('falls back to a generic noun when the removed attachment is already gone', () => {
+    // History rows outlive the attachment they resolved — a blank cell would read as a bug.
+    const wrapper = mountRow({
+      suggestion: makeSuggestion({
+        field: 'attachment_remove',
+        value: null,
+        targetId: 'att-gone',
+        status: 'accepted',
+      }),
+    })
+
+    expect(wrapper.find('.value--old').text()).toBe('tours.suggestions.anAttachment')
   })
 })

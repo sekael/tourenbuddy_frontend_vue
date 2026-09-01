@@ -4,6 +4,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
+import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 
 const props = defineProps<{
   suggestion: TourSuggestion
@@ -22,6 +23,8 @@ const emit = defineEmits<{
 
 const { t, locale } = useI18n({ useScope: 'global' })
 
+const attachmentsStore = useTourAttachmentsStore()
+
 const label = computed(() => t(`tours.suggestions.fields.${props.suggestion.field}`))
 
 const isPending = computed(() => props.suggestion.status === 'pending')
@@ -35,9 +38,57 @@ const capBlocked = computed(
   () => props.capFull && props.suggestion.field === 'attachment_add' && isPending.value,
 )
 
-function formatValue(value: unknown): string {
+/**
+ * Enumerated fields are stored as their raw token (`climbing`, `summer`) but must never be
+ * shown as one — the rest of the app already has display names for both, so reuse those
+ * keys rather than a suggestion-local copy that would drift.
+ */
+function localizedEnum(value: unknown): string | null {
+  if (props.suggestion.field === 'tour_type' && typeof value === 'string')
+    return t(`tours.type.${value}`)
+  if (props.suggestion.field === 'seasons' && Array.isArray(value))
+    return value.map(s => t(`tours.season.${s}`)).join(', ')
+  return null
+}
+
+/**
+ * The name of an `attachment_remove` target, which the suggestion row itself never carries —
+ * it holds only the id (`target_id`). Resolved against the owner's loaded attachments; a
+ * resolved row whose attachment is already gone falls back to the generic noun.
+ */
+const removedAttachmentName = computed(() => {
+  const list = attachmentsStore.attachmentsByTour[props.suggestion.tourId] ?? []
+  const hit = list.find(a => a.id === props.suggestion.targetId)
+  return hit?.originalFilename ?? t('tours.suggestions.anAttachment')
+})
+
+/**
+ * Binary fields describe themselves, not their storage. A GPX is "a new track" or "the
+ * existing track" — the object key behind it is an implementation detail nobody reviewing a
+ * proposal needs, and showing it leaks a UUID into the UI.
+ */
+function binaryLabel(value: unknown, isSuggested: boolean): string | null {
+  if (props.suggestion.field === 'gpx') {
+    if (value === null || value === undefined)
+      return t('tours.suggestions.emptyValue')
+    return isSuggested ? t('tours.suggestions.gpxNew') : t('tours.suggestions.gpxExisting')
+  }
+  if (props.suggestion.field === 'attachment_remove')
+    return isSuggested ? t('tours.suggestions.emptyValue') : removedAttachmentName.value
+  return null
+}
+
+function formatValue(value: unknown, isSuggested = false): string {
+  const binary = binaryLabel(value, isSuggested)
+  if (binary !== null)
+    return binary
+
   if (value === null || value === undefined)
     return t('tours.suggestions.emptyValue')
+
+  const enumLabel = localizedEnum(value)
+  if (enumLabel !== null)
+    return enumLabel
 
   if (typeof value === 'string' || typeof value === 'number')
     return String(value)
@@ -112,7 +163,7 @@ function formatDate(iso: string): string {
       </div>
       <div class="value-col">
         <span class="value-label">{{ t('tours.suggestions.suggestedValue') }}</span>
-        <span class="value value--new">{{ formatValue(suggestion.value) }}</span>
+        <span class="value value--new">{{ formatValue(suggestion.value, true) }}</span>
       </div>
     </div>
 
@@ -156,10 +207,19 @@ function formatDate(iso: string): string {
   padding: var(--spacing-sm) 0;
   border-bottom: 1px solid var(--color-outline-variant);
 
-  &--stale {
-    border-left: 3px solid var(--color-warning, var(--color-error));
-    padding-left: var(--spacing-sm);
+  /* The card's own border already closes the list — a divider under the last row doubles
+     it. In the review sheet the batch actions follow, so those rows keep theirs. */
+  &:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
   }
+}
+
+/* `&--suffix` is Sass, not CSS: native nesting resolves `&` to a real selector, so the
+   concatenated form never matches. Modifiers are written out in full. */
+.row--stale {
+  border-left: 3px solid var(--color-warning, var(--color-error));
+  padding-left: var(--spacing-sm);
 }
 
 .row-head {
@@ -172,8 +232,7 @@ function formatDate(iso: string): string {
   font-weight: 600;
 }
 
-.stale-badge,
-.status-badge {
+.stale-badge {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-xxs);
@@ -181,14 +240,41 @@ function formatDate(iso: string): string {
   opacity: 0.8;
 }
 
+/* GitHub-style outcome pill: the tint carries the verdict at a glance, mixed off the
+   existing semantic tokens rather than adding three one-off palette entries. */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.4;
+}
+
+.status-badge--accepted {
+  color: var(--color-success);
+  background-color: color-mix(in srgb, var(--color-success) 14%, var(--color-background));
+}
+
+.status-badge--withdrawn {
+  color: var(--color-warning);
+  background-color: color-mix(in srgb, var(--color-warning) 18%, var(--color-background));
+}
+
+.status-badge--declined {
+  color: var(--color-error);
+  background-color: color-mix(in srgb, var(--color-error) 12%, var(--color-background));
+}
+
 .values {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--spacing-sm);
+}
 
-  &--triple {
-    grid-template-columns: repeat(3, 1fr);
-  }
+.values--triple {
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .value-col {
