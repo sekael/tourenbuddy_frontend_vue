@@ -51,14 +51,25 @@ export const useTourAttachmentsStore = defineStore('tourAttachments', () => {
       const uid = authStore.currentUser?.id
       if (!uid)
         return []
-      return [{ event: '*', table: 'tour_attachments', filter: `user_id=eq.${uid}` }]
+      return [
+        { event: '*', table: 'tour_attachments', filter: `user_id=eq.${uid}` },
+        // An accepted attachment suggestion inserts the row under the TOUR OWNER's
+        // user_id, so the suggester's own filter above never sees it. Their suggestion
+        // row does flip status in the same transaction — take that as the cue to
+        // refetch the open tour's attachments (realtime filters cannot join, D8).
+        { event: 'UPDATE', table: 'tour_suggestion', filter: `suggester_id=eq.${uid}` },
+      ]
     },
-    onChange: () => {
-      if (!currentTourId.value)
-        return
-      load(currentTourId.value)
-    },
+    onChange: () => refetchCurrent(),
+    // MANDATORY (architecture rule): a hidden tab tears the channel down, so inserts in
+    // that window are lost. Every (re-)subscribe refetches the open tour.
+    onSubscribed: () => refetchCurrent(),
   })
+
+  function refetchCurrent() {
+    if (currentTourId.value)
+      void load(currentTourId.value)
+  }
 
   watch(
     () => authStore.isAuthenticated,
@@ -125,10 +136,18 @@ export const useTourAttachmentsStore = defineStore('tourAttachments', () => {
     return null
   }
 
-  /** Stage files for a draft tour (create-flow). Replaces previous staged list. */
-  function stage(draftId: string, files: File[]) {
+  /**
+   * Stage files for a draft tour (create-flow) or a suggestion (D9).
+   *
+   * `baseCount` is what the tour ALREADY holds and keeps — zero while creating, but in
+   * suggest mode the owner's existing attachments minus the ones this batch proposes to
+   * remove. Without it the cap is measured against the staged list alone, so a partner
+   * could propose four adds onto a tour already holding four and only find out when the
+   * owner's accept hit the server-side cap.
+   */
+  function stage(draftId: string, files: File[], baseCount = 0) {
     const current = stagedByDraft.value[draftId] ?? []
-    const validationError = validateBatch(files, current.length)
+    const validationError = validateBatch(files, current.length + baseCount)
     if (validationError) {
       error.value = errorMessage(validationError)
       return

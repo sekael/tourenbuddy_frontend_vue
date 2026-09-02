@@ -199,7 +199,7 @@ describe('buildSuggestionItems', () => {
     // is what makes a batch accept work on a tour already holding five.
     const items = buildSuggestionItems(tour, draft, GOAL, {
       addedAttachments: [
-        { storagePath: 'u1/suggestions/t1/new.jpg', mimeType: 'image/jpeg', sizeBytes: 10, originalFilename: 'new.jpg' },
+        { id: 'add-1', storagePath: 'u1/suggestions/t1/new.jpg', mimeType: 'image/jpeg', sizeBytes: 10, originalFilename: 'new.jpg' },
       ],
       removedAttachmentIds: ['att-1'],
     })
@@ -207,6 +207,29 @@ describe('buildSuggestionItems', () => {
     expect(fieldsOf(items)).toEqual(['attachment_add', 'attachment_remove'])
     expect(itemFor(items, 'attachment_remove')!.targetId).toBe('att-1')
     expect(itemFor(items, 'attachment_remove')!.value).toBeNull()
+  })
+
+  it('should give every added attachment its own targetId so none upserts over another', () => {
+    // The pending-row unique index is (tour, suggester, field, coalesce(target_id, zero)):
+    // adds sharing a NULL target collapse to ONE row, so picking five photos reached the
+    // owner as a single suggestion and accepting it attached one file.
+    const added = ['a', 'b', 'c', 'd', 'e'].map(n => ({
+      id: `add-${n}`,
+      storagePath: `u1/suggestions/t1/${n}.jpg`,
+      mimeType: 'image/jpeg',
+      sizeBytes: 10,
+      originalFilename: `${n}.jpg`,
+    }))
+
+    const items = buildSuggestionItems(tour, draft, GOAL, { addedAttachments: added })
+    const adds = items.filter(i => i.field === 'attachment_add')
+
+    expect(adds).toHaveLength(5)
+    expect(new Set(adds.map(i => i.targetId)).size).toBe(5)
+    // The discriminator is the item's target, never smuggled into the applied value.
+    expect(adds[0].value).not.toHaveProperty('id')
+    expect(adds.map(i => (i.value as { originalFilename: string }).originalFilename))
+      .toEqual(['a.jpg', 'b.jpg', 'c.jpg', 'd.jpg', 'e.jpg'])
   })
 
   it('should carry no targetId on a scalar item', () => {

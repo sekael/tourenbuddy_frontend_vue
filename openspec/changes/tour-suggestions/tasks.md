@@ -81,8 +81,8 @@
 - [x] 11.1 `npm run test` — all pass
 - [x] 11.2 `npm run type-check` — clean
 - [x] 11.3 `npx eslint . --fix` then `npx eslint` — zero warnings
-- [ ] 11.4 Manual against the LOCAL Supabase, three accounts: partner suggests 3 fields + a photo → revises one field before the owner acts → owner sees one batch, accepts one, declines one, accept-alls the rest → tour reflects exactly the accepted values, `updated_at` advanced once per action, author gets ONE completion notification, third partner account sees only the original tour throughout and gets the `tour_updates` notification for the meaningful accept
-- [ ] 11.5 Manual: swap test — on a tour holding 5 attachments, a batch with one remove + one add accepts cleanly (D10)
+- [x] 11.4 Manual against the LOCAL Supabase, three accounts: partner suggests 3 fields + a photo → revises one field before the owner acts → owner sees one batch, accepts one, declines one, accept-alls the rest → tour reflects exactly the accepted values, `updated_at` advanced once per action, author gets ONE completion notification, third partner account sees only the original tour throughout and gets the `tour_updates` notification for the meaningful accept
+- [x] 11.5 Manual: swap test — on a tour holding 5 attachments, a batch with one remove + one add accepts cleanly (D10)
 
 ## 12. Finalize
 

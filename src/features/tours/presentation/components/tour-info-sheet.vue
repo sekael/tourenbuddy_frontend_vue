@@ -290,6 +290,10 @@ async function handleSuggestSubmit(
     const addedAttachments = []
     for (const file of attachmentsStore.stagedByDraft[draftId] ?? []) {
       addedAttachments.push({
+        // Distinct target per add — without it every add in the batch shares a NULL
+        // target and the pending-row unique index keeps only the last (see
+        // SuggestionBinaryOps.addedAttachments.id).
+        id: crypto.randomUUID(),
         storagePath: await suggestionsStore.uploadStaged('tour-attachments', props.tour.id, file),
         mimeType: file.type,
         sizeBytes: file.size,

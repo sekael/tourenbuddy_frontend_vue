@@ -119,6 +119,14 @@ export function pendingGoalFrom(
 export interface SuggestionBinaryOps {
   /** Already uploaded to the suggester's staging prefix (D9). */
   addedAttachments?: {
+    /**
+     * Client-minted discriminator, carried as the item's `targetId`. The pending-row
+     * uniqueness key is (tour, suggester, field, coalesce(target_id, zero-uuid)), so
+     * several adds sharing a NULL target collapse onto ONE row — four of five picked
+     * photos silently upserted over each other. Minted by the host, not here, so this
+     * function stays pure.
+     */
+    id: string
     storagePath: string
     mimeType: string
     sizeBytes: number
@@ -220,8 +228,8 @@ export function buildSuggestionItems(
 
   // An add and a remove are separate rows, so the owner may take the new photo without
   // losing the old one, and several adds can coexist and all be accepted.
-  for (const attachment of binary.addedAttachments ?? [])
-    push('attachment_add', attachment)
+  for (const { id, ...attachment } of binary.addedAttachments ?? [])
+    push('attachment_add', attachment, id)
 
   for (const id of binary.removedAttachmentIds ?? [])
     push('attachment_remove', null, id)

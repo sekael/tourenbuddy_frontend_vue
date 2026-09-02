@@ -21,6 +21,15 @@ vi.mock('@/core/realtime/use-realtime-subscription', () => ({
   useRealtimeSubscription: vi.fn(() => ({ status: { value: 'idle' }, stop: vi.fn() })),
 }))
 
+/** The owner's existing attachments — every cap decision is computed off this list. */
+const attachmentRows = vi.hoisted(() => ({ value: [] as { id: string }[] }))
+
+vi.mock('@/features/tours/data/repositories/tour-attachment-repository-impl', () => ({
+  SupabaseTourAttachmentRepository: vi.fn().mockImplementation(() => ({
+    list: vi.fn(async () => attachmentRows.value),
+  })),
+}))
+
 const tour = { id: 't1', name: 'Gfroren Hora' } as never
 
 function suggestion(overrides: Record<string, unknown> = {}) {
@@ -119,5 +128,50 @@ describe('tourSuggestionReviewSheet', () => {
     await wrapper.find('[data-testid="revise-btn"]').trigger('click')
 
     expect(wrapper.emitted('revise')?.[0]).toEqual(['b7'])
+  })
+})
+
+describe('tourSuggestionReviewSheet — attachment cap (D10)', () => {
+  const full = () => Array.from({ length: 5 }, (_, i) => ({ id: `att-${i}` }))
+  const add = (o = {}) => suggestion({ id: 'add', field: 'attachment_add', value: { originalFilename: 'x.jpg' }, ...o })
+  const remove = (targetId: string) => suggestion({ id: 'rm', field: 'attachment_remove', value: null, targetId })
+
+  async function render(rows: ReturnType<typeof suggestion>[]) {
+    const { wrapper } = mountSheet(rows)
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+    return wrapper
+  }
+
+  it('refuses accept-all when the batch would end over the cap', async () => {
+    // The reported bug: the owner declined the paired removal, leaving an add alone on a
+    // full tour. The row disabled itself, accept-all did not, and the server raised.
+    attachmentRows.value = full()
+    const wrapper = await render([add()])
+
+    expect(wrapper.find('[data-testid="accept-all-btn"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-testid="accept-all-hint"]').exists()).toBe(true)
+  })
+
+  it('allows accept-all for a swap — the cap is evaluated on the END state', async () => {
+    attachmentRows.value = full()
+    const wrapper = await render([add(), remove('att-0')])
+
+    expect(wrapper.find('[data-testid="accept-all-btn"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-testid="accept-all-hint"]').exists()).toBe(false)
+  })
+
+  it('does not count a removal whose target is already gone as freeing a slot', async () => {
+    attachmentRows.value = full()
+    const wrapper = await render([add(), remove('att-deleted-elsewhere')])
+
+    expect(wrapper.find('[data-testid="accept-all-btn"]').attributes('disabled')).toBeDefined()
+  })
+
+  it('keeps accept-all available on a tour with room to spare', async () => {
+    attachmentRows.value = [{ id: 'att-0' }]
+    const wrapper = await render([add()])
+
+    expect(wrapper.find('[data-testid="accept-all-btn"]').attributes('disabled')).toBeUndefined()
   })
 })

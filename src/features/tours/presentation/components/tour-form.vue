@@ -18,6 +18,7 @@ import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { SEASON_VALUES } from '@/features/tours/data/models/season'
+import { MAX_ATTACHMENTS_PER_TOUR } from '@/features/tours/data/models/tour-attachment'
 import {
   TOUR_TYPE_I18N_KEYS,
   TOUR_TYPE_ICONS,
@@ -211,6 +212,25 @@ const existingAttachments = computed<TourAttachment[]>(() =>
   props.tourId ? (attachmentsStore.attachmentsByTour[props.tourId] ?? []) : [],
 )
 const proposedRemovals = ref<Set<string>>(new Set())
+
+/**
+ * What the tour would still hold if this batch were accepted whole, EXCLUDING the staged
+ * adds — the base the picker measures its remaining slots against (D10 evaluates the cap
+ * on the end state). Proposing a removal frees a slot here immediately, which is the whole
+ * interaction: "to add a sixth photo, offer to drop one".
+ */
+const keptAttachmentCount = computed(() =>
+  isSuggest ? existingAttachments.value.filter(a => !proposedRemovals.value.has(a.id)).length : 0,
+)
+
+/**
+ * Un-marking a removal after staging files can still overshoot (mark one, stage two,
+ * un-mark). The picker gates the common path; this gates submit so the partner is never
+ * allowed to send a batch the owner provably cannot accept.
+ */
+const attachmentOverflow = computed(
+  () => keptAttachmentCount.value + attachments.value.length - MAX_ATTACHMENTS_PER_TOUR,
+)
 
 function toggleProposedRemoval(id: string) {
   if (proposedRemovals.value.has(id))
@@ -507,6 +527,10 @@ function handleSubmit() {
   // button's disabled state — guard it here too since an external (top-bar) Save
   // button bypasses that attribute.
   if (props.disabled || isUploadingGpx.value)
+    return
+  // An unacceptable batch must not be sendable: the owner would only meet it as a cap
+  // error on accept, with no way to fix it from their side.
+  if (attachmentOverflow.value > 0)
     return
   if (!tourName.value.trim()) {
     nameError.value = true
@@ -982,7 +1006,12 @@ defineExpose({ cancel: handleCancel })
             :tour-id="isSuggest ? undefined : tourId"
             :draft-id="draftId ?? undefined"
             :attachments="attachments"
+            :base-count="keptAttachmentCount"
+            :limit-label="isSuggest ? t('tours.suggestions.capHintSuggester', { max: MAX_ATTACHMENTS_PER_TOUR }) : undefined"
           />
+          <p v-if="attachmentOverflow > 0" class="attachment-overflow" role="alert" data-testid="attachment-overflow">
+            {{ t('tours.suggestions.capOverflow', { count: attachmentOverflow }) }}
+          </p>
         </div>
       </div>
       <!-- end scroll-body -->
@@ -991,7 +1020,10 @@ defineExpose({ cancel: handleCancel })
         <BaseButton type="button" variant="secondary" size="sm" data-testid="cancel-btn" @click="handleCancel">
           {{ t('tours.form.cancelBtn') }}
         </BaseButton>
-        <BaseButton type="submit" variant="primary" size="sm" data-testid="submit-btn" :disabled="isUploadingGpx">
+        <BaseButton
+          type="submit" variant="primary" size="sm" data-testid="submit-btn"
+          :disabled="isUploadingGpx || attachmentOverflow > 0"
+        >
           {{ submitLabel }}
         </BaseButton>
       </div>
@@ -1372,6 +1404,11 @@ defineExpose({ cancel: handleCancel })
 .removal-hint {
   font-size: var(--font-size-sm);
   opacity: 0.7;
+}
+
+.attachment-overflow {
+  font-size: var(--font-size-sm);
+  color: var(--color-error);
 }
 
 /* Partner chips */

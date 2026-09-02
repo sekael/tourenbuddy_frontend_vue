@@ -126,6 +126,28 @@ describe('useTourAttachmentsStore — stage', () => {
     expect(store.error).not.toBeNull()
   })
 
+  it('should refuse files that fit the staged list but not the tour behind it', () => {
+    // Suggest mode (D9): nothing is staged yet, but the owner already holds four — the
+    // cap is on the tour's END state, not on the partner's picker.
+    const store = useTourAttachmentsStore()
+
+    store.stage('draft-1', [makeFile('a.jpg', 'image/jpeg'), makeFile('b.jpg', 'image/jpeg')], 4)
+
+    expect(store.error).not.toBeNull()
+    expect(store.stagedByDraft['draft-1']).toBeUndefined()
+  })
+
+  it('should count the base against already-staged files, not instead of them', () => {
+    const store = useTourAttachmentsStore()
+
+    store.stage('draft-1', [makeFile('a.jpg', 'image/jpeg')], 3)
+    store.stage('draft-1', [makeFile('b.jpg', 'image/jpeg')], 3)
+    store.stage('draft-1', [makeFile('c.jpg', 'image/jpeg')], 3)
+
+    expect(store.stagedByDraft['draft-1']).toHaveLength(2)
+    expect(store.error).not.toBeNull()
+  })
+
   it('should stage valid files without error', () => {
     const store = useTourAttachmentsStore()
     const files = [makeFile('a.jpg', 'image/jpeg'), makeFile('b.pdf', 'application/pdf')]

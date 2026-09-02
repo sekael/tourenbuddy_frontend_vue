@@ -363,3 +363,77 @@ describe('tourForm', () => {
     })
   })
 })
+
+/** The attachments picker owns the SECOND file input — the first belongs to GPX. */
+async function stageFile(wrapper: ReturnType<typeof mountForm>, file: File) {
+  const input = wrapper.find('.picker__hidden-input')
+  Object.defineProperty(input.element, 'files', { value: { 0: file, length: 1 }, configurable: true })
+  await input.trigger('change')
+  await nextTick()
+}
+
+describe('tourForm — suggest mode attachment cap (D10)', () => {
+  const owned = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      id: `att-${i}`,
+      tourId: 't1',
+      mimeType: 'image/jpeg',
+      originalFilename: `own-${i}.jpg`,
+      sizeBytes: 10,
+      sortOrder: i,
+    }))
+
+  function mountSuggest(existing: number) {
+    return mount(TourForm, {
+      props: { submitLabel: 'Suggest', mode: 'suggest', tourId: 't1', initialName: 'Tour' },
+      global: {
+        // Real actions: `stage` is the guard under test, and toggling a removal has to
+        // move the picker's remaining slots for real.
+        plugins: [createTestingPinia({
+          createSpy: vi.fn,
+          stubActions: false,
+          initialState: {
+            contacts: { contacts: [] },
+            tourAttachments: { attachmentsByTour: { t1: owned(existing) } },
+          },
+        })],
+        stubs: { ContactChip: true },
+      },
+    })
+  }
+
+  it('offers no add button on a full tour — the owner\'s files count against the cap', async () => {
+    // The picker used to measure only what the partner staged, so a tour holding five
+    // still looked empty and four more adds could be proposed.
+    const wrapper = mountSuggest(5)
+    await nextTick()
+
+    expect(wrapper.find('[data-testid="picker-limit"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('tours.suggestions.capHintSuggester')
+  })
+
+  it('frees a slot as soon as a removal is proposed', async () => {
+    const wrapper = mountSuggest(5)
+    await nextTick()
+
+    await wrapper.findAll('.removal-row')[0].trigger('click')
+
+    expect(wrapper.find('[data-testid="picker-limit"]').exists()).toBe(false)
+  })
+
+  it('blocks submit when un-marking a removal pushes the batch over the limit', async () => {
+    const wrapper = mountSuggest(5)
+    await nextTick()
+
+    // Make room, take it, then take the room back — the picker can't gate this one.
+    await wrapper.findAll('.removal-row')[0].trigger('click')
+    await stageFile(wrapper, new File(['x'], 'new.jpg', { type: 'image/jpeg' }))
+    await wrapper.findAll('.removal-row')[0].trigger('click')
+
+    expect(wrapper.find('[data-testid="attachment-overflow"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="submit-btn"]').attributes('disabled')).toBeDefined()
+
+    await wrapper.find('form').trigger('submit.prevent')
+    expect(wrapper.emitted('submit')).toBeUndefined()
+  })
+})

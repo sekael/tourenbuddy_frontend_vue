@@ -12,6 +12,12 @@ const props = defineProps<{
   mode: 'owner' | 'author'
   /** True when the tour already holds the maximum attachments (D10). */
   capFull?: boolean
+  /**
+   * Whether accepting the WHOLE batch still lands under the cap — i.e. whether the hint may
+   * point at accept-all as the way out. False once the paired removal was declined, when
+   * accept-all would raise the same cap error the single accept does.
+   */
+  capRelief?: boolean
   busy?: boolean
 }>()
 
@@ -168,7 +174,7 @@ function formatDate(iso: string): string {
     </div>
 
     <p v-if="capBlocked" class="cap-hint">
-      {{ t('tours.suggestions.capHint') }}
+      {{ capRelief ? t('tours.suggestions.capHint') : t('tours.suggestions.capHintBlocked') }}
     </p>
 
     <div v-if="isPending" class="row-actions">
