@@ -393,7 +393,6 @@ function tourPushBody(
   locale: 'en' | 'de',
   actorName: string,
   tourName: string,
-  detail?: string,
 ): string {
   const tour = tourName || (locale === 'de' ? 'eine Tour' : 'a tour')
   if (type === 'tour_suggestions') {
@@ -402,10 +401,11 @@ function tourPushBody(
         ? `${actorName} schlägt Änderungen an «${tour}» vor.`
         : `${actorName} suggested changes to “${tour}”.`
     }
-    const summary = detail ?? ''
+    // No accepted/declined tally: "3 / 1" reads as a score, not an outcome. The batch's
+    // per-field verdicts are one tap away in the tour's suggestion history.
     return locale === 'de'
-      ? `${actorName} hat über deine Vorschläge für «${tour}» entschieden. ${summary}`.trim()
-      : `${actorName} decided on your suggestions for “${tour}”. ${summary}`.trim()
+      ? `${actorName} hat über deine Vorschläge für «${tour}» entschieden.`
+      : `${actorName} decided on your suggestions for “${tour}”.`
   }
   if (type === 'tour_interest') {
     if (locale === 'de') {
@@ -448,7 +448,7 @@ function tourPushBody(
 async function dispatchTourNotification(
   recipientId: string,
   actorId: string,
-  opts: { type: TourNotificationType, action: string, tourName: string, detail?: string },
+  opts: { type: TourNotificationType, action: string, tourName: string },
   env: Env,
 ): Promise<void> {
   const [recipientProfile, actorName, recipientEmail] = await Promise.all([
@@ -471,7 +471,6 @@ async function dispatchTourNotification(
     locale,
     actorName,
     opts.tourName,
-    opts.detail,
   )
 
   const tasks: Promise<void>[] = []
@@ -1076,7 +1075,7 @@ async function fetchSuggestionBatch(batchId: string, env: Env): Promise<Suggesti
 /**
  * ONE notification per batch, never per field (design D16):
  *  - `submitted` → the tour owner. Only the batch's author may fire it.
- *  - `resolved`  → the author, with accepted/declined counts. Only the owner may fire it,
+ *  - `resolved`  → the author, verdicts unsummarized. Only the owner may fire it,
  *    and the client fires it only on the transition to FULLY resolved.
  *
  * Withdrawals and predicate-break voids never reach here — they notify nobody.
@@ -1117,10 +1116,6 @@ export async function handleTourSuggestion(request: Request, env: Env): Promise<
 
   const tour = await fetchTour(tourId, env)
 
-  const accepted = rows.filter(r => r.status === 'accepted').length
-  const declined = rows.filter(r => r.status === 'declined').length
-  const detail = body.action === 'resolved' ? `${accepted} / ${declined}` : undefined
-
   try {
     await dispatchTourNotification(
       recipientId,
@@ -1129,7 +1124,6 @@ export async function handleTourSuggestion(request: Request, env: Env): Promise<
         type: 'tour_suggestions',
         action: body.action === 'submitted' ? 'suggestion_submitted' : 'suggestion_resolved',
         tourName: tour?.name ?? '',
-        detail,
       },
       env,
     )

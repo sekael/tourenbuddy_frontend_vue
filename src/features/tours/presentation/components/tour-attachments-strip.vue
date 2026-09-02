@@ -19,10 +19,12 @@ const attachments = computed<TourAttachment[]>(() => store.attachmentsByTour[pro
 const thumbnailUrls = ref<Record<string, string>>({})
 
 onMounted(() => {
-  // Populate store if not already loaded (e.g. view-only open without edit)
-  if (!store.attachmentsByTour[props.tourId]) {
-    store.load(props.tourId)
-  }
+  // Always resync — never `if (!attachmentsByTour[tourId])`. The strip unmounts whenever
+  // the info sheet switches branch (suggestion review, history, edit), which also clears
+  // the store's realtime target, so an insert accepted while away is dropped by BOTH the
+  // live path and a load-once guard. `cachedLoad` skips the cache paint on a warm online
+  // load, so this costs one query and can't flicker the list back.
+  store.load(props.tourId)
 })
 
 onUnmounted(() => {

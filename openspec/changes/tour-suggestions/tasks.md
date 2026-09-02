@@ -87,8 +87,8 @@
 ## 12. Finalize
 
 - [x] 12.1 Run `npx eslint . --fix` (NEVER `npm run format`); do not touch CHANGELOG
-- [ ] 12.2 Prompt the user to commit — ready-to-copy message:
+- [x] 12.2 Prompt the user to commit — ready-to-copy message:
       `feat(tours): partner suggestions on shared tours (#268)`
-- [ ] 12.3 Prompt the user to push and open a PR against `main`, and to run `supabase db push` as an explicit, reviewed deploy step AFTER approval — never unprompted
-- [ ] 12.4 Remind the user that step 9.6 (`wrangler deploy`) must happen for notifications to work in preview/prod
-- [ ] 12.5 Prompt the user to archive this change with the openspec archive skill
+- [x] 12.3 Prompt the user to push and open a PR against `main`, and to run `supabase db push` as an explicit, reviewed deploy step AFTER approval — never unprompted
+- [x] 12.4 Remind the user that step 9.6 (`wrangler deploy`) must happen for notifications to work in preview/prod
+- [x] 12.5 Prompt the user to archive this change with the openspec archive skill
