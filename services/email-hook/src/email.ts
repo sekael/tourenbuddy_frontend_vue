@@ -53,8 +53,11 @@ export async function sendFriendNotificationEmail(
 export interface TourNotificationEmailParams {
   toEmail: string
   locale: string | null | undefined
-  type: 'tour_updates' | 'tour_interest'
-  /** 'created' | 'updated' | 'deleted' for tour_updates; 'interest' for tour_interest. */
+  type: 'tour_updates' | 'tour_interest' | 'tour_suggestions'
+  /**
+   * 'created' | 'updated' | 'deleted' for tour_updates; 'interest' for tour_interest;
+   * 'suggestion_submitted' | 'suggestion_resolved' for tour_suggestions.
+   */
   action: string
   actorName: string
   tourName: string
@@ -71,6 +74,10 @@ export async function sendTourNotificationEmail(
 ): Promise<void> {
   const locale = resolveLocale(params.locale)
 
+  // ponytail: tour_suggestions reuses the generic tour_updates template, parameterized by
+  // `action` like every other case. A dedicated template would need two new Brevo ids as
+  // Worker secrets, and a missing one degrades to NO email at all (see the guard below) —
+  // worse than reusing copy that already reads correctly for "your tour changed".
   const templateId
     = params.type === 'tour_interest'
       ? Number(locale === 'de' ? env.BREVO_TEMPLATE_TOUR_INTEREST_DE : env.BREVO_TEMPLATE_TOUR_INTEREST_EN)

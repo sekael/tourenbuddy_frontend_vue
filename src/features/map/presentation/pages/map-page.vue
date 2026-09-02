@@ -39,6 +39,7 @@ import TourCreationDialog from '@/features/tours/presentation/components/tour-cr
 import TourInfoSheet from '@/features/tours/presentation/components/tour-info-sheet.vue'
 import TourListSheet from '@/features/tours/presentation/components/tour-list-sheet.vue'
 import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
+import { useTourSuggestionsStore } from '@/features/tours/presentation/stores/tour-suggestions-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import UserProfileSheet from '@/features/user/presentation/components/user-profile-sheet.vue'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
@@ -60,6 +61,7 @@ const router = useRouter()
 
 const mapStore = useMapStore()
 const toursStore = useToursStore()
+const tourSuggestionsStore = useTourSuggestionsStore()
 const attachmentsStore = useTourAttachmentsStore()
 const contactsStore = useContactsStore()
 const userProfileStore = useUserProfileStore()
@@ -434,7 +436,14 @@ onMounted(async () => {
     await userProfileStore.loadProfile()
   onboardingTour.maybeStartTour()
   maybeShowCalendarFeatureNotice()
-  await Promise.all([toursStore.loadTours(), contactsStore.loadContacts()])
+  // Suggestions load here too: realtime's onSubscribed refetches once connected, but
+  // OFFLINE no subscribe ever fires, and the cached snapshot is what keeps the pending
+  // indicator truthful rather than a silent zero (design D14).
+  await Promise.all([
+    toursStore.loadTours(),
+    contactsStore.loadContacts(),
+    tourSuggestionsStore.load(),
+  ])
 
   // Consume a one-shot handoff from the calendar route (open the tours list, or
   // select a tour and remember its calendar origin). Tours are loaded above, and

@@ -18,6 +18,12 @@
 --   • deleting Selim's "Reni" contact (or its phone) → denies Reni→Selim pending (incoming)
 --   • delete_own_phone() on Selim → all three cleaned in one transaction
 --
+-- Tours:
+--   ...01 Büelehora   — Patrick, no partners (a friend sees it gated)
+--   ...02 Gfroren Hora — Patrick, partner Jakob (Jakob sees full detail)
+--   ...03 Piz Ela      — JAKOB, partner Patrick (Patrick's friend tour; the one to test
+--                        suggestions on, since only a marked partner may suggest)
+--
 -- Login locally via OTP code "123456" (see [auth.sms.test_otp] and
 -- [auth.email.test_otp] in supabase/config.toml).
 --
@@ -196,4 +202,49 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.tour_partners (tour_id, contact_id) VALUES
   ('cccccccc-0000-0000-0000-000000000002',
    'aaaaaaaa-0000-0000-0000-000000000001')
+ON CONFLICT DO NOTHING;
+
+-- Friend-owned tour: owned by JAKOB, partner = Patrick (via Jakob's contact for Patrick).
+-- This is the mirror of tour ...02 and the one Patrick reads through friend_tours_view
+-- rather than tours_view. Patrick being a marked partner is what makes it ungated for him
+-- — and what lets him suggest changes on it (change: tour-suggestions).
+--
+-- Multi-day on purpose: `planned_date` + `end_date` are one logical field for suggestions,
+-- so a seeded span exercises that coupling instead of the single-date shortcut.
+--
+-- Coordinates are built with PostGIS functions rather than the opaque EWKB hex above, so
+-- the location is readable: goal = Piz Ela, start = Preda station (Albula valley).
+-- `visibility` is omitted to take the column default ('friends') like the tours above; a
+-- private tour here would be invisible to Patrick entirely.
+INSERT INTO public.tours (
+  id, planned_date, end_date, user_id, goal, name, tour_type, elevation,
+  description, seasons, start_point, end_point, equipment, notes, completed,
+  start_point_name, start_point_elevation, end_point_name, end_point_elevation, gpx_filepath
+) VALUES (
+  'cccccccc-0000-0000-0000-000000000003',
+  '2027-02-13',
+  '2027-02-14',
+  '22222222-2222-2222-2222-222222222222',
+  '0101000020E61000007EA67109546A23400573FA230D4D4740',
+  'Piz Ela',
+  'mountaineering',
+  3339,
+  'Zwei Tage mit Übernachtung in der Chamanna d''Es-cha.',
+  '{winter,spring}',
+  '0101000020E6100000C3F5285C8F82234050FC1873D74A4740',
+  '0101000020E6100000C3F5285C8F82234050FC1873D74A4740',
+  'Harscheisen, Seil, Friends, Keile',
+  NULL,
+  false,
+  'Preda',
+  1789,
+  'Preda',
+  1789,
+  NULL
+)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.tour_partners (tour_id, contact_id) VALUES
+  ('cccccccc-0000-0000-0000-000000000003',
+   'aaaaaaaa-0000-0000-0000-000000000002')
 ON CONFLICT DO NOTHING;

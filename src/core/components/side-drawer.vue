@@ -147,8 +147,12 @@ const isDesktop = useIsDesktop()
 }
 
 .drawer-content {
+  /* Published so slotted content can bleed a full-width divider to the drawer edges. */
+  --surface-pad-left: var(--spacing-xl);
+  --surface-pad-right: var(--spacing-xs);
+
   overflow-y: auto;
-  padding: var(--spacing-lg) var(--spacing-xs) var(--spacing-lg) var(--spacing-xl);
+  padding: var(--spacing-lg) var(--surface-pad-right) var(--spacing-lg) var(--surface-pad-left);
   flex: 1;
   min-height: 0;
   scrollbar-gutter: stable;

@@ -227,7 +227,7 @@ describe('tourAttachmentsStore — realtime wiring', () => {
     expect(opts.key()).toBe('tour-attachments-user-abc')
   })
 
-  it('should wire a single binding on tour_attachments filtered by user_id', async () => {
+  it('should wire user-scoped bindings on tour_attachments AND tour_suggestion', async () => {
     mockCurrentUser.value = { id: 'user-abc' }
     const { useTourAttachmentsStore } = await import(
       '@/features/tours/presentation/stores/tour-attachments-store'
@@ -236,10 +236,21 @@ describe('tourAttachmentsStore — realtime wiring', () => {
 
     const opts = mockUseRealtime.mock.calls[0][0]
     const bindings = opts.bindings()
-    expect(bindings).toHaveLength(1)
-    expect(bindings[0].table).toBe('tour_attachments')
-    expect(bindings[0].event).toBe('*')
-    expect(bindings[0].filter).toBe('user_id=eq.user-abc')
+    expect(bindings).toContainEqual({
+      event: '*',
+      table: 'tour_attachments',
+      filter: 'user_id=eq.user-abc',
+    })
+    // An accepted attachment suggestion inserts the row under the OWNER's user_id, so the
+    // suggester's own filter above never fires — their suggestion row flipping status is
+    // the only user-scoped event they get for it.
+    expect(bindings).toContainEqual({
+      event: 'UPDATE',
+      table: 'tour_suggestion',
+      filter: 'suggester_id=eq.user-abc',
+    })
+    // Never an unfiltered binding (architecture rule).
+    expect(bindings.every((b: { filter?: string }) => b.filter?.includes('user-abc'))).toBe(true)
   })
 
   it('onChange short-circuits when no tour is currently loaded', async () => {
@@ -255,6 +266,23 @@ describe('tourAttachmentsStore — realtime wiring', () => {
     opts.onChange()
 
     expect(mockAttachmentsRepo.list).not.toHaveBeenCalled()
+  })
+
+  it('onSubscribed refetches the open tour — a hidden tab drops inserts', async () => {
+    mockCurrentUser.value = { id: 'user-abc' }
+    const { useTourAttachmentsStore } = await import(
+      '@/features/tours/presentation/stores/tour-attachments-store'
+    )
+    const store = useTourAttachmentsStore()
+
+    await store.load('tour-xyz')
+    mockAttachmentsRepo.list.mockClear()
+
+    const opts = mockUseRealtime.mock.calls[0][0]
+    opts.onSubscribed()
+    await Promise.resolve()
+
+    expect(mockAttachmentsRepo.list).toHaveBeenCalledWith('tour-xyz')
   })
 
   it('onChange calls load(currentTourId) when a tour is loaded', async () => {

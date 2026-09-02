@@ -531,6 +531,68 @@
         "previous": "Zurück",
         "page": "Seite {page} von {total}"
       }
+    },
+    "suggestions": {
+      "suggestBtn": "Änderungen vorschlagen",
+      "suggestTitlePrefix": "Vorschlag",
+      "submitBtn": "Änderungen vorschlagen",
+      "reviewTitle": "Vorgeschlagene Änderungen",
+      "historyTitle": "Vorschlagsverlauf",
+      "historyBtn": "Vorschlagsverlauf",
+      "historyEmpty": "Für diese Tour wurden noch keine Vorschläge entschieden.",
+      "pendingCount": "{count} vorgeschlagene Änderung | {count} vorgeschlagene Änderung | {count} vorgeschlagene Änderungen",
+      "yourPendingCount": "Dein Vorschlag ({count}) | Dein Vorschlag ({count} Änderung) | Dein Vorschlag ({count} Änderungen)",
+      "fieldCount": "{count} Feld | {count} Feld | {count} Felder",
+      "byAuthor": "Vorgeschlagen von {name}",
+      "yourProposal": "Dein Vorschlag",
+      "aPartner": "einem Tourenpartner",
+      "acceptBtn": "Übernehmen",
+      "declineBtn": "Ablehnen",
+      "acceptAllBtn": "Alle übernehmen",
+      "withdrawBtn": "Zurückziehen",
+      "reviseBtn": "Überarbeiten",
+      "stale": "Du hast das seither geändert",
+      "currentValue": "Aktuell",
+      "baseValue": "Gesehen",
+      "originalValue": "Aktuell",
+      "suggestedValue": "Vorgeschlagen",
+      "emptyValue": "—",
+      "emptyOwner": "Keine offenen Vorschläge für diese Tour.",
+      "emptyAuthor": "Du hast keine offenen Vorschläge für diese Tour.",
+      "capHint": "Diese Tour hat bereits die maximale Anzahl Anhänge. Übernimm zuerst eine Entfernung oder nutze «Alle übernehmen».",
+      "capHintBlocked": "Diese Tour hat bereits die maximale Anzahl Anhänge und dieser Vorschlag entfernt keinen. Lösche selbst einen Anhang oder lehne diese Ergänzung ab.",
+      "capHintBatch": "Alles zu übernehmen würde mehr als {max} Anhänge ergeben. Lehne eine Ergänzung ab oder schaffe zuerst Platz.",
+      "capHintSuggester": "Diese Tour fasst {max} Anhänge und ist voll. Schlage oben eine Entfernung vor, um Platz zu schaffen.",
+      "capOverflow": "Dieser Vorschlag würde die Tour um {count} Anhang/Anhänge über das Limit bringen. Schlage eine Entfernung vor oder entferne eine deiner Dateien.",
+      "removalPropose": "Entfernung vorschlagen",
+      "removalMarked": "Entfernung vorgeschlagen",
+      "offline": "Für Vorschläge braucht es eine Verbindung.",
+      "status": {
+        "accepted": "Übernommen",
+        "declined": "Abgelehnt",
+        "withdrawn": "Zurückgezogen",
+        "pending": "Offen"
+      },
+      "fields": {
+        "name": "Name",
+        "dates": "Daten",
+        "goal": "Ziel",
+        "tour_type": "Aktivität",
+        "elevation": "Höhe",
+        "description": "Beschreibung",
+        "seasons": "Jahreszeiten",
+        "equipment": "Ausrüstung",
+        "notes": "Notizen",
+        "start_point": "Startpunkt",
+        "end_point": "Endpunkt",
+        "gpx": "GPX-Track",
+        "attachment_add": "Neuer Anhang",
+        "attachment_remove": "Anhang entfernen"
+      },
+      "gpxNew": "Neuer GPX-Track",
+      "gpxExisting": "Bestehender GPX-Track",
+      "anAttachment": "Ein Anhang",
+      "byYou": "Vorgeschlagen von dir"
     }
   },
   "map": {
@@ -641,10 +703,12 @@
     "type": {
       "friend_requests": "Freundschaftsanfragen",
       "tour_updates": "Änderungen an geteilten Touren",
-      "tour_interest": "Hinweise auf gleiche Touren"
+      "tour_interest": "Hinweise auf gleiche Touren",
+      "tour_suggestions": "Tourenvorschläge"
     },
     "typeDescription": {
-      "tour_interest": "Wenn ein Freund die gleiche Tour plant, bei Verknüpfungsanfragen und nach neuen Freundschaften."
+      "tour_interest": "Wenn ein Freund die gleiche Tour plant, bei Verknüpfungsanfragen und nach neuen Freundschaften.",
+      "tour_suggestions": "Benachrichtigt, wenn ein Tourenpartner Änderungen an deiner Tour vorschlägt und wenn über deine Vorschläge entschieden wurde."
     },
     "allOffDisclaimer": "Du erhältst keine Benachrichtigungen über Freundschaftsanfragen oder andere wichtige Ereignisse. Aktiviere mindestens einen Kanal, um informiert zu bleiben.",
     "pushUnavailable": "Nicht verfügbar",

@@ -3,6 +3,7 @@ import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
 import { storeToRefs } from 'pinia'
+import { v4 as uuidv4 } from 'uuid'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
@@ -34,7 +35,15 @@ import { isSameGoal } from '@/features/tours/domain/distance'
 import TourAttachmentViewer from '@/features/tours/presentation/components/tour-attachment-viewer.vue'
 import TourAttachmentsStrip from '@/features/tours/presentation/components/tour-attachments-strip.vue'
 import TourForm from '@/features/tours/presentation/components/tour-form.vue'
+import TourSuggestionHistorySheet from '@/features/tours/presentation/components/tour-suggestion-history-sheet.vue'
+import TourSuggestionReviewSheet from '@/features/tours/presentation/components/tour-suggestion-review-sheet.vue'
+import {
+  buildSuggestionItems,
+  pendingGoalFrom,
+  seedDraftFromPending,
+} from '@/features/tours/presentation/composables/use-suggestion-diff'
 import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
+import { useTourSuggestionsStore } from '@/features/tours/presentation/stores/tour-suggestions-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
 const props = defineProps<{
@@ -87,7 +96,10 @@ const isPicking = computed(() => isPickingLocation.value)
 const isOwner = computed(() => !!currentUser.value && currentUser.value.id === props.tour.userId)
 
 // ── View/edit mode ───────────────────────────────────────────────────────────
-const mode = ref<'view' | 'edit'>('view')
+// `suggest` composes a proposal on a friend's tour; `review` adjudicates (owner) or shows
+// your own pending proposal (author); `history` is the retained record (change:
+// tour-suggestions).
+const mode = ref<'view' | 'edit' | 'suggest' | 'review' | 'history'>('view')
 /** IDs of attachments that existed when edit mode was entered — used for cancel rollback. */
 const editBaseAttachmentIds = ref<Set<string>>(new Set())
 
@@ -195,9 +207,124 @@ function navigateToSibling(siblingId: string) {
   mapStore.selectTour(siblingId)
 }
 
-// ── Edit save ────────────────────────────────────────────────────────────────
+// Shared by the edit save and the suggestion submit below.
 const saveError = ref<string | null>(null)
 const isSaving = ref(false)
+
+// ── Suggestions (change: tour-suggestions) ───────────────────────────────────
+const suggestionsStore = useTourSuggestionsStore()
+
+/** Only a marked partner on a friend's tour may suggest — the same gate as detail read. */
+const canSuggest = computed(() => props.tour.isFriendTour && props.tour.isPartner === true)
+
+/** Owner-side review workload for THIS tour, from the one feature-wide query (D15). */
+const pendingSuggestionCount = computed(
+  () => suggestionsStore.pendingCountByTour[props.tour.id] ?? 0,
+)
+
+/** Author-side: the viewer's own unresolved proposal on this friend tour. */
+const myPendingSuggestions = computed(() => suggestionsStore.myPendingFor(props.tour.id))
+
+const suggestBatchId = ref<string | null>(null)
+const suggestSeedDraft = ref<TourDraft | null>(null)
+
+/**
+ * Enter suggest mode. Revising (D12) reopens the form seeded with the author's OWN pending
+ * values and reuses the SAME batch id, so one idempotent reconciling call updates the
+ * batch in place rather than stacking a second proposal on the owner.
+ */
+function enterSuggestMode(batchId?: string) {
+  clearOfflineWriteError()
+  const pending = batchId ? myPendingSuggestions.value.filter(s => s.batchId === batchId) : []
+  suggestBatchId.value = batchId ?? uuidv4()
+  suggestSeedDraft.value = seedDraftFromPending(props.tour, pending)
+
+  const goal = pendingGoalFrom(pending)
+  pendingGoal.value = goal ? { lng: goal.lng, lat: goal.lat } : { ...props.tour.goal }
+  pendingElevation.value = goal?.elevation ?? null
+  pendingStartPoint.value = null
+  pendingEndPoint.value = null
+  pendingSuggestedName.value = null
+  pendingStartPointMeta.value = null
+  pendingEndPointMeta.value = null
+
+  // The partner needs the owner's attachments loaded to propose a removal against them.
+  void attachmentsStore.load(props.tour.id)
+  mode.value = 'suggest'
+  emit('editModeChange', true)
+}
+
+function cancelSuggest() {
+  suggestBatchId.value = null
+  suggestSeedDraft.value = null
+  mode.value = 'view'
+  emit('editModeChange', false)
+}
+
+/**
+ * Turn the submitted draft into one batch. The scalar diff is pure (`buildSuggestionItems`);
+ * the binary ops are appended here because only the host can upload a staged blob (D9) and
+ * only it knows which existing attachments were marked for removal.
+ */
+async function handleSuggestSubmit(
+  draft: TourDraft,
+  // The GPX outcome is already in `draft.gpxFilepath` (null when removed), so the diff
+  // reads it there rather than from this flag.
+  _gpxRemoved: boolean,
+  _preUploadedTourId: string | null,
+  draftId: string,
+  proposedRemovals: string[],
+) {
+  if (mapStore.isPickingLocation)
+    return
+
+  const batchId = suggestBatchId.value
+  if (!batchId)
+    return
+
+  saveError.value = null
+  isSaving.value = true
+  try {
+    // Upload first: a staged blob has no `storagePath` until it lands in the suggester's
+    // own prefix (D9), and the diff stays pure by never seeing the File itself.
+    const addedAttachments = []
+    for (const file of attachmentsStore.stagedByDraft[draftId] ?? []) {
+      addedAttachments.push({
+        // Distinct target per add — without it every add in the batch shares a NULL
+        // target and the pending-row unique index keeps only the last (see
+        // SuggestionBinaryOps.addedAttachments.id).
+        id: crypto.randomUUID(),
+        storagePath: await suggestionsStore.uploadStaged('tour-attachments', props.tour.id, file),
+        mimeType: file.type,
+        sizeBytes: file.size,
+        originalFilename: file.name,
+      })
+    }
+
+    const items = buildSuggestionItems(props.tour, draft, pendingGoal.value, {
+      addedAttachments,
+      removedAttachmentIds: proposedRemovals,
+    })
+
+    const isRevision = myPendingSuggestions.value.some(s => s.batchId === batchId)
+    await suggestionsStore.submitBatch(props.tour.id, batchId, items, isRevision)
+
+    if (suggestionsStore.error) {
+      saveError.value = suggestionsStore.error
+      return
+    }
+    attachmentsStore.clearStaged(draftId)
+    cancelSuggest()
+  }
+  catch (err) {
+    saveError.value = err instanceof Error ? err.message : t('tours.infoSheet.saveFailed')
+  }
+  finally {
+    isSaving.value = false
+  }
+}
+
+// ── Edit save ────────────────────────────────────────────────────────────────
 
 async function handleEditSubmit(draft: TourDraft, gpxRemoved: boolean) {
   if (mapStore.isPickingLocation) {
@@ -426,12 +553,14 @@ const displayName = computed(() => props.tour.name ?? t('tours.infoSheet.unnamed
 // visible and the form can't be submitted with stale state. Applies to both
 // desktop (side drawer → compact top-right header) and mobile (bottom sheet
 // → title-only bar).
-const sheetCollapsed = computed(() => isPicking.value && mode.value === 'edit')
+const sheetCollapsed = computed(
+  () => isPicking.value && (mode.value === 'edit' || mode.value === 'suggest'),
+)
 
 // On mobile, an active edit takes a full-screen page (no map, no drag) — except
 // while a location pick is active, where the sheet collapses to reveal the map.
 const editAsPage = computed(
-  () => !isDesktop.value && mode.value === 'edit' && !isPicking.value,
+  () => !isDesktop.value && (mode.value === 'edit' || mode.value === 'suggest') && !isPicking.value,
 )
 const editFormRef = ref<{ cancel: () => void } | null>(null)
 
@@ -453,6 +582,12 @@ const sheetTitle = computed(() => {
   }
   if (linksView.value)
     return t('tourLinks.linkedWithHeader')
+  if (mode.value === 'suggest')
+    return `${t('tours.suggestions.suggestTitlePrefix')}: ${displayName.value}`
+  if (mode.value === 'review')
+    return t('tours.suggestions.reviewTitle')
+  if (mode.value === 'history')
+    return t('tours.suggestions.historyTitle')
   return mode.value === 'edit'
     ? `${t('tours.infoSheet.editTitlePrefix')}: ${displayName.value}`
     : displayName.value
@@ -462,17 +597,28 @@ const sheetShowBack = computed(() => {
   // linksView wins on both viewports — its back returns to tour details.
   if (linksView.value)
     return true
+  if (mode.value === 'review' || mode.value === 'history')
+    return true
   return props.showBack && !isDesktop.value ? true : undefined
 })
 const sheetBackLabel = computed(() => {
   if (linksView.value && isDesktop.value)
     return t('tourLinks.linkedWithHeader')
+  // The desktop drawer renders its back button ONLY when a label is set — without this the
+  // review/history views would offer nothing but Close, which discards the whole drawer.
+  if ((mode.value === 'review' || mode.value === 'history') && isDesktop.value)
+    return displayName.value
   return props.showBack && isDesktop.value ? t('tours.infoSheet.backToTours') : undefined
 })
 
 function handleSheetBack() {
   if (linksView.value) {
     linksView.value = false
+    return
+  }
+  // Review/history are in-sheet views, not routes — back returns to the tour details.
+  if (mode.value === 'review' || mode.value === 'history') {
+    mode.value = 'view'
     return
   }
   emit('back')
@@ -652,6 +798,37 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         @start-point-change="emit('startPointChange', $event)"
         @end-point-change="emit('endPointChange', $event)"
       />
+    </template>
+
+    <!-- ── Suggest mode (partner on a friend's tour) ───────────────────── -->
+    <template v-else-if="mode === 'suggest'">
+      <p v-if="saveError" class="save-error">
+        {{ saveError }}
+      </p>
+      <TourForm
+        ref="editFormRef" form-id="tour-suggest-form" mode="suggest" :embedded="editAsPage"
+        :submit-label="t('tours.suggestions.submitBtn')" :allow-goal-edit="true" :current-goal="pendingGoal"
+        :initial-draft="suggestSeedDraft" :tour-id="tour.id" :initial-elevation="pendingElevation"
+        :initial-name="pendingSuggestedName" :initial-start-point="pendingStartPoint"
+        :initial-end-point="pendingEndPoint" :initial-start-point-meta="pendingStartPointMeta"
+        :initial-end-point-meta="pendingEndPointMeta" :disabled="isPicking"
+        @submit="handleSuggestSubmit" @cancel="cancelSuggest" @pick-point="emit('pickPoint', $event)"
+        @tour-type-change="emit('tourTypeChange', $event)"
+        @start-point-change="emit('startPointChange', $event)"
+        @end-point-change="emit('endPointChange', $event)"
+      />
+    </template>
+
+    <!-- ── Suggestion review / history ─────────────────────────────────── -->
+    <template v-else-if="mode === 'review'">
+      <TourSuggestionReviewSheet
+        :tour="tour" :mode="isOwner ? 'owner' : 'author'"
+        @revise="enterSuggestMode($event)"
+      />
+    </template>
+
+    <template v-else-if="mode === 'history'">
+      <TourSuggestionHistorySheet :tour="tour" :mode="isOwner ? 'owner' : 'author'" />
     </template>
 
     <!-- ── Linked-tours full-list mode ─────────────────────────────────── -->
@@ -874,6 +1051,47 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           </div>
         </div>
 
+        <!--
+          Suggestions live at the BOTTOM (owner review workload, or the partner's own
+          proposal, D15): they are actions on the tour, not facts about it, so they belong
+          after the detail rows rather than crowding the header.
+        -->
+        <div v-if="isOwner || canSuggest" class="suggestion-actions">
+          <button
+            v-if="isOwner && pendingSuggestionCount > 0" type="button" class="action-btn suggestion-entry"
+            data-testid="review-suggestions-btn" @click="mode = 'review'"
+          >
+            <BaseIcon name="feedback" />
+            {{ t('tours.suggestions.pendingCount', { count: pendingSuggestionCount }) }}
+          </button>
+          <button
+            v-if="canSuggest && myPendingSuggestions.length > 0" type="button"
+            class="action-btn suggestion-entry" data-testid="my-suggestions-btn" @click="mode = 'review'"
+          >
+            <BaseIcon name="feedback" />
+            {{ t('tours.suggestions.yourPendingCount', { count: myPendingSuggestions.length }) }}
+          </button>
+          <!--
+            One pending proposal per suggester at a time. While theirs is open the only
+            route in is "your proposal" → revise, which reopens the SAME batch (D12);
+            starting a fresh one would upsert over every field they already proposed.
+          -->
+          <button
+            v-if="canSuggest && myPendingSuggestions.length === 0" type="button"
+            class="action-btn suggestion-entry" data-testid="suggest-btn" @click="enterSuggestMode()"
+          >
+            <BaseIcon name="edit" />
+            {{ t('tours.suggestions.suggestBtn') }}
+          </button>
+          <button
+            v-if="isOwner || canSuggest" type="button" class="action-btn suggestion-entry"
+            data-testid="suggestion-history-btn" @click="mode = 'history'"
+          >
+            <BaseIcon name="schedule" />
+            {{ t('tours.suggestions.historyBtn') }}
+          </button>
+        </div>
+
         <!-- Contact action menu -->
         <ContactActionMenu
           v-if="activeMenuContact" :contact="activeMenuContact" :anchor-rect="activeChipRect"
@@ -883,9 +1101,14 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
     </template>
 
     <!-- Full-screen edit page: Save lives in the top app bar (above keyboard). -->
-    <template v-if="editAsPage && mode === 'edit'" #page-action>
-      <BaseButton type="submit" form="tour-edit-form" variant="primary" size="md">
-        {{ t('tours.infoSheet.saveLabel') }}
+    <!-- Full-screen edit/suggest page: the submit lives in the top app bar (above the
+         keyboard), targeting whichever form is mounted. -->
+    <template v-if="editAsPage && (mode === 'edit' || mode === 'suggest')" #page-action>
+      <BaseButton
+        type="submit" :form="mode === 'edit' ? 'tour-edit-form' : 'tour-suggest-form'"
+        variant="primary" size="md"
+      >
+        {{ mode === 'edit' ? t('tours.infoSheet.saveLabel') : t('tours.suggestions.submitBtn') }}
       </BaseButton>
     </template>
 
@@ -982,6 +1205,21 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   transition:
     background-color 0.15s,
     border-color 0.15s;
+}
+
+/* The divider spans the full surface: negative margins cancel the host's inline padding
+   (published by the drawer/sheet as --surface-pad-*), then the padding is re-applied
+   inside so the buttons stay aligned with the detail rows above. */
+.suggestion-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-xs);
+  margin-left: calc(-1 * var(--surface-pad-left, 0px));
+  margin-right: calc(-1 * var(--surface-pad-right, 0px));
+  padding: var(--spacing-sm) var(--surface-pad-right, 0px) 0 var(--surface-pad-left, 0px);
+  border-top: 1px solid var(--color-outline-variant);
 }
 
 .action-btn:hover:not(:disabled) {

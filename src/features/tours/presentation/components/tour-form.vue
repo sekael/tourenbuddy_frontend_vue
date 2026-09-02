@@ -18,6 +18,7 @@ import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { SEASON_VALUES } from '@/features/tours/data/models/season'
+import { MAX_ATTACHMENTS_PER_TOUR } from '@/features/tours/data/models/tour-attachment'
 import {
   TOUR_TYPE_I18N_KEYS,
   TOUR_TYPE_ICONS,
@@ -29,7 +30,7 @@ import {
   GpxParseError,
   parseGpxFile,
 } from '@/features/tours/data/services/gpx-parser'
-import { gpxStorageKey, removeGpx, uploadGpx } from '@/features/tours/data/services/gpx-storage-service'
+import { gpxStorageKey, removeGpx, uploadGpx, uploadGpxToKey } from '@/features/tours/data/services/gpx-storage-service'
 import TourAttachmentsPicker from '@/features/tours/presentation/components/tour-attachments-picker.vue'
 import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 
@@ -66,6 +67,16 @@ const props = defineProps<{
    * calls the exposed `cancel()` so GPX/attachment cleanup still runs.
    */
   embedded?: boolean
+  /**
+   * `suggest` composes a proposal on a FRIEND's tour (change: tour-suggestions) instead of
+   * editing one. The form itself is unchanged — the same inputs, the same point pickers,
+   * the same Swisstopo lookups through the parent — but the controls that are not
+   * suggestable are hidden (design D2: visibility is the privacy control itself,
+   * completion is the owner's assertion about their own day, and the partner set lives in
+   * the owner's contact namespace), blobs go to the suggester's staging prefix (D9), and
+   * the parent diffs the submitted draft into suggestion items rather than saving it.
+   */
+  mode?: 'edit' | 'suggest'
 }>()
 
 const emit = defineEmits<{
@@ -74,6 +85,8 @@ const emit = defineEmits<{
     gpxRemoved: boolean,
     preUploadedTourId: string | null,
     draftId: string,
+    /** Suggest mode only: ids of existing attachments proposed for removal (D3). */
+    proposedAttachmentRemovals: string[],
   ]
   cancel: []
   pickPoint: [type: 'start' | 'end' | 'goal']
@@ -83,6 +96,9 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n({ useScope: 'global' })
+
+/** Fixed for the lifetime of a form instance — the host mounts a fresh one per mode. */
+const isSuggest = props.mode === 'suggest'
 
 const authStore = useAuthStore()
 const contactsStore = useContactsStore()
@@ -159,8 +175,15 @@ const wasCancelledDuringUpload = ref(false)
 
 // ── Attachments (create-flow staging / edit-flow direct) ─────────────────────
 const attachmentsStore = useTourAttachmentsStore()
-/** Stable draft ID for create-flow staging. Used as key in stagedByDraft. */
-const draftId = props.initialDraft ? null : uuidv4()
+/**
+ * Stable draft ID for create-flow staging. Used as key in stagedByDraft.
+ *
+ * Suggest mode stages too, even though it has an `initialDraft`: a non-owner cannot write
+ * `tour_attachments`, so a picked file has to sit in memory until the parent uploads it to
+ * the staging prefix and turns it into an `attachment_add` item (D3/D9). Staging also
+ * gives us the existing picker validation (mime, 10 MB, HEIC) for free.
+ */
+const draftId = props.initialDraft && !isSuggest ? null : uuidv4()
 /** Staged files (create-flow) or persisted attachments (edit-flow). */
 const attachments = computed<TourAttachment[]>(() => {
   if (draftId) {
@@ -183,6 +206,39 @@ const attachments = computed<TourAttachment[]>(() => {
   }
   return []
 })
+
+/** Suggest mode: the owner's existing attachments, offered for proposed removal (D3). */
+const existingAttachments = computed<TourAttachment[]>(() =>
+  props.tourId ? (attachmentsStore.attachmentsByTour[props.tourId] ?? []) : [],
+)
+const proposedRemovals = ref<Set<string>>(new Set())
+
+/**
+ * What the tour would still hold if this batch were accepted whole, EXCLUDING the staged
+ * adds — the base the picker measures its remaining slots against (D10 evaluates the cap
+ * on the end state). Proposing a removal frees a slot here immediately, which is the whole
+ * interaction: "to add a sixth photo, offer to drop one".
+ */
+const keptAttachmentCount = computed(() =>
+  isSuggest ? existingAttachments.value.filter(a => !proposedRemovals.value.has(a.id)).length : 0,
+)
+
+/**
+ * Un-marking a removal after staging files can still overshoot (mark one, stage two,
+ * un-mark). The picker gates the common path; this gates submit so the partner is never
+ * allowed to send a batch the owner provably cannot accept.
+ */
+const attachmentOverflow = computed(
+  () => keptAttachmentCount.value + attachments.value.length - MAX_ATTACHMENTS_PER_TOUR,
+)
+
+function toggleProposedRemoval(id: string) {
+  if (proposedRemovals.value.has(id))
+    proposedRemovals.value.delete(id)
+  else
+    proposedRemovals.value.add(id)
+  proposedRemovals.value = new Set(proposedRemovals.value)
+}
 
 // Load attachments for edit mode
 watch(
@@ -328,6 +384,32 @@ async function handleGpxUpload(event: Event) {
   const newTourId = crypto.randomUUID()
   pendingTourId.value = newTourId
 
+  // Suggest mode is online-only (D6) and writes to the suggester's own staging prefix
+  // (D9), so it takes neither the offline branch nor the owner's `<uid>/<tourId>.gpx` key.
+  if (isSuggest) {
+    if (!isOnline.value) {
+      gpxError.value = t('tours.suggestions.offline')
+      gpxFile.value = null
+      pendingTourId.value = null
+      return
+    }
+    const key = `${userId}/suggestions/${props.tourId}/${crypto.randomUUID()}.gpx`
+    isUploadingGpx.value = true
+    try {
+      await uploadGpxToKey(key, file)
+      pendingGpxKey.value = key
+    }
+    catch {
+      gpxError.value = t('tours.form.gpxUploadFailed')
+      gpxFile.value = null
+      pendingTourId.value = null
+    }
+    finally {
+      isUploadingGpx.value = false
+    }
+    return
+  }
+
   // Offline: stage the track under its client-minted storage key. It renders now from
   // the same cache the display path reads, and the tour write queues with the blob so
   // it uploads on replay (no network at pick-time). The pending mark tells the store
@@ -446,6 +528,10 @@ function handleSubmit() {
   // button bypasses that attribute.
   if (props.disabled || isUploadingGpx.value)
     return
+  // An unacceptable batch must not be sendable: the owner would only meet it as a cap
+  // error on accept, with no way to fix it from their side.
+  if (attachmentOverflow.value > 0)
+    return
   if (!tourName.value.trim()) {
     nameError.value = true
     document.getElementById('tf-tourName')?.focus()
@@ -481,7 +567,14 @@ function handleSubmit() {
     equipment: equipment.value.trim() || null,
     notes: notes.value.trim() || null,
   }
-  emit('submit', draft, gpxRemoved.value, preUploadedTourId, draftId ?? '')
+  emit(
+    'submit',
+    draft,
+    gpxRemoved.value,
+    preUploadedTourId,
+    draftId ?? '',
+    Array.from(proposedRemovals.value),
+  )
 }
 
 // Let a full-screen page's top-bar cancel run the same cleanup as the in-form
@@ -670,8 +763,8 @@ defineExpose({ cancel: handleCancel })
           </div>
         </div>
 
-        <!-- SECTION: Tour Partners -->
-        <div v-if="contacts.length > 0" class="section">
+        <!-- SECTION: Tour Partners (not suggestable — owner's contact namespace, D2) -->
+        <div v-if="!isSuggest && contacts.length > 0" class="section">
           <p class="section-label">
             {{ t('tours.form.partnersLabel') }}
           </p>
@@ -686,8 +779,8 @@ defineExpose({ cancel: handleCancel })
           </div>
         </div>
 
-        <!-- SECTION: Visibility -->
-        <div class="section">
+        <!-- SECTION: Visibility (not suggestable — it IS the privacy control, D2) -->
+        <div v-if="!isSuggest" class="section">
           <p class="section-label">
             {{ t('tours.form.visibilityLabel') }}
           </p>
@@ -887,11 +980,38 @@ defineExpose({ cancel: handleCancel })
           <p class="section-label">
             {{ t('tours.form.attachmentsSectionLabel') }}
           </p>
+          <!--
+            Suggest mode: the owner's files can't be touched, only proposed for removal —
+            an add and a remove are separate suggestions, so the owner may take the new
+            photo without losing the old one (D3).
+          -->
+          <ul v-if="isSuggest && existingAttachments.length > 0" class="removal-list">
+            <li v-for="att in existingAttachments" :key="att.id">
+              <button
+                type="button" class="removal-row"
+                :class="{ 'removal-row--marked': proposedRemovals.has(att.id) }"
+                :aria-pressed="proposedRemovals.has(att.id)" @click="toggleProposedRemoval(att.id)"
+              >
+                <BaseIcon :name="proposedRemovals.has(att.id) ? 'delete' : 'attach_file'" />
+                <span class="removal-name">{{ att.originalFilename }}</span>
+                <span class="removal-hint">
+                  {{ proposedRemovals.has(att.id)
+                    ? t('tours.suggestions.removalMarked')
+                    : t('tours.suggestions.removalPropose') }}
+                </span>
+              </button>
+            </li>
+          </ul>
           <TourAttachmentsPicker
-            :tour-id="tourId"
+            :tour-id="isSuggest ? undefined : tourId"
             :draft-id="draftId ?? undefined"
             :attachments="attachments"
+            :base-count="keptAttachmentCount"
+            :limit-label="isSuggest ? t('tours.suggestions.capHintSuggester', { max: MAX_ATTACHMENTS_PER_TOUR }) : undefined"
           />
+          <p v-if="attachmentOverflow > 0" class="attachment-overflow" role="alert" data-testid="attachment-overflow">
+            {{ t('tours.suggestions.capOverflow', { count: attachmentOverflow }) }}
+          </p>
         </div>
       </div>
       <!-- end scroll-body -->
@@ -900,7 +1020,10 @@ defineExpose({ cancel: handleCancel })
         <BaseButton type="button" variant="secondary" size="sm" data-testid="cancel-btn" @click="handleCancel">
           {{ t('tours.form.cancelBtn') }}
         </BaseButton>
-        <BaseButton type="submit" variant="primary" size="sm" data-testid="submit-btn" :disabled="isUploadingGpx">
+        <BaseButton
+          type="submit" variant="primary" size="sm" data-testid="submit-btn"
+          :disabled="isUploadingGpx || attachmentOverflow > 0"
+        >
           {{ submitLabel }}
         </BaseButton>
       </div>
@@ -1237,6 +1360,53 @@ defineExpose({ cancel: handleCancel })
 }
 
 .gpx-error {
+  font-size: var(--font-size-sm);
+  color: var(--color-error);
+}
+
+/* Suggest mode: propose removal of the owner's existing attachments */
+.removal-list {
+  list-style: none;
+  margin: 0 0 var(--spacing-xs);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs);
+}
+
+.removal-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  width: 100%;
+  padding: var(--spacing-xs);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+/* `&--suffix` is Sass, not CSS — the modifier is written out in full. */
+.removal-row--marked {
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.removal-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.removal-hint {
+  font-size: var(--font-size-sm);
+  opacity: 0.7;
+}
+
+.attachment-overflow {
   font-size: var(--font-size-sm);
   color: var(--color-error);
 }

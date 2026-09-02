@@ -56,6 +56,27 @@ export function isMeaningfulTourChange(
 }
 
 /**
+ * The suggestion fields (design D2) whose accept warrants the existing `tour_updates`
+ * notification to the OTHER partners (D16) — the same partner-facing set as
+ * `isMeaningfulTourChange` above, expressed per logical field. If the meeting point moves
+ * because a partner suggested it, every other partner has the same need to know as when
+ * the owner moves it themselves.
+ */
+const MEANINGFUL_SUGGESTION_FIELDS = new Set([
+  'name',
+  'dates',
+  'goal',
+  'tour_type',
+  'gpx',
+  'description',
+  'equipment',
+])
+
+export function isMeaningfulSuggestionField(field: string): boolean {
+  return MEANINGFUL_SUGGESTION_FIELDS.has(field)
+}
+
+/**
  * Whether a tour is worth dispatching a shared-tour notification for at all:
  * it must be friends-visible and have at least one partner. Private tours share
  * nothing; partnerless tours have no one to notify. The Worker still filters

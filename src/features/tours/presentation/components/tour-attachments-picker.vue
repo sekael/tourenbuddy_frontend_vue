@@ -7,6 +7,7 @@ import BaseButton from '@/core/components/base-button.vue'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import { isOnline } from '@/core/offline/use-online-status'
+import { MAX_ATTACHMENTS_PER_TOUR } from '@/features/tours/data/models/tour-attachment'
 import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 
 const props = defineProps<{
@@ -15,6 +16,14 @@ const props = defineProps<{
   /** draftId for create-flow staging. */
   draftId?: string
   attachments: TourAttachment[]
+  /**
+   * Files the tour already holds that these ones ADD to — suggest mode, where `attachments`
+   * lists only what the partner staged while the owner's own files still count against the
+   * cap. Defaults to 0 (create/edit, where `attachments` is the whole list).
+   */
+  baseCount?: number
+  /** Replaces the generic "limit reached" line when the caller can say something better. */
+  limitLabel?: string
 }>()
 
 const { t } = useI18n({ useScope: 'global' })
@@ -38,7 +47,7 @@ async function onFilesSelected(event: Event) {
     return
 
   if (props.draftId) {
-    store.stage(props.draftId, files)
+    store.stage(props.draftId, files, props.baseCount ?? 0)
   }
   else if (props.tourId) {
     await store.add(props.tourId, files)
@@ -152,7 +161,7 @@ async function onDrop(toIndex: number) {
       </p>
       <span v-else-if="loading" class="picker__spinner" />
       <BaseButton
-        v-else-if="attachments.length < 5"
+        v-else-if="attachments.length + (baseCount ?? 0) < MAX_ATTACHMENTS_PER_TOUR"
         type="button"
         variant="secondary"
         size="sm"
@@ -161,8 +170,8 @@ async function onDrop(toIndex: number) {
         <BaseIcon name="attach_file" />
         {{ t('tours.attachments.add') }}
       </BaseButton>
-      <p v-else class="picker__limit-reached">
-        {{ t('tours.attachments.limitReached') }}
+      <p v-else class="picker__limit-reached" data-testid="picker-limit">
+        {{ limitLabel ?? t('tours.attachments.limitReached') }}
       </p>
     </div>
 

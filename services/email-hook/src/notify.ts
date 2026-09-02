@@ -332,11 +332,23 @@ async function fetchFriendUserIds(userId: string, env: Env): Promise<Set<string>
   return ids
 }
 
+type TourNotificationType = 'tour_updates' | 'tour_interest' | 'tour_suggestions'
+
 function tourPushTitle(
-  type: 'tour_updates' | 'tour_interest',
+  type: TourNotificationType,
   action: string,
   locale: 'en' | 'de',
 ): string {
+  if (type === 'tour_suggestions') {
+    if (locale === 'de') {
+      return action === 'suggestion_submitted'
+        ? 'Änderungsvorschlag erhalten'
+        : 'Dein Vorschlag wurde entschieden'
+    }
+    return action === 'suggestion_submitted'
+      ? 'Changes suggested for your tour'
+      : 'Your suggestions were decided'
+  }
   if (type === 'tour_interest') {
     if (locale === 'de') {
       switch (action) {
@@ -376,13 +388,25 @@ function tourPushTitle(
 }
 
 function tourPushBody(
-  type: 'tour_updates' | 'tour_interest',
+  type: TourNotificationType,
   action: string,
   locale: 'en' | 'de',
   actorName: string,
   tourName: string,
 ): string {
   const tour = tourName || (locale === 'de' ? 'eine Tour' : 'a tour')
+  if (type === 'tour_suggestions') {
+    if (action === 'suggestion_submitted') {
+      return locale === 'de'
+        ? `${actorName} schlägt Änderungen an «${tour}» vor.`
+        : `${actorName} suggested changes to “${tour}”.`
+    }
+    // No accepted/declined tally: "3 / 1" reads as a score, not an outcome. The batch's
+    // per-field verdicts are one tap away in the tour's suggestion history.
+    return locale === 'de'
+      ? `${actorName} hat über deine Vorschläge für «${tour}» entschieden.`
+      : `${actorName} decided on your suggestions for “${tour}”.`
+  }
   if (type === 'tour_interest') {
     if (locale === 'de') {
       switch (action) {
@@ -424,7 +448,7 @@ function tourPushBody(
 async function dispatchTourNotification(
   recipientId: string,
   actorId: string,
-  opts: { type: 'tour_updates' | 'tour_interest', action: string, tourName: string },
+  opts: { type: TourNotificationType, action: string, tourName: string },
   env: Env,
 ): Promise<void> {
   const [recipientProfile, actorName, recipientEmail] = await Promise.all([
@@ -441,7 +465,13 @@ async function dispatchTourNotification(
   const appUrl = env.APP_URL || DEFAULT_APP_URL
   const locale = resolveLocale(recipientProfile.locale)
   const pushTitle = tourPushTitle(opts.type, opts.action, locale)
-  const pushBody = tourPushBody(opts.type, opts.action, locale, actorName, opts.tourName)
+  const pushBody = tourPushBody(
+    opts.type,
+    opts.action,
+    locale,
+    actorName,
+    opts.tourName,
+  )
 
   const tasks: Promise<void>[] = []
 
@@ -510,6 +540,12 @@ export async function handleTourChanged(request: Request, env: Env): Promise<Res
     tourName?: string
     /** Partner contact ids added by an edit — these recipients get the 'created' greeting. */
     newPartnerContactIds?: string[]
+    /**
+     * Recipients already notified through a more specific channel — used when an accepted
+     * suggestion changes the tour: its author gets the `tour_suggestions` notification
+     * instead of a second, redundant `tour_updates` one.
+     */
+    excludeUserIds?: string[]
   }
   try {
     body = (await request.json()) as typeof body
@@ -541,7 +577,10 @@ export async function handleTourChanged(request: Request, env: Env): Promise<Res
     resolveTourPartnerUserIds(tour.id, env),
     fetchFriendUserIds(tour.user_id, env),
   ])
-  const recipients = partnerIds.filter(id => friendIds.has(id) && id !== callerId)
+  const excluded = new Set(body.excludeUserIds ?? [])
+  const recipients = partnerIds.filter(
+    id => friendIds.has(id) && id !== callerId && !excluded.has(id),
+  )
 
   try {
     // Partners added by this edit get the 'created' greeting; everyone else gets the
@@ -1007,4 +1046,92 @@ export async function handleGroupMembershipEvent(request: Request, env: Env): Pr
   }
 
   return jsonResponse(200, { notified: recipients.length })
+}
+
+// ── Tour suggestions (change: tour-suggestions, design D16) ──────────────────
+
+interface SuggestionRow {
+  tour_id: string
+  owner_id: string
+  suggester_id: string
+  status: string
+}
+
+async function fetchSuggestionBatch(batchId: string, env: Env): Promise<SuggestionRow[]> {
+  const res = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/tour_suggestion?batch_id=eq.${encodeURIComponent(batchId)}&select=tour_id,owner_id,suggester_id,status`,
+    {
+      headers: {
+        apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+    },
+  )
+  if (!res.ok)
+    return []
+  return (await res.json()) as SuggestionRow[]
+}
+
+/**
+ * ONE notification per batch, never per field (design D16):
+ *  - `submitted` → the tour owner. Only the batch's author may fire it.
+ *  - `resolved`  → the author, verdicts unsummarized. Only the owner may fire it,
+ *    and the client fires it only on the transition to FULLY resolved.
+ *
+ * Withdrawals and predicate-break voids never reach here — they notify nobody.
+ */
+export async function handleTourSuggestion(request: Request, env: Env): Promise<Response> {
+  const missing = missingConfigKeys(env)
+  if (missing.length > 0)
+    return jsonResponse(500, { error: 'missing_configuration', missing })
+
+  const callerId = await verifySupabaseJwt(request, env)
+  if (!callerId)
+    return jsonResponse(401, { error: 'unauthorized' })
+
+  let body: { batchId?: string, action?: 'submitted' | 'resolved' }
+  try {
+    body = (await request.json()) as typeof body
+  }
+  catch {
+    return jsonResponse(400, { error: 'invalid_json' })
+  }
+
+  if (!body.batchId || !body.action)
+    return jsonResponse(400, { error: 'missing_fields' })
+  if (body.action !== 'submitted' && body.action !== 'resolved')
+    return jsonResponse(400, { error: 'invalid_action' })
+
+  const rows = await fetchSuggestionBatch(body.batchId, env)
+  if (rows.length === 0)
+    return jsonResponse(404, { error: 'batch_not_found' })
+
+  const { owner_id: ownerId, suggester_id: suggesterId, tour_id: tourId } = rows[0]
+
+  // The recipient is always the OTHER side, and the caller must be the side that acted.
+  const recipientId = body.action === 'submitted' ? ownerId : suggesterId
+  const expectedCaller = body.action === 'submitted' ? suggesterId : ownerId
+  if (callerId !== expectedCaller)
+    return jsonResponse(403, { error: 'forbidden' })
+
+  const tour = await fetchTour(tourId, env)
+
+  try {
+    await dispatchTourNotification(
+      recipientId,
+      callerId,
+      {
+        type: 'tour_suggestions',
+        action: body.action === 'submitted' ? 'suggestion_submitted' : 'suggestion_resolved',
+        tourName: tour?.name ?? '',
+      },
+      env,
+    )
+  }
+  catch (err) {
+    console.error('[notify/tour-suggestion] dispatch failed:', err)
+    return jsonResponse(500, { error: 'dispatch_failed', message: (err as Error).message })
+  }
+
+  return jsonResponse(200, { notified: 1 })
 }

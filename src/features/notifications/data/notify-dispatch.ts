@@ -57,15 +57,22 @@ export type TourChangeAction = 'created' | 'updated' | 'deleted'
  * by this edit. The Worker greets those recipients with the `created` ("shared with
  * you") copy instead of the generic `updated` copy; everyone else gets `updated`. An
  * empty/omitted list preserves the all-`updated` behavior.
+ *
+ * `excludeUserIds` (optional) drops recipients the caller has already notified through a
+ * more specific channel — used when an accepted suggestion changes the tour, where the
+ * suggestion's author gets the `tour_suggestions` notification instead (design D16).
  */
 export function notifyTourChanged(
   tourId: string,
   action: Exclude<TourChangeAction, 'deleted'>,
   newPartnerContactIds?: string[],
+  excludeUserIds?: string[],
 ): void {
   const body: Record<string, unknown> = { tourId, action }
   if (newPartnerContactIds && newPartnerContactIds.length > 0)
     body.newPartnerContactIds = newPartnerContactIds
+  if (excludeUserIds && excludeUserIds.length > 0)
+    body.excludeUserIds = excludeUserIds
   postToWorker('/notify/tour-changed', body).catch((err) => {
     logger.warn('notifyTourChanged failed', err)
   })
@@ -105,6 +112,22 @@ export function notifyTourLinkRequestEvent(
 ): void {
   postToWorker('/notify/link-request-event', { requestId, event }).catch((err) => {
     logger.warn('notifyTourLinkRequestEvent failed', err)
+  })
+}
+
+/**
+ * Fire-and-forget: notify the other side of a suggestion batch (design D16). ONE
+ * notification per batch, never per field:
+ *  - `submitted` → the tour owner, on submit. Other partners are not told.
+ *  - `resolved`  → the author, only on the batch's transition to FULLY resolved, with
+ *    accepted/declined counts. A partially resolved batch stays silent — the owner has
+ *    not finished deciding, and the author sees live state through realtime anyway.
+ *
+ * Withdrawals and predicate-break voids notify nobody.
+ */
+export function notifyTourSuggestion(batchId: string, action: 'submitted' | 'resolved'): void {
+  postToWorker('/notify/tour-suggestion', { batchId, action }).catch((err) => {
+    logger.warn('notifyTourSuggestion failed', err)
   })
 }
 

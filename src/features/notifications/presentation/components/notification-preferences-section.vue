@@ -109,9 +109,9 @@ onMounted(() => {
             <div class="row-text">
               <span class="row-label">{{ t(`notifications.type.${type}`) }}</span>
               <span
-                v-if="type === 'tour_interest'"
+                v-if="type === 'tour_interest' || type === 'tour_suggestions'"
                 class="row-description"
-              >{{ t('notifications.typeDescription.tour_interest') }}</span>
+              >{{ t(`notifications.typeDescription.${type}`) }}</span>
             </div>
             <label class="switch" :class="{ 'switch--disabled': allOff }">
               <input
