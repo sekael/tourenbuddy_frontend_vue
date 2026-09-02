@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.39.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.38.0...tourenbuddy-frontend-v0.39.0) (2026-09-02)
+
+
+### Features
+
+* Tour suggestions ([#286](https://github.com/sekael/tourenbuddy_frontend_vue/issues/286)) ([0f83230](https://github.com/sekael/tourenbuddy_frontend_vue/commit/0f83230aa1c6bbe0658cbd671f87cc074e1e8eed))
+* **tours:** Support multi-day tours via nullable end_date ([#281](https://github.com/sekael/tourenbuddy_frontend_vue/issues/281)) ([#282](https://github.com/sekael/tourenbuddy_frontend_vue/issues/282)) ([284cc17](https://github.com/sekael/tourenbuddy_frontend_vue/commit/284cc17e208b9e8e1bb43d3a7acb1147ee5ad2d1))
+
 ## [0.38.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.37.1...tourenbuddy-frontend-v0.38.0) (2026-08-25)
 
 
