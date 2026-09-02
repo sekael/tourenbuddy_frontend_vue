@@ -36,8 +36,10 @@ resolved forms a new batch and SHALL notify as a fresh submission.
 ### Requirement: Notify the author when their batch is fully resolved
 
 The system SHALL notify a suggestion's author under the `tour_suggestions` type when their
-batch transitions to having no `pending` rows left, summarizing how many were accepted and
-how many declined. A partially-resolved batch SHALL dispatch nothing. Suggestions
+batch transitions to having no `pending` rows left. The notification SHALL name the tour
+and the deciding owner and SHALL NOT carry an accepted/declined tally: a bare "3 / 1" reads
+as a score rather than an outcome, and the per-field verdicts are one tap away in the
+tour's suggestion history. A partially-resolved batch SHALL dispatch nothing. Suggestions
 auto-declined as a side effect of accepting a competing suggestion on the same field SHALL
 run the same completion check. A batch emptied by its own author's withdrawals SHALL
 dispatch nothing, and suggestions voided by a broken partner predicate SHALL dispatch
@@ -45,7 +47,7 @@ nothing.
 
 #### Scenario: Author notified once when the batch completes
 - **WHEN** the owner resolves the last pending row of a four-row batch, having accepted three and declined one
-- **THEN** the author receives exactly one notification summarizing three accepted and one declined
+- **THEN** the author receives exactly one notification naming the owner and the tour, with no accepted/declined counts in its text
 
 #### Scenario: Partial resolution stays silent
 - **WHEN** the owner accepts two rows of a four-row batch and stops

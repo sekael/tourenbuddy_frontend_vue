@@ -40,6 +40,48 @@ reference an object whose lifetime is controlled by a non-owner.
 - **WHEN** the author later deletes their staged object
 - **THEN** the accepted attachment still resolves, because it references the owner's copy
 
+### Requirement: The cap is enforced while a suggestion is composed
+
+Suggest mode SHALL measure the remaining attachment slots against the tour's END state —
+the owner's existing attachments, minus the ones this batch proposes to remove, plus the
+files staged so far — rather than against the staged files alone. When no slot remains the
+picker SHALL refuse further files and SHALL tell the partner that proposing a removal makes
+room. A batch that would still breach the cap SHALL NOT be submittable.
+
+#### Scenario: Partner cannot propose past the cap
+
+- **WHEN** a partner opens suggest mode on a tour already holding four attachments and picks four files
+- **THEN** the selection is refused with the remaining count, and only files fitting the cap can be staged
+
+#### Scenario: Proposing a removal frees a slot immediately
+
+- **WHEN** the partner marks one of the owner's attachments for removal on a full tour
+- **THEN** the picker offers to add a file again
+
+#### Scenario: Un-marking a removal blocks the submission
+
+- **WHEN** the partner un-marks a removal after staging the file that removal made room for
+- **THEN** the form reports that the proposal is over the limit and refuses to submit it
+
+### Requirement: An accepted attachment reaches the author's view without a reload
+
+The suggestion author SHALL see an accepted `attachment_add` appear on the tour without
+reloading the page. The attachment row is written under the OWNER's user id, so the author's
+own user-scoped attachment subscription never observes it; the author's own suggestion row
+changing status SHALL therefore also refresh the open tour's attachments. The attachment
+list SHALL likewise be refreshed when a surface that adjudicates or composes against it is
+opened, since the list is what its cap decisions are computed from.
+
+#### Scenario: Author sees the accepted photo appear
+
+- **WHEN** the owner accepts a partner's `attachment_add` while that partner has the tour open
+- **THEN** the attachment appears in the partner's view without a manual reload
+
+#### Scenario: Returning to a tour resyncs its attachments
+
+- **WHEN** the tour detail view is reopened after an attachment changed while it was closed
+- **THEN** the list reflects the change, rather than serving whatever was loaded the first time
+
 ## MODIFIED Requirements
 
 ### Requirement: Attachment count limit per tour
@@ -93,3 +135,18 @@ and resolve nothing.
 
 - **WHEN** the review sheet renders an `attachment_add` suggestion on a tour holding 5 attachments
 - **THEN** the accept action is disabled with a hint to remove an attachment first
+
+#### Scenario: Accept-all disabled when the batch itself would breach the cap
+
+- **WHEN** the batch's end state — current attachments, plus its additions, minus the removals it still carries — would exceed 5
+- **THEN** the accept-all action is disabled with a hint, rather than being offered and failing server-side
+
+#### Scenario: A declined removal withdraws the room it was making
+
+- **WHEN** the owner declines the removal that paired with an addition on a full tour
+- **THEN** both the row's accept and the batch's accept-all become unavailable, and the hint stops naming accept-all as the way out
+
+#### Scenario: A removal targeting an already-deleted attachment frees nothing
+
+- **WHEN** a batch's removal targets an attachment the owner had already deleted
+- **THEN** it is not counted as making room, because accepting it resolves as a no-op

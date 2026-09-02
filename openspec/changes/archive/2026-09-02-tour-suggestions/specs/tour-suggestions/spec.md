@@ -34,6 +34,12 @@ that accepting one suggestion can never produce a tour that violates a database
 constraint or an internally inconsistent tour. `visibility` and `completed` SHALL NOT be
 suggestable, and the partner set SHALL NOT be suggestable.
 
+The binary fields are the exception to "one row per field": `attachment_add` and
+`attachment_remove` are scoped per FILE, and each such row SHALL carry a distinct
+`target_id` — the targeted attachment for a removal, a client-minted id for an addition.
+Because at most one pending row may exist per (tour, author, field, target), an addition
+without a target would collapse every add in a batch onto a single row.
+
 A derived value SHALL travel with the value it is derived from: when suggested goal
 coordinates differ from the current ones, the `goal` suggestion SHALL carry the elevation
 looked up for the new point and no standalone `elevation` suggestion SHALL be emitted.
@@ -67,6 +73,10 @@ without moving the goal.
 #### Scenario: Elevation edited alone stays its own field
 - **WHEN** a partner corrects the elevation without moving the goal
 - **THEN** one `elevation` row is written and no `goal` row is written
+
+#### Scenario: Several files added in one submission stay separate
+- **WHEN** a partner picks four photos and submits once
+- **THEN** four `attachment_add` rows are created, each with its own target, and accepting them all attaches four files
 
 #### Scenario: Partner set is not diffed
 - **WHEN** a partner submits suggest mode on a friend tour, whose friend-read shape exposes no partner ids
@@ -192,6 +202,22 @@ enforced by a database constraint.
 - **WHEN** a user who is not the author calls the reconcile RPC against that author's batch
 - **THEN** the function raises a named authorization error
 
+### Requirement: An author has at most one open proposal per tour
+
+While an author holds pending suggestions on a tour, the tour surface SHALL offer them the
+route into their existing proposal and SHALL NOT offer a route that starts a fresh one:
+starting a second batch reconciles against the same pending rows and would silently replace
+every field they already proposed. The route to propose anew SHALL reappear once the owner
+has resolved their proposal.
+
+#### Scenario: Suggest entry hidden while a proposal is open
+- **WHEN** a partner with pending suggestions opens the friend's tour
+- **THEN** only the "your proposal" action is offered, and no action that would begin a new batch
+
+#### Scenario: Proposing again is offered once resolved
+- **WHEN** the owner has accepted or declined every row of the partner's batch
+- **THEN** the partner is offered the suggest action again, and using it creates a new batch
+
 ### Requirement: Acceptance applies inside the definer RPC and stamps the tour
 
 Accepting a suggestion SHALL apply the change with a targeted update to `tours` inside a
@@ -308,6 +334,10 @@ cross-tour suggestions inbox.
 #### Scenario: Review sheet groups by batch
 - **WHEN** two partners have each submitted a batch on the same tour
 - **THEN** the sheet shows two groups, each labelled with its author, each with its own accept-all
+
+#### Scenario: Values render as the user's own words, never as storage or enum tokens
+- **WHEN** a row carries an enumerated field, a proposed GPX track, or an attachment removal
+- **THEN** enumerated values render with their localized display names, a GPX renders as a generic description of the operation rather than any file name or storage key, and a removal names the targeted attachment by the filename its owner uploaded
 
 #### Scenario: Resolved row leaves the pending list
 - **WHEN** the owner resolves the last pending suggestion
