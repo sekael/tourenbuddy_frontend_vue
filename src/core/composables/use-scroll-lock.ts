@@ -1,4 +1,5 @@
 import type { MaybeRefOrGetter } from 'vue'
+import { onUnmounted, toValue, watch } from 'vue'
 
 /**
  * Suppresses document scroll while held, by putting `scroll-locked` on <html>
@@ -23,6 +24,50 @@ import type { MaybeRefOrGetter } from 'vue'
  * on a device.
  */
 
-// TODO(me): implement the refcounted lock.
-//   See task list at the end of this response.
-export function useScrollLock(_active?: MaybeRefOrGetter<boolean>): void {}
+let refcount = 0
+
+function acquire() {
+  refcount += 1
+  if (refcount === 1)
+    document.documentElement.classList.add('scroll-locked')
+}
+
+function release() {
+  refcount -= 1
+  if (refcount === 0)
+    document.documentElement.classList.remove('scroll-locked')
+}
+
+export function useScrollLock(active?: MaybeRefOrGetter<boolean>): void {
+  if (active === undefined) {
+    acquire()
+    onUnmounted(release)
+    return
+  }
+
+  // Tracks whether THIS caller currently holds the lock, so unmount releases
+  // exactly what it took — never assumes the reactive source is still true.
+  let held = false
+
+  watch(
+    () => toValue(active),
+    (locked) => {
+      if (locked && !held) {
+        held = true
+        acquire()
+      }
+      else if (!locked && held) {
+        held = false
+        release()
+      }
+    },
+    { immediate: true },
+  )
+
+  onUnmounted(() => {
+    if (held) {
+      held = false
+      release()
+    }
+  })
+}

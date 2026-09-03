@@ -10,7 +10,7 @@
 
 ## 3. `useScrollLock` composable — **your gap**
 
-- [ ] 3.1 New `src/core/composables/use-scroll-lock.ts` — implement per design D2, marked with `// TODO(me):`. Signature `useScrollLock(active?: MaybeRefOrGetter<boolean>)`. No argument = locked for the caller's whole mounted lifetime; a ref/getter = follows its value. Module-level refcount, class `scroll-locked` on `document.documentElement` present while count `> 0`. Must release exactly once on unmount, including when the reactive form is already unlocked at that moment — a double decrement locks the app forever, on every route, and not visibly on this one. No public release API. Add a `ponytail:` comment recording that the counter is NOT load-bearing today (`runtime-core.cjs.js:5376-5379` unmounts before it mounts, and `App.vue:25` has no `<Transition>`) — it guards the day someone adds one
+- [x] 3.1 New `src/core/composables/use-scroll-lock.ts` — implement per design D2, marked with `// TODO(me):`. Signature `useScrollLock(active?: MaybeRefOrGetter<boolean>)`. No argument = locked for the caller's whole mounted lifetime; a ref/getter = follows its value. Module-level refcount, class `scroll-locked` on `document.documentElement` present while count `> 0`. Must release exactly once on unmount, including when the reactive form is already unlocked at that moment — a double decrement locks the app forever, on every route, and not visibly on this one. No public release API. Add a `ponytail:` comment recording that the counter is NOT load-bearing today (`runtime-core.cjs.js:5376-5379` unmounts before it mounts, and `App.vue:25` has no `<Transition>`) — it guards the day someone adds one
 
 ## 4. Wire the two pages
 
@@ -36,7 +36,7 @@
 ## 8. Finalize
 
 - [x] 8.1 `npx eslint . --fix` (zero warnings) and `npm run type-check`
-- [ ] 8.2 `npm run test` — all green
+- [x] 8.2 `npm run test` — all green
 - [ ] 8.3 Prompt the user to commit:
 
       ```
