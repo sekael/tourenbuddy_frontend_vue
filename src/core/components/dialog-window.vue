@@ -157,6 +157,8 @@ function handleBackdropClick() {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  /* Overscroll stops here — never chains to the page behind the dialog. */
+  overscroll-behavior: contain;
   padding: var(--spacing-md) var(--spacing-lg) var(--spacing-xl) var(--spacing-lg);
   flex: 1;
   min-height: 0;

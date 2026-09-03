@@ -434,6 +434,10 @@ const sheetStyle = computed(() => {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  /* Scroll stops here: past either end it must not chain to the page, the
+     document, or the map behind the sheet. `contain`, not `none` — the region
+     keeps its own end-of-scroll rubber-band. */
+  overscroll-behavior: contain;
   padding-right: var(--spacing-xs);
   /* Home indicator clearance: last list item stays reachable above gesture bar */
   padding-bottom: calc(var(--spacing-md) + var(--safe-bottom));

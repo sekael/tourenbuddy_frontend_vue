@@ -152,6 +152,10 @@ const isDesktop = useIsDesktop()
   --surface-pad-right: var(--spacing-xs);
 
   overflow-y: auto;
+  /* Overscroll stops here — never chains to the page or the map beside the
+     drawer. Scoped to this scroll region only: the still-visible map keeps its
+     own wheel-zoom / pinch / drag. */
+  overscroll-behavior: contain;
   padding: var(--spacing-lg) var(--surface-pad-right) var(--spacing-lg) var(--surface-pad-left);
   flex: 1;
   min-height: 0;

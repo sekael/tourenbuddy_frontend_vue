@@ -24,7 +24,7 @@ const { t } = useI18n({ useScope: 'global' })
 // Published as a CSS var so content underneath (e.g. the seasons Gantt sticky
 // header) can reserve clearance instead of guessing a fixed height — the
 // banner's actual height varies with locale/title-wrap. Consumers must gate
-// on `html.tour-scroll-locked` themselves; this var alone doesn't scope them.
+// on `html.scroll-locked` themselves; this var alone doesn't scope them.
 const bannerEl = useTemplateRef<HTMLElement>('bannerEl')
 let observer: ResizeObserver | null = null
 onMounted(() => {
