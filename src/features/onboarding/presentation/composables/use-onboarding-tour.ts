@@ -134,6 +134,30 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
     })
   }
 
+  /**
+   * Keep the popover clear of the fixed tour banner.
+   *
+   * driver.js places the popover against the target rect and the VIEWPORT only —
+   * it knows nothing about our banner, which is pinned to the top on the same
+   * layer. A `side: 'top'` step (or a `bottom` one driver flips up because the
+   * target sits low, e.g. the notification toggles in the mobile profile sheet)
+   * lands the popover under the banner, hiding its title and first lines.
+   * The popover is `position: fixed`, so nudging its `top` is enough.
+   */
+  function clampPopoverBelowBanner() {
+    // HTMLElement, not Element: only the former carries `.style`.
+    const popover = document.querySelector<HTMLElement>('.driver-popover')
+    const banner = document.querySelector<HTMLElement>('.tour-banner')
+    if (!popover || !banner)
+      return
+    const minTop = banner.getBoundingClientRect().bottom + 8
+    // Only nudge on a real overlap. An unconditional write re-places every
+    // popover driver already positioned correctly — the same needless
+    // reposition `refreshAfterMotion` guards against.
+    if (popover.getBoundingClientRect().top < minTop)
+      popover.style.top = `${minTop}px`
+  }
+
   function teardown() {
     // Capture before resetting: cleanup restores host UI and MAY navigate (the
     // calendar cleanup returns to the planned view). teardown fires on every host
@@ -272,8 +296,10 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
         || Math.abs(after.left - before.left) > 1
         || Math.abs(after.width - before.width) > 1
         || Math.abs(after.height - before.height) > 1
-    if (moved)
+    if (moved) {
       obj.refresh()
+      clampPopoverBelowBanner() // refresh re-places the popover from scratch
+    }
   }
 
   /**
@@ -338,6 +364,7 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
           }
         : { element: el },
     )
+    clampPopoverBelowBanner()
     void refreshAfterMotion(el)
     await sleep(pace.holdMs)
     await maskOffAndBreathe()
@@ -419,6 +446,7 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
       if (driverObj === null || !isRunning.value)
         return
       driverObj.highlight({ element: el, popover: buildPopover(clamped) })
+      clampPopoverBelowBanner()
       void refreshAfterMotion(el)
     }
     finally {
