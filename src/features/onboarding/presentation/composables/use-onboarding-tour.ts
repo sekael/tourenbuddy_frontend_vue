@@ -293,9 +293,9 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
     const after = el.getBoundingClientRect()
     const moved
       = Math.abs(after.top - before.top) > 1
-      || Math.abs(after.left - before.left) > 1
-      || Math.abs(after.width - before.width) > 1
-      || Math.abs(after.height - before.height) > 1
+        || Math.abs(after.left - before.left) > 1
+        || Math.abs(after.width - before.width) > 1
+        || Math.abs(after.height - before.height) > 1
     if (moved) {
       obj.refresh()
       clampPopoverBelowBanner() // refresh re-places the popover from scratch
@@ -319,9 +319,9 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
       const rect = el.getBoundingClientRect()
       const same
         = rect.top === last.top
-        && rect.left === last.left
-        && rect.width === last.width
-        && rect.height === last.height
+          && rect.left === last.left
+          && rect.width === last.width
+          && rect.height === last.height
       stableFrames = same ? stableFrames + 1 : 0
       if (stableFrames >= 5)
         return
@@ -355,13 +355,13 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
     driverObj.highlight(
       hintKey
         ? {
-          element: el,
-          popover: {
-            description: t(hintKey),
-            showButtons: [],
-            popoverClass: 'onboarding-hint-popover',
-          },
-        }
+            element: el,
+            popover: {
+              description: t(hintKey),
+              showButtons: [],
+              popoverClass: 'onboarding-hint-popover',
+            },
+          }
         : { element: el },
     )
     clampPopoverBelowBanner()
