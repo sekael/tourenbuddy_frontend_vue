@@ -1290,6 +1290,15 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   font-size: var(--font-size-base);
 }
 
+/* Flex items default to min-width: auto (their own content's width), which lets
+   a long unbroken value (coordinates, a place name, a partner chip row) push
+   the row past the sheet's width instead of wrapping. Constrain every row's
+   value cell so it shrinks to the available width and wraps there. */
+.detail-row > *:not(.detail-icon) {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
 .detail-row.align-start {
   align-items: flex-start;
 }

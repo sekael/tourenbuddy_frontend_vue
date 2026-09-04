@@ -9,6 +9,7 @@ import BaseButton from '@/core/components/base-button.vue'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import ExtendedFab from '@/core/components/extended-fab.vue'
+import { useScrollLock } from '@/core/composables/use-scroll-lock'
 import { isOnline } from '@/core/offline/use-online-status'
 import { useAvailabilityStore } from '@/features/calendar/presentation/stores/availability-store'
 import ContactsListSheet from '@/features/contacts/presentation/components/contacts-list-sheet.vue'
@@ -215,12 +216,11 @@ const demoSeason = computed(() => (tourRunning.value ? makeDemoSeason(t) : null)
 // today row), so padding it there would drop the whole list under the banner.
 const seasonsTourActive = computed(() => tourRunning.value && activeView.value === 'seasons')
 
-// Same body-level scroll-lock as the map tour (the rule lives in
-// onboarding-tour.css) — viewport-fixed spotlight + popovers must pin together.
+// Body-level scroll-lock while the tour is up — viewport-fixed spotlight +
+// popovers must pin together with the page. Unlike the map route, the calendar
+// scrolls normally the rest of the time, so this is the reactive shape.
 const tourLockActive = computed(() => tourRunning.value || tourWelcome.value)
-watch(tourLockActive, (locked) => {
-  document.documentElement.classList.toggle('tour-scroll-locked', locked)
-}, { immediate: true })
+useScrollLock(tourLockActive)
 
 // Entering the planned view from seasons (nav tab or back) scrolls to today, the
 // same default as a fresh open. Only fires on a real transition — a fresh mount
@@ -236,10 +236,7 @@ watch(activeView, (v, prev) => {
 // driver.js' overlay lives on <body> outside Vue: tear it down before leaving /
 // on unmount so it never orphans onto another route.
 onBeforeRouteLeave(() => calendarTour.stop())
-onUnmounted(() => {
-  calendarTour.stop()
-  document.documentElement.classList.remove('tour-scroll-locked')
-})
+onUnmounted(() => calendarTour.stop())
 
 // The calendar-tour gate rule (Decision 2). One rule keyed on the
 // `calendar_tour_show_on_first_open` gate governs every automatic trigger:

@@ -40,6 +40,26 @@ body {
   min-height: 100lvh;
 }
 
+/* Document scroll lock, toggled by `useScrollLock`. Routes that own the whole
+   viewport (the map) hold it for their lifetime; the onboarding tour holds it
+   while its viewport-fixed spotlight is up.
+   `body { position: fixed }` is the load-bearing half: on iOS `overflow: hidden`
+   alone does NOT stop momentum, rubber-band, or address-bar scroll, and that
+   residual document scroll slides the map canvas out from under the location
+   picker's crosshair.
+   Deliberately NO `touch-action` here — that would impose a gesture policy on
+   the map canvas and on every scroll region inside an overlay. */
+html.scroll-locked,
+html.scroll-locked body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+html.scroll-locked body {
+  position: fixed;
+  inset: 0;
+}
+
 button {
   cursor: pointer;
   border: none;

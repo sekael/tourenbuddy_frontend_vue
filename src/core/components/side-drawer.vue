@@ -152,6 +152,14 @@ const isDesktop = useIsDesktop()
   --surface-pad-right: var(--spacing-xs);
 
   overflow-y: auto;
+  /* Explicit: an unset overflow-x computes to `auto` alongside overflow-y here
+     (CSS Overflow spec), which would silently open a horizontal scrollbar the
+     moment any row's content is a pixel too wide. Drawers scroll vertically only. */
+  overflow-x: hidden;
+  /* Overscroll stops here — never chains to the page or the map beside the
+     drawer. Scoped to this scroll region only: the still-visible map keeps its
+     own wheel-zoom / pinch / drag. */
+  overscroll-behavior: contain;
   padding: var(--spacing-lg) var(--surface-pad-right) var(--spacing-lg) var(--surface-pad-left);
   flex: 1;
   min-height: 0;

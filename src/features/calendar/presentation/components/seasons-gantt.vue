@@ -221,7 +221,7 @@ const nowLineLeft = computed(() => {
   background-color: var(--color-surface);
 }
 
-html.tour-scroll-locked .gantt-track {
+html.scroll-locked .gantt-track {
   min-width: 0;
 }
 

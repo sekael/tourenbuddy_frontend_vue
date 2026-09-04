@@ -10,6 +10,7 @@ import BaseButton from '@/core/components/base-button.vue'
 import DialogWindow from '@/core/components/dialog-window.vue'
 import FeedbackSheet from '@/core/components/feedback-sheet.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
+import { useScrollLock } from '@/core/composables/use-scroll-lock'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { spanDayKeys } from '@/features/calendar/domain/calendar-dates'
 import ContactsListSheet from '@/features/contacts/presentation/components/contacts-list-sheet.vue'
@@ -329,28 +330,23 @@ function dismissCalendarFeatureNotice() {
 onboardingTour.maybeStartTour()
 maybeShowCalendarFeatureNotice()
 
-// Lock document scroll for the whole tour + welcome. `.map-page` is overflow:
-// hidden, but iOS Safari still rubber-band/address-bar scrolls the document
-// under the viewport-fixed spotlight + popovers — only a body-level lock pins
-// them together. Toggled here (scoped styles can't reach <html>); the rule
-// lives in onboarding-tour.css.
-const tourLockActive = computed(() => tourRunning.value || tourWelcome.value)
-// `immediate` matters: on first sign-in the welcome auto-starts synchronously
-// above, so the lock is ALREADY active when this registers — a lazy watch would
-// miss that initial state and only lock on a later toggle (the reopen path).
-watch(tourLockActive, (locked) => {
-  document.documentElement.classList.toggle('tour-scroll-locked', locked)
-}, { immediate: true })
+// The map route never scrolls the document, for its whole lifetime — not just
+// while the tour runs. `.map-page` is fixed + overflow:hidden, but that pins the
+// PAGE, not the document: `#app { min-height: 100lvh }` leaves a scrollable
+// overflow whenever browser chrome is shown, and a gesture anywhere off the map
+// canvas rubber-bands it. The canvas then slides while MapLibre's camera does
+// not, so the picker unprojects a canvas that moved out from under the crosshair
+// (#247). This also covers the tour, which is why no tour-scoped lock remains.
+useScrollLock()
 
 // driver.js' overlay lives on <body> outside Vue, so a route change (back
 // button / back-swipe) would leave it orphaned on a non-tour page. Tear it down
-// before leaving and on any unmount, and always drop the scroll-lock class.
+// before leaving and on any unmount.
 onBeforeRouteLeave(() => {
   onboardingTour.stop()
 })
 onUnmounted(() => {
   onboardingTour.stop()
-  document.documentElement.classList.remove('tour-scroll-locked')
 })
 
 // "Show app tour" in the profile sheet bumps this signal — resume at last step.

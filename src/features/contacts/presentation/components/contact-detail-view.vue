@@ -1127,6 +1127,18 @@ defineExpose({
   align-items: center;
   gap: var(--spacing-sm);
   margin-bottom: var(--spacing-xs);
+
+  /* Pinned to the top of the overlay's scroll region (`.content` in bottom-sheet,
+     `.dialog-content` in dialog-window). `sticky`, not `fixed`: sticky resolves
+     against that scroll container, so on mobile the row travels with the sheet
+     when it is dragged between snap points — `fixed` would glue it to the
+     viewport and tear it off the sheet. Opaque background + z-index so sections
+     scrolling underneath do not show through. */
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--color-background);
+  padding-block: var(--spacing-sm);
 }
 
 .detail-title {
