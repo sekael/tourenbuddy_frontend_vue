@@ -157,6 +157,10 @@ function handleBackdropClick() {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  /* Explicit: an unset overflow-x computes to `auto` alongside overflow-y here
+     (CSS Overflow spec), which would silently open a horizontal scrollbar the
+     moment any row's content is a pixel too wide. Dialogs scroll vertically only. */
+  overflow-x: hidden;
   /* Overscroll stops here — never chains to the page behind the dialog. */
   overscroll-behavior: contain;
   padding: var(--spacing-md) var(--spacing-lg) var(--spacing-xl) var(--spacing-lg);

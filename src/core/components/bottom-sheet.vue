@@ -434,6 +434,12 @@ const sheetStyle = computed(() => {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  /* Explicit, not incidental: leaving overflow-x unset here computes it to
+     `auto` too (CSS Overflow spec — an unset axis inherits `auto` from a sibling
+     axis that isn't `visible`), silently opening a horizontal scrollbar/gesture
+     the moment any flex row's content is a pixel too wide. Sheets scroll
+     vertically only. */
+  overflow-x: hidden;
   /* Scroll stops here: past either end it must not chain to the page, the
      document, or the map behind the sheet. `contain`, not `none` — the region
      keeps its own end-of-scroll rubber-band. */

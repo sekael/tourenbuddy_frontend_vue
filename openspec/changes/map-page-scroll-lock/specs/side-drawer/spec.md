@@ -24,3 +24,13 @@ still visible SHALL remain fully interactive (see `map-integration`).
 - **AND** the user scroll-wheels or pinches over the still-visible portion of the map
 - **THEN** the map SHALL zoom
 - **AND** the drawer's scroll position SHALL remain unchanged
+
+### Requirement: Drawer content scrolls vertically only
+
+The drawer's scrollable content region SHALL scroll on the vertical axis only, regardless
+of child content width.
+
+#### Scenario: Horizontal swipe over the drawer content does nothing
+
+- **WHEN** the user swipes or drags horizontally within the drawer content region
+- **THEN** the drawer content SHALL NOT scroll horizontally

@@ -50,6 +50,15 @@ instead of only to the tour, and giving it a home that is not the onboarding sty
   has nothing behind it to chain into. Defence in depth on the map route (the pinned
   document cannot scroll anyway) and a real fix on the other routes, where a document does
   scroll behind an open dialog or drawer.
+- **The three modal scroll regions scroll vertically only** — `bottom-sheet.vue:436`,
+  `dialog-window.vue:159`, `side-drawer.vue:154` add explicit `overflow-x: hidden`. Found
+  during device verification of this change (task 6.2, iOS Safari + Brave): the tour
+  detail sheet scrolled horizontally, because leaving `overflow-x` unset while
+  `overflow-y: auto` is set computes it to `auto` too (CSS Overflow spec), so any flex row
+  whose content was a pixel too wide silently opened a horizontal scrollbar/gesture. Fixed
+  once in each shared component rather than per-row. `tour-info-sheet.vue`'s `.detail-row`
+  children get `min-width: 0` so the actual overflow source (an icon+value row) shrinks and
+  wraps instead of being clipped by the new `overflow-x: hidden`.
 - **Map gestures are explicitly unaffected** — wheel-zoom, pinch, drag and rotate over the
   visible map keep working with an overlay open, because MapLibre owns
   `touch-action` on its own canvas container and drives the camera from raw
@@ -80,7 +89,8 @@ _(none)_
   (wheel-zoom, pinch, drag, rotate) remain fully available over the visible map while an
   overlay is open.
 - `bottom-sheet`, `dialog-window`, `side-drawer`: each content scroll region gains a stated
-  containment contract — scroll reaching either end SHALL NOT chain to any ancestor.
+  containment contract (scroll reaching either end SHALL NOT chain to any ancestor) and a
+  stated vertical-only contract (no horizontal scroll regardless of content width).
 
 ## Impact
 

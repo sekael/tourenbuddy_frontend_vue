@@ -13,3 +13,12 @@ affordance (rubber-band on platforms that provide one) SHALL be preserved.
 - **AND** the user continues the scroll gesture in the same direction
 - **THEN** no ancestor scroll container SHALL scroll
 - **AND** the document scroll offset SHALL remain unchanged
+
+### Requirement: Dialog body scrolls vertically only
+
+The dialog body SHALL scroll on the vertical axis only, regardless of child content width.
+
+#### Scenario: Horizontal swipe over the dialog body does nothing
+
+- **WHEN** the user swipes or drags horizontally within the dialog body
+- **THEN** the dialog body SHALL NOT scroll horizontally

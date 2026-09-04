@@ -213,6 +213,24 @@ no component mount.
 
 None — presentation-only, no data, no schema, no Worker. Ships in one PR.
 
+### D7 — Sheets/dialogs/drawers scroll vertically only, fixed at the shared component
+
+Device verification (task 6.2, iOS Safari + Brave) surfaced a second bug in the same
+scroll regions this change already touches: the tour detail sheet scrolled horizontally.
+Cause: `overflow-y: auto` was set without `overflow-x`, and the CSS Overflow spec computes
+an unset axis to `auto` when the other axis isn't `visible` — so every sheet has always had
+a latent horizontal scrollbar, one pixel-too-wide flex row away from firing. In
+`tour-info-sheet.vue`, `.detail-row` is `display: flex` with no `min-width: 0` on its
+children, so a value cell (coordinates, a place name, a partner-chip list) could reach its
+max-content width instead of shrinking to wrap.
+
+Fixed at the three shared scroll containers (`bottom-sheet.vue:436`, `dialog-window.vue`,
+`side-drawer.vue`) with explicit `overflow-x: hidden` — the same "fix once, where every
+caller routes through" shape as D4's containment, and it closes the bug for every current
+and future sheet, not just the tour detail view. The actual overflow source
+(`.detail-row`'s children) gets `min-width: 0` + `overflow-wrap: break-word` so content
+wraps under the new limit instead of being silently clipped.
+
 ## Open Questions
 
 None. Every branch was resolved in review: targeted lock over changing `#app`'s

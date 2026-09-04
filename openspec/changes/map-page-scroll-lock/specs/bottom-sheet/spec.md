@@ -21,3 +21,22 @@ provide one) SHALL be preserved.
 - **AND** the user continues the scroll gesture in the same direction
 - **THEN** no ancestor scroll container SHALL scroll
 - **AND** the document scroll offset SHALL remain unchanged
+
+### Requirement: Sheet content scrolls vertically only
+
+The content area SHALL scroll on the vertical axis only. It SHALL NOT expose a horizontal
+scrollbar or respond to a horizontal scroll/swipe gesture, regardless of child content
+width. Row-level content that could otherwise force horizontal overflow (a value next to a
+leading icon, a wrapped chip list) SHALL be laid out to shrink and wrap within the sheet's
+width instead.
+
+#### Scenario: Wide row content wraps instead of scrolling sideways
+
+- **WHEN** a row's value content (e.g. coordinates, a place name, a list of chips) is wider than the sheet
+- **THEN** that content SHALL wrap onto additional lines
+- **AND** the content area SHALL NOT scroll horizontally to reveal it
+
+#### Scenario: Horizontal swipe over the content area does nothing
+
+- **WHEN** the user swipes or drags horizontally within the content area
+- **THEN** the content area SHALL NOT scroll horizontally
