@@ -349,3 +349,27 @@ Contacts Realtime event handlers MUST NOT trigger any notification dispatch (pus
 #### Scenario: No notification dispatch from Realtime
 - **WHEN** any `postgres_changes` event for `contacts` / `contact_methods` is received
 - **THEN** no notification dispatch function is invoked from the `onChange` handler
+
+### Requirement: Contact detail header is titled and pinned
+
+The contact detail view header — back control, title, edit action — SHALL be titled
+"Contact details" (`contacts.detailView.title`, localised in every locale), not
+"Edit contact": the surface opens in read mode and edit is one action within it.
+
+The header row SHALL remain pinned to the top of the overlay's scroll region while
+the detail content below it is scrolled, and SHALL occlude the content passing
+underneath it. It SHALL move with the surface itself — dragging the bottom sheet up
+or down on mobile moves the header with the sheet.
+
+#### Scenario: Title reflects read mode
+- **WHEN** a contact is opened from the contacts list
+- **THEN** the header title reads "Contact details" (`Kontaktdetails` in `de-CH`)
+
+#### Scenario: Header stays put while content scrolls
+- **WHEN** the user scrolls the detail content past the header's resting position
+- **THEN** the back control, title, and edit action remain visible at the top of the scroll region
+- **AND** the content scrolling past SHALL NOT show through the header
+
+#### Scenario: Header travels with a dragged sheet
+- **WHEN** the bottom sheet holding the detail view is dragged to another snap point
+- **THEN** the header moves with the sheet rather than staying fixed to the viewport

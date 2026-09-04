@@ -38,7 +38,7 @@
 
 - [x] 8.1 `npx eslint . --fix` (zero warnings) and `npm run type-check`
 - [x] 8.2 `npm run test` — all green
-- [ ] 8.3 Prompt the user to commit:
+- [x] 8.3 Prompt the user to commit:
 
       ```
       fix(map): never scroll the document on the map route (#247)
@@ -57,4 +57,4 @@
       scroll can never chain outward.
       ```
 
-- [ ] 8.4 Prompt the user to push and open a PR against `main`, linking issue #247. No Worker deploy, no `supabase db push` — this change touches neither
+- [x] 8.4 Prompt the user to push and open a PR against `main`, linking issue #247. No Worker deploy, no `supabase db push` — this change touches neither

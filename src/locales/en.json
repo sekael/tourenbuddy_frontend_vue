@@ -292,7 +292,7 @@
       }
     },
     "detailView": {
-      "title": "Edit Contact",
+      "title": "Contact details",
       "nameSection": "Name",
       "savingBtn": "Saving...",
       "saveNameBtn": "Save name",
