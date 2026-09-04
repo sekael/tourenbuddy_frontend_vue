@@ -240,25 +240,16 @@ onUnmounted(() => calendarTour.stop())
 
 // The calendar-tour gate rule (Decision 2). One rule keyed on the
 // `calendar_tour_show_on_first_open` gate governs every automatic trigger:
-//   hand-off + fresh gate → start directly (no welcome) + flip the gate
-//   hand-off + spent gate → nothing
-//   no intent + fresh gate → welcome (maybeStartTour self-guards on the gate)
-//   no intent + spent gate → nothing
-// The intent is consumed on EVERY mount — even the do-nothing branches — so it
-// can never survive to re-fire on a later visit.
+//   fresh gate → welcome dialog (maybeStartTour self-guards on the gate + online)
+//   spent gate → nothing
+// The hand-off from the finished map tour takes the SAME path as a standalone
+// first visit: the welcome asks first, and the gate is only spent once the user
+// answers it (Start / Don't show again). Starting the tour unprompted on the
+// hand-off was both the wrong UX and a trap — it burned the gate before the user
+// ever saw a dialog, so a failed hand-off left the tour permanently unreachable.
+// The intent is consumed on EVERY mount so it can never re-fire on a later visit.
 function applyCalendarTourGate() {
-  const handoff = mapStore.consumePendingIntent()?.startCalendarTour === true
-  if (handoff) {
-    // Offline: consume the intent but never start the driver tour (it would mask the
-    // calendar). Gate stays fresh so the tour still shows on the first online visit.
-    if (isOnline.value && userProfileStore.profile?.calendarTourShowOnFirstOpen === true) {
-      userProfileStore.dismissCalendarTour()
-      calendarTour.startTour(0)
-    }
-    return
-  }
-  // Standalone open: maybeStartTour opens the welcome iff the gate is fresh
-  // (canAutoStart is wired to the gate above).
+  mapStore.consumePendingIntent()
   calendarTour.maybeStartTour()
 }
 

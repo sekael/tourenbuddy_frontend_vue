@@ -6,6 +6,8 @@ import PlannedCalendar from '@/features/calendar/presentation/components/planned
 import SeasonsGantt from '@/features/calendar/presentation/components/seasons-gantt.vue'
 import CalendarPage from '@/features/calendar/presentation/pages/calendar-page.vue'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
+import OnboardingWelcome from '@/features/onboarding/presentation/components/onboarding-welcome.vue'
+import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
 const replace = vi.fn()
 const push = vi.fn()
@@ -97,22 +99,29 @@ describe('calendarPage — calendar-tour gate rule', () => {
     // rule sees (or doesn't see) the hand-off intent.
     const mapStore = useMapStore(pinia)
     ;(mapStore.consumePendingIntent as any).mockReturnValue(opts.intent ? { startCalendarTour: true } : null)
-    const wrapper = mount(CalendarPage, { shallow: true, global: { plugins: [pinia] } })
+    // `teleport: false` keeps the teleported welcome in the rendered tree —
+    // shallow mount stubs Teleport by default, which drops its children.
+    const wrapper = mount(CalendarPage, {
+      shallow: true,
+      global: { plugins: [pinia], stubs: { teleport: false } },
+    })
     return { wrapper, mapStore }
   }
 
-  it('hand-off + fresh gate: starts directly (chips appear) + flips the gate', async () => {
+  it('hand-off + fresh gate: asks first (welcome, tour not yet running, gate untouched)', async () => {
     const { wrapper } = mountWithGate({ intent: true, gateFresh: true })
     await wrapper.vm.$nextTick()
-    // OnboardingWelcome is teleported; assert the tour is running via the demo
-    // prop rather than the welcome (which does not render on the hand-off path).
-    expect(wrapper.findComponent(PlannedCalendar).props('demoChips')).not.toBeNull()
+    expect(wrapper.findComponent(OnboardingWelcome).exists()).toBe(true)
+    // Demo content only exists while the driver tour actually runs.
+    expect(wrapper.findComponent(PlannedCalendar).props('demoChips')).toBeNull()
+    expect(useUserProfileStore().dismissCalendarTour).not.toHaveBeenCalled()
   })
 
   it('hand-off + spent gate: neither tour nor welcome', async () => {
     const { wrapper } = mountWithGate({ intent: true, gateFresh: false })
     await wrapper.vm.$nextTick()
     expect(wrapper.findComponent(PlannedCalendar).props('demoChips')).toBeNull()
+    expect(wrapper.findComponent(OnboardingWelcome).exists()).toBe(false)
   })
 
   it('no intent + spent gate: does nothing', async () => {
