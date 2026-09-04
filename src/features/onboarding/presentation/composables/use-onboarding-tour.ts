@@ -144,9 +144,19 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
    * lands the popover under the banner, hiding its title and first lines.
    * The popover is `position: fixed`, so nudging its `top` is enough.
    */
-  // TODO(me): push the driver popover below the banner when they overlap.
-  //   See task list at the end of this response.
-  function clampPopoverBelowBanner() {}
+  function clampPopoverBelowBanner() {
+    // HTMLElement, not Element: only the former carries `.style`.
+    const popover = document.querySelector<HTMLElement>('.driver-popover')
+    const banner = document.querySelector<HTMLElement>('.tour-banner')
+    if (!popover || !banner)
+      return
+    const minTop = banner.getBoundingClientRect().bottom + 8
+    // Only nudge on a real overlap. An unconditional write re-places every
+    // popover driver already positioned correctly — the same needless
+    // reposition `refreshAfterMotion` guards against.
+    if (popover.getBoundingClientRect().top < minTop)
+      popover.style.top = `${minTop}px`
+  }
 
   function teardown() {
     // Capture before resetting: cleanup restores host UI and MAY navigate (the
@@ -283,9 +293,9 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
     const after = el.getBoundingClientRect()
     const moved
       = Math.abs(after.top - before.top) > 1
-        || Math.abs(after.left - before.left) > 1
-        || Math.abs(after.width - before.width) > 1
-        || Math.abs(after.height - before.height) > 1
+      || Math.abs(after.left - before.left) > 1
+      || Math.abs(after.width - before.width) > 1
+      || Math.abs(after.height - before.height) > 1
     if (moved) {
       obj.refresh()
       clampPopoverBelowBanner() // refresh re-places the popover from scratch
@@ -309,9 +319,9 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
       const rect = el.getBoundingClientRect()
       const same
         = rect.top === last.top
-          && rect.left === last.left
-          && rect.width === last.width
-          && rect.height === last.height
+        && rect.left === last.left
+        && rect.width === last.width
+        && rect.height === last.height
       stableFrames = same ? stableFrames + 1 : 0
       if (stableFrames >= 5)
         return
@@ -345,13 +355,13 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
     driverObj.highlight(
       hintKey
         ? {
-            element: el,
-            popover: {
-              description: t(hintKey),
-              showButtons: [],
-              popoverClass: 'onboarding-hint-popover',
-            },
-          }
+          element: el,
+          popover: {
+            description: t(hintKey),
+            showButtons: [],
+            popoverClass: 'onboarding-hint-popover',
+          },
+        }
         : { element: el },
     )
     clampPopoverBelowBanner()
