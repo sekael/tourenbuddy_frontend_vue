@@ -175,4 +175,39 @@ describe('tourListSheet', () => {
       expect(wrapper.find('.filter-badge').exists()).toBe(false)
     })
   })
+
+  describe('clear-filters button', () => {
+    // Filter state is module-level in the composable, so it survives unmount —
+    // reset it or the assertions below leak into neighbouring tests.
+    async function withFilter(fn: (w: ReturnType<typeof mountSheet>) => Promise<void>) {
+      const wrapper = mountSheet()
+      await wrapper.find('.filters-trigger').trigger('click')
+      wrapper.findComponent({ name: 'TourFiltersPanel' }).vm.$emit('update:completion', 'done')
+      await wrapper.vm.$nextTick()
+      try {
+        await fn(wrapper)
+      }
+      finally {
+        wrapper.unmount()
+      }
+    }
+
+    it('should stay hidden while no facet is active', () => {
+      const wrapper = mountSheet()
+      expect(wrapper.find('[data-testid="clear-filters"]').exists()).toBe(false)
+    })
+
+    it('should reset the facets but leave the search query', async () => {
+      await withFilter(async (wrapper) => {
+        await wrapper.find('.search-input').setValue('Alpine')
+        await wrapper.find('[data-testid="clear-filters"]').trigger('click')
+        await wrapper.vm.$nextTick()
+
+        expect(wrapper.find('[data-testid="clear-filters"]').exists()).toBe(false)
+        expect((wrapper.find('.search-input').element as HTMLInputElement).value).toBe('Alpine')
+        // Search survived, so only the matching tour is listed.
+        expect(wrapper.findAll('.tour-row')).toHaveLength(1)
+      })
+    })
+  })
 })
