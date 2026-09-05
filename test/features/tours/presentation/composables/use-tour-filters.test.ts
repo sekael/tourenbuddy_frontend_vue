@@ -449,4 +449,36 @@ describe('useTourFilters', () => {
       expect(filteredTours.value).toHaveLength(1)
     })
   })
+
+  describe('clearFilters', () => {
+    it('should reset every facet but keep the search query', () => {
+      const tours = [makeTour({ id: '1', name: 'Hike', tourType: 'hiking' })]
+      const { searchQuery, filters, activeFilterCount, clearFilters } = setup(tours)
+      searchQuery.value = 'hike'
+      filters.partnerIds = new Set(['c-1'])
+      filters.tourTypes = new Set(['skiing'])
+      filters.seasons = new Set(['winter'])
+      filters.dateRange.from = new Date('2026-01-01')
+      filters.dateRange.to = new Date('2026-02-01')
+      filters.completion = 'done'
+
+      clearFilters()
+
+      expect(activeFilterCount.value).toBe(0)
+      expect(filters.dateRange).toEqual({ from: null, to: null })
+      expect(searchQuery.value).toBe('hike')
+    })
+
+    it('should not touch the other tab state', () => {
+      const owned = setup([])
+      const friends = useTourFilters('friends')
+      friends.filters.completion = 'done'
+      owned.filters.completion = 'open'
+
+      owned.clearFilters()
+
+      expect(friends.activeFilterCount.value).toBe(1)
+      friends.clearAll()
+    })
+  })
 })

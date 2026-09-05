@@ -52,6 +52,13 @@ const sourceCount = computed(() => (activeTab.value === 'friends' ? friendTours.
 function clearAll() {
   active.value.clearAll()
 }
+// Two resets, deliberately different: the empty state clears search too (nothing
+// matched — the query is the likely culprit), the toolbar button leaves it alone
+// because it sits next to a visibly filled search box and the badge it mirrors
+// never counted search either.
+function clearFilters() {
+  active.value.clearFilters()
+}
 
 const friendshipsStore = useFriendshipsStore()
 const { friendships } = storeToRefs(friendshipsStore)
@@ -175,11 +182,24 @@ function handleRowClick(tourId: string) {
         >
       </div>
 
-      <BaseButton variant="secondary" size="sm" class="filters-trigger" @click="filtersExpanded = !filtersExpanded">
-        <BaseIcon :name="filtersExpanded ? 'expand_less' : 'tune'" size="sm" />
-        {{ t('tours.list.filtersBtn') }}
-        <span v-if="activeFilterCount > 0" class="filter-badge">{{ activeFilterCount }}</span>
-      </BaseButton>
+      <div class="filters-row">
+        <BaseButton variant="secondary" size="sm" class="filters-trigger" @click="filtersExpanded = !filtersExpanded">
+          <BaseIcon :name="filtersExpanded ? 'expand_less' : 'tune'" size="sm" />
+          {{ t('tours.list.filtersBtn') }}
+          <span v-if="activeFilterCount > 0" class="filter-badge">{{ activeFilterCount }}</span>
+        </BaseButton>
+
+        <BaseButton
+          v-if="activeFilterCount > 0"
+          variant="secondary"
+          size="sm"
+          data-testid="clear-filters"
+          @click="clearFilters"
+        >
+          <BaseIcon name="close" size="sm" />
+          {{ t('tours.list.clearFiltersBtn') }}
+        </BaseButton>
+      </div>
 
       <TourFiltersPanel
         v-if="filtersExpanded"
@@ -286,6 +306,25 @@ function handleRowClick(tourId: string) {
 }
 
 /* Visual styling comes from BaseButton (secondary); only layout lives here. */
+.filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+
+  /* Pinned to the top of the overlay's scroll region (`.content` in bottom-sheet,
+     `.drawer-content` in side-drawer) — same pattern as `.detail-header` in
+     contact-detail-view. `sticky`, not `fixed`, so on mobile the row travels with
+     the sheet when it is dragged between snap points. The expanded panel is tall
+     enough to push its own collapse/reset controls off screen; keeping the row
+     pinned means both stay one tap away at any scroll depth. Opaque background +
+     z-index so the filter chips scrolling underneath do not show through. */
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--color-background);
+  padding-block: var(--spacing-xs);
+}
+
 .filters-trigger {
   align-self: flex-start;
 }

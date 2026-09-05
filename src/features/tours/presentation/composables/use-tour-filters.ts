@@ -180,8 +180,7 @@ export function useTourFilters(tab: TourTab = 'owned') {
     return count
   })
 
-  function clearAll() {
-    searchQuery.value = ''
+  function clearFilters() {
     filters.partnerIds = new Set()
     filters.tourTypes = new Set()
     filters.seasons = new Set()
@@ -190,5 +189,10 @@ export function useTourFilters(tab: TourTab = 'owned') {
     filters.completion = 'all'
   }
 
-  return { searchQuery, filters, filteredTours, activeFilterCount, clearAll }
+  function clearAll() {
+    searchQuery.value = ''
+    clearFilters()
+  }
+
+  return { searchQuery, filters, filteredTours, activeFilterCount, clearFilters, clearAll }
 }
