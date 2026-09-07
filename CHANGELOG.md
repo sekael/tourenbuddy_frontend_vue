@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.40.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.39.0...tourenbuddy-frontend-v0.40.0) (2026-09-05)
+
+
+### Features
+
+* **tours:** Clear all filters from a sticky toolbar button ([#291](https://github.com/sekael/tourenbuddy_frontend_vue/issues/291)) ([fd1f1e8](https://github.com/sekael/tourenbuddy_frontend_vue/commit/fd1f1e8531e58558747478f07254adf9c73cce11))
+
+
+### Bug Fixes
+
+* Map page scroll lock ([#288](https://github.com/sekael/tourenbuddy_frontend_vue/issues/288)) ([9f88c93](https://github.com/sekael/tourenbuddy_frontend_vue/commit/9f88c93abc2e61f71b61b823c226162c5dda2072))
+* Onboarding tour ([#290](https://github.com/sekael/tourenbuddy_frontend_vue/issues/290)) ([721bbdd](https://github.com/sekael/tourenbuddy_frontend_vue/commit/721bbdd8f0a9b53c96a5980c48f55c373ebbfd03))
+
 ## [0.39.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.38.0...tourenbuddy-frontend-v0.39.0) (2026-09-02)
 
 
