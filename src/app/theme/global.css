@@ -43,22 +43,44 @@ body {
 /* Document scroll lock, toggled by `useScrollLock`. Routes that own the whole
    viewport (the map) hold it for their lifetime; the onboarding tour holds it
    while its viewport-fixed spotlight is up.
-   `body { position: fixed }` is the load-bearing half: on iOS `overflow: hidden`
-   alone does NOT stop momentum, rubber-band, or address-bar scroll, and that
-   residual document scroll slides the map canvas out from under the location
-   picker's crosshair.
-   Deliberately NO `touch-action` here — that would impose a gesture policy on
-   the map canvas and on every scroll region inside an overlay. */
-html.scroll-locked,
-html.scroll-locked body {
-  overflow: hidden;
+
+   This REMOVES the scroll rather than blocking it. On the map route the only box
+   taller than the viewport is `#app`'s `100lvh` floor above — the page root is
+   `position: fixed` and contributes no height, sheets likewise — so dropping
+   that floor leaves nothing to scroll. `overscroll-behavior: none` then stops
+   iOS rubber-band, and unlike the alternatives it does not change whether the
+   document is scrollable, so it is safe to apply everywhere. */
+html.scroll-locked {
   overscroll-behavior: none;
 }
 
-html.scroll-locked body {
-  position: fixed;
-  inset: 0;
+/* Browser tabs only. `#app`'s floor is `100lvh` — the chrome-HIDDEN height — so
+   in a tab it exceeds the viewport (measured on iOS: 735 vs 635) and that
+   surplus is the document scroll this lock exists to remove. Standalone has no
+   chrome to hide, so `100lvh === innerHeight` (852 vs 852) and there is no
+   surplus: the floor is already harmless.
+
+   Removing it there is not merely pointless, it is the bug. A document that is
+   exactly viewport-sized is non-scrollable, and iOS then shrinks the viewport
+   itself — `innerHeight` drops 852 → 793 — clipping the bottom 59px of every
+   fixed element and leaving <html>'s background as a white band over the home
+   indicator. Verified by painting the root red: the band turned red, i.e. it is
+   the document canvas showing through where content is no longer painted. */
+@media not all and (display-mode: standalone) {
+  html.scroll-locked #app {
+    min-height: 0;
+  }
 }
+
+/* Deliberately NO `overflow: hidden` on the root, and no `body { position:
+   fixed }` — both make the document non-scrollable, which is the shrink
+   described above. A route whose CONTENT is taller than the viewport therefore
+   cannot be locked from here at all; it stops the gesture on its own subtree
+   with `touch-action: none` instead (see `.calendar-page--tour-locked`).
+
+   Deliberately NO `touch-action` at this level either — that would impose a
+   gesture policy on the map canvas and on every scroll region inside an
+   overlay. */
 
 button {
   cursor: pointer;
