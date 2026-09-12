@@ -220,6 +220,11 @@ const seasonsTourActive = computed(() => tourRunning.value && activeView.value =
 // popovers must pin together with the page. Unlike the map route, the calendar
 // scrolls normally the rest of the time, so this is the reactive shape.
 const tourLockActive = computed(() => tourRunning.value || tourWelcome.value)
+// Soft only — the class also drives `seasons-gantt`'s locked layout. Blocking
+// this page's scroll outright is NOT possible on iOS: a non-scrollable document
+// shrinks the viewport (852 → 793 measured in the standalone PWA) and clips the
+// bottom of the page. `.calendar-page--tour-locked` below stops the gesture
+// instead, which leaves the document scrollable and the viewport intact.
 useScrollLock(tourLockActive)
 
 // Entering the planned view from seasons (nav tab or back) scrolls to today, the
@@ -292,7 +297,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="calendar-page">
+  <div class="calendar-page" :class="{ 'calendar-page--tour-locked': tourLockActive }">
     <!-- Teleported to <body> so they share driver.js' top-level stacking context
          (driver appends its overlay to body), same as the map tour. -->
     <Teleport to="body">
@@ -512,6 +517,19 @@ onMounted(() => {
   padding-top: calc(var(--onboarding-tour-banner-h, 7rem) + var(--safe-top) + var(--spacing-md));
   --season-min: 0px;
   --label-w: 128px;
+}
+
+/* During the guided tour, kill touch panning on the page subtree: driver.js
+   positions each spotlight ONCE, so any scroll drags it off its target. The
+   effective `touch-action` is intersected from the touched element up to the
+   scrolling ancestor, so `none` here stops the document scrolling for any touch
+   that starts inside the page — which is all of it.
+   This rather than a document-level `overflow: hidden`, which would make the
+   document non-scrollable and shrink the iOS viewport (see `useScrollLock`
+   above). Driver's popover and backdrop are teleported to <body>, outside this
+   subtree, so tap-to-advance keeps working. */
+.calendar-page--tour-locked {
+  touch-action: none;
 }
 
 /* Host for the contact sheet/dialog (same pattern as map-page): fixed to the
