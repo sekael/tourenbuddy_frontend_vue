@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
 import { storeToRefs } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import { isOnline } from '@/core/offline/use-online-status'
 import { MAX_ATTACHMENTS_PER_TOUR } from '@/features/tours/data/models/tour-attachment'
+import TourAttachmentUploadRow from '@/features/tours/presentation/components/tour-attachment-upload-row.vue'
 import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 
 const props = defineProps<{
@@ -15,6 +16,11 @@ const props = defineProps<{
   tourId?: string
   /** draftId for create-flow staging. */
   draftId?: string
+  /**
+   * Create-flow only: the pre-minted tour id picked files upload to right away (design D5).
+   * Absent in suggest mode, which cannot write the owner's bucket path and stages instead.
+   */
+  uploadTourId?: string
   attachments: TourAttachment[]
   /**
    * Files the tour already holds that these ones ADD to — suggest mode, where `attachments`
@@ -28,11 +34,26 @@ const props = defineProps<{
 
 const { t } = useI18n({ useScope: 'global' })
 const store = useTourAttachmentsStore()
-const { loading, error } = storeToRefs(store)
+const { error } = storeToRefs(store)
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const confirmDeleteTarget = ref<TourAttachment | null>(null)
 const dragFrom = ref<number | null>(null)
+
+/** Uploads for this surface — keyed on the real tour id (edit) or the pre-minted one (create). */
+const pending = computed(() => {
+  const key = props.tourId ?? props.uploadTourId
+  return key ? (store.pendingByTour[key] ?? []) : []
+})
+
+/**
+ * In-flight files occupy slots too (design D7). Without counting them, picking 3 while 3 are
+ * uploading passes the gate and only the server trigger stops it — the second route to the
+ * reported cap error.
+ */
+const occupied = computed(
+  () => props.attachments.length + pending.value.length + (props.baseCount ?? 0),
+)
 
 function openFilePicker() {
   fileInput.value?.click()
@@ -46,7 +67,11 @@ async function onFilesSelected(event: Event) {
   if (!files.length)
     return
 
-  if (props.draftId) {
+  if (props.draftId && props.uploadTourId) {
+    // Create flow: upload now against the pre-minted tour id, like GPX (design D5).
+    await store.preUpload(props.draftId, props.uploadTourId, files, props.baseCount ?? 0)
+  }
+  else if (props.draftId) {
     store.stage(props.draftId, files, props.baseCount ?? 0)
   }
   else if (props.tourId) {
@@ -63,7 +88,12 @@ async function confirmDelete() {
   confirmDeleteTarget.value = null
   if (!target)
     return
-  await store.remove(target)
+  // Create flow: the file is in Storage but has no row yet (design D5), so `remove()` would
+  // delete nothing and leave the object behind.
+  if (props.draftId && props.uploadTourId)
+    await store.discardPreUploaded(props.draftId, target.id)
+  else
+    await store.remove(target)
 }
 
 function cancelDelete() {
@@ -152,16 +182,21 @@ async function onDrop(toIndex: number) {
       </li>
     </ul>
 
-    <!-- Add button / upload spinner. Attachments are online-only (DC10): while offline
+    <!-- One row per in-flight / failed upload: filename, determinate progress, cancel —
+         or retry + dismiss once failed (design D4/D6). Replaces the batch-wide spinner. -->
+    <div v-if="pending.length" class="picker__uploads">
+      <TourAttachmentUploadRow v-for="entry in pending" :key="entry.id" :entry="entry" />
+    </div>
+
+    <!-- Add button. Attachments are online-only (DC10): while offline
          the control is disabled and replaced by a hint — reading existing ones is unaffected. -->
     <div class="picker__add-row">
       <p v-if="!isOnline" class="picker__limit-reached">
         <BaseIcon name="cloud_off" size="sm" />
         {{ t('offlineSync.attachmentsOnlineOnly') }}
       </p>
-      <span v-else-if="loading" class="picker__spinner" />
       <BaseButton
-        v-else-if="attachments.length + (baseCount ?? 0) < MAX_ATTACHMENTS_PER_TOUR"
+        v-else-if="occupied < MAX_ATTACHMENTS_PER_TOUR"
         type="button"
         variant="secondary"
         size="sm"
@@ -248,21 +283,10 @@ async function onDrop(toIndex: number) {
   color: var(--color-on-surface-variant);
 }
 
-.picker__spinner {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--color-outline-variant);
-  border-top-color: var(--color-primary);
-  border-radius: 50%;
-  animation: picker-spin 0.7s linear infinite;
-  flex-shrink: 0;
-}
-
-@keyframes picker-spin {
-  to {
-    transform: rotate(360deg);
-  }
+.picker__uploads {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs);
 }
 
 .picker__hidden-input {

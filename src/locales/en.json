@@ -530,7 +530,13 @@
         "next": "Next",
         "previous": "Previous",
         "page": "Page {page} of {total}"
-      }
+      },
+      "uploadFailed": "Upload failed. Try again.",
+      "uploading": "Uploading…",
+      "cancelUpload": "Cancel upload",
+      "retryUpload": "Retry upload",
+      "dismissUpload": "Remove file",
+      "loadFailed": "Could not load the files for this tour."
     },
     "suggestions": {
       "suggestBtn": "Suggest changes",

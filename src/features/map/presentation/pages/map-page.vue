@@ -761,7 +761,8 @@ async function performCreate(
     const newId = await toursStore.createTourFromDraft(draft, goal, preUploadedTourId)
     if (newId) {
       mapStore.selectTour(newId)
-      // Upload staged attachments now that the tour row exists
+      // The bytes are already in Storage (pre-uploaded on pick, design D5) — this only
+      // inserts the rows, which need the tour row to exist for their FK.
       if (draftId)
         await attachmentsStore.commitStaged(draftId, newId)
       // Fire-and-forget: Worker scans for friend-owned colliding tours and dispatches

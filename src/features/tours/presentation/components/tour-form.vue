@@ -184,10 +184,35 @@ const attachmentsStore = useTourAttachmentsStore()
  * gives us the existing picker validation (mime, 10 MB, HEIC) for free.
  */
 const draftId = props.initialDraft && !isSuggest ? null : uuidv4()
-/** Staged files (create-flow) or persisted attachments (edit-flow). */
+/** Create mode = staging a brand-new tour (suggest mode also has a draftId but no tour of its own). */
+const isCreate = draftId !== null && !isSuggest
+/**
+ * Create mode: the tour id attachments pre-upload under (design D5), minted on the first
+ * pick and reused for the whole form — including as the created tour's id, so the path's
+ * middle segment matches. Picking a GPX afterwards re-mints `pendingTourId` (its own
+ * replace semantics), which leaves the attachment folder naming a different uuid; harmless,
+ * since storage RLS only checks the FIRST path segment and rows carry the real `tour_id`.
+ */
+const attachmentTourId = draftId && !isSuggest ? crypto.randomUUID() : null
+
+/** Staged/pre-uploaded files (create + suggest) or persisted attachments (edit-flow). */
 const attachments = computed<TourAttachment[]>(() => {
+  if (isCreate && draftId) {
+    // Create mode — bytes are already in Storage; rows follow the tour insert (design D5).
+    return (attachmentsStore.preUploadedByDraft[draftId] ?? []).map((f, i) => ({
+      id: f.id,
+      tourId: attachmentTourId ?? '',
+      userId: '',
+      storagePath: f.storagePath,
+      mimeType: f.mimeType as TourAttachment['mimeType'],
+      sizeBytes: f.sizeBytes,
+      originalFilename: f.originalFilename,
+      sortOrder: i,
+      createdAt: new Date(),
+    }))
+  }
   if (draftId) {
-    // Create mode — staged in memory as File objects; mirror as pseudo-attachment list
+    // Suggest mode — staged in memory as File objects; mirror as pseudo-attachment list
     return (attachmentsStore.stagedByDraft[draftId] ?? []).map((f, i) => ({
       id: `staged-${i}`,
       tourId: '',
@@ -468,8 +493,14 @@ function handleCancel() {
     clearPendingUpload(pendingGpxKey.value).catch(() => {})
     pendingGpxKey.value = null
   }
-  // Clear any staged attachment files so no orphans remain
-  if (draftId)
+  // Create mode pre-uploads its attachments (design D5), so abandoning the draft must abort
+  // anything in flight and delete the objects + cached bytes — the same teardown the GPX
+  // pre-upload already carries. No rows exist yet, so nothing else can leak.
+  // EDIT mode deliberately does NOT cancel uploads: an attachment row is independent of the
+  // tour save, so closing the sheet must not discard a file the user already added.
+  if (draftId && !isSuggest)
+    void attachmentsStore.discardDraft(draftId, attachmentTourId)
+  else if (draftId)
     attachmentsStore.clearStaged(draftId)
   emit('cancel')
 }
@@ -523,10 +554,11 @@ function formatPoint(point: { lng: number, lat: number }) {
 }
 
 function handleSubmit() {
-  // `disabled` covers the location-picker; `isUploadingGpx` is the in-form submit
-  // button's disabled state — guard it here too since an external (top-bar) Save
-  // button bypasses that attribute.
-  if (props.disabled || isUploadingGpx.value)
+  // `disabled` covers the location-picker; the upload flags are the in-form submit
+  // button's disabled state — guard them here too since an external (top-bar) Save
+  // button bypasses that attribute. A FAILED attachment upload is settled and does not
+  // count, so a hard failure can't dead-end the form (design D6).
+  if (props.disabled || isUploadingGpx.value || attachmentsStore.uploading)
     return
   // An unacceptable batch must not be sendable: the owner would only meet it as a cap
   // error on accept, with no way to fix it from their side.
@@ -545,7 +577,12 @@ function handleSubmit() {
   }
 
   const effectiveGpxFilepath = gpxRemoved.value ? null : (pendingGpxKey.value ?? gpxFilepath.value)
-  const preUploadedTourId = pendingTourId.value
+  // Attachments pre-uploaded under `attachmentTourId` want the created tour to carry that
+  // id, so the storage folder matches the row. GPX wins when both minted one.
+  const hasPreUploadedAttachments
+    = !!draftId && (attachmentsStore.preUploadedByDraft[draftId]?.length ?? 0) > 0
+  const preUploadedTourId
+    = pendingTourId.value ?? (hasPreUploadedAttachments ? attachmentTourId : null)
 
   const draft: TourDraft = {
     name: tourName.value.trim(),
@@ -1005,6 +1042,7 @@ defineExpose({ cancel: handleCancel })
           <TourAttachmentsPicker
             :tour-id="isSuggest ? undefined : tourId"
             :draft-id="draftId ?? undefined"
+            :upload-tour-id="attachmentTourId ?? undefined"
             :attachments="attachments"
             :base-count="keptAttachmentCount"
             :limit-label="isSuggest ? t('tours.suggestions.capHintSuggester', { max: MAX_ATTACHMENTS_PER_TOUR }) : undefined"
@@ -1022,7 +1060,7 @@ defineExpose({ cancel: handleCancel })
         </BaseButton>
         <BaseButton
           type="submit" variant="primary" size="sm" data-testid="submit-btn"
-          :disabled="isUploadingGpx || attachmentOverflow > 0"
+          :disabled="isUploadingGpx || attachmentsStore.uploading || attachmentOverflow > 0"
         >
           {{ submitLabel }}
         </BaseButton>

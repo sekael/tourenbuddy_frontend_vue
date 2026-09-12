@@ -51,11 +51,29 @@ export function clearPendingUpload(key: string): Promise<undefined> {
  *   - offline: serve the cached bytes.
  * Returns `undefined` when neither the network nor the cache can supply them (never
  * viewed online) — callers surface their existing "unavailable" fallback.
+ *
+ * `preferCache` (design D2) inverts that order for callers whose key is IMMUTABLE: a cache
+ * hit is returned with NO request at all. Sound only because an attachment path
+ * (`<uid>/<tourId>/<uuid>.<ext>`) is never upserted — an "edit" is a delete plus a fresh
+ * uuid — so a hit is byte-identical to the server by construction. Adding an upsert on an
+ * attachment path breaks THIS read path too, not just the write. GPX must NOT pass the flag:
+ * `<uid>/<tourId>.gpx` IS upserted on replace, so a hit there could render the old track.
  */
 export async function loadCachedBlob(
   key: string,
   fetchFresh: () => Promise<Blob>,
+  opts: { preferCache?: boolean } = {},
 ): Promise<Blob | undefined> {
+  if (opts.preferCache) {
+    try {
+      const cached = await getCached<Blob>(`blob:${key}`)
+      if (cached)
+        return cached
+    }
+    catch {
+      // Cache unreadable — fall through to the normal online-first path below.
+    }
+  }
   if (isOnline.value) {
     try {
       const blob = await fetchFresh()
