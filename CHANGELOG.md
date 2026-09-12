@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.40.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.40.0...tourenbuddy-frontend-v0.40.1) (2026-09-12)
+
+
+### Bug Fixes
+
+* **map:** Stop iOS PWA viewport shrink from the scroll lock ([#293](https://github.com/sekael/tourenbuddy_frontend_vue/issues/293)) ([d4b0246](https://github.com/sekael/tourenbuddy_frontend_vue/commit/d4b0246d63dff7cb473ea384bbaa88278e5f6bd1))
+
 ## [0.40.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.39.0...tourenbuddy-frontend-v0.40.0) (2026-09-05)
 
 
