@@ -562,7 +562,7 @@ const sheetCollapsed = computed(
 const editAsPage = computed(
   () => !isDesktop.value && (mode.value === 'edit' || mode.value === 'suggest') && !isPicking.value,
 )
-const editFormRef = ref<{ cancel: () => void } | null>(null)
+const editFormRef = ref<{ cancel: () => void, submitBlocked: boolean } | null>(null)
 
 function handleSheetClose() {
   // In page mode the top-bar cancel returns to view mode and runs the form's
@@ -1106,7 +1106,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
     <template v-if="editAsPage && (mode === 'edit' || mode === 'suggest')" #page-action>
       <BaseButton
         type="submit" :form="mode === 'edit' ? 'tour-edit-form' : 'tour-suggest-form'"
-        variant="primary" size="md"
+        variant="primary" size="md" :disabled="editFormRef?.submitBlocked"
       >
         {{ mode === 'edit' ? t('tours.infoSheet.saveLabel') : t('tours.suggestions.submitBtn') }}
       </BaseButton>

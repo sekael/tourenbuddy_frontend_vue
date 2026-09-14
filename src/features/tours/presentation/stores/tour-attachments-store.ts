@@ -336,7 +336,8 @@ export const useTourAttachmentsStore = defineStore('tourAttachments', () => {
         // so an abandoned draft can never leave rows behind.
         await repository.uploadObject(input)
         preUploadedByDraft.value[entry.draftId] = [
-          ...(preUploadedByDraft.value[entry.draftId] ?? []),
+          // Same replace-by-id rule as the edit flow: a retried entry is already listed.
+          ...(preUploadedByDraft.value[entry.draftId] ?? []).filter(a => a.id !== entry.id),
           {
             id: entry.id,
             storagePath: entry.storagePath,
@@ -348,8 +349,11 @@ export const useTourAttachmentsStore = defineStore('tourAttachments', () => {
       }
       else {
         const row = await repository.add(input)
+        // Replace-by-id, not blind append: a retry can land a row that a `load()` in the
+        // meantime already pulled in (the first attempt may have inserted it and only lost
+        // the response), and the same id twice in the list would render a duplicate card.
         attachmentsByTour.value[entry.tourId] = [
-          ...(attachmentsByTour.value[entry.tourId] ?? []),
+          ...(attachmentsByTour.value[entry.tourId] ?? []).filter(a => a.id !== row.id),
           row,
         ]
         writeSeq.value++

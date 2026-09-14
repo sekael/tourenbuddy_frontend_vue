@@ -60,11 +60,11 @@
 
 ## 11. Device verification (not covered by CI)
 
-- [ ] 11.1 **Installed PWA on a real phone, throttled connection.** Add 4 photos to an existing tour: thumbnails appear immediately, progress advances per file, Save disabled until they finish. Re-open the tour — all 4 still listed (the issue's first screenshot pair), and re-opening issues no downloads (DevTools network on desktop for the same check)
-- [ ] 11.2 Same setup: cancel an upload at partial progress → Save re-enables at once, the cancelled file is absent, siblings survive, the edited tour name still saves
+- [x] 11.1 **Installed PWA on a real phone, throttled connection.** Add 4 photos to an existing tour: thumbnails appear immediately, progress advances per file, Save disabled until they finish. Re-open the tour — all 4 still listed (the issue's first screenshot pair), and re-opening issues no downloads (DevTools network on desktop for the same check)
+- [x] 11.2 Same setup: cancel an upload at partial progress → Save re-enables at once, the cancelled file is absent, siblings survive, the edited tour name still saves
 - [ ] 11.3 Kill the connection mid-upload → failed row with Retry disabled; restore connection → Retry works without re-picking
-- [ ] 11.4 Create a NEW tour with 3 photos on a slow link → progress shows while still filling the form, Save waits, and the tour appears with all 3 attachments already present. Cancel a create with photos pre-uploaded → no rows, and the storage objects are gone
-- [ ] 11.5 Take 3 photos with the camera in succession → list shows `image.jpg`, `image1.jpg`, `image2.jpg`
+- [x] 11.4 Create a NEW tour with 3 photos on a slow link → progress shows while still filling the form, Save waits, and the tour appears with all 3 attachments already present. Cancel a create with photos pre-uploaded → no rows, and the storage objects are gone
+- [x] 11.5 Take 3 photos with the camera in succession → list shows `image.jpg`, `image1.jpg`, `image2.jpg`
 - [ ] 11.6 With 4 attachments, try to add 2 more, and separately pick 3 while 3 are uploading → both show the localized remaining-capacity message, never `tour_attachment_limit_exceeded: …`
 - [ ] 11.7 Repeat 11.1 in mobile Safari and a desktop browser (issue asks for parity). Confirm GPX still uploads, blocks Save, and cleans up on cancel — and that a REPLACED GPX renders the new track, not the cached old one (the `preferCache` exclusion)
 - [ ] 11.8 Offline: open a previously-viewed tour → attachments still render from cache; the add control is disabled with the online-only hint (DC10 unchanged)

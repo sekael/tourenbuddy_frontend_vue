@@ -50,15 +50,27 @@ export class SupabaseTourAttachmentRepository implements TourAttachmentRepositor
     const { file, mimeType, tourId, userId, id, signal, onProgress } = input
     const storagePath = attachmentStoragePath(userId, tourId, id, mimeType)
 
-    await uploadWithProgress(BUCKET, storagePath, file, { contentType: mimeType, signal, onProgress })
+    // `upsert` makes a retry idempotent: a first attempt that PUT the bytes but died before
+    // (or during) the row insert leaves the object behind, and the orphan cleanup is itself
+    // best-effort — offline it never runs. Without upsert the signed-upload-URL call then
+    // fails with "resource already exists" forever, so Retry can never succeed. Safe to
+    // overwrite: the path carries the attachment's own uuid, so only this entry owns it.
+    await uploadWithProgress(BUCKET, storagePath, file, {
+      contentType: mimeType,
+      upsert: true,
+      signal,
+      onProgress,
+    })
 
     return storagePath
   }
 
   async insertRow(input: AttachmentRowInput): Promise<TourAttachment> {
+    // Upsert, not insert, for the same reason the object upload upserts: the id is minted
+    // client-side, so a retry after a lost response must not die on a duplicate-key 409.
     const { data, error } = await supabase
       .from('tour_attachments')
-      .insert({
+      .upsert({
         id: input.id,
         tour_id: input.tourId,
         user_id: input.userId,

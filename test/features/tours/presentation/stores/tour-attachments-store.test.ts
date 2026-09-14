@@ -381,4 +381,32 @@ describe('useTourAttachmentsStore — upload lifecycle', () => {
     expect(store.uploading).toBe(false)
     expect(store.error).toBe('tours.attachments.uploadFailed')
   })
+
+  it('should settle a retried upload once the connection is back', async () => {
+    const store = useTourAttachmentsStore()
+    mockAdd.mockRejectedValueOnce(new Error('network down'))
+
+    await store.add('tour-1', [makeFile('a.jpg', 'image/jpeg')])
+    const { id } = store.pendingByTour['tour-1'][0]
+    mockAdd.mockResolvedValueOnce(attachment(id))
+    await store.retryUpload(id)
+
+    expect(store.pendingByTour['tour-1']).toHaveLength(0)
+    expect(store.attachmentsByTour['tour-1'].map(a => a.id)).toEqual([id])
+    expect(store.error).toBeNull()
+  })
+
+  it('should not duplicate a row whose first attempt landed before the response was lost', async () => {
+    const store = useTourAttachmentsStore()
+    mockAdd.mockRejectedValueOnce(new Error('network down'))
+
+    await store.add('tour-1', [makeFile('a.jpg', 'image/jpeg')])
+    const { id } = store.pendingByTour['tour-1'][0]
+    // The insert had in fact succeeded; a load() in the meantime pulled the row in.
+    store.attachmentsByTour['tour-1'] = [attachment(id)]
+    mockAdd.mockResolvedValueOnce(attachment(id))
+    await store.retryUpload(id)
+
+    expect(store.attachmentsByTour['tour-1'].map(a => a.id)).toEqual([id])
+  })
 })

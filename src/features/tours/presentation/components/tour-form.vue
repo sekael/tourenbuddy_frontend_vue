@@ -553,16 +553,20 @@ function formatPoint(point: { lng: number, lat: number }) {
   return `${point.lat.toFixed(4)}°N, ${point.lng.toFixed(4)}°E`
 }
 
+// Single source of truth for "saving is not permitted right now": the in-form submit
+// button, the top-bar Save buttons (via `defineExpose`) and `handleSubmit` all read it,
+// so the guard and the greyed-out state can never disagree. A FAILED attachment upload
+// is settled and does not count, so a hard failure can't dead-end the form (design D6).
+// Overflow is in here too: an unacceptable batch must not be sendable, the owner would
+// only meet it as a cap error on accept with no way to fix it from their side.
+const submitBlocked = computed(
+  () => isUploadingGpx.value || attachmentsStore.uploading || attachmentOverflow.value > 0,
+)
+
 function handleSubmit() {
-  // `disabled` covers the location-picker; the upload flags are the in-form submit
-  // button's disabled state — guard them here too since an external (top-bar) Save
-  // button bypasses that attribute. A FAILED attachment upload is settled and does not
-  // count, so a hard failure can't dead-end the form (design D6).
-  if (props.disabled || isUploadingGpx.value || attachmentsStore.uploading)
-    return
-  // An unacceptable batch must not be sendable: the owner would only meet it as a cap
-  // error on accept, with no way to fix it from their side.
-  if (attachmentOverflow.value > 0)
+  // `disabled` covers the location-picker; `submitBlocked` is guarded here too since an
+  // external (top-bar) Save button bypasses the `disabled` attribute.
+  if (props.disabled || submitBlocked.value)
     return
   if (!tourName.value.trim()) {
     nameError.value = true
@@ -615,8 +619,9 @@ function handleSubmit() {
 }
 
 // Let a full-screen page's top-bar cancel run the same cleanup as the in-form
-// Cancel button (orphaned GPX upload + staged attachments).
-defineExpose({ cancel: handleCancel })
+// Cancel button (orphaned GPX upload + staged attachments), and its Save mirror the
+// in-form button's disabled state.
+defineExpose({ cancel: handleCancel, submitBlocked })
 </script>
 
 <template>
@@ -961,7 +966,7 @@ defineExpose({ cancel: handleCancel })
           <input
             ref="gpxInputRef"
             type="file"
-            accept=".gpx,application/gpx+xml"
+            accept=".gpx,application/gpx+xml,application/xml,text/xml,application/octet-stream"
             class="hidden-input"
             @change="handleGpxUpload"
           >
@@ -1060,7 +1065,7 @@ defineExpose({ cancel: handleCancel })
         </BaseButton>
         <BaseButton
           type="submit" variant="primary" size="sm" data-testid="submit-btn"
-          :disabled="isUploadingGpx || attachmentsStore.uploading || attachmentOverflow > 0"
+          :disabled="submitBlocked"
         >
           {{ submitLabel }}
         </BaseButton>
