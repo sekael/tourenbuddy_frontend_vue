@@ -150,8 +150,10 @@ async function onDrop(toIndex: number) {
         @dragover="onDragOver"
         @drop="onDrop(index)"
       >
-        <!-- Inline delete confirm state -->
-        <template v-if="confirmDeleteTarget?.id === attachment.id">
+        <!-- Inline delete confirm state. Gated on `isOnline` alongside the delete button
+             below, so losing the connection mid-confirm drops back to the normal row
+             instead of offering a Delete that cannot run. -->
+        <template v-if="isOnline && confirmDeleteTarget?.id === attachment.id">
           <div class="picker__confirm-actions">
             <BaseButton variant="secondary" size="sm" @click="cancelDelete">
               {{ t('tours.infoSheet.cancelBtn') }}
@@ -170,7 +172,11 @@ async function onDrop(toIndex: number) {
             class="picker__file-icon"
           />
           <span class="picker__filename">{{ attachment.originalFilename }}</span>
+          <!-- Attachments are online-only (DC10): deleting one offline can neither drop the
+               row nor the object, so the control is absent rather than dead. The add-row
+               hint below already says why — no second notice per file. -->
           <BaseIconButton
+            v-if="isOnline"
             name="delete"
             :label="t('tours.attachments.delete')"
             shape="square"
