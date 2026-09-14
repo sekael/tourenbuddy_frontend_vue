@@ -16,7 +16,6 @@ vi.mock('@/core/utils/supabase', () => ({
   supabase: {
     storage: {
       from: vi.fn().mockReturnValue({
-        upload: mockUpload,
         remove: mockRemove,
         createSignedUrl: mockCreateSignedUrl,
       }),
@@ -24,26 +23,44 @@ vi.mock('@/core/utils/supabase', () => ({
   },
 }))
 
+// Uploads go through the shared XHR transport, which has its own tests (abort, non-2xx,
+// already-aborted signal). Stubbing it keeps this file about the GPX key + options contract.
+vi.mock('@/core/utils/storage-upload', () => ({ uploadWithProgress: mockUpload }))
+
 describe('gpxStorageService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   describe('uploadGpx', () => {
-    it('returns the user-prefixed key on success', async () => {
-      mockUpload.mockResolvedValue({ error: null })
+    it('upserts the stable key, so replacing an existing track cannot 409', async () => {
+      mockUpload.mockResolvedValue(undefined)
       const file = new File(['gpx-content'], 'track.gpx')
       const result = await uploadGpx('user-123', 'tour-abc', file)
       expect(result).toBe('user-123/tour-abc.gpx')
       expect(mockUpload).toHaveBeenCalledWith(
+        'tour-gpx',
         'user-123/tour-abc.gpx',
         file,
-        expect.objectContaining({ upsert: true }),
+        expect.objectContaining({ upsert: true, contentType: 'application/gpx+xml' }),
+      )
+    })
+
+    it('does not let a caller downgrade upsert or content type', async () => {
+      mockUpload.mockResolvedValue(undefined)
+      const file = new File(['gpx-content'], 'track.gpx')
+      // @ts-expect-error — narrowed options type; guarding the runtime spread order too.
+      await uploadGpx('user-123', 'tour-abc', file, { upsert: false, contentType: 'text/plain' })
+      expect(mockUpload).toHaveBeenCalledWith(
+        'tour-gpx',
+        'user-123/tour-abc.gpx',
+        file,
+        expect.objectContaining({ upsert: true, contentType: 'application/gpx+xml' }),
       )
     })
 
     it('throws when upload fails', async () => {
-      mockUpload.mockResolvedValue({ error: { message: 'storage full' } })
+      mockUpload.mockRejectedValue(new Error('storage full'))
       const file = new File(['gpx-content'], 'track.gpx')
       await expect(uploadGpx('user-123', 'tour-abc', file)).rejects.toThrow('storage full')
     })

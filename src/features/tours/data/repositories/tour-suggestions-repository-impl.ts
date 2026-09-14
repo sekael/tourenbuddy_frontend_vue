@@ -7,6 +7,7 @@ import type {
   TourSuggestionsRepository,
 } from '@/features/tours/domain/repositories/tour-suggestions-repository'
 import { v4 as uuidv4 } from 'uuid'
+import { uploadWithProgress } from '@/core/utils/storage-upload'
 import { supabase } from '@/core/utils/supabase'
 import { tourSuggestionRowSchema } from '@/features/tours/data/models/tour-suggestion'
 import { gpxStorageKey } from '@/features/tours/data/services/gpx-storage-service'
@@ -144,12 +145,11 @@ export class SupabaseTourSuggestionsRepository implements TourSuggestionsReposit
     file: File,
   ): Promise<string> {
     const path = stagedPath(userId, tourId, extOf(file.name) || (bucket === 'tour-gpx' ? '.gpx' : ''))
-    const { error } = await supabase.storage
-      .from(bucket)
-      .upload(path, file, { contentType: file.type || 'application/octet-stream' })
-
-    if (error)
-      throw new Error(error.message)
+    // One upload transport across the app (design D3). Transport only — staging must NOT
+    // write into the attachments store's `pendingByTour` (cross-feature store reach, D4).
+    await uploadWithProgress(bucket, path, file, {
+      contentType: file.type || 'application/octet-stream',
+    })
 
     return path
   }

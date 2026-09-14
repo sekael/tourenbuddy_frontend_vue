@@ -65,6 +65,35 @@ describe('loadCachedBlob (edges)', () => {
     expect(putCachedMock).not.toHaveBeenCalled()
   })
 
+  it('preferCache with a cached blob issues NO request at all', async () => {
+    // Attachment paths are immutable, so a hit cannot be stale (design D2) — and skipping
+    // the request is the whole point: re-opening a tour must cost no bandwidth.
+    getCachedMock.mockResolvedValue(blob)
+    const fetchFresh = vi.fn()
+
+    expect(await loadCachedBlob('u/t/a.jpg', fetchFresh, { preferCache: true })).toBe(blob)
+    expect(fetchFresh).not.toHaveBeenCalled()
+  })
+
+  it('preferCache with an unreadable cache still falls back to the network', async () => {
+    getCachedMock.mockRejectedValueOnce(new Error('idb gone')).mockResolvedValue(undefined)
+    const fetchFresh = vi.fn().mockResolvedValue(blob)
+
+    expect(await loadCachedBlob('u/t/a.jpg', fetchFresh, { preferCache: true })).toBe(blob)
+    expect(fetchFresh).toHaveBeenCalledOnce()
+  })
+
+  it('without the flag the online-first order is unchanged (GPX regression guard)', async () => {
+    // `<uid>/<tourId>.gpx` IS upserted on replace — serving a hit first would render the
+    // previous track.
+    getCachedMock.mockResolvedValue(blob)
+    const fresh = new Blob(['fresh'])
+    const fetchFresh = vi.fn().mockResolvedValue(fresh)
+
+    expect(await loadCachedBlob('u/t.gpx', fetchFresh)).toBe(fresh)
+    expect(fetchFresh).toHaveBeenCalledOnce()
+  })
+
   it('cache read throwing degrades to undefined, not a throw', async () => {
     isOnline.value = false
     getCachedMock.mockRejectedValue(new Error('idb gone'))

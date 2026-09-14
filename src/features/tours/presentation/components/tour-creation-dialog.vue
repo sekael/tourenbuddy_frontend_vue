@@ -57,7 +57,7 @@ const isPicking = computed(() => isPickingLocation.value)
 // hides the in-form action row (the page top bar provides Save/Cancel).
 const showAsPage = computed(() => !isPicking.value)
 const embedded = computed(() => !isDesktop.value && showAsPage.value)
-const formRef = ref<{ cancel: () => void } | null>(null)
+const formRef = ref<{ cancel: () => void, submitBlocked: boolean } | null>(null)
 
 function handleClose() {
   // In page mode the top-bar cancel must run the form's cleanup (orphaned GPX /
@@ -128,7 +128,10 @@ function handlePickPoint(type: 'start' | 'end' | 'goal') {
     />
 
     <template #page-action>
-      <BaseButton type="submit" form="tour-create-form" variant="primary" size="sm">
+      <BaseButton
+        type="submit" form="tour-create-form" variant="primary" size="sm"
+        :disabled="formRef?.submitBlocked"
+      >
         {{ t('tours.creation.saveBtn') }}
       </BaseButton>
     </template>

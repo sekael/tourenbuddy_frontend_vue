@@ -530,7 +530,13 @@
         "next": "Weiter",
         "previous": "Zurück",
         "page": "Seite {page} von {total}"
-      }
+      },
+      "uploadFailed": "Upload fehlgeschlagen. Bitte nochmals versuchen.",
+      "uploading": "Wird hochgeladen…",
+      "cancelUpload": "Upload abbrechen",
+      "retryUpload": "Upload wiederholen",
+      "dismissUpload": "Datei entfernen",
+      "loadFailed": "Die Dateien dieser Tour konnten nicht geladen werden."
     },
     "suggestions": {
       "suggestBtn": "Änderungen vorschlagen",

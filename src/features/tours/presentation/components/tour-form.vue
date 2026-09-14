@@ -32,6 +32,7 @@ import {
 } from '@/features/tours/data/services/gpx-parser'
 import { gpxStorageKey, removeGpx, uploadGpx, uploadGpxToKey } from '@/features/tours/data/services/gpx-storage-service'
 import TourAttachmentsPicker from '@/features/tours/presentation/components/tour-attachments-picker.vue'
+import UploadTile from '@/features/tours/presentation/components/upload-tile.vue'
 import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 
 const props = defineProps<{
@@ -171,7 +172,69 @@ const nameError = ref(false)
 const pendingGpxKey = ref<string | null>(null)
 const pendingTourId = ref<string | null>(null)
 const isUploadingGpx = ref(false)
+/**
+ * Fraction transferred, 0..1. Only meaningful while `isUploadingGpx` — both upload paths
+ * reset it to 0 when they raise that flag, so a value left behind by a failed or cancelled
+ * upload can never paint into the next one.
+ */
+const gpxProgress = ref(0)
 const wasCancelledDuringUpload = ref(false)
+
+/**
+ * Live only while a GPX upload is in flight, so the tile's Cancel button has something to
+ * abort. Staging offline creates none: nothing is transferred, so there is nothing to cancel.
+ */
+const gpxAbort = ref<AbortController | null>(null)
+
+/** Shared by both upload paths so the reset, the signal and the callback can never drift apart. */
+function startGpxUpload() {
+  gpxProgress.value = 0
+  isUploadingGpx.value = true
+  gpxAbort.value = new AbortController()
+  return {
+    signal: gpxAbort.value.signal,
+    onProgress: (fraction: number) => (gpxProgress.value = fraction),
+  }
+}
+
+/** Mirror of `startGpxUpload` — both upload paths call it from their `finally`. */
+function endGpxUpload() {
+  isUploadingGpx.value = false
+  gpxAbort.value = null
+}
+
+/**
+ * Abort an in-flight GPX upload. The transport rejects with an `AbortError`, which
+ * `onGpxUploadFailed` tells apart from a real failure — a cancel must not raise an error
+ * message. A no-op once the upload has settled and the controller is gone.
+ */
+function cancelGpxUpload() {
+  gpxAbort.value?.abort()
+}
+
+/**
+ * Both upload paths funnel failures here so a cancel and a genuine failure can never be
+ * handled two different ways. `key` is the object the attempt was writing to — an aborted
+ * PUT can still leave bytes behind, and nothing else will ever reference them.
+ */
+function onGpxUploadFailed(err: unknown, key: string) {
+  // Closing the form mid-upload aborts too, so it lands here as an AbortError — but the
+  // flag is checked as well for the case where it aborted a transfer that had no signal.
+  const cancelled
+    = (err instanceof DOMException && err.name === 'AbortError') || wasCancelledDuringUpload.value
+
+  // Both paths: an interrupted PUT can leave partial bytes under a key nothing will ever
+  // reference again. Best-effort, like every other teardown here — a failed delete must not
+  // replace the message the user is about to read.
+  removeGpx(key).catch(() => {})
+
+  gpxFile.value = null
+  pendingTourId.value = null
+  // `gpxFilepath` is deliberately untouched: cancelling a REPLACEMENT must leave the tour's
+  // existing track on screen, not strip it because the new one never arrived.
+  if (!cancelled)
+    gpxError.value = t('tours.form.gpxUploadFailed')
+}
 
 // ── Attachments (create-flow staging / edit-flow direct) ─────────────────────
 const attachmentsStore = useTourAttachmentsStore()
@@ -184,10 +247,35 @@ const attachmentsStore = useTourAttachmentsStore()
  * gives us the existing picker validation (mime, 10 MB, HEIC) for free.
  */
 const draftId = props.initialDraft && !isSuggest ? null : uuidv4()
-/** Staged files (create-flow) or persisted attachments (edit-flow). */
+/** Create mode = staging a brand-new tour (suggest mode also has a draftId but no tour of its own). */
+const isCreate = draftId !== null && !isSuggest
+/**
+ * Create mode: the tour id attachments pre-upload under (design D5), minted on the first
+ * pick and reused for the whole form — including as the created tour's id, so the path's
+ * middle segment matches. Picking a GPX afterwards re-mints `pendingTourId` (its own
+ * replace semantics), which leaves the attachment folder naming a different uuid; harmless,
+ * since storage RLS only checks the FIRST path segment and rows carry the real `tour_id`.
+ */
+const attachmentTourId = draftId && !isSuggest ? crypto.randomUUID() : null
+
+/** Staged/pre-uploaded files (create + suggest) or persisted attachments (edit-flow). */
 const attachments = computed<TourAttachment[]>(() => {
+  if (isCreate && draftId) {
+    // Create mode — bytes are already in Storage; rows follow the tour insert (design D5).
+    return (attachmentsStore.preUploadedByDraft[draftId] ?? []).map((f, i) => ({
+      id: f.id,
+      tourId: attachmentTourId ?? '',
+      userId: '',
+      storagePath: f.storagePath,
+      mimeType: f.mimeType as TourAttachment['mimeType'],
+      sizeBytes: f.sizeBytes,
+      originalFilename: f.originalFilename,
+      sortOrder: i,
+      createdAt: new Date(),
+    }))
+  }
   if (draftId) {
-    // Create mode — staged in memory as File objects; mirror as pseudo-attachment list
+    // Suggest mode — staged in memory as File objects; mirror as pseudo-attachment list
     return (attachmentsStore.stagedByDraft[draftId] ?? []).map((f, i) => ({
       id: `staged-${i}`,
       tourId: '',
@@ -394,18 +482,15 @@ async function handleGpxUpload(event: Event) {
       return
     }
     const key = `${userId}/suggestions/${props.tourId}/${crypto.randomUUID()}.gpx`
-    isUploadingGpx.value = true
     try {
-      await uploadGpxToKey(key, file)
+      await uploadGpxToKey(key, file, startGpxUpload())
       pendingGpxKey.value = key
     }
-    catch {
-      gpxError.value = t('tours.form.gpxUploadFailed')
-      gpxFile.value = null
-      pendingTourId.value = null
+    catch (err) {
+      onGpxUploadFailed(err, key)
     }
     finally {
-      isUploadingGpx.value = false
+      endGpxUpload()
     }
     return
   }
@@ -434,11 +519,10 @@ async function handleGpxUpload(event: Event) {
     return
   }
 
-  isUploadingGpx.value = true
   wasCancelledDuringUpload.value = false
 
   try {
-    const key = await uploadGpx(userId, newTourId, file)
+    const key = await uploadGpx(userId, newTourId, file, startGpxUpload())
     if (wasCancelledDuringUpload.value) {
       removeGpx(key).catch(() => {})
     }
@@ -446,21 +530,22 @@ async function handleGpxUpload(event: Event) {
       pendingGpxKey.value = key
     }
   }
-  catch {
-    if (!wasCancelledDuringUpload.value) {
-      gpxError.value = t('tours.form.gpxUploadFailed')
-      gpxFile.value = null
-    }
-    pendingTourId.value = null
+  catch (err) {
+    // The key `uploadGpx` would have returned — recomputed because the throw ate its return.
+    onGpxUploadFailed(err, gpxStorageKey(userId, newTourId))
   }
   finally {
-    isUploadingGpx.value = false
+    endGpxUpload()
   }
 }
 
 function handleCancel() {
   if (isUploadingGpx.value) {
+    // Abort kills the transfer now; the flag still matters for the race where the upload
+    // resolved a tick before this ran, so `abort()` is a no-op and the success branch has
+    // to delete the object it just wrote.
     wasCancelledDuringUpload.value = true
+    cancelGpxUpload()
   }
   else if (pendingGpxKey.value) {
     removeGpx(pendingGpxKey.value).catch(() => {})
@@ -468,13 +553,22 @@ function handleCancel() {
     clearPendingUpload(pendingGpxKey.value).catch(() => {})
     pendingGpxKey.value = null
   }
-  // Clear any staged attachment files so no orphans remain
-  if (draftId)
+  // Create mode pre-uploads its attachments (design D5), so abandoning the draft must abort
+  // anything in flight and delete the objects + cached bytes — the same teardown the GPX
+  // pre-upload already carries. No rows exist yet, so nothing else can leak.
+  // EDIT mode deliberately does NOT cancel uploads: an attachment row is independent of the
+  // tour save, so closing the sheet must not discard a file the user already added.
+  if (draftId && !isSuggest)
+    void attachmentsStore.discardDraft(draftId, attachmentTourId)
+  else if (draftId)
     attachmentsStore.clearStaged(draftId)
   emit('cancel')
 }
 
 function handleRemoveGpx() {
+  // Removing a track whose upload is still running would orphan the object: `pendingGpxKey`
+  // is not set yet, so the teardown below has nothing to delete.
+  cancelGpxUpload()
   if (pendingGpxKey.value) {
     removeGpx(pendingGpxKey.value).catch(() => {})
     evictCachedBlob(pendingGpxKey.value).catch(() => {})
@@ -522,15 +616,20 @@ function formatPoint(point: { lng: number, lat: number }) {
   return `${point.lat.toFixed(4)}°N, ${point.lng.toFixed(4)}°E`
 }
 
+// Single source of truth for "saving is not permitted right now": the in-form submit
+// button, the top-bar Save buttons (via `defineExpose`) and `handleSubmit` all read it,
+// so the guard and the greyed-out state can never disagree. A FAILED attachment upload
+// is settled and does not count, so a hard failure can't dead-end the form (design D6).
+// Overflow is in here too: an unacceptable batch must not be sendable, the owner would
+// only meet it as a cap error on accept with no way to fix it from their side.
+const submitBlocked = computed(
+  () => isUploadingGpx.value || attachmentsStore.uploading || attachmentOverflow.value > 0,
+)
+
 function handleSubmit() {
-  // `disabled` covers the location-picker; `isUploadingGpx` is the in-form submit
-  // button's disabled state — guard it here too since an external (top-bar) Save
-  // button bypasses that attribute.
-  if (props.disabled || isUploadingGpx.value)
-    return
-  // An unacceptable batch must not be sendable: the owner would only meet it as a cap
-  // error on accept, with no way to fix it from their side.
-  if (attachmentOverflow.value > 0)
+  // `disabled` covers the location-picker; `submitBlocked` is guarded here too since an
+  // external (top-bar) Save button bypasses the `disabled` attribute.
+  if (props.disabled || submitBlocked.value)
     return
   if (!tourName.value.trim()) {
     nameError.value = true
@@ -545,7 +644,12 @@ function handleSubmit() {
   }
 
   const effectiveGpxFilepath = gpxRemoved.value ? null : (pendingGpxKey.value ?? gpxFilepath.value)
-  const preUploadedTourId = pendingTourId.value
+  // Attachments pre-uploaded under `attachmentTourId` want the created tour to carry that
+  // id, so the storage folder matches the row. GPX wins when both minted one.
+  const hasPreUploadedAttachments
+    = !!draftId && (attachmentsStore.preUploadedByDraft[draftId]?.length ?? 0) > 0
+  const preUploadedTourId
+    = pendingTourId.value ?? (hasPreUploadedAttachments ? attachmentTourId : null)
 
   const draft: TourDraft = {
     name: tourName.value.trim(),
@@ -578,8 +682,9 @@ function handleSubmit() {
 }
 
 // Let a full-screen page's top-bar cancel run the same cleanup as the in-form
-// Cancel button (orphaned GPX upload + staged attachments).
-defineExpose({ cancel: handleCancel })
+// Cancel button (orphaned GPX upload + staged attachments), and its Save mirror the
+// in-form button's disabled state.
+defineExpose({ cancel: handleCancel, submitBlocked })
 </script>
 
 <template>
@@ -924,25 +1029,42 @@ defineExpose({ cancel: handleCancel })
           <input
             ref="gpxInputRef"
             type="file"
-            accept=".gpx,application/gpx+xml"
+            accept=".gpx,application/gpx+xml,application/xml,text/xml,application/octet-stream"
             class="hidden-input"
             @change="handleGpxUpload"
           >
-          <div v-if="gpxFile || gpxFilepath" class="gpx-filled-row">
-            <span class="gpx-filename">
-              <span v-if="isUploadingGpx" class="gpx-spinner" />
-              <BaseIcon v-else name="route" class="gpx-ok-icon" />
-              {{ gpxFile ? gpxFile.name : t('tours.form.gpxExistingTrack') }}
-              <span v-if="isUploadingGpx" class="gpx-uploading-label">{{
-                t('tours.form.gpxUploading')
-              }}</span>
-            </span>
-            <BaseTooltip :text="t('tours.form.gpxReplaceTooltip')">
+          <!-- Same tile as the attachment upload rows below it. `gpxProgress` is null unless
+               an upload is actually in flight: picking a GPX offline is allowed (it stages
+               and uploads on replay), and staging transfers nothing, so no bar appears. -->
+          <UploadTile
+            v-if="gpxFile || gpxFilepath"
+            class="gpx-filled-row"
+            :icon="isUploadingGpx ? 'upload_file' : 'route'"
+            :filename="gpxFile ? gpxFile.name : t('tours.form.gpxExistingTrack')"
+            :progress="isUploadingGpx ? gpxProgress : null"
+            :progress-label="t('tours.form.gpxUploading')"
+          >
+            <!-- Replace turns into Cancel for the duration of an upload — same swap the
+                 attachment rows make. Offline staging never sets `isUploadingGpx`, so the
+                 replace button stays put while a queued track syncs in the background. -->
+            <BaseTooltip
+              :text="isUploadingGpx ? t('tours.attachments.cancelUpload') : t('tours.form.gpxReplaceTooltip')"
+            >
               <BaseIconButton
+                v-if="isUploadingGpx"
+                name="close"
+                :label="t('tours.attachments.cancelUpload')"
+                shape="square"
+                size="sm"
+                data-testid="gpx-cancel-btn"
+                @click="cancelGpxUpload"
+              />
+              <BaseIconButton
+                v-else
                 name="upload_file"
                 :label="t('tours.form.gpxReplaceTooltip')"
                 shape="square"
-                size="md"
+                size="sm"
                 @click="openGpxPicker"
               />
             </BaseTooltip>
@@ -951,13 +1073,13 @@ defineExpose({ cancel: handleCancel })
                 name="delete"
                 :label="t('tours.form.gpxRemoveTooltip')"
                 shape="square"
-                size="md"
+                size="sm"
                 tone="danger"
                 data-testid="gpx-remove-btn"
                 @click="handleRemoveGpx"
               />
             </BaseTooltip>
-          </div>
+          </UploadTile>
           <div v-else class="gpx-empty-row">
             <BaseButton
               type="button"
@@ -1005,6 +1127,7 @@ defineExpose({ cancel: handleCancel })
           <TourAttachmentsPicker
             :tour-id="isSuggest ? undefined : tourId"
             :draft-id="draftId ?? undefined"
+            :upload-tour-id="attachmentTourId ?? undefined"
             :attachments="attachments"
             :base-count="keptAttachmentCount"
             :limit-label="isSuggest ? t('tours.suggestions.capHintSuggester', { max: MAX_ATTACHMENTS_PER_TOUR }) : undefined"
@@ -1022,7 +1145,7 @@ defineExpose({ cancel: handleCancel })
         </BaseButton>
         <BaseButton
           type="submit" variant="primary" size="sm" data-testid="submit-btn"
-          :disabled="isUploadingGpx || attachmentOverflow > 0"
+          :disabled="submitBlocked"
         >
           {{ submitLabel }}
         </BaseButton>
@@ -1308,55 +1431,12 @@ defineExpose({ cancel: handleCancel })
   gap: var(--spacing-sm);
 }
 
-.gpx-filled-row {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  flex-wrap: wrap;
-  min-height: 44px;
-}
-
 .hidden-input {
   position: absolute;
   width: 0;
   height: 0;
   opacity: 0;
   overflow: hidden;
-}
-
-.gpx-filename {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  font-size: var(--font-size-sm);
-  color: var(--color-on-surface-variant);
-}
-
-.gpx-ok-icon {
-  font-size: var(--font-size-base);
-  color: var(--color-primary);
-}
-
-.gpx-spinner {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--color-outline-variant);
-  border-top-color: var(--color-primary);
-  border-radius: var(--radius-round);
-  animation: gpx-spin 0.7s linear infinite;
-  flex-shrink: 0;
-}
-
-@keyframes gpx-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.gpx-uploading-label {
-  font-size: var(--font-size-xs);
-  color: var(--color-outline);
 }
 
 .gpx-error {

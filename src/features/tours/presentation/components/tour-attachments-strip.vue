@@ -2,6 +2,7 @@
 import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import BaseIcon from '@/core/components/base-icon.vue'
+import TourAttachmentUploadRow from '@/features/tours/presentation/components/tour-attachment-upload-row.vue'
 import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 
 const props = defineProps<{
@@ -16,6 +17,11 @@ const store = useTourAttachmentsStore()
 
 /** Reactive: updates instantly when commitStaged or add() populates the store. */
 const attachments = computed<TourAttachment[]>(() => store.attachmentsByTour[props.tourId] ?? [])
+/**
+ * A create-flow batch uploads against this tour id before any row exists (design D5), so the
+ * sheet would otherwise show nothing at all while the bytes are in flight.
+ */
+const pending = computed(() => store.pendingByTour[props.tourId] ?? [])
 const thumbnailUrls = ref<Record<string, string>>({})
 
 onMounted(() => {
@@ -104,6 +110,9 @@ function openAt(index: number) {
 </script>
 
 <template>
+  <div v-if="pending.length" class="strip__uploads">
+    <TourAttachmentUploadRow v-for="entry in pending" :key="entry.id" :entry="entry" />
+  </div>
   <div v-if="attachments.length" class="strip">
     <button
       v-for="(att, index) in attachments"
@@ -131,6 +140,13 @@ function openAt(index: number) {
 </template>
 
 <style scoped>
+.strip__uploads {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs);
+  padding: var(--spacing-xs) 0;
+}
+
 .strip {
   display: flex;
   gap: var(--spacing-sm);
