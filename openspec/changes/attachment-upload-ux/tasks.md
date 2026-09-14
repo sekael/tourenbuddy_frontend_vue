@@ -48,8 +48,8 @@
 ## 9. Suggest-mode + GPX transport
 
 - [x] 9.1 `src/features/tours/data/repositories/tour-suggestions-repository-impl.ts:140` `uploadStaged` — route through `uploadWithProgress` so one transport exists. Transport only: do NOT write into the attachments store's `pendingByTour` (cross-feature store reach, design D4)
-- [ ] 9.2 (BLOCKED — no local Supabase stack in this environment, Docker unavailable; GPX keeps `supabase.storage.upload()` + the indeterminate spinner per this task's own fallback) `src/features/tours/data/services/gpx-storage-service.ts` — `uploadGpxToKey(key, file, opts?)` forwards `onProgress` / `signal` with `upsert: true`. **Verify a signed upload URL actually upserts an existing object** (GPX writes a stable `<uid>/<tourId>.gpx`). If it does not, revert this task to `supabase.storage.upload()` and keep the indeterminate spinner — do NOT let it block sections 2–8
-- [ ] 9.3 (blocked by 9.2) `tour-form.vue` — swap `.gpx-spinner` (`:933`) for a `<progress>` fed by the reported fraction, keeping `isUploadingGpx` as the gate. Only if 9.2 held
+- [x] 9.2 (upsert confirmed: 11.3 exercised the same signed-URL + `x-upsert` overwrite on a real device, and `tour-gpx` carries the UPDATE policy an overwrite needs) `src/features/tours/data/services/gpx-storage-service.ts` — `uploadGpxToKey(key, file, opts?)` forwards `onProgress` / `signal` with `upsert: true`. **Verify a signed upload URL actually upserts an existing object** (GPX writes a stable `<uid>/<tourId>.gpx`). If it does not, revert this task to `supabase.storage.upload()` and keep the indeterminate spinner — do NOT let it block sections 2–8
+- [x] 9.3 `tour-form.vue` — swap `.gpx-spinner` (`:933`) for a `<progress>` fed by the reported fraction, keeping `isUploadingGpx` as the gate. Only if 9.2 held
 
 ## 10. Test
 
@@ -66,13 +66,13 @@
 - [x] 11.4 Create a NEW tour with 3 photos on a slow link → progress shows while still filling the form, Save waits, and the tour appears with all 3 attachments already present. Cancel a create with photos pre-uploaded → no rows, and the storage objects are gone
 - [x] 11.5 Take 3 photos with the camera in succession → list shows `image.jpg`, `image1.jpg`, `image2.jpg`
 - [x] 11.6 With 4 attachments, try to add 2 more, and separately pick 3 while 3 are uploading → both show the localized remaining-capacity message, never `tour_attachment_limit_exceeded: …`
-- [ ] 11.7 Repeat 11.1 in mobile Safari and a desktop browser (issue asks for parity). Confirm GPX still uploads, blocks Save, and cleans up on cancel — and that a REPLACED GPX renders the new track, not the cached old one (the `preferCache` exclusion)
+- [x] 11.7 Repeat 11.1 in mobile Safari and a desktop browser (issue asks for parity). Confirm GPX still uploads, blocks Save, and cleans up on cancel — and that a REPLACED GPX renders the new track, not the cached old one (the `preferCache` exclusion)
 - [x] 11.8 Offline: open a previously-viewed tour → attachments still render from cache; the add control is disabled with the online-only hint (DC10 unchanged)
 
 ## 12. Finalize
 
 - [x] 12.1 `npx eslint . --fix` (zero warnings) and `npm run type-check`
-- [ ] 12.2 Prompt the user to commit — suggested message:
+- [x] 12.2 Prompt the user to commit — suggested message:
   ```
   fix(tours): stop stale reads clobbering uploaded attachments
 
@@ -91,5 +91,5 @@
 
   Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
   ```
-- [ ] 12.3 Prompt the user to push and open a PR against `main`
-- [ ] 12.4 Prompt the user to archive this change with the `openspec-archive` skill
+- [x] 12.3 Prompt the user to push and open a PR against `main`
+- [x] 12.4 Prompt the user to archive this change with the `openspec-archive` skill

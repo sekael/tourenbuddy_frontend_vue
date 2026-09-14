@@ -13,6 +13,9 @@ const { mockUploadGpx, mockRemoveGpx } = vi.hoisted(() => ({
 vi.mock('@/features/tours/data/services/gpx-storage-service', () => ({
   uploadGpx: mockUploadGpx,
   removeGpx: mockRemoveGpx,
+  // Real implementation — the failure path recomputes the key an interrupted upload was
+  // writing to, and a stub returning undefined would hide a wrong-key cleanup.
+  gpxStorageKey: (userId: string, tourId: string) => `${userId}/${tourId}.gpx`,
 }))
 
 // Spy on parseGpxFile but keep the real error classes for instanceof checks.
@@ -231,13 +234,18 @@ describe('tourForm', () => {
       mockRemoveGpx.mockResolvedValue(undefined)
     })
 
-    it('should trigger upload and show spinner on valid file pick', async () => {
+    it('should trigger upload with a progress callback on valid file pick', async () => {
       const wrapper = mountForm()
       const file = new File([validGpxContent], 'track.gpx')
 
       await pickFile(wrapper, file)
 
-      expect(mockUploadGpx).toHaveBeenCalledWith('user-abc', expect.any(String), file)
+      expect(mockUploadGpx).toHaveBeenCalledWith(
+        'user-abc',
+        expect.any(String),
+        file,
+        expect.objectContaining({ onProgress: expect.any(Function) }),
+      )
       expect(wrapper.find('.gpx-filled-row').exists()).toBe(true)
     })
 
@@ -309,6 +317,89 @@ describe('tourForm', () => {
       await nextTick()
 
       expect(mockRemoveGpx).toHaveBeenCalledWith('user-abc/inflight.gpx')
+    })
+  })
+
+  describe('cancelling an in-flight GPX upload', () => {
+    const validGpxContent = `<?xml version="1.0"?><gpx version="1.1"><trk><trkseg><trkpt lat="46.5" lon="8.2"/></trkseg></trk></gpx>`
+
+    /** Honours the abort signal the way the real XHR transport does. */
+    function uploadThatHangs() {
+      mockUploadGpx.mockImplementation(
+        (_u: string, _t: string, _f: File, opts: { signal: AbortSignal }) =>
+          new Promise<string>((_res, rej) => {
+            opts.signal.addEventListener('abort', () =>
+              rej(new DOMException('Upload aborted', 'AbortError')))
+          }),
+      )
+    }
+
+    beforeEach(() => {
+      vi.clearAllMocks()
+      vi.mocked(parseGpxFile).mockResolvedValue(undefined as never)
+      mockRemoveGpx.mockResolvedValue(undefined)
+    })
+
+    it('swaps Replace for Cancel only while the upload is in flight', async () => {
+      let resolveUpload!: (key: string) => void
+      mockUploadGpx.mockReturnValue(new Promise<string>(res => (resolveUpload = res)))
+
+      const wrapper = mountForm()
+      const pick = pickFile(wrapper, new File([validGpxContent], 'track.gpx'))
+      await flushPromises()
+
+      expect(wrapper.find('[data-testid="gpx-cancel-btn"]').exists()).toBe(true)
+
+      resolveUpload('user-abc/done.gpx')
+      await pick
+      await flushPromises()
+
+      expect(wrapper.find('[data-testid="gpx-cancel-btn"]').exists()).toBe(false)
+    })
+
+    it('drops the file silently and deletes any partial object on cancel', async () => {
+      uploadThatHangs()
+      const wrapper = mountForm()
+      pickFile(wrapper, new File([validGpxContent], 'track.gpx'))
+      await flushPromises()
+
+      await wrapper.find('[data-testid="gpx-cancel-btn"]').trigger('click')
+      await flushPromises()
+
+      // A cancel is not a failure — it must never reach the error line.
+      expect(wrapper.find('.gpx-error').exists()).toBe(false)
+      expect(mockRemoveGpx).toHaveBeenCalledWith(expect.stringMatching(/^user-abc\/.+\.gpx$/))
+      expect(wrapper.find('.gpx-filled-row').exists()).toBe(false)
+    })
+
+    it('keeps the existing track visible when a replacement upload is cancelled', async () => {
+      uploadThatHangs()
+      const wrapper = mountForm({
+        initialDraft: { name: 'T', gpxFilepath: 'user-abc/old.gpx' },
+      })
+      pickFile(wrapper, new File([validGpxContent], 'new.gpx'))
+      await flushPromises()
+
+      await wrapper.find('[data-testid="gpx-cancel-btn"]').trigger('click')
+      await flushPromises()
+
+      // Cancelling the replacement must not take the tour's existing track with it —
+      // the tile stays, and it stops naming the file that never made it.
+      expect(wrapper.find('.gpx-filled-row').exists()).toBe(true)
+      expect(wrapper.find('.gpx-filled-row').text()).not.toContain('new.gpx')
+      expect(wrapper.find('.gpx-error').exists()).toBe(false)
+    })
+
+    it('still surfaces the error line when the upload genuinely fails', async () => {
+      mockUploadGpx.mockRejectedValue(new Error('500 from storage'))
+      const wrapper = mountForm()
+
+      await pickFile(wrapper, new File([validGpxContent], 'track.gpx'))
+      await flushPromises()
+
+      expect(wrapper.find('.gpx-error').exists()).toBe(true)
+      // Never the raw transport message.
+      expect(wrapper.find('.gpx-error').text()).not.toContain('500')
     })
   })
 
