@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.40.2](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.40.1...tourenbuddy-frontend-v0.40.2) (2026-09-14)
+
+
+### Bug Fixes
+
+* **tours:** Stop stale reads clobbering uploaded attachments ([#292](https://github.com/sekael/tourenbuddy_frontend_vue/issues/292)) ([72b1550](https://github.com/sekael/tourenbuddy_frontend_vue/commit/72b15507a9b50c7d6f1caf7ce65214b613bab969))
+
 ## [0.40.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.40.0...tourenbuddy-frontend-v0.40.1) (2026-09-12)
 
 
