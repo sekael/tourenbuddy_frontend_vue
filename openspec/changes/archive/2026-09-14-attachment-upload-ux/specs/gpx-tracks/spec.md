@@ -42,7 +42,30 @@ upload, an indeterminate indicator SHALL remain acceptable.
 #### Scenario: User cancels during in-flight upload
 
 - **WHEN** a user cancels the create dialog while a pre-upload is still running
-- **THEN** the in-flight upload is allowed to complete and the resulting object is then deleted (best-effort), and no `tours` row is created
+- **THEN** the in-flight upload SHALL be aborted, any object the interrupted transfer left behind SHALL be deleted (best-effort), and no `tours` row is created
+- **AND** if the upload had already resolved when the cancel arrived, the completed object SHALL be deleted instead (best-effort)
+
+#### Scenario: User cancels the upload from the file tile
+
+- **WHEN** a GPX upload is in flight
+- **THEN** the tile's replace control SHALL be presented as a cancel control for the duration of the upload, reverting to replace once the upload settles
+- **AND** activating it SHALL abort the transfer, discard the picked file, delete any partial object (best-effort), and SHALL NOT surface an upload-failure message — a cancel is not a failure
+
+#### Scenario: A cancelled replacement leaves the existing track in place
+
+- **WHEN** a user replaces an existing track and cancels the replacement upload
+- **THEN** the tour's previously saved track SHALL remain selected and displayed, and the tile SHALL stop naming the file that was never uploaded
+
+#### Scenario: Removing a track mid-upload
+
+- **WHEN** a user activates remove while an upload is still running
+- **THEN** the upload SHALL be aborted before the removal proceeds, so no object is left behind unreferenced
+
+#### Scenario: A track staged offline reports no progress
+
+- **WHEN** a user picks a GPX file while offline
+- **THEN** the file SHALL be staged for upload on reconnect, no progress indicator SHALL be shown, and the replace control SHALL NOT be presented as a cancel control — nothing is being transferred
+- **AND** the queued upload SHALL proceed in the background on reconnect without altering the form's controls
 
 #### Scenario: User replaces the file before submit
 

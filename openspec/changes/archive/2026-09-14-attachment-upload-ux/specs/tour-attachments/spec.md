@@ -31,9 +31,18 @@ Reading an attachment's bytes SHALL serve locally cached bytes when present, wit
 any network request. A cache miss SHALL fetch through a signed URL and cache the result, as
 today.
 
-This is sound because an attachment's storage path is immutable: each upload mints a new
-`attachment_uuid` path and no code path overwrites an existing attachment object. Any future
-change that upserts an attachment path SHALL be treated as breaking this requirement.
+This is sound because an attachment's storage path is owned by exactly one attachment: each
+picked file mints a new `attachment_uuid` path, and the only write that may target an existing
+object is a retry of that same attachment's own upload, which re-sends the identical bytes the
+cache already holds. A cache hit therefore cannot be stale. Any change that writes DIFFERENT
+bytes to an existing attachment path — an edit-in-place, a path reused across attachments —
+SHALL be treated as breaking this requirement.
+
+#### Scenario: A retried upload does not invalidate the cached bytes
+
+- **WHEN** an attachment upload is retried after a failure and overwrites the object it had already partially written
+- **THEN** the bytes sent SHALL be the same cached bytes the picker is rendering
+- **AND** the cache-first read SHALL continue to serve them without a network request
 
 The cache-first behaviour SHALL be opt-in per call site and SHALL NOT apply to GPX tracks,
 whose storage key is upserted on replace.
@@ -98,6 +107,12 @@ SHALL be disabled rather than queued — attachment upload remains online-only.
 - **WHEN** the user retries a failed upload
 - **THEN** the upload SHALL resume from the locally cached bytes with no file re-selection
 
+#### Scenario: Retry is idempotent
+
+- **WHEN** a first attempt wrote the storage object, or inserted the row, before failing
+- **THEN** the retry SHALL overwrite that object and reconcile that row rather than failing on an already-exists or duplicate-key error
+- **AND** the attachment SHALL appear exactly once in the list, never twice
+
 #### Scenario: Connection lost mid-upload
 
 - **WHEN** the device goes offline while a file is uploading
@@ -118,6 +133,33 @@ entered the failed state. The guard SHALL also be enforced in the submit handler
 control rendered outside the form element cannot bypass it.
 
 A failed upload SHALL NOT block Save, so a hard failure cannot dead-end the form.
+
+A Save control that is blocked SHALL be presented as unavailable, not merely inert on
+activation — every Save control for the form, including one rendered outside the form element,
+SHALL reflect that state.
+
+#### Scenario: A blocked Save looks blocked
+
+- **WHEN** an attachment upload is in flight
+- **THEN** every Save control for that form SHALL appear disabled rather than accepting a tap that silently does nothing
+
+### Requirement: Attachment deletion is unavailable offline
+
+Attachments are online-only: deleting one offline can remove neither the row nor the storage
+object. The delete control SHALL therefore be absent while the device is offline, rather than
+present and failing on activation. An inline delete confirmation SHALL likewise be withdrawn if
+the connection is lost while it is open. Reading already-cached attachments SHALL be unaffected.
+
+#### Scenario: Delete control while offline
+
+- **WHEN** a user opens a tour's attachments while offline
+- **THEN** no delete control SHALL be offered for any attachment
+- **AND** the attachments SHALL still render from cached bytes
+
+#### Scenario: Connection lost during a delete confirmation
+
+- **WHEN** the device goes offline while a delete confirmation is showing
+- **THEN** the confirmation SHALL be withdrawn rather than offering a delete that cannot run
 
 #### Scenario: Save disabled during upload
 
