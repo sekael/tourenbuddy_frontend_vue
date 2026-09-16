@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.vitest.tsbuildinfo",
+    "types": [
+      "node",
+      "vite/client",
+      "vite-plugin-pwa/client",
+      "unplugin-icons/types/vue"
+    ],
+    // Test scaffolding routinely declares fixtures it only partly uses, and mock
+    // callbacks must match a signature without consuming every parameter.
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": [
+    "test/**/*.ts",
+    "test/**/*.vue",
+    "scripts/**/*.ts",
+    "vitest.config.ts",
+    "src/**/*.ts",
+    "src/**/*.vue"
+  ]
+}

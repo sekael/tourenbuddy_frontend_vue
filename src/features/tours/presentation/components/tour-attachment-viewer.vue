@@ -124,7 +124,9 @@ async function renderPdf(url: string) {
       import.meta.url,
     ).href
 
-    pdfDoc = await pdfjsLib.getDocument(url).promise as PdfDocument
+    // `PDFDocumentProxy` carries far more than the two members used here, so it does not
+    // structurally overlap the narrow local interface. Widen through `unknown`.
+    pdfDoc = await pdfjsLib.getDocument(url).promise as unknown as PdfDocument
     pdfTotalPages.value = pdfDoc.numPages
     await renderPage(1)
   }

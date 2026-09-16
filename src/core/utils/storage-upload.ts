@@ -34,7 +34,7 @@ export async function uploadWithProgress(
 ): Promise<void> {
   const { data, error } = await supabase.storage
     .from(bucket)
-    .createSignedUploadUrl(path, { upsert: opts.upsert })
+    .createSignedUploadUrl(path, { upsert: opts.upsert ?? false })
 
   if (error || !data?.signedUrl)
     throw new Error(error?.message ?? 'Failed to create signed upload URL')

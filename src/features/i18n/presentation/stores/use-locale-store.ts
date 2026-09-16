@@ -10,7 +10,7 @@ import { supabase } from '@/core/utils/supabase'
 
 export const useLocaleStore = defineStore('locale', () => {
   const logger = useLogger('LocaleStore')
-  const locale = ref(i18n.global.locale.value as string)
+  const locale = ref<string>(i18n.global.locale.value)
 
   function setLocale(code: string): void {
     if (!SUPPORTED_LOCALE_CODES.includes(code)) {
@@ -18,7 +18,7 @@ export const useLocaleStore = defineStore('locale', () => {
       return
     }
     locale.value = code
-    ;(i18n.global.locale as { value: string }).value = code
+    i18n.global.locale.value = code as SupportedLocaleCode
     writePersistedLocale(code)
     document.documentElement.lang = code
 

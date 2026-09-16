@@ -1,4 +1,4 @@
-import type { ExpressionSpecification, Map as MapLibreMap } from 'maplibre-gl'
+import type { ExpressionSpecification, GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl'
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import { useLogger } from '@/core/logging/use-logger'
 import { loadCachedBlob } from '@/core/offline/blob-cache'
@@ -18,7 +18,10 @@ function buildColorExpression(): ExpressionSpecification {
   for (const [type, color] of Object.entries(TOUR_TYPE_TRACK_COLORS)) {
     pairs.push(type, color)
   }
-  return ['match', ['get', 'tourType'], ...pairs, FALLBACK_TRACK_COLOR]
+  // `ExpressionSpecification` models `match` as a fixed-arity tuple, so a spread of
+  // runtime-length pairs can never satisfy it structurally. The shape is correct by
+  // construction above: alternating label/value pairs then the fallback.
+  return ['match', ['get', 'tourType'], ...pairs, FALLBACK_TRACK_COLOR] as unknown as ExpressionSpecification
 }
 
 export function useGpxTrackLayer(map: MapLibreMap) {
@@ -56,14 +59,13 @@ export function useGpxTrackLayer(map: MapLibreMap) {
   }
 
   function clearTrack() {
-    const source = map.getSource(GPX_SOURCE_ID)
-    if (source && source.type === 'geojson')
-      source.setData(EMPTY_GEOJSON)
+    const source = map.getSource<GeoJSONSource>(GPX_SOURCE_ID)
+    source?.setData(EMPTY_GEOJSON)
   }
 
   async function updateTrack(tour: Tour | null) {
-    const source = map.getSource(GPX_SOURCE_ID)
-    if (!source || source.type !== 'geojson')
+    const source = map.getSource<GeoJSONSource>(GPX_SOURCE_ID)
+    if (!source)
       return
 
     if (!tour?.gpxFilepath) {

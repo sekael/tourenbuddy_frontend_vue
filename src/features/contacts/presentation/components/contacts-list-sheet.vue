@@ -243,6 +243,13 @@ function handlePageBack() {
   backToList()
 }
 
+// `Promise` is NOT in Vue's template global allowlist, so writing `Promise.resolve()`
+// in a template expression compiles to `_ctx.Promise` and throws at runtime whenever
+// the fallback is taken (no detail view mounted). Keep the fallback in script.
+function commitDetailEdits(): Promise<void> {
+  return detailRef.value?.commitPendingEdits() ?? Promise.resolve()
+}
+
 // ── Duplicate disclaimer (new contact reuses a phone already on another contact) ──
 function findDuplicatePhoneMatch(phones: PhoneEntry[]): Contact | null {
   for (const phone of phones) {
@@ -578,8 +585,8 @@ function onFormPhoneInput(phone: string) {
       <ConnectPrompt
         v-if="detailViewMatchedUserId && liveContact && !isConnectDismissed(liveContact.id)"
         :matched-user-id="detailViewMatchedUserId"
-        :before-send="() => detailRef?.commitPendingEdits() ?? Promise.resolve()"
-        :before-dismiss="detailMode === 'edit' ? () => detailRef?.commitPendingEdits() ?? Promise.resolve() : undefined"
+        :before-send="commitDetailEdits"
+        :before-dismiss="detailMode === 'edit' ? commitDetailEdits : undefined"
         :show-dismiss="detailMode === 'edit'"
         class="detail-connect-prompt"
         @sent="liveContact && dismissConnect(liveContact.id)"
