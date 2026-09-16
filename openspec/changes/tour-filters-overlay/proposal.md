@@ -30,7 +30,9 @@ _(none)_
 
 ### Modified Capabilities
 
-- `tours`: filter panel presentation, header composition, backfill entry point placement, and list scroll ownership within the tour list sheet.
+- `tour-list-view`: filter panel presentation, header composition, search/trigger row merge, backfill entry point placement, and list scroll ownership within the tour list sheet.
+
+> Originally filed against `tours`. That was wrong — `openspec/specs/tours/spec.md` covers realtime synchronization and atomic write RPCs, while every requirement this change touches (`Tours list overlay`, `Tour search by name and partner`, `Filter UI density`, `No-results state and clear filters`) lives in `tour-list-view`.
 
 ## Impact
 
