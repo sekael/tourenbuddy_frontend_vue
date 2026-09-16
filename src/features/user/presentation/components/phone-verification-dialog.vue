@@ -5,17 +5,14 @@ import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
-import { normalizePhone } from '@/core/utils/phone-normalize'
+import { formatPhoneForDisplay } from '@/core/utils/phone-normalize'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
 const props = defineProps<{ phone: string }>()
 
 const emit = defineEmits<{ verified: [], close: [] }>()
 const { t } = useI18n({ useScope: 'global' })
-const displayPhone = computed(() => {
-  const result = normalizePhone(props.phone)
-  return result.ok ? result.value : props.phone
-})
+const displayPhone = computed(() => formatPhoneForDisplay(props.phone))
 const store = useUserProfileStore()
 const isDesktop = useIsDesktop()
 

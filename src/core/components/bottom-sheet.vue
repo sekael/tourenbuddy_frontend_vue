@@ -374,7 +374,9 @@ const sheetStyle = computed(() => {
 }
 
 .bottom-sheet--collapsed .header {
-  padding-bottom: var(--spacing-md);
+  /* +1px keeps the overlap compensation from `.header` — collapsed hides
+     `.content`, so the seam is moot, but the layout must not shift by a pixel. */
+  padding-bottom: calc(var(--spacing-md) + 1px);
 }
 
 .drag-handle {
@@ -412,7 +414,23 @@ const sheetStyle = computed(() => {
   align-items: center;
   flex-shrink: 0;
   gap: var(--spacing-sm);
-  padding-bottom: var(--spacing-sm);
+
+  /* Opaque, stacked, and overlapping `.content` by one pixel — all three are
+     needed to close a hairline of scrolling text that shows above the tab row.
+     `.content`'s top edge lands on a fractional pixel (sheet padding + 24px
+     handle + a content-sized header with an `xl` title), and a composited scroll
+     region with fractional bounds paints one row of pixels outside its own clip
+     box. That escape isn't governed by stacking, so an opaque header alone does
+     not cover it — the header's painted box has to physically reach over the
+     seam. The -1px margin does that; the +1px padding gives the space back so
+     layout is unchanged. `.drawer-header` in side-drawer never showed this
+     because its `border-bottom` sits exactly where the seam lands; this sheet is
+     borderless by design, hence the explicit fix. Do not "tidy" the 1px away. */
+  margin-bottom: -1px;
+  padding-bottom: calc(var(--spacing-sm) + 1px);
+  position: relative;
+  z-index: 1;
+  background-color: var(--color-background);
 }
 
 .title {
@@ -433,6 +451,14 @@ const sheetStyle = computed(() => {
 
   flex: 1;
   min-height: 0;
+  /* Traps slotted `z-index` inside this scroll region. Load-bearing because
+     `.header` now overlaps this element by 1px: a sticky header in slotted
+     content needs its own `z-index` to cover the rows scrolling under it, and
+     without a stacking context here it competes directly with `.header` — on an
+     equal `z-index` the later DOM node wins and reclaims that overlap.
+     `isolation`, not a `z-index` bump: the sheet must not care what values
+     slotted content picks. */
+  isolation: isolate;
   overflow-y: auto;
   /* Explicit, not incidental: leaving overflow-x unset here computes it to
      `auto` too (CSS Overflow spec — an unset axis inherits `auto` from a sibling

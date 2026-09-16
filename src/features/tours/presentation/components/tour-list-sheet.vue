@@ -138,67 +138,74 @@ function handleRowClick(tourId: string) {
     />
 
     <div v-else class="list-view">
-      <div class="tabs" role="tablist" data-tour="tours">
-        <button
-          type="button"
-          role="tab"
-          class="tab"
-          :class="{ 'tab--active': activeTab === 'owned' }"
-          :aria-selected="activeTab === 'owned'"
-          @click="activeTab = 'owned'"
-        >
-          {{ t('tours.list.tabOwned') }}
-        </button>
-        <button
-          type="button"
-          role="tab"
-          class="tab"
-          :class="{ 'tab--active': activeTab === 'friends' }"
-          :aria-selected="activeTab === 'friends'"
-          @click="activeTab = 'friends'"
-        >
-          {{ t('tours.list.tabFriends') }}
-        </button>
-      </div>
-
-      <BaseButton
-        v-if="activeTab === 'friends' && hasFriends"
-        variant="primary-outline"
-        size="sm"
-        class="backfill-entry-btn"
-        @click="openBackfill"
-      >
-        <BaseIcon name="sync_alt" />
-        {{ t('tours.list.viewBackfillCollisionsBtn') }}
-      </BaseButton>
-
-      <div class="search-row">
-        <BaseIcon name="search" class="search-icon" />
-        <input
-          v-model="searchQuery"
-          type="search"
-          class="search-input"
-          :placeholder="t('tours.list.searchPlaceholder')"
-        >
-      </div>
-
-      <div class="filters-row">
-        <BaseButton variant="secondary" size="sm" class="filters-trigger" @click="filtersExpanded = !filtersExpanded">
-          <BaseIcon :name="filtersExpanded ? 'expand_less' : 'tune'" size="sm" />
-          {{ t('tours.list.filtersBtn') }}
-          <span v-if="activeFilterCount > 0" class="filter-badge">{{ activeFilterCount }}</span>
-        </BaseButton>
+      <!-- Tabs + search + filters travel together as ONE sticky block. Three separate
+           sticky siblings would each need a hardcoded `top` offset equal to the sum of
+           the rows above them, and those heights are dynamic (search row wraps, the
+           backfill button only exists on the friends tab). The expanded filters panel
+           stays outside so it scrolls, while its collapse/clear controls stay pinned. -->
+      <div class="list-header">
+        <div class="tabs" role="tablist" data-tour="tours">
+          <button
+            type="button"
+            role="tab"
+            class="tab"
+            :class="{ 'tab--active': activeTab === 'owned' }"
+            :aria-selected="activeTab === 'owned'"
+            @click="activeTab = 'owned'"
+          >
+            {{ t('tours.list.tabOwned') }}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="tab"
+            :class="{ 'tab--active': activeTab === 'friends' }"
+            :aria-selected="activeTab === 'friends'"
+            @click="activeTab = 'friends'"
+          >
+            {{ t('tours.list.tabFriends') }}
+          </button>
+        </div>
 
         <BaseButton
-          v-if="activeFilterCount > 0"
-          variant="secondary"
+          v-if="activeTab === 'friends' && hasFriends"
+          variant="primary-outline"
           size="sm"
-          data-testid="clear-filters"
-          @click="clearFilters"
+          class="backfill-entry-btn"
+          @click="openBackfill"
         >
-          <BaseIcon name="close" size="sm" />
-          {{ t('tours.list.clearFiltersBtn') }}
+          <BaseIcon name="sync_alt" />
+          {{ t('tours.list.viewBackfillCollisionsBtn') }}
         </BaseButton>
+
+        <div class="search-row">
+          <BaseIcon name="search" class="search-icon" />
+          <input
+            v-model="searchQuery"
+            type="search"
+            class="search-input"
+            :placeholder="t('tours.list.searchPlaceholder')"
+          >
+        </div>
+
+        <div class="filters-row">
+          <BaseButton variant="secondary" size="sm" class="filters-trigger" @click="filtersExpanded = !filtersExpanded">
+            <BaseIcon :name="filtersExpanded ? 'expand_less' : 'tune'" size="sm" />
+            {{ t('tours.list.filtersBtn') }}
+            <span v-if="activeFilterCount > 0" class="filter-badge">{{ activeFilterCount }}</span>
+          </BaseButton>
+
+          <BaseButton
+            v-if="activeFilterCount > 0"
+            variant="secondary"
+            size="sm"
+            data-testid="clear-filters"
+            @click="clearFilters"
+          >
+            <BaseIcon name="close" size="sm" />
+            {{ t('tours.list.clearFiltersBtn') }}
+          </BaseButton>
+        </div>
       </div>
 
       <TourFiltersPanel
@@ -252,7 +259,6 @@ function handleRowClick(tourId: string) {
 .list-view {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
 }
 
 .tabs {
@@ -305,24 +311,27 @@ function handleRowClick(tourId: string) {
   color: var(--color-on-surface);
 }
 
+/* Pinned to the top of the overlay's scroll region (`.content` in bottom-sheet,
+   `.drawer-content` in side-drawer). `sticky`, not `fixed`, so on mobile the block
+   travels with the sheet when it is dragged between snap points. Opaque background
+   + z-index so the rows scrolling underneath do not show through. */
+.list-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-bottom: 1px solid var(--color-outline-variant);
+  background-color: var(--color-background);
+  padding-bottom: var(--spacing-xs);
+}
+
 /* Visual styling comes from BaseButton (secondary); only layout lives here. */
 .filters-row {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-xs);
-
-  /* Pinned to the top of the overlay's scroll region (`.content` in bottom-sheet,
-     `.drawer-content` in side-drawer) — same pattern as `.detail-header` in
-     contact-detail-view. `sticky`, not `fixed`, so on mobile the row travels with
-     the sheet when it is dragged between snap points. The expanded panel is tall
-     enough to push its own collapse/reset controls off screen; keeping the row
-     pinned means both stay one tap away at any scroll depth. Opaque background +
-     z-index so the filter chips scrolling underneath do not show through. */
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background-color: var(--color-background);
-  padding-block: var(--spacing-xs);
 }
 
 .filters-trigger {
