@@ -374,9 +374,7 @@ const sheetStyle = computed(() => {
 }
 
 .bottom-sheet--collapsed .header {
-  /* +1px keeps the overlap compensation from `.header` — collapsed hides
-     `.content`, so the seam is moot, but the layout must not shift by a pixel. */
-  padding-bottom: calc(var(--spacing-md) + 1px);
+  padding-bottom: var(--spacing-md);
 }
 
 .drag-handle {
@@ -415,19 +413,10 @@ const sheetStyle = computed(() => {
   flex-shrink: 0;
   gap: var(--spacing-sm);
 
-  /* Opaque, stacked, and overlapping `.content` by one pixel — all three are
-     needed to close a hairline of scrolling text that shows above the tab row.
-     `.content`'s top edge lands on a fractional pixel (sheet padding + 24px
-     handle + a content-sized header with an `xl` title), and a composited scroll
-     region with fractional bounds paints one row of pixels outside its own clip
-     box. That escape isn't governed by stacking, so an opaque header alone does
-     not cover it — the header's painted box has to physically reach over the
-     seam. The -1px margin does that; the +1px padding gives the space back so
-     layout is unchanged. `.drawer-header` in side-drawer never showed this
-     because its `border-bottom` sits exactly where the seam lands; this sheet is
-     borderless by design, hence the explicit fix. Do not "tidy" the 1px away. */
-  margin-bottom: -1px;
-  padding-bottom: calc(var(--spacing-sm) + 1px);
+  /* Opaque and stacked above `.content`, which is a later sibling and would
+     otherwise paint over this one. The 1px overlap that closes the scroll seam
+     lives on `.content`, not here — see the note there for why. */
+  padding-bottom: var(--spacing-sm);
   position: relative;
   z-index: 1;
   background-color: var(--color-background);
@@ -448,14 +437,27 @@ const sheetStyle = computed(() => {
      sheet itself pads `md` on both sides, this element adds `xs` on the right. */
   --surface-pad-left: var(--spacing-md);
   --surface-pad-right: calc(var(--spacing-md) + var(--spacing-xs));
-  /* No top padding here — declared anyway so slotted sticky headers can offset
-     against it unconditionally instead of branching per shell. */
-  --surface-pad-top: 0px;
 
   flex: 1;
   min-height: 0;
+  /* Tucks this scroll box 1px under the opaque `.header`, then gives that pixel
+     straight back as padding. A composited scroll region whose top edge lands on
+     a fractional pixel — this one does: sheet padding + 24px handle + a
+     content-sized header with an `xl` title — paints one row of pixels outside
+     its own clip box, which shows as a hairline of scrolling text above the
+     header's bottom edge. Stacking does not govern that escape, so the header
+     has to physically reach over it.
+
+     The pair belongs HERE rather than as a negative margin on `.header`: putting
+     it there pulled this box up without compensating, so the first pixel row of
+     every sheet's slotted content sat under the header and was clipped — visible
+     as content cut off at the top of the profile and contact sheets. With the
+     padding on this side, the covered pixel is padding, not content. Do not
+     "tidy" either half away; they only work as a pair. */
+  margin-top: -1px;
+  padding-top: 1px;
   /* Traps slotted `z-index` inside this scroll region. Load-bearing because
-     `.header` now overlaps this element by 1px: a sticky header in slotted
+     `.header` overlaps this element by 1px: a sticky header in slotted
      content needs its own `z-index` to cover the rows scrolling under it, and
      without a stacking context here it competes directly with `.header` — on an
      equal `z-index` the later DOM node wins and reclaims that overlap.

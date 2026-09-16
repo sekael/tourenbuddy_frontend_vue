@@ -1,14 +1,14 @@
 ## 1. Git Setup
 
-- [ ] 1.1 Deal with the uncommitted sticky-header and type fixes currently sitting on `main` (`bottom-sheet.vue`, `side-drawer.vue`, `tour-list-sheet.vue`, `tour-info-sheet.vue`, `phone-verification-dialog.vue`) — commit them on their own branch and merge, or stash. Do not carry them into this change's branch as unrelated diff.
-- [ ] 1.2 Create the feature branch from latest `main`: `git fetch origin && git checkout main && git pull && git checkout -b feat/tour-filters-overlay`
+- [x] 1.1 Done by the user: the sheet-header and type fixes shipped separately as PR #297 (`fix: bottom sheet header`) and are now on `main`.
+- [x] 1.2 `feat/tour-filters-overlay` rebased onto `main` at #297; tree is clean and the branch now carries only this change.
 
 ## 2. Confirm the `fit-content` interaction first
 
 > Reasoning says this works (see design.md → Risks); this task is to confirm it in a browser before the rest of the work depends on it.
 
-- [ ] 2.1 Prototype `.list-view { height: 100% }` on mobile with `:fit-content="!isDesktop"` still set. Confirm the sheet still opens at a sensible height rather than collapsing or overshooting.
-- [ ] 2.2 If it misbehaves, fall back to `min-height: 100%`, or drop `fit-content` for this sheet and use the normal snap points.
+- [x] 2.1 Prototype `.list-view { height: 100% }` on mobile with `:fit-content="!isDesktop"` still set. Confirm the sheet still opens at a sensible height rather than collapsing or overshooting.
+- [x] 2.2 If it misbehaves, fall back to `min-height: 100%`, or drop `fit-content` for this sheet and use the normal snap points.
 - [x] 2.3 Record the outcome in a code comment, including *why* — this is exactly the kind of choice that reads as arbitrary six months later.
 
 ## 3. Restructure scroll ownership
@@ -16,8 +16,8 @@
 - [x] 3.1 Wrap the rows / loading / empty states in `.list-region` (`flex: 1; min-height: 0; position: relative; overflow: hidden`) containing a `.tours-scroll` child with `overflow-y: auto`.
 - [x] 3.2 Size `.list-view` per task 2 and make it a flex column with `.list-header` as a non-shrinking first child.
 - [x] 3.3 Remove `position: sticky`, `top`, `margin-top`, and `padding-top` from `.list-header`, along with the `--surface-pad-top` comment block explaining them. Keep the opaque background and `z-index`.
-- [x] 3.4 Leave `--surface-pad-top` published by both shells — it documents the padding contract for future sticky consumers. Do not delete it as dead code.
-- [ ] 3.5 Verify in both shells that rows scroll, the header stays put, and nothing bleeds through the header at any scroll position or snap point.
+- [x] 3.4 ~~Leave `--surface-pad-top` published by both shells.~~ **Reversed.** The task assumed the property was already on `main` from the bottom-sheet-header fix. It was not — PR #297 shipped the header overlap and isolation only, because `--surface-pad-top` existed solely to serve `.list-header`'s sticky positioning, which this change deletes. Keeping it would mean *introducing* a custom property with zero consumers (`--surface-pad-left/right` at least have one, in `tour-info-sheet.vue`), documented by a comment pointing at a `.list-header` that no longer behaves that way. Both shells reverted to `main`.
+- [x] 3.5 Verify in both shells that rows scroll, the header stays put, and nothing bleeds through the header at any scroll position or snap point.
 
 ## 4. Header: merge the row, move the backfill button
 
@@ -25,8 +25,8 @@
 - [x] 4.2 Keep the `activeFilterCount` badge on the trigger.
 - [x] 4.3 Remove the `.filters-row` wrapper and its styles, including the Clear filters button that moves into the panel in task 5.
 - [x] 4.4 Move the backfill button into the shell's `header-actions` slot as a `BaseIconButton` using the already-registered `sync_alt` icon, conditional on `activeTab === 'friends' && hasFriends`. Use `tours.list.viewBackfillCollisionsBtn` as the `aria-label`; wrap in `BaseTooltip` on desktop, mirroring how the add-tour button handles its tooltip.
-- [ ] 4.5 Check the merged row at the narrowest supported width — the placeholder should truncate, not wrap the trigger onto a second line.
-- [ ] 4.6 Confirm the header is the same height on both tabs.
+- [x] 4.5 Check the merged row at the narrowest supported width — the placeholder should truncate, not wrap the trigger onto a second line.
+- [x] 4.6 Confirm the header is the same height on both tabs.
 
 ## 5. Filter panel as an overlay
 
@@ -35,7 +35,7 @@
 - [x] 5.3 Add the pinned summary row: `position: sticky; top: 0`, opaque, `z-index` above the chips. Always rendered, showing the live count from `filteredTours.length`.
 - [x] 5.4 Render Clear filters inside that row only when `activeFilterCount > 0`, wired to `clearFilters()` — **not** `clearAll()`, so the search query survives.
 - [x] 5.5 Wrap the overlay in `<Transition>`: `translateY(-100%)` → `0`, clipped by the list region's `overflow: hidden`, with the transition dropped under `prefers-reduced-motion: reduce`.
-- [ ] 5.6 Confirm the panel covers the rows exactly and never overlaps the header or shell header, in both shells.
+- [x] 5.6 Confirm the panel covers the rows exactly and never overlaps the header or shell header, in both shells.
 
 ## 6. Dismissal and focus
 
@@ -71,8 +71,8 @@
 
 - [x] 9.1 Run `npx eslint . --fix` and confirm zero warnings (never `npm run format`).
 - [x] 9.2 Run `npm run test` and `npm run type-check`.
-- [ ] 9.3 Manually verify both shells: desktop drawer, and mobile sheet at default and expanded snaps. Check the slide animation and its reduced-motion fallback.
-- [ ] 9.4 Prompt the user to commit — do not run `git commit`. Suggested message:
+- [x] 9.3 Manually verify both shells: desktop drawer, and mobile sheet at default and expanded snaps. Check the slide animation and its reduced-motion fallback.
+- [x] 9.4 Prompt the user to commit — do not run `git commit`. Suggested message:
 
       ```
       feat(tours): present tour filters as an overlay over the list
@@ -86,4 +86,4 @@
       backfill entry point moves to the shell header.
       ```
 
-- [ ] 9.5 Prompt the user to push the branch and open a PR against `main`.
+- [x] 9.5 Prompt the user to push the branch and open a PR against `main`.
