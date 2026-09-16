@@ -190,7 +190,12 @@ const isLinked = computed(() => groupIdByTourId.value.has(props.tour.id))
 // or goal moved >COLLISION_RADIUS_M from any sibling) OR invalidate the predicate
 // for any pending link request involving this tour. Confirm proceeds with
 // submit; cancel rolls back.
-const editWarningPending = ref<null | (() => Promise<void>)>(null)
+// `Promise<unknown>`, not `Promise<void>`: the deferred action is sometimes a store
+// mutation that resolves to a `MutateOutcome`, and TypeScript's "a value-returning
+// function is assignable where void is expected" shortcut covers a bare `void` return
+// type only — it does not reach inside `Promise<void>`. `confirmEditWarning` awaits
+// and discards, so the resolved type is genuinely nobody's business here.
+const editWarningPending = ref<null | (() => Promise<unknown>)>(null)
 const editWarningMode = ref<'linked' | 'pending-outgoing' | 'pending-incoming' | 'pending-mixed'>('linked')
 const editWarningPendingCount = ref(0)
 
