@@ -147,9 +147,14 @@ const isDesktop = useIsDesktop()
 }
 
 .drawer-content {
-  /* Published so slotted content can bleed a full-width divider to the drawer edges. */
+  /* Published so slotted content can bleed a full-width divider to the drawer edges.
+     `--surface-pad-top` additionally lets a slotted sticky header cancel it out: a
+     sticky element's constraint rectangle is this scrollport inset by this padding,
+     so `top: 0` alone pins it *below* the padding and leaves a channel the rows
+     scroll through uncovered. See `.list-header` in tour-list-sheet. */
   --surface-pad-left: var(--spacing-xl);
   --surface-pad-right: var(--spacing-xs);
+  --surface-pad-top: var(--spacing-lg);
 
   overflow-y: auto;
   /* Explicit: an unset overflow-x computes to `auto` alongside overflow-y here
@@ -160,7 +165,7 @@ const isDesktop = useIsDesktop()
      drawer. Scoped to this scroll region only: the still-visible map keeps its
      own wheel-zoom / pinch / drag. */
   overscroll-behavior: contain;
-  padding: var(--spacing-lg) var(--surface-pad-right) var(--spacing-lg) var(--surface-pad-left);
+  padding: var(--surface-pad-top) var(--surface-pad-right) var(--spacing-lg) var(--surface-pad-left);
   flex: 1;
   min-height: 0;
   scrollbar-gutter: stable;

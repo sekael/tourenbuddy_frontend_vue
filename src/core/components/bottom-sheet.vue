@@ -448,6 +448,9 @@ const sheetStyle = computed(() => {
      sheet itself pads `md` on both sides, this element adds `xs` on the right. */
   --surface-pad-left: var(--spacing-md);
   --surface-pad-right: calc(var(--spacing-md) + var(--spacing-xs));
+  /* No top padding here — declared anyway so slotted sticky headers can offset
+     against it unconditionally instead of branching per shell. */
+  --surface-pad-top: 0px;
 
   flex: 1;
   min-height: 0;

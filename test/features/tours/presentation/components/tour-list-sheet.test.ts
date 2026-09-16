@@ -47,9 +47,12 @@ function mountSheet(
     tours?: typeof mockTours
     isLoading?: boolean
     isAuthenticated?: boolean
+    /** Needed for focus assertions — focus() is a no-op on a detached tree. */
+    attachTo?: HTMLElement
   } = {},
 ) {
   return mount(TourListSheet, {
+    attachTo: options.attachTo,
     global: {
       plugins: [
         createTestingPinia({
@@ -208,6 +211,164 @@ describe('tourListSheet', () => {
         // Search survived, so only the matching tour is listed.
         expect(wrapper.findAll('.tour-row')).toHaveLength(1)
       })
+    })
+
+    it('should keep the summary row with its count while no facet is active', async () => {
+      const wrapper = mountSheet()
+      await wrapper.find('.filters-trigger').trigger('click')
+
+      expect(wrapper.find('.filters-summary').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="clear-filters"]').exists()).toBe(false)
+      wrapper.unmount()
+    })
+  })
+
+  describe('filters overlay dismissal', () => {
+    async function openFilters() {
+      const wrapper = mountSheet()
+      await wrapper.find('.filters-trigger').trigger('click')
+      return wrapper
+    }
+
+    it('should collapse when Escape is pressed from the search input', async () => {
+      const wrapper = await openFilters()
+
+      await wrapper.find('.search-input').trigger('keydown.escape')
+
+      expect(wrapper.find('.filters-overlay').exists()).toBe(false)
+      wrapper.unmount()
+    })
+
+    it('should stay open when pointer goes down on the search input', async () => {
+      const wrapper = await openFilters()
+
+      wrapper.find('.search-input').element.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true }),
+      )
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('.filters-overlay').exists()).toBe(true)
+      wrapper.unmount()
+    })
+
+    it('should stay open when pointer goes down inside the panel', async () => {
+      const wrapper = await openFilters()
+
+      wrapper.find('.filters-overlay').element.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true }),
+      )
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('.filters-overlay').exists()).toBe(true)
+      wrapper.unmount()
+    })
+
+    it('should collapse when pointer goes down outside the sheet', async () => {
+      const wrapper = await openFilters()
+
+      const outside = document.createElement('div')
+      document.body.appendChild(outside)
+      outside.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('.filters-overlay').exists()).toBe(false)
+      outside.remove()
+      wrapper.unmount()
+    })
+
+    it('should collapse without reopening when the trigger is activated again', async () => {
+      const wrapper = await openFilters()
+
+      // pointerdown lands on the trigger (inside the header, so not "outside"),
+      // then the click toggles — the panel must not close-then-reopen.
+      wrapper.find('.filters-trigger').element.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true }),
+      )
+      await wrapper.find('.filters-trigger').trigger('click')
+
+      expect(wrapper.find('.filters-overlay').exists()).toBe(false)
+      wrapper.unmount()
+    })
+
+    it('should return focus to the trigger when dismissed', async () => {
+      const wrapper = mountSheet({ attachTo: document.body })
+      await wrapper.find('.filters-trigger').trigger('click')
+
+      await wrapper.find('.search-input').trigger('keydown.escape')
+      await wrapper.vm.$nextTick()
+
+      expect(document.activeElement).toBe(wrapper.find('.filters-trigger').element)
+      wrapper.unmount()
+    })
+
+    it('should remove the document listener on unmount', async () => {
+      const removeSpy = vi.spyOn(document, 'removeEventListener')
+      const wrapper = await openFilters()
+
+      wrapper.unmount()
+
+      expect(removeSpy).toHaveBeenCalledWith('pointerdown', expect.any(Function))
+      removeSpy.mockRestore()
+    })
+  })
+
+  describe('summary count', () => {
+    it('should report a count matching the rows rendered on collapse', async () => {
+      const wrapper = mountSheet()
+      await wrapper.find('.search-input').setValue('Alpine')
+      await wrapper.find('.filters-trigger').trigger('click')
+      await wrapper.vm.$nextTick()
+
+      // Count reflects search as well as filters — it is a promise about the list.
+      // Asserted on the prop, not rendered text: i18n returns raw keys under test.
+      expect(wrapper.findComponent({ name: 'TourFiltersPanel' }).props('matchCount')).toBe(1)
+
+      await wrapper.find('.filters-trigger').trigger('click')
+      expect(wrapper.findAll('.tour-row')).toHaveLength(1)
+
+      await wrapper.find('.search-input').setValue('')
+      wrapper.unmount()
+    })
+  })
+
+  describe('per-tab filter isolation', () => {
+    it('should leave the other tab facets untouched when clearing', async () => {
+      const wrapper = mountSheet()
+      await wrapper.find('.filters-trigger').trigger('click')
+      wrapper.findComponent({ name: 'TourFiltersPanel' }).vm.$emit('update:completion', 'done')
+      await wrapper.vm.$nextTick()
+
+      await wrapper.findAll('.tab')[1].trigger('click')
+      wrapper.findComponent({ name: 'TourFiltersPanel' }).vm.$emit('update:completion', 'open')
+      await wrapper.vm.$nextTick()
+      await wrapper.find('[data-testid="clear-filters"]').trigger('click')
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-testid="clear-filters"]').exists()).toBe(false)
+
+      // Owned kept its own facet through the friends-tab clear.
+      await wrapper.findAll('.tab')[0].trigger('click')
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-testid="clear-filters"]').exists()).toBe(true)
+
+      // Filter state is module-level — reset or it leaks into neighbouring tests.
+      await wrapper.find('[data-testid="clear-filters"]').trigger('click')
+      wrapper.unmount()
+    })
+  })
+
+  describe('backfill header button', () => {
+    it('should not render on the owned tab', () => {
+      const wrapper = mountSheet()
+      expect(wrapper.find('[data-testid="header-backfill"]').exists()).toBe(false)
+      wrapper.unmount()
+    })
+
+    it('should not render on the friends tab without friendships', async () => {
+      const wrapper = mountSheet()
+      await wrapper.findAll('.tab')[1].trigger('click')
+
+      expect(wrapper.find('[data-testid="header-backfill"]').exists()).toBe(false)
+      wrapper.unmount()
     })
   })
 })
