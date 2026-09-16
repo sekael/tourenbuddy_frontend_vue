@@ -485,7 +485,9 @@
       "dateToLabel": "Bis",
       "seasonLabel": "Saison",
       "plannedDateLabel": "Geplantes Datum",
-      "statusLabel": "Status"
+      "statusLabel": "Status",
+      "matchCount": "{count} Touren | {count} Tour | {count} Touren",
+      "panelAriaLabel": "Tourenfilter"
     },
     "type": {
       "skiing": "Skifahren",

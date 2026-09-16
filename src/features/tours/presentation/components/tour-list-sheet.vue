@@ -3,7 +3,7 @@ import type { Season } from '@/features/tours/data/models/season'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { CompletionFilter } from '@/features/tours/presentation/composables/use-tour-filters'
 import { storeToRefs } from 'pinia'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import BaseButton from '@/core/components/base-button.vue'
@@ -53,9 +53,9 @@ function clearAll() {
   active.value.clearAll()
 }
 // Two resets, deliberately different: the empty state clears search too (nothing
-// matched — the query is the likely culprit), the toolbar button leaves it alone
-// because it sits next to a visibly filled search box and the badge it mirrors
-// never counted search either.
+// matched — the query is the likely culprit), the panel's button leaves it alone
+// because the search box stays visible above the open panel, so a filled query is
+// never hidden context.
 function clearFilters() {
   active.value.clearFilters()
 }
@@ -88,7 +88,55 @@ watch(activeTab, (tab) => {
 // owners still fires one lookup each on first paint. If that ever measurably stalls, batch
 // it here with `friendshipsStore.ensurePhones(ownerIds)`; don't revive a name prefetch.
 
+// ── Filters overlay ──────────────────────────────────────────────────────────
+// Deliberately a local ref, not module-level like the tab and the filter values:
+// returning from a tour detail view remounts this sheet, and re-opening an opaque
+// overlay over the list the user just navigated back to would hide the rows they
+// came for. The selection survives regardless — it lives in the composable.
+const FILTERS_PANEL_ID = 'tour-filters-panel'
 const filtersExpanded = ref(false)
+const filtersOverlayEl = ref<HTMLElement | null>(null)
+const listHeaderEl = ref<HTMLElement | null>(null)
+const filtersTriggerRef = ref<InstanceType<typeof BaseButton> | null>(null)
+
+function toggleFilters() {
+  filtersExpanded.value = !filtersExpanded.value
+}
+
+function closeFilters() {
+  filtersExpanded.value = false
+}
+
+// The header (tabs, search, trigger) counts as part of the panel's surface, not as
+// "outside": the overlay covers the whole list region, so the header is all that is
+// left to tap, and a literal outside-rule would make the search box undismissable —
+// tapping it to type would close the panel. Excluding the header also covers the
+// trigger, whose own click must not close-then-reopen in one gesture.
+function onDocumentPointerDown(event: PointerEvent) {
+  const target = event.target as Node | null
+  if (!target)
+    return
+  if (filtersOverlayEl.value?.contains(target) || listHeaderEl.value?.contains(target))
+    return
+  closeFilters()
+}
+
+watch(filtersExpanded, async (expanded) => {
+  if (expanded) {
+    document.addEventListener('pointerdown', onDocumentPointerDown)
+    await nextTick()
+    filtersOverlayEl.value?.focus()
+    return
+  }
+  document.removeEventListener('pointerdown', onDocumentPointerDown)
+  // Returning focus is the half that gets skipped; without it a keyboard user is
+  // dumped at the top of the document every time they dismiss.
+  ;(filtersTriggerRef.value?.$el as HTMLElement | undefined)?.focus()
+})
+
+onUnmounted(() => {
+  document.removeEventListener('pointerdown', onDocumentPointerDown)
+})
 
 function handleRowClick(tourId: string) {
   emit('selectTour', tourId)
@@ -103,6 +151,24 @@ function handleRowClick(tourId: string) {
     @close="emit('close')"
   >
     <template #header-actions>
+      <BaseTooltip
+        v-if="activeTab === 'friends' && hasFriends && isDesktop"
+        :text="t('tours.list.viewBackfillCollisionsBtn')"
+      >
+        <BaseIconButton
+          name="sync_alt"
+          :label="t('tours.list.viewBackfillCollisionsBtn')"
+          data-testid="header-backfill"
+          @click="openBackfill"
+        />
+      </BaseTooltip>
+      <BaseIconButton
+        v-else-if="activeTab === 'friends' && hasFriends"
+        name="sync_alt"
+        :label="t('tours.list.viewBackfillCollisionsBtn')"
+        data-testid="header-backfill"
+        @click="openBackfill"
+      />
       <BaseIconButton
         name="calendar_today"
         :label="t('calendar.openAriaLabel')"
@@ -137,13 +203,11 @@ function handleRowClick(tourId: string) {
       @back="closeBackfill"
     />
 
-    <div v-else class="list-view">
-      <!-- Tabs + search + filters travel together as ONE sticky block. Three separate
-           sticky siblings would each need a hardcoded `top` offset equal to the sum of
-           the rows above them, and those heights are dynamic (search row wraps, the
-           backfill button only exists on the friends tab). The expanded filters panel
-           stays outside so it scrolls, while its collapse/clear controls stay pinned. -->
-      <div class="list-header">
+    <!-- Escape is bound here, not on the panel: focus may legitimately sit in the
+         search input, which is the panel's SIBLING, so a listener on the panel root
+         would never see that keydown. This is the nearest common ancestor. -->
+    <div v-else class="list-view" @keydown.escape="closeFilters">
+      <div ref="listHeaderEl" class="list-header">
         <div class="tabs" role="tablist" data-tour="tours">
           <button
             type="button"
@@ -167,17 +231,6 @@ function handleRowClick(tourId: string) {
           </button>
         </div>
 
-        <BaseButton
-          v-if="activeTab === 'friends' && hasFriends"
-          variant="primary-outline"
-          size="sm"
-          class="backfill-entry-btn"
-          @click="openBackfill"
-        >
-          <BaseIcon name="sync_alt" />
-          {{ t('tours.list.viewBackfillCollisionsBtn') }}
-        </BaseButton>
-
         <div class="search-row">
           <BaseIcon name="search" class="search-icon" />
           <input
@@ -186,79 +239,112 @@ function handleRowClick(tourId: string) {
             class="search-input"
             :placeholder="t('tours.list.searchPlaceholder')"
           >
-        </div>
-
-        <div class="filters-row">
-          <BaseButton variant="secondary" size="sm" class="filters-trigger" @click="filtersExpanded = !filtersExpanded">
+          <BaseButton
+            ref="filtersTriggerRef"
+            variant="secondary"
+            size="sm"
+            class="filters-trigger"
+            :aria-expanded="filtersExpanded"
+            :aria-controls="FILTERS_PANEL_ID"
+            @click="toggleFilters"
+          >
             <BaseIcon :name="filtersExpanded ? 'expand_less' : 'tune'" size="sm" />
             {{ t('tours.list.filtersBtn') }}
             <span v-if="activeFilterCount > 0" class="filter-badge">{{ activeFilterCount }}</span>
           </BaseButton>
-
-          <BaseButton
-            v-if="activeFilterCount > 0"
-            variant="secondary"
-            size="sm"
-            data-testid="clear-filters"
-            @click="clearFilters"
-          >
-            <BaseIcon name="close" size="sm" />
-            {{ t('tours.list.clearFiltersBtn') }}
-          </BaseButton>
         </div>
       </div>
 
-      <TourFiltersPanel
-        v-if="filtersExpanded"
-        :filters="filters"
-        @update:partner-ids="(v: Set<string>) => (filters.partnerIds = v)"
-        @update:tour-types="(v: Set<TourType>) => (filters.tourTypes = v)"
-        @update:seasons="(v: Set<Season>) => (filters.seasons = v)"
-        @update:date-range-from="(v: Date | null) => (filters.dateRange.from = v)"
-        @update:date-range-to="(v: Date | null) => (filters.dateRange.to = v)"
-        @update:completion="(v: CompletionFilter) => (filters.completion = v)"
-      />
+      <!-- `min-height: 0` lets this shrink inside the flex column instead of pushing
+           the scroller past the shell; `overflow: hidden` clips the panel's slide-in;
+           `position: relative` is what the overlay's `inset: 0` resolves against. -->
+      <div class="list-region">
+        <div class="tours-scroll">
+          <div v-if="activeTab === 'owned' && isLoading && tours.length === 0" class="loading-text">
+            {{ t('tours.list.loading') }}
+          </div>
 
-      <div v-if="activeTab === 'owned' && isLoading && tours.length === 0" class="loading-text">
-        {{ t('tours.list.loading') }}
+          <div v-else-if="sourceCount === 0" class="empty-state">
+            <BaseIcon :name="activeTab === 'friends' ? 'group' : 'location_on'" size="xl" class="empty-icon" />
+            <p class="empty-text">
+              {{ activeTab === 'friends' ? t('tours.list.friendsEmptyTitle') : t('tours.list.emptyTitle') }}
+            </p>
+            <p class="empty-sub">
+              {{ activeTab === 'friends' ? t('tours.list.friendsEmptySubtitle') : t('tours.list.emptySubtitle') }}
+            </p>
+          </div>
+
+          <div v-else-if="filteredTours.length === 0" class="empty-state">
+            <BaseIcon name="search_off" size="xl" class="empty-icon" />
+            <p class="empty-text">
+              {{ t('tours.list.noMatchesTitle') }}
+            </p>
+            <BaseButton variant="primary" size="sm" @click="clearAll">
+              {{ t('tours.list.clearFiltersBtn') }}
+            </BaseButton>
+          </div>
+
+          <ul v-else class="tours-list">
+            <TourListRow
+              v-for="tour in filteredTours"
+              :key="tour.id"
+              :tour="tour"
+              @click="handleRowClick(tour.id)"
+            />
+          </ul>
+        </div>
+
+        <Transition name="filters-slide">
+          <div
+            v-if="filtersExpanded"
+            :id="FILTERS_PANEL_ID"
+            ref="filtersOverlayEl"
+            class="filters-overlay"
+            role="region"
+            :aria-label="t('tours.filters.panelAriaLabel')"
+            tabindex="-1"
+          >
+            <TourFiltersPanel
+              :filters="filters"
+              :match-count="filteredTours.length"
+              :can-clear="activeFilterCount > 0"
+              @clear="clearFilters"
+              @update:partner-ids="(v: Set<string>) => (filters.partnerIds = v)"
+              @update:tour-types="(v: Set<TourType>) => (filters.tourTypes = v)"
+              @update:seasons="(v: Set<Season>) => (filters.seasons = v)"
+              @update:date-range-from="(v: Date | null) => (filters.dateRange.from = v)"
+              @update:date-range-to="(v: Date | null) => (filters.dateRange.to = v)"
+              @update:completion="(v: CompletionFilter) => (filters.completion = v)"
+            />
+          </div>
+        </Transition>
       </div>
-
-      <div v-else-if="sourceCount === 0" class="empty-state">
-        <BaseIcon :name="activeTab === 'friends' ? 'group' : 'location_on'" size="xl" class="empty-icon" />
-        <p class="empty-text">
-          {{ activeTab === 'friends' ? t('tours.list.friendsEmptyTitle') : t('tours.list.emptyTitle') }}
-        </p>
-        <p class="empty-sub">
-          {{ activeTab === 'friends' ? t('tours.list.friendsEmptySubtitle') : t('tours.list.emptySubtitle') }}
-        </p>
-      </div>
-
-      <div v-else-if="filteredTours.length === 0" class="empty-state">
-        <BaseIcon name="search_off" size="xl" class="empty-icon" />
-        <p class="empty-text">
-          {{ t('tours.list.noMatchesTitle') }}
-        </p>
-        <BaseButton variant="primary" size="sm" @click="clearAll">
-          {{ t('tours.list.clearFiltersBtn') }}
-        </BaseButton>
-      </div>
-
-      <ul v-else class="tours-list">
-        <TourListRow
-          v-for="tour in filteredTours"
-          :key="tour.id"
-          :tour="tour"
-          @click="handleRowClick(tour.id)"
-        />
-      </ul>
     </div>
   </component>
 </template>
 
 <style scoped>
+/* The list owns its scrolling, not the shell. That is the precondition for an
+   overlay that does not scroll with the rows — `position: absolute` inside a
+   scrolling ancestor scrolls with the content — and it is why the header needs no
+   `position: sticky`: it stays put because it sits OUTSIDE the scroller.
+   `height: 100%` survives the sheet's natural-height measurement, which sets the
+   sheet itself to `height: auto`, leaving this percentage to resolve to `auto`. */
 .list-view {
   display: flex;
   flex-direction: column;
+  height: 100%;
+}
+
+.list-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
+  z-index: 1;
+  border-bottom: 1px solid var(--color-outline-variant);
+  background-color: var(--color-background);
+  padding-bottom: var(--spacing-xs);
 }
 
 .tabs {
@@ -288,6 +374,9 @@ function handleRowClick(tourId: string) {
   border-bottom-color: var(--color-primary);
 }
 
+/* Search and the filters trigger share one row. No `flex-wrap`: wrapping onto a
+   second line would hand back the vertical space this merge exists to reclaim, so
+   the input shrinks instead. */
 .search-row {
   display: flex;
   align-items: center;
@@ -304,6 +393,7 @@ function handleRowClick(tourId: string) {
 
 .search-input {
   flex: 1;
+  min-width: 0;
   border: none;
   outline: none;
   background: transparent;
@@ -311,31 +401,9 @@ function handleRowClick(tourId: string) {
   color: var(--color-on-surface);
 }
 
-/* Pinned to the top of the overlay's scroll region (`.content` in bottom-sheet,
-   `.drawer-content` in side-drawer). `sticky`, not `fixed`, so on mobile the block
-   travels with the sheet when it is dragged between snap points. Opaque background
-   + z-index so the rows scrolling underneath do not show through. */
-.list-header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  border-bottom: 1px solid var(--color-outline-variant);
-  background-color: var(--color-background);
-  padding-bottom: var(--spacing-xs);
-}
-
 /* Visual styling comes from BaseButton (secondary); only layout lives here. */
-.filters-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-xs);
-}
-
 .filters-trigger {
-  align-self: flex-start;
+  flex-shrink: 0;
 }
 
 .filter-badge {
@@ -350,6 +418,52 @@ function handleRowClick(tourId: string) {
   color: var(--color-on-primary);
   font-size: 11px;
   font-weight: var(--font-weight-semibold);
+}
+
+.list-region {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.tours-scroll {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Opaque, not a translucent scrim: tour names bleeding through the filter chips is
+   the same legibility failure this component already fixed in its header. */
+.filters-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background-color: var(--color-background);
+  overflow-y: auto;
+  /* Without this, flicking past the end of a short filter list chains outward to
+     the sheet drag and the map behind it. */
+  overscroll-behavior: contain;
+  outline: none;
+}
+
+/* Slides out from under the search row, so the panel keeps the spatial explanation
+   the inline expand used to provide for free. Clipped by `.list-region`. */
+.filters-slide-enter-active,
+.filters-slide-leave-active {
+  transition: transform 0.2s ease-out;
+}
+
+.filters-slide-enter-from,
+.filters-slide-leave-to {
+  transform: translateY(-100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filters-slide-enter-active,
+  .filters-slide-leave-active {
+    transition: none;
+  }
 }
 
 .loading-text {
@@ -389,10 +503,5 @@ function handleRowClick(tourId: string) {
   display: flex;
   flex-direction: column;
   gap: 2px;
-}
-
-/* Visual styling comes from BaseButton (primary-outline); only layout lives here. */
-.backfill-entry-btn {
-  align-self: flex-start;
 }
 </style>
