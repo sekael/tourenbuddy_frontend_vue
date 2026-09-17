@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.41.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.40.2...tourenbuddy-frontend-v0.41.0) (2026-09-17)
+
+
+### Features
+
+* Tour filters overlay ([#296](https://github.com/sekael/tourenbuddy_frontend_vue/issues/296)) ([bcec44a](https://github.com/sekael/tourenbuddy_frontend_vue/commit/bcec44a7720e926f3fe8c676138f3bdcc1697c85))
+
+
+### Bug Fixes
+
+* Bottom sheet header ([#297](https://github.com/sekael/tourenbuddy_frontend_vue/issues/297)) ([15dacd7](https://github.com/sekael/tourenbuddy_frontend_vue/commit/15dacd74c64c4b94b046282fc0be6e78c1e07585))
+
 ## [0.40.2](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.40.1...tourenbuddy-frontend-v0.40.2) (2026-09-14)
 
 
