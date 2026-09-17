@@ -1,6 +1,7 @@
 import { createTestingPinia } from '@pinia/testing'
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick, ref } from 'vue'
 import MapPage from '@/features/map/presentation/pages/map-page.vue'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
@@ -67,7 +68,7 @@ const STUB_TOUR = {
   createdAt: new Date(),
 }
 
-function mountMapPage(initialState = {}) {
+function mountMapPage(initialState = {}, stubOverrides: Record<string, unknown> = {}) {
   return mount(MapPage, {
     global: {
       plugins: [createTestingPinia({ createSpy: vi.fn, stubActions: true, initialState })],
@@ -80,6 +81,7 @@ function mountMapPage(initialState = {}) {
         TourCreationDialog: TourCreationDialogStub,
         UserProfileSheet: UserProfileSheetStub,
         ContactsListSheet: ContactsListSheetStub,
+        ...stubOverrides,
       },
     },
   })
@@ -554,6 +556,32 @@ describe('mapPage', () => {
         name: 'calendar',
         query: { view: 'planned', day: '2026-08-25' },
       })
+    })
+  })
+
+  describe('speed dial blocks the action bar', () => {
+    // `defineExpose` unwraps refs for the parent, so the exposed `isOpen` is a plain
+    // boolean. Reading `.value` off it yielded `undefined`, so an open speed dial never
+    // put the bar into dismiss mode and its buttons acted instead of closing the dial.
+    it('should put the action bar in dismiss mode while the speed dial is open', async () => {
+      const wrapper = mountMapPage(
+        {},
+        {
+          MapActionOverlay: {
+            name: 'MapActionOverlay',
+            template: '<div />',
+            expose: ['isOpen'],
+            setup: () => ({ isOpen: ref(true) }),
+          },
+        },
+      )
+
+      // The template ref lands after the first render, so the bar picks it up next tick.
+      await nextTick()
+
+      const bar = wrapper.findComponent({ name: 'TourActionBar' })
+      expect(bar.props('dismissMode')).toBe(true)
+      expect(bar.props('toursDisabled')).toBe(true)
     })
   })
 })

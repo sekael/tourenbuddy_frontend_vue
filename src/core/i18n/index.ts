@@ -8,7 +8,10 @@ import { readPersistedLocale } from './persistence'
 
 const locale = readPersistedLocale() ?? detectLocale()
 
-export const i18n = createI18n<[MessageSchema], 'en' | 'de-CH'>({
+// The third generic is `Legacy`. It defaults to `true`, and supplying the first two
+// explicitly stops TS inferring `legacy: false` from the options object — so without
+// it `i18n.global` is typed as the legacy `VueI18n` and `locale` as a plain string.
+export const i18n = createI18n<[MessageSchema], 'en' | 'de-CH', false>({
   legacy: false,
   globalInjection: false,
   locale,

@@ -135,7 +135,10 @@ export function useRealtimeSubscription(opts: RealtimeSubscriptionOptions) {
               schema: 'public',
               table: binding.table,
               ...(binding.filter ? { filter: binding.filter } : {}),
-            } as RealtimePostgresChangesFilter<'postgres_changes'>,
+              // `.on()` has one overload per event literal, so a runtime-chosen
+              // union can't select one. The `'*'` overload is the widest and its
+              // payload is ignored here anyway — the callback takes no argument.
+            } as RealtimePostgresChangesFilter<'*'>,
             () => debouncedOnChange(),
           )
         }

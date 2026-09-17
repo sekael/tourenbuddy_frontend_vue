@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { Map as MapLibreMap } from 'maplibre-gl'
 import type { StageContext } from '@/features/onboarding/presentation/composables/use-onboarding-tour'
 import type { TourSurface } from '@/features/onboarding/presentation/onboarding-steps'
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
@@ -80,6 +81,13 @@ const mapRef = ref<InstanceType<typeof TourenbuddyMap> | null>(null)
 const mapOverlayRef = ref<InstanceType<typeof MapActionOverlay> | null>(null)
 const mapBearing = ref(0)
 
+// `defineExpose` widens the exposed `shallowRef<Map>` structurally, which drops the
+// class identity MapLibre's `Map` relies on. Re-assert it once here rather than at
+// every child that takes a `:map` prop.
+const mapInstance = computed<MapLibreMap | null>(
+  () => (mapRef.value?.map ?? null) as MapLibreMap | null,
+)
+
 // Single source of truth for which overlay is open (at most one at a time)
 const activeOverlay = ref<OverlayName | null>(null)
 
@@ -110,7 +118,9 @@ const barState = computed(() =>
   computeBarState({
     activeOverlay: activeOverlay.value,
     isPickingLocation: isPickingLocation.value,
-    speedDialOpen: mapOverlayRef.value?.isOpen?.value ?? false,
+    // `defineExpose` unwraps refs for the parent, so this is already a boolean.
+    // The old `?.value` read `undefined` off it — the speed dial never counted as open.
+    speedDialOpen: mapOverlayRef.value?.isOpen ?? false,
     isAuthenticated: isAuthenticated.value,
   }),
 )
@@ -836,20 +846,20 @@ function handleDialogClose() {
     />
 
     <LocationPicker
-      v-if="isPickingLocation" :map="mapRef?.map ?? null"
+      v-if="isPickingLocation" :map="mapInstance"
       :actions-bottom="!isDesktop && (isPickingForEdit || showTourCreationDialog) ? 80 : undefined"
       @confirm="handleLocationConfirmed" @cancel="handleLocationCancelled"
     />
 
     <OfflineRegionDraw
-      v-if="isDrawingRegion" :map="mapRef?.map ?? null"
+      v-if="isDrawingRegion" :map="mapInstance"
       @confirm="handleRegionDrawn" @cancel="handleRegionDrawCancel"
     />
 
     <!-- Read-only outline of the confirmed extent while the download sheet is open. -->
     <OfflineRegionOutline
       v-if="offlineBbox && activeOverlay === 'offline-download'"
-      :map="mapRef?.map ?? null" :bbox="offlineBbox"
+      :map="mapInstance" :bbox="offlineBbox"
     />
 
     <!-- Overlays: only one visible at a time; mode="out-in" ensures the active overlay

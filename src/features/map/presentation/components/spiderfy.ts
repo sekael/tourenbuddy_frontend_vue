@@ -183,7 +183,7 @@ export function createSpiderfier(map: MapLibreMap): Spiderfier {
     return activeClusterId != null
   }
 
-  function getActiveClusterId(): number | null {
+  function getActiveClusterId(): string | null {
     return activeClusterId
   }
 

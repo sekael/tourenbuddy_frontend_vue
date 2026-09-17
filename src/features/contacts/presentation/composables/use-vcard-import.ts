@@ -126,10 +126,17 @@ export function parseVCardText(text: string): VCardContact[] {
     if (rawPhones.length === 0)
       return { firstName: firstName || UNNAMED_CONTACT, lastName, phones: [], rawPhoneNumbers: [] }
 
-    // Normalize phones; route unparseable values to rawPhoneNumbers only
+    // Normalize phones; route unparseable values to rawPhoneNumbers only.
+    //
+    // `isPrimary` is carried only to satisfy `dedupePhones`' `PhoneLike` constraint.
+    // Without it the generic cannot bind to `ParsedPhone` and silently widens to
+    // `PhoneLike`, which drops every vCard-specific field below. It stays `false`
+    // here: the real primary is resolved after deduping, from PREF then type
+    // priority, so `dedupePhones`' OR-merge of the flag is a deliberate no-op.
     interface ParsedPhone {
       value: string
       label: string | null
+      isPrimary: boolean
       originalIndex: number
       prefV4: number | null
       hasPrefV3: boolean
@@ -146,6 +153,7 @@ export function parseVCardText(text: string): VCardContact[] {
         parsedPhones.push({
           value: normalized.e164,
           label: deriveTelLabel(p.types),
+          isPrimary: false,
           originalIndex: i,
           prefV4: p.prefV4,
           hasPrefV3: p.hasPrefV3,

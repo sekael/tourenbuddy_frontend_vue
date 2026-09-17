@@ -10,6 +10,14 @@ on:
       - synchronize
       - ready_for_review
 
+# A new push supersedes the previous run — don't burn minutes on stale commits.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   analyze-and-test:
     name: Static Analysis & Tests
@@ -42,9 +50,16 @@ jobs:
       - name: Check Locale Parity
         run: npm run check:locales
 
-      # 2. Type check
+      # 2. Type check (src + vite.config via project references — `-b` is required,
+      #    the root tsconfig is solution-style and checks zero files without it)
       - name: Type Check
         run: npm run type-check
+
+      # 2b. Type check test/ + scripts/. Non-blocking while the existing ~170 errors
+      #     are burned down; flip `continue-on-error` off once it reaches zero.
+      - name: Type Check Tests (non-blocking)
+        run: npm run type-check:test
+        continue-on-error: true
 
       # 3. Run unit/component tests
       - name: Run Tests

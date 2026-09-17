@@ -7,7 +7,10 @@
     "moduleResolution": "Bundler",
     "strict": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true
+    "noUnusedParameters": true,
+    // Vite/workbox ship .d.ts that assume DOM + WebWorker libs this project doesn't load.
+    // Without this, checking vite.config.ts alone reports 223 errors from node_modules.
+    "skipLibCheck": true
   },
   "include": ["vite.config.ts"]
 }

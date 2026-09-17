@@ -1,4 +1,4 @@
-import type { ExpressionSpecification, LngLatLike, Map as MapLibreMap } from 'maplibre-gl'
+import type { ExpressionSpecification, GeoJSONSource, LngLatLike, Map as MapLibreMap } from 'maplibre-gl'
 import type { RenderedNode } from './cluster-transitions'
 import type { InternalNode, TreeNode } from './cluster-tree'
 import type { TourType } from '@/features/tours/data/models/tour-type'
@@ -57,7 +57,9 @@ function buildMatchExpr(
   fallback: string,
 ): ExpressionSpecification {
   const pairs = Object.entries(colors).flatMap(([type, color]) => [type, color])
-  return ['match', ['coalesce', ['get', 'tourType'], 'unknown'], ...pairs, fallback]
+  // `match` is a fixed-arity tuple in the MapLibre types; a runtime-length spread of
+  // label/value pairs cannot satisfy it structurally, though the shape is correct.
+  return ['match', ['coalesce', ['get', 'tourType'], 'unknown'], ...pairs, fallback] as unknown as ExpressionSpecification
 }
 
 const COLOR_EXPR = buildMatchExpr(TOUR_TYPE_COLORS, '#78716C')
@@ -843,8 +845,8 @@ export function useToursMarkerLayer(
     selectedTourId: string | null,
     linkedTourIds: Set<string> = new Set(),
   ) {
-    const source = map.getSource(SOURCE_ID)
-    if (!source || source.type !== 'geojson')
+    const source = map.getSource<GeoJSONSource>(SOURCE_ID)
+    if (!source)
       return
 
     cancelAllAnimations()
@@ -867,8 +869,8 @@ export function useToursMarkerLayer(
   }
 
   function updatePreview(goal: { lng: number, lat: number } | null, tourType: TourType | null) {
-    const source = map.getSource(PREVIEW_SOURCE_ID)
-    if (!source || source.type !== 'geojson')
+    const source = map.getSource<GeoJSONSource>(PREVIEW_SOURCE_ID)
+    if (!source)
       return
 
     source.setData({
@@ -886,8 +888,8 @@ export function useToursMarkerLayer(
   }
 
   function updateDetailMarkers(markers: DetailMarker[]) {
-    const source = map.getSource(DETAIL_SOURCE_ID)
-    if (!source || source.type !== 'geojson')
+    const source = map.getSource<GeoJSONSource>(DETAIL_SOURCE_ID)
+    if (!source)
       return
 
     source.setData({

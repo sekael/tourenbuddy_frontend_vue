@@ -137,7 +137,7 @@ onMounted(() => {
     mapInstance!.on('click', (e) => {
       // Include the detail circle so tapping a start/end marker is swallowed
       // (no select, no dismiss) rather than read as a background click.
-      const layers = [...TOUR_LAYER_IDS]
+      const layers: string[] = [...TOUR_LAYER_IDS]
       if (mapInstance!.getLayer(DETAIL_CIRCLE_LAYER_ID))
         layers.push(DETAIL_CIRCLE_LAYER_ID)
       const hits = mapInstance!.queryRenderedFeatures(e.point, { layers })
