@@ -94,6 +94,38 @@ history is immutable) with a body that writes `source = 'manual'` on insert and,
 The signature is unchanged, so `availability-repository-impl.ts`, the `mutate()` intent and the
 replay handler need no change beyond the reader filter.
 
+**Pre-feed clears are plain deletes, deliberately.** Before a feed exists there is nothing to
+override: clearing a day then is not a decision *against a calendar*. So a day cleared in July
+with no feed may be re-greened by the first sync after a feed is connected in August. The user
+sees that result immediately (on-demand sync on first connect) and can clear it again, which then
+tombstones. Always-tombstoning would turn the table into a ledger of every un-tick for 100% of
+users to protect a once-per-user transition.
+
+**Pinning is asymmetric, and that is honest.** Only a *saved change* is a decision. A
+calendar-derived green day that the user toggles off and back on nets to an empty diff, writes
+nothing, and stays `source = 'calendar'`, so a later meeting may still remove it. Clearing pins
+(tombstone); marking a non-green day pins (`manual` insert). There is no gesture to pin an
+already-green calendar day, and none is needed: if a later meeting removes it, one tap re-marks it
+as manual.
+
+**Friend notification covers UPDATE.** The #244 broadcast trigger fires on `insert` and `delete`
+only, which was complete while rows were only inserted or deleted. Tombstoning and re-marking a
+tombstone are UPDATEs, so a third statement-level trigger `after update … referencing new table
+as changed` reuses `fn_broadcast_availability_change` unchanged (its body is op-agnostic). The
+calendar RPC upserts with `on conflict do nothing`, not `do update`: a conflicting row is either
+already calendar-green (nothing to change) or manual (must not be touched), and `do update` would
+UPDATE unchanged rows every run and ping every friend four times a day. An unchanged sync
+therefore sends nothing: every statement runs, `changed` is empty, the trigger loop has no friends
+to visit. One known exception: the past-tombstone housekeeping delete pings friends once per
+expired tombstone. Accepted — one redundant refetch.
+
+**Tombstones are hidden by RLS, not by the client.** The #244 friend SELECT policy is recreated
+with `available and exists (…)`. Otherwise any friend with a session can query a user's
+tombstones directly ("free in their calendar, deliberately declined"). `listFriendsFrom` then
+needs no `available` filter; only `listOwnFrom` does, because the owner policy still returns
+tombstones to the owner. `source` stays friend-readable: that a friend syncs a calendar is what
+the feature openly does, not private information.
+
 **Rejected:** having the Worker read manual rows and diff in TypeScript. It turns a
 constraint into a convention, and a Worker bug would then be able to delete manual rows.
 
@@ -166,6 +198,26 @@ untouched, and the UI surfaces the error next to that feed. Partial success is d
 supported: syncing the union of the feeds that happened to respond has exactly the same
 widening failure, just smaller.
 
+**Disconnecting feeds.** A green day is not owned by any feed: it is green because *no* feed
+blocked it (union of busy). So there is no `feed_id` on availability rows, and removing one of
+several feeds can only free time, never make a green day wrong; the worst interim state is
+under-reporting, the fail-safe direction. The client fires the on-demand sync after a non-last
+removal. Removing the **last** feed is the one case that orphans rows, because no sync will ever
+rewrite them again: an `after delete` trigger on `user_calendar_feeds`, when the user's feed count
+reaches 0, deletes their `source = 'calendar'` rows and their tombstones. A trigger rather than
+client code, because the row also disappears via the `auth.users` cascade and the dashboard.
+
+**Input and size bounds.** Calendar apps commonly hand out `webcal://` (iCloud, many Outlook and
+Nextcloud copy buttons). The Zod model normalizes `webcal://` → `https://` on input; the DB
+`check (url like 'https://%')` stays as the trust-boundary backstop. The Worker caps a feed body
+at **2 MB**, checked against `Content-Length` *and* by a running byte count while streaming
+(the header may be absent or wrong); exceeding it is an ordinary feed failure, `last_error =
+'too_large'`, fail closed. A secret ICS URL has no range parameter, so the download is always the
+full history; "future only" applies to processing, not transport. `ical.js` parses the whole
+capped body, then non-recurring events ending before the horizon are skipped. Pre-filtering the
+raw text is rejected: a weekly `RRULE` with a 2019 `DTSTART` is past-dated but busies every week
+of the horizon.
+
 ### D6 — Conditional GET only within the same local day
 
 Feeds store `etag` / `last_modified` and send `If-None-Match` / `If-Modified-Since`. But because
@@ -194,14 +246,22 @@ and the UI masks all but the host when displaying a saved feed.
 ### D9 — Outbound: live-rendered token feed
 
 `GET /calendar/:token.ics` on the Worker. The token (`user_calendar_settings.feed_token`, a
-uuid) resolves to a user; the handler then queries, **at request time**, the user's
-`planned_date`-bearing tours plus tours sharing a `tour_link_group` with one of them, and renders
-`VEVENT`s with `DTSTART;VALUE=DATE`, `UID:tour-<id>@tourenbuddy` and
-`PRODID:-//Tourenbuddy//Tours//EN`.
+uuid) resolves to a user; the handler then queries, at request time, **only that user's own**
+`planned_date`-bearing tours and renders `VEVENT`s with `DTSTART;VALUE=DATE`,
+`UID:tour-<id>@tourenbuddy` and `PRODID:-//Tourenbuddy//Tours//EN`. `Cache-Control: private,
+max-age=900`.
 
-Live rendering is what makes including *linked* tours — other users' data — defensible: when a
-link dissolves, the next calendar refresh drops the event with no revocation job, no stored
-snapshot and no cache to invalidate. `Cache-Control: private, max-age=900`.
+**Own tours only.** Linking is a commitment to do the tour together, so linked tours belong in the
+user's calendar, and they are already there: every tour the user is linked *through* is their own
+tour. The event is rendered from the user's own row (their name, their date; link invariants do
+not constrain `planned_date`). The friend's tour is never read. Including it was rejected: Google
+and other subscribers fetch server-side and **store** the feed, so another user's tour data would
+land in a third party under an account they never consented to, and "live rendering" would not
+revoke it until the provider's next refresh.
+
+**Revocable token.** The feed URL gets pasted into shared family calendars and forwarded. The UI
+offers "Regenerate URL" (confirm dialog) → `update user_calendar_settings set feed_token =
+gen_random_uuid()`; the old token 404s immediately.
 
 ### D10 — Cron on the existing Worker
 
@@ -213,7 +273,22 @@ one authenticated caller so that adding a feed shows a result immediately.
 
 **Deployment hazard:** Worker deploys are manual (`.claude/env-ci.md`). Shipping the frontend
 without `npx wrangler deploy` yields a Calendar-sync UI whose feeds never sync and whose
-outbound URL 404s, with no error anywhere. Explicit task, not a footnote.
+outbound URL 404s, with no error anywhere. D11 makes this unreachable by ordering.
+
+### D11 — Three PRs in dependency order, frontend last
+
+Project rule: no frontend feature ships without a live backend — not behind a feature flag, not
+under another tag. (A `VITE_*` flag would also cost a Zod env entry, a CI env step and a repo
+secret, kept in sync.) So the change ships as three PRs, each inert on its own:
+
+1. **DB** — feeds + settings tables **first** (the new `apply_availability_diff` body queries
+   `user_calendar_feeds`), then `source`/`available`, both RPCs, the last-feed and update
+   triggers, the tightened friend policy, and the `listOwnFrom` filter. With no feed rows the
+   diff RPC plain-deletes as today: zero behaviour change. `supabase db push` after merge.
+2. **Worker** — parse, busy-days, sync, cron, outbound, tests, then `wrangler deploy`. The cron
+   finds zero feeds; every token 404s. Inert.
+3. **Frontend** — repository, store, settings UI, edit-mode note, regenerate URL, locales. The
+   backend is already live, so the UI works the moment it appears.
 
 ## Risks / Trade-offs
 
@@ -225,5 +300,15 @@ outbound URL 404s, with no error anywhere. Explicit task, not a footnote.
 - **A user who never opens Tourenbuddy still syncs.** The cron iterates all users with feeds.
   Bounded by feed count and one HTTP fetch each; revisit with a "last active" filter if the
   Worker's CPU budget becomes visible.
+- **Cloudflare Workers free plan (decided 2026-09-28).** The Worker stays on the free plan while
+  Tourenbuddy is a test app: ~10 ms CPU and ~50 subrequests per invocation, cron included. A
+  large ICS body (Google exports full history) can exceed the CPU budget in `ical.js` alone, and
+  the cron's single-invocation paging costs ≈ users × (feeds + 3) subrequests, so it caps out
+  around ~10 users. Accepted for now: test with **small calendars** only. Fail-closed still holds
+  when the runtime kills an invocation (the per-user RPC is the only write and is atomic), but
+  `last_error` is then **not** written either. **Symptoms that point here, not at a code bug:**
+  `last_synced_at` stops advancing with no `last_error`; `exceededCpu` / "Too many subrequests"
+  in Worker logs; on-demand `POST /calendar/sync` works while the cron does not. Upgrade path:
+  paid plan (same code), then Queues fan-out (one message per user) past a few hundred users.
 - **Users with no feed pay nothing.** No behavioural change: no tombstones, no new rows, the
   same RPC signature.

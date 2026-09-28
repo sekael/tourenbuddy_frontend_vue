@@ -4,7 +4,8 @@
 
 The system SHALL let a signed-in user connect up to 5 calendar feeds by supplying a secret
 iCalendar (ICS) URL and an optional label, and SHALL let them relabel or disconnect any feed.
-A feed URL MUST be `https`, MUST be unique per user, and SHALL be stored in an owner-only
+A feed URL MUST be stored as `https` (a `webcal://` URL SHALL be accepted and normalized to
+`https://`, since calendar apps commonly hand out that scheme), MUST be unique per user, and SHALL be stored in an owner-only
 table that no other user can read. When displaying a saved feed the system SHALL mask the URL
 beyond its host, because the URL is a bearer credential granting read access to the user's
 calendar. Attempting to connect a sixth feed SHALL be rejected with a localized message.
@@ -19,9 +20,14 @@ calendar. Attempting to connect a sixth feed SHALL be rejected with a localized 
 - **WHEN** a user connects a URL they have already connected
 - **THEN** the write is rejected and no second row is created
 
-#### Scenario: Non-https feed URL is rejected
+#### Scenario: A webcal URL is normalized
 
-- **WHEN** a user submits an `http://` or `webcal://` URL
+- **WHEN** a user submits a `webcal://` URL
+- **THEN** it is stored with the `https://` scheme and otherwise unchanged
+
+#### Scenario: A plain http feed URL is rejected
+
+- **WHEN** a user submits an `http://` URL
 - **THEN** the form rejects it before any request is made
 
 #### Scenario: Another user cannot read a feed URL
@@ -34,6 +40,19 @@ calendar. Attempting to connect a sixth feed SHALL be rejected with a localized 
 
 - **WHEN** a connected feed is listed
 - **THEN** only its host and label are shown, never the full secret path
+
+#### Scenario: Disconnecting the last feed returns to manual-only availability
+
+- **WHEN** a user disconnects their only remaining feed, by any path (UI, account deletion
+  cascade, or direct database delete)
+- **THEN** all their `source = 'calendar'` rows and all their tombstones are removed, leaving
+  exactly their manual available days
+
+#### Scenario: Disconnecting one of several feeds triggers a resync
+
+- **WHEN** a user disconnects one feed while at least one other remains
+- **THEN** no availability is deleted and an on-demand sync runs, so days only the removed feed
+  blocked become available without waiting for the schedule
 
 ### Requirement: Configure the availability window
 
@@ -156,6 +175,13 @@ feed. The system MUST NOT derive availability from the subset of feeds that resp
 - **WHEN** a feed returns 200 with a body that is not valid iCalendar
 - **THEN** the sync fails for that user rather than deriving zero busy time
 
+#### Scenario: An oversized feed is a failure
+
+- **WHEN** a feed body exceeds 2 MB, whether announced by `Content-Length` or discovered while
+  reading
+- **THEN** the read is aborted, the feed records a `too_large` error, and no availability is
+  written for that user
+
 #### Scenario: A resolved error clears
 
 - **WHEN** a previously failing feed succeeds on a later run
@@ -210,21 +236,25 @@ records SHALL identify a feed and a failure cause without including response bod
 ### Requirement: Publish planned tours as a calendar feed
 
 The system SHALL provide each user with a private iCalendar feed URL, containing a secret token,
-that any calendar application can subscribe to. The feed SHALL contain the user's own tours that
-have a planned date, plus tours linked to them, as all-day events on the planned date, and SHALL
-be rendered from current data at request time rather than from a stored snapshot. Each event
+that any calendar application can subscribe to. The feed SHALL contain only the user's **own**
+tours that have a planned date, as all-day events on that date, rendered from the user's own tour
+data at request time. A linked tour appears because it is the user's own tour; no other user's
+tour data SHALL ever be read into the feed, since subscribing calendar providers store what they
+fetch. The user SHALL be able to regenerate the feed URL, invalidating the previous token
+immediately. Each event
 SHALL carry a stable identifier marking it as Tourenbuddy-originated. An unknown token SHALL
 return 404 and MUST NOT reveal whether the token ever existed.
 
-#### Scenario: A linked tour appears in the feed
+#### Scenario: A linked tour is rendered from the user's own tour
 
-- **WHEN** a user's tour is linked to another user's tour with a planned date
-- **THEN** the linked tour appears as an event in the feed
+- **WHEN** the user's tour is linked to a friend's tour with a different name and planned date
+- **THEN** the event uses the user's own tour name and planned date, and the friend's tour
+  produces no event
 
-#### Scenario: A dissolved link disappears on the next refresh
+#### Scenario: A regenerated URL revokes the old one
 
-- **WHEN** a tour link is dissolved and the calendar application refreshes the feed
-- **THEN** the linked tour's event is absent, with no further action by either user
+- **WHEN** the user regenerates their feed URL
+- **THEN** the previous URL returns 404 and the new URL serves the feed
 
 #### Scenario: A tour without a planned date is omitted
 

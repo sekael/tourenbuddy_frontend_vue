@@ -20,8 +20,8 @@ reporter:
 Busy-derivation is the only inbound semantics that requires no extra event management. But a
 calendar records *busy*, not free — absence of data is not evidence of freedom, and a single
 18:00 dentist appointment must not consume a ski-touring day. So the calendar is treated as a
-**seed, not a source of truth**: it pre-fills availability, and a manual toggle on the Planned
-calendar pins that day forever. Every ambiguity the inversion creates is resolved by one tap in
+**seed, not a source of truth**: it pre-fills availability, and a saved change on the Planned
+calendar overrides the calendar for that day forever. Every ambiguity the inversion creates is resolved by one tap in
 UI that already exists.
 
 Outbound is the mirror complaint and is nearly free: the user's planned tours are invisible in
@@ -45,9 +45,14 @@ the calendar app they actually live in.
 - **The calendar seeds, manual pins win.** `user_availability` gains `source`
   (`'manual' | 'calendar'`) and `available boolean`. A manual clear of a calendar-derived day
   writes a **tombstone** (`available = false, source = 'manual'`) rather than deleting the row,
-  because a plain delete would be re-added by the very next sync (design D2). Readers filter
-  `available = true`, so the rendering path, the friend-intersection query and the offline
+  because a plain delete would be re-added by the very next sync (design D2). Tombstones are
+  hidden from friends by RLS, and friends are notified of UPDATEs too (a new broadcast trigger).
+  The owner's reader filters `available = true`, so the rendering path and the offline
   write-queue replay are unchanged in behaviour.
+- **Disconnecting the last feed returns to manual-only availability** — a trigger deletes the
+  user's calendar-derived rows and tombstones. Removing one of several feeds just resyncs.
+- **Feed input is bounded**: `webcal://` is accepted and normalized to `https://`; bodies over
+  2 MB fail closed like any other feed error.
 - **Rolling 60-day horizon.** Sync only writes inside `[today, today+60d]`. An empty calendar
   two years out is not evidence of availability, and friends act on these overlays (design D4).
 - **Fail closed.** A feed that 404s, times out or whose secret URL was rotated returns zero busy
@@ -57,11 +62,9 @@ the calendar app they actually live in.
 - **Event text is never persisted.** The Worker derives per-day booleans and discards titles,
   locations, attendees and descriptions. The feed URL itself is a bearer credential and lives in
   an owner-only table the Worker reads with the service role (design D8).
-- **Outbound: a per-user secret ICS feed** of the user's own planned tours **plus tours they are
-  linked to**, served by the Worker and **rendered live per request** — the token resolves to a
-  user, then tours and current `tour_link_member` rows are queried at request time, so a
-  dissolved link disappears on the calendar app's next refresh with no stored snapshot to leak
-  (design D9).
+- **Outbound: a per-user secret ICS feed** of the user's **own** planned tours (linked tours
+  included, rendered from the user's own tour row, never the friend's), served by the Worker and
+  rendered live per request, with a "Regenerate URL" action to revoke a leaked link (design D9).
 - **Polling runs on the existing `services/email-hook` Worker** via a 6-hourly cron trigger. It
   already holds `SUPABASE_SERVICE_ROLE_KEY`; this is a `[triggers]` block plus a `scheduled`
   handler, not new infrastructure (design D10). A `POST /calendar/sync` route syncs one
@@ -76,7 +79,8 @@ the calendar app they actually live in.
 - Affected code:
   - Migrations (new): `user_calendar_feeds`, `user_calendar_settings`, `user_availability`
     `source` + `available` columns, replaced `apply_availability_diff`, new
-    `apply_calendar_availability` RPC (service-role only)
+    `apply_calendar_availability` RPC (service-role only), last-feed cleanup trigger, `after
+    update` broadcast trigger, friend SELECT policy recreated with `available`
   - `services/email-hook/`: `wrangler.toml` (cron trigger), `src/index.ts` (scheduled handler,
     `/calendar/*` routes), new `src/calendar/` (ICS fetch, busy derivation, outbound render),
     `package.json` (`ical.js`), `test/`
@@ -84,6 +88,10 @@ the calendar app they actually live in.
     (filter `available = true`), new feed/settings repository + store, new
     `calendar-sync-settings.vue`, `planned-calendar.vue` (edit-mode legend)
   - `src/locales/{en,de-CH}.json`
+- **Ships as three PRs in dependency order — DB, Worker, frontend** (design D11). No frontend
+  ships before its backend is live; no feature flag.
+- **Worker stays on the Cloudflare free plan** for now; test with small calendars (design →
+  Risks).
 - **Worker deploy is manual and NOT in CI** (`.claude/env-ci.md`). Without
   `cd services/email-hook && npx wrangler deploy`, neither the cron nor the outbound feed
   exists in Preview or prod — the frontend would show a Calendar-sync UI that never syncs. It is

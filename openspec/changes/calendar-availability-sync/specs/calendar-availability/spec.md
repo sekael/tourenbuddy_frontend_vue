@@ -29,6 +29,12 @@ governed by Row-Level Security. The table shape SHALL support group-intersection
 - **THEN** neither the user's own availability query nor a friend's availability query returns
   that date, and the Planned calendar shows no overlay for it
 
+#### Scenario: A friend cannot read a tombstone even by querying directly
+
+- **WHEN** an accepted friend queries `user_availability` for the user's rows with their own
+  session, bypassing the app's filters
+- **THEN** Row-Level Security returns no row with `available = false`
+
 #### Scenario: Reading availability is unaffected for a user with no calendar feed
 
 - **WHEN** a user who has never connected a calendar feed marks and clears days
@@ -45,6 +51,9 @@ Days that were unchanged SHALL NOT be rewritten. Every day written by this opera
 recorded with `source = 'manual'`. Where the user has at least one connected calendar feed, a
 cleared day SHALL be recorded as a tombstone rather than deleted, so that a subsequent calendar
 sync cannot re-add it; where the user has no connected feed, a cleared day SHALL be deleted.
+An edit session whose selection nets to no change (e.g. a day toggled off and back on) is not a
+decision and SHALL write nothing; in particular it does not convert a calendar-derived day into a
+manual one.
 After a successful save the calendar SHALL return to view mode reflecting the saved
 availability.
 
@@ -76,6 +85,13 @@ availability.
 - **WHEN** a user marks a day available that the feed derives as busy, and a sync then runs
 - **THEN** the day remains available
 
+#### Scenario: Toggling a calendar-derived day off and on again is a no-op
+
+- **WHEN** a user with a connected feed toggles a calendar-derived day off and back on in one edit
+  session and saves
+- **THEN** no write is issued and the day stays calendar-derived, so a later sync may still
+  remove it
+
 ## ADDED Requirements
 
 ### Requirement: Calendar-derived availability never overwrites a manual decision
@@ -101,17 +117,35 @@ not only by the caller.
 - **WHEN** the sync routine is invoked with a day range that spans manually pinned days
 - **THEN** the manual rows in that range survive the call
 
+### Requirement: Friends are notified of every availability change
+
+Every insert, update or delete of a user's `user_availability` rows that changes at least one row
+SHALL notify that user's accepted friends to refetch, including a clear that turns a row into a
+tombstone and a re-mark that turns a tombstone back into an available day. A write that changes
+no row SHALL NOT notify anyone.
+
+#### Scenario: Clearing a calendar-derived day reaches friends
+
+- **WHEN** a user with a connected feed clears a calendar-derived day
+- **THEN** their friends' overlays drop that day without a manual refresh
+
+#### Scenario: An unchanged sync is silent
+
+- **WHEN** a sync runs and derives exactly the availability already stored
+- **THEN** no friend is notified
+
 ### Requirement: The Planned calendar explains calendar-derived availability
 
 When the user has at least one connected calendar feed, availability edit mode SHALL state that
-availability is pre-filled from their calendar and that tapping a day overrides it permanently.
+availability is pre-filled from their calendar and that days the user changes here override it
+permanently.
 Calendar-derived and manually marked days SHALL render identically, with no provenance styling.
 
 #### Scenario: Edit mode explains the override
 
 - **WHEN** a user with a connected feed enters availability edit mode
 - **THEN** the existing friend-visibility disclaimer is accompanied by a note that days come
-  from their calendar and that a tap pins the day
+  from their calendar and that days changed here override the calendar
 
 #### Scenario: No note without a feed
 
