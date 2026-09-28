@@ -15,6 +15,8 @@ export class SupabaseAvailabilityRepository implements AvailabilityRepository {
       .from('user_availability')
       .select('user_id, date')
       .eq('user_id', selfId)
+      // Owner policy returns own tombstones (available = false); friends' are hidden by RLS.
+      .eq('available', true)
       .gte('date', fromDate)
       .order('date', { ascending: true })
 
