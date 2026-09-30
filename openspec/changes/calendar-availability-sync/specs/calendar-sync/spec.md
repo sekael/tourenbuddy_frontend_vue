@@ -84,7 +84,7 @@ For each day within the horizon, the system SHALL collect timed events from all 
 connected feeds, evaluate them in the `Europe/Zurich` timezone, clip each event to the day's
 core window, merge overlapping busy intervals across **all** feeds, and mark the day available
 if and only if the largest contiguous free interval within the core window is at least
-`min_free_minutes`. All-day events SHALL be ignored entirely. Recurring events SHALL be expanded
+`min_free_minutes`. All-day events, cancelled events and events marked "show as free" SHALL be ignored entirely. Recurring events SHALL be expanded
 across the horizon, honouring exceptions and cancellations. Events spanning more than one
 calendar day SHALL contribute busy time to each day they overlap. Events whose `UID` identifies
 them as originating from Tourenbuddy's own outbound feed SHALL be discarded before derivation.
@@ -117,6 +117,13 @@ them as originating from Tourenbuddy's own outbound feed SHALL be discarded befo
 - **THEN** every occurrence within the horizon is derived as busy, and any occurrence removed
   by an exception is not
 
+#### Scenario: An occurrence moved across the horizon edge does not drop the others
+
+- **WHEN** one occurrence of a recurring event is moved to a date past the horizon, or an
+  occurrence scheduled past the horizon is moved into it
+- **THEN** every other occurrence within the horizon is still derived as busy, and the moved
+  occurrence counts only on the day it now takes place
+
 #### Scenario: A multi-day event blocks each day it spans
 
 - **WHEN** an event runs from Friday 18:00 to Sunday 20:00
@@ -127,6 +134,11 @@ them as originating from Tourenbuddy's own outbound feed SHALL be discarded befo
 - **WHEN** an event is published in UTC and overlaps the core window only after conversion to
   `Europe/Zurich`
 - **THEN** derivation uses the converted local times
+
+#### Scenario: Events the user marked free do not count as busy
+
+- **WHEN** a timed event is marked "show as free" (`TRANSP:TRANSPARENT`) or cancelled
+- **THEN** it contributes no busy time
 
 #### Scenario: Tourenbuddy's own tour events are ignored
 
@@ -172,8 +184,10 @@ feed. The system MUST NOT derive availability from the subset of feeds that resp
 
 #### Scenario: An unparseable body is a failure, not an empty calendar
 
-- **WHEN** a feed returns 200 with a body that is not valid iCalendar
-- **THEN** the sync fails for that user rather than deriving zero busy time
+- **WHEN** a feed returns 200 with a body that is not valid iCalendar, or that contains an event
+  which cannot be read (for example one without a start time)
+- **THEN** the feed records an `unparseable` error and the sync fails for that user rather than
+  deriving zero busy time
 
 #### Scenario: An oversized feed is a failure
 
@@ -181,6 +195,11 @@ feed. The system MUST NOT derive availability from the subset of feeds that resp
   reading
 - **THEN** the read is aborted, the feed records a `too_large` error, and no availability is
   written for that user
+
+#### Scenario: A recurrence too large to expand is a failure
+
+- **WHEN** a feed contains a recurring event whose expansion exceeds the processing cap
+- **THEN** the feed records a `too_complex` error and no availability is written for that user
 
 #### Scenario: A resolved error clears
 
@@ -191,10 +210,12 @@ feed. The system MUST NOT derive availability from the subset of feeds that resp
 
 The system SHALL sync every user with at least one connected feed on a recurring schedule of at
 most six hours, and SHALL additionally expose an authenticated on-demand sync that runs the
-identical routine for the calling user only. The UI SHALL show when the user's feeds last synced
-successfully. Within the same local day, a feed that reports no change since the last successful
-fetch MAY be skipped; on the first run of a new local day the feed SHALL be fetched
-unconditionally, because the horizon has rolled.
+same routine for the calling user only. The UI SHALL show when the user's feeds last synced
+successfully. Within the same local day, the scheduled sync MAY skip a feed that reports no
+change since the last successful fetch; on the first run of a new local day the feed SHALL be
+fetched unconditionally, because the horizon has rolled. The on-demand sync SHALL always fetch
+every feed unconditionally, because it follows changes no feed can report (new settings, a
+removed feed).
 
 #### Scenario: On-demand sync is scoped to the caller
 
@@ -212,10 +233,22 @@ unconditionally, because the horizon has rolled.
 - **THEN** a sync is triggered immediately and derived availability appears without waiting for
   the next scheduled run
 
+#### Scenario: One unchanged feed next to a changed one is refetched
+
+- **WHEN** within the same local day one feed reports no change and another has changed
+- **THEN** the unchanged feed is fetched again unconditionally and availability is derived from
+  all feeds, never from the changed feed alone
+
 #### Scenario: A rolled horizon forces a fresh fetch
 
 - **WHEN** the first sync of a new local day runs against a feed that has not changed
 - **THEN** the feed is fetched unconditionally and the full horizon is recomputed
+
+#### Scenario: On-demand sync recomputes even when no feed changed
+
+- **WHEN** a user changes their settings or removes one of several feeds, and an on-demand sync
+  runs on a day their feeds already synced and have not changed since
+- **THEN** every feed is fetched unconditionally and availability is recomputed
 
 ### Requirement: Calendar content is never persisted
 
@@ -237,7 +270,7 @@ records SHALL identify a feed and a failure cause without including response bod
 
 The system SHALL provide each user with a private iCalendar feed URL, containing a secret token,
 that any calendar application can subscribe to. The feed SHALL contain only the user's **own**
-tours that have a planned date, as all-day events on that date, rendered from the user's own tour
+tours that have a planned date, as all-day events spanning the planned date through the end date (or the planned date alone), rendered from the user's own tour
 data at request time. A linked tour appears because it is the user's own tour; no other user's
 tour data SHALL ever be read into the feed, since subscribing calendar providers store what they
 fetch. The user SHALL be able to regenerate the feed URL, invalidating the previous token
@@ -250,6 +283,11 @@ return 404 and MUST NOT reveal whether the token ever existed.
 - **WHEN** the user's tour is linked to a friend's tour with a different name and planned date
 - **THEN** the event uses the user's own tour name and planned date, and the friend's tour
   produces no event
+
+#### Scenario: A multi-day tour spans its whole range
+
+- **WHEN** a tour has a planned date and an end date
+- **THEN** its event covers every day from the planned date through the end date inclusive
 
 #### Scenario: A regenerated URL revokes the old one
 
