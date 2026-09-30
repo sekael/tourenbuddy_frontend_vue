@@ -193,6 +193,16 @@ export async function syncUser(
 }
 
 /**
+ * Cron: drop every availability row before today (Zurich). Nothing reads past days — the app
+ * loads from `todayKey()` — so without this the table only grows. Covers users without feeds too.
+ */
+export async function purgePastAvailability(env: Env, now = new Date()): Promise<void> {
+  const res = await rest(env, `user_availability?date=lt.${zurichDateKey(now)}`, { method: 'DELETE' })
+  if (!res.ok)
+    console.error(`[calendar] purge past availability failed: ${res.status}`)
+}
+
+/**
  * Cron: every user with at least one feed, one at a time, failures isolated per user.
  * ponytail: single invocation. Free plan ≈ users × (feeds + 3) subrequests of ~50, so this caps
  * out near ~10 users (design → Risks). Upgrade: paid plan, then Queues fan-out (one msg per user).

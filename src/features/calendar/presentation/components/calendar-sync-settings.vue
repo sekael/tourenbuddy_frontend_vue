@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
+import CalendarFeedHelp from '@/features/calendar/presentation/components/calendar-feed-help.vue'
 import CalendarFeedRow from '@/features/calendar/presentation/components/calendar-feed-row.vue'
 import CalendarOutboundFeed from '@/features/calendar/presentation/components/calendar-outbound-feed.vue'
 import { useCalendarFeedStore } from '@/features/calendar/presentation/stores/calendar-feed-store'
@@ -42,6 +43,8 @@ function saveWindow() {
 }
 
 onMounted(store.load)
+// The store outlives the sheet: an action error must not greet the next visit.
+onUnmounted(() => (error.value = null))
 </script>
 
 <template>
@@ -68,6 +71,7 @@ onMounted(store.load)
 
       <form v-if="feeds.length < MAX_FEEDS" class="add-form" @submit.prevent="add">
         <input v-model="newUrl" class="input" type="url" inputmode="url" required :placeholder="t('calendar.sync.urlPlaceholder')" :aria-label="t('calendar.sync.urlPlaceholder')">
+        <CalendarFeedHelp />
         <input v-model="newLabel" class="input" maxlength="60" :placeholder="t('calendar.sync.labelPlaceholder')" :aria-label="t('calendar.sync.labelPlaceholder')">
         <BaseButton type="submit" size="sm" :disabled="syncing">
           {{ t('calendar.sync.addFeed') }}

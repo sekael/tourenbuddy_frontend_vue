@@ -330,6 +330,10 @@ through users that have at least one feed; `POST /calendar/sync` runs the same r
 unconditionally (D6), for one authenticated caller so that adding a feed shows a result
 immediately.
 
+The same cron also deletes every `user_availability` row dated before today (Zurich), manual
+and calendar alike. Nothing reads past days (the app loads from `todayKey()`), so without it
+the table grows without bound; the sync RPC only tidied past tombstones of feed users.
+
 **Deployment hazard:** Worker deploys are manual (`.claude/env-ci.md`). Shipping the frontend
 without `npx wrangler deploy` yields a Calendar-sync UI whose feeds never sync and whose
 outbound URL 404s, with no error anywhere. D11 makes this unreachable by ordering.

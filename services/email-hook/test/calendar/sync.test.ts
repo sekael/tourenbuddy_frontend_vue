@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { syncUser } from '../../src/calendar/sync'
+import { purgePastAvailability, syncUser } from '../../src/calendar/sync'
 
 vi.mock('../../src/calendar/busy-days', () => ({ deriveAvailableDays: () => ['2030-07-01'] }))
 
@@ -69,5 +69,15 @@ describe('syncUser', () => {
     const calls = stubFetch(() => new Response(new Blob(['x'.repeat(2 * 1024 * 1024 + 1)]).stream()))
     expect(await syncUser(env, 'u1')).toBe('failed')
     expect(patches(calls)).toEqual([['f2', { last_error: 'too_large' }]])
+  })
+})
+
+describe('purgePastAvailability', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('should cut off at the Zurich date, not the UTC date', async () => {
+    const calls = stubFetch(() => new Response(ICS))
+    await purgePastAvailability(env, new Date('2026-09-29T22:30:00Z'))
+    expect(calls).toEqual([{ url: 'https://db/rest/v1/user_availability?date=lt.2026-09-30', init: expect.objectContaining({ method: 'DELETE' }) }])
   })
 })

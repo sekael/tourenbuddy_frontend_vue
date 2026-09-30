@@ -3,6 +3,7 @@ import type { CalendarFeed } from '@/features/calendar/domain/repositories/calen
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
+import BaseIcon from '@/core/components/base-icon.vue'
 import { useFormatter } from '@/core/composables/use-formatter'
 
 const props = defineProps<{ feed: CalendarFeed }>()
@@ -39,7 +40,7 @@ function onLabelChange(event: Event) {
 </script>
 
 <template>
-  <li class="feed">
+  <li class="feed" :class="{ 'feed--error': errorText }">
     <div class="feed-main">
       <input
         class="label-input"
@@ -51,7 +52,10 @@ function onLabelChange(event: Event) {
       >
       <!-- Host only: the full URL is a bearer credential (design D8). -->
       <span class="host">{{ feed.host }}</span>
-      <span v-if="errorText" class="status status--error" role="status">{{ errorText }}</span>
+      <span v-if="errorText" class="status status--error" role="status">
+        <BaseIcon name="warning" />
+        {{ errorText }}
+      </span>
       <span v-else class="status">{{ syncedText }}</span>
     </div>
     <BaseIconButton
@@ -101,7 +105,17 @@ function onLabelChange(event: Event) {
   white-space: nowrap;
 }
 
+.feed--error {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-left: 3px solid var(--color-error);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-error-container);
+}
+
 .status--error {
+  display: flex;
+  gap: var(--spacing-xxs);
+  align-items: flex-start;
   color: var(--color-error);
   white-space: normal;
 }
