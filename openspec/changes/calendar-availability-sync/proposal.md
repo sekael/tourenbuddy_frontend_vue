@@ -41,7 +41,7 @@ the calendar app they actually live in.
   window must fail at input, not silently yield zero available days forever.
 - **All-day events are ignored entirely** (design D4). Birthdays, name-days and public holidays
   would otherwise erase availability, and "Vacation" — an all-day event — means the *opposite*
-  of busy for tour planning.
+  of busy for tour planning. Cancelled events and events marked "show as free" are ignored too.
 - **The calendar seeds, manual pins win.** `user_availability` gains `source`
   (`'manual' | 'calendar'`) and `available boolean`. A manual clear of a calendar-derived day
   writes a **tombstone** (`available = false, source = 'manual'`) rather than deleting the row,

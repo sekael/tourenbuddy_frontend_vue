@@ -28,9 +28,10 @@ const VALID_PAYLOAD = {
 }
 
 vi.mock('standardwebhooks', () => ({
-  Webhook: vi.fn().mockImplementation(() => ({
-    verify: vi.fn(),
-  })),
+  // A class, not an arrow: vitest 4 mocks are only constructible (`new Webhook`) that way.
+  Webhook: vi.fn().mockImplementation(class {
+    verify = vi.fn()
+  }),
 }))
 
 function makeRequest(body: unknown, headers: Record<string, string> = {}, path = '/') {
@@ -119,11 +120,11 @@ describe('email-hook worker', () => {
 
   it('returns 401 when signature verification fails', async () => {
     const { Webhook } = await import('standardwebhooks')
-    vi.mocked(Webhook).mockImplementationOnce(() => ({
-      verify: vi.fn().mockImplementation(() => {
+    vi.mocked(Webhook).mockImplementationOnce(class {
+      verify = vi.fn().mockImplementation(() => {
         throw new Error('invalid sig')
-      }),
-    }))
+      })
+    } as never)
     const response = await worker.fetch(makeRequest(VALID_PAYLOAD), VALID_ENV as never)
     expect(response.status).toBe(401)
   })

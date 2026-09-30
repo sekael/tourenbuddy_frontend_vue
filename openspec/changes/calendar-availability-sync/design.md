@@ -94,6 +94,23 @@ history is immutable) with a body that writes `source = 'manual'` on insert and,
 The signature is unchanged, so `availability-repository-impl.ts`, the `mutate()` intent and the
 replay handler need no change beyond the reader filter.
 
+**An owner UPDATE policy is required.** #242 shipped owner policies for select/insert/delete
+only. `apply_availability_diff` is `SECURITY INVOKER`, so tombstoning and re-marking a tombstone
+(both UPDATEs) would silently match 0 rows without `user_availability_update_own`. The same
+migration adds it. The re-mark upsert is `on conflict do update … where (available, source) is
+distinct from (true, 'manual')`, so a row that is already manual-available is not UPDATEd.
+
+**Security mode per function.** `apply_availability_diff` is `SECURITY INVOKER`: RLS limits the
+caller to their own rows. `apply_calendar_availability` is also `SECURITY INVOKER`: only
+`service_role` may execute it (`revoke … from public, anon, authenticated`), and `service_role`
+bypasses RLS by itself (`BYPASSRLS`). Definer would only add the owner's privileges. The
+execute grant is the gate; the `source = 'calendar'` filters inside the function enforce manual
+precedence. RLS cannot express that rule, because manual and calendar rows belong to the same
+user. The last-feed cleanup trigger is `SECURITY DEFINER`: it must work whoever deletes the feed,
+including the auth admin role in the `auth.users` cascade, which has no rights on
+`public.user_availability`. The sync RPC also drops `p_days` outside `[p_from, p_to]`, so the
+horizon rule holds in the database, not just in the Worker.
+
 **Pre-feed clears are plain deletes, deliberately.** Before a feed exists there is nothing to
 override: clearing a day then is not a decision *against a calendar*. So a day cleared in July
 with no feed may be re-greened by the first sync after a feed is connected in August. The user
@@ -172,6 +189,10 @@ core window, and their semantics are contradictory: "Birthday Anna" and "1. Augu
 busy, and "Vacation" is the best tour week of the year. A multi-day-span heuristic was
 considered and rejected as an unexplainable rule for a marginal gain.
 
+**Also ignored: cancelled and "show as free" events.** `STATUS:CANCELLED` (on a master or on a
+single recurrence exception) and `TRANSP:TRANSPARENT` contribute no busy time. The user already
+told their own calendar that the slot is free; counting it as busy would override that.
+
 **Horizon `[today, today + 60d]`.** Beyond it the sync writes nothing, so untouched days stay
 unmarked. An empty calendar in March is not a claim about March; friends act on these overlays.
 The horizon rolls, so each run recomputes the whole window.
@@ -181,7 +202,11 @@ or `TZID`-qualified. Normalize via `ical.js`, then clip events to local day boun
 Friday 18:00 → Sunday 20:00 event contributes busy time to three days, entirely outside the
 core window on two of them. Recurrence is expanded with `ical.js`'s `RecurExpansion`; hand-rolled
 RRULE (`BYSETPOS`, `EXDATE`, DST-crossing `UNTIL`) is a well-known trap and the library is
-already the de-facto reference implementation.
+already the de-facto reference implementation. `VTIMEZONE` components in the feed are
+registered with `ical.js` so `TZID`-qualified times convert correctly. Floating times, and a `TZID`
+that the feed does not define, are read as `Europe/Zurich` wall time rather than the Worker's UTC.
+Every Zurich conversion (day keys, local wall time to instant) goes through
+`src/calendar/zurich.ts` (`Intl.DateTimeFormat`), which handles 23 h and 25 h DST days.
 
 ### D5 — Multi-feed union, and fail closed
 
@@ -218,6 +243,15 @@ capped body, then non-recurring events ending before the horizon are skipped. Pr
 raw text is rejected: a weekly `RRULE` with a 2019 `DTSTART` is past-dated but busies every week
 of the horizon.
 
+**Recurrence cap.** Expansion runs from each event's `DTSTART`, so an extreme rule
+(`FREQ=MINUTELY` since 2010) could exhaust the Worker CPU budget. Expansion stops at 20,000
+iterations per event and fails the feed with `last_error = 'too_complex'`, fail closed like
+any other feed error. The upgrade path is to anchor the iterator near the horizon start if real
+feeds ever hit the cap.
+
+**Feed error codes** (`last_error`, shown in the UI): `http_<status>`, `timeout` (10 s),
+`network`, `too_large`, `unparseable`, `too_complex`.
+
 ### D6 — Conditional GET only within the same local day
 
 Feeds store `etag` / `last_modified` and send `If-None-Match` / `If-Modified-Since`. But because
@@ -225,6 +259,12 @@ event bodies are never persisted (D8), a `304` leaves nothing to recompute from 
 horizon rolls daily, so yesterday's result is not today's. Therefore conditional headers are sent
 **only when `last_synced_at` falls on the current local day**; on the first run of a day the
 fetch is unconditional. Within a day, an all-`304` run short-circuits with no write at all.
+
+**Mixed `304` / `200`.** If one feed changed and another answered `304`, the unchanged feed's
+busy time is not in memory (D8), and deriving from the changed feed alone is exactly the partial
+union D5 forbids. So every feed that answered `304` is refetched unconditionally in the same run
+before derivation. Conditional GET therefore saves work only when *all* of a user's feeds are
+unchanged. A `304` to an unconditional request is treated as an ordinary failure (`http_304`).
 
 ### D7 — Echo-loop guard
 
@@ -250,6 +290,13 @@ uuid) resolves to a user; the handler then queries, at request time, **only that
 `planned_date`-bearing tours and renders `VEVENT`s with `DTSTART;VALUE=DATE`,
 `UID:tour-<id>@tourenbuddy` and `PRODID:-//Tourenbuddy//Tours//EN`. `Cache-Control: private,
 max-age=900`.
+
+`DTEND;VALUE=DATE` is exclusive, so it is `(end_date ?? planned_date) + 1 day`. That makes a
+one-day tour one day long and a multi-day tour (`tours.end_date`, #tour-end-date) span its whole
+range. Events are `TRANSP:TRANSPARENT`: a planned tour should not mark the user busy in other
+tools that read their calendar. Text is escaped and lines are folded at 75 octets (never inside a
+UTF-8 character) per RFC 5545. A malformed token is rejected before any query, and every miss
+returns the same bare `404`.
 
 **Own tours only.** Linking is a commitment to do the tour together, so linked tours belong in the
 user's calendar, and they are already there: every tour the user is linked *through* is their own

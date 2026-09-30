@@ -1,5 +1,8 @@
 import type { Env } from './config'
 import { Webhook } from 'standardwebhooks'
+import { verifySupabaseJwt } from './auth'
+import { handleTourFeed } from './calendar/outbound'
+import { syncAllUsers, syncUser } from './calendar/sync'
 import { corsHeaders, jsonResponse, resolveLocale } from './config'
 import {
   handleFriendRequestReceived,
@@ -101,19 +104,42 @@ function withCors(response: Response, request: Request): Response {
   return new Response(response.body, { status: response.status, headers: merged })
 }
 
+async function handleCalendarSync(request: Request, env: Env): Promise<Response> {
+  const userId = await verifySupabaseJwt(request, env)
+  if (!userId)
+    return jsonResponse(401, { error: 'unauthorized' })
+  // Scoped to the verified caller only — never a user id from the body.
+  return jsonResponse(200, { result: await syncUser(env, userId) })
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: corsHeaders(request) })
     }
 
+    const url = new URL(request.url)
+
+    // Subscribed by calendar apps server-side: GET, no CORS, no JSON errors.
+    if (request.method === 'GET' && url.pathname.startsWith('/calendar/')) {
+      try {
+        return await handleTourFeed(url.pathname, env)
+      }
+      catch (err) {
+        console.error(`[calendar] tour feed failed: ${(err as Error).message}`)
+        return new Response('Internal error', { status: 500 })
+      }
+    }
+
     if (request.method !== 'POST') {
       return withCors(jsonResponse(405, { error: 'method_not_allowed' }), request)
     }
 
-    const url = new URL(request.url)
-
     try {
+      if (url.pathname === '/calendar/sync') {
+        return withCors(await handleCalendarSync(request, env), request)
+      }
+
       if (url.pathname === '/notify/friend-request-received') {
         return withCors(await handleFriendRequestReceived(request, env), request)
       }
@@ -152,5 +178,10 @@ export default {
         request,
       )
     }
+  },
+
+  // Cron (wrangler.toml [triggers]): 6-hourly calendar sync for every user with a feed.
+  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(syncAllUsers(env))
   },
 }

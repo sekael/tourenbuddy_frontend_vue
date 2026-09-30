@@ -133,6 +133,29 @@ Template params: `{{ params.actorName }}`, `{{ params.appUrl }}`
 
 Copy-ready HTML and TXT drafts are in `brevo-templates/`.
 
+## Calendar sync (#287)
+
+Uses the existing `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` secrets; no new secrets. Design:
+`openspec/changes/calendar-availability-sync/design.md` (D3–D10).
+
+- **Cron** `0 */6 * * *` (`wrangler.toml` `[triggers]`) → `scheduled()` syncs every user with a feed.
+- **`POST /calendar/sync`** — `Authorization: Bearer <user JWT>`; syncs the caller only. Returns
+  `{ result: 'synced' | 'unchanged' | 'failed' | 'no_feeds' }`; per-feed errors are in
+  `user_calendar_feeds.last_error`.
+- **`GET /calendar/<feed_token>.ics`** — the user's own planned tours as an iCalendar feed. Any
+  unknown or malformed token is a bare `404`.
+
+Free plan: ~10 ms CPU and ~50 subrequests per invocation, cron included (≈ users × (feeds + 3)).
+If `last_synced_at` stops advancing with no `last_error`, check the logs for `exceededCpu` /
+"Too many subrequests" before suspecting a code bug.
+
+Trigger the cron locally:
+
+```sh
+wrangler dev --test-scheduled
+curl "http://localhost:8787/__scheduled?cron=0+*/6+*+*+*"
+```
+
 ## Notification setup
 
 For full operator setup instructions (VAPID generation, Brevo template creation, secrets, migration, env vars), see [SETUP-NOTIFICATIONS.md](./SETUP-NOTIFICATIONS.md).
