@@ -4,7 +4,6 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { env } from '@/core/constants/env'
 import { useLogger } from '@/core/logging/use-logger'
-// eslint-disable-next-line unused-imports/no-unused-imports -- used by the TODO(me) body
 import { feedUrlSchema } from '@/features/calendar/data/models/calendar-feed'
 import { SupabaseCalendarFeedRepository } from '@/features/calendar/data/repositories/calendar-feed-repository-impl'
 import { CalendarFeedError } from '@/features/calendar/domain/repositories/calendar-feed-repository'
@@ -99,9 +98,22 @@ export const useCalendarFeedStore = defineStore('calendarFeed', () => {
 
   /** Validate + add a feed, then sync so the result shows now, not in six hours. */
   async function addFeed(rawUrl: string, label: string): Promise<boolean> {
-    // TODO(me): validate before any request, add, refresh, sync (design D5, spec "Connect calendar feeds").
-    //   See task list at the end of this response.
-    throw new Error('not implemented')
+    error.value = null
+    const parsed = feedUrlSchema.safeParse(rawUrl)
+    if (!parsed.success) {
+      error.value = t('calendar.sync.errors.invalid_url')
+      return false
+    }
+    try {
+      await repository.addFeed(parsed.data, label.trim() || null)
+    }
+    catch (err) {
+      fail(err)
+      return false
+    }
+    // sync() reloads feeds + availability itself.
+    await sync()
+    return true
   }
 
   /**
@@ -109,8 +121,20 @@ export const useCalendarFeedStore = defineStore('calendarFeed', () => {
    * cleared the calendar days).
    */
   async function removeFeed(id: string): Promise<void> {
-    // TODO(me): see addFeed — same gap.
-    throw new Error('not implemented')
+    error.value = null
+    try {
+      await repository.removeFeed(id)
+    }
+    catch (err) {
+      fail(err)
+      return
+    }
+    feeds.value = feeds.value.filter(f => f.id !== id)
+    // Last feed: the DB trigger already dropped the calendar days; a sync would find no feeds.
+    if (hasFeeds.value)
+      await sync()
+    else
+      await reloadAvailability()
   }
 
   async function relabelFeed(id: string, label: string) {
