@@ -50,10 +50,15 @@ async function regenerate() {
         {{ t('calendar.sync.regenerate') }}
       </BaseButton>
     </div>
-    <BaseButton v-else variant="text" size="sm" class="regenerate" @click="confirming = true">
-      <BaseIcon name="replay" />
-      {{ t('calendar.sync.regenerate') }}
-    </BaseButton>
+    <template v-else>
+      <p class="hint">
+        {{ t('calendar.sync.regenerateHint') }}
+      </p>
+      <BaseButton variant="text" size="sm" class="regenerate" @click="confirming = true">
+        <BaseIcon name="replay" />
+        {{ t('calendar.sync.regenerate') }}
+      </BaseButton>
+    </template>
   </div>
 </template>
 

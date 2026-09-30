@@ -20,7 +20,7 @@ const errorText = computed(() => {
     return null
   const http = /^http_(\d{3})$/.exec(code)
   if (http)
-    return t('calendar.sync.feedError.http', { status: http[1] })
+    return t(`calendar.sync.feedError.${http[1] >= '500' ? 'httpServer' : 'http'}`, { status: http[1] })
   const key = `calendar.sync.feedError.${code}`
   return KNOWN_ERRORS.includes(code) && te(key) ? t(key) : t('calendar.sync.feedError.unknown')
 })
@@ -44,7 +44,7 @@ function onLabelChange(event: Event) {
       <input
         class="label-input"
         :value="feed.label ?? ''"
-        :placeholder="t('calendar.sync.labelPlaceholder')"
+        :placeholder="t('calendar.sync.label')"
         :aria-label="t('calendar.sync.labelAria', { host: feed.host })"
         maxlength="60"
         @change="onLabelChange"

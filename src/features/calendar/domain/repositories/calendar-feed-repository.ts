@@ -16,7 +16,7 @@ export interface CalendarSettings {
   feedToken: string
 }
 
-export type CalendarFeedErrorCode = 'limit' | 'duplicate' | 'invalid_url' | 'invalid_window' | 'sync_failed' | 'unknown'
+export type CalendarFeedErrorCode = 'limit' | 'duplicate' | 'invalid_url' | 'not_ical' | 'invalid_window' | 'sync_failed' | 'unknown'
 
 /** Repository failures, already classified — raw database text never leaves the data layer. */
 export class CalendarFeedError extends Error {

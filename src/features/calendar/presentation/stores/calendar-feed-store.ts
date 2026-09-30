@@ -101,7 +101,8 @@ export const useCalendarFeedStore = defineStore('calendarFeed', () => {
     error.value = null
     const parsed = feedUrlSchema.safeParse(rawUrl)
     if (!parsed.success) {
-      error.value = t('calendar.sync.errors.invalid_url')
+      const code = parsed.error.issues[0]?.message === 'not_ical' ? 'not_ical' : 'invalid_url'
+      error.value = t(`calendar.sync.errors.${code}`)
       return false
     }
     try {

@@ -70,7 +70,6 @@ onMounted(store.load)
         <input v-model="newUrl" class="input" type="url" inputmode="url" required :placeholder="t('calendar.sync.urlPlaceholder')" :aria-label="t('calendar.sync.urlPlaceholder')">
         <input v-model="newLabel" class="input" maxlength="60" :placeholder="t('calendar.sync.labelPlaceholder')" :aria-label="t('calendar.sync.labelPlaceholder')">
         <BaseButton type="submit" size="sm" :disabled="syncing">
-          <BaseIcon name="add" />
           {{ t('calendar.sync.addFeed') }}
         </BaseButton>
       </form>
