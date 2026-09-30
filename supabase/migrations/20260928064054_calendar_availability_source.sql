@@ -73,7 +73,7 @@ create function public.apply_calendar_availability(
 )
 returns void
 language sql
-security definer
+security invoker
 set search_path = ''
 as $$
   -- do nothing, never do update: a conflicting row is either already
@@ -99,7 +99,8 @@ as $$
     and date < p_from;
 $$;
 
--- Bypasses RLS and writes an arbitrary p_user_id → service role only.
+-- Writes an arbitrary p_user_id, so this grant is the only gate: service_role
+-- bypasses RLS by itself (BYPASSRLS), invoker just avoids running as the owner.
 revoke execute on function public.apply_calendar_availability(uuid, date, date, date[])
   from public, anon, authenticated;
 grant execute on function public.apply_calendar_availability(uuid, date, date, date[])
