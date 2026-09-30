@@ -55,7 +55,7 @@
 
 - [x] 7.0 `services/email-hook/test/index.test.ts` — make the `standardwebhooks` `Webhook` mocks constructible (`class`, not arrow: vitest 4 cannot `new` an arrow mock, and `eslint --fix` rewrites `function` into an arrow). Pre-existing on `main`, separate commit
 - [x] 7.1 `cd services/email-hook && npm test` — all green
-- [ ] 7.2 Prompt the user to commit (`feat(email-hook): calendar sync cron and tour feed (#287)`) and open the PR
+- [x] 7.2 Prompt the user to commit (`feat(email-hook): calendar sync cron and tour feed (#287)`) and open the PR
 - [ ] 7.3 After merge, **deploy the Worker manually** — `cd services/email-hook && npx wrangler@latest deploy`. NOT in CI (`.claude/env-ci.md`). PR 3 must not start until this is done. Free plan: test with small calendars only (design → Risks lists the symptoms of hitting the limits)
 
 # PR 3 — Frontend (branch `feat/287-calendar-sync-ui`, from `main` after PR 2 is merged and deployed)
