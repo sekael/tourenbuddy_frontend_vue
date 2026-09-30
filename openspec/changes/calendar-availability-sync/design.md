@@ -231,7 +231,8 @@ widening failure, just smaller.
 blocked it (union of busy). So there is no `feed_id` on availability rows, and removing one of
 several feeds can only free time, never make a green day wrong; the worst interim state is
 under-reporting, the fail-safe direction. The client fires the on-demand sync after a non-last
-removal. Removing the **last** feed is the one case that orphans rows, because no sync will ever
+removal, and after **every** add (a new feed can only add busy time, so waiting for the cron
+would leave availability too wide for up to six hours). Removing the **last** feed is the one case that orphans rows, because no sync will ever
 rewrite them again: an `after delete` trigger on `user_calendar_feeds`, when the user's feed count
 reaches 0, deletes their `source = 'calendar'` rows and their tombstones. A trigger rather than
 client code, because the row also disappears via the `auth.users` cascade and the dashboard.
@@ -317,7 +318,7 @@ land in a third party under an account they never consented to, and "live render
 revoke it until the provider's next refresh.
 
 **Revocable token.** The feed URL gets pasted into shared family calendars and forwarded. The UI
-offers "Regenerate URL" (confirm dialog) → `update user_calendar_settings set feed_token =
+offers "Regenerate URL" (inline two-step confirm) → `update user_calendar_settings set feed_token =
 gen_random_uuid()`; the old token 404s immediately.
 
 ### D10 — Cron on the existing Worker

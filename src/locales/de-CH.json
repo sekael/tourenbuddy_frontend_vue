@@ -27,7 +27,8 @@
       "edit": "Verfügbarkeit angeben",
       "save": "Speichern",
       "cancel": "Abbrechen",
-      "disclaimer": "Deine Verfügbarkeit ist für deine Freunde sichtbar."
+      "disclaimer": "Deine Verfügbarkeit ist für deine Freunde sichtbar.",
+      "calendarNote": "Tage werden aus deinem Kalender vorausgefüllt. Tage, die du hier änderst, überschreiben ihn dauerhaft."
     },
     "seasons": {
       "title": "Saisonplaner",
@@ -78,6 +79,48 @@
         "seasonTourName": "Piz Palü"
       },
       "replay": "Kalender-Tour wiederholen"
+    },
+    "sync": {
+      "title": "Kalender-Sync",
+      "hint": "Verbinde die private iCal-Adresse deines Arbeits- oder Privatkalenders. Tage mit einem genügend langen freien Block in deinem Zeitfenster werden als verfügbar markiert. Kalenderinhalte werden nie gespeichert.",
+      "urlPlaceholder": "Geheime iCal-Adresse (https:// oder webcal://)",
+      "labelPlaceholder": "Bezeichnung (z. B. Arbeit)",
+      "labelAria": "Bezeichnung für {host}",
+      "addFeed": "Kalender verbinden",
+      "removeFeed": "{host} trennen",
+      "lastSynced": "Synchronisiert {when}",
+      "neverSynced": "Noch nicht synchronisiert",
+      "syncNow": "Jetzt synchronisieren",
+      "syncing": "Synchronisiere…",
+      "windowTitle": "Wann gilt ein Tag als frei?",
+      "coreStart": "Von",
+      "coreEnd": "Bis",
+      "minFree": "Freier Block von mindestens",
+      "hours": "{n} h",
+      "saveWindow": "Speichern",
+      "outboundTitle": "Deine Touren in deinem Kalender",
+      "outboundHint": "Abonniere diese Adresse in deiner Kalender-App, um deine geplanten Touren zu sehen. Wer den Link hat, kann sie sehen.",
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "regenerate": "URL neu erstellen",
+      "regenerateConfirm": "Die aktuelle URL funktioniert sofort nicht mehr.",
+      "errors": {
+        "limit": "Du kannst höchstens 5 Kalender verbinden.",
+        "duplicate": "Dieser Kalender ist bereits verbunden.",
+        "invalid_url": "Gib eine gültige https://- oder webcal://-Adresse ein.",
+        "invalid_window": "Der freie Block muss ins Zeitfenster passen, und das Fenster muss nach seinem Beginn enden.",
+        "sync_failed": "Die Synchronisierung konnte nicht gestartet werden. Deine Kalender werden trotzdem automatisch synchronisiert.",
+        "unknown": "Etwas ist schiefgelaufen. Bitte versuche es nochmals."
+      },
+      "feedError": {
+        "http": "Der Kalender meldet Fehler {status}. Prüfe, ob die Adresse noch gültig ist.",
+        "timeout": "Der Kalender hat nicht rechtzeitig geantwortet.",
+        "network": "Der Kalender ist nicht erreichbar.",
+        "too_large": "Der Kalender ist zu gross für die Synchronisierung (über 2 MB).",
+        "unparseable": "Diese Adresse liefert keinen Kalender.",
+        "too_complex": "Ein wiederkehrender Termin ist zu komplex.",
+        "unknown": "Die letzte Synchronisierung ist fehlgeschlagen."
+      }
     }
   },
   "validation": {
