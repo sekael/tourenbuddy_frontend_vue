@@ -114,8 +114,16 @@ function patchFeed(env: Env, id: string, patch: Record<string, unknown>): Promis
   return rest(env, `user_calendar_feeds?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(patch) })
 }
 
-/** Fetch every feed, derive, and write the 60-day horizon — or write nothing (design D5). */
-export async function syncUser(env: Env, userId: string, now = new Date()): Promise<SyncResult> {
+/**
+ * Fetch every feed, derive, and write the 60-day horizon — or write nothing (design D5).
+ * `conditional: false` (on-demand) skips the D6 conditional GET: it runs after changes no feed
+ * can report — new settings, a removed feed — which an all-304 short-circuit would swallow.
+ */
+export async function syncUser(
+  env: Env,
+  userId: string,
+  { now = new Date(), conditional = true } = {},
+): Promise<SyncResult> {
   const uid = encodeURIComponent(userId)
   const [feeds, settingsRows] = await Promise.all([
     restJson<Feed[]>(env, `user_calendar_feeds?user_id=eq.${uid}&select=id,url,etag,last_modified,last_synced_at`),
@@ -132,7 +140,7 @@ export async function syncUser(env: Env, userId: string, now = new Date()): Prom
 
   // D6: a 304 is only meaningful within the same local day — the horizon rolls daily.
   const sameDay = (f: Feed) => f.last_synced_at !== null && zurichDateKey(new Date(f.last_synced_at)) === today
-  let loaded = await Promise.all(feeds.map(f => loadFeed(f, sameDay(f), from, to)))
+  let loaded = await Promise.all(feeds.map(f => loadFeed(f, conditional && sameDay(f), from, to)))
 
   if (loaded.every(l => l.status === 'not_modified'))
     return 'unchanged'

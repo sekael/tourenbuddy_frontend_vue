@@ -41,4 +41,20 @@ describe('parseIcs', () => {
     const [o] = parseIcs(cal(ev('UID:f', 'DTSTART:20300701T090000', 'DTEND:20300701T100000')), from, to)
     expect(o.start.toISOString()).toBe('2030-07-01T07:00:00.000Z')
   })
+
+  it('should keep every other occurrence when exceptions move one across the horizon edge', () => {
+    // Slot 07-08 moves out past `to`; slot 07-29 (past `to`) moves in to 07-24.
+    const body = cal(
+      ev('UID:x', 'DTSTART:20300701T070000Z', 'DTEND:20300701T150000Z', 'RRULE:FREQ=WEEKLY'),
+      ev('UID:x', 'RECURRENCE-ID:20300708T070000Z', 'DTSTART:20300805T070000Z', 'DTEND:20300805T150000Z'),
+      ev('UID:x', 'RECURRENCE-ID:20300729T070000Z', 'DTSTART:20300724T070000Z', 'DTEND:20300724T150000Z'),
+    )
+    expect(parseIcs(body, from, to).map(o => o.start.toISOString().slice(0, 10)))
+      .toEqual(['2030-07-01', '2030-07-15', '2030-07-22', '2030-07-24'])
+  })
+
+  it('should throw IcsParseError, not a raw ical.js error, for an event it cannot read', () => {
+    expect(() => parseIcs(cal(ev('UID:n')), from, to)).toThrow(IcsParseError)
+    expect(() => parseIcs(cal(ev('UID:g', 'DTSTART:garbage')), from, to)).toThrow(IcsParseError)
+  })
 })

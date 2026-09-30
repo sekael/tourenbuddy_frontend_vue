@@ -117,6 +117,13 @@ them as originating from Tourenbuddy's own outbound feed SHALL be discarded befo
 - **THEN** every occurrence within the horizon is derived as busy, and any occurrence removed
   by an exception is not
 
+#### Scenario: An occurrence moved across the horizon edge does not drop the others
+
+- **WHEN** one occurrence of a recurring event is moved to a date past the horizon, or an
+  occurrence scheduled past the horizon is moved into it
+- **THEN** every other occurrence within the horizon is still derived as busy, and the moved
+  occurrence counts only on the day it now takes place
+
 #### Scenario: A multi-day event blocks each day it spans
 
 - **WHEN** an event runs from Friday 18:00 to Sunday 20:00
@@ -177,8 +184,10 @@ feed. The system MUST NOT derive availability from the subset of feeds that resp
 
 #### Scenario: An unparseable body is a failure, not an empty calendar
 
-- **WHEN** a feed returns 200 with a body that is not valid iCalendar
-- **THEN** the sync fails for that user rather than deriving zero busy time
+- **WHEN** a feed returns 200 with a body that is not valid iCalendar, or that contains an event
+  which cannot be read (for example one without a start time)
+- **THEN** the feed records an `unparseable` error and the sync fails for that user rather than
+  deriving zero busy time
 
 #### Scenario: An oversized feed is a failure
 
@@ -201,10 +210,12 @@ feed. The system MUST NOT derive availability from the subset of feeds that resp
 
 The system SHALL sync every user with at least one connected feed on a recurring schedule of at
 most six hours, and SHALL additionally expose an authenticated on-demand sync that runs the
-identical routine for the calling user only. The UI SHALL show when the user's feeds last synced
-successfully. Within the same local day, a feed that reports no change since the last successful
-fetch MAY be skipped; on the first run of a new local day the feed SHALL be fetched
-unconditionally, because the horizon has rolled.
+same routine for the calling user only. The UI SHALL show when the user's feeds last synced
+successfully. Within the same local day, the scheduled sync MAY skip a feed that reports no
+change since the last successful fetch; on the first run of a new local day the feed SHALL be
+fetched unconditionally, because the horizon has rolled. The on-demand sync SHALL always fetch
+every feed unconditionally, because it follows changes no feed can report (new settings, a
+removed feed).
 
 #### Scenario: On-demand sync is scoped to the caller
 
@@ -232,6 +243,12 @@ unconditionally, because the horizon has rolled.
 
 - **WHEN** the first sync of a new local day runs against a feed that has not changed
 - **THEN** the feed is fetched unconditionally and the full horizon is recomputed
+
+#### Scenario: On-demand sync recomputes even when no feed changed
+
+- **WHEN** a user changes their settings or removes one of several feeds, and an on-demand sync
+  runs on a day their feeds already synced and have not changed since
+- **THEN** every feed is fetched unconditionally and availability is recomputed
 
 ### Requirement: Calendar content is never persisted
 

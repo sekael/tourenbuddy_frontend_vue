@@ -108,8 +108,9 @@ async function handleCalendarSync(request: Request, env: Env): Promise<Response>
   const userId = await verifySupabaseJwt(request, env)
   if (!userId)
     return jsonResponse(401, { error: 'unauthorized' })
-  // Scoped to the verified caller only — never a user id from the body.
-  return jsonResponse(200, { result: await syncUser(env, userId) })
+  // Scoped to the verified caller only — never a user id from the body. Unconditional (D6): the
+  // caller just changed something no feed can report, so a 304 must not skip the recompute.
+  return jsonResponse(200, { result: await syncUser(env, userId, { conditional: false }) })
 }
 
 export default {

@@ -28,18 +28,8 @@ function isSkipped(event: ICAL.Event): boolean {
     || event.component.getFirstPropertyValue('transp') === 'TRANSPARENT' // "show as free"
 }
 
-/**
- * Timed occurrences overlapping [from, to), recurrences expanded. Throws on a body that is
- * not iCalendar — an empty result must mean "no events", never "could not read" (D5).
- */
-export function parseIcs(body: string, from: Date, to: Date): Occurrence[] {
-  let root: ICAL.Component
-  try {
-    root = new ICAL.Component(ICAL.parse(body) as unknown[])
-  }
-  catch {
-    throw new IcsParseError('unparseable')
-  }
+function expand(body: string, from: Date, to: Date): Occurrence[] {
+  const root = new ICAL.Component(ICAL.parse(body) as unknown[])
   if (root.name !== 'vcalendar')
     throw new IcsParseError('unparseable')
 
@@ -80,14 +70,35 @@ export function parseIcs(body: string, from: Date, to: Date): Occurrence[] {
     for (let next = it.next(); next; next = it.next()) {
       if (++n > MAX_ITERATIONS)
         throw new IcsParseError('too_complex')
-      const occ = event.getOccurrenceDetails(next)
-      const start = toDate(occ.startDate)
-      if (start >= to)
+      // Stop on the slot, not the occurrence: slots arrive in order, moved starts do not. An
+      // exception moved past `to` would otherwise drop every later occurrence and free days.
+      if (toDate(next) >= to)
         break
+      const occ = event.getOccurrenceDetails(next)
       if (occ.item !== event && isSkipped(occ.item))
         continue
-      push(start, toDate(occ.endDate))
+      push(toDate(occ.startDate), toDate(occ.endDate))
+    }
+    // Slots past `to` are never visited, yet an exception can move one of them into range.
+    for (const ex of Object.values(event.exceptions)) {
+      if (toDate(ex.recurrenceId) >= to && !isSkipped(ex))
+        push(toDate(ex.startDate), toDate(ex.endDate))
     }
   }
   return out
+}
+
+/**
+ * Timed occurrences overlapping [from, to), recurrences expanded. Throws `IcsParseError` on a
+ * body it cannot read — an empty result must mean "no events", never "could not read" (D5).
+ */
+export function parseIcs(body: string, from: Date, to: Date): Occurrence[] {
+  try {
+    return expand(body, from, to)
+  }
+  catch (err) {
+    // ical.js reads values lazily, so a malformed VEVENT (no DTSTART, garbage date) throws a raw
+    // Error mid-walk. Same failure as a garbled body, and its message can quote the feed (D8).
+    throw err instanceof IcsParseError ? err : new IcsParseError('unparseable')
+  }
 }

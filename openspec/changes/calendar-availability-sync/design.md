@@ -202,7 +202,11 @@ or `TZID`-qualified. Normalize via `ical.js`, then clip events to local day boun
 Friday 18:00 → Sunday 20:00 event contributes busy time to three days, entirely outside the
 core window on two of them. Recurrence is expanded with `ical.js`'s `RecurExpansion`; hand-rolled
 RRULE (`BYSETPOS`, `EXDATE`, DST-crossing `UNTIL`) is a well-known trap and the library is
-already the de-facto reference implementation. `VTIMEZONE` components in the feed are
+already the de-facto reference implementation. Expansion stops on the RRULE *slot*
+(`RECURRENCE-ID`), never on an occurrence's moved start: slots arrive in order, moved starts do
+not, and stopping at an exception moved past the horizon would drop every later occurrence —
+silently freeing those days. Exceptions whose slot lies past the horizon are checked separately,
+since one may be moved into it. `VTIMEZONE` components in the feed are
 registered with `ical.js` so `TZID`-qualified times convert correctly. Floating times, and a `TZID`
 that the feed does not define, are read as `Europe/Zurich` wall time rather than the Worker's UTC.
 Every Zurich conversion (day keys, local wall time to instant) goes through
@@ -250,7 +254,9 @@ any other feed error. The upgrade path is to anchor the iterator near the horizo
 feeds ever hit the cap.
 
 **Feed error codes** (`last_error`, shown in the UI): `http_<status>`, `timeout` (10 s),
-`network`, `too_large`, `unparseable`, `too_complex`.
+`network`, `too_large`, `unparseable`, `too_complex`. `unparseable` also covers an event
+`ical.js` rejects while reading it (no `DTSTART`, a garbage date): the library parses values
+lazily, so those surface as raw errors mid-walk, and their messages can quote the feed (D8).
 
 ### D6 — Conditional GET only within the same local day
 
@@ -265,6 +271,10 @@ busy time is not in memory (D8), and deriving from the changed feed alone is exa
 union D5 forbids. So every feed that answered `304` is refetched unconditionally in the same run
 before derivation. Conditional GET therefore saves work only when *all* of a user's feeds are
 unchanged. A `304` to an unconditional request is treated as an ordinary failure (`http_304`).
+
+**On-demand is always unconditional.** Conditional GET is a cron-only optimization. The
+on-demand sync runs right after a change no feed can report — new settings, a removed feed — so
+an all-`304` short-circuit would skip exactly the recompute the user asked for.
 
 ### D7 — Echo-loop guard
 
@@ -315,8 +325,9 @@ gen_random_uuid()`; the old token 404s immediately.
 `[triggers] crons = ["0 */6 * * *"]` plus a `scheduled()` export on `services/email-hook`. It
 already has the Supabase service-role credentials and a deploy path. A second Worker would mean
 a second deploy, a second secret set and a second thing to forget. The scheduled run pages
-through users that have at least one feed; `POST /calendar/sync` runs the identical routine for
-one authenticated caller so that adding a feed shows a result immediately.
+through users that have at least one feed; `POST /calendar/sync` runs the same routine,
+unconditionally (D6), for one authenticated caller so that adding a feed shows a result
+immediately.
 
 **Deployment hazard:** Worker deploys are manual (`.claude/env-ci.md`). Shipping the frontend
 without `npx wrangler deploy` yields a Calendar-sync UI whose feeds never sync and whose
