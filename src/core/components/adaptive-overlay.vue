@@ -19,6 +19,8 @@ const props = withDefaults(
      * and the on-screen keyboard never fights the sheet. Desktop is unaffected.
      */
     page?: boolean
+    /** Desktop dialog keeps one height while views/tabs inside it change. */
+    stableSize?: boolean
   }>(),
   {
     fitContent: true,
@@ -65,6 +67,7 @@ const isDesktop = useIsDesktop()
     :aria-label="props.ariaLabel"
     :collapsed="props.collapsed"
     :show-back="props.showBack"
+    :stable-size="props.stableSize"
     @close="emit('close')"
     @back="emit('back')"
   >

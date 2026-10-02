@@ -84,9 +84,9 @@ const acknowledged = ref(false)
   align-items: flex-end;
   justify-content: center;
   z-index: 120;
-  background: rgba(15, 23, 42, 0.35);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  background: var(--color-backdrop);
+  backdrop-filter: blur(var(--overlay-backdrop-blur, 2px));
+  -webkit-backdrop-filter: blur(var(--overlay-backdrop-blur, 2px));
 }
 
 .notice-content {

@@ -849,35 +849,37 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         <LinkRequestBanner v-for="req in linkPendingRequests" :key="req.id" :request="req" />
         <CollisionNotice v-if="isOwner" :own-tour-id="tour.id" />
 
-        <!-- Completion toggle (owner only) -->
-        <button
-          v-if="isOwner" type="button" class="completion-toggle action-btn"
-          :class="{ 'completion-toggle--done': tour.completed }" :aria-pressed="tour.completed"
-          @click="toggleCompleted"
-        >
-          <BaseIcon v-if="tour.completed" name="check_circle" />
-          <BaseIcon v-else name="radio_button_unchecked" />
-          {{
-            tour.completed
-              ? t('tours.infoSheet.completedBtn')
-              : t('tours.infoSheet.completeTourBtn')
-          }}
-        </button>
+        <!-- Owner toggles: completion + visibility -->
+        <div v-if="isOwner" class="owner-toggles">
+          <button
+            type="button" class="completion-toggle action-btn"
+            :class="{ 'completion-toggle--done': tour.completed }" :aria-pressed="tour.completed"
+            @click="toggleCompleted"
+          >
+            <BaseIcon v-if="tour.completed" name="check_circle" />
+            <BaseIcon v-else name="radio_button_unchecked" />
+            {{
+              tour.completed
+                ? t('tours.infoSheet.completedBtn')
+                : t('tours.infoSheet.completeTourBtn')
+            }}
+          </button>
 
-        <!-- Visibility toggle (owner only) -->
-        <button
-          v-if="isOwner" type="button" class="visibility-toggle action-btn" :class="tour.visibility === 'private'
-            ? 'visibility-toggle--private'
-            : 'visibility-toggle--friends'
-          " :aria-pressed="tour.visibility === 'private'" @click="toggleVisibility"
-        >
-          <BaseIcon :name="tour.visibility === 'private' ? 'lock' : 'group'" />
-          {{
-            tour.visibility === 'private'
-              ? t('tours.infoSheet.visibilityMakeFriends')
-              : t('tours.infoSheet.visibilityMakePrivate')
-          }}
-        </button>
+          <!-- Visibility toggle -->
+          <button
+            type="button" class="visibility-toggle action-btn" :class="tour.visibility === 'private'
+              ? 'visibility-toggle--private'
+              : 'visibility-toggle--friends'
+            " :aria-pressed="tour.visibility === 'private'" @click="toggleVisibility"
+          >
+            <BaseIcon :name="tour.visibility === 'private' ? 'lock' : 'group'" />
+            {{
+              tour.visibility === 'private'
+                ? t('tours.infoSheet.visibilityMakeFriends')
+                : t('tours.infoSheet.visibilityMakePrivate')
+            }}
+          </button>
+        </div>
 
         <!-- Owner (friend tours only) -->
         <div v-if="tour.isFriendTour" class="detail-row">
@@ -1111,7 +1113,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
     <template v-if="editAsPage && (mode === 'edit' || mode === 'suggest')" #page-action>
       <BaseButton
         type="submit" :form="mode === 'edit' ? 'tour-edit-form' : 'tour-suggest-form'"
-        variant="primary" size="md" :disabled="editFormRef?.submitBlocked"
+        variant="primary" size="sm" :disabled="editFormRef?.submitBlocked"
       >
         {{ mode === 'edit' ? t('tours.infoSheet.saveLabel') : t('tours.suggestions.submitBtn') }}
       </BaseButton>
@@ -1202,8 +1204,10 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   align-items: center;
   gap: var(--spacing-xs);
   padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-md);
-  border: 1.5px solid var(--color-outline-variant);
+  border-radius: var(--chip-radius, var(--radius-md));
+  border: 1.5px solid var(--button-outline-border-color, var(--color-outline-variant));
+  min-height: var(--chip-min-height, auto);
+  background-color: var(--button-secondary-bg, transparent);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--color-on-surface-variant);
@@ -1224,11 +1228,24 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   margin-left: calc(-1 * var(--surface-pad-left, 0px));
   margin-right: calc(-1 * var(--surface-pad-right, 0px));
   padding: var(--spacing-sm) var(--surface-pad-right, 0px) 0 var(--surface-pad-left, 0px);
-  border-top: 1px solid var(--color-outline-variant);
+  border-top: 1px solid var(--section-divider-color, var(--color-outline-variant));
 }
 
 .action-btn:hover:not(:disabled) {
-  background-color: var(--color-surface-variant);
+  background-color: var(--button-secondary-hover-bg, var(--color-surface-variant));
+}
+
+/* Owner toggles: stacked in Classic (`contents` leaves them in .details' column),
+   a compact row in variants that define --toggle-row-display — each pill keeps its
+   natural width and they wrap rather than squeezing a label onto two lines. */
+.owner-toggles {
+  display: var(--toggle-row-display, contents);
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.owner-toggles > .action-btn {
+  flex: var(--toggle-flex, 0 1 auto);
 }
 
 .action-btn:disabled {
@@ -1261,30 +1278,33 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 }
 
 .completion-toggle--done {
-  border-color: var(--color-success);
-  color: var(--color-success);
+  border-color: var(--button-outline-border-color, var(--color-success));
+  background-color: color-mix(in srgb, var(--color-success) var(--tonal-tint, 0%), transparent);
+  color: var(--color-success-text);
 }
 
 .completion-toggle--done:hover {
-  background-color: transparent;
+  background-color: color-mix(in srgb, var(--color-success) var(--tonal-tint, 0%), transparent);
 }
 
 .visibility-toggle--friends {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  border-color: var(--button-outline-border-color, var(--color-primary));
+  background-color: color-mix(in srgb, var(--color-primary) var(--tonal-tint, 0%), transparent);
+  color: var(--tint-text-primary, var(--color-primary));
 }
 
 .visibility-toggle--friends:hover {
-  background-color: transparent;
+  background-color: color-mix(in srgb, var(--color-primary) var(--tonal-tint, 0%), transparent);
 }
 
 .visibility-toggle--private {
-  border-color: var(--color-error);
-  color: var(--color-error);
+  border-color: var(--button-outline-border-color, var(--color-error));
+  background-color: color-mix(in srgb, var(--color-error) var(--tonal-tint, 0%), transparent);
+  color: var(--tint-text-error, var(--color-error));
 }
 
 .visibility-toggle--private:hover {
-  background-color: transparent;
+  background-color: color-mix(in srgb, var(--color-error) var(--tonal-tint, 0%), transparent);
 }
 
 .detail-row {
@@ -1347,7 +1367,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 .round-trip-hint {
   font-size: var(--font-size-sm);
   font-style: italic;
-  color: var(--color-outline);
+  color: var(--color-on-surface-variant);
 }
 
 .point-meta {
@@ -1359,7 +1379,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 }
 
 .point-elevation {
-  color: var(--color-outline);
+  color: var(--color-on-surface-variant);
 }
 
 .season-tags {
@@ -1370,10 +1390,10 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
 .season-tag {
   padding: 2px var(--spacing-sm);
-  border-radius: 4px;
+  border-radius: var(--chip-radius, 4px);
   font-size: var(--font-size-sm);
   background-color: color-mix(in srgb, var(--color-primary) 12%, transparent);
-  color: var(--color-primary);
+  color: var(--tint-text-primary, var(--color-primary));
   font-weight: var(--font-weight-medium);
 }
 

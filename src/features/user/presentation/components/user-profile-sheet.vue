@@ -13,6 +13,7 @@ import { InvalidPhoneNumberError, PhoneAlreadyRegisteredError } from '@/core/exc
 import { SUPPORTED_LOCALES } from '@/core/i18n/supported'
 import { offlineBlockedAt } from '@/core/offline/mutate'
 import { isOnline } from '@/core/offline/use-online-status'
+import { DESIGN_VARIANTS, designVariant, setDesignVariant } from '@/core/theme/design-variant'
 import { formatPhoneForDisplay } from '@/core/utils/phone-normalize'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import CalendarSyncSettings from '@/features/calendar/presentation/components/calendar-sync-settings.vue'
@@ -236,7 +237,7 @@ async function handleSignOut() {
 </script>
 
 <template>
-  <AdaptiveOverlay :title="t('user.profile.title')" :page="isEditing" @close="handleClose">
+  <AdaptiveOverlay :title="t('user.profile.title')" :page="isEditing" stable-size @close="handleClose">
     <template v-if="editAsPage" #page-action>
       <BaseButton type="submit" form="profile-edit-form" variant="primary" size="sm" :disabled="isSaving">
         {{ isSaving ? t('user.shared.savingBtn') : t('user.shared.saveBtn') }}
@@ -294,6 +295,25 @@ async function handleSignOut() {
               @click="localeStore.setLocale(loc.code)"
             >
               {{ loc.label }}
+            </button>
+          </div>
+        </section>
+
+        <!-- Design variant — temporary Classic/Alpenglow comparison (change: modern-design-preview) -->
+        <section class="design-section">
+          <h3 class="section-title">
+            {{ t('user.profile.designLabel') }}
+          </h3>
+          <div class="design-options">
+            <button
+              v-for="variant in DESIGN_VARIANTS"
+              :key="variant"
+              type="button"
+              class="design-option"
+              :class="{ 'design-option--active': designVariant === variant }"
+              @click="setDesignVariant(variant)"
+            >
+              {{ t(`user.profile.design.${variant}`) }}
             </button>
           </div>
         </section>
@@ -519,54 +539,64 @@ async function handleSignOut() {
 
 .verified-icon {
   font-size: var(--icon-size-sm);
-  color: var(--color-fab-surface-strong);
+  color: var(--icon-verified-color, var(--color-fab-surface-strong));
 }
 
-.language-section {
+.language-section,
+.design-section {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
 }
 
 .section-title {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-on-surface-variant);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: var(--heading-section-size, var(--font-size-sm));
+  font-weight: var(--heading-section-weight, var(--font-weight-semibold));
+  color: var(--heading-section-color, var(--color-on-surface-variant));
+  text-transform: var(--heading-section-transform, uppercase);
+  letter-spacing: var(--heading-section-tracking, 0.05em);
 }
 
-.language-options {
+.language-options,
+.design-options {
   display: flex;
   gap: var(--spacing-xs);
   flex-wrap: wrap;
 }
 
-.language-option {
-  padding: var(--spacing-xs) var(--spacing-md);
+.language-option,
+.design-option {
+  padding: var(--chip-padding, var(--spacing-xs) var(--spacing-md));
   border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-base);
-  color: var(--color-on-surface);
+  border-radius: var(--chip-radius, var(--radius-sm));
+  font-size: var(--chip-font-size, var(--font-size-base));
+  color: var(--chip-color, var(--color-on-surface));
   transition:
-    border-color 0.15s,
-    color 0.15s;
+    border-color var(--motion-duration-short) var(--motion-ease-standard),
+    color var(--motion-duration-short) var(--motion-ease-standard),
+    background-color var(--motion-duration-short) var(--motion-ease-standard);
+  min-height: var(--chip-min-height, auto);
 }
 
-.language-option:hover {
+.language-option:hover,
+.design-option:hover {
   border-color: var(--color-primary);
   color: var(--color-primary);
 }
 
-.language-option--active {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+.language-option--active,
+.design-option--active {
+  border-color: var(--chip-selected-border-color, var(--color-primary));
+  color: var(--chip-selected-color, var(--color-primary));
   font-weight: var(--font-weight-semibold);
+  background-color: var(--chip-selected-bg, transparent);
 }
 
 .divider {
   border: 0;
-  border-top: 1px solid var(--color-outline-variant);
+  border-top: 1px solid var(--section-divider-color, var(--divider-color, var(--color-outline-variant)));
+  /* Removed outright (not just transparent) so the break isn't the flex gap twice. */
+  display: var(--section-divider-display, block);
   margin: 0;
 }
 
@@ -598,7 +628,7 @@ async function handleSignOut() {
 .label {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
+  color: var(--field-label-color, var(--color-on-surface-variant));
 }
 
 .optional {
@@ -608,16 +638,21 @@ async function handleSignOut() {
 .input {
   padding: var(--spacing-md);
   border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--radius-sm);
+  border-radius: var(--input-radius, var(--radius-sm));
   font-size: var(--font-size-base);
   color: var(--color-on-surface);
-  background-color: var(--color-background);
+  background-color: var(--input-bg, var(--color-background));
   outline: none;
-  transition: border-color 0.2s;
+  transition:
+    border-color var(--motion-duration-medium) var(--motion-ease-standard),
+    background-color var(--motion-duration-medium) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .input:focus {
   border-color: var(--color-primary);
+  background-color: var(--input-bg-focus, var(--color-background));
+  box-shadow: var(--input-focus-ring, none);
 }
 
 .error-text {

@@ -182,11 +182,17 @@ async function handleCancel(requestId: string) {
   <AdaptiveOverlay
     :title="t('friendships.friendsListLink')"
     show-back
+    stable-size
     @close="emit('close')"
     @back="emit('back')"
   >
     <div class="content">
-      <div class="tab-bar" data-tour="friend-requests">
+      <div
+        class="tab-bar"
+        data-tour="friend-requests"
+        data-tab-indicator
+        :style="{ '--tab-index': activeTab === 'blocked' ? 1 : 0, '--tab-count': 2 }"
+      >
         <button
           type="button"
           class="tab-btn"
@@ -379,8 +385,11 @@ async function handleCancel(requestId: string) {
 .tab-bar {
   display: flex;
   gap: var(--spacing-xs);
-  border-bottom: 1px solid var(--color-outline-variant);
+  border-bottom: var(--tabs-border, 1px solid var(--color-outline-variant));
   margin-bottom: calc(-1 * var(--spacing-md));
+  background-color: var(--tabs-bg, transparent);
+  border-radius: var(--tabs-radius, 0);
+  padding: var(--tabs-padding, 0);
 }
 
 .tab-btn {
@@ -388,11 +397,15 @@ async function handleCancel(requestId: string) {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--color-on-surface-variant);
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+  border-bottom: var(--tab-indicator-width, 2px) solid transparent;
+  margin-bottom: var(--tab-margin-bottom, -1px);
   transition:
-    color 0.15s,
-    border-color 0.15s;
+    color var(--motion-duration-short) var(--motion-ease-standard),
+    border-color var(--motion-duration-short) var(--motion-ease-standard),
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-short) var(--motion-ease-standard);
+  border-radius: var(--tab-radius, 0);
+  flex: var(--tab-flex, 0 1 auto);
 }
 
 .tab-btn--active {
@@ -446,11 +459,11 @@ async function handleCancel(requestId: string) {
 }
 
 .section-title {
-  font-size: var(--font-size-xs, 11px);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-on-surface-variant);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: var(--heading-section-size, var(--font-size-xs, 11px));
+  font-weight: var(--heading-section-weight, var(--font-weight-semibold));
+  color: var(--heading-section-color, var(--color-on-surface-variant));
+  text-transform: var(--heading-section-transform, uppercase);
+  letter-spacing: var(--heading-section-tracking, 0.05em);
 }
 
 .empty-state {
@@ -472,8 +485,8 @@ async function handleCancel(requestId: string) {
   align-items: stretch;
   gap: var(--spacing-sm);
   padding: var(--spacing-md);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--card-radius, var(--radius-md));
+  border: 1px solid var(--card-border-color, var(--color-outline-variant));
   background-color: var(--color-surface);
   container-type: inline-size;
 }

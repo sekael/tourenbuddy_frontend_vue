@@ -5,7 +5,7 @@
      Never give these contextual meaning; that is the semantic tier's job.
      =========================================================================== */
 
-  /* Palette ramps (Tailwind slate/blue/red/green — only shades in use) */
+  /* Palette ramps (Tailwind slate/blue/red/green/amber — only shades in use) */
   --slate-50: #f8fafc;
   --slate-200: #e2e8f0;
   --slate-300: #cbd5e1;
@@ -13,11 +13,16 @@
   --slate-500: #64748b;
   --slate-600: #475569;
   --slate-700: #334155;
+  --slate-800: #1e293b;
   --slate-900: #0f172a;
 
+  --blue-50: #eff6ff;
   --blue-500: #3b82f6;
+  --blue-600: #2563eb;
   --blue-700: #1d4ed8;
+  --blue-800: #1e40af;
   --blue-900: #1e3a8a;
+  --blue-950: #172554;
 
   --red-50: #fef2f2;
   --red-600: #dc2626;
@@ -25,7 +30,10 @@
 
   --green-600: #16a34a;
   --green-700: #2e7d32;
+  --green-800: #166534;
   --amber-500: #f59e0b;
+  --amber-600: #d97706;
+  --amber-700: #b45309;
   --orange-500: #f97316;
   --red-700: #c62828;
 
@@ -95,9 +103,18 @@
   --color-on-error-container: var(--red-900);
 
   --color-success: var(--green-600);
+  /* Success as TEXT/ICON on light surfaces (green-600 is only 3.3:1 on white) */
+  --color-success-text: var(--green-800);
   --color-on-success: var(--white);
 
   --color-warning: var(--amber-500);
+  --color-warning-strong: var(--amber-600);
+  --color-on-warning: var(--white);
+  --color-warning-text: var(--amber-700);
+
+  /* Inverse surface — dark toasts/chips floating over the app */
+  --color-inverse-surface: var(--slate-800);
+  --color-on-inverse-surface: var(--white);
   --color-friend: var(--orange-500);
   --color-route-start: var(--green-700);
   --color-route-end: var(--red-700);
@@ -130,4 +147,188 @@
   --button-font-size-sm: var(--font-size-sm);
   --button-font-size-md: var(--font-size-base);
   --button-font-size-lg: var(--font-size-lg);
+
+  /* --- Motion & interaction ------------------------------------------------
+     Classic values equal the literals they replaced. Pick by role:
+     standard = color/opacity state changes; emphasized = things sliding in
+     (sheets, drawers, dialogs); spring = small elements popping in and
+     press/hover transforms. */
+  --motion-duration-short: 150ms;
+  --motion-duration-medium: 200ms;
+  --motion-duration-long: 300ms;
+  --motion-ease-standard: ease;
+  --motion-ease-emphasized: cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-ease-spring: ease;
+
+  /* Primary/danger buttons scale on hover; every shared button and FAB scales
+     by --press-scale while pressed (1 = no visible change). */
+  --hover-scale: 1.02;
+  --press-scale: 1;
+}
+
+/* =============================================================================
+   DESIGN VARIANT "Alpenglow" — opt-in preview, toggled from the profile sheet
+   (`src/core/theme/design-variant.ts` sets `<html data-design>`). Classic is
+   the `:root` defaults above. Only semantic roles and the radius/shadow scales
+   are retuned here; components never branch on the variant. When a winner is
+   picked, move its values into `:root` and delete this block.
+   ============================================================================= */
+:root[data-design='alpenglow'] {
+  --color-primary: var(--blue-600);
+  --color-primary-light: var(--blue-500);
+  --color-primary-dark: var(--blue-700);
+  --color-accent: var(--blue-500);
+  --color-surface-variant: var(--blue-50);
+
+  /* Map controls: brand blue-700 glass with white glyphs (on-surface/border keep
+     their :root values). Lighter than a navy, yet white text holds 4.9:1 even at
+     85% over a white map and the controls separate clearly from any terrain.
+     Hover/selected go one shade deeper. Transient toasts stay neutral slate. */
+  --color-fab-surface: var(--blue-700);
+  --color-fab-surface-strong: var(--blue-800);
+  --color-inverse-surface: var(--slate-800);
+  /* Notification dot / count badge would vanish blue-on-blue */
+  --fab-dot-color: var(--white);
+  --fab-badge-bg: var(--white);
+  --fab-badge-color: var(--color-primary-dark);
+
+  --radius-sm: 10px;
+  --radius-md: 20px;
+  --radius-lg: 28px;
+  --button-radius: var(--radius-pill);
+
+  /* Softer, more diffuse, blue-950-tinted */
+  --shadow-sm: 0 1px 2px rgba(23, 37, 84, 0.05), 0 2px 6px rgba(23, 37, 84, 0.06);
+  --shadow-md: 0 2px 4px rgba(23, 37, 84, 0.04), 0 8px 20px -4px rgba(23, 37, 84, 0.14);
+  --shadow-lg: 0 4px 8px rgba(23, 37, 84, 0.04), 0 16px 40px -8px rgba(23, 37, 84, 0.22);
+
+  /* Calm, unhurried motion: longer durations and soft curves. */
+  --motion-duration-short: 200ms;
+  --motion-duration-medium: 320ms;
+  --motion-duration-long: 480ms;
+  --motion-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  /* Gentle deceleration, no overshoot (a sliding sheet never lifts off its edge)
+     — less front-loaded than the iOS curve, so movement reads as relaxed. */
+  --motion-ease-emphasized: cubic-bezier(0.22, 0.7, 0.3, 1);
+  /* Soft overshoot (~3%) — small elements only */
+  --motion-ease-spring: cubic-bezier(0.34, 1.18, 0.64, 1);
+
+  /* Tactile press instead of a hover jump touch screens never see */
+  --hover-scale: 1;
+  --press-scale: 0.97;
+
+  /* --- Component tokens ----------------------------------------------------
+     Defined ONLY here, never in `:root`. Each consumer reads
+     `var(--token, <its own Classic value>)`, so Classic keeps every component's
+     current look while Alpenglow gives each element ONE treatment app-wide. */
+
+  /* Buttons — filled variants glow softly; outline variants become tonal */
+  --button-min-height-sm: 36px;
+  --button-min-height-md: 48px;
+  --button-min-height-lg: 56px;
+  --button-tracking: -0.01em;
+  --button-primary-shadow: 0 6px 16px -6px rgba(37, 99, 235, 0.5);
+  --button-danger-shadow: 0 6px 16px -6px rgba(220, 38, 38, 0.45);
+  --button-outline-border-color: transparent;
+  --button-secondary-bg: var(--color-surface-variant);
+  --button-secondary-hover-bg: color-mix(in srgb, var(--color-primary) 14%, var(--color-background));
+  --button-primary-outline-bg: color-mix(in srgb, var(--color-primary) 10%, var(--color-background));
+  --button-primary-outline-hover-bg: color-mix(in srgb, var(--color-primary) 18%, var(--color-background));
+  --button-danger-outline-bg: var(--color-error-container);
+  --button-danger-outline-hover-bg: color-mix(in srgb, var(--color-error) 14%, var(--color-background));
+  --button-text-color: var(--color-primary);
+  /* Text on the tinted outline-variant fills: the darker shade keeps ≥ 4.5:1 */
+  --button-primary-outline-color: var(--color-primary-dark);
+  --button-danger-outline-color: var(--red-700);
+  --tint-text-primary: var(--color-primary-dark);
+  --tint-text-error: var(--red-700);
+
+  /* Overlay chrome — sheets, dialogs, drawers, full-screen pages */
+  --overlay-border-color: transparent;
+  --overlay-divider-color: transparent;
+  --overlay-title-size: var(--font-size-2xl);
+  --overlay-title-tracking: -0.02em;
+  --overlay-close-bg: var(--color-surface-variant);
+  --overlay-backdrop-blur: 8px;
+
+  /* Section headings — sentence case instead of six uppercase variants */
+  --heading-section-size: var(--font-size-base);
+  --heading-section-weight: var(--font-weight-semibold);
+  --heading-section-transform: none;
+  --heading-section-tracking: -0.01em;
+  --heading-section-color: var(--color-on-surface);
+  --field-label-color: var(--color-on-surface);
+
+  /* Text inputs — softly filled, brand focus ring */
+  --input-radius: 14px;
+  --input-bg: var(--color-surface);
+  --input-bg-focus: var(--color-background);
+  --input-focus-ring: 0 0 0 4px color-mix(in srgb, var(--color-primary) 18%, transparent);
+  --input-focus-border-color: var(--color-primary);
+
+  /* Selectable chips/options — pill, one tinted selected state */
+  --chip-radius: var(--radius-pill);
+  --chip-padding: var(--spacing-xs) var(--spacing-md);
+  --chip-min-height: 40px;
+  --chip-font-size: var(--font-size-sm);
+  --chip-color: var(--color-on-surface);
+  --chip-selected-bg: color-mix(in srgb, var(--color-primary) 12%, var(--color-background));
+  --chip-selected-color: var(--color-primary-dark);
+  --chip-selected-border-color: var(--color-primary);
+
+  /* Tabs — pill segmented control instead of an underline */
+  --tabs-bg: var(--color-surface-variant);
+  --tabs-border: none;
+  --tabs-radius: var(--radius-pill);
+  --tabs-padding: var(--spacing-xxs);
+  --tab-radius: var(--radius-pill);
+  --tab-indicator-width: 0;
+  --tab-margin-bottom: 0;
+  --tab-active-bg: var(--color-background);
+  --tab-active-shadow: var(--shadow-sm);
+
+  --divider-color: var(--slate-200);
+  --icon-verified-color: var(--color-primary);
+
+  /* Persistent map chips (offline / pending sync) share the map-control glass */
+  --map-chip-bg: color-mix(in srgb, var(--color-fab-surface) 90%, transparent);
+  --map-chip-color: var(--color-fab-on-surface);
+  --map-chip-border: 1px solid var(--color-fab-border);
+  --map-chip-backdrop: blur(10px);
+  /* Section breaks come from spacing + headings, not lines */
+  --section-divider-color: transparent;
+  --section-divider-display: none;
+
+  /* Bespoke toggles/action pills: tonal like buttons; state tints at this % */
+  --tonal-tint: 12%;
+  --toggle-row-display: flex;
+  --toggle-flex: 1 1 auto;
+
+  /* Cards (form point cards, request rows): fill only, no outline/stripe */
+  --card-border-color: transparent;
+  --card-accent-width: 0px;
+  --card-radius: var(--radius-md);
+
+  /* Motion — sheet snapping, sheet→sheet swaps, in-sheet view/tab swaps */
+  --sheet-snap-duration: var(--motion-duration-medium);
+  --sheet-snap-ease: var(--motion-ease-emphasized);
+  --sheet-swap-duration: var(--motion-duration-medium);
+  --sheet-swap-leave-duration: var(--motion-duration-short);
+  --sheet-swap-offset: 16px;
+  --sheet-swap-opacity: 0;
+  --view-swap-duration: var(--motion-duration-medium);
+  --view-swap-leave-duration: var(--motion-duration-short);
+  --view-swap-offset: 12px;
+  --view-swap-opacity: 0;
+  --tab-flex: 1;
+}
+
+/* `:root[data-design]` ties the variant block's specificity and wins by order,
+   so reduced motion beats every variant. */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-design] {
+    --motion-ease-spring: var(--motion-ease-standard);
+    --hover-scale: 1;
+    --press-scale: 1;
+  }
 }

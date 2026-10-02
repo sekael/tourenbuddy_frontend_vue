@@ -129,8 +129,8 @@ defineExpose({ focusFirst })
   height: 16px;
   padding: 0 3px;
   border-radius: var(--radius-pill);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
+  background-color: var(--fab-badge-bg, var(--color-primary));
+  color: var(--fab-badge-color, var(--color-on-primary));
   font-size: 10px;
   font-weight: var(--font-weight-semibold);
   display: flex;

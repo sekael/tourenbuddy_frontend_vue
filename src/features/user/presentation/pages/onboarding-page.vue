@@ -265,7 +265,7 @@ function handleNoticeClose() {
 .label {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
+  color: var(--field-label-color, var(--color-on-surface-variant));
 }
 
 .required {
@@ -280,16 +280,21 @@ function handleNoticeClose() {
 .input {
   padding: var(--spacing-md);
   border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--radius-sm);
+  border-radius: var(--input-radius, var(--radius-sm));
   font-size: var(--font-size-base);
   color: var(--color-on-surface);
-  background-color: var(--color-background);
+  background-color: var(--input-bg, var(--color-background));
   outline: none;
-  transition: border-color 0.2s;
+  transition:
+    border-color var(--motion-duration-medium) var(--motion-ease-standard),
+    background-color var(--motion-duration-medium) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .input:focus {
   border-color: var(--color-primary);
+  background-color: var(--input-bg-focus, var(--color-background));
+  box-shadow: var(--input-focus-ring, none);
 }
 
 .input--error {

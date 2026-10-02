@@ -312,6 +312,7 @@ const sheetStyle = computed(() => {
       <BaseIconButton
         v-if="props.showBack && !props.collapsed"
         name="arrow_back"
+        class="overlay-action"
         size="sm"
         :label="t('core.drawer.back')"
         @click="emit('back')"
@@ -324,6 +325,7 @@ const sheetStyle = computed(() => {
       <BaseIconButton
         v-if="!props.collapsed"
         name="close"
+        class="overlay-action"
         size="sm"
         :label="t('core.drawer.close')"
         @click="emit('close')"
@@ -352,12 +354,12 @@ const sheetStyle = computed(() => {
   flex-direction: column;
   background-color: var(--color-background);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  border: 1px solid var(--color-outline-variant);
+  border: 1px solid var(--overlay-border-color, var(--color-outline-variant));
   border-bottom: none;
   box-shadow: var(--shadow-lg);
   /* Compact horizontal padding (md, not xl) so more width goes to content. */
   padding: var(--spacing-sm) var(--spacing-md) 0;
-  transition: height 200ms ease-out;
+  transition: height var(--sheet-snap-duration, 200ms) var(--sheet-snap-ease, ease-out);
   /* Restore pointer events — parent sheet-container sets pointer-events: none
      to allow FAB clicks through transparent areas */
   pointer-events: auto;
@@ -423,9 +425,10 @@ const sheetStyle = computed(() => {
 }
 
 .title {
-  font-size: var(--font-size-xl);
+  font-size: var(--overlay-title-size, var(--font-size-xl));
   font-weight: var(--font-weight-semibold);
   flex: 1;
+  letter-spacing: var(--overlay-title-tracking, normal);
 }
 
 .title-spacer {
@@ -494,8 +497,13 @@ const sheetStyle = computed(() => {
 
 .footer {
   flex-shrink: 0;
-  border-top: 1px solid var(--color-outline-variant);
+  border-top: 1px solid var(--overlay-divider-color, var(--color-outline-variant));
   /* Base padding trimmed (md, not xl); env() still clears the home-gesture bar. */
   padding: var(--spacing-sm) 0 calc(var(--spacing-md) + var(--safe-bottom));
+}
+
+/* Header back/close: tonal circle in variants that define --overlay-close-bg. */
+.overlay-action {
+  background-color: var(--overlay-close-bg, transparent);
 }
 </style>

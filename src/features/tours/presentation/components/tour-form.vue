@@ -1031,6 +1031,8 @@ defineExpose({ cancel: handleCancel, submitBlocked })
             type="file"
             accept=".gpx,application/gpx+xml,application/xml,text/xml,application/octet-stream"
             class="hidden-input"
+            tabindex="-1"
+            :aria-label="t('tours.form.gpxLabel')"
             @change="handleGpxUpload"
           >
           <!-- Same tile as the attachment upload rows below it. `gpxProgress` is null unless
@@ -1205,11 +1207,11 @@ defineExpose({ cancel: handleCancel, submitBlocked })
 }
 
 .section-label {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--color-outline);
+  font-size: var(--heading-section-size, var(--font-size-xs));
+  font-weight: var(--heading-section-weight, var(--font-weight-semibold));
+  text-transform: var(--heading-section-transform, uppercase);
+  letter-spacing: var(--heading-section-tracking, 0.08em);
+  color: var(--heading-section-color, var(--color-on-surface-variant));
 }
 
 /* Tour type chips */
@@ -1223,17 +1225,18 @@ defineExpose({ cancel: handleCancel, submitBlocked })
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-sm);
+  padding: var(--chip-padding, var(--spacing-xs) var(--spacing-sm));
   border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
-  color: var(--color-on-surface-variant);
+  border-radius: var(--chip-radius, var(--radius-sm));
+  font-size: var(--chip-font-size, var(--font-size-sm));
+  color: var(--chip-color, var(--color-on-surface-variant));
   background-color: transparent;
   transition:
     background-color 0.15s,
     border-color 0.15s,
     color 0.15s;
   cursor: pointer;
+  min-height: var(--chip-min-height, auto);
 }
 
 .type-chip:hover {
@@ -1242,9 +1245,9 @@ defineExpose({ cancel: handleCancel, submitBlocked })
 }
 
 .type-chip.selected {
-  background-color: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--color-on-primary);
+  background-color: var(--chip-selected-bg, var(--color-primary));
+  border-color: var(--chip-selected-border-color, var(--color-primary));
+  color: var(--chip-selected-color, var(--color-on-primary));
 }
 
 .field-hint {
@@ -1269,17 +1272,18 @@ defineExpose({ cancel: handleCancel, submitBlocked })
 
 .season-chip {
   flex: 1;
-  padding: var(--spacing-xs) var(--spacing-sm);
+  padding: var(--chip-padding, var(--spacing-xs) var(--spacing-sm));
   border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
-  color: var(--color-on-surface-variant);
+  border-radius: var(--chip-radius, var(--radius-sm));
+  font-size: var(--chip-font-size, var(--font-size-sm));
+  color: var(--chip-color, var(--color-on-surface-variant));
   text-align: center;
   transition:
     background-color 0.15s,
     border-color 0.15s,
     color 0.15s;
   cursor: pointer;
+  min-height: var(--chip-min-height, auto);
 }
 
 .season-chip:hover {
@@ -1288,9 +1292,9 @@ defineExpose({ cancel: handleCancel, submitBlocked })
 }
 
 .season-chip.selected {
-  background-color: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--color-on-primary);
+  background-color: var(--chip-selected-bg, var(--color-primary));
+  border-color: var(--chip-selected-border-color, var(--color-primary));
+  color: var(--chip-selected-color, var(--color-on-primary));
 }
 
 /* Fields */
@@ -1303,7 +1307,7 @@ defineExpose({ cancel: handleCancel, submitBlocked })
 .label {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
+  color: var(--field-label-color, var(--color-on-surface-variant));
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
@@ -1312,23 +1316,28 @@ defineExpose({ cancel: handleCancel, submitBlocked })
 .optional-hint {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-normal);
-  color: var(--color-outline);
+  color: var(--color-on-surface-variant);
 }
 
 .input {
   padding: var(--spacing-md);
   border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--radius-sm);
+  border-radius: var(--input-radius, var(--radius-sm));
   font-size: var(--font-size-base);
   color: var(--color-on-surface);
-  background-color: var(--color-background);
+  background-color: var(--input-bg, var(--color-background));
   outline: none;
-  transition: border-color 0.2s;
+  transition:
+    border-color var(--motion-duration-medium) var(--motion-ease-standard),
+    background-color var(--motion-duration-medium) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-medium) var(--motion-ease-standard);
   font-family: inherit;
 }
 
 .input:focus {
   border-color: var(--color-primary);
+  background-color: var(--input-bg-focus, var(--color-background));
+  box-shadow: var(--input-focus-ring, none);
 }
 
 .input--error {
@@ -1360,9 +1369,9 @@ defineExpose({ cancel: handleCancel, submitBlocked })
   flex-direction: column;
   gap: var(--spacing-sm);
   padding: var(--spacing-sm) var(--spacing-md);
-  border: 1px solid var(--color-outline-variant);
-  border-left: 3px solid var(--color-outline-variant);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--card-border-color, var(--color-outline-variant));
+  border-left: var(--card-accent-width, 3px) solid var(--color-outline-variant);
+  border-radius: var(--card-radius, var(--radius-sm));
   background-color: var(--color-surface-variant, transparent);
 }
 

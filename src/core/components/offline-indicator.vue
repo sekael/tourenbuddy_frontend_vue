@@ -108,8 +108,13 @@ watch(offlineWriteError, (key) => {
   justify-content: center;
   padding: var(--spacing-xs);
   border-radius: var(--radius-lg);
-  background: var(--color-slate-800, #1e293b);
-  color: white;
+  /* Persistent map chips follow the map-control glass in variants that define
+     --map-chip-*; Classic keeps the dark inverse surface. */
+  background: var(--map-chip-bg, var(--color-inverse-surface));
+  color: var(--map-chip-color, var(--color-on-inverse-surface));
+  border: var(--map-chip-border, none);
+  backdrop-filter: var(--map-chip-backdrop, none);
+  -webkit-backdrop-filter: var(--map-chip-backdrop, none);
   box-shadow: var(--shadow-md);
   z-index: 190;
 }
@@ -125,8 +130,8 @@ watch(offlineWriteError, (key) => {
   gap: var(--spacing-xs);
   padding: var(--spacing-xs) var(--spacing-md);
   border-radius: var(--radius-lg);
-  background: var(--color-slate-800, #1e293b);
-  color: white;
+  background: var(--color-inverse-surface);
+  color: var(--color-on-inverse-surface);
   font-size: 0.8125rem;
   font-weight: 500;
   box-shadow: var(--shadow-md);
@@ -136,7 +141,7 @@ watch(offlineWriteError, (key) => {
 
 .chip-enter-active,
 .chip-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .chip-enter-from,

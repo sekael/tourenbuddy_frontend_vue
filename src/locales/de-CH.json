@@ -228,6 +228,11 @@
       "nameRequired": "Vor- und Nachname sind erforderlich",
       "saveFailed": "Profil konnte nicht gespeichert werden",
       "languageLabel": "Sprache",
+      "designLabel": "Design",
+      "design": {
+        "classic": "Klassisch",
+        "alpenglow": "Alpenglühen (Vorschau)"
+      },
       "removePhoneBtn": "Telefonnummer entfernen",
       "removePhoneConfirmTitle": "Telefonnummer entfernen",
       "removePhoneDisclaimer": "Deine Telefonnummer wird entfernt. Wenn Du diese Nummer erneut hinzufügst, musst Du sie erneut verifizieren.",

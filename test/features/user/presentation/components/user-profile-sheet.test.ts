@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { setDesignVariant } from '@/core/theme/design-variant'
 import UserProfileSheet from '@/features/user/presentation/components/user-profile-sheet.vue'
 
 const { mockUpdateProfile, mockSendPhoneVerification, mockCheckPhoneAvailability, mockDeletePhone, mockSignOut, mockFullProfile, mockStoreError } = vi.hoisted(
@@ -270,6 +271,19 @@ describe('userProfileSheet', () => {
       expect(deBtn).toBeDefined()
       await deBtn!.trigger('click')
       expect(mockSetLocale).toHaveBeenCalledWith('de-CH')
+    })
+  })
+
+  describe('design switcher', () => {
+    it('should reflect a variant applied at boot and switch back to classic', async () => {
+      setDesignVariant('alpenglow')
+      const wrapper = mount(UserProfileSheet)
+      expect(wrapper.find('.design-option--active').text()).toContain('alpenglow')
+
+      await wrapper.findAll('.design-option')[0].trigger('click')
+
+      expect(document.documentElement.dataset.design).toBe('classic')
+      expect(wrapper.find('.design-option--active').text()).toContain('classic')
     })
   })
 })

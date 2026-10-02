@@ -67,14 +67,19 @@ function selectStyle(index: number) {
   justify-content: center;
   color: var(--color-on-surface-variant);
   transition:
-    box-shadow 0.2s,
-    transform 0.15s;
+    box-shadow var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-short) var(--motion-ease-spring);
 }
 
 .fab:hover,
 .fab.active {
   box-shadow: var(--shadow-lg);
   transform: translateY(-1px);
+}
+
+/* Keeps the hover lift; adds the variant's press scale (Classic: 1 = unchanged). */
+.fab:active:not(:disabled) {
+  transform: translateY(-1px) scale(var(--press-scale));
 }
 
 .menu {
@@ -120,8 +125,8 @@ function selectStyle(index: number) {
 .menu-enter-active,
 .menu-leave-active {
   transition:
-    opacity 0.15s,
-    transform 0.15s;
+    opacity var(--motion-duration-short) var(--motion-ease-standard),
+    transform var(--motion-duration-short) var(--motion-ease-spring);
 }
 
 .menu-enter-from,

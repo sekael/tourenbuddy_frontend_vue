@@ -9,6 +9,7 @@ src/
     components/               # Shared UI: bottom-sheet, crosshair, snackbar, drawer, etc.
     composables/              # use-snackbar, use-is-desktop, use-as-you-type-phone
     constants/                # env.ts (Zod-validated), feedback.ts
+    theme/                    # design-variant.ts (runtime Classic/Alpenglow switch)
     exceptions/               # Custom error classes (4 types)
     logging/                  # use-logger (consola wrapper)
     utils/                    # supabase client, phone-normalize, wgs84-to-lv95

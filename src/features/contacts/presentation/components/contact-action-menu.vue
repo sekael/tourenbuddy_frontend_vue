@@ -171,7 +171,7 @@ onUnmounted(() => {
   position: fixed;
   width: 240px;
   background-color: var(--color-background);
-  border: 1px solid var(--color-outline-variant);
+  border: 1px solid var(--overlay-border-color, var(--color-outline-variant));
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   z-index: 61;
@@ -195,7 +195,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: var(--spacing-sm) var(--spacing-sm) var(--spacing-sm) var(--spacing-md);
-  border-bottom: 1px solid var(--color-outline-variant);
+  border-bottom: 1px solid var(--overlay-divider-color, var(--color-outline-variant));
 }
 
 .popover-name {
@@ -276,7 +276,7 @@ onUnmounted(() => {
 
 .menu-divider {
   height: 1px;
-  background-color: var(--color-outline-variant);
+  background-color: var(--divider-color, var(--color-outline-variant));
   margin: 4px 0;
 }
 
@@ -303,8 +303,8 @@ onUnmounted(() => {
   align-items: flex-end;
   justify-content: center;
   z-index: 60;
-  background: rgba(15, 23, 42, 0.35);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  background: var(--color-backdrop);
+  backdrop-filter: blur(var(--overlay-backdrop-blur, 2px));
+  -webkit-backdrop-filter: blur(var(--overlay-backdrop-blur, 2px));
 }
 </style>

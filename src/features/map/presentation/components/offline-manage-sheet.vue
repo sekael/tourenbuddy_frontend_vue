@@ -143,7 +143,7 @@ onMounted(() => store.loadRegions())
 }
 
 .delete {
-  color: var(--color-danger, #dc2626);
+  color: var(--color-error);
   padding: var(--spacing-xs);
 }
 

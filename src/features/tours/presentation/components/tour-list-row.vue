@@ -3,6 +3,7 @@ import type { Tour } from '@/features/tours/domain/entities/tour'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/core/components/base-icon.vue'
+import { useFormatter } from '@/core/composables/use-formatter'
 import { resolveContactName } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useFriendDisplayName } from '@/features/friendships/presentation/composables/use-friend-display-name'
@@ -13,6 +14,7 @@ const props = defineProps<{ tour: Tour }>()
 const emit = defineEmits<{ click: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
+const { formatDate } = useFormatter()
 const contactsStore = useContactsStore()
 const suggestionsStore = useTourSuggestionsStore()
 
@@ -54,6 +56,17 @@ const partnerSubtitle = computed(() => {
   const joined = names.filter(Boolean).join(', ')
   return joined || null
 })
+
+// When the tour happens is what a planner scans the list for; the year only shows
+// when it isn't this one. Undated tours keep a single-line row.
+const dateLabel = computed(() => {
+  const date = props.tour.plannedDate
+  if (!date)
+    return null
+  const otherYear = date.getFullYear() !== new Date().getFullYear()
+  return formatDate.value(date, { weekday: 'short', day: 'numeric', month: 'short', ...(otherYear && { year: 'numeric' }) })
+})
+const subtitle = computed(() => [dateLabel.value, partnerSubtitle.value].filter(Boolean).join(' · ') || null)
 </script>
 
 <template>
@@ -64,9 +77,11 @@ const partnerSubtitle = computed(() => {
     </div>
     <div class="tour-info">
       <span class="tour-name">{{ displayName }}</span>
-      <span v-if="tour.isFriendTour && ownerResolved" class="tour-owner">{{ ownerLabel }}</span>
+      <span v-if="tour.isFriendTour && ownerResolved" class="tour-owner">
+        {{ dateLabel ? `${ownerLabel} · ${dateLabel}` : ownerLabel }}
+      </span>
       <span v-else-if="tour.isFriendTour" class="tour-owner-skeleton" aria-hidden="true" />
-      <span v-if="partnerSubtitle" class="tour-subtitle">{{ partnerSubtitle }}</span>
+      <span v-else-if="subtitle" class="tour-subtitle">{{ subtitle }}</span>
     </div>
     <span
       v-if="pendingSuggestions > 0" class="suggestion-badge"

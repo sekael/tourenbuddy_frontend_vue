@@ -89,14 +89,15 @@ async function start() {
 
 .field-label {
   font-size: var(--font-size-sm);
-  color: var(--color-on-surface-variant);
+  color: var(--field-label-color, var(--color-on-surface-variant));
 }
 
 .input {
   padding: var(--spacing-sm);
   border: 1px solid var(--color-outline, #cbd5e1);
-  border-radius: var(--radius-md);
+  border-radius: var(--input-radius, var(--radius-md));
   font: inherit;
+  background-color: var(--input-bg, Field);
 }
 
 .size {
@@ -105,11 +106,11 @@ async function start() {
 }
 
 .size.warn {
-  color: var(--color-warning, #b45309);
+  color: var(--color-warning-text);
 }
 
 .size.block {
-  color: var(--color-danger, #dc2626);
+  color: var(--color-error);
 }
 
 .note {

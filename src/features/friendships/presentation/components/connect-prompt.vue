@@ -210,7 +210,7 @@ async function handleDismiss() {
   align-items: center;
   gap: var(--spacing-xs);
   font-size: var(--font-size-sm);
-  color: var(--color-success);
+  color: var(--color-success-text);
   font-weight: var(--font-weight-medium);
 }
 

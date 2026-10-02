@@ -47,8 +47,13 @@ const iconSize = computed(() => props.size)
   flex-shrink: 0;
   color: var(--color-on-surface-variant);
   transition:
-    background-color 0.15s,
-    opacity 0.15s;
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    opacity var(--motion-duration-short) var(--motion-ease-standard),
+    transform var(--motion-duration-short) var(--motion-ease-spring);
+}
+
+.base-icon-button:active:not(:disabled) {
+  transform: scale(var(--press-scale));
 }
 
 .base-icon-button:hover:not(:disabled) {

@@ -82,6 +82,29 @@ html.scroll-locked {
    gesture policy on the map canvas and on every scroll region inside an
    overlay. */
 
+/* Sliding tab indicator. A tab row opts in with `data-tab-indicator` plus inline
+   `--tab-index` / `--tab-count` (equal-width tabs, --spacing-xs gap). The pill is
+   painted from --tab-active-bg, which only a design variant defines — Classic
+   keeps its underline tabs and this pseudo-element stays transparent. */
+[data-tab-indicator] {
+  position: relative;
+  isolation: isolate;
+}
+
+[data-tab-indicator]::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset-block: var(--tabs-padding, 0);
+  inset-inline-start: var(--tabs-padding, 0);
+  width: calc((100% - 2 * var(--tabs-padding, 0px) - (var(--tab-count) - 1) * var(--spacing-xs)) / var(--tab-count));
+  border-radius: var(--tab-radius, 0);
+  background-color: var(--tab-active-bg, transparent);
+  box-shadow: var(--tab-active-shadow, none);
+  transform: translateX(calc(var(--tab-index) * (100% + var(--spacing-xs))));
+  transition: transform var(--motion-duration-medium) var(--motion-ease-spring);
+}
+
 button {
   cursor: pointer;
   border: none;

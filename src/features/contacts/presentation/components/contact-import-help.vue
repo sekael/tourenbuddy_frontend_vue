@@ -32,7 +32,12 @@ const steps = computed<string[]>(() => {
       {{ t('contacts.addDialog.help.summary') }}
     </summary>
 
-    <div class="tabs" role="tablist">
+    <div
+      class="tabs"
+      role="tablist"
+      data-tab-indicator
+      :style="{ '--tab-index': TABS.findIndex(tab => tab.id === activeTab), '--tab-count': TABS.length }"
+    >
       <button
         v-for="tab in TABS"
         :key="tab.id"
@@ -71,8 +76,11 @@ const steps = computed<string[]>(() => {
 .tabs {
   display: flex;
   gap: var(--spacing-xs);
-  border-bottom: 1.5px solid var(--color-outline-variant);
+  border-bottom: var(--tabs-border, 1.5px solid var(--color-outline-variant));
   margin-top: var(--spacing-xs);
+  background-color: var(--tabs-bg, transparent);
+  border-radius: var(--tabs-radius, 0);
+  padding: var(--tabs-padding, 0);
 }
 
 .tab {
@@ -80,15 +88,18 @@ const steps = computed<string[]>(() => {
   padding: var(--spacing-xs) var(--spacing-sm);
   background: transparent;
   border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1.5px;
+  border-bottom: var(--tab-indicator-width, 2px) solid transparent;
+  margin-bottom: var(--tab-margin-bottom, -1.5px);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--color-on-surface-variant);
   cursor: pointer;
   transition:
-    color 0.15s,
-    border-color 0.15s;
+    color var(--motion-duration-short) var(--motion-ease-standard),
+    border-color var(--motion-duration-short) var(--motion-ease-standard),
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-short) var(--motion-ease-standard);
+  border-radius: var(--tab-radius, 0);
 }
 
 .tab--active {

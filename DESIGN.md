@@ -48,9 +48,81 @@ design tokens (they resolve per-device at paint time). They live in
 ### Color roles
 
 Slate is the primary family; blue is the accent. Surface / on-surface,
-background / on-background, outline, error, and success roles are all semantic
-tokens in `tokens.css`. The floating map FAB has its own dark-azure `--color-fab-*`
-roles so it stays distinct from Swisstopo terrain.
+background / on-background, outline, error, warning, and success roles are all
+semantic tokens in `tokens.css`. The floating map FAB has its own dark-azure
+`--color-fab-*` roles so it stays distinct from Swisstopo terrain. In Alpenglow the map controls are
+blue-700 glass with white glyphs (≥ 4.9:1 even at 85% over a white map). Dark floating
+toasts use `--color-inverse-surface` / `--color-on-inverse-surface`;
+warning text on light surfaces uses `--color-warning-text` (the plain
+`--color-warning` amber is too light for text).
+
+### Accessibility rules
+
+- All text ≥ 4.5:1 (WCAG 2.2 AA) in every variant — verify new colors before use.
+- Success/warning as text use `--color-success-text` / `--color-warning-text`, never
+  `--color-success` / `--color-warning` (3.3:1 / 2.2:1 on white). Hints use
+  `--color-on-surface-variant`, not `--color-outline`.
+- Text on a tinted fill uses the darker shade of its hue (`--tint-text-*`,
+  `--color-primary-dark`).
+- A control that sits on a fixed surface (e.g. the guided-tour banner) styles its label
+  against that surface explicitly — never inherit a variant's button fill under it.
+- Desktop dialogs whose content switches views/tabs pass `stable-size` so they don't
+  resize; options opened from a menu item appear at that item.
+
+### Motion & interaction
+
+Never hardcode a duration or easing in shared components — pick by role:
+
+- `--motion-ease-standard` — color/opacity state changes.
+- `--motion-ease-emphasized` — things sliding or scaling into view (sheets,
+  drawers, dialogs, banners).
+- `--motion-ease-spring` — small elements popping in (snackbars, pills, menus)
+  and press/hover transforms. May overshoot, so never use it for a full-width
+  sheet anchored to an edge.
+- `--motion-duration-short/medium/long` — roughly control / popover / sheet.
+- `--hover-scale` (primary/danger buttons) and `--press-scale` (`:active` on every
+  shared button and FAB). Touch screens have no hover, so press is the tactile
+  feedback; `1` means none.
+
+`prefers-reduced-motion: reduce` turns spring into standard and both scales into
+`1` for every variant (bottom of `tokens.css`).
+
+**Navigation motion.** Tab rows opt into the sliding pill with `data-tab-indicator`
+plus inline `--tab-index`/`--tab-count` (utility in `global.css`). Content swaps use
+`<Transition mode="out-in">` on the `--view-swap-*` tokens (pick the transition
+_name_ from the new state when direction matters — the leaving element keeps its
+old bindings). Sheet → sheet uses `sheet-swap` (`--sheet-swap-*`), sheet snapping
+`--sheet-snap-*`. All of these are component tokens: instant/unchanged in Classic.
+
+### Design variants (comparison period)
+
+`<html data-design="classic|alpenglow">` selects a **design variant**. Classic
+is the `:root` defaults; **Alpenglow** (blue brand, larger radii, pill buttons,
+softer shadows, springy motion, press feedback) is one
+`:root[data-design='alpenglow']` override block in `tokens.css`. A variant
+reassigns semantic roles and may retune the radius/shadow scales — never palette
+primitives, spacing, or type, and **component styles never branch on the
+variant**. Users switch in the profile sheet; `src/core/theme/design-variant.ts`
+applies the choice before mount and persists it per device (`tb.design`).
+
+**Component tokens.** Recurring elements are styled through component tokens
+that **only a variant defines** — `--button-*` (tonal/glow/min-height),
+`--overlay-*` (sheet/dialog/drawer/page chrome), `--heading-section-*`,
+`--field-label-color`, `--input-*`, `--chip-*`, `--tabs-*`/`--tab-*`,
+`--divider-color`. Every consumer carries its Classic value as the fallback:
+`border-radius: var(--chip-radius, var(--radius-sm))`. Classic therefore keeps
+each component's own look, while Alpenglow gives each element exactly one
+treatment app-wide. **Never consume a component token without a fallback** —
+in Classic it would resolve to `unset` (`test/app/theme/component-tokens.test.ts`
+enforces this). New instances of these elements must use the same tokens.
+
+**Ending the comparison:** move the winner's values into `:root` (for Alpenglow,
+including its component tokens — their fallbacks then become dead and can be
+stripped), delete the override block, the profile-sheet switcher,
+`design-variant.ts` (+ its call in `main.ts`), and the `user.profile.design*`
+i18n keys. With chips, inputs, and tabs now sharing tokens across 3+ consumers
+each, that follow-up is also the moment to extract shared `Chip`/`Input`/`Tabs`
+components (see "Not componentized yet" below).
 
 ---
 
@@ -82,7 +154,8 @@ Inline icon-only button (close, back, dismiss, inline actions). Props: `name`,
 
 Action button with a text label. Props: `variant`
 (`primary` / `secondary` / `danger` / `text`) and `size` (`sm`/`md`/`lg`), all
-token-driven. Primary/danger are filled and lift slightly on hover; `secondary`
+token-driven. Primary/danger are filled and scale by `--hover-scale` on hover; every
+variant scales by `--press-scale` while pressed. `secondary`
 is a ghost (transparent + outline); `text` is borderless (transparent, no
 border) for low-emphasis actions like "Dismiss". Native attrs fall through to
 the root `<button>`.

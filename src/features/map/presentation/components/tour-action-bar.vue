@@ -124,8 +124,8 @@ const { t } = useI18n({ useScope: 'global' })
 .pill-enter-active,
 .pill-leave-active {
   transition:
-    opacity 0.15s ease,
-    transform 0.15s ease;
+    opacity var(--motion-duration-short) var(--motion-ease-standard),
+    transform var(--motion-duration-short) var(--motion-ease-spring);
 }
 
 .pill-enter-from,

@@ -42,6 +42,7 @@ const titleId = 'full-screen-page-title'
       <header class="page-bar">
         <BaseIconButton
           :name="showBack ? 'arrow_back' : 'close'"
+          class="overlay-action"
           size="sm"
           :label="showBack ? t('core.drawer.back') : t('core.drawer.close')"
           @click="showBack ? emit('back') : emit('close')"
@@ -82,14 +83,15 @@ const titleId = 'full-screen-page-title'
   gap: var(--spacing-sm);
   flex-shrink: 0;
   padding: calc(var(--safe-top) + var(--spacing-sm)) var(--spacing-md) var(--spacing-sm);
-  border-bottom: 1px solid var(--color-outline-variant);
+  border-bottom: 1px solid var(--overlay-divider-color, var(--color-outline-variant));
 }
 
 .title {
-  font-size: var(--font-size-xl);
+  font-size: var(--overlay-title-size, var(--font-size-xl));
   font-weight: var(--font-weight-semibold);
   flex: 1;
   min-width: 0;
+  letter-spacing: var(--overlay-title-tracking, normal);
 }
 
 .title-spacer {
@@ -128,5 +130,10 @@ const titleId = 'full-screen-page-title'
   min-height: 0;
   overflow-y: auto;
   padding: var(--spacing-md) var(--spacing-md) calc(var(--spacing-md) + var(--safe-bottom));
+}
+
+/* Header back/close: tonal circle in variants that define --overlay-close-bg. */
+.overlay-action {
+  background-color: var(--overlay-close-bg, transparent);
 }
 </style>

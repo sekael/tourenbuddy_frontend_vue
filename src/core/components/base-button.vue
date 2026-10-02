@@ -42,88 +42,109 @@ const buttonClasses = computed(() => [`base-button--${variant.value}`, `base-but
      border-color below. */
   border: 1px solid transparent;
   border-radius: var(--button-radius);
+  /* `--button-*` component tokens are defined only by a design variant; each
+     fallback here is the Classic value (see tokens.css, DESIGN.md). */
+  letter-spacing: var(--button-tracking, normal);
   transition:
-    background-color 0.2s,
-    transform 0.15s,
-    opacity 0.15s;
+    background-color var(--motion-duration-medium) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-short) var(--motion-ease-spring),
+    opacity var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .base-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 /* Variants */
 .base-button--primary {
   background-color: var(--color-primary);
   color: var(--color-on-primary);
+  box-shadow: var(--button-primary-shadow, none);
 }
 
 .base-button--primary:hover:not(:disabled) {
-  transform: scale(1.02);
+  transform: scale(var(--hover-scale));
 }
 
 .base-button--primary-outline {
-  background-color: transparent;
-  color: var(--color-primary);
-  border-color: var(--color-primary);
+  background-color: var(--button-primary-outline-bg, transparent);
+  color: var(--button-primary-outline-color, var(--color-primary));
+  border-color: var(--button-outline-border-color, var(--color-primary));
 }
 
 .base-button--primary-outline:hover:not(:disabled) {
-  background-color: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  background-color: var(--button-primary-outline-hover-bg, color-mix(in srgb, var(--color-primary) 8%, transparent));
 }
 
 .base-button--secondary {
-  background-color: transparent;
+  background-color: var(--button-secondary-bg, transparent);
   color: var(--color-on-surface);
-  border-color: var(--color-outline-variant);
+  border-color: var(--button-outline-border-color, var(--color-outline-variant));
 }
 
 .base-button--secondary:hover:not(:disabled) {
-  background-color: var(--color-surface-variant);
+  background-color: var(--button-secondary-hover-bg, var(--color-surface-variant));
 }
 
 .base-button--danger {
   background-color: var(--color-error);
   color: var(--color-on-error);
+  box-shadow: var(--button-danger-shadow, none);
 }
 
 .base-button--danger:hover:not(:disabled) {
-  transform: scale(1.02);
+  transform: scale(var(--hover-scale));
 }
 
 .base-button--danger-outline {
-  background-color: transparent;
-  color: var(--color-error);
-  border-color: var(--color-error);
+  background-color: var(--button-danger-outline-bg, transparent);
+  color: var(--button-danger-outline-color, var(--color-error));
+  border-color: var(--button-outline-border-color, var(--color-error));
 }
 
 .base-button--danger-outline:hover:not(:disabled) {
-  background-color: color-mix(in srgb, var(--color-error) 8%, transparent);
+  background-color: var(--button-danger-outline-hover-bg, color-mix(in srgb, var(--color-error) 8%, transparent));
 }
 
 .base-button--text {
   background-color: transparent;
-  color: var(--color-on-surface-variant);
+  color: var(--button-text-color, var(--color-on-surface-variant));
 }
 
 .base-button--text:hover:not(:disabled) {
   background-color: var(--color-surface-variant);
 }
 
+/* Press feedback. Primary/danger multiply in their hover scale so Classic
+   (hover 1.02, press 1) looks exactly as before while pressed. */
+.base-button:active:not(:disabled) {
+  transform: scale(var(--press-scale));
+}
+
+.base-button--primary:active:not(:disabled),
+.base-button--danger:active:not(:disabled) {
+  transform: scale(calc(var(--hover-scale) * var(--press-scale)));
+}
+
 /* Sizes */
 .base-button--sm {
   padding: var(--button-padding-sm);
   font-size: var(--button-font-size-sm);
+  min-height: var(--button-min-height-sm, auto);
 }
 
 .base-button--md {
   padding: var(--button-padding-md);
   font-size: var(--button-font-size-md);
+  min-height: var(--button-min-height-md, auto);
 }
 
 .base-button--lg {
   padding: var(--button-padding-lg);
   font-size: var(--button-font-size-lg);
+  min-height: var(--button-min-height-lg, auto);
 }
 </style>

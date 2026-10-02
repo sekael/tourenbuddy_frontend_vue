@@ -141,11 +141,11 @@ onMounted(() => {
 }
 
 .section-title {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-on-surface-variant);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: var(--heading-section-size, var(--font-size-sm));
+  font-weight: var(--heading-section-weight, var(--font-weight-semibold));
+  color: var(--heading-section-color, var(--color-on-surface-variant));
+  text-transform: var(--heading-section-transform, uppercase);
+  letter-spacing: var(--heading-section-tracking, 0.05em);
 }
 
 .rows {

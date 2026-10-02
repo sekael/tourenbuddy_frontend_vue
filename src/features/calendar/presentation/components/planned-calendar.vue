@@ -611,10 +611,11 @@ function selectFromDetail(tourId: string) {
 
 .detail-heading {
   padding: var(--spacing-sm) var(--spacing-md) var(--spacing-xs);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  text-transform: uppercase;
-  color: var(--color-on-surface-variant);
+  font-size: var(--heading-section-size, var(--font-size-sm));
+  font-weight: var(--heading-section-weight, var(--font-weight-semibold));
+  text-transform: var(--heading-section-transform, uppercase);
+  color: var(--heading-section-color, var(--color-on-surface-variant));
+  letter-spacing: var(--heading-section-tracking, normal);
 }
 
 .detail-row {

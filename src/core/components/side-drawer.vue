@@ -47,6 +47,7 @@ const isDesktop = useIsDesktop()
       <BaseIconButton
         v-if="props.backLabel && !props.collapsed"
         name="arrow_back"
+        class="overlay-action"
         size="sm"
         :label="`${t('core.drawer.back')} ${props.backLabel}`"
         @click="emit('back')"
@@ -59,6 +60,7 @@ const isDesktop = useIsDesktop()
       <BaseIconButton
         v-if="!props.collapsed"
         name="close"
+        class="overlay-action"
         size="sm"
         :label="t('core.drawer.close')"
         @click="emit('close')"
@@ -94,9 +96,9 @@ const isDesktop = useIsDesktop()
   display: flex;
   flex-direction: column;
   background-color: var(--color-background);
-  border-left: 1px solid var(--color-outline-variant);
+  border-left: 1px solid var(--overlay-border-color, var(--color-outline-variant));
   box-shadow: var(--shadow-lg);
-  animation: slide-in-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: slide-in-right var(--motion-duration-long) var(--motion-ease-emphasized);
   /* Restore pointer events — parent sheet-container sets pointer-events: none */
   pointer-events: auto;
   transition:
@@ -108,7 +110,7 @@ const isDesktop = useIsDesktop()
 .side-drawer--collapsed {
   /* Collapse vertically to header-only; width unchanged */
   max-height: 4.5rem;
-  border-bottom: 1px solid var(--color-outline-variant);
+  border-bottom: 1px solid var(--overlay-border-color, var(--color-outline-variant));
   border-bottom-left-radius: var(--radius-lg);
   border-top-left-radius: 0;
   /* Keep the same animation-name so toggling collapsed off doesn't restart slide-in-right */
@@ -133,13 +135,14 @@ const isDesktop = useIsDesktop()
   flex-shrink: 0;
   gap: var(--spacing-sm);
   padding: var(--spacing-lg) var(--spacing-xl) var(--spacing-md);
-  border-bottom: 1px solid var(--color-outline-variant);
+  border-bottom: 1px solid var(--overlay-divider-color, var(--color-outline-variant));
 }
 
 .drawer-title {
-  font-size: var(--font-size-xl);
+  font-size: var(--overlay-title-size, var(--font-size-xl));
   font-weight: var(--font-weight-semibold);
   flex: 1;
+  letter-spacing: var(--overlay-title-tracking, normal);
 }
 
 .title-spacer {
@@ -183,7 +186,7 @@ const isDesktop = useIsDesktop()
 
 .drawer-footer {
   flex-shrink: 0;
-  border-top: 1px solid var(--color-outline-variant);
+  border-top: 1px solid var(--overlay-divider-color, var(--color-outline-variant));
   padding: var(--spacing-sm) var(--spacing-xl) var(--spacing-xl);
   opacity: 1;
   transition:
@@ -204,5 +207,10 @@ const isDesktop = useIsDesktop()
 
 .side-drawer--collapsed .drawer-footer {
   border-top-color: transparent;
+}
+
+/* Header back/close: tonal circle in variants that define --overlay-close-bg. */
+.overlay-action {
+  background-color: var(--overlay-close-bg, transparent);
 }
 </style>

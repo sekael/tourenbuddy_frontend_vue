@@ -251,7 +251,7 @@ const completionOptions = [
 .filter-label {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
+  color: var(--field-label-color, var(--color-on-surface-variant));
 }
 
 .chip-row {
@@ -261,22 +261,23 @@ const completionOptions = [
 }
 
 .chip {
-  padding: var(--spacing-xxs) var(--spacing-sm);
-  border-radius: var(--radius-pill);
+  padding: var(--chip-padding, var(--spacing-xxs) var(--spacing-sm));
+  border-radius: var(--chip-radius, var(--radius-pill));
   border: 1.5px solid var(--color-outline-variant);
-  font-size: var(--font-size-sm);
-  color: var(--color-on-surface-variant);
+  font-size: var(--chip-font-size, var(--font-size-sm));
+  color: var(--chip-color, var(--color-on-surface-variant));
   transition:
     background-color 0.15s,
     color 0.15s,
     border-color 0.15s;
   cursor: pointer;
+  min-height: var(--chip-min-height, auto);
 }
 
 .chip.active {
-  background-color: color-mix(in srgb, var(--color-primary) 16%, transparent);
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  background-color: var(--chip-selected-bg, color-mix(in srgb, var(--color-primary) 16%, transparent));
+  border-color: var(--chip-selected-border-color, var(--color-primary));
+  color: var(--chip-selected-color, var(--color-primary));
 }
 
 .chip:hover:not(.active) {
@@ -302,37 +303,43 @@ const completionOptions = [
 
 .date-input {
   border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--radius-sm);
+  border-radius: var(--input-radius, var(--radius-sm));
   padding: var(--spacing-xxs) var(--spacing-sm);
   font-size: var(--font-size-sm);
   color: var(--color-on-surface);
-  background: transparent;
+  background: var(--input-bg, transparent);
 }
 
 .segmented {
   display: flex;
-  border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--radius-md);
+  border: var(--tabs-border, 1.5px solid var(--color-outline-variant));
+  border-radius: var(--tabs-radius, var(--radius-md));
   overflow: hidden;
   align-self: flex-start;
+  background-color: var(--tabs-bg, transparent);
+  padding: var(--tabs-padding, 0);
 }
 
 .segment {
   padding: var(--spacing-xxs) var(--spacing-md);
   font-size: var(--font-size-sm);
   color: var(--color-on-surface-variant);
-  transition: background-color 0.15s;
+  transition:
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-short) var(--motion-ease-standard);
   cursor: pointer;
+  border-radius: var(--tab-radius, 0);
 }
 
 .segment:not(:last-child) {
-  border-right: 1.5px solid var(--color-outline-variant);
+  border-right: var(--tabs-border, 1.5px solid var(--color-outline-variant));
 }
 
 .segment.active {
-  background-color: color-mix(in srgb, var(--color-primary) 16%, transparent);
+  background-color: var(--tab-active-bg, color-mix(in srgb, var(--color-primary) 16%, transparent));
   color: var(--color-primary);
   font-weight: var(--font-weight-medium);
+  box-shadow: var(--tab-active-shadow, none);
 }
 
 .segment:hover:not(.active) {

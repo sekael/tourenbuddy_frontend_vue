@@ -86,20 +86,20 @@ watch(
   { immediate: true },
 )
 
-const sheetTitle = computed(() => {
-  if (viewState.value === 'add')
-    return t('contacts.addDialog.title')
-  if (viewState.value === 'detail')
-    return null
-  return t('contacts.list.title')
-})
-
 // Keep selectedContact in sync after store edits
 const liveContact = computed(() =>
   selectedContact.value
     ? (contacts.value.find(c => c.id === selectedContact.value!.id) ?? null)
     : null,
 )
+
+const sheetTitle = computed(() => {
+  if (viewState.value === 'add')
+    return t('contacts.addDialog.title')
+  if (viewState.value === 'detail')
+    return liveContact.value ? resolveContactName(liveContact.value) : null
+  return t('contacts.list.title')
+})
 
 // Navigate back to list when selected contact is deleted from the store
 watch(liveContact, (contact) => {
@@ -472,7 +472,8 @@ function onFormPhoneInput(phone: string) {
   <AdaptiveOverlay
     :title="sheetTitle ?? undefined"
     :page="contactPage"
-    :show-back="contactPage"
+    :show-back="contactPage || viewState === 'detail'"
+    stable-size
     @close="handleClose"
     @back="handlePageBack"
   >
@@ -500,268 +501,279 @@ function onFormPhoneInput(phone: string) {
         {{ detailRef?.isSaving ? t('contacts.detailView.savingBtn') : t('contacts.detailView.saveBtn') }}
       </BaseButton>
     </template>
-    <!-- List view -->
-    <div v-if="viewState === 'list'" class="list-view">
-      <div class="list-actions-row">
-        <BaseButton variant="secondary" size="sm" data-tour="add-contact" data-testid="add-contact-btn" @click="openAdd">
-          <BaseIcon name="person_add" size="sm" />
-          {{ t('contacts.list.addBtn') }}
-        </BaseButton>
-        <!-- Always rendered (discoverability + onboarding tour waypoint);
+    <!-- Detail view: Edit sits in the overlay header next to back/close, so the
+         detail view renders no header row of its own. -->
+    <template v-if="viewState === 'detail' && !contactPage && detailEditMode === 'view'" #header-actions>
+      <BaseButton variant="primary-outline" size="sm" data-testid="edit-contact-btn" @click="detailRef?.enterEditMode()">
+        {{ t('contacts.detailView.editBtn') }}
+      </BaseButton>
+    </template>
+
+    <!-- List view. Views push/pop: forward slides in from the right, back from the left. -->
+    <Transition :name="viewState === 'list' ? 'view-pop' : 'view-push'" mode="out-in">
+      <div v-if="viewState === 'list'" class="list-view">
+        <div class="list-actions-row">
+          <BaseButton variant="secondary" size="sm" data-tour="add-contact" data-testid="add-contact-btn" @click="openAdd">
+            <BaseIcon name="person_add" size="sm" />
+            {{ t('contacts.list.addBtn') }}
+          </BaseButton>
+          <!-- Always rendered (discoverability + onboarding tour waypoint);
              disabled until the caller's phone is verified. -->
-        <BaseTooltip :text="t('friendships.verifyPhoneHint')" :disabled="callerPhoneVerified">
-          <BaseButton
-            variant="secondary"
-            size="sm"
-            data-tour="open-friend-requests"
-            :disabled="!callerPhoneVerified"
-            :aria-disabled="!callerPhoneVerified"
-            @click="goToFriendRequests"
-          >
-            <BaseIcon name="group" size="sm" />
-            {{ t('friendships.friendsListLink') }}
-            <span v-if="pendingIncomingCount > 0" class="badge">{{ pendingIncomingCount }}</span>
-          </BaseButton>
-        </BaseTooltip>
-      </div>
-
-      <div class="contacts-content" data-tour="contacts">
-        <div v-if="isLoading" class="loading-text">
-          {{ t('contacts.list.loading') }}
-        </div>
-
-        <div v-else-if="contacts.length === 0" class="empty-state">
-          <BaseIcon name="group" class="empty-icon" size="xl" />
-          <p class="empty-text">
-            {{ t('contacts.list.emptyTitle') }}
-          </p>
-          <p class="empty-sub">
-            {{ t('contacts.list.emptySubtitle') }}
-          </p>
-        </div>
-
-        <ul v-else class="contacts-list">
-          <li
-            v-for="contact in contacts"
-            :key="contact.id"
-            class="contact-row"
-            @click="openDetail(contact)"
-          >
-            <div class="contact-avatar">
-              {{ resolveContactName(contact)[0]?.toUpperCase() }}
-            </div>
-            <div class="contact-info">
-              <span class="contact-name-row">
-                <span class="contact-name">{{ resolveContactName(contact) }}</span>
-                <BaseTooltip v-if="friendContactIds.has(contact.id) && !blockedContactIds.has(contact.id)" :text="t('friendships.tooltip')">
-                  <BaseIcon name="group" class="friend-icon" />
-                </BaseTooltip>
-                <BaseTooltip v-if="blockedContactIds.has(contact.id)" :text="t('blocks.tooltip')">
-                  <BaseIcon name="block" class="blocked-icon" />
-                </BaseTooltip>
-              </span>
-              <span v-if="getPrimaryPhone(contact)" class="contact-subtitle">
-                {{ formatPhoneDisplay(getPrimaryPhone(contact)!) }}
-              </span>
-            </div>
-            <BaseIcon name="chevron_right" class="row-arrow" />
-          </li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- Detail / edit view -->
-    <div v-else-if="viewState === 'detail' && liveContact">
-      <ContactDetailView
-        ref="detailRef"
-        v-model:mode="detailEditMode"
-        :contact="liveContact"
-        :linked-friend-user-id="detailLinkedFriendUserId"
-        :embedded="detailEditPage && !isDesktop"
-        @back="backToList"
-        @deleted="handleContactDeleted"
-        @edit-contact="(c) => { openDetail(c); detailEditMode = 'edit' }"
-      />
-      <ConnectPrompt
-        v-if="detailViewMatchedUserId && liveContact && !isConnectDismissed(liveContact.id)"
-        :matched-user-id="detailViewMatchedUserId"
-        :before-send="commitDetailEdits"
-        :before-dismiss="detailMode === 'edit' ? commitDetailEdits : undefined"
-        :show-dismiss="detailMode === 'edit'"
-        class="detail-connect-prompt"
-        @sent="liveContact && dismissConnect(liveContact.id)"
-        @dismissed="liveContact && dismissConnect(liveContact.id)"
-      />
-    </div>
-
-    <!-- Add contact view -->
-    <div v-else-if="viewState === 'add'" class="add-view">
-      <!-- Import results -->
-      <div v-if="addViewState === 'import-results'" class="results-view">
-        <ul class="results-summary-box">
-          <li v-if="importSummary.imported > 0">
-            {{ t('contacts.addDialog.summaryImported', { count: importSummary.imported }) }}
-          </li>
-          <li v-if="importSummary.phoneDuplicate > 0">
-            {{ t('contacts.addDialog.summaryPhoneDuplicate', { count: importSummary.phoneDuplicate }) }}
-          </li>
-          <li v-if="importSummary.nameDuplicate > 0">
-            {{ t('contacts.addDialog.summaryNameDuplicate', { count: importSummary.nameDuplicate }) }}
-          </li>
-          <li v-if="importSummary.unparseable > 0">
-            {{ t('contacts.addDialog.summaryUnparseable', { count: importSummary.unparseable }) }}
-          </li>
-        </ul>
-        <ul class="results-list">
-          <li v-for="(result, i) in importResults" :key="i" class="result-item">
-            <div class="result-info">
-              <span class="result-name">{{ result.firstName }}{{ result.lastName ? ` ${result.lastName}` : '' }}</span>
-              <span v-if="result.primaryPhone" class="result-phone">
-                <BaseIcon name="star" class="star-icon-sm" />
-                {{ formatPhoneDisplay(result.primaryPhone) }}
-                <span v-if="result.extraPhoneCount > 0" class="extra-phones">
-                  {{ t('contacts.addDialog.extraPhones', { count: result.extraPhoneCount }) }}
-                </span>
-              </span>
-              <BaseTooltip
-                v-if="showsRawPhones(result)"
-                :text="t('contacts.addDialog.unparseableTooltip', { values: result.rawPhoneNumbers.join(', ') })"
-              >
-                <span
-                  class="result-phone"
-                  :class="result.status === 'imported' ? 'result-phone-discarded' : 'result-phone-warning'"
-                >
-                  ⚠ {{ rawPhoneSummary(result) }}
-                </span>
-              </BaseTooltip>
-              <template v-if="importRowMatches[i]">
-                <ConnectPrompt
-                  v-for="uid in importRowMatches[i]"
-                  :key="uid"
-                  :matched-user-id="uid"
-                  @dismissed="importRowMatches[i] = importRowMatches[i]!.filter((u) => u !== uid)"
-                />
-              </template>
-            </div>
-            <span
-              class="result-badge"
-              :class="result.status === 'imported' ? 'badge-imported' : 'badge-skipped'"
-            >
-              {{
-                result.status === 'imported'
-                  ? t('contacts.list.importedLabel')
-                  : result.skipReason === 'phoneDuplicate'
-                    ? t('contacts.addDialog.summaryPhoneDuplicateBadge')
-                    : t('contacts.list.skippedLabel')
-              }}
-            </span>
-          </li>
-        </ul>
-        <div class="results-actions">
-          <BaseButton variant="text" size="sm" @click="switchAddToForm">
-            <BaseIcon name="add" size="sm" />
-            {{ t('contacts.list.addManuallyBtn') }}
-          </BaseButton>
-          <BaseButton type="button" variant="primary" @click="backToList">
-            {{ t('contacts.addDialog.doneBtn') }}
-          </BaseButton>
-        </div>
-      </div>
-
-      <!-- Add form -->
-      <div v-else class="form-wrapper">
-        <div class="import-actions">
-          <BaseButton
-            variant="secondary"
-            size="sm"
-            data-testid="import-file-btn"
-            :disabled="isAddLoading"
-            @click="handleFileImportClick"
-          >
-            <BaseIcon name="upload_file" size="sm" />
-            {{ t('contacts.addDialog.importFileBtn') }}
-          </BaseButton>
-          <BaseButton
-            v-if="isContactPickerSupported"
-            variant="secondary"
-            size="sm"
-            data-testid="import-picker-btn"
-            :disabled="isAddLoading"
-            @click="handleContactPickerImport"
-          >
-            <BaseIcon name="contacts" size="sm" />
-            {{ t('contacts.addDialog.importContactsBtn') }}
-          </BaseButton>
-          <input
-            ref="fileInput"
-            type="file"
-            accept=".vcf,.vcard,text/vcard,text/x-vcard"
-            class="file-input-hidden"
-            @change="handleFileChange"
-          ><!-- no multiple attribute: single file only -->
-        </div>
-
-        <p class="format-hint">
-          {{ t('contacts.addDialog.help.formatHint') }}
-        </p>
-        <ContactImportHelp />
-
-        <div class="divider" />
-
-        <div v-if="duplicateConflict" class="duplicate-disclaimer">
-          <p class="duplicate-title">
-            <BaseIcon name="warning" class="warn-icon" />
-            {{ t('contacts.shared.duplicateTitle') }}
-          </p>
-          <p class="duplicate-text">
-            {{
-              duplicateConflict === 'generic'
-                ? t('contacts.shared.duplicateGenericText')
-                : t('contacts.shared.duplicateText', { name: resolveContactName(duplicateConflict) })
-            }}
-          </p>
-          <div class="duplicate-actions">
-            <BaseButton type="button" variant="secondary" size="sm" @click="discardDuplicateDraft">
-              {{ t('contacts.shared.discardBtn') }}
-            </BaseButton>
+          <BaseTooltip :text="t('friendships.verifyPhoneHint')" :disabled="callerPhoneVerified">
             <BaseButton
-              v-if="duplicateConflict !== 'generic'"
-              type="button"
-              variant="primary"
+              variant="secondary"
               size="sm"
-              @click="editConflictingContact"
+              data-tour="open-friend-requests"
+              :disabled="!callerPhoneVerified"
+              :aria-disabled="!callerPhoneVerified"
+              @click="goToFriendRequests"
             >
-              {{ t('contacts.shared.editExistingBtn') }}
+              <BaseIcon name="group" size="sm" />
+              {{ t('friendships.friendsListLink') }}
+              <span v-if="pendingIncomingCount > 0" class="badge">{{ pendingIncomingCount }}</span>
+            </BaseButton>
+          </BaseTooltip>
+        </div>
+
+        <div class="contacts-content" data-tour="contacts">
+          <div v-if="isLoading" class="loading-text">
+            {{ t('contacts.list.loading') }}
+          </div>
+
+          <div v-else-if="contacts.length === 0" class="empty-state">
+            <BaseIcon name="group" class="empty-icon" size="xl" />
+            <p class="empty-text">
+              {{ t('contacts.list.emptyTitle') }}
+            </p>
+            <p class="empty-sub">
+              {{ t('contacts.list.emptySubtitle') }}
+            </p>
+          </div>
+
+          <ul v-else class="contacts-list">
+            <li
+              v-for="contact in contacts"
+              :key="contact.id"
+              class="contact-row"
+              @click="openDetail(contact)"
+            >
+              <div class="contact-avatar">
+                {{ resolveContactName(contact)[0]?.toUpperCase() }}
+              </div>
+              <div class="contact-info">
+                <span class="contact-name-row">
+                  <span class="contact-name">{{ resolveContactName(contact) }}</span>
+                  <BaseTooltip v-if="friendContactIds.has(contact.id) && !blockedContactIds.has(contact.id)" :text="t('friendships.tooltip')">
+                    <BaseIcon name="group" class="friend-icon" />
+                  </BaseTooltip>
+                  <BaseTooltip v-if="blockedContactIds.has(contact.id)" :text="t('blocks.tooltip')">
+                    <BaseIcon name="block" class="blocked-icon" />
+                  </BaseTooltip>
+                </span>
+                <span v-if="getPrimaryPhone(contact)" class="contact-subtitle">
+                  {{ formatPhoneDisplay(getPrimaryPhone(contact)!) }}
+                </span>
+              </div>
+              <BaseIcon name="chevron_right" class="row-arrow" />
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Detail / edit view -->
+      <div v-else-if="viewState === 'detail' && liveContact">
+        <ContactDetailView
+          ref="detailRef"
+          v-model:mode="detailEditMode"
+          :contact="liveContact"
+          :linked-friend-user-id="detailLinkedFriendUserId"
+          :embedded="detailEditPage && !isDesktop"
+          headerless
+          @back="backToList"
+          @deleted="handleContactDeleted"
+          @edit-contact="(c) => { openDetail(c); detailEditMode = 'edit' }"
+        />
+        <ConnectPrompt
+          v-if="detailViewMatchedUserId && liveContact && !isConnectDismissed(liveContact.id)"
+          :matched-user-id="detailViewMatchedUserId"
+          :before-send="commitDetailEdits"
+          :before-dismiss="detailMode === 'edit' ? commitDetailEdits : undefined"
+          :show-dismiss="detailMode === 'edit'"
+          class="detail-connect-prompt"
+          @sent="liveContact && dismissConnect(liveContact.id)"
+          @dismissed="liveContact && dismissConnect(liveContact.id)"
+        />
+      </div>
+
+      <!-- Add contact view -->
+      <div v-else-if="viewState === 'add'" class="add-view">
+        <!-- Import results -->
+        <div v-if="addViewState === 'import-results'" class="results-view">
+          <ul class="results-summary-box">
+            <li v-if="importSummary.imported > 0">
+              {{ t('contacts.addDialog.summaryImported', { count: importSummary.imported }) }}
+            </li>
+            <li v-if="importSummary.phoneDuplicate > 0">
+              {{ t('contacts.addDialog.summaryPhoneDuplicate', { count: importSummary.phoneDuplicate }) }}
+            </li>
+            <li v-if="importSummary.nameDuplicate > 0">
+              {{ t('contacts.addDialog.summaryNameDuplicate', { count: importSummary.nameDuplicate }) }}
+            </li>
+            <li v-if="importSummary.unparseable > 0">
+              {{ t('contacts.addDialog.summaryUnparseable', { count: importSummary.unparseable }) }}
+            </li>
+          </ul>
+          <ul class="results-list">
+            <li v-for="(result, i) in importResults" :key="i" class="result-item">
+              <div class="result-info">
+                <span class="result-name">{{ result.firstName }}{{ result.lastName ? ` ${result.lastName}` : '' }}</span>
+                <span v-if="result.primaryPhone" class="result-phone">
+                  <BaseIcon name="star" class="star-icon-sm" />
+                  {{ formatPhoneDisplay(result.primaryPhone) }}
+                  <span v-if="result.extraPhoneCount > 0" class="extra-phones">
+                    {{ t('contacts.addDialog.extraPhones', { count: result.extraPhoneCount }) }}
+                  </span>
+                </span>
+                <BaseTooltip
+                  v-if="showsRawPhones(result)"
+                  :text="t('contacts.addDialog.unparseableTooltip', { values: result.rawPhoneNumbers.join(', ') })"
+                >
+                  <span
+                    class="result-phone"
+                    :class="result.status === 'imported' ? 'result-phone-discarded' : 'result-phone-warning'"
+                  >
+                    ⚠ {{ rawPhoneSummary(result) }}
+                  </span>
+                </BaseTooltip>
+                <template v-if="importRowMatches[i]">
+                  <ConnectPrompt
+                    v-for="uid in importRowMatches[i]"
+                    :key="uid"
+                    :matched-user-id="uid"
+                    @dismissed="importRowMatches[i] = importRowMatches[i]!.filter((u) => u !== uid)"
+                  />
+                </template>
+              </div>
+              <span
+                class="result-badge"
+                :class="result.status === 'imported' ? 'badge-imported' : 'badge-skipped'"
+              >
+                {{
+                  result.status === 'imported'
+                    ? t('contacts.list.importedLabel')
+                    : result.skipReason === 'phoneDuplicate'
+                      ? t('contacts.addDialog.summaryPhoneDuplicateBadge')
+                      : t('contacts.list.skippedLabel')
+                }}
+              </span>
+            </li>
+          </ul>
+          <div class="results-actions">
+            <BaseButton variant="text" size="sm" @click="switchAddToForm">
+              <BaseIcon name="add" size="sm" />
+              {{ t('contacts.list.addManuallyBtn') }}
+            </BaseButton>
+            <BaseButton type="button" variant="primary" @click="backToList">
+              {{ t('contacts.addDialog.doneBtn') }}
             </BaseButton>
           </div>
         </div>
 
-        <template v-else>
-          <p v-if="addError" class="error-text">
-            {{ addError }}
-          </p>
+        <!-- Add form -->
+        <div v-else class="form-wrapper">
+          <div class="import-actions">
+            <BaseButton
+              variant="secondary"
+              size="sm"
+              data-testid="import-file-btn"
+              :disabled="isAddLoading"
+              @click="handleFileImportClick"
+            >
+              <BaseIcon name="upload_file" size="sm" />
+              {{ t('contacts.addDialog.importFileBtn') }}
+            </BaseButton>
+            <BaseButton
+              v-if="isContactPickerSupported"
+              variant="secondary"
+              size="sm"
+              data-testid="import-picker-btn"
+              :disabled="isAddLoading"
+              @click="handleContactPickerImport"
+            >
+              <BaseIcon name="contacts" size="sm" />
+              {{ t('contacts.addDialog.importContactsBtn') }}
+            </BaseButton>
+            <input
+              ref="fileInput"
+              type="file"
+              accept=".vcf,.vcard,text/vcard,text/x-vcard"
+              class="file-input-hidden"
+              @change="handleFileChange"
+            ><!-- no multiple attribute: single file only -->
+          </div>
 
-          <ContactForm
-            ref="addFormRef"
-            form-id="contact-add-form"
-            :embedded="addFormPage && !isDesktop"
-            :submit-label="t('contacts.addDialog.title')"
-            :is-loading="isAddLoading"
-            @submit="handleAddSubmit"
-            @cancel="backToList"
-            @phone-change="onFormPhoneInput"
-          />
-          <ConnectPrompt
-            v-if="manualPromptUserId && !manualPromptDismissed"
-            :matched-user-id="manualPromptUserId"
-            :before-send="commitAddFormForConnect"
-            :before-dismiss="commitAddFormForConnect"
-            @sent="handleAddConnectSent"
-            @dismissed="handleAddConnectSent"
-          />
-        </template>
+          <p class="format-hint">
+            {{ t('contacts.addDialog.help.formatHint') }}
+          </p>
+          <ContactImportHelp />
+
+          <div class="divider" />
+
+          <div v-if="duplicateConflict" class="duplicate-disclaimer">
+            <p class="duplicate-title">
+              <BaseIcon name="warning" class="warn-icon" />
+              {{ t('contacts.shared.duplicateTitle') }}
+            </p>
+            <p class="duplicate-text">
+              {{
+                duplicateConflict === 'generic'
+                  ? t('contacts.shared.duplicateGenericText')
+                  : t('contacts.shared.duplicateText', { name: resolveContactName(duplicateConflict) })
+              }}
+            </p>
+            <div class="duplicate-actions">
+              <BaseButton type="button" variant="secondary" size="sm" @click="discardDuplicateDraft">
+                {{ t('contacts.shared.discardBtn') }}
+              </BaseButton>
+              <BaseButton
+                v-if="duplicateConflict !== 'generic'"
+                type="button"
+                variant="primary"
+                size="sm"
+                @click="editConflictingContact"
+              >
+                {{ t('contacts.shared.editExistingBtn') }}
+              </BaseButton>
+            </div>
+          </div>
+
+          <template v-else>
+            <p v-if="addError" class="error-text">
+              {{ addError }}
+            </p>
+
+            <ContactForm
+              ref="addFormRef"
+              form-id="contact-add-form"
+              :embedded="addFormPage && !isDesktop"
+              :submit-label="t('contacts.addDialog.title')"
+              :is-loading="isAddLoading"
+              @submit="handleAddSubmit"
+              @cancel="backToList"
+              @phone-change="onFormPhoneInput"
+            />
+            <ConnectPrompt
+              v-if="manualPromptUserId && !manualPromptDismissed"
+              :matched-user-id="manualPromptUserId"
+              :before-send="commitAddFormForConnect"
+              :before-dismiss="commitAddFormForConnect"
+              @sent="handleAddConnectSent"
+              @dismissed="handleAddConnectSent"
+            />
+          </template>
+        </div>
       </div>
-    </div>
+    </Transition>
   </AdaptiveOverlay>
 </template>
 
@@ -943,7 +955,7 @@ function onFormPhoneInput(phone: string) {
 
 .divider {
   height: 1px;
-  background-color: var(--color-outline-variant);
+  background-color: var(--divider-color, var(--color-outline-variant));
 }
 
 .error-text {
@@ -1094,4 +1106,32 @@ function onFormPhoneInput(phone: string) {
 }
 
 /* Add/import/manual actions use shared BaseButton (secondary/text). */
+
+/* Views push/pop inside the sheet. Component tokens are defined only by a design
+   variant; the Classic fallbacks (0s, no offset, opaque) make the swap instant. */
+.view-push-enter-active,
+.view-push-leave-active,
+.view-pop-enter-active,
+.view-pop-leave-active {
+  transition:
+    opacity var(--view-swap-duration, 0s) var(--motion-ease-standard),
+    transform var(--view-swap-duration, 0s) var(--motion-ease-emphasized);
+}
+
+.view-push-leave-active,
+.view-pop-leave-active {
+  transition-duration: var(--view-swap-leave-duration, 0s);
+}
+
+.view-push-enter-from,
+.view-pop-leave-to {
+  opacity: var(--view-swap-opacity, 1);
+  transform: translateX(var(--view-swap-offset, 0px));
+}
+
+.view-push-leave-to,
+.view-pop-enter-from {
+  opacity: var(--view-swap-opacity, 1);
+  transform: translateX(calc(-1 * var(--view-swap-offset, 0px)));
+}
 </style>

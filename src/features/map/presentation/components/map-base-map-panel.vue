@@ -44,7 +44,7 @@ const { t } = useI18n({ useScope: 'global' })
   background-color: color-mix(in srgb, var(--color-fab-surface) 85%, transparent);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(203, 213, 225, 0.5);
+  border: var(--map-chip-border, 1px solid rgba(203, 213, 225, 0.5));
   box-shadow: var(--shadow-sm);
   color: var(--color-fab-on-surface);
   font-size: var(--font-size-sm);
@@ -52,15 +52,20 @@ const { t } = useI18n({ useScope: 'global' })
   white-space: nowrap;
   cursor: pointer;
   transition:
-    background-color 0.15s,
-    box-shadow 0.15s,
-    transform 0.15s;
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-short) var(--motion-ease-standard),
+    transform var(--motion-duration-short) var(--motion-ease-spring);
 }
 
 .item:hover {
   background-color: color-mix(in srgb, var(--color-fab-surface-strong) 85%, transparent);
   box-shadow: var(--shadow-md);
   transform: translateY(-1px);
+}
+
+/* Keeps the hover lift; adds the variant's press scale (Classic: 1 = unchanged). */
+.item:active:not(:disabled) {
+  transform: translateY(-1px) scale(var(--press-scale));
 }
 
 .item.selected {

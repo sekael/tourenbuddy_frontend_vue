@@ -52,15 +52,20 @@ defineEmits<{ toggle: [] }>()
   justify-content: center;
   color: var(--color-fab-on-surface);
   transition:
-    background-color 0.2s,
-    box-shadow 0.2s,
-    transform 0.15s;
+    background-color var(--motion-duration-medium) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-short) var(--motion-ease-spring);
 }
 
 .fab:hover {
   background-color: color-mix(in srgb, var(--color-fab-surface-strong) 85%, transparent);
   box-shadow: var(--shadow-lg);
   transform: translateY(-1px);
+}
+
+/* Keeps the hover lift; adds the variant's press scale (Classic: 1 = unchanged). */
+.fab:active:not(:disabled) {
+  transform: translateY(-1px) scale(var(--press-scale));
 }
 
 .icon {
@@ -80,7 +85,7 @@ defineEmits<{ toggle: [] }>()
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background-color: var(--color-primary);
+  background-color: var(--fab-dot-color, var(--color-primary));
   border: 2px solid var(--color-fab-surface);
   pointer-events: none;
 }

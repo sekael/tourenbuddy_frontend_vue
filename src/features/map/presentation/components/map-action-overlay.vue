@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
@@ -36,6 +36,23 @@ const {
 } = useMapOverlay(emit)
 
 const menuRef = ref<InstanceType<typeof MapSpeedDialMenu> | null>(null)
+const overlayEl = ref<HTMLElement | null>(null)
+
+// Base-map options unfold from the "Change base map" item that opened them, rather
+// than the menu collapsing and the options reappearing above the trigger. Pre-flush
+// so the item is measured while the menu is still rendered. The anchor is kept while
+// the panel leaves (so it doesn't jump) and dropped when the panel is opened directly.
+const baseMapAnchor = ref<{ top: number, right: number } | null>(null)
+watch(view, (next, prev) => {
+  if (next !== 'base-map')
+    return
+  const item = prev === 'menu' ? overlayEl.value?.querySelector('[data-tour="menu-base-map"]') : null
+  const rect = item?.getBoundingClientRect()
+  baseMapAnchor.value = rect ? { top: rect.top, right: window.innerWidth - rect.right } : null
+}, { flush: 'pre' })
+const baseMapAnchorStyle = computed(() => baseMapAnchor.value
+  ? { '--anchor-top': `${baseMapAnchor.value.top}px`, '--anchor-right': `${baseMapAnchor.value.right}px` }
+  : undefined)
 const iconRotation = computed(() => -(props.bearing ?? 0))
 const showCompass = computed(() => Math.abs(props.bearing ?? 0) > 0.5)
 
@@ -74,7 +91,7 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
 </script>
 
 <template>
-  <div v-if="!isPickingLocation && !isDrawingRegion" class="overlay" @keydown.esc="closeMenu">
+  <div v-if="!isPickingLocation && !isDrawingRegion" ref="overlayEl" class="overlay" @keydown.esc="closeMenu">
     <div v-if="isOpen" class="backdrop" aria-hidden="true" @click="closeMenu" />
 
     <BaseTooltip v-if="showCompass" :text="t('map.overlay.compassTooltip')">
@@ -90,7 +107,7 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
       </button>
     </BaseTooltip>
 
-    <Transition name="panel">
+    <Transition :name="view === 'base-map' ? 'menu-fade' : 'panel'">
       <MapSpeedDialMenu
         v-if="view === 'menu'"
         ref="menuRef"
@@ -99,9 +116,11 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
       />
     </Transition>
 
-    <Transition name="panel">
+    <Transition :name="baseMapAnchor ? 'unfold' : 'panel'">
       <MapBaseMapPanel
         v-if="view === 'base-map'"
+        :class="{ anchored: baseMapAnchor }"
+        :style="baseMapAnchorStyle"
         :current-style-index="currentStyleIndex"
         @select="selectStyle"
       />
@@ -156,8 +175,8 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
   color: var(--color-fab-on-surface);
   align-self: flex-end;
   transition:
-    box-shadow 0.2s,
-    transform 0.15s;
+    box-shadow var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-short) var(--motion-ease-spring);
 }
 
 .compass-fab:hover {
@@ -166,14 +185,19 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
   transform: translateY(-1px);
 }
 
+/* Keeps the hover lift; adds the variant's press scale (Classic: 1 = unchanged). */
+.compass-fab:active:not(:disabled) {
+  transform: translateY(-1px) scale(var(--press-scale));
+}
+
 .compass-icon {
   transition: transform 0.15s ease-out;
 }
 
 .panel-enter-active {
   transition:
-    opacity 0.15s ease,
-    transform 0.15s ease;
+    opacity var(--motion-duration-short) var(--motion-ease-standard),
+    transform var(--motion-duration-short) var(--motion-ease-spring);
 }
 
 .panel-leave-active {
@@ -188,12 +212,47 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
   transform: translateY(8px) scale(0.97);
 }
 
+/* Base-map options pinned where "Change base map" sat; they unfold downward from
+   its top-right corner while the rest of the menu fades in place. */
+.anchored {
+  position: fixed;
+  top: var(--anchor-top);
+  right: var(--anchor-right);
+}
+
+.menu-fade-leave-active {
+  transition: opacity var(--motion-duration-short) var(--motion-ease-standard);
+}
+
+.menu-fade-leave-to {
+  opacity: 0;
+}
+
+.unfold-enter-active,
+.unfold-leave-active {
+  transform-origin: top right;
+  transition:
+    opacity var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-medium) var(--motion-ease-emphasized);
+}
+
+.unfold-enter-from,
+.unfold-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.97);
+}
+
 :deep(.trigger--overlay-active .fab) {
   opacity: 0.45;
   cursor: default;
 }
 
 @media (orientation: landscape) and (max-height: 500px) {
+  /* The arc layout has no vertical stack to pin to — the panel stays in flow. */
+  .anchored {
+    position: static;
+  }
+
   /* Menu fans as a quarter-circle arc around the trigger so it doesn't overlap
      the bottom-center tour action pill. Trigger stays at bottom-right. */
   .overlay {

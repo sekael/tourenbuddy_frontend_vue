@@ -7,6 +7,8 @@ const props = defineProps<{
   /** Collapse to a header-only card; suppress backdrop-click dismissal and hide close button. */
   collapsed?: boolean
   showBack?: boolean
+  /** Keep one height while the content switches views/tabs (no resize jumps). */
+  stableSize?: boolean
 }>()
 
 const emit = defineEmits<{ close: [], back: [] }>()
@@ -28,7 +30,7 @@ function handleBackdropClick() {
   >
     <div
       class="dialog-card"
-      :class="{ 'dialog-card--collapsed': props.collapsed }"
+      :class="{ 'dialog-card--collapsed': props.collapsed, 'dialog-card--stable': props.stableSize }"
       role="dialog"
       aria-modal="true"
       :aria-labelledby="props.title ? titleId : undefined"
@@ -38,6 +40,7 @@ function handleBackdropClick() {
         <BaseIconButton
           v-if="props.showBack && !props.collapsed"
           name="arrow_back"
+          class="overlay-action"
           size="sm"
           label="Back"
           @click="emit('back')"
@@ -46,9 +49,11 @@ function handleBackdropClick() {
           {{ props.title }}
         </h2>
         <div v-else class="title-spacer" />
+        <slot name="header-actions" />
         <BaseIconButton
           v-if="!props.collapsed"
           name="close"
+          class="overlay-action"
           size="sm"
           label="Close"
           @click="emit('close')"
@@ -69,9 +74,9 @@ function handleBackdropClick() {
 .dialog-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.35);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  background: var(--color-backdrop);
+  backdrop-filter: blur(var(--overlay-backdrop-blur, 2px));
+  -webkit-backdrop-filter: blur(var(--overlay-backdrop-blur, 2px));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -93,7 +98,7 @@ function handleBackdropClick() {
 
 .dialog-card {
   background-color: var(--color-background);
-  border: 1px solid var(--color-outline-variant);
+  border: 1px solid var(--overlay-border-color, var(--color-outline-variant));
   border-radius: var(--radius-lg);
   width: 100%;
   max-width: 560px;
@@ -101,12 +106,18 @@ function handleBackdropClick() {
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-lg);
-  animation: dialog-enter 0.2s cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation: dialog-enter var(--motion-duration-medium) var(--motion-ease-emphasized) both;
   pointer-events: auto;
   overflow: hidden;
   transition:
     max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
     border-radius 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Views/tabs swap inside a fixed frame; content scrolls. The collapsed state's
+   max-height still clamps it. */
+.dialog-card--stable {
+  height: min(40rem, 90dvh);
 }
 
 @keyframes dialog-enter {
@@ -140,13 +151,14 @@ function handleBackdropClick() {
   gap: var(--spacing-sm);
   flex-shrink: 0;
   padding: var(--spacing-lg) var(--spacing-xl) var(--spacing-md);
-  border-bottom: 1px solid var(--color-outline-variant);
+  border-bottom: 1px solid var(--overlay-divider-color, var(--color-outline-variant));
 }
 
 .dialog-title {
-  font-size: var(--font-size-xl);
+  font-size: var(--overlay-title-size, var(--font-size-xl));
   font-weight: var(--font-weight-semibold);
   flex: 1;
+  letter-spacing: var(--overlay-title-tracking, normal);
 }
 
 .title-spacer {
@@ -191,5 +203,10 @@ function handleBackdropClick() {
   flex: 0;
   overflow: hidden;
   pointer-events: none;
+}
+
+/* Header back/close: tonal circle in variants that define --overlay-close-bg. */
+.overlay-action {
+  background-color: var(--overlay-close-bg, transparent);
 }
 </style>

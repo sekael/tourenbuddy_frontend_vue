@@ -5,6 +5,7 @@ import router, { setupAuthRedirect, setupRouterGuards } from './app/router'
 import { i18n, setupI18nLocaleWatcher } from './core/i18n'
 import { installZodErrorMap } from './core/i18n/zod-error-map'
 import { useLogger } from './core/logging/use-logger'
+import { readDesignVariant, setDesignVariant } from './core/theme/design-variant'
 import { useAuthStore } from './features/auth/presentation/stores/auth-store'
 import { useNotificationsStore } from './features/notifications/presentation/stores/notifications-store'
 import { useUserProfileStore } from './features/user/presentation/stores/user-profile-store'
@@ -15,6 +16,10 @@ import '@fontsource/inter/400.css'
 import '@fontsource/inter/500.css'
 import '@fontsource/inter/600.css'
 import './app/theme/global.css'
+
+// Synchronously, before bootstrap() awaits auth, so the first render already
+// carries the chosen design variant (`<html data-design>`, see tokens.css).
+setDesignVariant(readDesignVariant())
 
 // A lazy route chunk failed to load. This is almost always a STALE build: the
 // running app references chunk URLs that a newer deploy (or an updated service

@@ -61,8 +61,8 @@ const emit = defineEmits<{ dismiss: [] }>()
 .snackbar-enter-active,
 .snackbar-leave-active {
   transition:
-    opacity 0.2s,
-    transform 0.2s;
+    opacity var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-medium) var(--motion-ease-spring);
 }
 
 .snackbar-enter-from,
