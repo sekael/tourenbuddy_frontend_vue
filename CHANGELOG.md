@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.42.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.41.0...tourenbuddy-frontend-v0.42.0) (2026-10-02)
+
+
+### Features
+
+* Calendar availability sync ([#302](https://github.com/sekael/tourenbuddy_frontend_vue/issues/302)) ([1f6b794](https://github.com/sekael/tourenbuddy_frontend_vue/commit/1f6b794c7ddb665b666b187d383f69299668d400))
+* Calendar sync UI ([#305](https://github.com/sekael/tourenbuddy_frontend_vue/issues/305)) ([1ef8ac8](https://github.com/sekael/tourenbuddy_frontend_vue/commit/1ef8ac87c8ecb77bc2f6062dbee08e969b1b5b8d))
+* Calendar sync worker ([#304](https://github.com/sekael/tourenbuddy_frontend_vue/issues/304)) ([cf819de](https://github.com/sekael/tourenbuddy_frontend_vue/commit/cf819de8d247fe2795c59b074f30e5daa4c2db30))
+
 ## [0.41.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.40.2...tourenbuddy-frontend-v0.41.0) (2026-09-17)
 
 
