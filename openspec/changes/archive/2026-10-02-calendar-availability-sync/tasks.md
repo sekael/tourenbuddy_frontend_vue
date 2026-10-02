@@ -73,7 +73,7 @@
 
 - [x] 9.1 `test/features/calendar/` — store tests for the failure paths only (`presentation/stores/calendar-feed-store.test.ts`, `data/calendar-feed.test.ts`); the `addFeed`/`removeFeed` cases go green with task 8.4: feed-limit rejection surfaces the localized message, an unsatisfiable window is rejected before the request, a sync-trigger failure sets `error` without clobbering loaded feeds, a `webcal://` URL is normalized and an `http://` URL rejected. Mock the repository interface, never the Supabase client
 - [x] 9.2 Review fixes from manual testing: reject Google embed links (`not_ical`), per-provider address help (`calendar-feed-help.vue`), error state on the failing feed row, clear `store.error` on unmount, clearer "reset link" copy
-- [ ] 9.3 Worker cron purges past `user_availability` rows (`purgePastAvailability`), then **redeploy the Worker** — `cd services/email-hook && npx wrangler@latest deploy`
+- [x] 9.3 Worker cron purges past `user_availability` rows (`purgePastAvailability`), then **redeploy the Worker** — `cd services/email-hook && npx wrangler@latest deploy`
 
 ## 10. Finalize
 
