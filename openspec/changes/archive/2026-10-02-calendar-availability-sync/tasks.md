@@ -56,26 +56,28 @@
 - [x] 7.0 `services/email-hook/test/index.test.ts` — make the `standardwebhooks` `Webhook` mocks constructible (`class`, not arrow: vitest 4 cannot `new` an arrow mock, and `eslint --fix` rewrites `function` into an arrow). Pre-existing on `main`, separate commit
 - [x] 7.1 `cd services/email-hook && npm test` — all green
 - [x] 7.2 Prompt the user to commit (`feat(email-hook): calendar sync cron and tour feed (#287)`) and open the PR
-- [ ] 7.3 After merge, **deploy the Worker manually** — `cd services/email-hook && npx wrangler@latest deploy`. NOT in CI (`.claude/env-ci.md`). PR 3 must not start until this is done. Free plan: test with small calendars only (design → Risks lists the symptoms of hitting the limits)
+- [x] 7.3 After merge, **deploy the Worker manually** — `cd services/email-hook && npx wrangler@latest deploy`. NOT in CI (`.claude/env-ci.md`). PR 3 must not start until this is done. Free plan: test with small calendars only (design → Risks lists the symptoms of hitting the limits)
 
 # PR 3 — Frontend (branch `feat/287-calendar-sync-ui`, from `main` after PR 2 is merged and deployed)
 
 ## 8. Frontend — feed management UI
 
-- [ ] 8.1 New `src/features/calendar/domain/repositories/calendar-feed-repository.ts` + `data/repositories/calendar-feed-repository-impl.ts` + `data/models/calendar-feed.ts` (Zod, with a `.transform` normalizing `webcal://` → `https://` and rejecting `http://`) — list/add/remove/relabel feeds, read/update settings, regenerate the feed token (`feed_token = gen_random_uuid()` via RPC or update), trigger sync via `VITE_NOTIFY_HOOK_URL`. Follow `availability-repository-impl.ts` for shape
-- [ ] 8.2 New `src/features/calendar/presentation/stores/calendar-feed-store.ts` — composition store with `loading` / `error` / data refs. Map the feed-limit exception and the settings check-constraint violation to localized messages; raw Postgres text MUST NOT reach the UI. After removing a feed while others remain, **and after saving settings**, trigger an on-demand sync (design D5/D6) — the spec's settings scenario depends on it
-- [ ] 8.3 New `src/features/calendar/presentation/components/calendar-sync-settings.vue` (≤150 lines; extract a `calendar-feed-row.vue` child if it grows) — feed list with masked URL + label + last-synced + per-feed error (incl. `too_large`), add/remove, `<input type="time">` for the core window and a `<select>` for the minimum free block, the outbound feed URL with a copy button and a "Regenerate URL" action behind a confirm dialog. Native inputs, no picker library. Reached from the existing profile/settings surface
-- [ ] 8.4 After connecting a first feed, trigger an on-demand sync and refresh availability so the result is visible immediately rather than in six hours
-- [ ] 8.5 `src/features/calendar/presentation/components/planned-calendar.vue` — when the user has ≥1 feed, add a line to the existing edit-mode disclaimer: days come from their calendar, and days they change here override it permanently. No provenance styling on cells
-- [ ] 8.6 `src/locales/en.json` + `src/locales/de-CH.json` — every new string in **both**, reusing existing keys where they exist
+- [x] 8.1 New `src/features/calendar/domain/repositories/calendar-feed-repository.ts` + `data/repositories/calendar-feed-repository-impl.ts` + `data/models/calendar-feed.ts` (Zod, with a `.transform` normalizing `webcal://` → `https://` and rejecting `http://`) — list/add/remove/relabel feeds, read/update settings, regenerate the feed token (`feed_token = gen_random_uuid()` via RPC or update), trigger sync via `VITE_NOTIFY_HOOK_URL` (independent of `VITE_NOTIFICATIONS_ENABLED`). Follow `availability-repository-impl.ts` for shape. The repo classifies Postgres failures into a typed `CalendarFeedError` (`limit` / `duplicate` / `invalid_window` / …) and exposes only the feed **host**, never the full URL. The token is regenerated client-side with `crypto.randomUUID()` (CSPRNG) via an owner update — no RPC needed
+- [x] 8.2 New `src/features/calendar/presentation/stores/calendar-feed-store.ts` — composition store with `loading` / `error` / data refs. Map the feed-limit exception and the settings check-constraint violation to localized messages; raw Postgres text MUST NOT reach the UI. After removing a feed while others remain, **and after saving settings**, trigger an on-demand sync (design D5/D6) — the spec's settings scenario depends on it. Resolve the availability store lazily (only when reloading): creating it at setup would start its realtime channels whenever the profile sheet opens
+- [x] 8.3 New `src/features/calendar/presentation/components/calendar-sync-settings.vue` (extract `calendar-feed-row.vue` and `calendar-outbound-feed.vue` children) — feed list with masked URL + label + last-synced + per-feed error (incl. `too_large`), add/remove, `<input type="time">` for the core window and a `<select>` for the minimum free block, the outbound feed URL with a copy button and a "Regenerate URL" action behind an inline two-step confirm (Confirm/Cancel in place of the button). Native inputs, no picker library. Reached from `user-profile-sheet.vue`, below notification preferences. Copy feedback is an in-button "Copied" label
+- [x] 8.4 After connecting **any** feed (a new feed can only add busy time, so waiting for the cron would leave availability too wide), trigger an on-demand sync and refresh availability so the result is visible immediately rather than in six hours
+- [x] 8.5 `src/features/calendar/presentation/pages/calendar-page.vue` (the disclaimer lives there, not in `planned-calendar.vue`) — load feeds when edit mode opens; when the user has ≥1 feed, add a line to the existing edit-mode disclaimer: days come from their calendar, and days they change here override it permanently. No provenance styling on cells
+- [x] 8.6 `src/locales/en.json` + `src/locales/de-CH.json` — every new string in **both**, reusing existing keys where they exist
 
 ## 9. Frontend — tests
 
-- [ ] 9.1 `test/features/calendar/` — store tests for the failure paths only: feed-limit rejection surfaces the localized message, an unsatisfiable window is rejected before the request, a sync-trigger failure sets `error` without clobbering loaded feeds, a `webcal://` URL is normalized and an `http://` URL rejected. Mock the repository interface, never the Supabase client
+- [x] 9.1 `test/features/calendar/` — store tests for the failure paths only (`presentation/stores/calendar-feed-store.test.ts`, `data/calendar-feed.test.ts`); the `addFeed`/`removeFeed` cases go green with task 8.4: feed-limit rejection surfaces the localized message, an unsatisfiable window is rejected before the request, a sync-trigger failure sets `error` without clobbering loaded feeds, a `webcal://` URL is normalized and an `http://` URL rejected. Mock the repository interface, never the Supabase client
+- [x] 9.2 Review fixes from manual testing: reject Google embed links (`not_ical`), per-provider address help (`calendar-feed-help.vue`), error state on the failing feed row, clear `store.error` on unmount, clearer "reset link" copy
+- [x] 9.3 Worker cron purges past `user_availability` rows (`purgePastAvailability`), then **redeploy the Worker** — `cd services/email-hook && npx wrangler@latest deploy`
 
 ## 10. Finalize
 
-- [ ] 10.1 `npx eslint . --fix` (never `npm run format`), then `npm run type-check` and `npm run test` — all green
-- [ ] 10.2 Prompt the user to commit (never run `git commit`), offering `feat(calendar): calendar sync settings UI (#287)`
-- [ ] 10.3 Prompt the user to push and open a PR against `main`
-- [ ] 10.4 Prompt the user to archive this change with the `openspec-archive` skill
+- [x] 10.1 `npx eslint . --fix` (never `npm run format`), then `npm run type-check` and `npm run test` — all green
+- [x] 10.2 Prompt the user to commit (never run `git commit`), offering `feat(calendar): calendar sync settings UI (#287)`
+- [x] 10.3 Prompt the user to push and open a PR against `main`
+- [x] 10.4 Prompt the user to archive this change with the `openspec-archive` skill

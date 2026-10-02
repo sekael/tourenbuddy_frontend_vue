@@ -12,6 +12,7 @@ import ExtendedFab from '@/core/components/extended-fab.vue'
 import { useScrollLock } from '@/core/composables/use-scroll-lock'
 import { isOnline } from '@/core/offline/use-online-status'
 import { useAvailabilityStore } from '@/features/calendar/presentation/stores/availability-store'
+import { useCalendarFeedStore } from '@/features/calendar/presentation/stores/calendar-feed-store'
 import ContactsListSheet from '@/features/contacts/presentation/components/contacts-list-sheet.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
@@ -37,6 +38,13 @@ const contactsStore = useContactsStore()
 const availabilityStore = useAvailabilityStore()
 const userProfileStore = useUserProfileStore()
 const { editing, saving } = storeToRefs(availabilityStore)
+const calendarFeedStore = useCalendarFeedStore()
+const { hasFeeds } = storeToRefs(calendarFeedStore)
+// Only edit mode shows the calendar note, so only edit mode pays for the feed query.
+watch(editing, (isEditing) => {
+  if (isEditing)
+    void calendarFeedStore.loadFeeds()
+})
 
 // Friend chip → contact-action menu → Edit opens the contact over the calendar,
 // mirroring map-page. `initial-contact-id` deep-links the sheet to that contact;
@@ -370,6 +378,9 @@ onMounted(() => {
       <div v-if="editing" class="availability-bar">
         <p class="availability-disclaimer">
           {{ t('calendar.availability.disclaimer') }}
+          <template v-if="hasFeeds">
+            <br>{{ t('calendar.availability.calendarNote') }}
+          </template>
         </p>
         <div class="availability-actions">
           <BaseButton variant="secondary" size="sm" @click="availabilityStore.cancel">

@@ -15,6 +15,7 @@ import { offlineBlockedAt } from '@/core/offline/mutate'
 import { isOnline } from '@/core/offline/use-online-status'
 import { formatPhoneForDisplay } from '@/core/utils/phone-normalize'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
+import CalendarSyncSettings from '@/features/calendar/presentation/components/calendar-sync-settings.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import PhoneVerificationNotice from '@/features/friendships/presentation/components/phone-verification-notice.vue'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
@@ -303,6 +304,10 @@ async function handleSignOut() {
         <div data-tour="notifications">
           <NotificationPreferencesSection />
         </div>
+
+        <hr class="divider">
+
+        <CalendarSyncSettings />
 
         <hr class="divider">
 

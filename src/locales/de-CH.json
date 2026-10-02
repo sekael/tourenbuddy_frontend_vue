@@ -27,7 +27,8 @@
       "edit": "Verfügbarkeit angeben",
       "save": "Speichern",
       "cancel": "Abbrechen",
-      "disclaimer": "Deine Verfügbarkeit ist für deine Freunde sichtbar."
+      "disclaimer": "Deine Verfügbarkeit ist für deine Freunde sichtbar.",
+      "calendarNote": "Tage werden aus deinem Kalender vorausgefüllt. Tage, die du hier änderst, überschreiben ihn dauerhaft."
     },
     "seasons": {
       "title": "Saisonplaner",
@@ -78,6 +79,68 @@
         "seasonTourName": "Piz Palü"
       },
       "replay": "Kalender-Tour wiederholen"
+    },
+    "sync": {
+      "title": "Kalender-Sync",
+      "hint": "Verbinde die private iCal-Adresse deines Arbeits- oder Privatkalenders. Tage mit einem genügend langen freien Block in deinem Zeitfenster werden als verfügbar markiert. Kalenderinhalte werden nie gespeichert.",
+      "urlPlaceholder": "Geheime iCal-Adresse (https:// oder webcal://)",
+      "help": {
+        "summary": "Wo finde ich die Adresse?",
+        "google": "Google",
+        "outlook": "Outlook",
+        "icloud": "iCloud",
+        "googleStep1": "Öffne Google Kalender im Browser am Computer – die App zeigt die Adresse nicht.",
+        "googleStep2": "Einstellungen (Zahnrad) → links unter «Einstellungen für meine Kalender» deinen Kalender wählen.",
+        "googleStep3": "Scrolle zu «Kalender integrieren» und kopiere die «Privatadresse im iCal-Format» (nicht die öffentliche Adresse oder den Einbettungscode).",
+        "googleStep4": "Fehlt die Privatadresse? Bei Firmenkonten kann sie vom Admin deaktiviert sein.",
+        "outlookStep1": "Öffne Outlook im Browser → Einstellungen → Kalender → Freigegebene Kalender.",
+        "outlookStep2": "Wähle unter «Kalender veröffentlichen» deinen Kalender und «Kann sehen, wann ich beschäftigt bin» – mehr braucht TourenBuddy nicht. Dann «Veröffentlichen».",
+        "outlookStep3": "Kopiere den ICS-Link.",
+        "icloudStep1": "Öffne die Kalender-App auf iPhone oder iPad und tippe auf «Kalender».",
+        "icloudStep2": "Tippe auf ⓘ neben dem Kalender und aktiviere «Öffentlicher Kalender».",
+        "icloudStep3": "Tippe auf «Link teilen …» → «Kopieren». Wer den Link kennt, sieht den Kalender."
+      },
+      "label": "Bezeichnung",
+      "labelPlaceholder": "Bezeichnung (z. B. Arbeit)",
+      "labelAria": "Bezeichnung für {host}",
+      "addFeed": "Kalender verbinden",
+      "removeFeed": "{host} trennen",
+      "lastSynced": "Synchronisiert {when}",
+      "neverSynced": "Noch nicht synchronisiert",
+      "syncNow": "Jetzt synchronisieren",
+      "syncing": "Synchronisiere…",
+      "windowTitle": "Wann gilt ein Tag als frei?",
+      "coreStart": "Von",
+      "coreEnd": "Bis",
+      "minFree": "Freier Block von mindestens",
+      "hours": "{n} h",
+      "saveWindow": "Speichern",
+      "outboundTitle": "Deine Touren in deinem Kalender",
+      "outboundHint": "Abonniere diesen Link in deiner Kalender-App, um deine geplanten Touren zu sehen. Wer den Link kennt, sieht deine Touren – teile ihn nicht.",
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "regenerate": "Link zurücksetzen",
+      "regenerateHint": "Link versehentlich geteilt? Setze ihn zurück: Du erhältst einen neuen Link und der alte zeigt keine Touren mehr.",
+      "regenerateConfirm": "Der alte Link hört sofort auf zu funktionieren. Abonniere danach den neuen Link in deiner Kalender-App.",
+      "errors": {
+        "limit": "Du kannst höchstens 5 Kalender verbinden.",
+        "duplicate": "Dieser Kalender ist bereits verbunden.",
+        "invalid_url": "Gib eine gültige https://- oder webcal://-Adresse ein.",
+        "not_ical": "Das ist der Web-Link des Kalenders, nicht seine iCal-Adresse. In Google Kalender: Einstellungen → dein Kalender → «Privatadresse im iCal-Format».",
+        "invalid_window": "Der freie Block muss ins Zeitfenster passen, und das Fenster muss nach seinem Beginn enden.",
+        "sync_failed": "Die Synchronisierung konnte nicht gestartet werden. Deine Kalender werden trotzdem automatisch synchronisiert.",
+        "unknown": "Etwas ist schiefgelaufen. Bitte versuche es nochmals."
+      },
+      "feedError": {
+        "http": "Zugriff verweigert oder nicht gefunden (Fehler {status}). Verwende die geheime iCal-Adresse, nicht den Link zum Teilen oder Einbetten.",
+        "httpServer": "Der Kalenderdienst meldet einen Fehler ({status}). Wir versuchen es automatisch erneut.",
+        "timeout": "Der Kalender hat nicht rechtzeitig geantwortet.",
+        "network": "Der Kalender ist nicht erreichbar.",
+        "too_large": "Der Kalender ist zu gross für die Synchronisierung (über 2 MB).",
+        "unparseable": "Diese Adresse liefert keinen Kalender.",
+        "too_complex": "Ein wiederkehrender Termin ist zu komplex.",
+        "unknown": "Die letzte Synchronisierung ist fehlgeschlagen."
+      }
     }
   },
   "validation": {

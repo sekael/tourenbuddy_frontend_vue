@@ -54,8 +54,13 @@ IMPORTANT: The app ships **all** fonts and icons in its own bundle. There is **n
   3. Apply locally: `supabase db reset` (re-runs all migrations from clean state) or `supabase migration up`
   4. Verify locally (test feature against local DB), run `npm run test`
   5. Push to prod ONLY after review: `supabase db push` (prompt user — never run unprompted)
-- CRITICAL: NEVER edit any existing file under `supabase/migrations/` — migration history is immutable. This includes the baseline `20260101000000_initial_schema.sql`. Every DB change (schema, defaults, RLS, functions, triggers, storage, extensions) MUST go in a NEW migration file created via `supabase migration new <name>`.
-- Migration files: `supabase/migrations/<timestamp>_<name>.sql`, fix forward only — never alter history
+- CRITICAL: NEVER edit any existing file under `supabase/migrations/` — migration history is immutable, fix forward only. This includes the baseline `20260101000000_initial_schema.sql`. Every DB change (schema, defaults, RLS, functions, triggers, storage, extensions) MUST go in a NEW migration file created via `supabase migration new <name>`. Sole exception: replay fix (below).
+- Migration files: `supabase/migrations/<timestamp>_<name>.sql`
+- Replay-fix exception: if an existing migration no longer replays on a fresh DB (`supabase db reset`, preview branch, new machine) — typically after an upstream Supabase image change — edit it in place, but ONLY if the edited file produces the same end state on a fresh DB as the original produced on prod. A new migration cannot fix this: the replay aborts before reaching it.
+  - Why prod is safe: `supabase db push` matches migrations by version (timestamp) only, never by content, so an already-applied version is never re-run.
+  - Verify: `supabase db reset` passes locally, and `supabase migration list --linked` shows Local = Remote with nothing pending.
+  - Add a comment in the edited file explaining the change. Precedent: `20260608062430_friend_tours_realtime_messages_policy.sql` (dropped a no-op `alter table realtime.messages`).
+- NEVER `ALTER TABLE` Supabase-owned tables (`realtime.*`, `auth.*`, `storage.*`) — owned by internal roles, `postgres` is not owner. Policy statements (`create/alter/drop policy`) are allowed. RLS is already enabled on `realtime.messages` and `storage.objects`.
 - NEVER hand-edit prod schema via Supabase Studio/SQL editor — drifts from repo
 - `supabase/migrations/_archived/` contains pre-baseline patches — do not run, kept for history only
 - Baseline migration `20260101000000_initial_schema.sql` reflects prod schema at cutover; subsequent changes go in new timestamped files

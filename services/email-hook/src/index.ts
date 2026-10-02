@@ -2,7 +2,7 @@ import type { Env } from './config'
 import { Webhook } from 'standardwebhooks'
 import { verifySupabaseJwt } from './auth'
 import { handleTourFeed } from './calendar/outbound'
-import { syncAllUsers, syncUser } from './calendar/sync'
+import { purgePastAvailability, syncAllUsers, syncUser } from './calendar/sync'
 import { corsHeaders, jsonResponse, resolveLocale } from './config'
 import {
   handleFriendRequestReceived,
@@ -183,6 +183,6 @@ export default {
 
   // Cron (wrangler.toml [triggers]): 6-hourly calendar sync for every user with a feed.
   async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-    ctx.waitUntil(syncAllUsers(env))
+    ctx.waitUntil(Promise.all([purgePastAvailability(env), syncAllUsers(env)]))
   },
 }

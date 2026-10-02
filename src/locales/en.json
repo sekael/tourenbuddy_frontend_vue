@@ -27,7 +27,8 @@
       "edit": "Edit availability",
       "save": "Save",
       "cancel": "Cancel",
-      "disclaimer": "Your availability will be visible to your friends."
+      "disclaimer": "Your availability will be visible to your friends.",
+      "calendarNote": "Days are pre-filled from your calendar. Days you change here override it permanently."
     },
     "seasons": {
       "title": "Seasonal Planner",
@@ -78,6 +79,68 @@
         "seasonTourName": "Piz Palü"
       },
       "replay": "Replay calendar tour"
+    },
+    "sync": {
+      "title": "Calendar sync",
+      "hint": "Connect the private iCal address of your work or personal calendar. Days with a long enough free block inside your time window are marked available. Your calendar's contents are never stored.",
+      "urlPlaceholder": "Secret iCal address (https:// or webcal://)",
+      "help": {
+        "summary": "Where do I find the address?",
+        "google": "Google",
+        "outlook": "Outlook",
+        "icloud": "iCloud",
+        "googleStep1": "Open Google Calendar in a browser on a computer. The app doesn't show the address.",
+        "googleStep2": "Settings (gear) → under \"Settings for my calendars\" on the left, pick your calendar.",
+        "googleStep3": "Scroll to \"Integrate calendar\" and copy the \"Secret address in iCal format\" (not the public address or the embed code).",
+        "googleStep4": "No secret address? For work accounts, your admin may have turned it off.",
+        "outlookStep1": "Open Outlook in a browser → Settings → Calendar → Shared calendars.",
+        "outlookStep2": "Under \"Publish a calendar\", pick your calendar and \"Can view when I'm busy\" (that's all TourenBuddy needs), then \"Publish\".",
+        "outlookStep3": "Copy the ICS link.",
+        "icloudStep1": "Open the Calendar app on your iPhone or iPad and tap \"Calendars\".",
+        "icloudStep2": "Tap ⓘ next to the calendar and turn on \"Public Calendar\".",
+        "icloudStep3": "Tap \"Share Link…\" → \"Copy\". Anyone with the link can see the calendar."
+      },
+      "label": "Label",
+      "labelPlaceholder": "Label (e.g. Work)",
+      "labelAria": "Label for {host}",
+      "addFeed": "Connect calendar",
+      "removeFeed": "Disconnect {host}",
+      "lastSynced": "Synced {when}",
+      "neverSynced": "Not synced yet",
+      "syncNow": "Sync now",
+      "syncing": "Syncing…",
+      "windowTitle": "When does a day count as free?",
+      "coreStart": "From",
+      "coreEnd": "Until",
+      "minFree": "Free block of at least",
+      "hours": "{n} h",
+      "saveWindow": "Save",
+      "outboundTitle": "Your tours in your calendar",
+      "outboundHint": "Subscribe to this link in your calendar app to see your planned tours. Anyone with the link can see your tours, so don't share it.",
+      "copy": "Copy",
+      "copied": "Copied",
+      "regenerate": "Reset link",
+      "regenerateHint": "Shared the link by accident? Reset it: you get a new link and the old one stops showing your tours.",
+      "regenerateConfirm": "The old link stops working immediately. Subscribe to the new link in your calendar app afterwards.",
+      "errors": {
+        "limit": "You can connect at most 5 calendars.",
+        "duplicate": "This calendar is already connected.",
+        "invalid_url": "Enter a valid https:// or webcal:// address.",
+        "not_ical": "That's the calendar's web link, not its iCal address. In Google Calendar: Settings → your calendar → \"Secret address in iCal format\".",
+        "invalid_window": "The free block must fit inside the time window, and the window must end after it starts.",
+        "sync_failed": "Sync could not be started. Your calendars will still sync automatically.",
+        "unknown": "Something went wrong. Please try again."
+      },
+      "feedError": {
+        "http": "Access denied or not found (error {status}). Use the secret iCal address, not a share or embed link.",
+        "httpServer": "The calendar service reported an error ({status}). We'll retry automatically.",
+        "timeout": "Calendar did not respond in time.",
+        "network": "Calendar could not be reached.",
+        "too_large": "Calendar is too large to sync (over 2 MB).",
+        "unparseable": "This address does not return a calendar.",
+        "too_complex": "A repeating event is too complex to process.",
+        "unknown": "Last sync failed."
+      }
     }
   },
   "validation": {
