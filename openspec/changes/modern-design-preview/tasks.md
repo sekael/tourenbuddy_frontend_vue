@@ -60,8 +60,17 @@
 - [x] 9.5 Global segmented-control rule for all tab rows + filter switch; sentence-case labels; tabular coordinates; footer content fade; tour popover styling + edge gutter; move every remaining transition onto motion tokens
 - [x] 9.6 axe audit of all main screens (zero violations, incl. named notification switches); desktop dialog height stays 640px; walk the guided tour (all 9 steps, sub-steps of the menu/base-map/tabs/notification steps)
 
-## 10. Finalize
+## 10. Iteration 6 — unfold in place, profile at a glance (D13)
 
-- [x] 10.1 Run `npx eslint . --fix`, `npm run type-check`, `npm run test`; all pass with zero warnings
-- [ ] 10.2 Provide a ready-to-copy conventional commit message (`feat(design): …`)
-- [ ] 10.3 Push the branch and open a PR so the preview deploy (`<branch-slug>.tourenbuddy.pages.dev`) allows on-device comparison against prod
+- [x] 10.1 Base-map options in the menu's slot beside "Change base map"; menu items inert + dimmed; overlay `pointer-events: none` except controls/backdrop; landscape placement; focus the checked option; tests for inert items and collapse on choice; verify per-frame unfold, outside tap, portrait (en/de, 360/390) and landscape boxes
+- [x] 10.2 `profile-overview.vue` (identity card, settings card with inline language + summaries, app tour row, Sign out); sections as views (pages on mobile, back on desktop); shared `view-push`/`view-pop` in `global.css`; tests for the summaries' edge cases
+- [x] 10.3 Calendar sync in titled groups with feed tiles; feed-error text on the error-text role; Sync now / Regenerate / Cancel / Resend → secondary; section titles move to the header
+- [x] 10.4 Guided tour: phone step spotlights the profile card, notifications step the Notifications row, copy updated (en/de); driver.js clip fix for the base-map step; walk steps 1, 2 and 8
+- [x] 10.5 axe audit of all main screens plus the four new profile views (zero violations); overview fits 390×844 and 360×780 without scrolling
+- [x] 10.6 Dialogs fit their content: remove `stableSize`; `.dialog-body` measured by a ResizeObserver drives the scroll box height (glides both ways, first size instant); top-anchored card; tests for shrink rounding and collapsed; verify on desktop that the header stays at one top line while profile (525 → 475 → 525 → 733 capped → 525), contacts (436 → 458 → 436), friend requests (503 → 230 → 503) and feedback (270) fit with 0–1px spare and one height glide per change, that tour creation still collapses to its header bar and expands, and that a fully extended dialog keeps equal margins above and below (103/103 at 860px, 72/72 at 600px)
+
+## 11. Finalize
+
+- [x] 11.1 Run `npx eslint . --fix`, `npm run type-check`, `npm run test`; all pass with zero warnings
+- [ ] 11.2 Provide a ready-to-copy conventional commit message (`feat(design): …`)
+- [ ] 11.3 Push the branch and open a PR so the preview deploy (`<branch-slug>.tourenbuddy.pages.dev`) allows on-device comparison against prod

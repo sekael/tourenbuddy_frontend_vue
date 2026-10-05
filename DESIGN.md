@@ -81,8 +81,7 @@ outline, error, warning, and success roles are all semantic tokens in `tokens.cs
   against that surface explicitly — never inherit a button fill under it.
 - Every form control has an accessible name (a visible `<label>` or `aria-label`
   — toggle switches included).
-- Desktop dialogs whose content switches views/tabs pass `stable-size` so they don't
-  resize; options opened from a menu item appear at that item.
+- Options opened from a menu item appear at that item.
 
 ### Motion & interaction
 
@@ -108,15 +107,31 @@ transition _name_ from the new state when direction matters — the leaving elem
 keeps its old bindings. Sheet → sheet uses `sheet-swap`.
 
 **Expanding menus** (speed dial, base-map options) unfold from where they were
-opened: items rise from the trigger one after another, nearest first (40ms apart);
-base-map options opened from "Change base map" drop from that item, top first,
-while the menu fades in place. Closing is one quiet fade. Items animate on mount
-via keyframes (`map-action-overlay.vue`) — not under a `*-enter-active` class,
-which Vue drops after one frame when the Transition root has no transition of its
-own.
+opened: items rise from the trigger one after another, nearest first (40ms apart).
+"Change base map" keeps the menu open — the item darkens, the rest dims and goes
+`inert` — and its options slide out beside it (left of it; upward on the landscape
+arc). A tap outside the options, on a dimmed item included, or a choice closes the
+whole menu in one quiet fade. Items animate on mount via keyframes
+(`map-action-overlay.vue`) — not under a `*-enter-active` class, which Vue drops
+after one frame when the Transition root has no transition of its own. The overlay
+box itself is `pointer-events: none` (only its buttons and the backdrop take taps),
+and the unfolded slot overrides driver.js's `overflow: hidden` on a spotlit
+element's parent so the guided tour can show the options.
 
-**No needless motion.** Only what the user acted on moves; dialogs don't resize
-between views; nothing bounces.
+**Views inside one overlay** push and pop (`view-push` / `view-pop` in
+`global.css`): forward slides in from the right, back from the left.
+
+**Dialogs fit their content.** A desktop dialog (`dialog-window.vue`) is always as
+tall as what it currently shows — no fixed frames, no empty bands. It hangs from a
+fixed top line (`--dialog-inset`, `clamp(24px, 12dvh, 7rem)`), so when a view, tab
+or loaded data changes its height only the bottom edge glides (emphasized, medium)
+and the header never moves; the same inset is kept below, so at full height it
+sits balanced and the content scrolls. The slot sits in a
+`.dialog-body` that keeps its natural height (never stretched); a ResizeObserver
+on it drives the scroll box's height. Content inside a dialog must not rely on
+filling a fixed height.
+
+**No needless motion.** Only what the user acted on moves; nothing bounces.
 
 ### Component tokens
 
@@ -126,6 +141,17 @@ chrome), `--heading-section-*`, `--field-label-color`, `--input-*`, `--chip-*`,
 `--divider-color`, `--card-radius`. New instances of these elements must use them.
 `test/app/theme/component-tokens.test.ts` fails on any `var(--x)` that nothing
 defines (an undefined token silently resolves to `transparent`/`0`/`none`).
+
+### Settings at a glance (profile)
+
+A settings screen opens on an **overview** that fits without scrolling: an identity
+card (tap → edit), one card of setting rows — an inline control where the choice is
+tiny (language), otherwise label over its current value ("Email only", "Sync
+problem" in error text) with a chevron to the section — and one secondary action
+(Sign out). Rows share one fixed height so summaries loading in never shift the
+sheet. Each section opens as its own view: a full-screen page on mobile, the same
+dialog with a back button on desktop (it glides to each section's height). Only primary and secondary
+buttons appear on these screens — no text buttons.
 
 ### Shared surfaces (`global.css`)
 
@@ -192,8 +218,10 @@ button's fill and glow at 52px.
 One glass pill per map-menu action: label, then icon, the icon centred on the
 trigger's axis so the menu reads as one column. The speed-dial menu and the
 base-map options both use it (choices pass `role="menuitemradio"`, `aria-checked`
-and the `selected` class). In landscape the pills become 48px circles on a
-quarter-circle arc around the trigger.
+and the `selected` class). The menu takes an `expanded` item id and renders its
+default slot (the base-map options) inside that item's slot. In landscape the
+menu's own pills become 48px circles on a quarter-circle arc around the trigger;
+unfolded options keep their labels.
 
 ### Usage rules
 
@@ -217,12 +245,14 @@ Some controls stay bespoke by **role**, not oversight. These are exempt from the
   affordances, not action buttons.
 - **Selector/toggle controls** — state selectors, not action buttons: primary
   star (`contact-form`, `contact-detail-view`), add-method type selector and
-  language selector, the tour completion/visibility toggles (`tour-info-sheet`:
+  segmented language selector, the tour completion/visibility toggles (`tour-info-sheet`:
   tonal at rest, tinted only in their non-default state), multi-select filter
   chips (`tour-form`, `tour-filters-panel`).
 - **Chips & compact pills** (`contact-chip`, `linked-with-section`, friend
   partner chips) — pill affordance with no base component yet; styled from the
   `--chip-*` tokens in place.
+- **Settings rows** (`profile-overview`) — identity card and setting rows are
+  full-width navigation list items (label over value, chevron), not actions.
 - **`error-snackbar` dismiss** — sits on the snackbar's own colored surface.
 
 Anything not on this list uses the shared components.

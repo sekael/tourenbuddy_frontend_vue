@@ -49,44 +49,51 @@ onUnmounted(() => (error.value = null))
 
 <template>
   <section class="calendar-sync">
-    <h3 class="section-title">
-      {{ t('calendar.sync.title') }}
-    </h3>
-    <p class="hint">
-      {{ t('calendar.sync.hint') }}
-    </p>
-
     <div v-if="loading && !settings" class="loading-placeholder" />
 
     <template v-else>
-      <ul v-if="hasFeeds" class="feeds">
-        <CalendarFeedRow
-          v-for="feed in feeds"
-          :key="feed.id"
-          :feed="feed"
-          @remove="store.removeFeed(feed.id)"
-          @relabel="label => store.relabelFeed(feed.id, label)"
-        />
-      </ul>
-
-      <form v-if="feeds.length < MAX_FEEDS" class="add-form" @submit.prevent="add">
-        <input v-model="newUrl" class="input" type="url" inputmode="url" required :placeholder="t('calendar.sync.urlPlaceholder')" :aria-label="t('calendar.sync.urlPlaceholder')">
-        <CalendarFeedHelp />
-        <input v-model="newLabel" class="input" maxlength="60" :placeholder="t('calendar.sync.labelPlaceholder')" :aria-label="t('calendar.sync.labelPlaceholder')">
-        <BaseButton type="submit" size="sm" :disabled="syncing">
-          {{ t('calendar.sync.addFeed') }}
+      <div class="group">
+        <h3 class="group-title">
+          {{ t('calendar.sync.feedsTitle') }}
+        </h3>
+        <p class="hint">
+          {{ t('calendar.sync.hint') }}
+        </p>
+        <ul v-if="hasFeeds" class="feeds">
+          <CalendarFeedRow
+            v-for="feed in feeds"
+            :key="feed.id"
+            :feed="feed"
+            @remove="store.removeFeed(feed.id)"
+            @relabel="label => store.relabelFeed(feed.id, label)"
+          />
+        </ul>
+        <BaseButton v-if="hasFeeds" variant="secondary" size="sm" :disabled="syncing" @click="store.sync">
+          <BaseIcon name="sync_alt" />
+          {{ syncing ? t('calendar.sync.syncing') : t('calendar.sync.syncNow') }}
         </BaseButton>
-      </form>
-      <p v-else class="hint">
-        {{ t('calendar.sync.errors.limit') }}
-      </p>
 
-      <p v-if="error" class="error" role="alert">
-        {{ error }}
-      </p>
+        <form v-if="feeds.length < MAX_FEEDS" class="add-form" @submit.prevent="add">
+          <input v-model="newUrl" class="input" type="url" inputmode="url" required :placeholder="t('calendar.sync.urlPlaceholder')" :aria-label="t('calendar.sync.urlPlaceholder')">
+          <CalendarFeedHelp />
+          <input v-model="newLabel" class="input" maxlength="60" :placeholder="t('calendar.sync.labelPlaceholder')" :aria-label="t('calendar.sync.labelPlaceholder')">
+          <BaseButton type="submit" size="sm" :disabled="syncing">
+            {{ t('calendar.sync.addFeed') }}
+          </BaseButton>
+        </form>
+        <p v-else class="hint">
+          {{ t('calendar.sync.errors.limit') }}
+        </p>
+
+        <p v-if="error" class="error" role="alert">
+          {{ error }}
+        </p>
+      </div>
 
       <form v-if="settings" class="window-form" @submit.prevent="saveWindow">
-        <span class="subtitle">{{ t('calendar.sync.windowTitle') }}</span>
+        <h3 class="group-title">
+          {{ t('calendar.sync.windowTitle') }}
+        </h3>
         <label class="field">{{ t('calendar.sync.coreStart') }}
           <input v-model="coreStart" class="input" type="time" required>
         </label>
@@ -103,18 +110,21 @@ onUnmounted(() => (error.value = null))
         </BaseButton>
       </form>
 
-      <BaseButton v-if="hasFeeds" variant="text" size="sm" class="sync-now" :disabled="syncing" @click="store.sync">
-        <BaseIcon name="sync_alt" />
-        {{ syncing ? t('calendar.sync.syncing') : t('calendar.sync.syncNow') }}
-      </BaseButton>
-
       <CalendarOutboundFeed />
     </template>
   </section>
 </template>
 
 <style scoped>
-.calendar-sync,
+/* Three titled groups (your calendars, availability window, your feed) spaced
+   apart, so the page reads as sections instead of one long form. */
+.calendar-sync {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.group,
 .feeds,
 .add-form {
   display: flex;
@@ -122,7 +132,8 @@ onUnmounted(() => (error.value = null))
   gap: var(--spacing-sm);
 }
 
-.section-title {
+.group-title {
+  flex-basis: 100%;
   font-size: var(--heading-section-size);
   font-weight: var(--heading-section-weight);
   color: var(--heading-section-color);
@@ -137,11 +148,6 @@ onUnmounted(() => (error.value = null))
 .error {
   font-size: var(--font-size-sm);
   color: var(--color-error);
-}
-
-.subtitle {
-  flex-basis: 100%;
-  font-weight: var(--font-weight-medium);
 }
 
 .window-form {
@@ -175,7 +181,7 @@ onUnmounted(() => (error.value = null))
   box-shadow: var(--input-focus-ring);
 }
 
-.sync-now,
+.group > :deep(.base-button),
 .add-form :deep(.base-button) {
   align-self: flex-start;
 }

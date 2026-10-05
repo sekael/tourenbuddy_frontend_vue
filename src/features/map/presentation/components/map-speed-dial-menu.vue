@@ -11,7 +11,9 @@ export interface SpeedDialMenuItem {
   tooltip?: string
 }
 
-const props = defineProps<{ items: SpeedDialMenuItem[] }>()
+// `expanded`: the item whose options unfold beside it (default slot). The rest of the
+// menu stays in place but inert, so a tap on it lands on the backdrop and closes all.
+const props = defineProps<{ items: SpeedDialMenuItem[], expanded?: string | null }>()
 const emit = defineEmits<{ select: [id: string] }>()
 
 const menuEl = ref<HTMLElement | null>(null)
@@ -24,7 +26,7 @@ async function focusFirst() {
 
 function onKeydown(e: KeyboardEvent) {
   const btns = Array.from(
-    menuEl.value?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? [],
+    menuEl.value?.querySelectorAll<HTMLButtonElement>('button:not(:disabled, [inert])') ?? [],
   )
   const idx = btns.indexOf(document.activeElement as HTMLButtonElement)
 
@@ -62,21 +64,29 @@ defineExpose({ focusFirst })
     :style="{ '--n': props.items.length }"
     @keydown="onKeydown"
   >
-    <SpeedDialItem
+    <div
       v-for="(item, idx) in props.items"
       :key="item.id"
+      class="item-slot"
+      :class="{ 'item-slot--expanded': item.id === props.expanded }"
       :style="{ '--i': idx, '--ri': props.items.length - 1 - idx }"
-      :icon="item.icon"
-      :label="item.label"
-      :disabled="item.disabled"
-      :tooltip="item.tooltip"
-      :data-tour="`menu-${item.id}`"
-      @select="select(item.id)"
     >
-      <template v-if="item.badge && item.badge > 0" #badge>
-        <span class="badge">{{ item.badge }}</span>
-      </template>
-    </SpeedDialItem>
+      <SpeedDialItem
+        :icon="item.icon"
+        :label="item.label"
+        :disabled="item.disabled"
+        :tooltip="item.tooltip"
+        :inert="!!props.expanded || undefined"
+        :aria-expanded="item.id === props.expanded || undefined"
+        :data-tour="`menu-${item.id}`"
+        @select="select(item.id)"
+      >
+        <template v-if="item.badge && item.badge > 0" #badge>
+          <span class="badge">{{ item.badge }}</span>
+        </template>
+      </SpeedDialItem>
+      <slot v-if="item.id === props.expanded" />
+    </div>
   </div>
 </template>
 
@@ -86,6 +96,28 @@ defineExpose({ focusFirst })
   flex-direction: column;
   align-items: flex-end;
   gap: var(--spacing-xs);
+}
+
+/* Containing block for the options that unfold beside the item */
+.item-slot {
+  position: relative;
+  display: flex;
+}
+
+/* The options overflow this slot by design. driver.js clips the parent of a
+   spotlit element (`overflow: hidden !important`), which would hide them during
+   the guided tour's base-map step. */
+.item-slot--expanded {
+  z-index: 1;
+  overflow: visible !important;
+}
+
+.item-slot--expanded > :deep(.item-row) {
+  background-color: var(--color-fab-glass-strong);
+}
+
+.menu:has(.item-slot--expanded) .item-slot:not(.item-slot--expanded) > :deep(.item-row) {
+  opacity: 0.45;
 }
 
 @media (orientation: landscape) and (max-height: 500px) {
@@ -102,11 +134,23 @@ defineExpose({ focusFirst })
     display: block;
   }
 
-  .menu > :deep(.item-row) {
+  .menu > .item-slot {
     --angle: calc(var(--i) / max(var(--n) - 1, 1) * 90deg);
     position: absolute;
     right: calc(sin(var(--angle)) * 136px);
     bottom: calc(cos(var(--angle)) * 136px);
+  }
+
+  /* Icon-only circles; the name stays in aria-label/title. Unfolded options keep
+     their labels — there is room beside the arc. */
+  .item-slot > :deep(.item-row) {
+    width: 48px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .item-slot > :deep(.item-row .label) {
+    display: none;
   }
 }
 

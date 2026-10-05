@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { SWISSTOPO_STYLES } from '@/features/map/data/swisstopo-styles'
 import SpeedDialItem from './speed-dial-item.vue'
@@ -6,10 +7,14 @@ import SpeedDialItem from './speed-dial-item.vue'
 const props = defineProps<{ currentStyleIndex: number }>()
 const emit = defineEmits<{ select: [index: number] }>()
 const { t } = useI18n({ useScope: 'global' })
+
+// The item that opened the options goes inert: hand focus to the current choice.
+const panelEl = ref<HTMLElement | null>(null)
+onMounted(() => panelEl.value?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus())
 </script>
 
 <template>
-  <div role="menu" class="panel" data-tour="basemap">
+  <div ref="panelEl" role="menu" class="panel" data-tour="basemap">
     <SpeedDialItem
       v-for="(style, idx) in SWISSTOPO_STYLES"
       :key="idx"

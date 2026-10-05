@@ -43,10 +43,6 @@ onMounted(() => {
 
 <template>
   <section class="notifications-section">
-    <h3 class="section-title">
-      {{ t('notifications.sectionTitle') }}
-    </h3>
-
     <div v-if="isLoading && !prefs" class="loading-placeholder" />
 
     <template v-else-if="prefs">
@@ -143,13 +139,6 @@ onMounted(() => {
   gap: var(--spacing-sm);
 }
 
-.section-title {
-  font-size: var(--heading-section-size);
-  font-weight: var(--heading-section-weight);
-  color: var(--heading-section-color);
-  letter-spacing: var(--heading-section-tracking);
-}
-
 .rows {
   display: flex;
   flex-direction: column;
@@ -226,9 +215,10 @@ onMounted(() => {
 }
 
 .types-label {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--field-label-color);
+  font-size: var(--heading-section-size);
+  font-weight: var(--heading-section-weight);
+  color: var(--heading-section-color);
+  letter-spacing: var(--heading-section-tracking);
 }
 
 .disclaimer {

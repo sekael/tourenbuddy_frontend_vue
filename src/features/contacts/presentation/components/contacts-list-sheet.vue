@@ -473,7 +473,6 @@ function onFormPhoneInput(phone: string) {
     :title="sheetTitle ?? undefined"
     :page="contactPage"
     :show-back="contactPage || viewState === 'detail'"
-    stable-size
     @close="handleClose"
     @back="handlePageBack"
   >
@@ -1106,31 +1105,4 @@ function onFormPhoneInput(phone: string) {
 }
 
 /* Add/import/manual actions use shared BaseButton (secondary/text). */
-
-/* Views push/pop inside the sheet. */
-.view-push-enter-active,
-.view-push-leave-active,
-.view-pop-enter-active,
-.view-pop-leave-active {
-  transition:
-    opacity var(--motion-duration-medium) var(--motion-ease-standard),
-    transform var(--motion-duration-medium) var(--motion-ease-emphasized);
-}
-
-.view-push-leave-active,
-.view-pop-leave-active {
-  transition-duration: var(--motion-duration-short);
-}
-
-.view-push-enter-from,
-.view-pop-leave-to {
-  opacity: 0;
-  transform: translateX(var(--motion-offset));
-}
-
-.view-push-leave-to,
-.view-pop-enter-from {
-  opacity: 0;
-  transform: translateX(calc(-1 * var(--motion-offset)));
-}
 </style>

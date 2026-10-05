@@ -139,7 +139,7 @@ async function handleResend() {
             </form>
 
             <BaseButton
-              variant="text"
+              variant="secondary"
               size="sm"
               :disabled="isResending || resendCooldown > 0"
               @click="handleResend"
@@ -209,7 +209,7 @@ async function handleResend() {
           </form>
 
           <BaseButton
-            variant="text"
+            variant="secondary"
             size="sm"
             :disabled="isResending || resendCooldown > 0"
             @click="handleResend"

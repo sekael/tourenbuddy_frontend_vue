@@ -135,6 +135,35 @@ html.scroll-locked {
   transition: transform var(--motion-duration-medium) var(--motion-ease-emphasized);
 }
 
+/* Views inside one sheet/dialog push and pop (`<Transition mode="out-in">`, name
+   picked from the new state): forward slides in from the right, back from the
+   left; the leaving view fades out quickly. Used by contacts and profile. */
+.view-push-enter-active,
+.view-push-leave-active,
+.view-pop-enter-active,
+.view-pop-leave-active {
+  transition:
+    opacity var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-medium) var(--motion-ease-emphasized);
+}
+
+.view-push-leave-active,
+.view-pop-leave-active {
+  transition-duration: var(--motion-duration-short);
+}
+
+.view-push-enter-from,
+.view-pop-leave-to {
+  opacity: 0;
+  transform: translateX(var(--motion-offset));
+}
+
+.view-push-leave-to,
+.view-pop-enter-from {
+  opacity: 0;
+  transform: translateX(calc(-1 * var(--motion-offset)));
+}
+
 /* Map-control glass — every control floating over the map (speed dial and its
    items, compass, tour pill, base-map options, persistent status chips) wears
    this one surface, so they read as one family and stand off any terrain. Each

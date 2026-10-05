@@ -182,7 +182,6 @@ async function handleCancel(requestId: string) {
   <AdaptiveOverlay
     :title="t('friendships.friendsListLink')"
     show-back
-    stable-size
     @close="emit('close')"
     @back="emit('back')"
   >

@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useNotificationsStore } from '@/features/notifications/presentation/stores/notifications-store'
 import UserProfileSheet from '@/features/user/presentation/components/user-profile-sheet.vue'
 
 const { mockUpdateProfile, mockSendPhoneVerification, mockCheckPhoneAvailability, mockDeletePhone, mockSignOut, mockFullProfile, mockStoreError } = vi.hoisted(
@@ -24,9 +25,19 @@ const { mockUpdateProfile, mockSendPhoneVerification, mockCheckPhoneAvailability
   }),
 )
 
-const { mockSetLocale, mockLocale } = vi.hoisted(() => ({
+const { mockSetLocale, mockLocale, mockFeeds } = vi.hoisted(() => ({
   mockSetLocale: vi.fn(),
   mockLocale: { value: 'en' },
+  mockFeeds: { value: [] as { id: string, lastError: string | null }[] },
+}))
+
+vi.mock('@/features/calendar/presentation/stores/calendar-feed-store', () => ({
+  useCalendarFeedStore: () => ({
+    get feeds() {
+      return mockFeeds.value
+    },
+    loadFeeds: vi.fn(),
+  }),
 }))
 
 vi.mock('@/features/user/presentation/stores/user-profile-store', () => ({
@@ -74,7 +85,7 @@ vi.mock('vue-router', () => ({
 }))
 
 vi.mock('vue-i18n', () => ({
-  useI18n: () => ({ t: (key: string) => key }),
+  useI18n: () => ({ t: (key: string, named?: { count?: number }) => named?.count === undefined ? key : `${key}:${named.count}` }),
 }))
 
 vi.mock('@/features/user/presentation/components/phone-verification-dialog.vue', () => ({
@@ -125,6 +136,7 @@ describe('userProfileSheet', () => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
     mockLocale.value = 'en'
+    mockFeeds.value = []
     mockStoreError.value = null
     mockDeletePhone.mockResolvedValue(undefined)
     mockCheckPhoneAvailability.mockResolvedValue(undefined)
@@ -144,9 +156,9 @@ describe('userProfileSheet', () => {
     expect(wrapper.text()).toContain('max@example.com')
   })
 
-  it('should show add phone button when no phone set', () => {
+  it('should prompt to add a phone number when none is set', () => {
     const wrapper = mount(UserProfileSheet)
-    expect(wrapper.find('[data-testid="add-phone-btn"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="phone-status"]').text()).toBe('user.profile.addPhoneBtn')
   })
 
   it('should show phone number with verified badge when phone is verified', () => {
@@ -160,14 +172,34 @@ describe('userProfileSheet', () => {
     expect(wrapper.find('.verified-icon').exists()).toBe(true)
   })
 
-  it('should show Verify button when phone is unverified', () => {
+  it('should flag an unverified phone number', () => {
     mockFullProfile.value = {
       ...mockFullProfile.value,
       phoneNumber: '+41791234567',
       phoneVerified: false,
     }
     const wrapper = mount(UserProfileSheet)
-    expect(wrapper.find('[data-testid="verify-btn"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="phone-status"]').text()).toContain('user.profile.notVerified')
+    expect(wrapper.find('.verified-icon').exists()).toBe(false)
+  })
+
+  describe('overview summaries', () => {
+    it('should report notifications off when push and email are both disabled', () => {
+      useNotificationsStore().prefs = { notifPushEnabled: false, notifEmailEnabled: false, notifMutedTypes: [] }
+      const wrapper = mount(UserProfileSheet)
+      expect(wrapper.text()).toContain('user.profile.notificationsSummary.off')
+    })
+
+    it('should report a sync problem when any calendar feed failed', () => {
+      mockFeeds.value = [{ id: 'a', lastError: null }, { id: 'b', lastError: 'timeout' }]
+      const wrapper = mount(UserProfileSheet)
+      expect(wrapper.find('.row-value--alert').text()).toBe('user.profile.calendarProblem')
+    })
+
+    it('should report no connected calendars as a zero count', () => {
+      const wrapper = mount(UserProfileSheet)
+      expect(wrapper.text()).toContain('user.profile.calendarSummary:0')
+    })
   })
 
   it('should switch to edit mode when Edit profile button is clicked', async () => {
@@ -249,23 +281,16 @@ describe('userProfileSheet', () => {
   })
 
   describe('language selector', () => {
-    it('should render a language option button for each supported locale', () => {
+    it('should mark exactly the current locale as pressed', () => {
+      mockLocale.value = 'de-CH'
       const wrapper = mount(UserProfileSheet)
-      const buttons = wrapper.findAll('.language-option')
-      expect(buttons.length).toBeGreaterThanOrEqual(2)
-    })
-
-    it('should mark current locale button as active', () => {
-      mockLocale.value = 'en'
-      const wrapper = mount(UserProfileSheet)
-      const activeBtn = wrapper.find('.language-option--active')
-      expect(activeBtn.exists()).toBe(true)
-      expect(activeBtn.text()).toContain('English')
+      const pressed = wrapper.findAll('.language button[aria-pressed="true"]')
+      expect(pressed.map(b => b.text())).toEqual(['Deutsch'])
     })
 
     it('should call setLocale when a language button is clicked', async () => {
       const wrapper = mount(UserProfileSheet)
-      const buttons = wrapper.findAll('.language-option')
+      const buttons = wrapper.findAll('.language button')
       const deBtn = buttons.find(b => b.text().includes('Deutsch'))
       expect(deBtn).toBeDefined()
       await deBtn!.trigger('click')

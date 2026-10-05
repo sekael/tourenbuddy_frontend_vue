@@ -76,9 +76,10 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     titleKey: 'onboarding.tour.notifications.title',
     bodyKey: 'onboarding.tour.notifications.body',
     labelKey: 'onboarding.tour.labels.notifications',
-    // Notifications sit low in the profile dialog; place the popover above the
-    // target so it can't overflow the screen bottom (and get flipped into the
-    // banner). It lands in the dialog's upper area, clear of the pinned banner.
+    // The Notifications row sits in the lower half of the profile sheet; place
+    // the popover above it so it can't overflow the screen bottom (and get
+    // flipped into the banner). It lands over the sheet's upper area, clear of
+    // the pinned banner.
     side: 'top',
   },
   {

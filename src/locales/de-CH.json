@@ -140,7 +140,8 @@
         "unparseable": "Diese Adresse liefert keinen Kalender.",
         "too_complex": "Ein wiederkehrender Termin ist zu komplex.",
         "unknown": "Die letzte Synchronisierung ist fehlgeschlagen."
-      }
+      },
+      "feedsTitle": "Deine Kalender"
     }
   },
   "validation": {
@@ -221,7 +222,6 @@
     "profile": {
       "title": "Profil",
       "verifiedTooltip": "Verifiziert",
-      "verifyBtn": "Verifizieren",
       "addPhoneBtn": "Telefonnummer hinzufügen",
       "editBtn": "Profil bearbeiten",
       "signOutBtn": "Abmelden",
@@ -236,7 +236,16 @@
       "removePhoneFailed": "Telefonnummer konnte nicht entfernt werden",
       "removePhonePendingWarning": "Du hast offene Freundschaftsanfragen. Das Entfernen Deiner Telefonnummer bricht alle offenen Anfragen ab.",
       "removePhoneFriendshipWarning": "Du hast aktive Freundschaften. Das Entfernen Deiner Telefonnummer entfernt alle Freundschaftsverbindungen.",
-      "removePhoneBothWarning": "Du hast aktive Freundschaften und offene Anfragen. Das Entfernen Deiner Telefonnummer entfernt alle Freundschaftsverbindungen und bricht alle Anfragen ab."
+      "removePhoneBothWarning": "Du hast aktive Freundschaften und offene Anfragen. Das Entfernen Deiner Telefonnummer entfernt alle Freundschaftsverbindungen und bricht alle Anfragen ab.",
+      "notVerified": "Nicht verifiziert",
+      "notificationsSummary": {
+        "pushAndEmail": "Push und E-Mail",
+        "push": "Nur Push",
+        "email": "Nur E-Mail",
+        "off": "Aus"
+      },
+      "calendarSummary": "Nicht verbunden | {count} Kalender | {count} Kalender",
+      "calendarProblem": "Sync-Problem"
     },
     "phoneVerification": {
       "title": "Telefon verifizieren",
@@ -830,11 +839,11 @@
     "tour": {
       "phone": {
         "title": "Telefonnummer hinzufügen",
-        "body": "Füge deine Telefonummer hinzu und verifiziere sie, damit dich Freunde finden und sich auf gemeinsamen Touren mit dir vernetzen können."
+        "body": "Tippe auf deine Profilkarte, um deine Telefonnummer hinzuzufügen und zu verifizieren, damit dich Freunde finden und sich auf gemeinsamen Touren mit dir vernetzen können."
       },
       "notifications": {
         "title": "Immer auf dem Laufenden",
-        "body": "Wähle, welche Benachrichtigungen du erhältst zu Freundschaftsanfragen, Toureneinladungen und anderen Änderungen an Touren."
+        "body": "Wähle hier, welche Benachrichtigungen du zu Freundschaftsanfragen, Toureneinladungen und Änderungen an Touren erhältst."
       },
       "addContact": {
         "title": "Kontakt hinzufügen",

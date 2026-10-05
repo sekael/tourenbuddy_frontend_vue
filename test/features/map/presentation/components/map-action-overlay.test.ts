@@ -257,4 +257,29 @@ describe('mapActionOverlay', () => {
       )
     })
   })
+
+  describe('base-map options', () => {
+    async function openOptions() {
+      const wrapper = mountOverlay()
+      await wrapper.find('[aria-haspopup="menu"]').trigger('click')
+      await wrapper.find('[data-tour="menu-base-map"]').trigger('click')
+      return wrapper
+    }
+
+    it('should unfold beside the base-map item while the rest of the menu stays, inert', async () => {
+      const wrapper = await openOptions()
+      const slot = wrapper.find('[data-tour="menu-base-map"]').element.parentElement!
+      expect(slot.querySelector('[data-tour="basemap"]')).not.toBeNull()
+      const items = wrapper.findAll('#speed-dial-menu > .item-slot > [role="menuitem"]')
+      expect(items.length).toBeGreaterThan(1)
+      expect(items.every(i => i.attributes('inert') !== undefined)).toBe(true)
+    })
+
+    it('should collapse the whole menu once a base map is chosen', async () => {
+      const wrapper = await openOptions()
+      await wrapper.findAll('[role="menuitemradio"]')[1]!.trigger('click')
+      expect(wrapper.find('#speed-dial-menu').exists()).toBe(false)
+      expect(wrapper.find('[data-tour="basemap"]').exists()).toBe(false)
+    })
+  })
 })

@@ -97,7 +97,7 @@ Four problems are structural and cannot be scoped to a variant without branching
 
 ### D11 — Stable dialogs and anchored base-map options (iteration 4)
 
-- `DialogWindow` gains `stableSize` (fixed `min(40rem, 90dvh)`, content scrolls; collapsed state still clamps), passed through `AdaptiveOverlay`; opted into by contacts, friend requests, and profile — the overlays whose content switches views/tabs. Confirm-style dialogs keep fitting their content.
+- `DialogWindow` gains `stableSize` (iteration 4: fixed `min(40rem, 90dvh)`; iteration 6: removed — every dialog fits its content, see D13; collapsed state still clamps), passed through `AdaptiveOverlay`; opted into by contacts, friend requests, and profile — the overlays whose content switches views/tabs. Confirm-style dialogs keep fitting their content.
 - Base-map options: a pre-flush watcher measures the "Change base map" item when `view` goes `menu → base-map`; the panel is pinned there (`position: fixed`), unfolds downward from its top-right, and the menu fades instead of the `panel` collapse. The anchor is kept while the panel leaves; direct opens (no menu) and the landscape arc layout fall back to the in-flow position. The guided tour's base-map step goes through the same `menu → base-map` path.
 
 ### D12 — One design, tonal controls, shared map surfaces (iteration 5)
@@ -109,12 +109,24 @@ Four problems are structural and cannot be scoped to a variant without branching
 - **Shared surfaces in `global.css`:** `.fab-glass` (map controls) and the `[data-tab-indicator]` segmented control (track, equal-width buttons, gliding pill; `aria-selected` or `aria-pressed`), each replacing five or more scoped copies.
 - **Landscape arc** uses CSS `sin()`/`cos()` over `--i`/`--n` on a 136px radius, so any item count fits without overlap.
 
+### D13 — Unfold in place; settings at a glance (iteration 6)
+
+- **Base-map options live inside the item's box.** `MapSpeedDialMenu` wraps each item in an `.item-slot` and renders its default slot in the slot whose id equals `expanded`; the panel is `position: absolute; right: calc(100% + gap)`, centred on the item (landscape: bottom at the item's centre, clearing the arc). This replaces the iteration-4 approach of measuring the item's rect and pinning the panel `fixed`, which mis-measured whenever the menu was mid-animation and went stale on rotation. Alternative considered: CSS anchor positioning — not yet in every target browser.
+- **Inert, not disabled.** The other items get `inert` (not `disabled`): no focus, no hit-testing, and screen readers skip them, while their look is controlled separately (45% opacity). Focus moves to the checked option. For a tap on them to reach the backdrop, the overlay box is `pointer-events: none` with `button`s re-enabled — otherwise the inert button's wrapper and the overlay box swallowed the tap.
+- **Profile overview + sections.** Hub-and-spoke instead of one scroll: the overview answers "what's my state?" (summaries computed from the notifications store and `calendarFeedStore.loadFeeds()`), each spoke changes one thing. Rows have one fixed height (58px) so async summaries don't shift a sheet that was sized on open. Sections open as full-screen pages on mobile rather than resizing the bottom sheet: the sheet only refits on window/header resize, and teaching it to refit on content swaps would change every fit-content sheet; pages also suit the calendar form and the keyboard.
+
+- **Dialogs fit their content (replaces `stableSize`).** First tried a grow-only ratchet (open at content height, never shrink); the owner found it inconsistent and static. Now every `DialogWindow` follows its content both ways: the slot sits in a `.dialog-body` that keeps its natural height, a ResizeObserver on it sets the scroll box's height, and a height transition glides between values (the first size lands without one). `max-height` caps the card at the screen and the content scrolls beyond. The card hangs from a fixed top line instead of centring, so only the bottom edge moves and the header (back/close) never shifts under the pointer. Alternatives: CSS `interpolate-size` (Chromium only); centring with a moving top edge (rejected — the header jumps on every view change).
+
 ## Risks / Trade-offs
 
 - [Alpenglow untested on every screen] → the switch is reversible in one tap; components that still carry literals (glass overlays, media viewer) are neutral and fit both variants.
 - [Classic not perfectly identical] → only the drift fixes change pixels: dead-letter empty-state text `slate-500 → slate-600` and item background `slate-100 → slate-200` (no matching tokens existed), and the offline-download warning text `amber-500 → amber-700` (it used `--color-warning`, 2.15:1 on white; its own fallback showed amber-700 was intended).
 - [Reduced-motion users lose Classic's 1.02 hover scale] → intended; spec requires it.
 - [Classic changes beyond drift fixes (iteration 3)] → limited to the four structural fixes in D9, each a usability fix independent of visual style; prod remains the reference for "before" via the PR preview.
+- [Dialogs now resize on every view/tab change] → one emphasized glide per change with the header fixed, so the motion is confined to the bottom edge; content that relied on filling a fixed frame would collapse — none of the current dialogs does (checked: contacts, friend requests, profile, feedback, offline, tour creation, phone verification, link warning, calendar notice).
+- [Top-anchored dialogs sit higher than centred ones] → short dialogs read like a command palette; long ones use the full height below the top line.
+- [Profile sections are one tap deeper] → the overview shows each section's state, so a tap is only needed to change something; the guided tour now points at the card and the Notifications row.
+- [`overflow: visible !important` against driver.js] → scoped to the expanded item slot; driver only clips there to stop a spotlit element's parent from scrolling, and the slot never scrolls.
 - [Removing Classic is one-way] → the owner chose Alpenglow after comparing on device; Classic remains in git history.
 - [Blue-100 controls are a stronger blue presence] → reserved for controls only; containers keep the quieter blue-50 so screens don't turn uniformly blue.
 - [CSS trig functions for the landscape arc] → supported in all evergreen browsers since 2023 (Safari 15.4+); the arc only applies to short landscape screens.

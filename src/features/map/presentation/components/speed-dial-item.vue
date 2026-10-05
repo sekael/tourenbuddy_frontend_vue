@@ -47,6 +47,7 @@ defineEmits<{ select: [] }>()
   white-space: nowrap;
   transition:
     background-color var(--motion-duration-short) var(--motion-ease-standard),
+    opacity var(--motion-duration-medium) var(--motion-ease-standard),
     transform var(--motion-duration-short) var(--motion-ease-spring);
 }
 
@@ -75,18 +76,5 @@ defineEmits<{ select: [] }>()
 
 .icon {
   font-size: var(--icon-size-md);
-}
-
-@media (orientation: landscape) and (max-height: 500px) {
-  /* Arc layout: icon-only circles; the name stays in aria-label/title. */
-  .item-row {
-    width: 48px;
-    padding: 0;
-    justify-content: center;
-  }
-
-  .label {
-    display: none;
-  }
 }
 </style>

@@ -69,22 +69,27 @@ Secondary actions and navigation chrome SHALL be tonal: a filled control contain
 
 ### Requirement: Expanding map menus are consistent
 
-Every menu that expands from a map control (the speed-dial menu and the base-map options) SHALL render each entry as the same glass pill holding its label and icon, with the icons aligned on the trigger's axis. Entries SHALL unfold one after another from where the menu was opened — rising from the trigger nearest first, or dropping from the item that opened them top first — and SHALL close with a single fade. In landscape on short screens the entries SHALL become icon-only circles on a quarter-circle arc around the trigger that never overlap each other or the trigger.
+Every menu that expands from a map control (the speed-dial menu and the base-map options) SHALL render each entry as the same glass pill holding its label and icon. Speed-dial entries SHALL rise from the trigger one after another, nearest first, with their icons aligned on the trigger's axis. Opening the base-map options SHALL keep the speed-dial menu open but inert and dimmed, with "Change base map" highlighted, and the options SHALL slide out beside that item. A tap outside the options (including on a dimmed item) or choosing an option SHALL close the whole menu with a single fade. In landscape on short screens the speed-dial entries SHALL become icon-only circles on a quarter-circle arc around the trigger that never overlap each other or the trigger, and the base-map options SHALL keep their labels and clear the arc.
 
 #### Scenario: Opening the speed dial
 
 - **WHEN** the user taps the menu trigger
 - **THEN** each entry appears as a glass pill (label, then icon) and the entries rise into place one after another, nearest the trigger first
 
-#### Scenario: Base-map options match the menu
+#### Scenario: Base-map options unfold beside their item
 
-- **WHEN** the user opens the base-map options
-- **THEN** each option is the same pill as a menu entry, the current base map is marked checked (darker fill and a check icon), and the options drop into place top first
+- **WHEN** the user taps "Change base map" in the open menu
+- **THEN** the menu stays in place with its other items dimmed and unresponsive, and the options (same pill as a menu entry, current base map checked with a darker fill and a check icon) slide out beside "Change base map" with focus on the checked one
+
+#### Scenario: Leaving the base-map options
+
+- **WHEN** the base-map options are open and the user taps a dimmed menu item, taps the map, or chooses a base map
+- **THEN** the options and the whole menu close together in one fade, and the dimmed item's action is not triggered
 
 #### Scenario: Landscape arc
 
 - **WHEN** the speed dial opens in landscape on a short screen
-- **THEN** all entries sit on an arc around the trigger without overlapping each other or the trigger
+- **THEN** all entries sit on an arc around the trigger without overlapping each other or the trigger, and base-map options opened from the arc do not overlap any arc entry
 
 ### Requirement: Navigation and tab changes animate smoothly
 
@@ -129,6 +134,30 @@ Every overlay view SHALL have exactly one header row holding its title, back, ac
 - **WHEN** a sheet with footer actions has more content than fits
 - **THEN** the content fades out just above the footer instead of ending in a hard cut
 
+### Requirement: Settings are readable at a glance
+
+The profile SHALL open on an overview that fits a phone screen without scrolling and shows, without further taps, the user's name, email and phone status, the current language, a summary of each settings section's state, and the sign-out action. Each section SHALL be reachable with one tap and SHALL open as its own view with a way back. The profile and its sections SHALL use only primary and secondary buttons.
+
+#### Scenario: Overview on a phone
+
+- **WHEN** the user opens the profile on a 360×780 phone in German
+- **THEN** identity, language, notification and calendar-sync state and Sign out are all visible without scrolling, and no label overlaps its value
+
+#### Scenario: State that needs attention
+
+- **WHEN** the phone number is unverified, or a connected calendar failed to sync
+- **THEN** the overview says so ("Not verified", "Sync problem") in error colors that meet AA contrast
+
+#### Scenario: Changing a setting
+
+- **WHEN** the user taps Notifications or Calendar sync
+- **THEN** that section opens as its own view (a full-screen page on mobile, the same dialog on desktop) with a back control that returns to the overview
+
+#### Scenario: No text buttons
+
+- **WHEN** any profile view is shown, including calendar sync and phone verification
+- **THEN** every labelled button is a primary or secondary button
+
 ### Requirement: Map controls are legible and stand out from the map
 
 Floating map controls (menu trigger and items, compass, action bar, base-map options, persistent status chips, guided-tour banner) SHALL share one glass surface and render their labels and icons with at least 4.5:1 contrast against it, including the surface's translucency over a white map, and SHALL remain visually separated from the map background. Indicators on a control (notification dot, count badge) SHALL contrast with the control.
@@ -164,17 +193,32 @@ All text SHALL meet WCAG 2.2 AA contrast (4.5:1, or 3:1 for large text), includi
 
 ### Requirement: No unnecessary motion
 
-Interface changes SHALL move only what the user acted on. A desktop dialog whose content switches views or tabs SHALL keep one size. Options opened from a menu item SHALL appear at that item rather than after the menu collapses into its trigger. Controls SHALL NOT lift or scale on hover.
+Interface changes SHALL move only what the user acted on. A desktop dialog SHALL always be as tall as its current content (up to the screen, beyond which the content scrolls), SHALL keep its header in place, and SHALL glide to the new height whenever its content changes — growing or shrinking. Options opened from a menu item SHALL appear at that item rather than after the menu collapses into its trigger. Controls SHALL NOT lift or scale on hover.
 
 #### Scenario: Friend requests and blocked users on desktop
 
 - **WHEN** the user switches between the friend-requests and blocked tabs in the desktop dialog
-- **THEN** the dialog keeps the same size
+- **THEN** the dialog glides to the new tab's height while its title and close button stay where they are
+
+#### Scenario: Dialog fits its content on desktop
+
+- **WHEN** the user opens the profile on desktop
+- **THEN** the dialog is as tall as the overview needs, with no empty band below it
+
+#### Scenario: Fully extended dialog is balanced
+
+- **WHEN** a desktop dialog's content is taller than the screen allows
+- **THEN** the dialog stops with the same margin below it as above it, and its content scrolls
+
+#### Scenario: Views of different size
+
+- **WHEN** the user opens Calendar sync from the profile on desktop and then goes back
+- **THEN** the dialog glides taller (capped at the screen, content scrolling beyond) and glides back to the overview's height, its header never moving
 
 #### Scenario: Changing the base map
 
 - **WHEN** the user taps "Change base map" in the open menu
-- **THEN** the base-map options appear at that item's position while the other items fade in place, without the menu collapsing first
+- **THEN** the base-map options appear beside that item while the other items dim in place, without the menu collapsing first
 
 ### Requirement: Motion and interaction tokens
 
@@ -294,8 +338,9 @@ The shared `Button` and `IconButton` components are the default for interactive 
 - **Map overlay controls** — the speed-dial trigger and its entries (`speed-dial-trigger`, `speed-dial-item`, used by both `map-speed-dial-menu` and `map-base-map-panel`) and the compass-reset FAB (`map-action-overlay`). These are floating map overlays wearing the shared glass surface rather than the on-surface `Button`/`IconButton` palette so they stay legible over busy map tiles. They differ by role, not by accident. (The location picker's and region drawing's Cancel and Continue actions read fine as shared `Button`s, so they are **not** exempt.)
 - **Persistent tour action bar** — `tour-action-bar` is a segmented pill overlay defined by its own capability spec (see `tour-action-bar`); it is not a `Button`/`IconButton` consumer.
 - **Media tiles & viewer controls** — the icon controls and white-on-scrim colors in `tour-attachment-viewer` sit over arbitrary dark media and require overlay-specific contrast; the attachment thumbnail tiles (`tour-attachments-strip`) are image/PDF previews, not labelled actions. Both are media affordances, not `Button`/`IconButton` consumers.
-- **Selector / toggle controls** — controls whose role is selection state rather than a discrete action MAY remain bespoke; they are not action buttons. Examples: the primary-phone star (`contact-form`, `contact-detail-view`), the add-method phone/email type selector (`contact-detail-view`), the language selector (`user-profile-sheet`), the tour completion / visibility toggles (`tour-info-sheet`), and the multi-select filter chips (`tour-form`, `tour-filters-panel`).
+- **Selector / toggle controls** — controls whose role is selection state rather than a discrete action MAY remain bespoke; they are not action buttons. Examples: the primary-phone star (`contact-form`, `contact-detail-view`), the add-method phone/email type selector (`contact-detail-view`), the language selector (`profile-overview`, a segmented control), the tour completion / visibility toggles (`tour-info-sheet`), and the multi-select filter chips (`tour-form`, `tour-filters-panel`).
 - **Chips & compact pills** — pill-shaped labels (`contact-chip`, the linked-tour pills and `full-row` navigation list in `linked-with-section`, the friend-partner chips in `tour-info-sheet`) are a distinct compact affordance the design system does not yet model as a base component. They are styled from the shared chip tokens in place and SHALL be extracted into a shared `Chip` component at the next demand rather than forced into `Button` (which would make them read as rectangular buttons).
+- **Settings rows** — the identity card and the setting rows in `profile-overview` are full-width navigation list items (icon, label over current value, chevron) on the card tint, not labelled actions; making them `Button`s would turn a list into a stack of buttons.
 - **Snackbar inline dismiss** — `error-snackbar`'s dismiss is rendered against the snackbar's own colored surface and stays bespoke.
 
 #### Scenario: Map overlay control stays bespoke

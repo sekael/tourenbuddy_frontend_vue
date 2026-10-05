@@ -256,13 +256,10 @@ async function stageTourSurface(surface: TourSurface, ctx: StageContext) {
 
   switch (surface) {
     case 'profile': {
-      // Both profile targets sit in the vertically centered desktop dialog,
-      // which is sized by its content: when the notification prefs fetch lands,
-      // the section swaps its 96px loading placeholder for the full toggle
-      // list, the card grows and re-centers, and an already-highlighted target
-      // moves out from under its popover. Ensure prefs are loaded BEFORE the
-      // highlight; the fetch overlaps the waypoint spotlights, so the wait is
-      // normally free.
+      // The Notifications row's summary ("Push and email", …) comes from the
+      // prefs fetch. Ensure prefs are loaded BEFORE the highlight so the
+      // spotlighted row is complete; the fetch overlaps the waypoint
+      // spotlights, so the wait is normally free.
       const prefsReady = notificationsStore.prefs ? null : notificationsStore.loadPrefs()
       await openViaMenu('profile', '[data-tour="menu-profile"]', 'onboarding.tour.nav.profile')
       await prefsReady
