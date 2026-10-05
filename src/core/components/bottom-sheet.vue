@@ -312,6 +312,7 @@ const sheetStyle = computed(() => {
       <BaseIconButton
         v-if="props.showBack && !props.collapsed"
         name="arrow_back"
+        variant="tonal"
         size="sm"
         :label="t('core.drawer.back')"
         @click="emit('back')"
@@ -324,6 +325,7 @@ const sheetStyle = computed(() => {
       <BaseIconButton
         v-if="!props.collapsed"
         name="close"
+        variant="tonal"
         size="sm"
         :label="t('core.drawer.close')"
         @click="emit('close')"
@@ -352,12 +354,11 @@ const sheetStyle = computed(() => {
   flex-direction: column;
   background-color: var(--color-background);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  border: 1px solid var(--color-outline-variant);
   border-bottom: none;
   box-shadow: var(--shadow-lg);
   /* Compact horizontal padding (md, not xl) so more width goes to content. */
   padding: var(--spacing-sm) var(--spacing-md) 0;
-  transition: height 200ms ease-out;
+  transition: height var(--motion-duration-medium) var(--motion-ease-emphasized);
   /* Restore pointer events — parent sheet-container sets pointer-events: none
      to allow FAB clicks through transparent areas */
   pointer-events: auto;
@@ -423,9 +424,10 @@ const sheetStyle = computed(() => {
 }
 
 .title {
-  font-size: var(--font-size-xl);
+  font-size: var(--overlay-title-size);
   font-weight: var(--font-weight-semibold);
   flex: 1;
+  letter-spacing: var(--overlay-title-tracking);
 }
 
 .title-spacer {
@@ -492,9 +494,16 @@ const sheetStyle = computed(() => {
   border-radius: 3px;
 }
 
+/* With a footer below, content fades out over its last 24px instead of being cut
+   off at the footer's edge, and gets that much more bottom room so the final row
+   can still scroll clear of the fade. */
+.content:has(~ .footer) {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent);
+  padding-bottom: var(--spacing-xl);
+}
+
 .footer {
   flex-shrink: 0;
-  border-top: 1px solid var(--color-outline-variant);
   /* Base padding trimmed (md, not xl); env() still clears the home-gesture bar. */
   padding: var(--spacing-sm) 0 calc(var(--spacing-md) + var(--safe-bottom));
 }

@@ -26,14 +26,18 @@ const steps = computed(() => {
     <summary class="summary">
       {{ t('calendar.sync.help.summary') }}
     </summary>
-    <div class="tabs" role="tablist">
+    <div
+      class="tabs"
+      role="tablist"
+      data-tab-indicator
+      :style="{ '--tab-index': TABS.findIndex(tab => tab.id === active), '--tab-count': TABS.length }"
+    >
       <button
         v-for="tab in TABS"
         :key="tab.id"
         type="button"
         role="tab"
         class="tab"
-        :class="{ 'tab--active': active === tab.id }"
         :aria-selected="active === tab.id"
         @click="active = tab.id"
       >
@@ -62,28 +66,7 @@ const steps = computed(() => {
 }
 
 .tabs {
-  display: flex;
-  gap: var(--spacing-xs);
-  border-bottom: 1.5px solid var(--color-outline-variant);
   margin-top: var(--spacing-xs);
-}
-
-.tab {
-  flex: 1;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1.5px;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
-  cursor: pointer;
-}
-
-.tab--active {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
 }
 
 .steps {

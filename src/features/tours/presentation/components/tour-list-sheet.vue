@@ -208,12 +208,17 @@ function handleRowClick(tourId: string) {
          would never see that keydown. This is the nearest common ancestor. -->
     <div v-else class="list-view" @keydown.escape="closeFilters">
       <div ref="listHeaderEl" class="list-header">
-        <div class="tabs" role="tablist" data-tour="tours">
+        <div
+          class="tabs"
+          role="tablist"
+          data-tour="tours"
+          data-tab-indicator
+          :style="{ '--tab-index': activeTab === 'friends' ? 1 : 0, '--tab-count': 2 }"
+        >
           <button
             type="button"
             role="tab"
             class="tab"
-            :class="{ 'tab--active': activeTab === 'owned' }"
             :aria-selected="activeTab === 'owned'"
             @click="activeTab = 'owned'"
           >
@@ -223,7 +228,6 @@ function handleRowClick(tourId: string) {
             type="button"
             role="tab"
             class="tab"
-            :class="{ 'tab--active': activeTab === 'friends' }"
             :aria-selected="activeTab === 'friends'"
             @click="activeTab = 'friends'"
           >
@@ -259,39 +263,43 @@ function handleRowClick(tourId: string) {
            the scroller past the shell; `overflow: hidden` clips the panel's slide-in;
            `position: relative` is what the overlay's `inset: 0` resolves against. -->
       <div class="list-region">
-        <div class="tours-scroll">
-          <div v-if="activeTab === 'owned' && isLoading && tours.length === 0" class="loading-text">
-            {{ t('tours.list.loading') }}
-          </div>
+        <div class="tours-scroll" :style="{ '--swap-dir': activeTab === 'friends' ? 1 : -1 }">
+          <Transition name="tab-swap" mode="out-in">
+            <div :key="activeTab">
+              <div v-if="activeTab === 'owned' && isLoading && tours.length === 0" class="loading-text">
+                {{ t('tours.list.loading') }}
+              </div>
 
-          <div v-else-if="sourceCount === 0" class="empty-state">
-            <BaseIcon :name="activeTab === 'friends' ? 'group' : 'location_on'" size="xl" class="empty-icon" />
-            <p class="empty-text">
-              {{ activeTab === 'friends' ? t('tours.list.friendsEmptyTitle') : t('tours.list.emptyTitle') }}
-            </p>
-            <p class="empty-sub">
-              {{ activeTab === 'friends' ? t('tours.list.friendsEmptySubtitle') : t('tours.list.emptySubtitle') }}
-            </p>
-          </div>
+              <div v-else-if="sourceCount === 0" class="empty-state">
+                <BaseIcon :name="activeTab === 'friends' ? 'group' : 'location_on'" size="xl" class="empty-icon" />
+                <p class="empty-text">
+                  {{ activeTab === 'friends' ? t('tours.list.friendsEmptyTitle') : t('tours.list.emptyTitle') }}
+                </p>
+                <p class="empty-sub">
+                  {{ activeTab === 'friends' ? t('tours.list.friendsEmptySubtitle') : t('tours.list.emptySubtitle') }}
+                </p>
+              </div>
 
-          <div v-else-if="filteredTours.length === 0" class="empty-state">
-            <BaseIcon name="search_off" size="xl" class="empty-icon" />
-            <p class="empty-text">
-              {{ t('tours.list.noMatchesTitle') }}
-            </p>
-            <BaseButton variant="primary" size="sm" @click="clearAll">
-              {{ t('tours.list.clearFiltersBtn') }}
-            </BaseButton>
-          </div>
+              <div v-else-if="filteredTours.length === 0" class="empty-state">
+                <BaseIcon name="search_off" size="xl" class="empty-icon" />
+                <p class="empty-text">
+                  {{ t('tours.list.noMatchesTitle') }}
+                </p>
+                <BaseButton variant="primary" size="sm" @click="clearAll">
+                  {{ t('tours.list.clearFiltersBtn') }}
+                </BaseButton>
+              </div>
 
-          <ul v-else class="tours-list">
-            <TourListRow
-              v-for="tour in filteredTours"
-              :key="tour.id"
-              :tour="tour"
-              @click="handleRowClick(tour.id)"
-            />
-          </ul>
+              <ul v-else class="tours-list">
+                <TourListRow
+                  v-for="tour in filteredTours"
+                  :key="tour.id"
+                  :tour="tour"
+                  @click="handleRowClick(tour.id)"
+                />
+              </ul>
+            </div>
+          </Transition>
         </div>
 
         <Transition name="filters-slide">
@@ -342,36 +350,30 @@ function handleRowClick(tourId: string) {
   gap: var(--spacing-sm);
   flex-shrink: 0;
   z-index: 1;
-  border-bottom: 1px solid var(--color-outline-variant);
   background-color: var(--color-background);
   padding-bottom: var(--spacing-xs);
 }
 
-.tabs {
-  display: flex;
-  gap: var(--spacing-xs);
-  border-bottom: 1.5px solid var(--color-outline-variant);
-}
-
-.tab {
-  flex: 1;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1.5px;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
-  cursor: pointer;
+/* Switching My Tours ↔ Friends slides the list toward the chosen tab. */
+.tab-swap-enter-active,
+.tab-swap-leave-active {
   transition:
-    color 0.15s,
-    border-color 0.15s;
+    opacity var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-medium) var(--motion-ease-emphasized);
 }
 
-.tab--active {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
+.tab-swap-leave-active {
+  transition-duration: var(--motion-duration-short);
+}
+
+.tab-swap-enter-from {
+  opacity: 0;
+  transform: translateX(calc(var(--swap-dir) * var(--motion-offset)));
+}
+
+.tab-swap-leave-to {
+  opacity: 0;
+  transform: translateX(calc(var(--swap-dir) * -1 * var(--motion-offset)));
 }
 
 /* Search and the filters trigger share one row. No `flex-wrap`: wrapping onto a
@@ -383,7 +385,8 @@ function handleRowClick(tourId: string) {
   gap: var(--spacing-sm);
   padding: var(--spacing-xs) var(--spacing-sm);
   border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--radius-md);
+  border-radius: var(--input-radius);
+  background-color: var(--input-bg);
 }
 
 .search-icon {
@@ -451,7 +454,7 @@ function handleRowClick(tourId: string) {
    the inline expand used to provide for free. Clipped by `.list-region`. */
 .filters-slide-enter-active,
 .filters-slide-leave-active {
-  transition: transform 0.2s ease-out;
+  transition: transform var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .filters-slide-enter-from,

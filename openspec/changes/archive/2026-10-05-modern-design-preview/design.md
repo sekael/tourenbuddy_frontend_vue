@@ -1,0 +1,140 @@
+# Design
+
+## Context
+
+- Tokens are two-tier (`tokens.css`): palette primitives → semantic roles. Components consume semantic color roles and the spacing/radius/shadow scales directly (see `DESIGN.md`).
+- Motion is not tokenized: every component hardcodes its own `transition`/`animation` (`0.15s`, `0.2s`, `0.3s`; `ease` or `cubic-bezier(0.4, 0, 0.2, 1)`).
+- Shared buttons only react to `:hover` (primary/danger `scale(1.02)`, FABs `translateY(-1px)`), which touch devices lack.
+- Offline toasts/chips reference tokens that were never defined (`--color-slate-800`, `--color-amber-600`, …) and offline-map sheets reference `--color-danger` (the role is `--color-error`); they render only via `var()` fallbacks and would ignore any theme.
+- The language preference is persisted as `tb.locale` in `localStorage`; settings controls live in `user-profile-sheet.vue`.
+
+## Goals / Non-Goals
+
+**Goals:**
+
+- Alpenglow and Classic switchable at runtime, on a real device, with zero component branching.
+- Classic pixel-identical except the listed drift fixes.
+- Once a winner is picked, removing the loser is deleting one CSS block plus the switcher.
+
+**Non-Goals:**
+
+- Retokenizing every remaining literal (glass overlay rgba, raw `font-size`s, the attachment viewer's media scrims, bottom-sheet snap transition). They are neutral in both variants.
+- A generic theming framework (more than two variants, user-defined themes, server persistence).
+
+## Decisions
+
+### D1 — Variant = attribute-scoped token override block
+
+`<html data-design="classic|alpenglow">`. Classic values stay in `:root`; Alpenglow is one `:root[data-design='alpenglow'] { … }` block in `tokens.css` that reassigns semantic roles and retunes the radius/shadow scales.
+
+- *Why:* the semantic tier was built for exactly this; one attribute flip restyles the whole app with no re-render logic, and "promote the winner" is a mechanical edit.
+- *Alternatives:* a second stylesheet loaded on demand (FOUC, two sources to keep in sync); `prefers-color-scheme`-style media switch (not user-selectable); per-component `[data-design]` selectors (rejected by spec — branching spreads the variant into every file).
+- *Radius/shadow scales:* overridden directly rather than via new semantic aliases — components already consume the scales directly, and aliasing ~80 files for a short-lived comparison is churn. The spec's two-tier requirement is relaxed accordingly (palette, spacing and type stay fixed).
+
+### D2 — Motion and interaction tokens with Classic = today's literals
+
+Semantic tokens: `--motion-duration-{short,medium,long}` (150/200/300 ms), `--motion-ease-standard` (`ease`), `--motion-ease-emphasized` (`cubic-bezier(0.4, 0, 0.2, 1)`), `--motion-ease-spring` (`ease`), `--hover-scale` (1.02), `--press-scale` (1). Each migrated transition maps to the token whose Classic value equals its literal, so Classic is unchanged.
+
+| Usage | Duration | Easing |
+|---|---|---|
+| color/opacity state changes | short/medium | standard |
+| sheet slide (`map-page`), drawer slide, dialog enter, banners | long/medium | emphasized / standard |
+| press/hover transform, snackbar, sync toast, action pill | short/medium | spring |
+
+Alpenglow: 160/240/420 ms; standard `cubic-bezier(0.2, 0, 0, 1)`, emphasized `cubic-bezier(0.32, 0.72, 0, 1)` (iOS sheet curve — decelerates hard, no overshoot, so a sliding sheet never lifts off the bottom edge), spring `cubic-bezier(0.34, 1.56, 0.64, 1)` (overshoot, only for small elements where a few px of overshoot reads as "pop").
+
+- *Press on primary/danger:* `:active` uses `scale(calc(var(--hover-scale) * var(--press-scale)))` so Classic keeps its 1.02 while pressed and Alpenglow gets 0.96. Other variants use `scale(var(--press-scale))`. FABs keep their hover lift: `translateY(-1px) scale(var(--press-scale))`.
+- *Reduced motion:* a `@media (prefers-reduced-motion: reduce)` block on `:root[data-design]` (specificity ties the Alpenglow block and wins by order) sets spring → standard and both scales → 1.
+
+### D3 — Persistence and boot
+
+`src/core/theme/design-variant.ts`: a module-level `designVariant` ref (core signal, like `isOnline`), `readDesignVariant()` (whitelist-validated `localStorage` read, `try/catch` → `'classic'`), `setDesignVariant(v)` (sets ref + `documentElement.dataset.design`, best-effort persist). `main.ts` calls `setDesignVariant(readDesignVariant())` synchronously at module top — before `bootstrap()` awaits auth — so the first paint already has the attribute.
+
+- *Why not Pinia:* the value is needed before Pinia exists and in `core/`, which must not depend on feature stores. *Why not an inline `<script>` in `index.html`:* `#app` is empty until mount, so applying in `main.ts` cannot flash; an inline script would duplicate the whitelist.
+- *Key:* `tb.design`, mirroring `tb.locale`.
+
+### D4 — Switcher inline in the profile sheet
+
+A second section under the language selector, styled by extending the language-option selectors (`.language-option, .design-option`). Not a new component: DESIGN.md says extract segmented controls at second usage, but this switcher is scaffolding that is deleted when the comparison ends.
+
+### D5 — Theme color = background (`#ffffff`)
+
+Static in `index.html` and the manifest. Both variants share a white background, so no runtime `<meta>` update is needed. A brand-colored bar was rejected: the map page is full-bleed and a white chrome blends in on every route.
+
+### D6 — Alpenglow palette
+
+New primitives: blue `50/600/950`; plus `slate-800`, `amber-600`, `amber-700` for the drift fixes. Alpenglow reassigns `primary*` → blue 600/500/700 (white on blue-600 = 5.17:1), `accent` → blue-500, `surface-variant` → blue-50 (tinted hover/selected), `fab-surface` → blue-950 (deep navy), `fab-surface-strong` → blue-700, `inverse-surface` → blue-950. *Iteration 3:* the first cut used indigo; the owner preferred blue tones, so indigo was swapped out (no indigo primitives remain). Error/success/warning/friend/route colors stay — they carry meaning on the map. Outlines stay (input-border contrast).
+
+### D7 — Component tokens defined only by the variant (iteration 2)
+
+Element styling (button fills, overlay chrome, headings, inputs, chips, tabs, dividers) is hardcoded per component and has drifted (audit: 6 section-heading variants, 4 selected-chip treatments, 8 input variants). Classic must stay unchanged, Alpenglow must be consistent — so the two cannot share one set of values.
+
+Each consumer reads a **component token with its own current value as the fallback**: `border-radius: var(--chip-radius, var(--radius-sm))`. Component tokens are **not defined in `:root`**; only the Alpenglow block defines them. Classic therefore renders every component exactly as before (fallback), and Alpenglow renders every instance of an element from one value.
+
+Token families (all `--<element>-<property>`): `--button-*`, `--overlay-*`, `--heading-section-*`, `--field-label-color`, `--input-*`, `--chip-*`, `--tabs-*`/`--tab-*`, `--divider-color`.
+
+- *Alternatives:* (a) give Classic explicit values — impossible without unifying Classic, since its current values differ per component; (b) a global stylesheet of `[data-design='alpenglow'] .chip {…}` overrides — branches on the variant and fights scoped-style specificity; (c) shared `Chip`/`Input`/`Tabs` components — the right end state, but a template migration across ~15 large files that is wasted if Classic wins. Tokens first; extract components once the winner is chosen (DESIGN.md's "extract at second usage" rule is now clearly met for chips, inputs, and tabs).
+- *Promotion:* if Alpenglow wins, move its component tokens into `:root` (fallbacks become dead and can be stripped in the same follow-up). If Classic wins, delete the block; fallbacks remain as plain values.
+
+### D8 — Motion for tabs, sheet swaps, and in-sheet views (iteration 3)
+
+- **Tab indicator:** one opt-in utility in `global.css` — `[data-tab-indicator]::before`, positioned from inline `--tab-index`/`--tab-count`, painted from `--tab-active-bg`, sliding on `--motion-ease-spring`. Used by the four underline-tab rows (tour list, friend requests, both help sheets). Undefined `--tab-active-bg` keeps it invisible in Classic. *Alternatives:* View Transitions API (snapshots the whole page incl. the WebGL map — freezes it mid-animation); a shared `Tabs` component (right end state, but four templates + their tests for a comparison-period change).
+- **Sheet → sheet:** `map-page` switches its `<Transition>` name to `sheet-swap` when `activeOverlay` goes from one overlay to another (sync watcher, so the name is set before the leave starts). Classic fallbacks reproduce `sheet` exactly; Alpenglow lifts 32 px + fades (leave 160 ms, enter 240 ms) instead of 2 × 420 ms full slides.
+- **In-sheet swaps:** `<Transition mode="out-in">` with direction-specific names (`view-push`/`view-pop`, chosen from the *new* state so the leaving view gets the right direction) in the contacts sheet, and a `tab-swap` keyed on the active tab in the tour list (direction via `--swap-dir` on the stable scroller). Classic fallbacks are `0s`, no offset, opaque — Vue completes a zero-duration transition within two frames, with the old content visible until the swap.
+- **Snap:** bottom-sheet height transition on `--sheet-snap-*` (Classic: 200 ms ease-out).
+
+### D9 — Declutter: tokens where it is styling, small structural fixes where it is not (iteration 3)
+
+Styling-level clutter is removed in Alpenglow only, through new component tokens: `--section-divider-color`/`-display` (section breaks from spacing + headings), `--tonal-tint` and `--toggle-*` (tonal state pills; the two tour-sheet toggles in a wrapping row — the wrapper is `display: contents` in Classic so their layout is untouched), `--card-*` (fill-only cards).
+
+Four problems are structural and cannot be scoped to a variant without branching templates, so they are fixed for **all** variants (Classic changes here, deliberately): the contact detail's second header row (moved into the overlay header via a `headerless` prop + `header-actions`), the missing planned date in tour rows, the oversized tour-edit Save, and `DialogWindow` lacking `header-actions`.
+
+### D10 — Map controls, contrast, and calm motion (iteration 4)
+
+- **Map controls** keep using the `--color-fab-*` roles; Alpenglow sets the surface to blue-700 (hover/selected blue-800) with the :root white glyphs. Measured: white on blue-700 at the 85% glass mix is 4.92:1 over white map, 5.93:1 over grey terrain; blue-950 (first cut) read as too dark, white glass (second cut) as too bright and lost separation. Dot/badge become white (orange would be 2.4:1 on blue-700). Persistent offline/sync chips join via `--map-chip-*`; transient toasts stay inverse slate. The light "Cancel" pills in location picking / region drawing stay light — they are the secondary next to a primary blue Confirm.
+- **Contrast fixes** are roles, not one-offs: `--color-success-text` (green-800 — green-600 is 3.3:1), `--color-warning-text`, `--color-on-surface-variant` for hints; text on Alpenglow tints uses the `-dark` shade (`--tint-text-*`, `--button-*-outline-color`). The guided-tour "finish" button is a ghost in the banner's on-color, with a selector that out-specifies `BaseButton`'s variant rules (stylesheet order let iteration 2's tonal fill slip under its white label).
+- **Motion** retuned in tokens only (Classic untouched): 200/320/480 ms, `cubic-bezier(0.22, 0.7, 0.3, 1)` emphasized, spring overshoot ~3%, swap offsets halved, press 0.97.
+
+### D11 — Stable dialogs and anchored base-map options (iteration 4)
+
+- `DialogWindow` gains `stableSize` (iteration 4: fixed `min(40rem, 90dvh)`; iteration 6: removed — every dialog fits its content, see D13; collapsed state still clamps), passed through `AdaptiveOverlay`; opted into by contacts, friend requests, and profile — the overlays whose content switches views/tabs. Confirm-style dialogs keep fitting their content.
+- Base-map options: a pre-flush watcher measures the "Change base map" item when `view` goes `menu → base-map`; the panel is pinned there (`position: fixed`), unfolds downward from its top-right, and the menu fades instead of the `panel` collapse. The anchor is kept while the panel leaves; direct opens (no menu) and the landscape arc layout fall back to the in-flow position. The guided tour's base-map step goes through the same `menu → base-map` path.
+
+### D12 — One design, tonal controls, shared map surfaces (iteration 5)
+
+- **Collapse to `:root`.** Alpenglow's values become the defaults and the variant machinery goes. Component tokens are kept only where several consumers share a knob (`--button-*`, `--overlay-*`, `--heading-section-*`, `--input-*`, `--chip-*`); single-use tokens are inlined; "off switch" tokens are deleted together with what they hid (e.g. the profile `<hr>` dividers). A codemod strips dead fallbacks, and `component-tokens.test.ts` is repurposed: it now fails on any bare `var(--x)` nothing defines — it immediately found two pre-existing typos. (It reads sources via `fs`: Vitest serves `.css?raw` as an empty string, which had made the old test's `:root` check vacuous.)
+- **Control container.** Blue-50 (`--color-surface-variant`, ~1.05:1 on white) stays the quiet tint for cards and rows; controls get `--color-secondary-container` (blue-100, ~1.2:1 on white, ~1.1:1 on a blue-50 card) with a blue-900 label. A border was rejected: tonal fills read as modern, and a hairline at 3:1 would bring back the clutter iteration 2 removed. Over the map the tonal button adds `--shadow-md`.
+- **`BaseIconButton variant="tonal"`** replaces the parent-scoped `.overlay-action` class: the child's `:hover:not(:disabled)` rule (0,4,0) out-specified the parent's class (0,2,0), so hovering made the circle lighter.
+- **Expanding menus.** `SpeedDialItem` is one pill (label, icon; 15px end padding centres the 20px icon on the 52px trigger's axis); the base-map panel reuses it with `role="menuitemradio"`/`aria-checked`/`selected` as fallthrough attrs, so the item needs no new prop. Entrance is a keyframe on mount staggered by `--ri` (rise, nearest first) or `--i` (drop, top first, when anchored) — not CSS under `dial-enter-active`, because Vue ends a Transition immediately when its root has no transition and would cut the children short. Exit stays a root opacity fade.
+- **Shared surfaces in `global.css`:** `.fab-glass` (map controls) and the `[data-tab-indicator]` segmented control (track, equal-width buttons, gliding pill; `aria-selected` or `aria-pressed`), each replacing five or more scoped copies.
+- **Landscape arc** uses CSS `sin()`/`cos()` over `--i`/`--n` on a 136px radius, so any item count fits without overlap.
+
+### D13 — Unfold in place; settings at a glance (iteration 6)
+
+- **Base-map options live inside the item's box.** `MapSpeedDialMenu` wraps each item in an `.item-slot` and renders its default slot in the slot whose id equals `expanded`; the panel is `position: absolute; right: calc(100% + gap)`, centred on the item (landscape: bottom at the item's centre, clearing the arc). This replaces the iteration-4 approach of measuring the item's rect and pinning the panel `fixed`, which mis-measured whenever the menu was mid-animation and went stale on rotation. Alternative considered: CSS anchor positioning — not yet in every target browser.
+- **Inert, not disabled.** The other items get `inert` (not `disabled`): no focus, no hit-testing, and screen readers skip them, while their look is controlled separately (45% opacity). Focus moves to the checked option. For a tap on them to reach the backdrop, the overlay box is `pointer-events: none` with `button`s re-enabled — otherwise the inert button's wrapper and the overlay box swallowed the tap.
+- **Profile overview + sections.** Hub-and-spoke instead of one scroll: the overview answers "what's my state?" (summaries computed from the notifications store and `calendarFeedStore.loadFeeds()`), each spoke changes one thing. Rows have one fixed height (58px) so async summaries don't shift a sheet that was sized on open. Sections open as full-screen pages on mobile rather than resizing the bottom sheet: the sheet only refits on window/header resize, and teaching it to refit on content swaps would change every fit-content sheet; pages also suit the calendar form and the keyboard.
+
+- **Dialogs fit their content (replaces `stableSize`).** First tried a grow-only ratchet (open at content height, never shrink); the owner found it inconsistent and static. Now every `DialogWindow` follows its content both ways: the slot sits in a `.dialog-body` that keeps its natural height, a ResizeObserver on it sets the scroll box's height, and a height transition glides between values (the first size lands without one). `max-height` caps the card at the screen and the content scrolls beyond. The card hangs from a fixed top line instead of centring, so only the bottom edge moves and the header (back/close) never shifts under the pointer. Alternatives: CSS `interpolate-size` (Chromium only); centring with a moving top edge (rejected — the header jumps on every view change).
+
+## Risks / Trade-offs
+
+- [Alpenglow untested on every screen] → the switch is reversible in one tap; components that still carry literals (glass overlays, media viewer) are neutral and fit both variants.
+- [Classic not perfectly identical] → only the drift fixes change pixels: dead-letter empty-state text `slate-500 → slate-600` and item background `slate-100 → slate-200` (no matching tokens existed), and the offline-download warning text `amber-500 → amber-700` (it used `--color-warning`, 2.15:1 on white; its own fallback showed amber-700 was intended).
+- [Reduced-motion users lose Classic's 1.02 hover scale] → intended; spec requires it.
+- [Classic changes beyond drift fixes (iteration 3)] → limited to the four structural fixes in D9, each a usability fix independent of visual style; prod remains the reference for "before" via the PR preview.
+- [Dialogs now resize on every view/tab change] → one emphasized glide per change with the header fixed, so the motion is confined to the bottom edge; content that relied on filling a fixed frame would collapse — none of the current dialogs does (checked: contacts, friend requests, profile, feedback, offline, tour creation, phone verification, link warning, calendar notice).
+- [Top-anchored dialogs sit higher than centred ones] → short dialogs read like a command palette; long ones use the full height below the top line.
+- [Profile sections are one tap deeper] → the overview shows each section's state, so a tap is only needed to change something; the guided tour now points at the card and the Notifications row.
+- [`overflow: visible !important` against driver.js] → scoped to the expanded item slot; driver only clips there to stop a spotlit element's parent from scrolling, and the slot never scrolls.
+- [Removing Classic is one-way] → the owner chose Alpenglow after comparing on device; Classic remains in git history.
+- [Blue-100 controls are a stronger blue presence] → reserved for controls only; containers keep the quieter blue-50 so screens don't turn uniformly blue.
+- [CSS trig functions for the landscape arc] → supported in all evergreen browsers since 2023 (Safari 15.4+); the arc only applies to short landscape screens.
+- [Stable dialogs show empty space for short content] → chosen deliberately: the owner prefers a constant frame over a resizing one.
+- [Accessibility fixes change Classic] → text-contrast, labeling, and attribution fixes apply to every variant (they are defects, not style).
+- [Out-in swaps delay the new content by the leave duration] → leave halves are short (160 ms) in Alpenglow and zero in Classic.
+- [Overriding radius/shadow scales is less pure than semantic aliases] → bounded to the comparison period; the promote-the-winner follow-up removes the override block.
+
+## Migration Plan
+
+Ship with Classic as default — no user sees a change unless they opt in. Owner compares via the profile switcher (locally or on the PR preview). Follow-up change: move the winner's values into `:root`, delete the other block, the switcher, `design-variant.ts`, and the i18n keys. Rollback: revert the PR; a stale `tb.design` key is ignored by the whitelist.

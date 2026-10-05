@@ -116,12 +116,17 @@ onUnmounted(() => {
   gap: var(--spacing-sm);
 }
 
-.finish-btn {
+/* The banner is always the map-control surface, so "finish" is a ghost button in
+   that surface's on-color — never the variant's secondary fill (a tonal fill under
+   the white label was unreadable). The extra class out-specifies BaseButton's
+   variant rules regardless of stylesheet order. */
+.tour-banner .finish-btn {
+  background-color: transparent;
   border-color: var(--color-contrast-outline);
   color: var(--color-fab-on-surface);
 }
 
-.finish-btn:hover {
+.tour-banner .finish-btn:hover {
   background-color: var(--color-contrast-surface);
   border-color: var(--color-contrast-outline-strong);
 }
@@ -168,8 +173,8 @@ onUnmounted(() => {
 .tour-slide-enter-active,
 .tour-slide-leave-active {
   transition:
-    transform 0.25s ease,
-    opacity 0.25s ease;
+    transform var(--motion-duration-medium) var(--motion-ease-emphasized),
+    opacity var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .tour-slide-enter-from,

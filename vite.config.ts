@@ -34,7 +34,7 @@ export default defineConfig({
         name: 'TourenBuddy',
         short_name: 'TourenBuddy',
         description: 'Plan your outdoor tours with TourenBuddy',
-        theme_color: '#e65100',
+        theme_color: '#ffffff',
         background_color: '#ffffff',
         display: 'standalone',
         start_url: '/',

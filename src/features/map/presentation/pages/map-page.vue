@@ -114,6 +114,17 @@ const showTourCreationDialog = computed(
 )
 const showFriendRequests = computed(() => activeOverlay.value === 'friend-requests')
 
+// One sheet replacing another (e.g. tour list → tour) uses `sheet-swap`, a quick
+// lift-and-fade, instead of sliding fully off-screen and back up; opening from and
+// closing to the bare map keep the full `sheet` slide. Sync flush so the name is
+// already set when the <Transition> starts the leave.
+// ponytail: keyed on activeOverlay, not the exact v-if chain — an edge-case mismatch
+// only picks the other animation, never breaks rendering.
+const sheetTransition = ref<'sheet' | 'sheet-swap'>('sheet')
+watch(activeOverlay, (next, prev) => {
+  sheetTransition.value = next !== null && prev !== null ? 'sheet-swap' : 'sheet'
+}, { flush: 'sync' })
+
 const barState = computed(() =>
   computeBarState({
     activeOverlay: activeOverlay.value,
@@ -245,13 +256,10 @@ async function stageTourSurface(surface: TourSurface, ctx: StageContext) {
 
   switch (surface) {
     case 'profile': {
-      // Both profile targets sit in the vertically centered desktop dialog,
-      // which is sized by its content: when the notification prefs fetch lands,
-      // the section swaps its 96px loading placeholder for the full toggle
-      // list, the card grows and re-centers, and an already-highlighted target
-      // moves out from under its popover. Ensure prefs are loaded BEFORE the
-      // highlight; the fetch overlaps the waypoint spotlights, so the wait is
-      // normally free.
+      // The Notifications row's summary ("Push and email", …) comes from the
+      // prefs fetch. Ensure prefs are loaded BEFORE the highlight so the
+      // spotlighted row is complete; the fetch overlaps the waypoint
+      // spotlights, so the wait is normally free.
       const prefsReady = notificationsStore.prefs ? null : notificationsStore.loadPrefs()
       await openViaMenu('profile', '[data-tour="menu-profile"]', 'onboarding.tour.nav.profile')
       await prefsReady
@@ -866,7 +874,7 @@ function handleDialogClose() {
          leaves before the incoming one enters, preventing visual stacking.
          On desktop, the container uses display:contents so fixed-position dialogs
          position themselves independently and animate via their own CSS. -->
-    <Transition name="sheet" mode="out-in">
+    <Transition :name="sheetTransition" mode="out-in">
       <div v-if="selectedTour && activeOverlay === 'tour'" key="tour" ref="sheetContainerRef" class="sheet-container">
         <TourInfoSheet
           :tour="selectedTour" :edit-picked-point="editPickedPoint" :show-back="tourDetailOrigin !== null"
@@ -983,7 +991,7 @@ function handleDialogClose() {
 
 .sheet-enter-active,
 .sheet-leave-active {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform var(--motion-duration-long) var(--motion-ease-emphasized);
 }
 
 .sheet-enter-from,
@@ -991,8 +999,43 @@ function handleDialogClose() {
   transform: translateY(100%);
 }
 
+/* MapLibre's attribution links differ from the surrounding text by color alone
+   (2.02:1); an underline makes them identifiable (WCAG 1.4.1). */
+:deep(.maplibregl-ctrl-attrib a) {
+  text-decoration: underline;
+}
+
+/* Sheet → sheet: the outgoing sheet fades out quickly, the next one rises into place. */
+.sheet-swap-enter-active,
+.sheet-swap-leave-active {
+  transition:
+    transform var(--motion-duration-medium) var(--motion-ease-emphasized),
+    opacity var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+.sheet-swap-leave-active {
+  transition-duration: var(--motion-duration-short);
+}
+
+.sheet-swap-enter-from,
+.sheet-swap-leave-to {
+  transform: translateY(var(--motion-offset));
+  opacity: 0;
+}
+
 /* On desktop, disable container transitions — each overlay animates itself */
 @media (min-width: 600px) {
+  .sheet-swap-enter-active,
+  .sheet-swap-leave-active {
+    transition: none;
+  }
+
+  .sheet-swap-enter-from,
+  .sheet-swap-leave-to {
+    transform: none;
+    opacity: 1;
+  }
+
   .sheet-enter-active,
   .sheet-leave-active {
     transition: none;

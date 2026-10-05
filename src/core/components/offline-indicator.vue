@@ -70,7 +70,7 @@ watch(offlineWriteError, (key) => {
 <template>
   <!-- Persistent, icon-only offline chip (bottom-left) — minimal footprint. -->
   <Transition name="chip">
-    <div v-if="degraded" class="offline-chip" role="status" :aria-label="statusMessage">
+    <div v-if="degraded" class="offline-chip fab-glass" role="status" :aria-label="statusMessage">
       <BaseIcon name="cloud_off" size="sm" />
     </div>
   </Transition>
@@ -102,15 +102,12 @@ watch(offlineWriteError, (key) => {
 .offline-chip {
   position: fixed;
   left: var(--spacing-md);
-  bottom: calc(var(--spacing-md) + var(--safe-bottom, 0px));
+  bottom: calc(var(--spacing-md) + var(--safe-bottom));
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--spacing-xs);
   border-radius: var(--radius-lg);
-  background: var(--color-slate-800, #1e293b);
-  color: white;
-  box-shadow: var(--shadow-md);
   z-index: 190;
 }
 
@@ -118,15 +115,15 @@ watch(offlineWriteError, (key) => {
 .offline-snackbar {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--spacing-xl) + var(--safe-bottom, 0px));
+  bottom: calc(var(--spacing-xl) + var(--safe-bottom));
   transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
   padding: var(--spacing-xs) var(--spacing-md);
   border-radius: var(--radius-lg);
-  background: var(--color-slate-800, #1e293b);
-  color: white;
+  background: var(--color-inverse-surface);
+  color: var(--color-on-inverse-surface);
   font-size: 0.8125rem;
   font-weight: 500;
   box-shadow: var(--shadow-md);
@@ -136,7 +133,7 @@ watch(offlineWriteError, (key) => {
 
 .chip-enter-active,
 .chip-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .chip-enter-from,

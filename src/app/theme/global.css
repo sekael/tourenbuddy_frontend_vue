@@ -82,6 +82,102 @@ html.scroll-locked {
    gesture policy on the map canvas and on every scroll region inside an
    overlay. */
 
+/* Segmented tabs — ONE look for every tab row and segmented switch. A row opts
+   in with `data-tab-indicator` plus inline `--tab-index` / `--tab-count`; its
+   buttons share the width equally. The selected button carries `aria-selected`
+   (tabs) or `aria-pressed` (filter switches), and a white pill glides under it
+   on the tonal track. */
+[data-tab-indicator] {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xxs);
+  border-radius: var(--radius-pill);
+  background-color: var(--color-secondary-container);
+}
+
+[data-tab-indicator] > button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 36px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-on-surface-variant);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+[data-tab-indicator] > button:hover:not([aria-selected='true'], [aria-pressed='true']) {
+  color: var(--color-on-surface);
+}
+
+[data-tab-indicator] > [aria-selected='true'],
+[data-tab-indicator] > [aria-pressed='true'] {
+  color: var(--color-primary-dark);
+}
+
+[data-tab-indicator]::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset-block: var(--spacing-xxs);
+  inset-inline-start: var(--spacing-xxs);
+  width: calc((100% - 2 * var(--spacing-xxs) - (var(--tab-count) - 1) * var(--spacing-xs)) / var(--tab-count));
+  border-radius: var(--radius-pill);
+  background-color: var(--color-background);
+  box-shadow: var(--shadow-sm);
+  transform: translateX(calc(var(--tab-index) * (100% + var(--spacing-xs))));
+  transition: transform var(--motion-duration-medium) var(--motion-ease-emphasized);
+}
+
+/* Views inside one sheet/dialog push and pop (`<Transition mode="out-in">`, name
+   picked from the new state): forward slides in from the right, back from the
+   left; the leaving view fades out quickly. Used by contacts and profile. */
+.view-push-enter-active,
+.view-push-leave-active,
+.view-pop-enter-active,
+.view-pop-leave-active {
+  transition:
+    opacity var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-medium) var(--motion-ease-emphasized);
+}
+
+.view-push-leave-active,
+.view-pop-leave-active {
+  transition-duration: var(--motion-duration-short);
+}
+
+.view-push-enter-from,
+.view-pop-leave-to {
+  opacity: 0;
+  transform: translateX(var(--motion-offset));
+}
+
+.view-push-leave-to,
+.view-pop-enter-from {
+  opacity: 0;
+  transform: translateX(calc(-1 * var(--motion-offset)));
+}
+
+/* Map-control glass — every control floating over the map (speed dial and its
+   items, compass, tour pill, base-map options, persistent status chips) wears
+   this one surface, so they read as one family and stand off any terrain. Each
+   control adds only its shape and its hover/selected fill
+   (--color-fab-glass-strong). */
+.fab-glass {
+  background-color: var(--color-fab-glass);
+  backdrop-filter: var(--fab-backdrop);
+  -webkit-backdrop-filter: var(--fab-backdrop);
+  border: 1px solid var(--color-fab-border);
+  box-shadow: var(--shadow-md);
+  color: var(--color-fab-on-surface);
+}
+
 button {
   cursor: pointer;
   border: none;

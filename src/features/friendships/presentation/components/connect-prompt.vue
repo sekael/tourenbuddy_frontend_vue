@@ -180,18 +180,18 @@ async function handleDismiss() {
 }
 
 .security-note {
-  font-size: var(--font-size-xs, 11px);
+  font-size: var(--font-size-xs);
   color: var(--color-on-surface-variant);
   line-height: 1.4;
 }
 
 .error-text {
-  font-size: var(--font-size-xs, 11px);
+  font-size: var(--font-size-xs);
   color: var(--color-error);
 }
 
 .offline-text {
-  font-size: var(--font-size-xs, 11px);
+  font-size: var(--font-size-xs);
   color: var(--color-on-surface-variant);
 }
 
@@ -210,7 +210,7 @@ async function handleDismiss() {
   align-items: center;
   gap: var(--spacing-xs);
   font-size: var(--font-size-sm);
-  color: var(--color-success);
+  color: var(--color-success-text);
   font-weight: var(--font-weight-medium);
 }
 

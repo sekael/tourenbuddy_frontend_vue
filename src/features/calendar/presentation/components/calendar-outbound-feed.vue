@@ -30,7 +30,9 @@ async function regenerate() {
 
 <template>
   <div v-if="outboundUrl" class="outbound">
-    <span class="subtitle">{{ t('calendar.sync.outboundTitle') }}</span>
+    <h3 class="group-title">
+      {{ t('calendar.sync.outboundTitle') }}
+    </h3>
     <p class="hint">
       {{ t('calendar.sync.outboundHint') }}
     </p>
@@ -43,7 +45,7 @@ async function regenerate() {
     </div>
     <div v-if="confirming" class="confirm" role="alert">
       <span>{{ t('calendar.sync.regenerateConfirm') }}</span>
-      <BaseButton variant="text" size="sm" @click="confirming = false">
+      <BaseButton variant="secondary" size="sm" @click="confirming = false">
         {{ t('calendar.availability.cancel') }}
       </BaseButton>
       <BaseButton variant="danger" size="sm" @click="regenerate">
@@ -54,7 +56,7 @@ async function regenerate() {
       <p class="hint">
         {{ t('calendar.sync.regenerateHint') }}
       </p>
-      <BaseButton variant="text" size="sm" class="regenerate" @click="confirming = true">
+      <BaseButton variant="secondary" size="sm" class="regenerate" @click="confirming = true">
         <BaseIcon name="replay" />
         {{ t('calendar.sync.regenerate') }}
       </BaseButton>
@@ -66,11 +68,14 @@ async function regenerate() {
 .outbound {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: var(--spacing-sm);
 }
 
-.subtitle {
-  font-weight: var(--font-weight-medium);
+.group-title {
+  font-size: var(--heading-section-size);
+  font-weight: var(--heading-section-weight);
+  color: var(--heading-section-color);
+  letter-spacing: var(--heading-section-tracking);
 }
 
 .hint,

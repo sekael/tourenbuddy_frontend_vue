@@ -129,8 +129,7 @@ async function handleUnblock(block: UserBlock) {
   justify-content: space-between;
   gap: var(--spacing-md);
   padding: var(--spacing-md);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--card-radius);
   background-color: var(--color-surface);
 }
 

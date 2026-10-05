@@ -224,7 +224,7 @@ function formatDate(iso: string): string {
 /* `&--suffix` is Sass, not CSS: native nesting resolves `&` to a real selector, so the
    concatenated form never matches. Modifiers are written out in full. */
 .row--stale {
-  border-left: 3px solid var(--color-warning, var(--color-error));
+  border-left: 3px solid var(--color-warning);
   padding-left: var(--spacing-sm);
 }
 
@@ -259,12 +259,12 @@ function formatDate(iso: string): string {
 }
 
 .status-badge--accepted {
-  color: var(--color-success);
+  color: var(--color-success-text);
   background-color: color-mix(in srgb, var(--color-success) 14%, var(--color-background));
 }
 
 .status-badge--withdrawn {
-  color: var(--color-warning);
+  color: var(--color-warning-text);
   background-color: color-mix(in srgb, var(--color-warning) 18%, var(--color-background));
 }
 

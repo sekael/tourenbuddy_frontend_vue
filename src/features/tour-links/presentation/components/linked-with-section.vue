@@ -164,11 +164,10 @@ function handlePillClick(id: string) {
 }
 
 .section-title {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-on-surface-variant);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: var(--heading-section-size);
+  font-weight: var(--heading-section-weight);
+  color: var(--heading-section-color);
+  letter-spacing: var(--heading-section-tracking);
   margin: 0;
 }
 
@@ -186,7 +185,7 @@ function handlePillClick(id: string) {
   color: var(--color-on-surface);
   font-size: var(--font-size-sm);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .pill:hover:not(:disabled) {

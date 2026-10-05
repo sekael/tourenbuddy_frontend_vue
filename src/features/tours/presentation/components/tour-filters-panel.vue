@@ -188,12 +188,16 @@ const completionOptions = [
         <p class="filter-label">
           {{ t('tours.filters.statusLabel') }}
         </p>
-        <div class="segmented">
+        <div
+          class="segmented"
+          data-tab-indicator
+          :style="{ '--tab-index': completionOptions.findIndex(opt => opt.value === filters.completion), '--tab-count': completionOptions.length }"
+        >
           <button
             v-for="opt in completionOptions"
             :key="opt.value"
             class="segment"
-            :class="{ active: filters.completion === opt.value }"
+            :aria-pressed="filters.completion === opt.value"
             type="button"
             @click="emit('update:completion', opt.value)"
           >
@@ -251,7 +255,7 @@ const completionOptions = [
 .filter-label {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
+  color: var(--field-label-color);
 }
 
 .chip-row {
@@ -261,22 +265,23 @@ const completionOptions = [
 }
 
 .chip {
-  padding: var(--spacing-xxs) var(--spacing-sm);
-  border-radius: var(--radius-pill);
+  padding: var(--chip-padding);
+  border-radius: var(--chip-radius);
   border: 1.5px solid var(--color-outline-variant);
-  font-size: var(--font-size-sm);
-  color: var(--color-on-surface-variant);
+  font-size: var(--chip-font-size);
+  color: var(--chip-color);
   transition:
-    background-color 0.15s,
-    color 0.15s,
-    border-color 0.15s;
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    color var(--motion-duration-short) var(--motion-ease-standard),
+    border-color var(--motion-duration-short) var(--motion-ease-standard);
   cursor: pointer;
+  min-height: var(--chip-min-height);
 }
 
 .chip.active {
-  background-color: color-mix(in srgb, var(--color-primary) 16%, transparent);
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  background-color: var(--chip-selected-bg);
+  border-color: var(--chip-selected-border-color);
+  color: var(--chip-selected-color);
 }
 
 .chip:hover:not(.active) {
@@ -302,40 +307,10 @@ const completionOptions = [
 
 .date-input {
   border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--radius-sm);
+  border-radius: var(--input-radius);
   padding: var(--spacing-xxs) var(--spacing-sm);
   font-size: var(--font-size-sm);
   color: var(--color-on-surface);
-  background: transparent;
-}
-
-.segmented {
-  display: flex;
-  border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  align-self: flex-start;
-}
-
-.segment {
-  padding: var(--spacing-xxs) var(--spacing-md);
-  font-size: var(--font-size-sm);
-  color: var(--color-on-surface-variant);
-  transition: background-color 0.15s;
-  cursor: pointer;
-}
-
-.segment:not(:last-child) {
-  border-right: 1.5px solid var(--color-outline-variant);
-}
-
-.segment.active {
-  background-color: color-mix(in srgb, var(--color-primary) 16%, transparent);
-  color: var(--color-primary);
-  font-weight: var(--font-weight-medium);
-}
-
-.segment:hover:not(.active) {
-  background-color: var(--color-surface-variant);
+  background: var(--input-bg);
 }
 </style>

@@ -140,7 +140,8 @@
         "unparseable": "This address does not return a calendar.",
         "too_complex": "A repeating event is too complex to process.",
         "unknown": "Last sync failed."
-      }
+      },
+      "feedsTitle": "Your calendars"
     }
   },
   "validation": {
@@ -221,7 +222,6 @@
     "profile": {
       "title": "Profile",
       "verifiedTooltip": "Verified",
-      "verifyBtn": "Verify",
       "addPhoneBtn": "Add phone number",
       "editBtn": "Edit profile",
       "signOutBtn": "Sign out",
@@ -236,7 +236,16 @@
       "removePhoneFailed": "Failed to remove phone number",
       "removePhonePendingWarning": "You have pending friend requests. Removing your phone number will cancel all pending requests.",
       "removePhoneFriendshipWarning": "You have active friendships. Removing your phone number will remove all friendship connections.",
-      "removePhoneBothWarning": "You have active friendships and pending friend requests. Removing your phone number will remove all friendship connections and cancel all pending requests."
+      "removePhoneBothWarning": "You have active friendships and pending friend requests. Removing your phone number will remove all friendship connections and cancel all pending requests.",
+      "notVerified": "Not verified",
+      "notificationsSummary": {
+        "pushAndEmail": "Push and email",
+        "push": "Push only",
+        "email": "Email only",
+        "off": "Off"
+      },
+      "calendarSummary": "Not connected | {count} calendar | {count} calendars",
+      "calendarProblem": "Sync problem"
     },
     "phoneVerification": {
       "title": "Verify your phone",
@@ -724,6 +733,7 @@
     "requestTo": "Request to",
     "verifyPhoneHint": "Verify your phone to connect with other users.",
     "friendsListLink": "Friend requests",
+    "requestsTab": "Requests",
     "contactCreated": "Contact created for new friend",
     "tooltip": "Friend on TourenBuddy",
     "acceptConfirm": "Accept this friend request?",
@@ -829,11 +839,11 @@
     "tour": {
       "phone": {
         "title": "Add your phone number",
-        "body": "Add and verify your phone number so friends can find and connect with you to plan shared tours."
+        "body": "Tap your profile card to add and verify your phone number, so friends can find and connect with you to plan shared tours."
       },
       "notifications": {
         "title": "Stay in the loop",
-        "body": "Choose which notifications you receive related to friend requests, tour invites and tour updates."
+        "body": "Choose here which notifications you get about friend requests, tour invites and tour updates."
       },
       "addContact": {
         "title": "Add a contact",

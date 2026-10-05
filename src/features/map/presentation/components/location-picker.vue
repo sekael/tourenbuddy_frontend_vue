@@ -50,13 +50,9 @@ function handleConfirm() {
       class="actions"
       :style="props.actionsBottom != null ? { bottom: `${props.actionsBottom}px` } : undefined"
     >
-      <!-- Cancel is a map-overlay exception (see DESIGN.md): a translucent glass
-           surface so it stays legible over busy tiles. BaseButton's secondary
-           ghost is transparent and would vanish over the map. Continue uses
-           BaseButton primary — solid fill reads fine. -->
-      <button type="button" class="cancel-btn" @click="emit('cancel')">
+      <BaseButton variant="secondary" class="on-map" @click="emit('cancel')">
         {{ t('tours.picker.cancelBtn') }}
-      </button>
+      </BaseButton>
       <BaseButton variant="primary" data-testid="picker-confirm" @click="handleConfirm">
         {{ t('tours.picker.confirmBtn') }}
       </BaseButton>
@@ -84,24 +80,8 @@ function handleConfirm() {
   pointer-events: all;
 }
 
-.cancel-btn {
-  /* Geometry/typography mirror BaseButton md so the pair matches; the glass
-     surface + blur + shadow are the overlay-specific part (rgba literals are an
-     intentional overlay exception — no light-glass token exists). */
-  padding: var(--button-padding-md);
-  border-radius: var(--button-radius);
-  font-size: var(--button-font-size-md);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-on-surface);
-  background-color: rgba(248, 250, 252, 0.85);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(203, 213, 225, 0.6);
-  box-shadow: var(--shadow-sm);
-  transition: background-color 0.2s;
-}
-
-.cancel-btn:hover {
-  background-color: rgba(226, 232, 240, 0.9);
+/* Tonal secondary needs a lift to stand off bright terrain */
+.on-map {
+  box-shadow: var(--shadow-md);
 }
 </style>

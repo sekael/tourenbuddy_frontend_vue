@@ -69,6 +69,21 @@ describe('tourListRow', () => {
     expect(wrapper.text()).not.toContain('aFriend')
   })
 
+  it('keeps an undated tour without partners to a single line', () => {
+    const wrapper = mountRow(makeTour())
+
+    expect(wrapper.find('.tour-subtitle').exists()).toBe(false)
+  })
+
+  it('shows the year in the date only when it is not the current year', () => {
+    const year = new Date().getFullYear()
+    const thisYear = mountRow(makeTour({ plannedDate: new Date(year, 5, 14) }))
+    const nextYear = mountRow(makeTour({ plannedDate: new Date(year + 1, 5, 14) }))
+
+    expect(thisYear.find('.tour-subtitle').text()).not.toContain(String(year))
+    expect(nextYear.find('.tour-subtitle').text()).toContain(String(year + 1))
+  })
+
   it('renders no owner slot at all for the viewer\'s own tour', () => {
     const wrapper = mountRow(makeTour())
 

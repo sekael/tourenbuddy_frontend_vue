@@ -7,6 +7,32 @@
    app/theme/global.css as `html.scroll-locked`, applied via `useScrollLock` —
    it is not an onboarding concern, and the map route holds it continuously. */
 
+/* Popovers wear the app's overlay look (Inter, soft radius and shadow) instead of
+   driver.js' Helvetica box. Same specificity as driver.css, which loads first. */
+.driver-popover {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  color: var(--color-on-surface);
+  animation-duration: var(--motion-duration-medium);
+  animation-timing-function: var(--motion-ease-standard);
+}
+
+.driver-popover * {
+  font-family: var(--font-family-base);
+}
+
+.driver-popover-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.01em;
+}
+
+.driver-popover-description {
+  font-size: var(--font-size-base);
+  color: var(--color-on-surface-variant);
+}
+
 /* Waypoint hint popovers ("Open menu", "Open contacts") size to their text
    instead of driver.js' default 250px min-width. Two-class selector
    out-specifies the base `.driver-popover` rule. */

@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import BaseIcon from '@/core/components/base-icon.vue'
 
+// One glass pill per action: label, then icon. Used by the speed-dial menu and the
+// base-map options alike, so every expanding map menu looks and moves the same.
+// Choice items pass role="menuitemradio", aria-checked and the `selected` class.
 defineProps<{
   icon: string
   label: string
@@ -14,15 +17,15 @@ defineEmits<{ select: [] }>()
 <template>
   <button
     role="menuitem"
-    class="item-row"
+    class="item-row fab-glass"
     :disabled="disabled"
     :aria-disabled="disabled"
     :title="tooltip ?? label"
     :aria-label="tooltip ?? label"
     @click="$emit('select')"
   >
-    <span class="label-chip">{{ label }}</span>
-    <span class="icon-fab">
+    <span class="label">{{ label }}</span>
+    <span class="icon-wrap">
       <slot name="badge" />
       <BaseIcon :name="icon" class="icon" />
     </span>
@@ -33,74 +36,45 @@ defineEmits<{ select: [] }>()
 .item-row {
   display: inline-flex;
   align-items: center;
-  gap: var(--spacing-xs);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  transition: transform 0.15s;
+  gap: var(--spacing-sm);
+  min-height: 48px;
+  /* 15px + 1px border + half the 20px icon = 26px: every icon centres on the
+     52px trigger's vertical axis, so the menu reads as one column. */
+  padding: 0 15px 0 var(--spacing-lg);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  transition:
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    opacity var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-short) var(--motion-ease-spring);
 }
 
-.item-row:hover:not(:disabled) {
-  transform: translateY(-1px);
+.item-row:hover:not(:disabled),
+.item-row.selected {
+  background-color: var(--color-fab-glass-strong);
 }
 
-.item-row:hover:not(:disabled) .icon-fab {
-  background-color: color-mix(in srgb, var(--color-fab-surface-strong) 90%, transparent);
-  box-shadow: var(--shadow-lg);
+.item-row.selected {
+  font-weight: var(--font-weight-semibold);
+}
+
+.item-row:active:not(:disabled) {
+  transform: scale(var(--press-scale));
 }
 
 .item-row:disabled {
-  opacity: 0.4;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-.label-chip {
-  padding: var(--spacing-xxs) var(--spacing-sm);
-  border-radius: var(--radius-md);
-  background-color: color-mix(in srgb, var(--color-fab-surface) 90%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid var(--color-fab-border);
-  box-shadow: var(--shadow-sm);
-  color: var(--color-fab-on-surface);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  white-space: nowrap;
-}
-
-.icon-fab {
+.icon-wrap {
   position: relative;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background-color: color-mix(in srgb, var(--color-fab-surface) 90%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid var(--color-fab-border);
-  box-shadow: var(--shadow-md);
   display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-fab-on-surface);
-  flex-shrink: 0;
-  transition:
-    background-color 0.15s,
-    box-shadow 0.15s;
 }
 
 .icon {
-  font-size: 20px;
-}
-
-@media (orientation: landscape) and (max-height: 500px) {
-  /* Arc layout: icon-only; tooltip via aria-label/title. */
-  .item-row {
-    gap: 0;
-  }
-
-  .label-chip {
-    display: none;
-  }
+  font-size: var(--icon-size-md);
 }
 </style>

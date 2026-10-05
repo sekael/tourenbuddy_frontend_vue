@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import BaseIconButton from './base-icon-button.vue'
 
 const props = defineProps<{
@@ -18,6 +19,30 @@ function handleBackdropClick() {
     return
   emit('close')
 }
+
+// The dialog is always as tall as its content. The body keeps its natural height
+// (it never stretches), so measuring it as it changes — views swapping, tabs,
+// data loading — gives the height the scroll box should have; the box glides to
+// it in both directions. The card's max-height caps it and the content scrolls
+// beyond. The first size lands without a glide.
+const bodyRef = ref<HTMLElement | null>(null)
+const bodyHeight = ref<number | null>(null)
+const glide = ref(false)
+let observer: ResizeObserver | undefined
+
+onMounted(() => {
+  observer = new ResizeObserver(([entry]) => {
+    bodyHeight.value = Math.ceil(entry!.borderBoxSize?.[0]?.blockSize ?? (entry!.target as HTMLElement).offsetHeight)
+  })
+  observer.observe(bodyRef.value!)
+  requestAnimationFrame(() => requestAnimationFrame(() => (glide.value = true)))
+})
+
+onBeforeUnmount(() => observer?.disconnect())
+
+const contentStyle = computed(() => bodyHeight.value === null || props.collapsed
+  ? undefined
+  : { height: `${bodyHeight.value}px` })
 </script>
 
 <template>
@@ -38,6 +63,7 @@ function handleBackdropClick() {
         <BaseIconButton
           v-if="props.showBack && !props.collapsed"
           name="arrow_back"
+          variant="tonal"
           size="sm"
           label="Back"
           @click="emit('back')"
@@ -46,9 +72,11 @@ function handleBackdropClick() {
           {{ props.title }}
         </h2>
         <div v-else class="title-spacer" />
+        <slot name="header-actions" />
         <BaseIconButton
           v-if="!props.collapsed"
           name="close"
+          variant="tonal"
           size="sm"
           label="Close"
           @click="emit('close')"
@@ -56,67 +84,74 @@ function handleBackdropClick() {
       </div>
       <div
         class="dialog-content"
+        :class="{ 'dialog-content--glide': glide }"
+        :style="contentStyle"
         :inert="props.collapsed || undefined"
         :aria-hidden="props.collapsed || undefined"
       >
-        <slot />
+        <div ref="bodyRef" class="dialog-body">
+          <slot />
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+/* Dialogs hang from a fixed top line rather than centring: when the content
+   changes height only the bottom edge moves, so the header (title, back, close)
+   never shifts under the pointer. The same inset is kept below, so a dialog that
+   reaches its full height sits balanced on the screen. */
 .dialog-backdrop {
+  --dialog-inset: clamp(var(--spacing-xl), 12dvh, 7rem);
+
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.35);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  background: var(--color-backdrop);
+  backdrop-filter: blur(var(--overlay-backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--overlay-backdrop-blur));
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  padding: var(--dialog-inset) var(--spacing-xl);
   z-index: 50;
   transition:
-    background 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-    backdrop-filter 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    background var(--motion-duration-medium) var(--motion-ease-emphasized),
+    backdrop-filter var(--motion-duration-medium) var(--motion-ease-emphasized),
+    padding var(--motion-duration-medium) var(--motion-ease-emphasized);
 }
 
-/* When picking a location: remove backdrop, push card to top-right */
+/* When picking a location: remove backdrop, pin the card to the top edge */
 .dialog-backdrop--collapsed {
   background: transparent;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   pointer-events: none;
-  align-items: flex-start;
-  justify-content: flex-center;
+  padding-top: 0;
 }
 
 .dialog-card {
   background-color: var(--color-background);
-  border: 1px solid var(--color-outline-variant);
   border-radius: var(--radius-lg);
   width: 100%;
   max-width: 560px;
-  max-height: 90dvh;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-lg);
-  animation: dialog-enter 0.2s cubic-bezier(0.4, 0, 0.2, 1) both;
+  transform-origin: top center;
+  animation: dialog-enter var(--motion-duration-medium) var(--motion-ease-emphasized) both;
   pointer-events: auto;
   overflow: hidden;
   transition:
-    max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-    border-radius 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    max-height var(--motion-duration-medium) var(--motion-ease-emphasized),
+    border-radius var(--motion-duration-medium) var(--motion-ease-emphasized);
 }
 
 @keyframes dialog-enter {
   from {
     opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
+    transform: translateY(calc(-1 * var(--motion-offset))) scale(0.98);
   }
 }
 
@@ -130,32 +165,30 @@ function handleBackdropClick() {
   pointer-events: auto;
 }
 
-.dialog-card--collapsed .dialog-header {
-  border-bottom: none;
-}
-
 .dialog-header {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
   flex-shrink: 0;
   padding: var(--spacing-lg) var(--spacing-xl) var(--spacing-md);
-  border-bottom: 1px solid var(--color-outline-variant);
 }
 
 .dialog-title {
-  font-size: var(--font-size-xl);
+  font-size: var(--overlay-title-size);
   font-weight: var(--font-weight-semibold);
   flex: 1;
+  letter-spacing: var(--overlay-title-tracking);
 }
 
 .title-spacer {
   flex: 1;
 }
 
+/* Scroll box: its height follows the body (inline style); it may shrink below
+   that when the card hits its max-height, and then scrolls. */
 .dialog-content {
-  display: flex;
-  flex-direction: column;
+  flex: 0 1 auto;
+  min-height: 0;
   overflow-y: auto;
   /* Explicit: an unset overflow-x computes to `auto` alongside overflow-y here
      (CSS Overflow spec), which would silently open a horizontal scrollbar the
@@ -163,16 +196,17 @@ function handleBackdropClick() {
   overflow-x: hidden;
   /* Overscroll stops here — never chains to the page behind the dialog. */
   overscroll-behavior: contain;
-  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-xl) var(--spacing-lg);
-  flex: 1;
-  min-height: 0;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: var(--color-outline-variant) transparent;
   opacity: 1;
+  transition: opacity var(--motion-duration-short) var(--motion-ease-standard);
+}
+
+.dialog-content--glide {
   transition:
-    opacity 0.18s ease-out,
-    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity var(--motion-duration-short) var(--motion-ease-standard),
+    height var(--motion-duration-medium) var(--motion-ease-emphasized);
 }
 
 .dialog-content::-webkit-scrollbar {
@@ -184,10 +218,15 @@ function handleBackdropClick() {
   border-radius: var(--radius-pill);
 }
 
+/* Natural height, never stretched — the measure the scroll box follows */
+.dialog-body {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-xl);
+}
+
 .dialog-card--collapsed .dialog-content {
   opacity: 0;
-  padding-top: 0;
-  padding-bottom: 0;
   flex: 0;
   overflow: hidden;
   pointer-events: none;

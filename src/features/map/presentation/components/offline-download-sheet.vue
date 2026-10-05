@@ -89,14 +89,15 @@ async function start() {
 
 .field-label {
   font-size: var(--font-size-sm);
-  color: var(--color-on-surface-variant);
+  color: var(--field-label-color);
 }
 
 .input {
   padding: var(--spacing-sm);
-  border: 1px solid var(--color-outline, #cbd5e1);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--input-radius);
   font: inherit;
+  background-color: var(--input-bg);
 }
 
 .size {
@@ -105,11 +106,11 @@ async function start() {
 }
 
 .size.warn {
-  color: var(--color-warning, #b45309);
+  color: var(--color-warning-text);
 }
 
 .size.block {
-  color: var(--color-danger, #dc2626);
+  color: var(--color-error);
 }
 
 .note {
@@ -127,14 +128,14 @@ async function start() {
   flex: 1;
   height: 8px;
   border-radius: var(--radius-sm);
-  background-color: var(--color-surface-variant, #e2e8f0);
+  background-color: var(--color-surface-variant);
   overflow: hidden;
 }
 
 .fill {
   height: 100%;
-  background-color: var(--color-accent, #2563eb);
-  transition: width 0.2s;
+  background-color: var(--color-accent);
+  transition: width var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .pct {

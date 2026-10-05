@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ProfileSection } from './profile-overview.vue'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
@@ -10,21 +11,19 @@ import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { InvalidPhoneNumberError, PhoneAlreadyRegisteredError } from '@/core/exceptions'
-import { SUPPORTED_LOCALES } from '@/core/i18n/supported'
 import { offlineBlockedAt } from '@/core/offline/mutate'
 import { isOnline } from '@/core/offline/use-online-status'
-import { formatPhoneForDisplay } from '@/core/utils/phone-normalize'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import CalendarSyncSettings from '@/features/calendar/presentation/components/calendar-sync-settings.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import PhoneVerificationNotice from '@/features/friendships/presentation/components/phone-verification-notice.vue'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
-import { useLocaleStore } from '@/features/i18n/presentation/stores/use-locale-store'
 import NotificationPreferencesSection from '@/features/notifications/presentation/components/notification-preferences-section.vue'
 import { useOnboardingTourStore } from '@/features/onboarding/presentation/stores/onboarding-tour-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 import PhoneVerificationDialog from './phone-verification-dialog.vue'
+import ProfileOverview from './profile-overview.vue'
 
 const emit = defineEmits<{ close: [] }>()
 
@@ -34,21 +33,36 @@ const authStore = useAuthStore()
 const userProfileStore = useUserProfileStore()
 const contactsStore = useContactsStore()
 const toursStore = useToursStore()
-const localeStore = useLocaleStore()
 const friendshipsStore = useFriendshipsStore()
 const onboardingTourStore = useOnboardingTourStore()
 
 const isDesktop = useIsDesktop()
-const isEditing = ref(false)
-// On mobile, editing the profile takes a full-screen page; `editAsPage` also
-// hides the in-form action row (the page's top app bar provides Save/Cancel).
+// The overview shows everything at a glance; each section opens as its own view.
+const view = ref<'overview' | ProfileSection>('overview')
+const isEditing = computed(() => view.value === 'edit')
+// On mobile every section takes a full-screen page (forms get the keyboard's room,
+// the overview sheet keeps its own height); `editAsPage` also hides the in-form
+// action row (the page's top app bar provides Save/Cancel).
 const editAsPage = computed(() => !isDesktop.value && isEditing.value)
+const title = computed(() => ({
+  overview: t('user.profile.title'),
+  edit: t('user.profile.editBtn'),
+  notifications: t('notifications.sectionTitle'),
+  calendar: t('calendar.sync.title'),
+})[view.value])
 
-function handleClose() {
-  if (editAsPage.value)
+function openSection(section: ProfileSection) {
+  if (section === 'edit')
+    startEdit()
+  else
+    view.value = section
+}
+
+function goBack() {
+  if (isEditing.value)
     cancelEdit()
   else
-    emit('close')
+    view.value = 'overview'
 }
 
 const editFirstName = ref('')
@@ -68,35 +82,17 @@ const removePhoneRelationships = ref<{ hasPending: boolean, hasFriendship: boole
 
 const full = computed(() => userProfileStore.fullProfile)
 
-const displayPhoneNumber = computed(() => {
-  const phone = full.value?.phoneNumber
-  if (!phone)
-    return null
-  return formatPhoneForDisplay(phone) || phone
-})
-
-const displayName = computed(() => {
-  const p = full.value
-  if (!p)
-    return authStore.currentUser?.email ?? 'User'
-  if (p.firstName && p.lastName)
-    return `${p.firstName} ${p.lastName}`
-  if (p.firstName)
-    return p.firstName
-  return p.email ?? 'User'
-})
-
 function startEdit() {
   const p = full.value
   editFirstName.value = p?.firstName ?? ''
   editLastName.value = p?.lastName ?? ''
   editPhone.value = p?.phoneNumber ?? ''
   editError.value = null
-  isEditing.value = true
+  view.value = 'edit'
 }
 
 function cancelEdit() {
-  isEditing.value = false
+  view.value = 'overview'
   editError.value = null
 }
 
@@ -124,18 +120,18 @@ async function handleSave() {
     // offline" snackbar fires, and close edit like the non-phone branch.
     if (phoneChanged && phone && !isOnline.value) {
       offlineBlockedAt.value = Date.now()
-      isEditing.value = false
+      view.value = 'overview'
     }
     else if (phoneChanged && phone) {
       // Pre-check availability so user isn't shown the discoverability notice
       // for a number that will be rejected as already registered.
       await userProfileStore.checkPhoneAvailability(phone)
       pendingPhoneForNotice.value = phone
-      isEditing.value = false
+      view.value = 'overview'
       showVerificationNotice.value = true
     }
     else {
-      isEditing.value = false
+      view.value = 'overview'
     }
   }
   catch (err) {
@@ -152,10 +148,6 @@ async function handleSave() {
   finally {
     isSaving.value = false
   }
-}
-
-function handleAddPhone() {
-  startEdit()
 }
 
 // Reopen the onboarding tour: close this sheet so the tour can stage its own
@@ -191,7 +183,7 @@ async function handleNoticeAcknowledged() {
           ? (err as Error).message
           : t('user.profile.saveFailed')
     }
-    isEditing.value = true
+    view.value = 'edit'
   }
   finally {
     isSaving.value = false
@@ -218,7 +210,7 @@ async function executeDeletePhone() {
   isRemovingPhone.value = false
   if (!userProfileStore.error) {
     showRemovePhoneConfirm.value = false
-    isEditing.value = false
+    view.value = 'overview'
   }
   else {
     editError.value = t('user.profile.removePhoneFailed')
@@ -236,209 +228,140 @@ async function handleSignOut() {
 </script>
 
 <template>
-  <AdaptiveOverlay :title="t('user.profile.title')" :page="isEditing" @close="handleClose">
+  <AdaptiveOverlay
+    :title="title"
+    :page="view !== 'overview'"
+    :show-back="view !== 'overview'"
+    @close="emit('close')"
+    @back="goBack"
+  >
     <template v-if="editAsPage" #page-action>
       <BaseButton type="submit" form="profile-edit-form" variant="primary" size="sm" :disabled="isSaving">
         {{ isSaving ? t('user.shared.savingBtn') : t('user.shared.saveBtn') }}
       </BaseButton>
     </template>
 
-    <div class="profile-content">
-      <!-- View mode -->
-      <template v-if="!isEditing">
-        <div class="profile-info">
-          <div class="avatar">
-            {{ displayName.charAt(0).toUpperCase() }}
-          </div>
-          <div class="info">
-            <p class="name">
-              {{ displayName }}
-            </p>
-            <p class="email">
-              {{ full?.email ?? authStore.currentUser?.email ?? '' }}
-            </p>
-          </div>
-        </div>
-
-        <div class="phone-row" data-tour="phone-verification">
-          <template v-if="full?.phoneNumber">
-            <BaseIcon name="phone" class="phone-icon" />
-            <span class="phone-number">{{ displayPhoneNumber }}</span>
-            <BaseTooltip v-if="full.phoneVerified" :text="t('user.profile.verifiedTooltip')">
-              <BaseIcon name="verified" class="verified-icon" />
-            </BaseTooltip>
-            <BaseButton v-else variant="text" size="sm" data-testid="verify-btn" :disabled="!isOnline" @click="startEdit">
-              {{ t('user.profile.verifyBtn') }}
-            </BaseButton>
-          </template>
-          <BaseButton v-else variant="text" size="sm" data-testid="add-phone-btn" :disabled="!isOnline" @click="handleAddPhone">
-            <BaseIcon name="add" />
-            {{ t('user.profile.addPhoneBtn') }}
-          </BaseButton>
-        </div>
-
-        <hr class="divider">
-
-        <!-- Language selector -->
-        <section class="language-section">
-          <h3 class="section-title">
-            {{ t('user.profile.languageLabel') }}
-          </h3>
-          <div class="language-options">
-            <button
-              v-for="loc in SUPPORTED_LOCALES"
-              :key="loc.code"
-              type="button"
-              class="language-option"
-              :class="{ 'language-option--active': localeStore.locale === loc.code }"
-              @click="localeStore.setLocale(loc.code)"
-            >
-              {{ loc.label }}
-            </button>
-          </div>
-        </section>
-
-        <hr class="divider">
-
-        <!-- Notification preferences -->
-        <div data-tour="notifications">
-          <NotificationPreferencesSection />
-        </div>
-
-        <hr class="divider">
-
-        <CalendarSyncSettings />
-
-        <hr class="divider">
-
-        <div class="actions">
-          <BaseButton variant="secondary" class="menu-row" data-testid="edit-profile-btn" @click="startEdit">
-            <BaseIcon name="edit" />
-            {{ t('user.profile.editBtn') }}
-          </BaseButton>
-          <BaseButton variant="secondary" class="menu-row" @click="handleShowTour">
-            <BaseIcon name="tour" />
-            {{ t('onboarding.tour.controls.reopen') }}
-          </BaseButton>
-          <BaseButton variant="danger-outline" class="menu-row" @click="handleSignOut">
-            <BaseIcon name="logout" />
-            {{ t('user.profile.signOutBtn') }}
-          </BaseButton>
-        </div>
-      </template>
+    <!-- Sections push/pop: forward slides in from the right, back from the left. -->
+    <Transition :name="view === 'overview' ? 'view-pop' : 'view-push'" mode="out-in">
+      <ProfileOverview
+        v-if="view === 'overview'"
+        @open="openSection"
+        @show-tour="handleShowTour"
+        @sign-out="handleSignOut"
+      />
+      <NotificationPreferencesSection v-else-if="view === 'notifications'" />
+      <CalendarSyncSettings v-else-if="view === 'calendar'" />
 
       <!-- Edit mode -->
-      <template v-else>
-        <form id="profile-edit-form" class="edit-form" @submit.prevent="handleSave">
-          <div class="field">
-            <label for="edit-first-name" class="label">{{ t('user.shared.firstNameLabel') }}</label>
+      <form v-else id="profile-edit-form" class="edit-form" @submit.prevent="handleSave">
+        <div class="field">
+          <label for="edit-first-name" class="label">{{ t('user.shared.firstNameLabel') }}</label>
+          <input
+            id="edit-first-name"
+            v-model="editFirstName"
+            type="text"
+            class="input"
+            autocomplete="given-name"
+          >
+        </div>
+
+        <div class="field">
+          <label for="edit-last-name" class="label">{{ t('user.shared.lastNameLabel') }}</label>
+          <input
+            id="edit-last-name"
+            v-model="editLastName"
+            type="text"
+            class="input"
+            autocomplete="family-name"
+          >
+        </div>
+
+        <div class="field">
+          <label for="edit-phone" class="label">{{ t('user.shared.phoneLabel') }}
+            <span class="optional">{{ t('user.shared.optional') }}</span></label>
+          <div class="phone-input-row">
             <input
-              id="edit-first-name"
-              v-model="editFirstName"
-              type="text"
+              id="edit-phone"
+              :value="editPhoneFormatted"
+              type="tel"
               class="input"
-              autocomplete="given-name"
+              :placeholder="t('user.shared.phonePlaceholder')"
+              autocomplete="tel"
+              :disabled="!isOnline"
+              @input="onEditPhoneInput"
             >
+            <BaseTooltip v-if="full?.phoneNumber" :text="t('user.profile.removePhoneBtn')">
+              <BaseIconButton
+                name="delete"
+                :label="t('user.profile.removePhoneBtn')"
+                data-testid="remove-phone-btn"
+                shape="square"
+                tone="danger"
+                :disabled="isRemovingPhone || showRemovePhoneConfirm || !isOnline"
+                @click="handleRemovePhone"
+              />
+            </BaseTooltip>
           </div>
+        </div>
 
-          <div class="field">
-            <label for="edit-last-name" class="label">{{ t('user.shared.lastNameLabel') }}</label>
-            <input
-              id="edit-last-name"
-              v-model="editLastName"
-              type="text"
-              class="input"
-              autocomplete="family-name"
+        <!-- Inline remove-phone confirmation (verified only) -->
+        <div v-if="showRemovePhoneConfirm" class="remove-phone-confirm">
+          <div class="remove-phone-warning">
+            <BaseIcon name="warning" class="warn-icon" />
+            <div class="remove-phone-disclaimers">
+              <p class="remove-phone-disclaimer">
+                {{ t('user.profile.removePhoneDisclaimer') }}
+              </p>
+              <p
+                v-if="removePhoneRelationships?.hasFriendship && removePhoneRelationships?.hasPending"
+                class="remove-phone-disclaimer"
+              >
+                {{ t('user.profile.removePhoneBothWarning') }}
+              </p>
+              <p v-else-if="removePhoneRelationships?.hasFriendship" class="remove-phone-disclaimer">
+                {{ t('user.profile.removePhoneFriendshipWarning') }}
+              </p>
+              <p v-else-if="removePhoneRelationships?.hasPending" class="remove-phone-disclaimer">
+                {{ t('user.profile.removePhonePendingWarning') }}
+              </p>
+            </div>
+          </div>
+          <div class="remove-phone-actions">
+            <BaseButton
+              type="button"
+              variant="secondary"
+              size="sm"
+              :disabled="isRemovingPhone"
+              @click="showRemovePhoneConfirm = false"
             >
-          </div>
-
-          <div class="field">
-            <label for="edit-phone" class="label">{{ t('user.shared.phoneLabel') }}
-              <span class="optional">{{ t('user.shared.optional') }}</span></label>
-            <div class="phone-input-row">
-              <input
-                id="edit-phone"
-                :value="editPhoneFormatted"
-                type="tel"
-                class="input"
-                :placeholder="t('user.shared.phonePlaceholder')"
-                autocomplete="tel"
-                :disabled="!isOnline"
-                @input="onEditPhoneInput"
-              >
-              <BaseTooltip v-if="full?.phoneNumber" :text="t('user.profile.removePhoneBtn')">
-                <BaseIconButton
-                  name="delete"
-                  :label="t('user.profile.removePhoneBtn')"
-                  data-testid="remove-phone-btn"
-                  shape="square"
-                  tone="danger"
-                  :disabled="isRemovingPhone || showRemovePhoneConfirm || !isOnline"
-                  @click="handleRemovePhone"
-                />
-              </BaseTooltip>
-            </div>
-          </div>
-
-          <!-- Inline remove-phone confirmation (verified only) -->
-          <div v-if="showRemovePhoneConfirm" class="remove-phone-confirm">
-            <div class="remove-phone-warning">
-              <BaseIcon name="warning" class="warn-icon" />
-              <div class="remove-phone-disclaimers">
-                <p class="remove-phone-disclaimer">
-                  {{ t('user.profile.removePhoneDisclaimer') }}
-                </p>
-                <p
-                  v-if="removePhoneRelationships?.hasFriendship && removePhoneRelationships?.hasPending"
-                  class="remove-phone-disclaimer"
-                >
-                  {{ t('user.profile.removePhoneBothWarning') }}
-                </p>
-                <p v-else-if="removePhoneRelationships?.hasFriendship" class="remove-phone-disclaimer">
-                  {{ t('user.profile.removePhoneFriendshipWarning') }}
-                </p>
-                <p v-else-if="removePhoneRelationships?.hasPending" class="remove-phone-disclaimer">
-                  {{ t('user.profile.removePhonePendingWarning') }}
-                </p>
-              </div>
-            </div>
-            <div class="remove-phone-actions">
-              <BaseButton
-                type="button"
-                variant="secondary"
-                size="sm"
-                :disabled="isRemovingPhone"
-                @click="showRemovePhoneConfirm = false"
-              >
-                {{ t('user.profile.removePhoneCancelBtn') }}
-              </BaseButton>
-              <BaseButton
-                type="button"
-                variant="danger"
-                size="sm"
-                :disabled="isRemovingPhone"
-                @click="executeDeletePhone"
-              >
-                {{ t('user.profile.removePhoneConfirmBtn') }}
-              </BaseButton>
-            </div>
-          </div>
-
-          <p v-if="editError" class="error-text">
-            {{ editError }}
-          </p>
-
-          <div v-if="!editAsPage" class="edit-actions">
-            <BaseButton type="button" variant="secondary" @click="cancelEdit">
-              {{ t('user.shared.cancelBtn') }}
+              {{ t('user.profile.removePhoneCancelBtn') }}
             </BaseButton>
-            <BaseButton type="submit" variant="primary" :disabled="isSaving">
-              {{ isSaving ? t('user.shared.savingBtn') : t('user.shared.saveBtn') }}
+            <BaseButton
+              type="button"
+              variant="danger"
+              size="sm"
+              :disabled="isRemovingPhone"
+              @click="executeDeletePhone"
+            >
+              {{ t('user.profile.removePhoneConfirmBtn') }}
             </BaseButton>
           </div>
-        </form>
-      </template>
-    </div>
+        </div>
+
+        <p v-if="editError" class="error-text">
+          {{ editError }}
+        </p>
+
+        <div v-if="!editAsPage" class="edit-actions">
+          <BaseButton type="button" variant="secondary" @click="cancelEdit">
+            {{ t('user.shared.cancelBtn') }}
+          </BaseButton>
+          <BaseButton type="submit" variant="primary" :disabled="isSaving">
+            {{ isSaving ? t('user.shared.savingBtn') : t('user.shared.saveBtn') }}
+          </BaseButton>
+        </div>
+      </form>
+    </Transition>
   </AdaptiveOverlay>
 
   <PhoneVerificationNotice
@@ -456,132 +379,6 @@ async function handleSignOut() {
 </template>
 
 <style scoped>
-.profile-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xl);
-}
-
-.profile-info {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-}
-
-.avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-round);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-semibold);
-  flex-shrink: 0;
-}
-
-.info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.name {
-  font-weight: var(--font-weight-semibold);
-}
-
-.email {
-  font-size: var(--font-size-sm);
-  color: var(--color-on-surface-variant);
-}
-
-.phone-row {
-  display: flex;
-  justify-content: start;
-  align-items: center;
-  gap: var(--spacing-sm);
-  min-height: 24px;
-  /* Avatar width is 48px */
-  padding-left: calc(48px + var(--spacing-md));
-}
-
-.phone-icon {
-  font-size: var(--icon-size-sm);
-  color: var(--color-on-surface-variant);
-}
-
-.phone-number {
-  font-size: var(--font-size-sm);
-  color: var(--color-on-surface);
-}
-
-.verified-icon {
-  font-size: var(--icon-size-sm);
-  color: var(--color-fab-surface-strong);
-}
-
-.language-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.section-title {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-on-surface-variant);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.language-options {
-  display: flex;
-  gap: var(--spacing-xs);
-  flex-wrap: wrap;
-}
-
-.language-option {
-  padding: var(--spacing-xs) var(--spacing-md);
-  border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-base);
-  color: var(--color-on-surface);
-  transition:
-    border-color 0.15s,
-    color 0.15s;
-}
-
-.language-option:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
-.language-option--active {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  font-weight: var(--font-weight-semibold);
-}
-
-.divider {
-  border: 0;
-  border-top: 1px solid var(--color-outline-variant);
-  margin: 0;
-}
-
-.actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-/* Menu rows are BaseButtons (secondary / danger-outline) laid out as full-width
-   left-aligned list items; only the alignment override lives here. */
-.menu-row {
-  justify-content: flex-start;
-}
-
 /* Edit form */
 .edit-form {
   display: flex;
@@ -598,7 +395,7 @@ async function handleSignOut() {
 .label {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
+  color: var(--field-label-color);
 }
 
 .optional {
@@ -608,16 +405,21 @@ async function handleSignOut() {
 .input {
   padding: var(--spacing-md);
   border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--radius-sm);
+  border-radius: var(--input-radius);
   font-size: var(--font-size-base);
   color: var(--color-on-surface);
-  background-color: var(--color-background);
+  background-color: var(--input-bg);
   outline: none;
-  transition: border-color 0.2s;
+  transition:
+    border-color var(--motion-duration-medium) var(--motion-ease-standard),
+    background-color var(--motion-duration-medium) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .input:focus {
   border-color: var(--color-primary);
+  background-color: var(--input-bg-focus);
+  box-shadow: var(--input-focus-ring);
 }
 
 .error-text {

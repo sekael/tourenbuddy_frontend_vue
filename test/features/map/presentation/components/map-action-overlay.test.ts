@@ -237,13 +237,49 @@ describe('mapActionOverlay', () => {
   })
 
   describe('menu-item layout', () => {
-    it('should have label-chip before icon-fab in DOM order', async () => {
+    it('should put the label before the icon so icons line up above the trigger', async () => {
       const wrapper = mountOverlay()
       await wrapper.find('[aria-haspopup="menu"]').trigger('click')
       const firstItem = wrapper.find('[role="menuitem"]')
       const children = firstItem.element.children
-      expect(children[0]!.classList.contains('label-chip')).toBe(true)
-      expect(children[1]!.classList.contains('icon-fab')).toBe(true)
+      expect(children[0]!.classList.contains('label')).toBe(true)
+      expect(children[1]!.classList.contains('icon-wrap')).toBe(true)
+    })
+
+    it('should check exactly the current base map among the options', async () => {
+      const wrapper = mountOverlay()
+      ;(wrapper.vm as unknown as { openBaseMap: () => void }).openBaseMap()
+      await wrapper.vm.$nextTick()
+      const options = wrapper.findAll('[role="menuitemradio"]')
+      expect(options.length).toBeGreaterThan(1)
+      expect(options.map(o => o.attributes('aria-checked'))).toEqual(
+        options.map((_, i) => String(i === 0)),
+      )
+    })
+  })
+
+  describe('base-map options', () => {
+    async function openOptions() {
+      const wrapper = mountOverlay()
+      await wrapper.find('[aria-haspopup="menu"]').trigger('click')
+      await wrapper.find('[data-tour="menu-base-map"]').trigger('click')
+      return wrapper
+    }
+
+    it('should unfold beside the base-map item while the rest of the menu stays, inert', async () => {
+      const wrapper = await openOptions()
+      const slot = wrapper.find('[data-tour="menu-base-map"]').element.parentElement!
+      expect(slot.querySelector('[data-tour="basemap"]')).not.toBeNull()
+      const items = wrapper.findAll('#speed-dial-menu > .item-slot > [role="menuitem"]')
+      expect(items.length).toBeGreaterThan(1)
+      expect(items.every(i => i.attributes('inert') !== undefined)).toBe(true)
+    })
+
+    it('should collapse the whole menu once a base map is chosen', async () => {
+      const wrapper = await openOptions()
+      await wrapper.findAll('[role="menuitemradio"]')[1]!.trigger('click')
+      expect(wrapper.find('#speed-dial-menu').exists()).toBe(false)
+      expect(wrapper.find('[data-tour="basemap"]').exists()).toBe(false)
     })
   })
 })

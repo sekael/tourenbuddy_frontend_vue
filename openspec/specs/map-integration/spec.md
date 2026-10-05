@@ -298,12 +298,14 @@ surface SHALL NOT reach the map.
 
 ### Requirement: Map action overlay with FABs
 
-The map page SHALL display floating action buttons in the bottom-right speed dial for: base map style picker, user profile, contacts, and feedback. The previously top-level Tours and Add-tour FABs SHALL NOT be part of the speed dial — they are owned by the persistent bottom-center tour action bar. The speed-dial trigger SHALL be disabled while any overlay is active (`activeOverlay !== null`).
+The map page SHALL display entries in the bottom-right speed dial for: feedback, base map style picker, offline maps, user profile, and contacts. The previously top-level Tours and Add-tour FABs SHALL NOT be part of the speed dial — they are owned by the persistent bottom-center tour action bar. The speed-dial trigger SHALL be disabled while any overlay is active (`activeOverlay !== null`).
 
 #### Scenario: Style picker button
 
 - **WHEN** the user clicks the style picker entry in the speed-dial menu
-- **THEN** a popup panel SHALL appear listing available map styles with a checkmark on the active one
+- **THEN** the menu SHALL stay open with its other entries dimmed and inert
+- **AND** the available map styles SHALL unfold beside the style picker entry, the active one checked
+- **AND** choosing a style, or tapping anywhere outside the styles, SHALL close the whole menu
 
 #### Scenario: User profile button
 
@@ -371,48 +373,37 @@ A Pinia store (`useMapStore`) SHALL manage map-related state: `isPickingLocation
 - **THEN** `mapStore.selectTour(tourId)` SHALL be called and `TourListSheet` SHALL emit `close`
 - **AND** the existing map-page reaction to `selectedTourId` SHALL open `TourInfoSheet` and fly the camera to the tour's goal
 
-## MODIFIED Requirements
-
 ### Requirement: Map action overlay icons
 
-The speed-dial action overlay SHALL display FABs with Material Symbols icons: `map` for base map picker, `person` for profile, `group` for contacts, and `feedback` for feedback. FABs SHALL use glassmorphism styling (semi-transparent background with backdrop blur) for visual separation from map content.
+Each speed-dial entry SHALL show its label followed by a Material Symbols icon: `feedback` for feedback, `map` for the base map picker, `download_for_offline` for offline maps, `account_circle` for profile, and `group` for contacts. Every entry, the trigger, and the compass SHALL wear the shared map-control glass surface (semi-transparent brand fill with backdrop blur) for visual separation from map content.
 
 #### Scenario: FABs display Material Symbols
 
-- **WHEN** the map page loads with the action overlay visible
-- **THEN** each FAB displays its corresponding Material Symbol icon instead of emoji
+- **WHEN** the speed-dial menu is open in portrait
+- **THEN** each entry shows its label followed by its Material Symbol icon, the icons aligned on the trigger's axis
 
 #### Scenario: FABs have glass effect
 
 - **WHEN** the map action overlay is visible over map content
-- **THEN** FAB backgrounds are semi-transparent with a blur effect
+- **THEN** entry backgrounds are semi-transparent with a blur effect
 
 ### Requirement: Base map picker styling
 
-The base map picker dropdown SHALL have a glassmorphism background, updated shadow (`--shadow-lg`), and `--color-outline-variant` border. Menu items SHALL use `--color-on-surface` text with hover highlighting.
+The base map options SHALL render as the same glass pills as the speed-dial entries (label, then icon). The active style SHALL show a check icon and the stronger glass fill; the others show the `map` icon.
 
 #### Scenario: Map picker dropdown renders with glass effect
 
-- **WHEN** user opens the base map picker menu
-- **THEN** the dropdown has a semi-transparent blurred background with subtle border
+- **WHEN** the user opens the base map options
+- **THEN** each option is a glass pill with white label and icon over a semi-transparent blurred background, and exactly the active style is checked
 
 ### Requirement: Location picker button styling
 
-The location picker cancel and continue buttons SHALL use the updated button styling conventions. Cancel uses secondary style, continue uses primary style. Both SHALL have 12px border-radius.
+The location picker and the offline-region drawing SHALL use the shared `Button` for their actions: Cancel (and Redraw) as the tonal secondary variant lifted off the map with `--shadow-md`, Continue as the primary variant, all with pill corners.
 
 #### Scenario: Location picker buttons render with updated styling
 
 - **WHEN** the location picker is active
-- **THEN** cancel and continue buttons display with the modern button styles
-
-### Requirement: Round action button size and style
-
-The round action button (FAB) component SHALL be 52px diameter (increased from 48px) with `--shadow-md` layered shadow. It SHALL accept Material Symbols icon content via its default slot.
-
-#### Scenario: FAB renders at updated size
-
-- **WHEN** a round action button is rendered
-- **THEN** it is 52x52px with a layered shadow
+- **THEN** Cancel renders as a tonal secondary pill with a shadow and Continue as a primary pill
 
 ### Requirement: Map action overlay exposes a feedback entry point
 

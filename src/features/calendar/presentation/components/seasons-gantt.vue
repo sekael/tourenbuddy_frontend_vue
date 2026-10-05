@@ -259,7 +259,7 @@ html.scroll-locked .gantt-track {
   text-align: left;
   border-bottom: 1px solid var(--color-outline-variant);
   cursor: pointer;
-  transition: background-color 0.15s;
+  transition: background-color var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .gantt-tour-row:hover {

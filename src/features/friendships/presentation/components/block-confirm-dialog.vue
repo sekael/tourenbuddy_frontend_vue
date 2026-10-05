@@ -115,11 +115,11 @@ function handleConfirm() {
 
 .report-input {
   border: 1px solid var(--color-outline-variant);
-  border-radius: var(--radius-sm);
+  border-radius: var(--input-radius);
   padding: var(--spacing-sm);
   font-size: var(--font-size-sm);
   color: var(--color-on-surface);
-  background-color: var(--color-surface);
+  background-color: var(--input-bg);
   resize: vertical;
   width: 100%;
 }

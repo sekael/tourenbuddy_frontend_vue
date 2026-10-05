@@ -139,7 +139,7 @@ async function handleResend() {
             </form>
 
             <BaseButton
-              variant="text"
+              variant="secondary"
               size="sm"
               :disabled="isResending || resendCooldown > 0"
               @click="handleResend"
@@ -209,7 +209,7 @@ async function handleResend() {
           </form>
 
           <BaseButton
-            variant="text"
+            variant="secondary"
             size="sm"
             :disabled="isResending || resendCooldown > 0"
             @click="handleResend"
@@ -236,9 +236,9 @@ async function handleResend() {
   align-items: flex-end;
   justify-content: center;
   z-index: 120;
-  background: rgba(15, 23, 42, 0.35);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  background: var(--color-backdrop);
+  backdrop-filter: blur(var(--overlay-backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--overlay-backdrop-blur));
 }
 
 .dialog-content {
@@ -267,22 +267,27 @@ async function handleResend() {
 .label {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
+  color: var(--field-label-color);
 }
 
 .input {
   padding: var(--spacing-md);
   border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--radius-sm);
+  border-radius: var(--input-radius);
   font-size: var(--font-size-base);
   color: var(--color-on-surface);
-  background-color: var(--color-background);
+  background-color: var(--input-bg);
   outline: none;
-  transition: border-color 0.2s;
+  transition:
+    border-color var(--motion-duration-medium) var(--motion-ease-standard),
+    background-color var(--motion-duration-medium) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .input:focus {
   border-color: var(--color-primary);
+  background-color: var(--input-bg-focus);
+  box-shadow: var(--input-focus-ring);
 }
 
 .otp-input {
@@ -297,7 +302,7 @@ async function handleResend() {
 }
 
 .success-text {
-  color: var(--color-success);
+  color: var(--color-success-text);
   font-size: var(--font-size-sm);
 }
 
@@ -310,12 +315,12 @@ async function handleResend() {
 }
 
 .verified-icon {
-  color: var(--color-success);
+  color: var(--color-success-text);
 }
 
 .verified-text {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-medium);
-  color: var(--color-success);
+  color: var(--color-success-text);
 }
 </style>

@@ -69,10 +69,14 @@ function onLabelChange(event: Event) {
 </template>
 
 <style scoped>
+/* Every feed is a tile; a failing one turns to the error container */
 .feed {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-xs) var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface-variant);
 }
 
 .feed-main {
@@ -106,9 +110,6 @@ function onLabelChange(event: Event) {
 }
 
 .feed--error {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-left: 3px solid var(--color-error);
-  border-radius: var(--radius-sm);
   background-color: var(--color-error-container);
 }
 
@@ -116,7 +117,7 @@ function onLabelChange(event: Event) {
   display: flex;
   gap: var(--spacing-xxs);
   align-items: flex-start;
-  color: var(--color-error);
+  color: var(--color-error-text);
   white-space: normal;
 }
 </style>

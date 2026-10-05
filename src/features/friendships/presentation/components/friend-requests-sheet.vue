@@ -186,19 +186,27 @@ async function handleCancel(requestId: string) {
     @back="emit('back')"
   >
     <div class="content">
-      <div class="tab-bar" data-tour="friend-requests">
+      <div
+        class="tab-bar"
+        role="tablist"
+        data-tour="friend-requests"
+        data-tab-indicator
+        :style="{ '--tab-index': activeTab === 'blocked' ? 1 : 0, '--tab-count': 2 }"
+      >
         <button
           type="button"
+          role="tab"
           class="tab-btn"
-          :class="{ 'tab-btn--active': activeTab === 'pending' }"
+          :aria-selected="activeTab === 'pending'"
           @click="activeTab = 'pending'"
         >
-          {{ t('friendships.friendsListLink') }}
+          {{ t('friendships.requestsTab') }}
         </button>
         <button
           type="button"
+          role="tab"
           class="tab-btn"
-          :class="{ 'tab-btn--active': activeTab === 'blocked' }"
+          :aria-selected="activeTab === 'blocked'"
           @click="activeTab = 'blocked'"
         >
           {{ t('blocks.tabLabel') }}
@@ -376,30 +384,6 @@ async function handleCancel(requestId: string) {
   gap: var(--spacing-xl);
 }
 
-.tab-bar {
-  display: flex;
-  gap: var(--spacing-xs);
-  border-bottom: 1px solid var(--color-outline-variant);
-  margin-bottom: calc(-1 * var(--spacing-md));
-}
-
-.tab-btn {
-  padding: var(--spacing-sm) var(--spacing-md);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  transition:
-    color 0.15s,
-    border-color 0.15s;
-}
-
-.tab-btn--active {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
-}
-
 .deny-rights-note {
   display: flex;
   align-items: flex-start;
@@ -446,11 +430,10 @@ async function handleCancel(requestId: string) {
 }
 
 .section-title {
-  font-size: var(--font-size-xs, 11px);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-on-surface-variant);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: var(--heading-section-size);
+  font-weight: var(--heading-section-weight);
+  color: var(--heading-section-color);
+  letter-spacing: var(--heading-section-tracking);
 }
 
 .empty-state {
@@ -472,8 +455,7 @@ async function handleCancel(requestId: string) {
   align-items: stretch;
   gap: var(--spacing-sm);
   padding: var(--spacing-md);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--card-radius);
   background-color: var(--color-surface);
   container-type: inline-size;
 }
@@ -506,7 +488,7 @@ async function handleCancel(requestId: string) {
 }
 
 .request-phone-sub {
-  font-size: var(--font-size-xs, 11px);
+  font-size: var(--font-size-xs);
   color: var(--color-on-surface-variant);
 }
 

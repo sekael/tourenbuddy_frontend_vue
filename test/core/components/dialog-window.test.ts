@@ -1,5 +1,6 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import DialogWindow from '@/core/components/dialog-window.vue'
 
 describe('dialogWindow', () => {
@@ -64,5 +65,35 @@ describe('dialogWindow', () => {
   it('should label the close button with "Close"', () => {
     const wrapper = mount(DialogWindow, { props: { title: 'Test' } })
     expect(wrapper.find('[aria-label="Close"]').attributes('aria-label')).toBe('Close')
+  })
+
+  describe('content-driven height', () => {
+    let resize: (height: number) => void
+    beforeEach(() => {
+      vi.stubGlobal('ResizeObserver', class {
+        constructor(cb: ResizeObserverCallback) {
+          resize = h => cb([{ borderBoxSize: [{ blockSize: h }] } as unknown as ResizeObserverEntry], this as unknown as ResizeObserver)
+        }
+
+        observe() {}
+        disconnect() {}
+      })
+    })
+    afterEach(() => vi.unstubAllGlobals())
+
+    it('should follow the content down when it shrinks, rounding subpixels up', async () => {
+      const wrapper = mount(DialogWindow, { props: { title: 'Test' } })
+      resize(500)
+      resize(320.4)
+      await nextTick()
+      expect(wrapper.find('.dialog-content').attributes('style')).toContain('height: 321px')
+    })
+
+    it('should drop the content height while collapsed', async () => {
+      const wrapper = mount(DialogWindow, { props: { title: 'Test' } })
+      resize(400)
+      await wrapper.setProps({ collapsed: true })
+      expect(wrapper.find('.dialog-content').attributes('style') ?? '').not.toContain('height')
+    })
   })
 })

@@ -14,7 +14,7 @@ defineEmits<{ toggle: [] }>()
 <template>
   <div class="wrap">
     <button
-      class="fab"
+      class="fab fab-glass"
       :class="{ open: isOpen }"
       data-tour="open-menu"
       aria-haspopup="menu"
@@ -42,35 +42,44 @@ defineEmits<{ toggle: [] }>()
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background-color: color-mix(in srgb, var(--color-fab-surface) 85%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid var(--color-fab-border);
-  box-shadow: var(--shadow-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-fab-on-surface);
   transition:
-    background-color 0.2s,
-    box-shadow 0.2s,
-    transform 0.15s;
+    background-color var(--motion-duration-medium) var(--motion-ease-standard),
+    opacity var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-short) var(--motion-ease-spring);
 }
 
-.fab:hover {
-  background-color: color-mix(in srgb, var(--color-fab-surface-strong) 85%, transparent);
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-1px);
+.fab:hover,
+.fab.open {
+  background-color: var(--color-fab-glass-strong);
 }
 
+.fab:active:not(:disabled) {
+  transform: scale(var(--press-scale));
+}
+
+/* Menu ⇄ close: the glyphs cross-fade while turning a quarter, so the button
+   reads as one control changing state rather than two icons swapping. */
 .icon {
   position: absolute;
-  transition: opacity 0.25s ease;
+  transition:
+    opacity var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-medium) var(--motion-ease-emphasized);
 }
 
 .icon.hidden {
   opacity: 0;
   pointer-events: none;
+}
+
+.icon-menu.hidden {
+  transform: rotate(90deg) scale(0.8);
+}
+
+.icon-close.hidden {
+  transform: rotate(-90deg) scale(0.8);
 }
 
 .dot {
@@ -80,7 +89,7 @@ defineEmits<{ toggle: [] }>()
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background-color: var(--color-primary);
+  background-color: var(--color-fab-on-surface);
   border: 2px solid var(--color-fab-surface);
   pointer-events: none;
 }

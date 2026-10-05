@@ -64,7 +64,7 @@ const { needRefresh, accept, dismiss } = usePwaUpdate()
 
 .banner-enter-active,
 .banner-leave-active {
-  transition: transform 0.3s ease;
+  transition: transform var(--motion-duration-long) var(--motion-ease-standard);
 }
 
 .banner-enter-from,

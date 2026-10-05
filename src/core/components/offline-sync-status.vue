@@ -115,7 +115,7 @@ function reasonText(entry: WriteQueueEntry): string | null {
   <Transition name="sync-toast">
     <div
       v-if="pendingCount > 0"
-      class="sync-chip"
+      class="sync-chip fab-glass"
       role="status"
       :aria-label="t('offlineSync.pendingCount', { count: pendingCount })"
     >
@@ -196,7 +196,7 @@ function reasonText(entry: WriteQueueEntry): string | null {
 <style scoped>
 .sync-toast {
   position: fixed;
-  bottom: calc(var(--spacing-xl) + var(--safe-bottom, 0px));
+  bottom: calc(var(--spacing-xl) + var(--safe-bottom));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -204,8 +204,8 @@ function reasonText(entry: WriteQueueEntry): string | null {
   gap: var(--spacing-xs);
   padding: var(--spacing-xs) var(--spacing-md);
   border-radius: var(--radius-lg);
-  background: var(--color-slate-800, #1e293b);
-  color: white;
+  background: var(--color-inverse-surface);
+  color: var(--color-on-inverse-surface);
   font-size: 0.8125rem;
   font-weight: 500;
   box-shadow: var(--shadow-md);
@@ -215,7 +215,7 @@ function reasonText(entry: WriteQueueEntry): string | null {
 
 /* Pending-text snackbar sits just above the saved toast slot so both can show at once. */
 .sync-toast--pending {
-  bottom: calc(var(--spacing-xl) + var(--safe-bottom, 0px) + 3rem);
+  bottom: calc(var(--spacing-xl) + var(--safe-bottom) + 3rem);
 }
 
 /* Persistent icon+count chip, bottom-left, stacked just above the offline chip
@@ -223,17 +223,14 @@ function reasonText(entry: WriteQueueEntry): string | null {
 .sync-chip {
   position: fixed;
   left: var(--spacing-md);
-  bottom: calc(var(--spacing-md) + var(--safe-bottom, 0px) + 3rem);
+  bottom: calc(var(--spacing-md) + var(--safe-bottom) + 3rem);
   display: flex;
   align-items: center;
   gap: var(--spacing-xxs);
   padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: var(--radius-lg);
-  background: var(--color-slate-800, #1e293b);
-  color: white;
   font-size: 0.8125rem;
   font-weight: 600;
-  box-shadow: var(--shadow-md);
   z-index: 191;
 }
 
@@ -248,7 +245,7 @@ function reasonText(entry: WriteQueueEntry): string | null {
    // drain-connectivity fix, being offline WITH a dead letter is rare and transient. */
 .sync-deadletter {
   position: fixed;
-  bottom: calc(var(--spacing-md) + var(--safe-bottom, 0px));
+  bottom: calc(var(--spacing-md) + var(--safe-bottom));
   left: var(--spacing-md);
   display: flex;
   align-items: center;
@@ -256,8 +253,8 @@ function reasonText(entry: WriteQueueEntry): string | null {
   padding: var(--spacing-xs);
   border: none;
   border-radius: var(--radius-lg);
-  background: var(--color-amber-600, #d97706);
-  color: white;
+  background: var(--color-warning-strong);
+  color: var(--color-on-warning);
   font-size: 0.8125rem;
   font-weight: 500;
   box-shadow: var(--shadow-md);
@@ -265,12 +262,12 @@ function reasonText(entry: WriteQueueEntry): string | null {
   max-width: 90vw;
   cursor: pointer;
   transition:
-    bottom 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-    padding 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    bottom var(--motion-duration-medium) var(--motion-ease-emphasized),
+    padding var(--motion-duration-medium) var(--motion-ease-emphasized);
 }
 
 .sync-deadletter--expanded {
-  bottom: calc(var(--spacing-md) + var(--safe-bottom, 0px) + 6rem);
+  bottom: calc(var(--spacing-md) + var(--safe-bottom) + 6rem);
   padding: var(--spacing-xs) var(--spacing-md);
 }
 
@@ -284,8 +281,8 @@ function reasonText(entry: WriteQueueEntry): string | null {
   overflow: hidden;
   white-space: nowrap;
   transition:
-    max-width 0.25s ease,
-    opacity 0.2s ease;
+    max-width var(--motion-duration-medium) var(--motion-ease-emphasized),
+    opacity var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .sync-deadletter--expanded .dl-body {
@@ -298,7 +295,7 @@ function reasonText(entry: WriteQueueEntry): string | null {
 }
 
 .sync-deadletter .dl-review {
-  color: white;
+  color: inherit;
   text-decoration: underline;
   cursor: pointer;
 }
@@ -313,7 +310,7 @@ function reasonText(entry: WriteQueueEntry): string | null {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  background: var(--color-backdrop-strong, rgba(15, 23, 42, 0.45));
+  background: var(--color-backdrop-strong);
 }
 
 @media (min-width: 600px) {
@@ -334,7 +331,7 @@ function reasonText(entry: WriteQueueEntry): string | null {
 .deadletter-empty {
   padding: var(--spacing-md) 0;
   font-size: 0.875rem;
-  color: var(--color-slate-500, #64748b);
+  color: var(--color-on-surface-variant);
   text-align: center;
 }
 
@@ -345,7 +342,7 @@ function reasonText(entry: WriteQueueEntry): string | null {
   gap: var(--spacing-md);
   padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--radius-md);
-  background: var(--color-slate-100, #f1f5f9);
+  background: var(--color-surface-variant);
 }
 
 .deadletter-item .meta {
@@ -356,7 +353,7 @@ function reasonText(entry: WriteQueueEntry): string | null {
 
 .deadletter-item .reason {
   font-size: 0.75rem;
-  color: var(--color-amber-700, #b45309);
+  color: var(--color-warning-text);
 }
 
 .deadletter-item .actions {
@@ -369,22 +366,22 @@ function reasonText(entry: WriteQueueEntry): string | null {
   align-items: center;
   gap: var(--spacing-xxs);
   padding: var(--spacing-xxs) var(--spacing-sm);
-  border: 1px solid var(--color-slate-300, #cbd5e1);
+  border: 1px solid var(--color-outline-variant);
   border-radius: var(--radius-sm);
-  background: white;
+  background: var(--color-background);
   font-size: 0.8125rem;
   cursor: pointer;
 }
 
 .deadletter-item .discard {
-  color: var(--color-red-600, #dc2626);
+  color: var(--color-error);
 }
 
 .sync-toast-enter-active,
 .sync-toast-leave-active {
   transition:
-    opacity 0.2s ease,
-    transform 0.2s ease;
+    opacity var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-medium) var(--motion-ease-spring);
 }
 
 .sync-toast-enter-from,

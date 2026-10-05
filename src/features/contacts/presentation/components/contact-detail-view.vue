@@ -28,6 +28,8 @@ const props = defineProps<{
    *  bottom Save/Cancel bar — the page's top app bar supplies both.
    */
   embedded?: boolean
+  /** The host overlay renders title/back/Edit in its own header (no second header row). */
+  headerless?: boolean
 }>()
 
 const emit = defineEmits<{ back: [], deleted: [], editContact: [contact: Contact] }>()
@@ -625,7 +627,7 @@ defineExpose({
 <template>
   <div class="detail-view">
     <!-- Header (suppressed when embedded — the page's top app bar replaces it) -->
-    <div v-if="!embedded" class="detail-header">
+    <div v-if="!embedded && !headerless" class="detail-header">
       <BaseIconButton name="arrow_back" :label="t('core.drawer.back')" size="sm" data-testid="back-btn" @click="emit('back')" />
       <span class="detail-title">{{ t('contacts.detailView.title') }}</span>
       <BaseButton v-if="mode === 'view'" variant="primary-outline" size="sm" data-testid="edit-contact-btn" @click="enterEditMode">
@@ -754,7 +756,7 @@ defineExpose({
           </div>
 
           <!-- View mode: read-only -->
-          <div v-if="mode === 'view'" class="method-fields">
+          <div v-if="mode === 'view'" class="method-fields method-fields--view">
             <span class="view-value">{{ methodDisplayValue(method) }}</span>
             <span v-if="method.label" class="view-label-sm">{{ method.label }}</span>
           </div>
@@ -892,7 +894,7 @@ defineExpose({
         </div>
 
         <!-- View mode: read-only -->
-        <div v-if="mode === 'view'" class="method-fields">
+        <div v-if="mode === 'view'" class="method-fields method-fields--view">
           <span class="view-value">{{ method.value }}</span>
           <span v-if="method.label" class="view-label-sm">{{ method.label }}</span>
         </div>
@@ -1162,7 +1164,6 @@ defineExpose({
   flex-direction: column;
   gap: var(--spacing-sm);
   padding-bottom: var(--spacing-md);
-  border-bottom: 1px solid var(--color-outline-variant);
 }
 
 .section:last-child {
@@ -1173,11 +1174,10 @@ defineExpose({
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: var(--heading-section-size);
+  font-weight: var(--heading-section-weight);
+  color: var(--heading-section-color);
+  letter-spacing: var(--heading-section-tracking);
 }
 
 .view-row {
@@ -1187,7 +1187,7 @@ defineExpose({
 }
 
 .view-label {
-  font-size: var(--font-size-xs, 11px);
+  font-size: var(--font-size-xs);
   color: var(--color-on-surface-variant);
 }
 
@@ -1197,7 +1197,7 @@ defineExpose({
 }
 
 .view-label-sm {
-  font-size: var(--font-size-xs, 11px);
+  font-size: var(--font-size-xs);
   color: var(--color-on-surface-variant);
 }
 
@@ -1209,7 +1209,7 @@ defineExpose({
 
 .label {
   font-size: var(--font-size-sm);
-  color: var(--color-on-surface-variant);
+  color: var(--field-label-color);
 }
 
 .required {
@@ -1219,16 +1219,21 @@ defineExpose({
 .input {
   padding: var(--spacing-sm) var(--spacing-md);
   border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--radius-sm);
+  border-radius: var(--input-radius);
   font-size: var(--font-size-base);
   color: var(--color-on-surface);
-  background-color: var(--color-background);
+  background-color: var(--input-bg);
   outline: none;
-  transition: border-color 0.2s;
+  transition:
+    border-color var(--motion-duration-medium) var(--motion-ease-standard),
+    background-color var(--motion-duration-medium) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .input:focus {
   border-color: var(--color-primary);
+  background-color: var(--input-bg-focus);
+  box-shadow: var(--input-focus-ring);
 }
 
 .input-sm {
@@ -1244,8 +1249,8 @@ defineExpose({
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: var(--font-size-xs, 11px);
-  color: var(--color-warning);
+  font-size: var(--font-size-xs);
+  color: var(--color-warning-text);
 }
 
 .warn-icon {
@@ -1308,7 +1313,7 @@ defineExpose({
   color: var(--color-outline-variant);
   flex-shrink: 0;
   margin-top: 4px;
-  transition: color 0.15s;
+  transition: color var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .primary-star .base-icon {
@@ -1346,6 +1351,14 @@ button.primary-star:hover {
   flex-direction: column;
   gap: var(--spacing-xs);
   min-width: 0;
+}
+
+/* Read-only value centres on the badge and star (edit mode stays top-aligned
+   with its inputs) */
+.method-fields--view {
+  min-height: 40px;
+  justify-content: center;
+  gap: 0;
 }
 
 .method-actions {
@@ -1393,7 +1406,7 @@ button.primary-star:hover {
   border: 1.5px solid var(--color-outline-variant);
   font-size: var(--font-size-sm);
   color: var(--color-on-surface-variant);
-  transition: all 0.15s;
+  transition: all var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .type-btn .base-icon {
@@ -1413,7 +1426,6 @@ button.primary-star:hover {
 }
 
 .section--actions {
-  border-bottom: 1px solid var(--color-outline-variant);
 }
 
 .form-actions {

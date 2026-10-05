@@ -36,75 +36,78 @@ const buttonClasses = computed(() => [`base-button--${variant.value}`, `base-but
   gap: var(--spacing-xs);
   font-family: inherit;
   font-weight: var(--font-weight-semibold);
-  /* Uniform 1px border on EVERY variant so filled and outlined variants share
-     identical geometry — border adds to auto height, so without this a bordered
-     variant renders 2px taller than a borderless one. Outline variants only set
-     border-color below. */
+  letter-spacing: -0.01em;
+  /* Uniform 1px border on EVERY variant keeps identical geometry wherever a
+     consumer adds a visible border. */
   border: 1px solid transparent;
   border-radius: var(--button-radius);
   transition:
-    background-color 0.2s,
-    transform 0.15s,
-    opacity 0.15s;
+    background-color var(--motion-duration-medium) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-short) var(--motion-ease-spring),
+    opacity var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .base-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
-/* Variants */
+.base-button:active:not(:disabled) {
+  transform: scale(var(--press-scale));
+}
+
+/* Filled — the one decisive action, with a soft glow in its own hue */
 .base-button--primary {
   background-color: var(--color-primary);
   color: var(--color-on-primary);
+  box-shadow: 0 6px 16px -6px rgba(37, 99, 235, 0.5);
 }
 
 .base-button--primary:hover:not(:disabled) {
-  transform: scale(1.02);
-}
-
-.base-button--primary-outline {
-  background-color: transparent;
-  color: var(--color-primary);
-  border-color: var(--color-primary);
-}
-
-.base-button--primary-outline:hover:not(:disabled) {
-  background-color: color-mix(in srgb, var(--color-primary) 8%, transparent);
-}
-
-.base-button--secondary {
-  background-color: transparent;
-  color: var(--color-on-surface);
-  border-color: var(--color-outline-variant);
-}
-
-.base-button--secondary:hover:not(:disabled) {
-  background-color: var(--color-surface-variant);
+  background-color: var(--color-primary-dark);
 }
 
 .base-button--danger {
   background-color: var(--color-error);
   color: var(--color-on-error);
+  box-shadow: 0 6px 16px -6px rgba(220, 38, 38, 0.45);
 }
 
 .base-button--danger:hover:not(:disabled) {
-  transform: scale(1.02);
+  background-color: var(--color-error-strong);
+}
+
+/* Tonal — everything else. The container fill separates the button from a white
+   sheet or a tinted card; labels stay ≥ 4.5:1 on the hover fill too. */
+.base-button--secondary {
+  background-color: var(--color-secondary-container);
+  color: var(--color-on-secondary-container);
+}
+
+.base-button--primary-outline {
+  background-color: var(--color-secondary-container);
+  color: var(--color-primary-dark);
+}
+
+.base-button--secondary:hover:not(:disabled),
+.base-button--primary-outline:hover:not(:disabled) {
+  background-color: var(--color-secondary-container-hover);
 }
 
 .base-button--danger-outline {
-  background-color: transparent;
-  color: var(--color-error);
-  border-color: var(--color-error);
+  background-color: var(--color-error-container);
+  color: var(--color-error-text);
 }
 
 .base-button--danger-outline:hover:not(:disabled) {
-  background-color: color-mix(in srgb, var(--color-error) 8%, transparent);
+  background-color: color-mix(in srgb, var(--color-error) 16%, var(--color-background));
 }
 
 .base-button--text {
   background-color: transparent;
-  color: var(--color-on-surface-variant);
+  color: var(--color-primary);
 }
 
 .base-button--text:hover:not(:disabled) {
@@ -115,15 +118,18 @@ const buttonClasses = computed(() => [`base-button--${variant.value}`, `base-but
 .base-button--sm {
   padding: var(--button-padding-sm);
   font-size: var(--button-font-size-sm);
+  min-height: 36px;
 }
 
 .base-button--md {
   padding: var(--button-padding-md);
   font-size: var(--button-font-size-md);
+  min-height: 48px;
 }
 
 .base-button--lg {
   padding: var(--button-padding-lg);
   font-size: var(--button-font-size-lg);
+  min-height: 56px;
 }
 </style>

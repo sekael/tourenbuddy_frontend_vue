@@ -58,8 +58,8 @@ onBeforeUnmount(() => props.map?.off('move', sync))
 <style scoped>
 .outline {
   position: absolute;
-  border: 2px solid var(--color-accent, #2563eb);
-  background-color: color-mix(in srgb, var(--color-accent, #2563eb) 18%, transparent);
+  border: 2px solid var(--color-accent);
+  background-color: color-mix(in srgb, var(--color-accent) 18%, transparent);
   pointer-events: none;
   /* Below the download sheet (.sheet-container z-index: 50) and tour pill (.pill z-index: 15)
     the outline is map furniture, it must sit under the dialog, above the tiles. */

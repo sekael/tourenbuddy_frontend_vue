@@ -51,15 +51,15 @@ function handleClick(event: MouseEvent) {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-pill);
+  padding: var(--chip-padding);
+  border-radius: var(--chip-radius);
   border: 1.5px solid var(--color-outline-variant);
   background-color: transparent;
-  color: var(--color-on-surface);
-  font-size: var(--font-size-sm);
+  color: var(--chip-color);
+  font-size: var(--chip-font-size);
   font-weight: var(--font-weight-medium);
-  min-height: 44px;
-  transition: all 0.15s;
+  min-height: var(--chip-min-height);
+  transition: all var(--motion-duration-short) var(--motion-ease-standard);
   cursor: pointer;
 }
 
@@ -68,9 +68,9 @@ function handleClick(event: MouseEvent) {
 }
 
 .chip.selected {
-  background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  background-color: var(--chip-selected-bg);
+  border-color: var(--chip-selected-border-color);
+  color: var(--chip-selected-color);
 }
 
 .check-icon {

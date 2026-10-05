@@ -79,7 +79,7 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
 
     <BaseTooltip v-if="showCompass" :text="t('map.overlay.compassTooltip')">
       <button
-        class="compass-fab"
+        class="compass-fab fab-glass"
         @click="emit('resetBearing')"
       >
         <BaseIcon
@@ -90,21 +90,23 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
       </button>
     </BaseTooltip>
 
-    <Transition name="panel">
+    <!-- Base-map options unfold beside "Change base map"; the menu stays open but
+         inert behind them, and everything closes together. -->
+    <Transition name="dial">
       <MapSpeedDialMenu
-        v-if="view === 'menu'"
+        v-if="isOpen"
         ref="menuRef"
         :items="menuItems"
+        :expanded="view === 'base-map' ? 'base-map' : null"
         @select="onMenuSelect"
-      />
-    </Transition>
-
-    <Transition name="panel">
-      <MapBaseMapPanel
-        v-if="view === 'base-map'"
-        :current-style-index="currentStyleIndex"
-        @select="selectStyle"
-      />
+      >
+        <MapBaseMapPanel
+          v-if="view === 'base-map'"
+          class="unfolded"
+          :current-style-index="currentStyleIndex"
+          @select="selectStyle"
+        />
+      </MapSpeedDialMenu>
     </Transition>
 
     <SpeedDialTrigger
@@ -131,6 +133,14 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
   gap: var(--spacing-sm);
   align-items: flex-end;
   z-index: 15;
+  /* Only the controls and the backdrop take taps: a tap anywhere else — gaps,
+     inert menu items behind the base-map options — lands on the backdrop (open)
+     or the map (closed). */
+  pointer-events: none;
+}
+
+.overlay :deep(button) {
+  pointer-events: auto;
 }
 
 .backdrop {
@@ -145,47 +155,71 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background-color: color-mix(in srgb, var(--color-fab-surface) 85%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid var(--color-fab-border);
-  box-shadow: var(--shadow-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-fab-on-surface);
   align-self: flex-end;
   transition:
-    box-shadow 0.2s,
-    transform 0.15s;
+    background-color var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-short) var(--motion-ease-spring);
 }
 
 .compass-fab:hover {
-  background-color: color-mix(in srgb, var(--color-fab-surface-strong) 85%, transparent);
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-1px);
+  background-color: var(--color-fab-glass-strong);
+}
+
+.compass-fab:active:not(:disabled) {
+  transform: scale(var(--press-scale));
 }
 
 .compass-icon {
-  transition: transform 0.15s ease-out;
+  transition: transform var(--motion-duration-short) var(--motion-ease-standard);
 }
 
-.panel-enter-active {
-  transition:
-    opacity 0.15s ease,
-    transform 0.15s ease;
+/* Expanding menus unfold from where they were opened: the speed-dial items rise
+   from the trigger one after another, nearest first; base-map options slide out
+   of "Change base map", top first. Closing is one quiet fade. The items animate
+   on mount (they mount only when a menu opens) rather than under
+   `dial-enter-active`: the Transition root has no transition of its own, so Vue
+   would drop that class after one frame and cut the animation short. */
+.overlay :deep(.item-row) {
+  animation: dial-rise var(--motion-duration-medium) var(--motion-ease-emphasized) backwards;
+  animation-delay: calc(var(--ri) * var(--motion-stagger));
 }
 
-.panel-leave-active {
-  transition:
-    opacity 0.12s ease,
-    transform 0.12s ease;
+.unfolded :deep(.item-row) {
+  animation-name: dial-unfold;
+  animation-delay: calc(var(--i) * var(--motion-stagger));
 }
 
-.panel-enter-from,
-.panel-leave-to {
+.dial-leave-active {
+  transition: opacity var(--motion-duration-short) var(--motion-ease-standard);
+}
+
+.dial-leave-to {
   opacity: 0;
-  transform: translateY(8px) scale(0.97);
+}
+
+@keyframes dial-rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-offset)) scale(0.96);
+  }
+}
+
+@keyframes dial-unfold {
+  from {
+    opacity: 0;
+    transform: translateX(var(--motion-offset)) scale(0.96);
+  }
+}
+
+/* Options column beside the item that opened it, centred on it */
+.unfolded {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + var(--spacing-sm));
+  translate: 0 -50%;
 }
 
 :deep(.trigger--overlay-active .fab) {
@@ -194,18 +228,19 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
 }
 
 @media (orientation: landscape) and (max-height: 500px) {
+  /* On the arc the next item sits below-left: grow the options upward from the
+     item's centre so they clear it. */
+  .unfolded {
+    top: auto;
+    bottom: 50%;
+    translate: none;
+  }
+
   /* Menu fans as a quarter-circle arc around the trigger so it doesn't overlap
      the bottom-center tour action pill. Trigger stays at bottom-right. */
   .overlay {
     flex-direction: column;
     align-items: flex-end;
-  }
-
-  .panel-enter-from,
-  .panel-leave-to {
-    opacity: 0;
-    transform: scale(0.85);
-    transform-origin: bottom right;
   }
 }
 </style>

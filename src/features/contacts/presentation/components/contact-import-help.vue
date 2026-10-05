@@ -32,14 +32,18 @@ const steps = computed<string[]>(() => {
       {{ t('contacts.addDialog.help.summary') }}
     </summary>
 
-    <div class="tabs" role="tablist">
+    <div
+      class="tabs"
+      role="tablist"
+      data-tab-indicator
+      :style="{ '--tab-index': TABS.findIndex(tab => tab.id === activeTab), '--tab-count': TABS.length }"
+    >
       <button
         v-for="tab in TABS"
         :key="tab.id"
         type="button"
         role="tab"
         class="tab"
-        :class="{ 'tab--active': activeTab === tab.id }"
         :aria-selected="activeTab === tab.id"
         @click="activeTab = tab.id"
       >
@@ -69,31 +73,7 @@ const steps = computed<string[]>(() => {
 }
 
 .tabs {
-  display: flex;
-  gap: var(--spacing-xs);
-  border-bottom: 1.5px solid var(--color-outline-variant);
   margin-top: var(--spacing-xs);
-}
-
-.tab {
-  flex: 1;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1.5px;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
-  cursor: pointer;
-  transition:
-    color 0.15s,
-    border-color 0.15s;
-}
-
-.tab--active {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
 }
 
 .steps {

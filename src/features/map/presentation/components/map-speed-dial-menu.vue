@@ -11,7 +11,9 @@ export interface SpeedDialMenuItem {
   tooltip?: string
 }
 
-const props = defineProps<{ items: SpeedDialMenuItem[] }>()
+// `expanded`: the item whose options unfold beside it (default slot). The rest of the
+// menu stays in place but inert, so a tap on it lands on the backdrop and closes all.
+const props = defineProps<{ items: SpeedDialMenuItem[], expanded?: string | null }>()
 const emit = defineEmits<{ select: [id: string] }>()
 
 const menuEl = ref<HTMLElement | null>(null)
@@ -24,7 +26,7 @@ async function focusFirst() {
 
 function onKeydown(e: KeyboardEvent) {
   const btns = Array.from(
-    menuEl.value?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? [],
+    menuEl.value?.querySelectorAll<HTMLButtonElement>('button:not(:disabled, [inert])') ?? [],
   )
   const idx = btns.indexOf(document.activeElement as HTMLButtonElement)
 
@@ -54,21 +56,37 @@ defineExpose({ focusFirst })
 </script>
 
 <template>
-  <div id="speed-dial-menu" ref="menuEl" role="menu" class="menu" @keydown="onKeydown">
-    <SpeedDialItem
-      v-for="item in props.items"
+  <div
+    id="speed-dial-menu"
+    ref="menuEl"
+    role="menu"
+    class="menu"
+    :style="{ '--n': props.items.length }"
+    @keydown="onKeydown"
+  >
+    <div
+      v-for="(item, idx) in props.items"
       :key="item.id"
-      :icon="item.icon"
-      :label="item.label"
-      :disabled="item.disabled"
-      :tooltip="item.tooltip"
-      :data-tour="`menu-${item.id}`"
-      @select="select(item.id)"
+      class="item-slot"
+      :class="{ 'item-slot--expanded': item.id === props.expanded }"
+      :style="{ '--i': idx, '--ri': props.items.length - 1 - idx }"
     >
-      <template v-if="item.badge && item.badge > 0" #badge>
-        <span class="badge">{{ item.badge }}</span>
-      </template>
-    </SpeedDialItem>
+      <SpeedDialItem
+        :icon="item.icon"
+        :label="item.label"
+        :disabled="item.disabled"
+        :tooltip="item.tooltip"
+        :inert="!!props.expanded || undefined"
+        :aria-expanded="item.id === props.expanded || undefined"
+        :data-tour="`menu-${item.id}`"
+        @select="select(item.id)"
+      >
+        <template v-if="item.badge && item.badge > 0" #badge>
+          <span class="badge">{{ item.badge }}</span>
+        </template>
+      </SpeedDialItem>
+      <slot v-if="item.id === props.expanded" />
+    </div>
   </div>
 </template>
 
@@ -80,57 +98,73 @@ defineExpose({ focusFirst })
   gap: var(--spacing-xs);
 }
 
+/* Containing block for the options that unfold beside the item */
+.item-slot {
+  position: relative;
+  display: flex;
+}
+
+/* The options overflow this slot by design. driver.js clips the parent of a
+   spotlit element (`overflow: hidden !important`), which would hide them during
+   the guided tour's base-map step. */
+.item-slot--expanded {
+  z-index: 1;
+  overflow: visible !important;
+}
+
+.item-slot--expanded > :deep(.item-row) {
+  background-color: var(--color-fab-glass-strong);
+}
+
+.menu:has(.item-slot--expanded) .item-slot:not(.item-slot--expanded) > :deep(.item-row) {
+  opacity: 0.45;
+}
+
 @media (orientation: landscape) and (max-height: 500px) {
-  /* Quarter-circle arc layout around the speed-dial trigger (bottom-right).
-     Items positioned absolutely; trigger anchor = menu's bottom-right corner.
-     Radius 100px, item half-size 24px. */
+  /* Quarter-circle arc around the speed-dial trigger (bottom-right), so the menu
+     doesn't cover the bottom-center tour pill. The menu's bottom-right corner is
+     the trigger's; item i of n sits at θ = i/(n-1) · 90° from vertical (up → left)
+     on a 136px radius — wide enough that five 48px items never touch. */
   .menu {
     position: absolute;
     right: 0;
     bottom: 0;
-    width: 150px;
-    height: 150px;
+    width: 184px;
+    height: 184px;
     display: block;
   }
 
-  .menu > :deep(.item-row) {
+  .menu > .item-slot {
+    --angle: calc(var(--i) / max(var(--n) - 1, 1) * 90deg);
     position: absolute;
+    right: calc(sin(var(--angle)) * 136px);
+    bottom: calc(cos(var(--angle)) * 136px);
   }
 
-  /* 4 items at θ = 0°, 30°, 60°, 90° from vertical (up → left).
-     Anchor: each item's icon-fab right edge aligns with arc x; bottom likewise.
-     +24px shift on both axes keeps the icon fully inside trigger's safe corner. */
-  .menu > :deep(.item-row:nth-child(1)) {
-    right: 0;
-    bottom: 100px;
+  /* Icon-only circles; the name stays in aria-label/title. Unfolded options keep
+     their labels — there is room beside the arc. */
+  .item-slot > :deep(.item-row) {
+    width: 48px;
+    padding: 0;
+    justify-content: center;
   }
 
-  .menu > :deep(.item-row:nth-child(2)) {
-    right: 50px;
-    bottom: 86px;
-  }
-
-  .menu > :deep(.item-row:nth-child(3)) {
-    right: 86px;
-    bottom: 50px;
-  }
-
-  .menu > :deep(.item-row:nth-child(4)) {
-    right: 100px;
-    bottom: 0;
+  .item-slot > :deep(.item-row .label) {
+    display: none;
   }
 }
 
+/* Pinned to the icon's top-right corner */
 .badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
+  top: -8px;
+  right: -10px;
   min-width: 16px;
   height: 16px;
   padding: 0 3px;
   border-radius: var(--radius-pill);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
+  background-color: var(--color-fab-on-surface);
+  color: var(--color-primary-dark);
   font-size: 10px;
   font-weight: var(--font-weight-semibold);
   display: flex;

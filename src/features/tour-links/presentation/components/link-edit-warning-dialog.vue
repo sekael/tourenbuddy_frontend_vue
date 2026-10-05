@@ -131,8 +131,8 @@ const proceedLabel = computed(() => {
   align-items: flex-end;
   justify-content: center;
   z-index: 60;
-  background: rgba(15, 23, 42, 0.35);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  background: var(--color-backdrop);
+  backdrop-filter: blur(var(--overlay-backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--overlay-backdrop-blur));
 }
 </style>

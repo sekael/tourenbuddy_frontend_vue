@@ -6,7 +6,7 @@ Animated icon-morph transition for the speed-dial action button as it opens and 
 
 ### Requirement: Speed dial trigger shows context-appropriate icon
 
-The speed dial trigger SHALL display a `menu` icon when closed and a `close` icon when open. The transition between icons SHALL be a CSS opacity cross-fade. No rotation transform SHALL be applied to either icon.
+The speed dial trigger SHALL display a `menu` icon when closed and a `close` icon when open. The change between icons SHALL be a cross-fade in which the outgoing icon turns a quarter and shrinks slightly while the incoming one turns back into place, timed by the motion tokens. No slide SHALL be applied to either icon.
 
 #### Scenario: Closed state shows menu icon
 
@@ -21,4 +21,4 @@ The speed dial trigger SHALL display a `menu` icon when closed and a `close` ico
 #### Scenario: Transition is a fade
 
 - **WHEN** the open state toggles
-- **THEN** the icon change animates via opacity transition (no rotation, no slide)
+- **THEN** the icons cross-fade while turning a quarter (hidden icon at `rotate(±90deg) scale(0.8)`), with no slide
