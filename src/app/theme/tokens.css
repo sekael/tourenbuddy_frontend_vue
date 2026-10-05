@@ -182,6 +182,8 @@
   /* Travel for anything gliding in: swapped views/tabs, menu items unfolding.
      Swaps fade the old content out (short), then ease the new in (medium). */
   --motion-offset: 12px;
+  /* Delay between items of a menu unfolding one after another */
+  --motion-stagger: 40ms;
 
   /* --- Component tokens: one treatment per element family, app-wide -------- */
 

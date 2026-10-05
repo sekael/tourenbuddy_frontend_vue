@@ -84,7 +84,7 @@ After submitting a phone number, a verification code input SHALL be presented. T
 
 ### Requirement: Verified phone badge display
 
-A blue checkmark icon SHALL be displayed next to phone numbers that are verified (`phone_confirmed_at` is not null on the auth user).
+A blue checkmark icon SHALL be displayed next to phone numbers that are verified (`phone_confirmed_at` is not null on the auth user). The profile overview's identity card SHALL show the phone status and SHALL open the profile editor, where the number is added, changed, or verified.
 
 #### Scenario: Verified phone shows badge
 
@@ -94,12 +94,12 @@ A blue checkmark icon SHALL be displayed next to phone numbers that are verified
 #### Scenario: Unverified phone shows no badge
 
 - **WHEN** the user has a phone number but it is not verified
-- **THEN** no verification badge SHALL be displayed, and a "Verify" action SHALL be available
+- **THEN** no verification badge SHALL be displayed, a "Not verified" label SHALL be shown next to the number, and tapping the identity card SHALL open the editor from which the number is verified
 
 #### Scenario: No phone number
 
 - **WHEN** the user has no phone number set
-- **THEN** an "Add phone" prompt SHALL be displayed in the profile view
+- **THEN** an "Add phone number" prompt SHALL be displayed on the identity card in the profile view, and tapping the card SHALL open the editor
 
 ### Requirement: Twilio and Supabase SMS setup
 
@@ -185,8 +185,6 @@ Unverified callers SHALL see no friendship discovery affordances anywhere in the
 
 - **WHEN** the user verifies their phone within a session and `phone_confirmed_at` transitions from null to a timestamp
 - **THEN** the friendships store SHALL fetch lists and friendship UX SHALL be enabled without requiring a reload
-
-## ADDED Requirements
 
 ### Requirement: Discovery RPCs filter bidirectionally on active blocks
 

@@ -184,12 +184,12 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
    would drop that class after one frame and cut the animation short. */
 .overlay :deep(.item-row) {
   animation: dial-rise var(--motion-duration-medium) var(--motion-ease-emphasized) backwards;
-  animation-delay: calc(var(--ri) * 40ms);
+  animation-delay: calc(var(--ri) * var(--motion-stagger));
 }
 
 .unfolded :deep(.item-row) {
   animation-name: dial-unfold;
-  animation-delay: calc(var(--i) * 40ms);
+  animation-delay: calc(var(--i) * var(--motion-stagger));
 }
 
 .dial-leave-active {

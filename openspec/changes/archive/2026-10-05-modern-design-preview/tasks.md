@@ -68,9 +68,10 @@
 - [x] 10.4 Guided tour: phone step spotlights the profile card, notifications step the Notifications row, copy updated (en/de); driver.js clip fix for the base-map step; walk steps 1, 2 and 8
 - [x] 10.5 axe audit of all main screens plus the four new profile views (zero violations); overview fits 390×844 and 360×780 without scrolling
 - [x] 10.6 Dialogs fit their content: remove `stableSize`; `.dialog-body` measured by a ResizeObserver drives the scroll box height (glides both ways, first size instant); top-anchored card; tests for shrink rounding and collapsed; verify on desktop that the header stays at one top line while profile (525 → 475 → 525 → 733 capped → 525), contacts (436 → 458 → 436), friend requests (503 → 230 → 503) and feedback (270) fit with 0–1px spare and one height glide per change, that tour creation still collapses to its header bar and expands, and that a fully extended dialog keeps equal margins above and below (103/103 at 860px, 72/72 at 600px)
+- [x] 10.7 Bring specs in line with the implementation before archiving: delta specs for `dialog-window`, `responsive-overlay`, `map-integration`, `speed-dial-icon-transition`, `phone-verification`, `tour-action-bar`, `onboarding-tour`, `user-profile`; design-system wording (chips, danger-outline, banner surface, motion tokens incl. `--motion-stagger`); remove stray delta headers from the `map-integration` and `phone-verification` main specs; validate change and specs
 
 ## 11. Finalize
 
 - [x] 11.1 Run `npx eslint . --fix`, `npm run type-check`, `npm run test`; all pass with zero warnings
-- [ ] 11.2 Provide a ready-to-copy conventional commit message (`feat(design): …`)
-- [ ] 11.3 Push the branch and open a PR so the preview deploy (`<branch-slug>.tourenbuddy.pages.dev`) allows on-device comparison against prod
+- [x] 11.2 Provide a ready-to-copy conventional commit message (`feat(design): …`)
+- [x] 11.3 Push the branch and open a PR so the preview deploy (`<branch-slug>.tourenbuddy.pages.dev`) allows on-device comparison against prod

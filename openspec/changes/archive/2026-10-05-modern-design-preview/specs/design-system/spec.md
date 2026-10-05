@@ -25,8 +25,8 @@ Each recurring UI element SHALL have exactly one treatment wherever it appears: 
 
 #### Scenario: One selected-chip style
 
-- **WHEN** a tour-type chip, a tour filter chip, a contact chip, and a profile language option are each selected
-- **THEN** all four show the same pill shape, tinted fill, border, and text color
+- **WHEN** a tour-type chip, a tour filter chip, and a contact chip are each selected
+- **THEN** all three show the same pill shape, tinted fill, border, and text color
 
 #### Scenario: One section-heading style
 
@@ -40,7 +40,7 @@ Each recurring UI element SHALL have exactly one treatment wherever it appears: 
 
 #### Scenario: One tab style
 
-- **WHEN** the tours tabs, the friend-request tabs, a help tab row, and the tour-filter status switch are shown
+- **WHEN** the tours tabs, the friend-request tabs, a help tab row, the tour-filter status switch, and the profile language switch are shown
 - **THEN** all render as the same segmented control: tonal track, equal-width options, and a white pill under the selected option
 
 #### Scenario: Input focus is visible
@@ -50,7 +50,7 @@ Each recurring UI element SHALL have exactly one treatment wherever it appears: 
 
 ### Requirement: Tonal controls stand out from their surface
 
-Secondary actions and navigation chrome SHALL be tonal: a filled control container one step stronger than the tinted surface used for cards and hovered rows, with a label of at least 4.5:1 on the fill and on its hover fill. Secondary, primary-outline, and danger-outline `Button`s, close/back `IconButton`s, tab tracks, and navigation indicators SHALL use it, so they separate visibly from a white sheet, from a tinted card, and — with an added shadow — from the map.
+Secondary actions and navigation chrome SHALL be tonal: a filled control container one step stronger than the tinted surface used for cards and hovered rows, with a label of at least 4.5:1 on the fill and on its hover fill. Secondary and primary-outline `Button`s, close/back `IconButton`s, tab tracks, and navigation indicators SHALL use it, so they separate visibly from a white sheet, from a tinted card, and — with an added shadow — from the map. Danger-outline `Button`s SHALL take the same tonal treatment in red (the error container with the error-text label).
 
 #### Scenario: Secondary button on a sheet
 
@@ -160,7 +160,7 @@ The profile SHALL open on an overview that fits a phone screen without scrolling
 
 ### Requirement: Map controls are legible and stand out from the map
 
-Floating map controls (menu trigger and items, compass, action bar, base-map options, persistent status chips, guided-tour banner) SHALL share one glass surface and render their labels and icons with at least 4.5:1 contrast against it, including the surface's translucency over a white map, and SHALL remain visually separated from the map background. Indicators on a control (notification dot, count badge) SHALL contrast with the control.
+Floating map controls (menu trigger and items, compass, action bar, base-map options, persistent status chips) SHALL share one glass surface and render their labels and icons with at least 4.5:1 contrast against it, including the surface's translucency over a white map, and SHALL remain visually separated from the map background. The guided-tour banner SHALL use the same map-control blue as an opaque surface. Indicators on a control (notification dot, count badge) SHALL contrast with the control.
 
 #### Scenario: Labels over a bright map
 
@@ -222,7 +222,7 @@ Interface changes SHALL move only what the user acted on. A desktop dialog SHALL
 
 ### Requirement: Motion and interaction tokens
 
-The system SHALL define motion tokens (durations, easing curves, and a glide offset) and a press-scale token in the semantic tier. Every transition and animation in the app — shared buttons, FABs, map controls, sheets, dialogs, drawers, snackbars, tabs, and view swaps — SHALL take its duration, easing, travel, and scale from these tokens rather than literals. When the user prefers reduced motion, overshooting easing, press scaling, and glide travel SHALL be disabled.
+The system SHALL define motion tokens (durations, easing curves, a glide offset, and a stagger delay) and a press-scale token in the semantic tier. Every state transition and entrance animation in the app — shared buttons, FABs, map controls, menus, sheets, dialogs, drawers, snackbars, tabs, and view swaps — SHALL take its duration, easing, travel, stagger, and press scale from these tokens rather than literals. Continuous loading indicators (spinners, skeleton pulses) are exempt. When the user prefers reduced motion, overshooting easing, press scaling, and glide travel SHALL be disabled.
 
 #### Scenario: Motion is retuned in one place
 

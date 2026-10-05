@@ -1,8 +1,4 @@
-## Purpose
-
-Animated icon-morph transition for the speed-dial action button as it opens and closes.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Speed dial trigger shows context-appropriate icon
 
