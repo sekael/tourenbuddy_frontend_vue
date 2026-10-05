@@ -219,7 +219,6 @@ function handleRowClick(tourId: string) {
             type="button"
             role="tab"
             class="tab"
-            :class="{ 'tab--active': activeTab === 'owned' }"
             :aria-selected="activeTab === 'owned'"
             @click="activeTab = 'owned'"
           >
@@ -229,7 +228,6 @@ function handleRowClick(tourId: string) {
             type="button"
             role="tab"
             class="tab"
-            :class="{ 'tab--active': activeTab === 'friends' }"
             :aria-selected="activeTab === 'friends'"
             @click="activeTab = 'friends'"
           >
@@ -352,65 +350,30 @@ function handleRowClick(tourId: string) {
   gap: var(--spacing-sm);
   flex-shrink: 0;
   z-index: 1;
-  border-bottom: 1px solid var(--section-divider-color, var(--color-outline-variant));
   background-color: var(--color-background);
   padding-bottom: var(--spacing-xs);
 }
 
-.tabs {
-  display: flex;
-  gap: var(--spacing-xs);
-  border-bottom: var(--tabs-border, 1.5px solid var(--color-outline-variant));
-  background-color: var(--tabs-bg, transparent);
-  border-radius: var(--tabs-radius, 0);
-  padding: var(--tabs-padding, 0);
-}
-
-.tab {
-  flex: 1;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  background: transparent;
-  border: none;
-  border-bottom: var(--tab-indicator-width, 2px) solid transparent;
-  margin-bottom: var(--tab-margin-bottom, -1.5px);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
-  cursor: pointer;
-  transition:
-    color var(--motion-duration-short) var(--motion-ease-standard),
-    border-color var(--motion-duration-short) var(--motion-ease-standard),
-    background-color var(--motion-duration-short) var(--motion-ease-standard),
-    box-shadow var(--motion-duration-short) var(--motion-ease-standard);
-  border-radius: var(--tab-radius, 0);
-}
-
-.tab--active {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
-}
-
-/* Switching My Tours ↔ Friends slides the list toward the chosen tab. Component tokens are defined only by a design variant;
-   the Classic fallbacks (0s, no offset, opaque) make the swap instant there. */
+/* Switching My Tours ↔ Friends slides the list toward the chosen tab. */
 .tab-swap-enter-active,
 .tab-swap-leave-active {
   transition:
-    opacity var(--view-swap-duration, 0s) var(--motion-ease-standard),
-    transform var(--view-swap-duration, 0s) var(--motion-ease-emphasized);
+    opacity var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-medium) var(--motion-ease-emphasized);
 }
 
 .tab-swap-leave-active {
-  transition-duration: var(--view-swap-leave-duration, 0s);
+  transition-duration: var(--motion-duration-short);
 }
 
 .tab-swap-enter-from {
-  opacity: var(--view-swap-opacity, 1);
-  transform: translateX(calc(var(--swap-dir) * var(--view-swap-offset, 0px)));
+  opacity: 0;
+  transform: translateX(calc(var(--swap-dir) * var(--motion-offset)));
 }
 
 .tab-swap-leave-to {
-  opacity: var(--view-swap-opacity, 1);
-  transform: translateX(calc(var(--swap-dir) * -1 * var(--view-swap-offset, 0px)));
+  opacity: 0;
+  transform: translateX(calc(var(--swap-dir) * -1 * var(--motion-offset)));
 }
 
 /* Search and the filters trigger share one row. No `flex-wrap`: wrapping onto a
@@ -422,8 +385,8 @@ function handleRowClick(tourId: string) {
   gap: var(--spacing-sm);
   padding: var(--spacing-xs) var(--spacing-sm);
   border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--input-radius, var(--radius-md));
-  background-color: var(--input-bg, transparent);
+  border-radius: var(--input-radius);
+  background-color: var(--input-bg);
 }
 
 .search-icon {
@@ -491,7 +454,7 @@ function handleRowClick(tourId: string) {
    the inline expand used to provide for free. Clipped by `.list-region`. */
 .filters-slide-enter-active,
 .filters-slide-leave-active {
-  transition: transform 0.2s ease-out;
+  transition: transform var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .filters-slide-enter-from,

@@ -372,8 +372,8 @@ onUnmounted(() => {
   color: #fff;
   opacity: 0.85;
   transition:
-    opacity 0.15s,
-    background-color 0.15s;
+    opacity var(--motion-duration-short) var(--motion-ease-standard),
+    background-color var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .viewer__icon-btn:hover:not(:disabled) {
@@ -464,7 +464,7 @@ onUnmounted(() => {
   color: #fff;
   font-size: 28px;
   z-index: 2;
-  transition: background-color 0.15s;
+  transition: background-color var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .viewer__nav:hover {
@@ -491,7 +491,7 @@ onUnmounted(() => {
   height: 6px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.35);
-  transition: background-color 0.15s;
+  transition: background-color var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .viewer__dot--active {

@@ -13,10 +13,13 @@ const props = withDefaults(defineProps<{
   shape?: 'round' | 'square'
   /** 'danger' tints the glyph red on hover — for destructive actions (delete/remove). */
   tone?: 'default' | 'danger'
+  /** 'tonal' sits on a filled container — overlay close/back and other standalone controls. */
+  variant?: 'standard' | 'tonal'
 }>(), {
   size: 'md',
   shape: 'round',
   tone: 'default',
+  variant: 'standard',
 })
 
 // Glyph tracks the button size so the icon stays proportionate to its target.
@@ -31,6 +34,7 @@ const iconSize = computed(() => props.size)
       `base-icon-button--${props.size}`,
       `base-icon-button--${props.shape}`,
       `base-icon-button--${props.tone}`,
+      `base-icon-button--${props.variant}`,
     ]"
     :aria-label="props.label"
     :title="props.label"
@@ -58,6 +62,15 @@ const iconSize = computed(() => props.size)
 
 .base-icon-button:hover:not(:disabled) {
   background-color: var(--color-surface-variant);
+}
+
+.base-icon-button--tonal {
+  background-color: var(--color-secondary-container);
+  color: var(--color-on-secondary-container);
+}
+
+.base-icon-button--tonal:hover:not(:disabled) {
+  background-color: var(--color-secondary-container-hover);
 }
 
 /* Danger tone: red glyph on hover, faint red wash instead of the neutral grey. */

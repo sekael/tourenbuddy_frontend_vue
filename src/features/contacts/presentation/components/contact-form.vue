@@ -306,7 +306,7 @@ defineExpose({ submit, validateAndCollect })
 .label {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  color: var(--field-label-color, var(--color-on-surface-variant));
+  color: var(--field-label-color);
 }
 
 .required {
@@ -316,10 +316,10 @@ defineExpose({ submit, validateAndCollect })
 .input {
   padding: var(--spacing-md);
   border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--input-radius, var(--radius-sm));
+  border-radius: var(--input-radius);
   font-size: var(--font-size-base);
   color: var(--color-on-surface);
-  background-color: var(--input-bg, var(--color-background));
+  background-color: var(--input-bg);
   outline: none;
   transition:
     border-color var(--motion-duration-medium) var(--motion-ease-standard),
@@ -329,8 +329,8 @@ defineExpose({ submit, validateAndCollect })
 
 .input:focus {
   border-color: var(--color-primary);
-  background-color: var(--input-bg-focus, var(--color-background));
-  box-shadow: var(--input-focus-ring, none);
+  background-color: var(--input-bg-focus);
+  box-shadow: var(--input-focus-ring);
 }
 
 .input--error {
@@ -370,7 +370,7 @@ defineExpose({ submit, validateAndCollect })
   color: var(--color-outline-variant);
   flex-shrink: 0;
   margin-top: 10px;
-  transition: color 0.15s;
+  transition: color var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .primary-star .base-icon {

@@ -756,7 +756,7 @@ defineExpose({
           </div>
 
           <!-- View mode: read-only -->
-          <div v-if="mode === 'view'" class="method-fields">
+          <div v-if="mode === 'view'" class="method-fields method-fields--view">
             <span class="view-value">{{ methodDisplayValue(method) }}</span>
             <span v-if="method.label" class="view-label-sm">{{ method.label }}</span>
           </div>
@@ -894,7 +894,7 @@ defineExpose({
         </div>
 
         <!-- View mode: read-only -->
-        <div v-if="mode === 'view'" class="method-fields">
+        <div v-if="mode === 'view'" class="method-fields method-fields--view">
           <span class="view-value">{{ method.value }}</span>
           <span v-if="method.label" class="view-label-sm">{{ method.label }}</span>
         </div>
@@ -1164,7 +1164,6 @@ defineExpose({
   flex-direction: column;
   gap: var(--spacing-sm);
   padding-bottom: var(--spacing-md);
-  border-bottom: 1px solid var(--section-divider-color, var(--color-outline-variant));
 }
 
 .section:last-child {
@@ -1175,11 +1174,10 @@ defineExpose({
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
-  font-size: var(--heading-section-size, var(--font-size-sm));
-  font-weight: var(--heading-section-weight, var(--font-weight-medium));
-  color: var(--heading-section-color, var(--color-on-surface-variant));
-  text-transform: var(--heading-section-transform, uppercase);
-  letter-spacing: var(--heading-section-tracking, 0.05em);
+  font-size: var(--heading-section-size);
+  font-weight: var(--heading-section-weight);
+  color: var(--heading-section-color);
+  letter-spacing: var(--heading-section-tracking);
 }
 
 .view-row {
@@ -1189,7 +1187,7 @@ defineExpose({
 }
 
 .view-label {
-  font-size: var(--font-size-xs, 11px);
+  font-size: var(--font-size-xs);
   color: var(--color-on-surface-variant);
 }
 
@@ -1199,7 +1197,7 @@ defineExpose({
 }
 
 .view-label-sm {
-  font-size: var(--font-size-xs, 11px);
+  font-size: var(--font-size-xs);
   color: var(--color-on-surface-variant);
 }
 
@@ -1211,7 +1209,7 @@ defineExpose({
 
 .label {
   font-size: var(--font-size-sm);
-  color: var(--field-label-color, var(--color-on-surface-variant));
+  color: var(--field-label-color);
 }
 
 .required {
@@ -1221,10 +1219,10 @@ defineExpose({
 .input {
   padding: var(--spacing-sm) var(--spacing-md);
   border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--input-radius, var(--radius-sm));
+  border-radius: var(--input-radius);
   font-size: var(--font-size-base);
   color: var(--color-on-surface);
-  background-color: var(--input-bg, var(--color-background));
+  background-color: var(--input-bg);
   outline: none;
   transition:
     border-color var(--motion-duration-medium) var(--motion-ease-standard),
@@ -1234,8 +1232,8 @@ defineExpose({
 
 .input:focus {
   border-color: var(--color-primary);
-  background-color: var(--input-bg-focus, var(--color-background));
-  box-shadow: var(--input-focus-ring, none);
+  background-color: var(--input-bg-focus);
+  box-shadow: var(--input-focus-ring);
 }
 
 .input-sm {
@@ -1251,7 +1249,7 @@ defineExpose({
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: var(--font-size-xs, 11px);
+  font-size: var(--font-size-xs);
   color: var(--color-warning-text);
 }
 
@@ -1315,7 +1313,7 @@ defineExpose({
   color: var(--color-outline-variant);
   flex-shrink: 0;
   margin-top: 4px;
-  transition: color 0.15s;
+  transition: color var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .primary-star .base-icon {
@@ -1353,6 +1351,14 @@ button.primary-star:hover {
   flex-direction: column;
   gap: var(--spacing-xs);
   min-width: 0;
+}
+
+/* Read-only value centres on the badge and star (edit mode stays top-aligned
+   with its inputs) */
+.method-fields--view {
+  min-height: 40px;
+  justify-content: center;
+  gap: 0;
 }
 
 .method-actions {
@@ -1400,7 +1406,7 @@ button.primary-star:hover {
   border: 1.5px solid var(--color-outline-variant);
   font-size: var(--font-size-sm);
   color: var(--color-on-surface-variant);
-  transition: all 0.15s;
+  transition: all var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .type-btn .base-icon {
@@ -1420,7 +1426,6 @@ button.primary-star:hover {
 }
 
 .section--actions {
-  border-bottom: 1px solid var(--section-divider-color, var(--color-outline-variant));
 }
 
 .form-actions {

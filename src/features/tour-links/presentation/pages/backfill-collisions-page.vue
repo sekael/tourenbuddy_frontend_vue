@@ -287,10 +287,8 @@ h1 {
 }
 
 .field-label {
-  font-size: var(--font-size-xs);
-  color: var(--color-on-surface-variant);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: var(--font-size-sm);
+  color: var(--field-label-color);
   font-weight: var(--font-weight-medium);
 }
 

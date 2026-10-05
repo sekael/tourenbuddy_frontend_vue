@@ -171,12 +171,11 @@ onUnmounted(() => {
   position: fixed;
   width: 240px;
   background-color: var(--color-background);
-  border: 1px solid var(--overlay-border-color, var(--color-outline-variant));
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   z-index: 61;
   overflow: hidden;
-  animation: popover-enter 0.15s ease both;
+  animation: popover-enter var(--motion-duration-medium) var(--motion-ease-emphasized) both;
 }
 
 @keyframes popover-enter {
@@ -195,7 +194,6 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: var(--spacing-sm) var(--spacing-sm) var(--spacing-sm) var(--spacing-md);
-  border-bottom: 1px solid var(--overlay-divider-color, var(--color-outline-variant));
 }
 
 .popover-name {
@@ -246,8 +244,8 @@ onUnmounted(() => {
   border-radius: 50%;
   color: var(--color-on-surface-variant);
   transition:
-    background-color 0.15s,
-    color 0.15s;
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    color var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .menu-action-btn:hover {
@@ -276,7 +274,7 @@ onUnmounted(() => {
 
 .menu-divider {
   height: 1px;
-  background-color: var(--divider-color, var(--color-outline-variant));
+  background-color: var(--divider-color);
   margin: 4px 0;
 }
 
@@ -304,7 +302,7 @@ onUnmounted(() => {
   justify-content: center;
   z-index: 60;
   background: var(--color-backdrop);
-  backdrop-filter: blur(var(--overlay-backdrop-blur, 2px));
-  -webkit-backdrop-filter: blur(var(--overlay-backdrop-blur, 2px));
+  backdrop-filter: blur(var(--overlay-backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--overlay-backdrop-blur));
 }
 </style>

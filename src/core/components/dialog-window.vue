@@ -40,7 +40,7 @@ function handleBackdropClick() {
         <BaseIconButton
           v-if="props.showBack && !props.collapsed"
           name="arrow_back"
-          class="overlay-action"
+          variant="tonal"
           size="sm"
           label="Back"
           @click="emit('back')"
@@ -53,7 +53,7 @@ function handleBackdropClick() {
         <BaseIconButton
           v-if="!props.collapsed"
           name="close"
-          class="overlay-action"
+          variant="tonal"
           size="sm"
           label="Close"
           @click="emit('close')"
@@ -75,15 +75,15 @@ function handleBackdropClick() {
   position: fixed;
   inset: 0;
   background: var(--color-backdrop);
-  backdrop-filter: blur(var(--overlay-backdrop-blur, 2px));
-  -webkit-backdrop-filter: blur(var(--overlay-backdrop-blur, 2px));
+  backdrop-filter: blur(var(--overlay-backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--overlay-backdrop-blur));
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 50;
   transition:
-    background 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-    backdrop-filter 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    background var(--motion-duration-medium) var(--motion-ease-emphasized),
+    backdrop-filter var(--motion-duration-medium) var(--motion-ease-emphasized);
 }
 
 /* When picking a location: remove backdrop, push card to top-right */
@@ -98,7 +98,6 @@ function handleBackdropClick() {
 
 .dialog-card {
   background-color: var(--color-background);
-  border: 1px solid var(--overlay-border-color, var(--color-outline-variant));
   border-radius: var(--radius-lg);
   width: 100%;
   max-width: 560px;
@@ -110,8 +109,8 @@ function handleBackdropClick() {
   pointer-events: auto;
   overflow: hidden;
   transition:
-    max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-    border-radius 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    max-height var(--motion-duration-medium) var(--motion-ease-emphasized),
+    border-radius var(--motion-duration-medium) var(--motion-ease-emphasized);
 }
 
 /* Views/tabs swap inside a fixed frame; content scrolls. The collapsed state's
@@ -151,14 +150,13 @@ function handleBackdropClick() {
   gap: var(--spacing-sm);
   flex-shrink: 0;
   padding: var(--spacing-lg) var(--spacing-xl) var(--spacing-md);
-  border-bottom: 1px solid var(--overlay-divider-color, var(--color-outline-variant));
 }
 
 .dialog-title {
-  font-size: var(--overlay-title-size, var(--font-size-xl));
+  font-size: var(--overlay-title-size);
   font-weight: var(--font-weight-semibold);
   flex: 1;
-  letter-spacing: var(--overlay-title-tracking, normal);
+  letter-spacing: var(--overlay-title-tracking);
 }
 
 .title-spacer {
@@ -183,8 +181,8 @@ function handleBackdropClick() {
   scrollbar-color: var(--color-outline-variant) transparent;
   opacity: 1;
   transition:
-    opacity 0.18s ease-out,
-    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity var(--motion-duration-short) var(--motion-ease-standard),
+    padding var(--motion-duration-medium) var(--motion-ease-emphasized);
 }
 
 .dialog-content::-webkit-scrollbar {
@@ -203,10 +201,5 @@ function handleBackdropClick() {
   flex: 0;
   overflow: hidden;
   pointer-events: none;
-}
-
-/* Header back/close: tonal circle in variants that define --overlay-close-bg. */
-.overlay-action {
-  background-color: var(--overlay-close-bg, transparent);
 }
 </style>

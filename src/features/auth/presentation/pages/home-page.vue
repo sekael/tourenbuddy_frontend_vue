@@ -112,10 +112,10 @@ async function handleSubmit() {
 .input {
   padding: var(--spacing-md);
   border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--input-radius, var(--radius-sm));
+  border-radius: var(--input-radius);
   font-size: var(--font-size-base);
   color: var(--color-on-surface);
-  background-color: var(--input-bg, var(--color-background));
+  background-color: var(--input-bg);
   outline: none;
   transition:
     border-color var(--motion-duration-medium) var(--motion-ease-standard),
@@ -125,8 +125,8 @@ async function handleSubmit() {
 
 .input:focus {
   border-color: var(--color-primary);
-  background-color: var(--input-bg-focus, var(--color-background));
-  box-shadow: var(--input-focus-ring, none);
+  background-color: var(--input-bg-focus);
+  box-shadow: var(--input-focus-ring);
 }
 
 .error-text {

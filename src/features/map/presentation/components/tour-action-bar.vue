@@ -21,7 +21,7 @@ const { t } = useI18n({ useScope: 'global' })
 
 <template>
   <Transition name="pill">
-    <div v-if="visible" class="pill" role="group">
+    <div v-if="visible" class="pill fab-glass" role="group">
       <BaseTooltip :text="t('map.actionBar.myTours')" :disabled="dismissMode">
         <button
           class="segment segment--tours"
@@ -69,12 +69,7 @@ const { t } = useI18n({ useScope: 'global' })
   display: flex;
   align-items: stretch;
   height: 52px;
-  border-radius: 26px;
-  background-color: color-mix(in srgb, var(--color-fab-surface) 85%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid var(--color-fab-border);
-  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-pill);
   overflow: hidden;
   pointer-events: auto;
   white-space: nowrap;
@@ -92,17 +87,22 @@ const { t } = useI18n({ useScope: 'global' })
   gap: var(--spacing-xs);
   padding: 0 var(--spacing-lg);
   color: var(--color-fab-on-surface);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-base);
   font-weight: var(--font-weight-medium);
-  transition: background-color 0.15s;
+  transition: background-color var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .segment:hover:not(:disabled) {
-  background-color: color-mix(in srgb, var(--color-fab-surface-strong) 40%, transparent);
+  background-color: var(--color-fab-glass-strong);
+}
+
+/* Pressing darkens the segment (scaling one half of a joined pill would tear it) */
+.segment:active:not(:disabled) {
+  background-color: var(--color-fab-surface-strong);
 }
 
 .segment:disabled {
-  opacity: 0.45;
+  opacity: 0.5;
   cursor: default;
 }
 
@@ -116,7 +116,7 @@ const { t } = useI18n({ useScope: 'global' })
 
 .divider {
   width: 1px;
-  background-color: var(--color-outline-variant);
+  background-color: var(--color-fab-border);
   align-self: stretch;
   flex-shrink: 0;
 }
@@ -124,13 +124,13 @@ const { t } = useI18n({ useScope: 'global' })
 .pill-enter-active,
 .pill-leave-active {
   transition:
-    opacity var(--motion-duration-short) var(--motion-ease-standard),
-    transform var(--motion-duration-short) var(--motion-ease-spring);
+    opacity var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-medium) var(--motion-ease-emphasized);
 }
 
 .pill-enter-from,
 .pill-leave-to {
   opacity: 0;
-  transform: translateX(-50%) translateY(8px);
+  transform: translateX(-50%) translateY(var(--motion-offset));
 }
 </style>

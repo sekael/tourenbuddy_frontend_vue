@@ -611,11 +611,10 @@ function selectFromDetail(tourId: string) {
 
 .detail-heading {
   padding: var(--spacing-sm) var(--spacing-md) var(--spacing-xs);
-  font-size: var(--heading-section-size, var(--font-size-sm));
-  font-weight: var(--heading-section-weight, var(--font-weight-semibold));
-  text-transform: var(--heading-section-transform, uppercase);
-  color: var(--heading-section-color, var(--color-on-surface-variant));
-  letter-spacing: var(--heading-section-tracking, normal);
+  font-size: var(--heading-section-size);
+  font-weight: var(--heading-section-weight);
+  color: var(--heading-section-color);
+  letter-spacing: var(--heading-section-tracking);
 }
 
 .detail-row {
@@ -624,7 +623,7 @@ function selectFromDetail(tourId: string) {
   gap: var(--spacing-sm);
   width: 100%;
   padding: var(--spacing-sm) var(--spacing-md);
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-base);
   color: var(--color-on-surface);
   cursor: pointer;
 }

@@ -70,7 +70,7 @@ watch(offlineWriteError, (key) => {
 <template>
   <!-- Persistent, icon-only offline chip (bottom-left) — minimal footprint. -->
   <Transition name="chip">
-    <div v-if="degraded" class="offline-chip" role="status" :aria-label="statusMessage">
+    <div v-if="degraded" class="offline-chip fab-glass" role="status" :aria-label="statusMessage">
       <BaseIcon name="cloud_off" size="sm" />
     </div>
   </Transition>
@@ -102,20 +102,12 @@ watch(offlineWriteError, (key) => {
 .offline-chip {
   position: fixed;
   left: var(--spacing-md);
-  bottom: calc(var(--spacing-md) + var(--safe-bottom, 0px));
+  bottom: calc(var(--spacing-md) + var(--safe-bottom));
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--spacing-xs);
   border-radius: var(--radius-lg);
-  /* Persistent map chips follow the map-control glass in variants that define
-     --map-chip-*; Classic keeps the dark inverse surface. */
-  background: var(--map-chip-bg, var(--color-inverse-surface));
-  color: var(--map-chip-color, var(--color-on-inverse-surface));
-  border: var(--map-chip-border, none);
-  backdrop-filter: var(--map-chip-backdrop, none);
-  -webkit-backdrop-filter: var(--map-chip-backdrop, none);
-  box-shadow: var(--shadow-md);
   z-index: 190;
 }
 
@@ -123,7 +115,7 @@ watch(offlineWriteError, (key) => {
 .offline-snackbar {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--spacing-xl) + var(--safe-bottom, 0px));
+  bottom: calc(var(--spacing-xl) + var(--safe-bottom));
   transform: translateX(-50%);
   display: flex;
   align-items: center;

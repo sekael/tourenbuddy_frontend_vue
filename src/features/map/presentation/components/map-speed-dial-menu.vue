@@ -54,10 +54,18 @@ defineExpose({ focusFirst })
 </script>
 
 <template>
-  <div id="speed-dial-menu" ref="menuEl" role="menu" class="menu" @keydown="onKeydown">
+  <div
+    id="speed-dial-menu"
+    ref="menuEl"
+    role="menu"
+    class="menu"
+    :style="{ '--n': props.items.length }"
+    @keydown="onKeydown"
+  >
     <SpeedDialItem
-      v-for="item in props.items"
+      v-for="(item, idx) in props.items"
       :key="item.id"
+      :style="{ '--i': idx, '--ri': props.items.length - 1 - idx }"
       :icon="item.icon"
       :label="item.label"
       :disabled="item.disabled"
@@ -81,56 +89,38 @@ defineExpose({ focusFirst })
 }
 
 @media (orientation: landscape) and (max-height: 500px) {
-  /* Quarter-circle arc layout around the speed-dial trigger (bottom-right).
-     Items positioned absolutely; trigger anchor = menu's bottom-right corner.
-     Radius 100px, item half-size 24px. */
+  /* Quarter-circle arc around the speed-dial trigger (bottom-right), so the menu
+     doesn't cover the bottom-center tour pill. The menu's bottom-right corner is
+     the trigger's; item i of n sits at θ = i/(n-1) · 90° from vertical (up → left)
+     on a 136px radius — wide enough that five 48px items never touch. */
   .menu {
     position: absolute;
     right: 0;
     bottom: 0;
-    width: 150px;
-    height: 150px;
+    width: 184px;
+    height: 184px;
     display: block;
   }
 
   .menu > :deep(.item-row) {
+    --angle: calc(var(--i) / max(var(--n) - 1, 1) * 90deg);
     position: absolute;
-  }
-
-  /* 4 items at θ = 0°, 30°, 60°, 90° from vertical (up → left).
-     Anchor: each item's icon-fab right edge aligns with arc x; bottom likewise.
-     +24px shift on both axes keeps the icon fully inside trigger's safe corner. */
-  .menu > :deep(.item-row:nth-child(1)) {
-    right: 0;
-    bottom: 100px;
-  }
-
-  .menu > :deep(.item-row:nth-child(2)) {
-    right: 50px;
-    bottom: 86px;
-  }
-
-  .menu > :deep(.item-row:nth-child(3)) {
-    right: 86px;
-    bottom: 50px;
-  }
-
-  .menu > :deep(.item-row:nth-child(4)) {
-    right: 100px;
-    bottom: 0;
+    right: calc(sin(var(--angle)) * 136px);
+    bottom: calc(cos(var(--angle)) * 136px);
   }
 }
 
+/* Pinned to the icon's top-right corner */
 .badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
+  top: -8px;
+  right: -10px;
   min-width: 16px;
   height: 16px;
   padding: 0 3px;
   border-radius: var(--radius-pill);
-  background-color: var(--fab-badge-bg, var(--color-primary));
-  color: var(--fab-badge-color, var(--color-on-primary));
+  background-color: var(--color-fab-on-surface);
+  color: var(--color-primary-dark);
   font-size: 10px;
   font-weight: var(--font-weight-semibold);
   display: flex;

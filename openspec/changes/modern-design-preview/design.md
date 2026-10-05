@@ -100,12 +100,24 @@ Four problems are structural and cannot be scoped to a variant without branching
 - `DialogWindow` gains `stableSize` (fixed `min(40rem, 90dvh)`, content scrolls; collapsed state still clamps), passed through `AdaptiveOverlay`; opted into by contacts, friend requests, and profile — the overlays whose content switches views/tabs. Confirm-style dialogs keep fitting their content.
 - Base-map options: a pre-flush watcher measures the "Change base map" item when `view` goes `menu → base-map`; the panel is pinned there (`position: fixed`), unfolds downward from its top-right, and the menu fades instead of the `panel` collapse. The anchor is kept while the panel leaves; direct opens (no menu) and the landscape arc layout fall back to the in-flow position. The guided tour's base-map step goes through the same `menu → base-map` path.
 
+### D12 — One design, tonal controls, shared map surfaces (iteration 5)
+
+- **Collapse to `:root`.** Alpenglow's values become the defaults and the variant machinery goes. Component tokens are kept only where several consumers share a knob (`--button-*`, `--overlay-*`, `--heading-section-*`, `--input-*`, `--chip-*`); single-use tokens are inlined; "off switch" tokens are deleted together with what they hid (e.g. the profile `<hr>` dividers). A codemod strips dead fallbacks, and `component-tokens.test.ts` is repurposed: it now fails on any bare `var(--x)` nothing defines — it immediately found two pre-existing typos. (It reads sources via `fs`: Vitest serves `.css?raw` as an empty string, which had made the old test's `:root` check vacuous.)
+- **Control container.** Blue-50 (`--color-surface-variant`, ~1.05:1 on white) stays the quiet tint for cards and rows; controls get `--color-secondary-container` (blue-100, ~1.2:1 on white, ~1.1:1 on a blue-50 card) with a blue-900 label. A border was rejected: tonal fills read as modern, and a hairline at 3:1 would bring back the clutter iteration 2 removed. Over the map the tonal button adds `--shadow-md`.
+- **`BaseIconButton variant="tonal"`** replaces the parent-scoped `.overlay-action` class: the child's `:hover:not(:disabled)` rule (0,4,0) out-specified the parent's class (0,2,0), so hovering made the circle lighter.
+- **Expanding menus.** `SpeedDialItem` is one pill (label, icon; 15px end padding centres the 20px icon on the 52px trigger's axis); the base-map panel reuses it with `role="menuitemradio"`/`aria-checked`/`selected` as fallthrough attrs, so the item needs no new prop. Entrance is a keyframe on mount staggered by `--ri` (rise, nearest first) or `--i` (drop, top first, when anchored) — not CSS under `dial-enter-active`, because Vue ends a Transition immediately when its root has no transition and would cut the children short. Exit stays a root opacity fade.
+- **Shared surfaces in `global.css`:** `.fab-glass` (map controls) and the `[data-tab-indicator]` segmented control (track, equal-width buttons, gliding pill; `aria-selected` or `aria-pressed`), each replacing five or more scoped copies.
+- **Landscape arc** uses CSS `sin()`/`cos()` over `--i`/`--n` on a 136px radius, so any item count fits without overlap.
+
 ## Risks / Trade-offs
 
 - [Alpenglow untested on every screen] → the switch is reversible in one tap; components that still carry literals (glass overlays, media viewer) are neutral and fit both variants.
 - [Classic not perfectly identical] → only the drift fixes change pixels: dead-letter empty-state text `slate-500 → slate-600` and item background `slate-100 → slate-200` (no matching tokens existed), and the offline-download warning text `amber-500 → amber-700` (it used `--color-warning`, 2.15:1 on white; its own fallback showed amber-700 was intended).
 - [Reduced-motion users lose Classic's 1.02 hover scale] → intended; spec requires it.
 - [Classic changes beyond drift fixes (iteration 3)] → limited to the four structural fixes in D9, each a usability fix independent of visual style; prod remains the reference for "before" via the PR preview.
+- [Removing Classic is one-way] → the owner chose Alpenglow after comparing on device; Classic remains in git history.
+- [Blue-100 controls are a stronger blue presence] → reserved for controls only; containers keep the quieter blue-50 so screens don't turn uniformly blue.
+- [CSS trig functions for the landscape arc] → supported in all evergreen browsers since 2023 (Safari 15.4+); the arc only applies to short landscape screens.
 - [Stable dialogs show empty space for short content] → chosen deliberately: the owner prefers a constant frame over a resizing one.
 - [Accessibility fixes change Classic] → text-contrast, labeling, and attribution fixes apply to every variant (they are defects, not style).
 - [Out-in swaps delay the new content by the leave duration] → leave halves are short (160 ms) in Alpenglow and zero in Classic.

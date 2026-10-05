@@ -1008,22 +1008,22 @@ function handleDialogClose() {
   text-decoration: underline;
 }
 
-/* Sheet → sheet: the Classic fallbacks reproduce `.sheet` exactly. */
+/* Sheet → sheet: the outgoing sheet fades out quickly, the next one rises into place. */
 .sheet-swap-enter-active,
 .sheet-swap-leave-active {
   transition:
-    transform var(--sheet-swap-duration, var(--motion-duration-long)) var(--motion-ease-emphasized),
-    opacity var(--sheet-swap-duration, var(--motion-duration-long)) var(--motion-ease-standard);
+    transform var(--motion-duration-medium) var(--motion-ease-emphasized),
+    opacity var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .sheet-swap-leave-active {
-  transition-duration: var(--sheet-swap-leave-duration, var(--motion-duration-long));
+  transition-duration: var(--motion-duration-short);
 }
 
 .sheet-swap-enter-from,
 .sheet-swap-leave-to {
-  transform: translateY(var(--sheet-swap-offset, 100%));
-  opacity: var(--sheet-swap-opacity, 1);
+  transform: translateY(var(--motion-offset));
+  opacity: 0;
 }
 
 /* On desktop, disable container transitions — each overlay animates itself */

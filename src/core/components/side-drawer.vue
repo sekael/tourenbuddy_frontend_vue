@@ -47,7 +47,7 @@ const isDesktop = useIsDesktop()
       <BaseIconButton
         v-if="props.backLabel && !props.collapsed"
         name="arrow_back"
-        class="overlay-action"
+        variant="tonal"
         size="sm"
         :label="`${t('core.drawer.back')} ${props.backLabel}`"
         @click="emit('back')"
@@ -60,7 +60,7 @@ const isDesktop = useIsDesktop()
       <BaseIconButton
         v-if="!props.collapsed"
         name="close"
-        class="overlay-action"
+        variant="tonal"
         size="sm"
         :label="t('core.drawer.close')"
         @click="emit('close')"
@@ -96,21 +96,19 @@ const isDesktop = useIsDesktop()
   display: flex;
   flex-direction: column;
   background-color: var(--color-background);
-  border-left: 1px solid var(--overlay-border-color, var(--color-outline-variant));
   box-shadow: var(--shadow-lg);
   animation: slide-in-right var(--motion-duration-long) var(--motion-ease-emphasized);
   /* Restore pointer events — parent sheet-container sets pointer-events: none */
   pointer-events: auto;
   transition:
-    max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-    border-bottom-left-radius 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    max-height var(--motion-duration-medium) var(--motion-ease-emphasized),
+    border-bottom-left-radius var(--motion-duration-medium) var(--motion-ease-emphasized);
   overflow: hidden;
 }
 
 .side-drawer--collapsed {
   /* Collapse vertically to header-only; width unchanged */
   max-height: 4.5rem;
-  border-bottom: 1px solid var(--overlay-border-color, var(--color-outline-variant));
   border-bottom-left-radius: var(--radius-lg);
   border-top-left-radius: 0;
   /* Keep the same animation-name so toggling collapsed off doesn't restart slide-in-right */
@@ -135,14 +133,13 @@ const isDesktop = useIsDesktop()
   flex-shrink: 0;
   gap: var(--spacing-sm);
   padding: var(--spacing-lg) var(--spacing-xl) var(--spacing-md);
-  border-bottom: 1px solid var(--overlay-divider-color, var(--color-outline-variant));
 }
 
 .drawer-title {
-  font-size: var(--overlay-title-size, var(--font-size-xl));
+  font-size: var(--overlay-title-size);
   font-weight: var(--font-weight-semibold);
   flex: 1;
-  letter-spacing: var(--overlay-title-tracking, normal);
+  letter-spacing: var(--overlay-title-tracking);
 }
 
 .title-spacer {
@@ -171,8 +168,14 @@ const isDesktop = useIsDesktop()
   scrollbar-color: var(--color-outline-variant) transparent;
   opacity: 1;
   transition:
-    opacity 0.18s ease-out,
-    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity var(--motion-duration-short) var(--motion-ease-standard),
+    padding var(--motion-duration-medium) var(--motion-ease-emphasized);
+}
+
+/* Same footer fade as the bottom sheet */
+.drawer-content:has(~ .drawer-footer) {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent);
+  padding-bottom: var(--spacing-xl);
 }
 
 .drawer-content::-webkit-scrollbar {
@@ -186,13 +189,11 @@ const isDesktop = useIsDesktop()
 
 .drawer-footer {
   flex-shrink: 0;
-  border-top: 1px solid var(--overlay-divider-color, var(--color-outline-variant));
   padding: var(--spacing-sm) var(--spacing-xl) var(--spacing-xl);
   opacity: 1;
   transition:
-    opacity 0.18s ease-out,
-    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    border-top-color 0.3s;
+    opacity var(--motion-duration-short) var(--motion-ease-standard),
+    padding var(--motion-duration-medium) var(--motion-ease-emphasized);
 }
 
 .side-drawer--collapsed .drawer-content,
@@ -203,14 +204,5 @@ const isDesktop = useIsDesktop()
   flex: 0;
   overflow: hidden;
   pointer-events: none;
-}
-
-.side-drawer--collapsed .drawer-footer {
-  border-top-color: transparent;
-}
-
-/* Header back/close: tonal circle in variants that define --overlay-close-bg. */
-.overlay-action {
-  background-color: var(--overlay-close-bg, transparent);
 }
 </style>

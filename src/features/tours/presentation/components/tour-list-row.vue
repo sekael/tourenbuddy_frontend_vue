@@ -102,7 +102,7 @@ const subtitle = computed(() => [dateLabel.value, partnerSubtitle.value].filter(
   padding: var(--spacing-sm);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background-color 0.15s;
+  transition: background-color var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .tour-row:hover {

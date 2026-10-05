@@ -151,11 +151,20 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
     if (!popover || !banner)
       return
     const minTop = banner.getBoundingClientRect().bottom + 8
+    const rect = popover.getBoundingClientRect()
     // Only nudge on a real overlap. An unconditional write re-places every
     // popover driver already positioned correctly — the same needless
     // reposition `refreshAfterMotion` guards against.
-    if (popover.getBoundingClientRect().top < minTop)
+    if (rect.top < minTop)
       popover.style.top = `${minTop}px`
+    // driver.js clamps to the viewport with no margin, leaving edge-anchored
+    // popovers flush against the screen edge. Keep the same 12px gutter the
+    // sheets use. `right` is reset so the pair can't stretch the box.
+    const gutter = 12
+    if (rect.right > window.innerWidth - gutter) {
+      popover.style.left = `${Math.max(gutter, window.innerWidth - gutter - rect.width)}px`
+      popover.style.right = 'auto'
+    }
   }
 
   function teardown() {

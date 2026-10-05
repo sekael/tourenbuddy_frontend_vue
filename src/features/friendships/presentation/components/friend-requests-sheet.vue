@@ -189,22 +189,25 @@ async function handleCancel(requestId: string) {
     <div class="content">
       <div
         class="tab-bar"
+        role="tablist"
         data-tour="friend-requests"
         data-tab-indicator
         :style="{ '--tab-index': activeTab === 'blocked' ? 1 : 0, '--tab-count': 2 }"
       >
         <button
           type="button"
+          role="tab"
           class="tab-btn"
-          :class="{ 'tab-btn--active': activeTab === 'pending' }"
+          :aria-selected="activeTab === 'pending'"
           @click="activeTab = 'pending'"
         >
-          {{ t('friendships.friendsListLink') }}
+          {{ t('friendships.requestsTab') }}
         </button>
         <button
           type="button"
+          role="tab"
           class="tab-btn"
-          :class="{ 'tab-btn--active': activeTab === 'blocked' }"
+          :aria-selected="activeTab === 'blocked'"
           @click="activeTab = 'blocked'"
         >
           {{ t('blocks.tabLabel') }}
@@ -382,37 +385,6 @@ async function handleCancel(requestId: string) {
   gap: var(--spacing-xl);
 }
 
-.tab-bar {
-  display: flex;
-  gap: var(--spacing-xs);
-  border-bottom: var(--tabs-border, 1px solid var(--color-outline-variant));
-  margin-bottom: calc(-1 * var(--spacing-md));
-  background-color: var(--tabs-bg, transparent);
-  border-radius: var(--tabs-radius, 0);
-  padding: var(--tabs-padding, 0);
-}
-
-.tab-btn {
-  padding: var(--spacing-sm) var(--spacing-md);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
-  border-bottom: var(--tab-indicator-width, 2px) solid transparent;
-  margin-bottom: var(--tab-margin-bottom, -1px);
-  transition:
-    color var(--motion-duration-short) var(--motion-ease-standard),
-    border-color var(--motion-duration-short) var(--motion-ease-standard),
-    background-color var(--motion-duration-short) var(--motion-ease-standard),
-    box-shadow var(--motion-duration-short) var(--motion-ease-standard);
-  border-radius: var(--tab-radius, 0);
-  flex: var(--tab-flex, 0 1 auto);
-}
-
-.tab-btn--active {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
-}
-
 .deny-rights-note {
   display: flex;
   align-items: flex-start;
@@ -459,11 +431,10 @@ async function handleCancel(requestId: string) {
 }
 
 .section-title {
-  font-size: var(--heading-section-size, var(--font-size-xs, 11px));
-  font-weight: var(--heading-section-weight, var(--font-weight-semibold));
-  color: var(--heading-section-color, var(--color-on-surface-variant));
-  text-transform: var(--heading-section-transform, uppercase);
-  letter-spacing: var(--heading-section-tracking, 0.05em);
+  font-size: var(--heading-section-size);
+  font-weight: var(--heading-section-weight);
+  color: var(--heading-section-color);
+  letter-spacing: var(--heading-section-tracking);
 }
 
 .empty-state {
@@ -485,8 +456,7 @@ async function handleCancel(requestId: string) {
   align-items: stretch;
   gap: var(--spacing-sm);
   padding: var(--spacing-md);
-  border-radius: var(--card-radius, var(--radius-md));
-  border: 1px solid var(--card-border-color, var(--color-outline-variant));
+  border-radius: var(--card-radius);
   background-color: var(--color-surface);
   container-type: inline-size;
 }
@@ -519,7 +489,7 @@ async function handleCancel(requestId: string) {
 }
 
 .request-phone-sub {
-  font-size: var(--font-size-xs, 11px);
+  font-size: var(--font-size-xs);
   color: var(--color-on-surface-variant);
 }
 

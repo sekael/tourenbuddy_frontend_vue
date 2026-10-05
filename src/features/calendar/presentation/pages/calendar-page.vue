@@ -333,7 +333,7 @@ onMounted(() => {
     <main class="calendar-main">
       <header class="top-bar">
         <div class="bar-left">
-          <BaseIconButton name="arrow_back" :label="t('calendar.back')" @click="goBack" />
+          <BaseIconButton name="arrow_back" variant="tonal" :label="t('calendar.back')" @click="goBack" />
         </div>
 
         <div class="bar-center">

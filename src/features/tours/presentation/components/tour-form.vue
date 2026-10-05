@@ -1207,11 +1207,10 @@ defineExpose({ cancel: handleCancel, submitBlocked })
 }
 
 .section-label {
-  font-size: var(--heading-section-size, var(--font-size-xs));
-  font-weight: var(--heading-section-weight, var(--font-weight-semibold));
-  text-transform: var(--heading-section-transform, uppercase);
-  letter-spacing: var(--heading-section-tracking, 0.08em);
-  color: var(--heading-section-color, var(--color-on-surface-variant));
+  font-size: var(--heading-section-size);
+  font-weight: var(--heading-section-weight);
+  letter-spacing: var(--heading-section-tracking);
+  color: var(--heading-section-color);
 }
 
 /* Tour type chips */
@@ -1225,18 +1224,18 @@ defineExpose({ cancel: handleCancel, submitBlocked })
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
-  padding: var(--chip-padding, var(--spacing-xs) var(--spacing-sm));
+  padding: var(--chip-padding);
   border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--chip-radius, var(--radius-sm));
-  font-size: var(--chip-font-size, var(--font-size-sm));
-  color: var(--chip-color, var(--color-on-surface-variant));
+  border-radius: var(--chip-radius);
+  font-size: var(--chip-font-size);
+  color: var(--chip-color);
   background-color: transparent;
   transition:
-    background-color 0.15s,
-    border-color 0.15s,
-    color 0.15s;
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    border-color var(--motion-duration-short) var(--motion-ease-standard),
+    color var(--motion-duration-short) var(--motion-ease-standard);
   cursor: pointer;
-  min-height: var(--chip-min-height, auto);
+  min-height: var(--chip-min-height);
 }
 
 .type-chip:hover {
@@ -1245,9 +1244,9 @@ defineExpose({ cancel: handleCancel, submitBlocked })
 }
 
 .type-chip.selected {
-  background-color: var(--chip-selected-bg, var(--color-primary));
-  border-color: var(--chip-selected-border-color, var(--color-primary));
-  color: var(--chip-selected-color, var(--color-on-primary));
+  background-color: var(--chip-selected-bg);
+  border-color: var(--chip-selected-border-color);
+  color: var(--chip-selected-color);
 }
 
 .field-hint {
@@ -1272,18 +1271,18 @@ defineExpose({ cancel: handleCancel, submitBlocked })
 
 .season-chip {
   flex: 1;
-  padding: var(--chip-padding, var(--spacing-xs) var(--spacing-sm));
+  padding: var(--chip-padding);
   border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--chip-radius, var(--radius-sm));
-  font-size: var(--chip-font-size, var(--font-size-sm));
-  color: var(--chip-color, var(--color-on-surface-variant));
+  border-radius: var(--chip-radius);
+  font-size: var(--chip-font-size);
+  color: var(--chip-color);
   text-align: center;
   transition:
-    background-color 0.15s,
-    border-color 0.15s,
-    color 0.15s;
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    border-color var(--motion-duration-short) var(--motion-ease-standard),
+    color var(--motion-duration-short) var(--motion-ease-standard);
   cursor: pointer;
-  min-height: var(--chip-min-height, auto);
+  min-height: var(--chip-min-height);
 }
 
 .season-chip:hover {
@@ -1292,9 +1291,9 @@ defineExpose({ cancel: handleCancel, submitBlocked })
 }
 
 .season-chip.selected {
-  background-color: var(--chip-selected-bg, var(--color-primary));
-  border-color: var(--chip-selected-border-color, var(--color-primary));
-  color: var(--chip-selected-color, var(--color-on-primary));
+  background-color: var(--chip-selected-bg);
+  border-color: var(--chip-selected-border-color);
+  color: var(--chip-selected-color);
 }
 
 /* Fields */
@@ -1307,7 +1306,7 @@ defineExpose({ cancel: handleCancel, submitBlocked })
 .label {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  color: var(--field-label-color, var(--color-on-surface-variant));
+  color: var(--field-label-color);
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
@@ -1315,17 +1314,17 @@ defineExpose({ cancel: handleCancel, submitBlocked })
 
 .optional-hint {
   font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-normal);
+  font-weight: var(--font-weight-regular);
   color: var(--color-on-surface-variant);
 }
 
 .input {
   padding: var(--spacing-md);
   border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--input-radius, var(--radius-sm));
+  border-radius: var(--input-radius);
   font-size: var(--font-size-base);
   color: var(--color-on-surface);
-  background-color: var(--input-bg, var(--color-background));
+  background-color: var(--input-bg);
   outline: none;
   transition:
     border-color var(--motion-duration-medium) var(--motion-ease-standard),
@@ -1336,8 +1335,8 @@ defineExpose({ cancel: handleCancel, submitBlocked })
 
 .input:focus {
   border-color: var(--color-primary);
-  background-color: var(--input-bg-focus, var(--color-background));
-  box-shadow: var(--input-focus-ring, none);
+  background-color: var(--input-bg-focus);
+  box-shadow: var(--input-focus-ring);
 }
 
 .input--error {
@@ -1369,10 +1368,8 @@ defineExpose({ cancel: handleCancel, submitBlocked })
   flex-direction: column;
   gap: var(--spacing-sm);
   padding: var(--spacing-sm) var(--spacing-md);
-  border: 1px solid var(--card-border-color, var(--color-outline-variant));
-  border-left: var(--card-accent-width, 3px) solid var(--color-outline-variant);
-  border-radius: var(--card-radius, var(--radius-sm));
-  background-color: var(--color-surface-variant, transparent);
+  border-radius: var(--card-radius);
+  background-color: var(--color-surface-variant);
 }
 
 .point-section--goal {
@@ -1430,7 +1427,7 @@ defineExpose({ cancel: handleCancel, submitBlocked })
   flex: 1;
   font-size: var(--font-size-sm);
   color: var(--color-on-surface-variant);
-  font-family: monospace;
+  font-variant-numeric: tabular-nums;
 }
 
 /* GPX */

@@ -38,7 +38,6 @@ const steps = computed(() => {
         type="button"
         role="tab"
         class="tab"
-        :class="{ 'tab--active': active === tab.id }"
         :aria-selected="active === tab.id"
         @click="active = tab.id"
       >
@@ -67,32 +66,7 @@ const steps = computed(() => {
 }
 
 .tabs {
-  display: flex;
-  gap: var(--spacing-xs);
-  border-bottom: var(--tabs-border, 1.5px solid var(--color-outline-variant));
   margin-top: var(--spacing-xs);
-  background-color: var(--tabs-bg, transparent);
-  border-radius: var(--tabs-radius, 0);
-  padding: var(--tabs-padding, 0);
-}
-
-.tab {
-  flex: 1;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  background: transparent;
-  border: none;
-  border-bottom: var(--tab-indicator-width, 2px) solid transparent;
-  margin-bottom: var(--tab-margin-bottom, -1.5px);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
-  cursor: pointer;
-  border-radius: var(--tab-radius, 0);
-}
-
-.tab--active {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
 }
 
 .steps {

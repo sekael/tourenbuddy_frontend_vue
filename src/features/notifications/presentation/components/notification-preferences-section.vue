@@ -79,6 +79,7 @@ onMounted(() => {
             <input
               type="checkbox"
               :checked="prefs.notifPushEnabled"
+              :aria-label="t('notifications.pushLabel')"
               @change="handlePushToggle"
             >
             <span class="track" />
@@ -91,6 +92,7 @@ onMounted(() => {
             <input
               type="checkbox"
               :checked="prefs.notifEmailEnabled"
+              :aria-label="t('notifications.emailLabel')"
               @change="handleEmailToggle"
             >
             <span class="track" />
@@ -117,6 +119,7 @@ onMounted(() => {
               <input
                 type="checkbox"
                 :checked="!allOff && !isTypeMuted(type)"
+                :aria-label="t(`notifications.type.${type}`)"
                 :disabled="allOff"
                 @change="handleTypeToggle(type, $event)"
               >
@@ -141,11 +144,10 @@ onMounted(() => {
 }
 
 .section-title {
-  font-size: var(--heading-section-size, var(--font-size-sm));
-  font-weight: var(--heading-section-weight, var(--font-weight-semibold));
-  color: var(--heading-section-color, var(--color-on-surface-variant));
-  text-transform: var(--heading-section-transform, uppercase);
-  letter-spacing: var(--heading-section-tracking, 0.05em);
+  font-size: var(--heading-section-size);
+  font-weight: var(--heading-section-weight);
+  color: var(--heading-section-color);
+  letter-spacing: var(--heading-section-tracking);
 }
 
 .rows {
@@ -215,10 +217,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-top: var(--spacing-xs);
-  padding-top: var(--spacing-sm);
-  border-top: 1px solid var(--color-outline-variant);
-  transition: opacity 0.2s;
+  margin-top: var(--spacing-sm);
+  transition: opacity var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .types-block--disabled {
@@ -226,11 +226,9 @@ onMounted(() => {
 }
 
 .types-label {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  color: var(--field-label-color);
 }
 
 .disclaimer {
@@ -278,7 +276,7 @@ onMounted(() => {
   background-color: var(--color-outline-variant);
   border-radius: var(--radius-pill);
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .track::before {
@@ -291,7 +289,7 @@ onMounted(() => {
   background-color: var(--color-background);
   border-radius: var(--radius-round);
   box-shadow: var(--shadow-control);
-  transition: transform 0.2s;
+  transition: transform var(--motion-duration-short) var(--motion-ease-spring);
 }
 
 input:checked + .track {

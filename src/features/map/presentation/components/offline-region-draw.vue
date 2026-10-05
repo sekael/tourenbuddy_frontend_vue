@@ -241,17 +241,17 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="actions">
-      <button type="button" class="cancel-btn" @click="emit('cancel')">
+      <BaseButton variant="secondary" class="on-map" @click="emit('cancel')">
         {{ t('offlineMap.draw.cancel') }}
-      </button>
-      <button
+      </BaseButton>
+      <BaseButton
         v-if="isDesktop && phase === 'done'"
-        type="button"
-        class="cancel-btn"
+        variant="secondary"
+        class="on-map"
         @click="redraw"
       >
         {{ t('offlineMap.draw.redraw') }}
-      </button>
+      </BaseButton>
       <BaseButton
         v-if="!isDesktop || phase === 'done'"
         variant="primary"
@@ -277,8 +277,8 @@ onBeforeUnmount(() => {
 
 .rect {
   position: absolute;
-  border: 2px solid var(--color-accent, #2563eb);
-  background-color: color-mix(in srgb, var(--color-accent, #2563eb) 18%, transparent);
+  border: 2px solid var(--color-accent);
+  background-color: color-mix(in srgb, var(--color-accent) 18%, transparent);
   pointer-events: none;
 }
 
@@ -288,7 +288,7 @@ onBeforeUnmount(() => {
 
 .hint {
   position: fixed;
-  top: calc(var(--spacing-lg) + var(--safe-top, 0px));
+  top: calc(var(--spacing-lg) + var(--safe-top));
   left: 50%;
   transform: translateX(-50%);
   padding: var(--spacing-xs) var(--spacing-md);
@@ -311,16 +311,8 @@ onBeforeUnmount(() => {
   pointer-events: auto;
 }
 
-.cancel-btn {
-  padding: var(--button-padding-md);
-  border-radius: var(--button-radius);
-  font-size: var(--button-font-size-md);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-on-surface);
-  background-color: rgba(248, 250, 252, 0.85);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(203, 213, 225, 0.6);
-  box-shadow: var(--shadow-sm);
+/* Tonal secondary needs a lift to stand off bright terrain */
+.on-map {
+  box-shadow: var(--shadow-md);
 }
 </style>

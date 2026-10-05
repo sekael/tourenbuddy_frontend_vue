@@ -51,8 +51,17 @@
 - [x] 8.5 `stableSize` dialogs for contacts, friend requests, profile; verify on desktop that list → detail → requests → blocked stays 640 px in both variants
 - [x] 8.6 Walk the guided tour end-to-end (German, all 9 steps) and confirm every step's target and copy still match the UI
 
-## 9. Finalize
+## 9. Iteration 5 — one design, consistency sweep (D12)
 
-- [x] 9.1 Run `npx eslint . --fix`, `npm run type-check`, `npm run test`; all pass with zero warnings
-- [ ] 9.2 Provide a ready-to-copy conventional commit message (`feat(design): …`)
-- [ ] 9.3 Push the branch and open a PR so the preview deploy (`<branch-slug>.tourenbuddy.pages.dev`) allows on-device comparison against prod
+- [x] 9.1 Promote Alpenglow to `:root`; delete the variant block, `design-variant.ts` (+ test, `main.ts` call), the profile switcher and its i18n keys; strip dead fallbacks; delete no-op tokens with the declarations/markup they hid; inline single-use tokens
+- [x] 9.2 Repurpose `component-tokens.test.ts` to fail on undefined tokens; fix the two typos it finds
+- [x] 9.3 Control-container role; tonal `BaseButton` variants, `BaseIconButton variant="tonal"` for all close/back, tour toggles, calendar nav/back, map Cancel → shared `Button`; verify contrast incl. hover fills
+- [x] 9.4 `SpeedDialItem` single pill shared by menu and base-map options; `.fab-glass` on every map control; trigger icon morph; staggered unfold; generic landscape arc; verify per-frame sampling and landscape boxes
+- [x] 9.5 Global segmented-control rule for all tab rows + filter switch; sentence-case labels; tabular coordinates; footer content fade; tour popover styling + edge gutter; move every remaining transition onto motion tokens
+- [x] 9.6 axe audit of all main screens (zero violations, incl. named notification switches); desktop dialog height stays 640px; walk the guided tour (all 9 steps, sub-steps of the menu/base-map/tabs/notification steps)
+
+## 10. Finalize
+
+- [x] 10.1 Run `npx eslint . --fix`, `npm run type-check`, `npm run test`; all pass with zero warnings
+- [ ] 10.2 Provide a ready-to-copy conventional commit message (`feat(design): …`)
+- [ ] 10.3 Push the branch and open a PR so the preview deploy (`<branch-slug>.tourenbuddy.pages.dev`) allows on-device comparison against prod

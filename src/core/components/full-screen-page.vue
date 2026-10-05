@@ -42,7 +42,7 @@ const titleId = 'full-screen-page-title'
       <header class="page-bar">
         <BaseIconButton
           :name="showBack ? 'arrow_back' : 'close'"
-          class="overlay-action"
+          variant="tonal"
           size="sm"
           :label="showBack ? t('core.drawer.back') : t('core.drawer.close')"
           @click="showBack ? emit('back') : emit('close')"
@@ -83,15 +83,14 @@ const titleId = 'full-screen-page-title'
   gap: var(--spacing-sm);
   flex-shrink: 0;
   padding: calc(var(--safe-top) + var(--spacing-sm)) var(--spacing-md) var(--spacing-sm);
-  border-bottom: 1px solid var(--overlay-divider-color, var(--color-outline-variant));
 }
 
 .title {
-  font-size: var(--overlay-title-size, var(--font-size-xl));
+  font-size: var(--overlay-title-size);
   font-weight: var(--font-weight-semibold);
   flex: 1;
   min-width: 0;
-  letter-spacing: var(--overlay-title-tracking, normal);
+  letter-spacing: var(--overlay-title-tracking);
 }
 
 .title-spacer {
@@ -113,7 +112,7 @@ const titleId = 'full-screen-page-title'
   border-radius: var(--button-radius);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
-  transition: background-color 0.2s;
+  transition: background-color var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .page-action :slotted(.page-save-btn:hover) {
@@ -130,10 +129,5 @@ const titleId = 'full-screen-page-title'
   min-height: 0;
   overflow-y: auto;
   padding: var(--spacing-md) var(--spacing-md) calc(var(--spacing-md) + var(--safe-bottom));
-}
-
-/* Header back/close: tonal circle in variants that define --overlay-close-bg. */
-.overlay-action {
-  background-color: var(--overlay-close-bg, transparent);
 }
 </style>

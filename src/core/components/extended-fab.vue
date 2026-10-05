@@ -11,42 +11,40 @@ const emit = defineEmits<{ click: [] }>()
 </template>
 
 <style scoped>
-/* Extended FAB: pill with icon + text. Mirrors round-action-button's surface,
-   shadow and hover; round-action-button is icon-only so it can't be reused
-   directly here. */
+/* Extended FAB: the primary action floating over a page — the primary button's
+   fill and glow at FAB height. */
 .ext-fab {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-xs);
   height: 52px;
-  padding: 0 var(--spacing-lg);
-  /* Match the calendar surface's corner radius so the FAB reads as part of it,
-     not a detached pill. */
-  border-radius: var(--radius-md);
+  padding: 0 var(--spacing-xl);
+  border-radius: var(--button-radius);
   background-color: var(--color-primary);
   color: var(--color-on-primary);
-  box-shadow: var(--shadow-md);
+  box-shadow:
+    0 8px 20px -6px rgba(37, 99, 235, 0.55),
+    var(--shadow-md);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.01em;
   cursor: pointer;
   transition:
-    box-shadow var(--motion-duration-medium) var(--motion-ease-standard),
+    background-color var(--motion-duration-medium) var(--motion-ease-standard),
     opacity var(--motion-duration-medium) var(--motion-ease-standard),
     transform var(--motion-duration-short) var(--motion-ease-spring);
 }
 
 .ext-fab:hover:not(:disabled) {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-1px);
+  background-color: var(--color-primary-dark);
 }
 
-/* Keeps the hover lift; adds the variant's press scale (Classic: 1 = unchanged). */
 .ext-fab:active:not(:disabled) {
-  transform: translateY(-1px) scale(var(--press-scale));
+  transform: scale(var(--press-scale));
 }
 
 .ext-fab:disabled {
-  opacity: 0.4;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 </style>

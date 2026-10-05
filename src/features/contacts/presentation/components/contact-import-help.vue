@@ -44,7 +44,6 @@ const steps = computed<string[]>(() => {
         type="button"
         role="tab"
         class="tab"
-        :class="{ 'tab--active': activeTab === tab.id }"
         :aria-selected="activeTab === tab.id"
         @click="activeTab = tab.id"
       >
@@ -74,37 +73,7 @@ const steps = computed<string[]>(() => {
 }
 
 .tabs {
-  display: flex;
-  gap: var(--spacing-xs);
-  border-bottom: var(--tabs-border, 1.5px solid var(--color-outline-variant));
   margin-top: var(--spacing-xs);
-  background-color: var(--tabs-bg, transparent);
-  border-radius: var(--tabs-radius, 0);
-  padding: var(--tabs-padding, 0);
-}
-
-.tab {
-  flex: 1;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  background: transparent;
-  border: none;
-  border-bottom: var(--tab-indicator-width, 2px) solid transparent;
-  margin-bottom: var(--tab-margin-bottom, -1.5px);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
-  cursor: pointer;
-  transition:
-    color var(--motion-duration-short) var(--motion-ease-standard),
-    border-color var(--motion-duration-short) var(--motion-ease-standard),
-    background-color var(--motion-duration-short) var(--motion-ease-standard),
-    box-shadow var(--motion-duration-short) var(--motion-ease-standard);
-  border-radius: var(--tab-radius, 0);
-}
-
-.tab--active {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
 }
 
 .steps {

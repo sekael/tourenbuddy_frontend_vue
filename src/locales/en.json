@@ -228,11 +228,6 @@
       "nameRequired": "First and last name are required",
       "saveFailed": "Failed to save profile",
       "languageLabel": "Language",
-      "designLabel": "Design",
-      "design": {
-        "classic": "Classic",
-        "alpenglow": "Alpenglow (preview)"
-      },
       "removePhoneBtn": "Remove phone number",
       "removePhoneConfirmTitle": "Remove phone number",
       "removePhoneDisclaimer": "Your phone number will be removed. If you add this number again, you will need to verify it once more.",
@@ -729,6 +724,7 @@
     "requestTo": "Request to",
     "verifyPhoneHint": "Verify your phone to connect with other users.",
     "friendsListLink": "Friend requests",
+    "requestsTab": "Requests",
     "contactCreated": "Contact created for new friend",
     "tooltip": "Friend on TourenBuddy",
     "acceptConfirm": "Accept this friend request?",

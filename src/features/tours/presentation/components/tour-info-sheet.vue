@@ -867,10 +867,9 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
           <!-- Visibility toggle -->
           <button
-            type="button" class="visibility-toggle action-btn" :class="tour.visibility === 'private'
-              ? 'visibility-toggle--private'
-              : 'visibility-toggle--friends'
-            " :aria-pressed="tour.visibility === 'private'" @click="toggleVisibility"
+            type="button" class="visibility-toggle action-btn"
+            :class="{ 'visibility-toggle--private': tour.visibility === 'private' }"
+            :aria-pressed="tour.visibility === 'private'" @click="toggleVisibility"
           >
             <BaseIcon :name="tour.visibility === 'private' ? 'lock' : 'group'" />
             {{
@@ -1204,16 +1203,20 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   align-items: center;
   gap: var(--spacing-xs);
   padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--chip-radius, var(--radius-md));
-  border: 1.5px solid var(--button-outline-border-color, var(--color-outline-variant));
-  min-height: var(--chip-min-height, auto);
-  background-color: var(--button-secondary-bg, transparent);
+  border-radius: var(--chip-radius);
+  min-height: var(--chip-min-height);
+  background-color: var(--color-secondary-container);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
+  color: var(--color-on-secondary-container);
   transition:
-    background-color 0.15s,
-    border-color 0.15s;
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    color var(--motion-duration-short) var(--motion-ease-standard),
+    transform var(--motion-duration-short) var(--motion-ease-spring);
+}
+
+.action-btn:active:not(:disabled) {
+  transform: scale(var(--press-scale));
 }
 
 /* The divider spans the full surface: negative margins cancel the host's inline padding
@@ -1228,24 +1231,23 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   margin-left: calc(-1 * var(--surface-pad-left, 0px));
   margin-right: calc(-1 * var(--surface-pad-right, 0px));
   padding: var(--spacing-sm) var(--surface-pad-right, 0px) 0 var(--surface-pad-left, 0px);
-  border-top: 1px solid var(--section-divider-color, var(--color-outline-variant));
 }
 
 .action-btn:hover:not(:disabled) {
-  background-color: var(--button-secondary-hover-bg, var(--color-surface-variant));
+  background-color: var(--color-secondary-container-hover);
 }
 
-/* Owner toggles: stacked in Classic (`contents` leaves them in .details' column),
-   a compact row in variants that define --toggle-row-display — each pill keeps its
-   natural width and they wrap rather than squeezing a label onto two lines. */
+/* Owner toggles: a compact row — each pill keeps its natural width and they wrap
+   rather than squeezing a label onto two lines. Both rest in the tonal container;
+   only the non-default state (completed / private) takes its own tint. */
 .owner-toggles {
-  display: var(--toggle-row-display, contents);
+  display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-xs);
 }
 
 .owner-toggles > .action-btn {
-  flex: var(--toggle-flex, 0 1 auto);
+  flex: 1 1 auto;
 }
 
 .action-btn:disabled {
@@ -1278,33 +1280,21 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 }
 
 .completion-toggle--done {
-  border-color: var(--button-outline-border-color, var(--color-success));
-  background-color: color-mix(in srgb, var(--color-success) var(--tonal-tint, 0%), transparent);
+  background-color: color-mix(in srgb, var(--color-success) 12%, var(--color-background));
   color: var(--color-success-text);
 }
 
-.completion-toggle--done:hover {
-  background-color: color-mix(in srgb, var(--color-success) var(--tonal-tint, 0%), transparent);
-}
-
-.visibility-toggle--friends {
-  border-color: var(--button-outline-border-color, var(--color-primary));
-  background-color: color-mix(in srgb, var(--color-primary) var(--tonal-tint, 0%), transparent);
-  color: var(--tint-text-primary, var(--color-primary));
-}
-
-.visibility-toggle--friends:hover {
-  background-color: color-mix(in srgb, var(--color-primary) var(--tonal-tint, 0%), transparent);
+.completion-toggle--done:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-success) 20%, var(--color-background));
 }
 
 .visibility-toggle--private {
-  border-color: var(--button-outline-border-color, var(--color-error));
-  background-color: color-mix(in srgb, var(--color-error) var(--tonal-tint, 0%), transparent);
-  color: var(--tint-text-error, var(--color-error));
+  background-color: var(--color-error-container);
+  color: var(--color-error-text);
 }
 
-.visibility-toggle--private:hover {
-  background-color: color-mix(in srgb, var(--color-error) var(--tonal-tint, 0%), transparent);
+.visibility-toggle--private:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-error) 20%, var(--color-background));
 }
 
 .detail-row {
@@ -1360,7 +1350,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 }
 
 .coords {
-  font-family: monospace;
+  font-variant-numeric: tabular-nums;
   font-size: var(--font-size-sm);
 }
 
@@ -1390,10 +1380,10 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
 .season-tag {
   padding: 2px var(--spacing-sm);
-  border-radius: var(--chip-radius, 4px);
+  border-radius: var(--chip-radius);
   font-size: var(--font-size-sm);
   background-color: color-mix(in srgb, var(--color-primary) 12%, transparent);
-  color: var(--tint-text-primary, var(--color-primary));
+  color: var(--color-primary-dark);
   font-weight: var(--font-weight-medium);
 }
 

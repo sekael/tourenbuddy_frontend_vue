@@ -146,7 +146,7 @@ onUnmounted(() => {
 
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.15s ease;
+  transition: opacity var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .tooltip-bubble--visible {

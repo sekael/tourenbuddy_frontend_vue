@@ -115,7 +115,7 @@ function reasonText(entry: WriteQueueEntry): string | null {
   <Transition name="sync-toast">
     <div
       v-if="pendingCount > 0"
-      class="sync-chip"
+      class="sync-chip fab-glass"
       role="status"
       :aria-label="t('offlineSync.pendingCount', { count: pendingCount })"
     >
@@ -196,7 +196,7 @@ function reasonText(entry: WriteQueueEntry): string | null {
 <style scoped>
 .sync-toast {
   position: fixed;
-  bottom: calc(var(--spacing-xl) + var(--safe-bottom, 0px));
+  bottom: calc(var(--spacing-xl) + var(--safe-bottom));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -215,7 +215,7 @@ function reasonText(entry: WriteQueueEntry): string | null {
 
 /* Pending-text snackbar sits just above the saved toast slot so both can show at once. */
 .sync-toast--pending {
-  bottom: calc(var(--spacing-xl) + var(--safe-bottom, 0px) + 3rem);
+  bottom: calc(var(--spacing-xl) + var(--safe-bottom) + 3rem);
 }
 
 /* Persistent icon+count chip, bottom-left, stacked just above the offline chip
@@ -223,22 +223,14 @@ function reasonText(entry: WriteQueueEntry): string | null {
 .sync-chip {
   position: fixed;
   left: var(--spacing-md);
-  bottom: calc(var(--spacing-md) + var(--safe-bottom, 0px) + 3rem);
+  bottom: calc(var(--spacing-md) + var(--safe-bottom) + 3rem);
   display: flex;
   align-items: center;
   gap: var(--spacing-xxs);
   padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: var(--radius-lg);
-  /* Persistent map chips follow the map-control glass in variants that define
-     --map-chip-*; Classic keeps the dark inverse surface. */
-  background: var(--map-chip-bg, var(--color-inverse-surface));
-  color: var(--map-chip-color, var(--color-on-inverse-surface));
-  border: var(--map-chip-border, none);
-  backdrop-filter: var(--map-chip-backdrop, none);
-  -webkit-backdrop-filter: var(--map-chip-backdrop, none);
   font-size: 0.8125rem;
   font-weight: 600;
-  box-shadow: var(--shadow-md);
   z-index: 191;
 }
 
@@ -253,7 +245,7 @@ function reasonText(entry: WriteQueueEntry): string | null {
    // drain-connectivity fix, being offline WITH a dead letter is rare and transient. */
 .sync-deadletter {
   position: fixed;
-  bottom: calc(var(--spacing-md) + var(--safe-bottom, 0px));
+  bottom: calc(var(--spacing-md) + var(--safe-bottom));
   left: var(--spacing-md);
   display: flex;
   align-items: center;
@@ -270,12 +262,12 @@ function reasonText(entry: WriteQueueEntry): string | null {
   max-width: 90vw;
   cursor: pointer;
   transition:
-    bottom 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-    padding 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    bottom var(--motion-duration-medium) var(--motion-ease-emphasized),
+    padding var(--motion-duration-medium) var(--motion-ease-emphasized);
 }
 
 .sync-deadletter--expanded {
-  bottom: calc(var(--spacing-md) + var(--safe-bottom, 0px) + 6rem);
+  bottom: calc(var(--spacing-md) + var(--safe-bottom) + 6rem);
   padding: var(--spacing-xs) var(--spacing-md);
 }
 
@@ -289,8 +281,8 @@ function reasonText(entry: WriteQueueEntry): string | null {
   overflow: hidden;
   white-space: nowrap;
   transition:
-    max-width 0.25s ease,
-    opacity 0.2s ease;
+    max-width var(--motion-duration-medium) var(--motion-ease-emphasized),
+    opacity var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .sync-deadletter--expanded .dl-body {

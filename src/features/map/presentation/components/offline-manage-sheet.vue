@@ -83,7 +83,7 @@ onMounted(() => store.loadRegions())
   margin: 0;
   padding: var(--spacing-sm);
   border-radius: var(--radius-md);
-  background-color: var(--color-surface-variant, #e2e8f0);
+  background-color: var(--color-surface-variant);
   font-size: var(--font-size-sm);
 }
 
@@ -96,13 +96,13 @@ onMounted(() => store.loadRegions())
 .bar {
   height: 8px;
   border-radius: var(--radius-sm);
-  background-color: var(--color-surface-variant, #e2e8f0);
+  background-color: var(--color-surface-variant);
   overflow: hidden;
 }
 
 .fill {
   height: 100%;
-  background-color: var(--color-accent, #2563eb);
+  background-color: var(--color-accent);
 }
 
 .usage-label {
@@ -125,7 +125,7 @@ onMounted(() => store.loadRegions())
   justify-content: space-between;
   padding: var(--spacing-sm);
   border-radius: var(--radius-md);
-  background-color: var(--color-surface-variant, #f1f5f9);
+  background-color: var(--color-surface-variant);
 }
 
 .region-info {

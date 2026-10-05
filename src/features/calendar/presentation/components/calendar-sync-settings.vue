@@ -123,11 +123,10 @@ onUnmounted(() => (error.value = null))
 }
 
 .section-title {
-  font-size: var(--heading-section-size, var(--font-size-sm));
-  font-weight: var(--heading-section-weight, var(--font-weight-semibold));
-  color: var(--heading-section-color, var(--color-on-surface-variant));
-  text-transform: var(--heading-section-transform, uppercase);
-  letter-spacing: var(--heading-section-tracking, 0.05em);
+  font-size: var(--heading-section-size);
+  font-weight: var(--heading-section-weight);
+  color: var(--heading-section-color);
+  letter-spacing: var(--heading-section-tracking);
 }
 
 .hint {
@@ -163,17 +162,17 @@ onUnmounted(() => (error.value = null))
 .input {
   padding: var(--spacing-sm);
   border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--input-radius, var(--radius-sm));
+  border-radius: var(--input-radius);
   font: inherit;
   color: var(--color-on-surface);
-  background-color: var(--input-bg, var(--color-background));
+  background-color: var(--input-bg);
 }
 
 .input:focus {
   border-color: var(--color-primary);
   outline: none;
-  background-color: var(--input-bg-focus, var(--color-background));
-  box-shadow: var(--input-focus-ring, none);
+  background-color: var(--input-bg-focus);
+  box-shadow: var(--input-focus-ring);
 }
 
 .sync-now,

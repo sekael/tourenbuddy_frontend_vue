@@ -173,8 +173,8 @@ onUnmounted(() => {
 .tour-slide-enter-active,
 .tour-slide-leave-active {
   transition:
-    transform 0.25s ease,
-    opacity 0.25s ease;
+    transform var(--motion-duration-medium) var(--motion-ease-emphasized),
+    opacity var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .tour-slide-enter-from,

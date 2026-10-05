@@ -180,18 +180,18 @@ async function handleDismiss() {
 }
 
 .security-note {
-  font-size: var(--font-size-xs, 11px);
+  font-size: var(--font-size-xs);
   color: var(--color-on-surface-variant);
   line-height: 1.4;
 }
 
 .error-text {
-  font-size: var(--font-size-xs, 11px);
+  font-size: var(--font-size-xs);
   color: var(--color-error);
 }
 
 .offline-text {
-  font-size: var(--font-size-xs, 11px);
+  font-size: var(--font-size-xs);
   color: var(--color-on-surface-variant);
 }
 

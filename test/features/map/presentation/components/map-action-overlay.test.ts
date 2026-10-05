@@ -237,13 +237,24 @@ describe('mapActionOverlay', () => {
   })
 
   describe('menu-item layout', () => {
-    it('should have label-chip before icon-fab in DOM order', async () => {
+    it('should put the label before the icon so icons line up above the trigger', async () => {
       const wrapper = mountOverlay()
       await wrapper.find('[aria-haspopup="menu"]').trigger('click')
       const firstItem = wrapper.find('[role="menuitem"]')
       const children = firstItem.element.children
-      expect(children[0]!.classList.contains('label-chip')).toBe(true)
-      expect(children[1]!.classList.contains('icon-fab')).toBe(true)
+      expect(children[0]!.classList.contains('label')).toBe(true)
+      expect(children[1]!.classList.contains('icon-wrap')).toBe(true)
+    })
+
+    it('should check exactly the current base map among the options', async () => {
+      const wrapper = mountOverlay()
+      ;(wrapper.vm as unknown as { openBaseMap: () => void }).openBaseMap()
+      await wrapper.vm.$nextTick()
+      const options = wrapper.findAll('[role="menuitemradio"]')
+      expect(options.length).toBeGreaterThan(1)
+      expect(options.map(o => o.attributes('aria-checked'))).toEqual(
+        options.map((_, i) => String(i === 0)),
+      )
     })
   })
 })

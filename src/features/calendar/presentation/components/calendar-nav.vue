@@ -105,8 +105,8 @@ const items: { view: CalendarView, icon: string, labelKey: string }[] = [
   font-weight: var(--font-weight-medium);
   color: var(--color-on-surface-variant);
   transition:
-    background-color 0.15s,
-    color 0.15s;
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    color var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .nav-item:hover {
@@ -114,8 +114,8 @@ const items: { view: CalendarView, icon: string, labelKey: string }[] = [
 }
 
 .nav-item--active {
-  background-color: var(--color-surface-variant);
-  color: var(--color-primary);
+  background-color: var(--color-secondary-container);
+  color: var(--color-primary-dark);
   font-weight: var(--font-weight-semibold);
 }
 
@@ -144,14 +144,14 @@ const items: { view: CalendarView, icon: string, labelKey: string }[] = [
   font-weight: var(--font-weight-semibold);
   color: var(--color-on-surface-variant);
   transition:
-    background-color 0.15s,
-    color 0.15s;
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    color var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 /* Active: darker filled rectangle behind both icon and label. */
 .bottom-nav-item--active {
-  background-color: var(--color-surface-variant);
-  color: var(--color-primary);
+  background-color: var(--color-secondary-container);
+  color: var(--color-primary-dark);
 }
 
 @media (min-width: 600px) {

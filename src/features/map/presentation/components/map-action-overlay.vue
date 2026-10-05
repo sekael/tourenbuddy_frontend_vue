@@ -96,7 +96,7 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
 
     <BaseTooltip v-if="showCompass" :text="t('map.overlay.compassTooltip')">
       <button
-        class="compass-fab"
+        class="compass-fab fab-glass"
         @click="emit('resetBearing')"
       >
         <BaseIcon
@@ -107,7 +107,7 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
       </button>
     </BaseTooltip>
 
-    <Transition :name="view === 'base-map' ? 'menu-fade' : 'panel'">
+    <Transition name="dial">
       <MapSpeedDialMenu
         v-if="view === 'menu'"
         ref="menuRef"
@@ -116,7 +116,7 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
       />
     </Transition>
 
-    <Transition :name="baseMapAnchor ? 'unfold' : 'panel'">
+    <Transition name="dial">
       <MapBaseMapPanel
         v-if="view === 'base-map'"
         :class="{ anchored: baseMapAnchor }"
@@ -164,82 +164,71 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background-color: color-mix(in srgb, var(--color-fab-surface) 85%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid var(--color-fab-border);
-  box-shadow: var(--shadow-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-fab-on-surface);
   align-self: flex-end;
   transition:
-    box-shadow var(--motion-duration-medium) var(--motion-ease-standard),
+    background-color var(--motion-duration-medium) var(--motion-ease-standard),
     transform var(--motion-duration-short) var(--motion-ease-spring);
 }
 
 .compass-fab:hover {
-  background-color: color-mix(in srgb, var(--color-fab-surface-strong) 85%, transparent);
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-1px);
+  background-color: var(--color-fab-glass-strong);
 }
 
-/* Keeps the hover lift; adds the variant's press scale (Classic: 1 = unchanged). */
 .compass-fab:active:not(:disabled) {
-  transform: translateY(-1px) scale(var(--press-scale));
+  transform: scale(var(--press-scale));
 }
 
 .compass-icon {
-  transition: transform 0.15s ease-out;
+  transition: transform var(--motion-duration-short) var(--motion-ease-standard);
 }
 
-.panel-enter-active {
-  transition:
-    opacity var(--motion-duration-short) var(--motion-ease-standard),
-    transform var(--motion-duration-short) var(--motion-ease-spring);
+/* Expanding menus unfold from where they were opened: the speed-dial items rise
+   from the trigger one after another, nearest first; base-map options opened from
+   "Change base map" drop from that item, top first. Closing is one quiet fade —
+   the menu that gives way to the base-map options fades in place. The items
+   animate on mount (they mount only when a menu opens) rather than under
+   `dial-enter-active`: the Transition root has no transition of its own, so Vue
+   would drop that class after one frame and cut the animation short. */
+.overlay :deep(.item-row) {
+  animation: dial-rise var(--motion-duration-medium) var(--motion-ease-emphasized) both;
+  animation-delay: calc(var(--ri) * 40ms);
 }
 
-.panel-leave-active {
-  transition:
-    opacity 0.12s ease,
-    transform 0.12s ease;
+.anchored :deep(.item-row) {
+  animation-name: dial-drop;
+  animation-delay: calc(var(--i) * 40ms);
 }
 
-.panel-enter-from,
-.panel-leave-to {
+.dial-leave-active {
+  transition: opacity var(--motion-duration-short) var(--motion-ease-standard);
+}
+
+.dial-leave-to {
   opacity: 0;
-  transform: translateY(8px) scale(0.97);
 }
 
-/* Base-map options pinned where "Change base map" sat; they unfold downward from
-   its top-right corner while the rest of the menu fades in place. */
+@keyframes dial-rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-offset)) scale(0.96);
+  }
+}
+
+@keyframes dial-drop {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--motion-offset))) scale(0.96);
+  }
+}
+
+/* Base-map options pinned where "Change base map" sat */
 .anchored {
   position: fixed;
   top: var(--anchor-top);
   right: var(--anchor-right);
-}
-
-.menu-fade-leave-active {
-  transition: opacity var(--motion-duration-short) var(--motion-ease-standard);
-}
-
-.menu-fade-leave-to {
-  opacity: 0;
-}
-
-.unfold-enter-active,
-.unfold-leave-active {
-  transform-origin: top right;
-  transition:
-    opacity var(--motion-duration-medium) var(--motion-ease-standard),
-    transform var(--motion-duration-medium) var(--motion-ease-emphasized);
-}
-
-.unfold-enter-from,
-.unfold-leave-to {
-  opacity: 0;
-  transform: translateY(-8px) scale(0.97);
 }
 
 :deep(.trigger--overlay-active .fab) {
@@ -258,13 +247,6 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
   .overlay {
     flex-direction: column;
     align-items: flex-end;
-  }
-
-  .panel-enter-from,
-  .panel-leave-to {
-    opacity: 0;
-    transform: scale(0.85);
-    transform-origin: bottom right;
   }
 }
 </style>

@@ -852,7 +852,7 @@ function onFormPhoneInput(phone: string) {
   padding: var(--spacing-sm);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background-color 0.15s;
+  transition: background-color var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .contact-row:hover {
@@ -955,7 +955,7 @@ function onFormPhoneInput(phone: string) {
 
 .divider {
   height: 1px;
-  background-color: var(--divider-color, var(--color-outline-variant));
+  background-color: var(--divider-color);
 }
 
 .error-text {
@@ -982,7 +982,7 @@ function onFormPhoneInput(phone: string) {
 }
 
 .warn-icon {
-  color: var(--color-warning, var(--color-error));
+  color: var(--color-warning);
   font-size: 18px;
 }
 
@@ -1053,7 +1053,7 @@ function onFormPhoneInput(phone: string) {
 }
 
 .result-phone {
-  font-size: var(--font-size-xs, 11px);
+  font-size: var(--font-size-xs);
   color: var(--color-on-surface-variant);
   display: flex;
   align-items: center;
@@ -1066,7 +1066,7 @@ function onFormPhoneInput(phone: string) {
 
 /* Contact was created — the dropped numbers are a caveat, not a failure. */
 .result-phone-discarded {
-  color: var(--color-warning, var(--color-error));
+  color: var(--color-warning);
 }
 
 .star-icon-sm {
@@ -1083,7 +1083,7 @@ function onFormPhoneInput(phone: string) {
   flex-shrink: 0;
   padding: 2px var(--spacing-sm);
   border-radius: var(--radius-pill);
-  font-size: var(--font-size-xs, 11px);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
 }
 
@@ -1107,31 +1107,30 @@ function onFormPhoneInput(phone: string) {
 
 /* Add/import/manual actions use shared BaseButton (secondary/text). */
 
-/* Views push/pop inside the sheet. Component tokens are defined only by a design
-   variant; the Classic fallbacks (0s, no offset, opaque) make the swap instant. */
+/* Views push/pop inside the sheet. */
 .view-push-enter-active,
 .view-push-leave-active,
 .view-pop-enter-active,
 .view-pop-leave-active {
   transition:
-    opacity var(--view-swap-duration, 0s) var(--motion-ease-standard),
-    transform var(--view-swap-duration, 0s) var(--motion-ease-emphasized);
+    opacity var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-medium) var(--motion-ease-emphasized);
 }
 
 .view-push-leave-active,
 .view-pop-leave-active {
-  transition-duration: var(--view-swap-leave-duration, 0s);
+  transition-duration: var(--motion-duration-short);
 }
 
 .view-push-enter-from,
 .view-pop-leave-to {
-  opacity: var(--view-swap-opacity, 1);
-  transform: translateX(var(--view-swap-offset, 0px));
+  opacity: 0;
+  transform: translateX(var(--motion-offset));
 }
 
 .view-push-leave-to,
 .view-pop-enter-from {
-  opacity: var(--view-swap-opacity, 1);
-  transform: translateX(calc(-1 * var(--view-swap-offset, 0px)));
+  opacity: 0;
+  transform: translateX(calc(-1 * var(--motion-offset)));
 }
 </style>

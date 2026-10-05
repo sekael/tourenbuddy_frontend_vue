@@ -41,7 +41,15 @@ The app works, but it reads as utilitarian: a grey (slate) primary on grey surfa
   - **No needless motion:** base-map options unfold from the "Change base map" item that opened them (the menu fades in place instead of collapsing first); desktop dialogs that switch views/tabs (contacts, friend requests, profile) keep one height.
   - **Guided tour** walked end-to-end (all 9 steps, German) after the changes; targets and copy unchanged and still accurate.
 
-Explicitly **not** done: dark mode (still deferred — every remaining literal and the light Swisstopo base map would need a pass), new fonts/weights, layout changes (element *styling* changes in Alpenglow, element *structure* and placement do not), haptics, list-row redesign, and any per-user server-side persistence of the design choice. Once the owner picks a winner, a follow-up promotes it to `:root` and deletes the losing block and the switcher.
+- **Iteration 5 — Alpenglow becomes the only design; consistency sweep (owner: "I like the new design … only keep Alpenglow; buttons modern but with enough contrast to separate them from pages and objects; expanding action buttons consistent; transitions smooth, calm and beautiful").**
+  - **One design:** Alpenglow's values move into `:root`; the variant block, `design-variant.ts`, its boot call, the profile-sheet switcher and its i18n keys are deleted. Every `var(--token, <Classic fallback>)` loses its dead fallback; tokens that only existed to switch Classic off (transparent borders, hidden dividers, 0-width underlines, `--hover-scale: 1`) are deleted with the declarations and markup they hid; single-use tokens are inlined.
+  - **Button contrast:** a new **control container** role (blue-100, label blue-900 at 8.5:1) for every tonal control — secondary/outline buttons, close/back circles, tab tracks, nav indicators, tour toggles at rest — one step stronger than the blue-50 card tint, so controls stand off white sheets and tinted cards; on the map they add a shadow. Error text on tints moves to a darker red that holds ≥ 4.5:1 on hover fills.
+  - **Expanding action buttons:** the speed dial and the base-map options share one glass pill (label + icon, icons aligned on the trigger's axis) instead of a label chip beside a circle; every map control shares one `.fab-glass` surface (85% vs 90% alpha, grey dividers and hover lifts had drifted). The landscape arc is computed for any item count (the fifth item sat on top of the trigger).
+  - **Motion:** menus unfold item by item from where they were opened and close in one fade; the menu trigger's icons turn a quarter while cross-fading; the tab pill glides without overshoot; every remaining hard-coded duration/easing (35 transitions) moves onto the tokens; no hover lifts.
+  - **Consistency:** all five tab rows (plus the filter status switch) share one global segmented-control rule instead of five scoped copies; remaining uppercase micro-labels become sentence case; coordinates use Inter's tabular figures instead of a monospace font; sheet content fades out above footers instead of being cut; guided-tour popovers adopt the overlay look and keep a screen-edge gutter.
+  - **Fixes found on the way:** unnamed notification switches (axe "label"), two undefined tokens (`--font-size-md`, `--font-weight-normal`), a selected tab losing its color on hover, the German friend-request tab label overflowing; two dead components (`round-action-button`, `base-map-picker`) removed.
+
+Explicitly **not** done: dark mode (still deferred — every remaining literal and the light Swisstopo base map would need a pass), new fonts/weights, layout changes (element *styling* changes in Alpenglow, element *structure* and placement do not), haptics, list-row redesign,. The owner picked Alpenglow in iteration 5, which promoted it to `:root` and removed Classic and the switcher.
 
 ## Capabilities
 
@@ -51,7 +59,7 @@ _None._ All requirements belong to the existing `design-system` capability.
 
 ### Modified Capabilities
 
-- `design-system`: adds a runtime-selectable design variant (Classic default, Alpenglow opt-in) with persistence and a profile-sheet switcher; adds motion and interaction tokens consumed by shared components with reduced-motion handling; relaxes the two-tier rule so a design variant may retune the radius and shadow scales; changes the Button convention from hover-only scale to token-driven hover and press feedback; requires the PWA theme color to match the app background.
+- `design-system`: establishes the new visual design language (blue brand, pill buttons, tonal controls, soft shadows, calm motion) as the app's only design; requires consistent element styling, tonal controls that stand off their surface, consistent expanding map menus, smooth navigation motion, WCAG AA text, no needless motion, defined tokens, and motion tokens consumed everywhere; changes the Button convention to filled/tonal/text variants with press feedback; adds a tonal `IconButton` variant for navigation chrome; narrows the documented exceptions to the map controls that wear the shared glass surface; requires the PWA theme color to match the app background.
 
 ## Impact
 
@@ -59,4 +67,5 @@ _None._ All requirements belong to the existing `design-system` capability.
 - **New files:** `src/core/theme/design-variant.ts` (read/apply/persist), `src/features/user/presentation/components/design-variant-section.vue` (switcher), tests under `test/`.
 - **Edited:** `src/main.ts` (apply before mount), `user-profile-sheet.vue` (mount the section), shared components in `src/core/components/` (button, icon button, FABs, bottom sheet, dialog, drawer, snackbar, offline toasts/chip), `map-page.vue` sheet transition, five dialog backdrops, two offline-map sheets, `index.html`, `vite.config.ts` (manifest color), `DESIGN.md`, `en.json` + `de-CH.json`.
 - **No new dependencies, no DB / Worker / env changes, no build step.**
-- **Comparison path:** toggle in-app on any device; the PR preview deploy (`<branch-slug>.tourenbuddy.pages.dev`) lets the owner try it on a phone against prod before merging.
+- **Iteration 5:** `design-variant.ts` and its test, `round-action-button.vue`, `base-map-picker.vue` deleted; the switcher's i18n keys removed; one new key (`friendships.requestsTab`).
+- **Comparison path:** the PR preview deploy (`<branch-slug>.tourenbuddy.pages.dev`) lets the owner try it on a phone against prod before merging.
