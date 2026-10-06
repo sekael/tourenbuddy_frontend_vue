@@ -28,6 +28,7 @@
 - [x] 5.0d Friend requests: stacked tab panels on mobile — constant height across tabs
 - [x] 5.0e Tour detail redesign: header card, Route fact tiles with headline elevation, labelled Details/Partners sections
 - [x] 5.0f Sheets drag from the header and rubber-band past the top snap
+- [x] 5.0h Tour camera: `frameTour` fits goal/start/end into the uncovered map (sheet resting height via `sheetInset`, drawer width)
 - [x] 5.0g Tour detail: activity tint throughout, completed/private stamps + card states, details card, partner avatar pills
 
 ## 6. Verification

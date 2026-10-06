@@ -12,6 +12,7 @@ import DialogWindow from '@/core/components/dialog-window.vue'
 import FeedbackSheet from '@/core/components/feedback-sheet.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useScrollLock } from '@/core/composables/use-scroll-lock'
+import { sheetInset } from '@/core/composables/use-sheet-inset'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { spanDayKeys } from '@/features/calendar/domain/calendar-dates'
 import ContactsListSheet from '@/features/contacts/presentation/components/contacts-list-sheet.vue'
@@ -26,6 +27,7 @@ import OfflineRegionOutline from '@/features/map/presentation/components/offline
 import TourActionBar from '@/features/map/presentation/components/tour-action-bar.vue'
 import TourenbuddyMap from '@/features/map/presentation/components/tourenbuddy-map.vue'
 import { computeBarState } from '@/features/map/presentation/composables/compute-bar-state'
+import { frameTour } from '@/features/map/presentation/composables/frame-tour'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { notifyTourInterest } from '@/features/notifications/data/notify-dispatch'
 import { useNotificationsStore } from '@/features/notifications/presentation/stores/notifications-store'
@@ -494,6 +496,9 @@ onMounted(async () => {
   }
 })
 
+// ponytail: mirrors `.side-drawer { width }` — measure it if the drawer ever resizes.
+const SIDE_DRAWER_WIDTH = 400
+
 async function flyToSelectedTour() {
   if (!selectedTour.value)
     return
@@ -505,15 +510,14 @@ async function flyToSelectedTour() {
     return
   }
   pendingFlyTo.value = false
-  const padding = isDesktop.value
-    ? { top: 0, right: 400, bottom: 0, left: 0 }
-    : { top: 0, right: 0, bottom: sheetContainerRef.value?.offsetHeight ?? 0, left: 0 }
-  mapRef.value?.map?.flyTo({
-    center: [selectedTour.value.goal.lng, selectedTour.value.goal.lat],
-    zoom: 12,
-    duration: 1000,
-    padding,
-  })
+  // Mobile: let the sheet fit its content first (its ResizeObserver runs before the
+  // next paint), so the camera frames against the height it will rest at.
+  if (!isDesktop.value)
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+  const map = mapInstance.value
+  if (!map || !selectedTour.value)
+    return
+  frameTour(map, selectedTour.value, isDesktop.value ? { right: SIDE_DRAWER_WIDTH } : { bottom: sheetInset.value })
 }
 
 watch(sheetContainerRef, async (el) => {

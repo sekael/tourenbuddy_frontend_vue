@@ -310,8 +310,13 @@ watch(viewportHeight, () => {
     applySnap(lastSnap.value)
 })
 
-// Space above the sheet, for toasts (`--sheet-inset`).
+// The map area the sheet covers, for toasts (`--sheet-inset`) and camera framing.
+// The resting height, not the gliding one: a camera move starts before the glide ends.
 const publishInset = useSheetInset()
+watch(currentHeight, (px) => {
+  if (!props.collapsed)
+    publishInset(px)
+})
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
 let observer: ResizeObserver | undefined
@@ -327,7 +332,7 @@ onMounted(() => {
       if (props.fitContent)
         refit()
     }
-    if (sheetRef.value)
+    if (sheetRef.value && props.collapsed)
       publishInset(sheetRef.value.offsetHeight)
   })
   for (const el of [headerRef.value, handleRef.value, bodyRef.value, sheetRef.value]) {

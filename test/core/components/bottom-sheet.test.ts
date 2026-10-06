@@ -2,6 +2,7 @@ import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
+import { sheetInset } from '@/core/composables/use-sheet-inset'
 
 // Sheets register in a shared inset registry — unmount each test's sheets.
 enableAutoUnmount(afterEach)
@@ -384,29 +385,24 @@ describe('bottomSheet', () => {
     })
 
     it('should keep the inset of a sheet still open when a stacked sheet closes, then clear it', async () => {
-      let report!: (target: Element) => void
-      vi.stubGlobal('ResizeObserver', class {
-        constructor(cb: ResizeObserverCallback) {
-          report = target => cb([{ target } as unknown as ResizeObserverEntry], this as unknown as ResizeObserver)
-        }
-
-        observe() {}
-        disconnect() {}
-      })
       const inset = () => document.documentElement.style.getPropertyValue('--sheet-inset')
       const lower = mount(BottomSheet, { props: { title: 'Lower' } })
-      const lowerReport = report
       const upper = mount(BottomSheet, { props: { title: 'Upper' } })
-      for (const [w, h, r] of [[lower, 400, lowerReport], [upper, 200, report]] as const) {
-        const el = w.find('.bottom-sheet').element
-        Object.defineProperty(el, 'offsetHeight', { value: h, configurable: true })
-        r(el)
-      }
-      expect(inset()).toBe('400px')
+      await flushPromises()
+      await lower.find('.drag-handle').trigger('keydown', { key: 'ArrowDown' })
+      await upper.find('.drag-handle').trigger('keydown', { key: 'End' })
+      expect(inset()).toBe(`${sheetHeight(lower)}px`)
       upper.unmount()
-      expect(inset()).toBe('400px')
+      expect(inset()).toBe(`${sheetHeight(lower)}px`)
       lower.unmount()
       expect(inset()).toBe('')
+    })
+
+    it('should publish the resting height at once, not the gliding one', async () => {
+      const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
+      await flushPromises()
+      await wrapper.find('.drag-handle').trigger('keydown', { key: 'End' })
+      expect(sheetInset.value).toBe(sheetHeight(wrapper))
     })
   })
 

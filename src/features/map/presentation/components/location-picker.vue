@@ -22,9 +22,9 @@ const { t } = useI18n({ useScope: 'global' })
  * i.e., exactly where the crosshair SVG renders.
  *
  * We MUST NOT use `map.getCenter()` here: MapLibre's `getCenter()` returns the
- * center of the *padded* viewport, and padding persists after `flyTo({ padding })`
- * calls (e.g., when the tour info sheet is open). That would cause the saved
- * location to be offset from where the user aimed the crosshair.
+ * center of the *padded* viewport, and any camera call that passes `padding` to
+ * `flyTo` / `easeTo` leaves it set on the map. That would offset the saved
+ * location from where the user aimed the crosshair.
  *
  * `map.unproject()` converts a pixel position to geographic coordinates and is
  * unaffected by padding state.
