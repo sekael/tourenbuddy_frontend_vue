@@ -980,6 +980,34 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           </div>
         </section>
 
+        <!-- Partners (own tour: contact chips; friend's tour: read-only names) -->
+        <section
+          v-if="partners.length > 0 || (tour.isFriendTour && (friendPartnerNames.length > 0 || unresolvedPartnerCount > 0))"
+          class="facts-section"
+        >
+          <h3 class="section-heading">
+            {{ t('tours.infoSheet.iconTooltipPartners') }}
+            <span class="section-count">{{ partners.length || friendPartnerNames.length + unresolvedPartnerCount }}</span>
+          </h3>
+          <!-- Pills with an initial avatar in the tour's colour (drawn from `data-initial`). -->
+          <div v-if="partners.length > 0" class="partner-chips">
+            <ContactChip
+              v-for="partner in partners" :key="partner.id" :contact="partner" :selected="false"
+              mode="action" class="partner-pill" :data-initial="initialOf(resolveContactName(partner))"
+              @open="openContactMenu"
+            />
+          </div>
+          <div v-else class="partner-chips">
+            <span
+              v-for="(name, i) in friendPartnerNames" :key="i" class="friend-partner-chip partner-pill"
+              :data-initial="initialOf(name)"
+            >{{ name }}</span>
+            <span v-if="unresolvedPartnerCount > 0" class="friend-partner-chip friend-partner-chip--more">
+              {{ t('tours.infoSheet.morePartners', { count: unresolvedPartnerCount }) }}
+            </span>
+          </div>
+        </section>
+
         <!-- Details: seasons and the free texts, each under its own label -->
         <section
           v-if="tour.seasons?.length || tour.description || tour.equipment || tour.notes"
@@ -1030,34 +1058,6 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
                 </p>
               </div>
             </div>
-          </div>
-        </section>
-
-        <!-- Partners (own tour: contact chips; friend's tour: read-only names) -->
-        <section
-          v-if="partners.length > 0 || (tour.isFriendTour && (friendPartnerNames.length > 0 || unresolvedPartnerCount > 0))"
-          class="facts-section"
-        >
-          <h3 class="section-heading">
-            {{ t('tours.infoSheet.iconTooltipPartners') }}
-            <span class="section-count">{{ partners.length || friendPartnerNames.length + unresolvedPartnerCount }}</span>
-          </h3>
-          <!-- Pills with an initial avatar in the tour's colour (drawn from `data-initial`). -->
-          <div v-if="partners.length > 0" class="partner-chips">
-            <ContactChip
-              v-for="partner in partners" :key="partner.id" :contact="partner" :selected="false"
-              mode="action" class="partner-pill" :data-initial="initialOf(resolveContactName(partner))"
-              @open="openContactMenu"
-            />
-          </div>
-          <div v-else class="partner-chips">
-            <span
-              v-for="(name, i) in friendPartnerNames" :key="i" class="friend-partner-chip partner-pill"
-              :data-initial="initialOf(name)"
-            >{{ name }}</span>
-            <span v-if="unresolvedPartnerCount > 0" class="friend-partner-chip friend-partner-chip--more">
-              {{ t('tours.infoSheet.morePartners', { count: unresolvedPartnerCount }) }}
-            </span>
           </div>
         </section>
 
