@@ -109,7 +109,13 @@ const items: { view: CalendarView, icon: string, labelKey: string }[] = [
     color var(--motion-duration-short) var(--motion-ease-standard);
 }
 
-.nav-item:hover {
+@media (hover: hover) {
+  .nav-item:hover {
+    background-color: var(--color-surface-variant);
+  }
+}
+
+.nav-item:active {
   background-color: var(--color-surface-variant);
 }
 
@@ -127,8 +133,8 @@ const items: { view: CalendarView, icon: string, labelKey: string }[] = [
   height: calc(64px + var(--safe-bottom));
   padding-bottom: var(--safe-bottom);
   flex-shrink: 0;
-  background-color: var(--color-surface);
-  border-top: 1px solid var(--color-outline-variant);
+  /* Tonal bar instead of a hairline: separated from the white canvas by fill. */
+  background-color: var(--color-surface-variant);
 }
 
 .bottom-nav-item {
@@ -140,7 +146,7 @@ const items: { view: CalendarView, icon: string, labelKey: string }[] = [
      padding here defines its inset around both. */
   padding: var(--spacing-xs) var(--spacing-lg);
   border-radius: var(--radius-md);
-  font-size: 10px;
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   color: var(--color-on-surface-variant);
   transition:

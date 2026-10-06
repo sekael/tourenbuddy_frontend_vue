@@ -126,7 +126,14 @@ onUnmounted(() => {
   color: var(--color-fab-on-surface);
 }
 
-.tour-banner .finish-btn:hover {
+@media (hover: hover) {
+  .tour-banner .finish-btn:hover {
+    background-color: var(--color-contrast-surface);
+    border-color: var(--color-contrast-outline-strong);
+  }
+}
+
+.tour-banner .finish-btn:active {
   background-color: var(--color-contrast-surface);
   border-color: var(--color-contrast-outline-strong);
 }
@@ -160,7 +167,13 @@ onUnmounted(() => {
   color: var(--color-fab-on-surface);
 }
 
-.nav-btn:hover:not(:disabled) {
+@media (hover: hover) {
+  .nav-btn:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-fab-surface-strong) 60%, transparent);
+  }
+}
+
+.nav-btn:active:not(:disabled) {
   background-color: color-mix(in srgb, var(--color-fab-surface-strong) 60%, transparent);
 }
 

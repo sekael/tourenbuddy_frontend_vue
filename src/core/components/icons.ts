@@ -1,10 +1,12 @@
 import type { Component } from 'vue'
+import IconAcUnit from '~icons/material-symbols/ac-unit'
 import IconAccountCircleOutline from '~icons/material-symbols/account-circle-outline'
 import IconAdd from '~icons/material-symbols/add'
 import IconAddLocationAltOutline from '~icons/material-symbols/add-location-alt-outline'
 import IconArrowBack from '~icons/material-symbols/arrow-back'
 import IconArrowForward from '~icons/material-symbols/arrow-forward'
 import IconAttachFile from '~icons/material-symbols/attach-file'
+import IconBackpackOutline from '~icons/material-symbols/backpack-outline'
 import IconBadgeOutline from '~icons/material-symbols/badge-outline'
 import IconBlockOutline from '~icons/material-symbols/block-outline'
 import IconBrokenImageOutline from '~icons/material-symbols/broken-image-outline'
@@ -28,6 +30,7 @@ import IconDownhillSkiing from '~icons/material-symbols/downhill-skiing'
 import IconDownload from '~icons/material-symbols/download'
 import IconDownloadForOfflineOutline from '~icons/material-symbols/download-for-offline-outline'
 import IconDragIndicator from '~icons/material-symbols/drag-indicator'
+import IconEcoOutline from '~icons/material-symbols/eco-outline'
 import IconEditOutline from '~icons/material-symbols/edit-outline'
 import IconExpandLess from '~icons/material-symbols/expand-less'
 import IconExploreOutline from '~icons/material-symbols/explore-outline'
@@ -44,6 +47,7 @@ import IconInfoOutline from '~icons/material-symbols/info-outline'
 import IconLandscapeOutline from '~icons/material-symbols/landscape-outline'
 import IconLanguage from '~icons/material-symbols/language'
 import IconLink from '~icons/material-symbols/link'
+import IconLocalFloristOutline from '~icons/material-symbols/local-florist-outline'
 import IconLocationOnOutline from '~icons/material-symbols/location-on-outline'
 import IconLockOutline from '~icons/material-symbols/lock-outline'
 import IconLogout from '~icons/material-symbols/logout'
@@ -71,6 +75,7 @@ import IconSportsScore from '~icons/material-symbols/sports-score'
 import IconSprint from '~icons/material-symbols/sprint'
 import IconStar from '~icons/material-symbols/star'
 import IconStarOutline from '~icons/material-symbols/star-outline'
+import IconStickyNote2Outline from '~icons/material-symbols/sticky-note-2-outline'
 import IconSyncAlt from '~icons/material-symbols/sync-alt'
 import IconTourOutline from '~icons/material-symbols/tour-outline'
 import IconTripOrigin from '~icons/material-symbols/trip-origin'
@@ -103,12 +108,18 @@ import IconWbSunnyOutline from '~icons/material-symbols/wb-sunny-outline'
  * variant). See `.claude/conventions.md` → Styling.
  */
 export const iconRegistry: Record<string, Component> = {
+  // Filled star for the "primary method" selected state (was CSS FILL 1).
+  // Iconify has no `terrain`; `filter_hdr` is Material's identical mountains glyph.
+  // Material Symbols draws remove_circle_outline and do_not_disturb_on as the
+  // same glyph; Iconify only ships the latter name.
+  ac_unit: IconAcUnit,
   account_circle: IconAccountCircleOutline,
   add: IconAdd,
   add_location_alt: IconAddLocationAltOutline,
   arrow_back: IconArrowBack,
   arrow_forward: IconArrowForward,
   attach_file: IconAttachFile,
+  backpack: IconBackpackOutline,
   badge: IconBadgeOutline,
   block: IconBlockOutline,
   broken_image: IconBrokenImageOutline,
@@ -131,6 +142,7 @@ export const iconRegistry: Record<string, Component> = {
   download: IconDownload,
   download_for_offline: IconDownloadForOfflineOutline,
   drag_indicator: IconDragIndicator,
+  eco: IconEcoOutline,
   edit: IconEditOutline,
   expand_less: IconExpandLess,
   explore: IconExploreOutline,
@@ -146,6 +158,7 @@ export const iconRegistry: Record<string, Component> = {
   landscape: IconLandscapeOutline,
   language: IconLanguage,
   link: IconLink,
+  local_florist: IconLocalFloristOutline,
   location_on: IconLocationOnOutline,
   lock: IconLockOutline,
   logout: IconLogout,
@@ -163,8 +176,6 @@ export const iconRegistry: Record<string, Component> = {
   picture_as_pdf: IconPictureAsPdfOutline,
   privacy_tip: IconPrivacyTipOutline,
   radio_button_unchecked: IconRadioButtonUnchecked,
-  // Material Symbols draws remove_circle_outline and do_not_disturb_on as the
-  // same glyph; Iconify only ships the latter name.
   remove_circle_outline: IconDoNotDisturbOnOutline,
   replay: IconReplay,
   route: IconRouteOutline,
@@ -175,10 +186,9 @@ export const iconRegistry: Record<string, Component> = {
   sports_score: IconSportsScore,
   sprint: IconSprint,
   star: IconStarOutline,
-  // Filled star for the "primary method" selected state (was CSS FILL 1).
   star_filled: IconStar,
+  sticky_note_2: IconStickyNote2Outline,
   sync_alt: IconSyncAlt,
-  // Iconify has no `terrain`; `filter_hdr` is Material's identical mountains glyph.
   terrain: IconFilterHdr,
   tour: IconTourOutline,
   trip_origin: IconTripOrigin,

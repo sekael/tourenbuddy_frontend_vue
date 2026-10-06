@@ -6,6 +6,7 @@ import BaseButton from '@/core/components/base-button.vue'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
+import { fadeOut, useExitAnimation } from '@/core/composables/use-exit-animation'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { buildContactActions } from '@/features/contacts/core/utils/contact-actions'
 import { resolveContactName } from '@/features/contacts/domain/entities/contact'
@@ -23,6 +24,10 @@ const emit = defineEmits<{
 const { t } = useI18n({ useScope: 'global' })
 
 const isDesktop = useIsDesktop()
+
+// The modal sheet is unmounted by its owner: fade it (and its scrim) out.
+const hostEl = ref<HTMLElement | null>(null)
+useExitAnimation(hostEl, fadeOut)
 const actions = computed(() => buildContactActions(props.contact))
 const contactName = computed(() => resolveContactName(props.contact))
 
@@ -117,7 +122,7 @@ onUnmounted(() => {
     </div>
 
     <!-- Mobile: bottom sheet -->
-    <div v-else class="sheet-container" @click.self="emit('close')">
+    <div v-else ref="hostEl" class="sheet-host sheet-host--modal" @click.self="emit('close')">
       <BottomSheet :title="contactName" fit-content @close="emit('close')">
         <div class="sheet-body">
           <template v-if="actions.length > 0">
@@ -248,7 +253,14 @@ onUnmounted(() => {
     color var(--motion-duration-short) var(--motion-ease-standard);
 }
 
-.menu-action-btn:hover {
+@media (hover: hover) {
+  .menu-action-btn:hover {
+    background-color: var(--color-surface-variant);
+    color: var(--color-primary);
+  }
+}
+
+.menu-action-btn:active {
   background-color: var(--color-surface-variant);
   color: var(--color-primary);
 }
@@ -294,15 +306,7 @@ onUnmounted(() => {
 }
 
 /* ── Mobile sheet container ── */
-.sheet-container {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+.sheet-host--modal {
   z-index: 60;
-  background: var(--color-backdrop);
-  backdrop-filter: blur(var(--overlay-backdrop-blur));
-  -webkit-backdrop-filter: blur(var(--overlay-backdrop-blur));
 }
 </style>

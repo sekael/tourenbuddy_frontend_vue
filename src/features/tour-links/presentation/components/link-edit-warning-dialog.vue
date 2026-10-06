@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import DialogWindow from '@/core/components/dialog-window.vue'
+import { fadeOut, useExitAnimation } from '@/core/composables/use-exit-animation'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 
 const props = withDefaults(defineProps<{
@@ -24,6 +25,10 @@ const emit = defineEmits<{ confirm: [], cancel: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 const isDesktop = useIsDesktop()
+
+// The modal sheet is unmounted by its owner: fade it (and its scrim) out.
+const hostEl = ref<HTMLElement | null>(null)
+useExitAnimation(hostEl, fadeOut)
 
 const title = computed(() => {
   if (props.mode === 'linked')
@@ -70,7 +75,7 @@ const proceedLabel = computed(() => {
     </DialogWindow>
 
     <!-- Mobile/PWA: bottom sheet stacked above the edit sheet. -->
-    <div v-else class="sheet-container" @click.self="emit('cancel')">
+    <div v-else ref="hostEl" class="sheet-host sheet-host--modal" @click.self="emit('cancel')">
       <BottomSheet :title="title" fit-content @close="emit('cancel')">
         <div class="body">
           <p>{{ body }}</p>
@@ -123,16 +128,8 @@ const proceedLabel = computed(() => {
 /* Cancel/confirm use shared BaseButton (secondary/danger). */
 
 /* Mobile bottom-sheet backdrop. Teleported to body, z-index above the edit
-   sheet (sheet-container z-index 50) so the warning stacks on top. */
-.sheet-container {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+   sheet (.sheet-host z-index 50) so the warning stacks on top. */
+.sheet-host--modal {
   z-index: 60;
-  background: var(--color-backdrop);
-  backdrop-filter: blur(var(--overlay-backdrop-blur));
-  -webkit-backdrop-filter: blur(var(--overlay-backdrop-blur));
 }
 </style>

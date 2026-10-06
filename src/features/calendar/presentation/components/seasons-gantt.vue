@@ -262,7 +262,13 @@ html.scroll-locked .gantt-track {
   transition: background-color var(--motion-duration-short) var(--motion-ease-standard);
 }
 
-.gantt-tour-row:hover {
+@media (hover: hover) {
+  .gantt-tour-row:hover {
+    background-color: var(--color-surface);
+  }
+}
+
+.gantt-tour-row:active {
   background-color: var(--color-surface);
 }
 

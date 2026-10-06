@@ -1,7 +1,10 @@
-import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
+
+// Sheets register in a shared inset registry — unmount each test's sheets.
+enableAutoUnmount(afterEach)
 
 // happy-dom stubs for APIs not supported in test env
 beforeEach(() => {
@@ -25,8 +28,15 @@ beforeEach(() => {
   HTMLElement.prototype.releasePointerCapture = vi.fn()
 })
 
-function firePointer(el: Element, type: string, clientY: number, pointerId = 1) {
-  el.dispatchEvent(new PointerEvent(type, { clientY, pointerId, bubbles: true, cancelable: true }))
+function firePointer(el: Element, type: string, clientY: number, pointerId = 1, timeStamp?: number) {
+  const event = new PointerEvent(type, { clientY, pointerId, bubbles: true, cancelable: true })
+  if (timeStamp !== undefined)
+    Object.defineProperty(event, 'timeStamp', { value: timeStamp })
+  el.dispatchEvent(event)
+}
+
+function sheetHeight(wrapper: { find: (s: string) => { attributes: (a: string) => string | undefined } }) {
+  return Number((wrapper.find('.bottom-sheet').attributes('style') ?? '').match(/height: (\d+)px/)?.[1] ?? -1)
 }
 
 describe('bottomSheet', () => {
@@ -171,15 +181,35 @@ describe('bottomSheet', () => {
       expect(style).toContain('height: 600px')
     })
 
-    it('should clamp height to expanded ceiling during drag', async () => {
+    it('should resist past the expanded ceiling and settle back on release', async () => {
       const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
       await flushPromises()
       const handle = wrapper.find('.drag-handle').element
       firePointer(handle, 'pointerdown', 500)
-      // Move up by 400px → would be 1100px but clamped to 700 (expandedHeight)
+      // 400px up would be 1100px: past the 700px ceiling it only stretches a little.
       firePointer(handle, 'pointermove', 100)
       await nextTick()
-      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 700px')
+      const h = sheetHeight(wrapper)
+      expect(h).toBeGreaterThan(700)
+      expect(h).toBeLessThan(748)
+      firePointer(handle, 'pointerup', 100)
+      await nextTick()
+      expect(sheetHeight(wrapper)).toBe(700)
+    })
+
+    it('should drag from the header but not from its buttons', async () => {
+      const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
+      await flushPromises()
+      const header = wrapper.find('.header').element
+      const before = sheetHeight(wrapper)
+      firePointer(wrapper.find('button').element, 'pointerdown', 500)
+      firePointer(header, 'pointermove', 400)
+      await nextTick()
+      expect(sheetHeight(wrapper)).toBe(before)
+      firePointer(wrapper.find('h2').element, 'pointerdown', 500)
+      firePointer(header, 'pointermove', 400)
+      await nextTick()
+      expect(sheetHeight(wrapper)).toBeGreaterThan(before)
     })
 
     it('should clamp height to peek floor during drag', async () => {
@@ -222,18 +252,161 @@ describe('bottomSheet', () => {
     })
   })
 
-  describe('fit-content clamp', () => {
-    it('should clamp natural height to the 70% expanded ceiling when content is taller', async () => {
+  describe('fit content', () => {
+    // Captures the sheet's ResizeObserver so tests can report content size changes.
+    let notify: () => void
+    beforeEach(() => {
+      vi.stubGlobal('ResizeObserver', class {
+        constructor(cb: ResizeObserverCallback) {
+          notify = () => cb([{ target: document.createElement('div') } as unknown as ResizeObserverEntry], this as unknown as ResizeObserver)
+        }
+
+        observe() {}
+        disconnect() {}
+      })
+    })
+
+    async function mountWithContent(height: number) {
       const wrapper = mount(BottomSheet, { props: { title: 'Test', fitContent: true } })
+      const body = wrapper.find('.content-body').element
+      const setContent = async (h: number) => {
+        Object.defineProperty(body, 'offsetHeight', { value: h, configurable: true })
+        notify()
+        await flushPromises()
+      }
+      await setContent(height)
+      return { wrapper, setContent }
+    }
+
+    it('should open long content at 70% and expand to its full height, capped at 90%', async () => {
+      const { wrapper } = await mountWithContent(1200)
+      expect(sheetHeight(wrapper)).toBe(700)
+      await wrapper.find('.drag-handle').trigger('keydown', { key: 'Home' })
+      expect(sheetHeight(wrapper)).toBe(900)
+    })
+
+    it('should show no drag handle when the content fits the opening height', async () => {
+      const { wrapper } = await mountWithContent(300)
+      expect(wrapper.find('.drag-handle').exists()).toBe(false)
+      expect(sheetHeight(wrapper)).toBe(300)
+    })
+
+    it('should shrink with its content and drop the handle once it fits', async () => {
+      const { wrapper, setContent } = await mountWithContent(1200)
+      await wrapper.find('.drag-handle').trigger('keydown', { key: 'Home' })
+      await setContent(120)
+      expect(sheetHeight(wrapper)).toBe(120)
+      expect(wrapper.find('.drag-handle').exists()).toBe(false)
+    })
+
+    it('should stay at peek when content changes after the user dragged it down', async () => {
+      const { wrapper, setContent } = await mountWithContent(1200)
+      await wrapper.find('.drag-handle').trigger('keydown', { key: 'End' })
+      const peek = sheetHeight(wrapper)
+      await setContent(1300)
+      expect(sheetHeight(wrapper)).toBe(peek)
+    })
+
+    it('should only rubber-band above the full content height', async () => {
+      const { wrapper } = await mountWithContent(800)
+      const handle = wrapper.find('.drag-handle').element
+      firePointer(handle, 'pointerdown', 500)
+      firePointer(handle, 'pointermove', 0)
+      await nextTick()
+      expect(sheetHeight(wrapper)).toBeLessThan(848)
+      firePointer(handle, 'pointerup', 0)
+      await nextTick()
+      expect(sheetHeight(wrapper)).toBe(800)
+    })
+
+    it('should keep a resizable sheet draggable even when its content fits', async () => {
+      const wrapper = mount(BottomSheet, { props: { title: 'Test', fitContent: true, resizable: true } })
+      Object.defineProperty(wrapper.find('.content-body').element, 'offsetHeight', { value: 200, configurable: true })
+      notify()
       await flushPromises()
-      const el = wrapper.find('.bottom-sheet').element as HTMLElement
-      // Content taller than the cap (innerHeight * 0.7 = 700) — emulate on-device
-      // where CSS `vh` (large viewport) would let the sheet overshoot.
-      Object.defineProperty(el, 'offsetHeight', { value: 900, configurable: true })
+      expect(wrapper.find('.drag-handle').exists()).toBe(true)
+      expect(sheetHeight(wrapper)).toBe(200)
+      await wrapper.find('.drag-handle').trigger('keydown', { key: 'End' })
+      expect(sheetHeight(wrapper)).toBeLessThan(200)
+    })
+
+    it('should open a long resizable sheet at 40% and cap its full height at 70%', async () => {
+      const wrapper = mount(BottomSheet, { props: { title: 'Test', fitContent: true, resizable: true } })
+      Object.defineProperty(wrapper.find('.content-body').element, 'offsetHeight', { value: 1200, configurable: true })
+      notify()
+      await flushPromises()
+      expect(sheetHeight(wrapper)).toBe(400)
+      await wrapper.find('.drag-handle').trigger('keydown', { key: 'Home' })
+      expect(sheetHeight(wrapper)).toBe(700)
+    })
+
+    it('should count the header even while the sheet is still 0px tall', async () => {
+      const wrapper = mount(BottomSheet, { props: { title: 'Test', fitContent: true } })
+      for (const [sel, h] of [['.header', 56], ['.content-body', 100]] as const)
+        Object.defineProperty(wrapper.find(sel).element, 'offsetHeight', { value: h, configurable: true })
+      notify()
+      await flushPromises()
+      expect(sheetHeight(wrapper)).toBe(156)
+    })
+  })
+
+  describe('flick and viewport', () => {
+    it('should move one snap down on a fast short flick instead of returning to the nearest', async () => {
+      const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
+      await flushPromises()
+      const handle = wrapper.find('.drag-handle').element
+      firePointer(handle, 'pointerdown', 500, 1, 0)
+      // 30px in 10ms (3 px/ms): nearest snap is still expanded (700 vs 670)
+      firePointer(handle, 'pointermove', 530, 1, 10)
+      firePointer(handle, 'pointerup', 530, 1, 20)
+      await nextTick()
+      expect(sheetHeight(wrapper)).toBe(400)
+    })
+
+    it('should ignore a flick when the finger rested before lifting', async () => {
+      const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
+      await flushPromises()
+      const handle = wrapper.find('.drag-handle').element
+      firePointer(handle, 'pointerdown', 500, 1, 0)
+      firePointer(handle, 'pointermove', 530, 1, 10)
+      firePointer(handle, 'pointerup', 530, 1, 500)
+      await nextTick()
+      expect(sheetHeight(wrapper)).toBe(700)
+    })
+
+    it('should recompute snap heights when the viewport changes (rotation)', async () => {
+      const wrapper = mount(BottomSheet, { props: { title: 'Test' } })
+      await flushPromises()
+      window.innerHeight = 500
       window.dispatchEvent(new Event('resize'))
       await flushPromises()
-      // min(900, 700) → snapped to the expanded ceiling, not the 900 content height
-      expect(wrapper.find('.bottom-sheet').attributes('style')).toContain('height: 700px')
+      expect(sheetHeight(wrapper)).toBe(350)
+    })
+
+    it('should keep the inset of a sheet still open when a stacked sheet closes, then clear it', async () => {
+      let report!: (target: Element) => void
+      vi.stubGlobal('ResizeObserver', class {
+        constructor(cb: ResizeObserverCallback) {
+          report = target => cb([{ target } as unknown as ResizeObserverEntry], this as unknown as ResizeObserver)
+        }
+
+        observe() {}
+        disconnect() {}
+      })
+      const inset = () => document.documentElement.style.getPropertyValue('--sheet-inset')
+      const lower = mount(BottomSheet, { props: { title: 'Lower' } })
+      const lowerReport = report
+      const upper = mount(BottomSheet, { props: { title: 'Upper' } })
+      for (const [w, h, r] of [[lower, 400, lowerReport], [upper, 200, report]] as const) {
+        const el = w.find('.bottom-sheet').element
+        Object.defineProperty(el, 'offsetHeight', { value: h, configurable: true })
+        r(el)
+      }
+      expect(inset()).toBe('400px')
+      upper.unmount()
+      expect(inset()).toBe('400px')
+      lower.unmount()
+      expect(inset()).toBe('')
     })
   })
 

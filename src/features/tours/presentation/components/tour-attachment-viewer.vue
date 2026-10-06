@@ -376,7 +376,14 @@ onUnmounted(() => {
     background-color var(--motion-duration-short) var(--motion-ease-standard);
 }
 
-.viewer__icon-btn:hover:not(:disabled) {
+@media (hover: hover) {
+  .viewer__icon-btn:hover:not(:disabled) {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.12);
+  }
+}
+
+.viewer__icon-btn:active:not(:disabled) {
   opacity: 1;
   background: rgba(255, 255, 255, 0.12);
 }
@@ -467,7 +474,13 @@ onUnmounted(() => {
   transition: background-color var(--motion-duration-short) var(--motion-ease-standard);
 }
 
-.viewer__nav:hover {
+@media (hover: hover) {
+  .viewer__nav:hover {
+    background: rgba(255, 255, 255, 0.22);
+  }
+}
+
+.viewer__nav:active {
   background: rgba(255, 255, 255, 0.22);
 }
 

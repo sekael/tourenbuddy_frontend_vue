@@ -7,6 +7,9 @@ import { useLogger } from '@/core/logging/use-logger'
 import 'driver.js/dist/driver.css'
 import '../onboarding-tour.css'
 
+/** Thrown out of `ctx.spotlight` when the tour ended while staging. */
+class TourEnded extends Error {}
+
 /** Capabilities handed to `stage` so it can choreograph the navigation. */
 export interface StageContext {
   /**
@@ -15,7 +18,8 @@ export interface StageContext {
    * control to exist and stop moving → spotlight on → hold a beat. Pass a
    * `hintKey` to attach a short one-line popover ("Open menu", "Open contacts")
    * naming the control; omit it for a bare spotlight. No-op if the control
-   * never appears.
+   * never appears. Rejects once the tour has ended (finished mid-staging), so
+   * `stage` stops before opening anything else — let it propagate.
    */
   spotlight: (selector: string, hintKey?: string) => Promise<void>
 }
@@ -41,6 +45,11 @@ export interface UseOnboardingTourOptions {
    * to the calendar route; the calendar tour omits it. Runs after teardown.
    */
   onCompleted?: () => void
+  /**
+   * Fired ONLY on an early "Finish tour" dismissal, after teardown. The map tour
+   * uses this to return the user to where they started the tour.
+   */
+  onDismissed?: () => void
   /** Persist the resume index. Non-blocking (swallows/logs its own errors). */
   saveTourStep: (n: number) => void | Promise<void>
   /** Flip the auto-start gate off. Non-blocking. */
@@ -167,7 +176,14 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
     }
   }
 
+  /**
+   * Bumped on every start and teardown. A staging run belongs to one token; when
+   * the token moves on, the run is dead — even if a new tour is already running.
+   */
+  let runToken = 0
+
   function teardown() {
+    runToken++
     // Capture before resetting: cleanup restores host UI and MAY navigate (the
     // calendar cleanup returns to the planned view). teardown fires on every host
     // route-leave/unmount via stop(), so running cleanup unconditionally hijacks
@@ -179,6 +195,7 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
     driverObj?.destroy()
     driverObj = null
     isRunning.value = false
+    isStaging.value = false
     showWelcome.value = false
     if (wasActive)
       options.cleanup()
@@ -188,6 +205,7 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
   function finishDismiss() {
     options.saveTourStep(currentIndex.value)
     teardown()
+    options.onDismissed?.()
   }
 
   /**
@@ -388,10 +406,21 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
    *      on the target + its message.
    * `direction` (+1 / -1) decides which way to skip a target that never shows.
    */
-  async function goToStep(index: number, direction: 1 | -1) {
-    if (!isRunning.value)
+  async function goToStep(index: number, direction: 1 | -1, token = runToken) {
+    const alive = () => token === runToken && isRunning.value
+    if (!alive())
       return
     isStaging.value = true
+    // Waypoints throw once this run is over, so `stage` stops navigating instead
+    // of opening its next overlay after the tour was finished mid-staging.
+    const ctx: StageContext = {
+      spotlight: async (selector, hintKey) => {
+        if (alive())
+          await spotlight(selector, hintKey)
+        if (!alive())
+          throw new TourEnded()
+      },
+    }
     try {
       const clamped = clamp(index)
       currentIndex.value = clamped
@@ -399,13 +428,15 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
 
       // 1. Remove the dark mask completely while we navigate.
       await maskOffAndBreathe()
+      if (!alive())
+        return
 
       // 2. Drive the app to the target, spotlighting each waypoint en route.
-      await options.stage(step.surface, { spotlight })
+      await options.stage(step.surface, ctx)
       const el = await waitForElement(step.target)
 
       // Tour may have been finished during the awaited navigation.
-      if (!isRunning.value)
+      if (!alive())
         return
 
       if (!el) {
@@ -415,7 +446,7 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
           finishDismiss()
           return
         }
-        await goToStep(next, direction)
+        await goToStep(next, direction, token)
         return
       }
 
@@ -437,7 +468,7 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
         inline: step.scrollInline ?? 'nearest',
       })
       await waitForPosition(el)
-      if (!isRunning.value)
+      if (!alive())
         return
 
       // Two-phase reveal — the user's required order: surface → spotlight →
@@ -452,14 +483,19 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
       driverObj.highlight({ element: el })
       await sleep(pace.gapMs)
       await waitForPosition(el)
-      if (driverObj === null || !isRunning.value)
+      if (driverObj === null || !alive())
         return
       driverObj.highlight({ element: el, popover: buildPopover(clamped) })
       clampPopoverBelowBanner()
       void refreshAfterMotion(el)
     }
+    catch (error) {
+      if (!(error instanceof TourEnded))
+        throw error
+    }
     finally {
-      isStaging.value = false
+      if (token === runToken)
+        isStaging.value = false
     }
   }
 
@@ -468,6 +504,7 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
     if (isRunning.value)
       return
     isRunning.value = true
+    runToken++
     void goToStep(clamp(fromStep), 1)
   }
 

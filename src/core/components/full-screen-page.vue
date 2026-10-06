@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
+import { useExitAnimation } from '@/core/composables/use-exit-animation'
 
 /**
  * Mobile full-screen edit/create page. Replaces the bottom sheet whenever the
@@ -9,6 +11,10 @@ import BaseIconButton from '@/core/components/base-icon-button.vue'
  * the cancel control and a `page-action` slot (the consumer's Save button), so
  * the primary action is never hidden by the on-screen keyboard; the form body
  * scrolls beneath it.
+ *
+ * Motion: rises in on mount; on unmount (switching back to the sheet, or closing)
+ * it fades out over whatever replaced it — a fade-through, so going sheet ⇄ page
+ * never hard-cuts.
  */
 defineProps<{
   title?: string
@@ -22,6 +28,13 @@ const emit = defineEmits<{ close: [], back: [] }>()
 const { t } = useI18n({ useScope: 'global' })
 
 const titleId = 'full-screen-page-title'
+
+const pageRef = ref<HTMLElement | null>(null)
+useExitAnimation(pageRef, token => ({
+  frames: [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: `translateY(${token('--motion-offset')})` }],
+  duration: token('--motion-duration-short'),
+  easing: token('--motion-ease-standard'),
+}))
 </script>
 
 <template>
@@ -33,6 +46,7 @@ const titleId = 'full-screen-page-title'
        resolved against the viewport at all times. -->
   <Teleport to="body">
     <div
+      ref="pageRef"
       class="full-screen-page"
       role="dialog"
       aria-modal="true"
@@ -75,6 +89,14 @@ const titleId = 'full-screen-page-title'
   background-color: var(--color-background);
   z-index: 60;
   pointer-events: auto;
+  animation: page-in var(--motion-duration-medium) var(--motion-ease-emphasized) both;
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-offset));
+  }
 }
 
 .page-bar {
@@ -101,27 +123,6 @@ const titleId = 'full-screen-page-title'
   flex-shrink: 0;
   display: flex;
   align-items: center;
-}
-
-/* Shared primary look for any consumer's top-bar Save button (class
-   `page-save-btn`), so the action bar is consistent across features. */
-.page-action :slotted(.page-save-btn) {
-  padding: var(--spacing-xs) var(--spacing-lg);
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: var(--button-radius);
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  transition: background-color var(--motion-duration-short) var(--motion-ease-standard);
-}
-
-.page-action :slotted(.page-save-btn:hover) {
-  background-color: var(--color-primary-dark);
-}
-
-.page-action :slotted(.page-save-btn:disabled) {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .content {

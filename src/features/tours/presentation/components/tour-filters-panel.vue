@@ -284,7 +284,13 @@ const completionOptions = [
   color: var(--chip-selected-color);
 }
 
-.chip:hover:not(.active) {
+@media (hover: hover) {
+  .chip:hover:not(.active) {
+    background-color: var(--color-surface-variant);
+  }
+}
+
+.chip:active:not(.active) {
   background-color: var(--color-surface-variant);
 }
 

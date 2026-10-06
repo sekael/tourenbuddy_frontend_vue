@@ -381,7 +381,13 @@ defineExpose({ submit, validateAndCollect })
   color: var(--color-primary);
 }
 
-.primary-star:hover {
+@media (hover: hover) {
+  .primary-star:hover {
+    color: var(--color-primary);
+  }
+}
+
+.primary-star:active {
   color: var(--color-primary);
 }
 

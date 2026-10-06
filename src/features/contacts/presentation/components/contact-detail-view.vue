@@ -1324,7 +1324,13 @@ defineExpose({
   color: var(--color-primary);
 }
 
-button.primary-star:hover {
+@media (hover: hover) {
+  button.primary-star:hover {
+    color: var(--color-primary);
+  }
+}
+
+button.primary-star:active {
   color: var(--color-primary);
 }
 

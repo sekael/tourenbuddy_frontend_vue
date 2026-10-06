@@ -51,8 +51,17 @@ defineEmits<{ select: [] }>()
     transform var(--motion-duration-short) var(--motion-ease-spring);
 }
 
-.item-row:hover:not(:disabled),
 .item-row.selected {
+  background-color: var(--color-fab-glass-strong);
+}
+
+@media (hover: hover) {
+  .item-row:hover:not(:disabled) {
+    background-color: var(--color-fab-glass-strong);
+  }
+}
+
+.item-row:active:not(:disabled) {
   background-color: var(--color-fab-glass-strong);
 }
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { Season } from '@/features/tours/data/models/season'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
@@ -8,7 +9,6 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
-import BaseTooltip from '@/core/components/base-tooltip.vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import FullScreenPage from '@/core/components/full-screen-page.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
@@ -16,6 +16,7 @@ import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useLogger } from '@/core/logging/use-logger'
 import { clearOfflineWriteError } from '@/core/offline/mutate'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
+import { resolveContactName } from '@/features/contacts/domain/entities/contact'
 import ContactActionMenu from '@/features/contacts/presentation/components/contact-action-menu.vue'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
@@ -28,7 +29,7 @@ import LinkEditWarningDialog from '@/features/tour-links/presentation/components
 import LinkRequestBanner from '@/features/tour-links/presentation/components/link-request-banner.vue'
 import LinkedWithSection from '@/features/tour-links/presentation/components/linked-with-section.vue'
 import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
-import { TOUR_TYPE_I18N_KEYS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
+import { TOUR_TYPE_COLORS, TOUR_TYPE_I18N_KEYS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
 import { downloadOriginal } from '@/features/tours/data/services/gpx-storage-service'
 import { COLLISION_RADIUS_M } from '@/features/tours/domain/collision'
 import { isSameGoal } from '@/features/tours/domain/distance'
@@ -629,6 +630,22 @@ function handleSheetBack() {
   emit('back')
 }
 
+/** The activity colour the tour's map marker and list avatar wear; tints the whole view. */
+const typeTint = computed(() =>
+  props.tour.tourType ? { '--type-tint': TOUR_TYPE_COLORS[props.tour.tourType] } : undefined,
+)
+
+const SEASON_ICONS: Record<Season, string> = {
+  winter: 'ac_unit',
+  spring: 'local_florist',
+  summer: 'wb_sunny',
+  autumn: 'eco',
+}
+
+function initialOf(name: string) {
+  return name.trim().charAt(0).toUpperCase()
+}
+
 const formattedDate = computed(() => {
   const start = props.tour.plannedDate
   if (!start)
@@ -783,7 +800,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 <template>
   <component
     :is="editAsPage ? FullScreenPage : isDesktop ? SideDrawer : BottomSheet" :title="sheetTitle"
-    :fit-content="!isDesktop && !editAsPage" :collapsed="sheetCollapsed" :back-label="sheetBackLabel"
+    :fit-content="!isDesktop && !editAsPage" :resizable="!isDesktop && !editAsPage" :collapsed="sheetCollapsed" :back-label="sheetBackLabel"
     :show-back="editAsPage ? false : sheetShowBack" @close="handleSheetClose" @back="handleSheetBack"
   >
     <!-- ── Edit mode ────────────────────────────────────────────────────── -->
@@ -843,11 +860,49 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
     <!-- ── View mode ───────────────────────────────────────────────────── -->
     <template v-else>
-      <div class="details">
+      <div class="details" :style="typeTint">
         <!-- Tour link group siblings + pending link requests + collision notice -->
         <LinkedWithSection :siblings="linkSiblings" @open-tour="navigateToSibling" @view-all="linksView = true" />
         <LinkRequestBanner v-for="req in linkPendingRequests" :key="req.id" :request="req" />
         <CollisionNotice v-if="isOwner" :own-tour-id="tour.id" />
+
+        <!-- Header card: what kind of tour, when, and (friend tours) whose -->
+        <div
+          class="hero"
+          :class="{ 'hero--completed': tour.completed, 'hero--private': tour.visibility === 'private' }"
+        >
+          <span class="hero-badge">
+            <BaseIcon :name="tour.tourType ? TOUR_TYPE_ICONS[tour.tourType] : 'location_on'" size="lg" />
+            <!-- State stamps on the badge: they pop in when the owner flips the toggle below. -->
+            <Transition name="stamp">
+              <span v-if="tour.completed" class="hero-stamp hero-stamp--done" aria-hidden="true">
+                <BaseIcon name="check" size="sm" />
+              </span>
+            </Transition>
+            <Transition name="stamp">
+              <span v-if="tour.visibility === 'private'" class="hero-stamp hero-stamp--private" aria-hidden="true">
+                <BaseIcon name="lock" size="sm" />
+              </span>
+            </Transition>
+          </span>
+          <div class="hero-text">
+            <span v-if="tour.tourType" class="hero-type">{{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[tour.tourType]}` as any) }}</span>
+            <span v-if="formattedDate" class="hero-meta">
+              <BaseIcon name="calendar_today" size="sm" />
+              {{ formattedDate }}
+            </span>
+            <span v-if="tour.isFriendTour" class="hero-meta">
+              <BaseIcon name="person" size="sm" />
+              <template v-if="ownerResolved">{{ t('tours.infoSheet.createdByLabel', { name: ownerName }) }}</template>
+              <span v-else class="owner-skeleton" aria-hidden="true" />
+            </span>
+            <!-- The owner reads the state off the toggle; friends get it spelled out. -->
+            <span v-if="!isOwner && tour.completed" class="status-pill">
+              <BaseIcon name="check_circle" size="sm" />
+              {{ t('tours.infoSheet.completedBtn') }}
+            </span>
+          </div>
+        </div>
 
         <!-- Owner toggles: completion + visibility -->
         <div v-if="isOwner" class="owner-toggles">
@@ -880,182 +935,138 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           </button>
         </div>
 
-        <!-- Owner (friend tours only) -->
-        <div v-if="tour.isFriendTour" class="detail-row">
-          <BaseTooltip :text="t('tours.infoSheet.iconTooltipOwner')">
-            <BaseIcon name="person" class="detail-icon" />
-          </BaseTooltip>
-          <span v-if="ownerResolved">{{ t('tours.infoSheet.createdByLabel', { name: ownerName }) }}</span>
-          <span v-else class="owner-skeleton" aria-hidden="true" />
-        </div>
-
-        <!-- Tour type -->
-        <div v-if="tour.tourType" class="detail-row">
-          <BaseTooltip :text="t('tours.infoSheet.iconTooltipType')">
-            <BaseIcon :name="TOUR_TYPE_ICONS[tour.tourType]" class="detail-icon" />
-          </BaseTooltip>
-          <span>{{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[tour.tourType]}` as any) }}</span>
-        </div>
-
-        <!-- Planned date -->
-        <div v-if="formattedDate" class="detail-row">
-          <BaseTooltip :text="t('tours.infoSheet.iconTooltipDate')">
-            <BaseIcon name="calendar_today" class="detail-icon" />
-          </BaseTooltip>
-          <span>{{ formattedDate }}</span>
-        </div>
-
-        <!-- Goal coordinates -->
-        <div class="detail-row">
-          <BaseTooltip :text="t('tours.infoSheet.iconTooltipGoal')">
-            <BaseIcon name="location_on" class="detail-icon" />
-          </BaseTooltip>
-          <span class="coords">{{ coordinates }}</span>
-        </div>
-
-        <!-- Elevation -->
-        <div v-if="formattedElevation" class="detail-row">
-          <BaseTooltip :text="t('tours.infoSheet.iconTooltipElevation')">
-            <BaseIcon name="landscape" class="detail-icon" />
-          </BaseTooltip>
-          <span>{{ formattedElevation }}</span>
-        </div>
-
-        <!-- Start / end points -->
-        <template v-if="startPointText">
-          <div class="detail-row">
-            <BaseTooltip :text="t('tours.infoSheet.iconTooltipStartPoint')">
-              <BaseIcon name="home" class="detail-icon" />
-            </BaseTooltip>
-            <span v-if="tour.startPointName" class="point-meta">
-              {{ tour.startPointName }}
-              <span v-if="tour.startPointElevation != null" class="point-elevation">
-                {{ tour.startPointElevation }} m
+        <!-- Route: the goal (elevation as the headline number), start and finish -->
+        <section class="facts-section">
+          <h3 class="section-heading">
+            {{ t('tours.infoSheet.sectionRoute') }}
+          </h3>
+          <div class="fact-grid">
+            <div class="fact fact--goal">
+              <span class="fact-label">
+                <BaseIcon name="location_on" size="sm" />
+                {{ t('tours.infoSheet.iconTooltipGoal') }}
               </span>
-            </span>
-            <span v-else class="coords">{{ startPointText }}</span>
-          </div>
-          <div v-if="isOneWayToGoal" class="detail-row">
-            <BaseTooltip :text="t('tours.infoSheet.iconTooltipEndPoint')">
-              <BaseIcon name="directions" class="detail-icon" />
-            </BaseTooltip>
-            <span class="round-trip-hint">{{ t('tours.infoSheet.oneWayToGoalIndicator') }}</span>
-          </div>
-          <div v-else class="detail-row">
-            <BaseTooltip :text="t('tours.infoSheet.iconTooltipEndPoint')">
-              <BaseIcon name="flag" class="detail-icon" />
-            </BaseTooltip>
-            <span v-if="isRoundTrip" class="round-trip-hint">{{
-              t('tours.infoSheet.roundTrip')
-            }}</span>
-            <template v-else>
-              <span v-if="tour.endPointName" class="point-meta">
-                {{ tour.endPointName }}
-                <span v-if="tour.endPointElevation != null" class="point-elevation">
-                  {{ tour.endPointElevation }} m
+              <span v-if="formattedElevation" class="fact-value fact-value--headline">{{ formattedElevation }}</span>
+              <span class="fact-sub coords">{{ coordinates }}</span>
+            </div>
+            <template v-if="startPointText">
+              <div class="fact">
+                <span class="fact-label">
+                  <BaseIcon name="home" size="sm" />
+                  {{ t('tours.infoSheet.iconTooltipStartPoint') }}
                 </span>
+                <span v-if="tour.startPointName" class="fact-value">{{ tour.startPointName }}</span>
+                <span v-else class="fact-value coords">{{ startPointText }}</span>
+                <span v-if="tour.startPointName && tour.startPointElevation != null" class="fact-sub">
+                  {{ tour.startPointElevation }} m
+                </span>
+              </div>
+              <div class="fact">
+                <span class="fact-label">
+                  <BaseIcon :name="isOneWayToGoal ? 'directions' : 'flag'" size="sm" />
+                  {{ t('tours.infoSheet.iconTooltipEndPoint') }}
+                </span>
+                <span v-if="isOneWayToGoal" class="fact-value">{{ t('tours.infoSheet.oneWayToGoalIndicator') }}</span>
+                <span v-else-if="isRoundTrip" class="fact-value">{{ t('tours.infoSheet.roundTrip') }}</span>
+                <template v-else>
+                  <span v-if="tour.endPointName" class="fact-value">{{ tour.endPointName }}</span>
+                  <span v-else class="fact-value coords">{{ endPointText }}</span>
+                  <span v-if="tour.endPointName && tour.endPointElevation != null" class="fact-sub">
+                    {{ tour.endPointElevation }} m
+                  </span>
+                </template>
+              </div>
+            </template>
+          </div>
+        </section>
+
+        <!-- Details: seasons and the free texts, each under its own label -->
+        <section
+          v-if="tour.seasons?.length || tour.description || tour.equipment || tour.notes"
+          class="facts-section"
+        >
+          <h3 class="section-heading">
+            {{ t('tours.infoSheet.sectionDetails') }}
+          </h3>
+          <div class="detail-card">
+            <div v-if="tour.seasons?.length" class="season-tags" :aria-label="t('tours.infoSheet.iconTooltipSeasons')">
+              <span v-for="season in tour.seasons" :key="season" class="season-tag">
+                <BaseIcon :name="SEASON_ICONS[season]" size="sm" />
+                {{ t(`tours.season.${season}` as any) }}
               </span>
-              <span v-else class="coords">{{ endPointText }}</span>
-            </template>
-          </div>
-        </template>
-
-        <!-- Seasons -->
-        <div v-if="tour.seasons && tour.seasons.length > 0" class="detail-row align-start">
-          <BaseTooltip :text="t('tours.infoSheet.iconTooltipSeasons')">
-            <BaseIcon name="wb_sunny" class="detail-icon" />
-          </BaseTooltip>
-          <div class="season-tags">
-            <span v-for="season in tour.seasons" :key="season" class="season-tag">
-              {{ t(`tours.season.${season}` as any) }}
-            </span>
-          </div>
-        </div>
-
-        <!-- Description -->
-        <div v-if="tour.description" class="detail-row align-start">
-          <BaseTooltip :text="t('tours.infoSheet.iconTooltipDescription')">
-            <BaseIcon name="description" class="detail-icon" />
-          </BaseTooltip>
-          <p class="description-text">
-            <template v-for="(segment, i) in linkifyText(tour.description)" :key="i">
-              <a
-                v-if="segment.url" :href="segment.url" target="_blank" rel="noopener noreferrer"
-                class="description-link"
-              >{{ segment.text }}</a>
-              <template v-else>
-                {{ segment.text }}
-              </template>
-            </template>
-          </p>
-        </div>
-
-        <!-- Equipment -->
-        <div v-if="tour.equipment" class="detail-row align-start">
-          <BaseTooltip :text="t('tours.infoSheet.iconTooltipEquipment')">
-            <BaseIcon name="hardware" class="detail-icon" />
-          </BaseTooltip>
-          <p class="detail-text">
-            {{ tour.equipment }}
-          </p>
-        </div>
-
-        <!-- Notes -->
-        <div v-if="tour.notes" class="detail-row align-start">
-          <BaseTooltip :text="t('tours.infoSheet.iconTooltipNotes')">
-            <BaseIcon name="sticky_note_2" class="detail-icon" />
-          </BaseTooltip>
-          <p class="detail-text">
-            {{ tour.notes }}
-          </p>
-        </div>
-
-        <!-- GPX track download -->
-        <div v-if="tour.gpxFilepath" class="detail-row">
-          <BaseTooltip :text="t('tours.infoSheet.iconTooltipGpxTrack')">
-            <BaseIcon name="route" class="detail-icon" />
-          </BaseTooltip>
-          <BaseButton variant="secondary" size="sm" class="gpx-download-btn" @click="handleDownloadGpx">
-            <BaseIcon name="download" />
-            {{ t('tours.infoSheet.downloadGpxBtn') }}
-          </BaseButton>
-        </div>
-
-        <!-- Attachments strip -->
-        <TourAttachmentsStrip :tour-id="tour.id" @open-viewer="openViewer" />
-
-        <!-- Partners -->
-        <div v-if="partners.length > 0" class="detail-row">
-          <BaseTooltip :text="t('tours.infoSheet.iconTooltipPartners')">
-            <BaseIcon name="group" class="detail-icon" />
-          </BaseTooltip>
-          <div class="partner-chips-section">
-            <div class="partner-chips">
-              <ContactChip
-                v-for="partner in partners" :key="partner.id" :contact="partner" :selected="false"
-                mode="action" @open="openContactMenu"
-              />
+            </div>
+            <div v-if="tour.description" class="detail-item">
+              <span class="detail-icon"><BaseIcon name="description" size="sm" /></span>
+              <div class="detail-text">
+                <span class="fact-label">{{ t('tours.infoSheet.iconTooltipDescription') }}</span>
+                <p class="body-text">
+                  <template v-for="(segment, i) in linkifyText(tour.description)" :key="i">
+                    <a
+                      v-if="segment.url" :href="segment.url" target="_blank" rel="noopener noreferrer"
+                      class="description-link"
+                    >{{ segment.text }}</a>
+                    <template v-else>
+                      {{ segment.text }}
+                    </template>
+                  </template>
+                </p>
+              </div>
+            </div>
+            <div v-if="tour.equipment" class="detail-item">
+              <span class="detail-icon"><BaseIcon name="backpack" size="sm" /></span>
+              <div class="detail-text">
+                <span class="fact-label">{{ t('tours.infoSheet.iconTooltipEquipment') }}</span>
+                <p class="body-text">
+                  {{ tour.equipment }}
+                </p>
+              </div>
+            </div>
+            <div v-if="tour.notes" class="detail-item">
+              <span class="detail-icon"><BaseIcon name="sticky_note_2" size="sm" /></span>
+              <div class="detail-text">
+                <span class="fact-label">{{ t('tours.infoSheet.iconTooltipNotes') }}</span>
+                <p class="body-text">
+                  {{ tour.notes }}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        <!-- Partners on a friend's tour (read-only registered-user names) -->
-        <div
-          v-if="tour.isFriendTour && (friendPartnerNames.length > 0 || unresolvedPartnerCount > 0)"
-          class="detail-row"
+        <!-- Partners (own tour: contact chips; friend's tour: read-only names) -->
+        <section
+          v-if="partners.length > 0 || (tour.isFriendTour && (friendPartnerNames.length > 0 || unresolvedPartnerCount > 0))"
+          class="facts-section"
         >
-          <BaseTooltip :text="t('tours.infoSheet.iconTooltipPartners')">
-            <BaseIcon name="group" class="detail-icon" />
-          </BaseTooltip>
-          <div class="partner-chips">
-            <span v-for="(name, i) in friendPartnerNames" :key="i" class="friend-partner-chip">{{
-              name
-            }}</span>
+          <h3 class="section-heading">
+            {{ t('tours.infoSheet.iconTooltipPartners') }}
+            <span class="section-count">{{ partners.length || friendPartnerNames.length + unresolvedPartnerCount }}</span>
+          </h3>
+          <!-- Pills with an initial avatar in the tour's colour (drawn from `data-initial`). -->
+          <div v-if="partners.length > 0" class="partner-chips">
+            <ContactChip
+              v-for="partner in partners" :key="partner.id" :contact="partner" :selected="false"
+              mode="action" class="partner-pill" :data-initial="initialOf(resolveContactName(partner))"
+              @open="openContactMenu"
+            />
+          </div>
+          <div v-else class="partner-chips">
+            <span
+              v-for="(name, i) in friendPartnerNames" :key="i" class="friend-partner-chip partner-pill"
+              :data-initial="initialOf(name)"
+            >{{ name }}</span>
             <span v-if="unresolvedPartnerCount > 0" class="friend-partner-chip friend-partner-chip--more">
               {{ t('tours.infoSheet.morePartners', { count: unresolvedPartnerCount }) }}
             </span>
           </div>
-        </div>
+        </section>
+
+        <!-- Files -->
+        <BaseButton v-if="tour.gpxFilepath" variant="secondary" size="sm" class="gpx-download-btn" @click="handleDownloadGpx">
+          <BaseIcon name="route" />
+          {{ t('tours.infoSheet.downloadGpxBtn') }}
+        </BaseButton>
+        <TourAttachmentsStrip :tour-id="tour.id" @open-viewer="openViewer" />
 
         <!--
           Suggestions live at the BOTTOM (owner review workload, or the partner's own
@@ -1178,6 +1189,9 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 <style scoped>
 /* ── View mode ──────────────────────────────────────────────────────────────── */
 .details {
+  /* Overridden inline with the tour's activity colour; untyped tours stay blue. */
+  --type-tint: var(--color-primary);
+
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
@@ -1233,7 +1247,13 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   padding: var(--spacing-sm) var(--surface-pad-right, 0px) 0 var(--surface-pad-left, 0px);
 }
 
-.action-btn:hover:not(:disabled) {
+@media (hover: hover) {
+  .action-btn:hover:not(:disabled) {
+    background-color: var(--color-secondary-container-hover);
+  }
+}
+
+.action-btn:active:not(:disabled) {
   background-color: var(--color-secondary-container-hover);
 }
 
@@ -1284,7 +1304,13 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   color: var(--color-success-text);
 }
 
-.completion-toggle--done:hover:not(:disabled) {
+@media (hover: hover) {
+  .completion-toggle--done:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-success) 20%, var(--color-background));
+  }
+}
+
+.completion-toggle--done:active:not(:disabled) {
   background-color: color-mix(in srgb, var(--color-success) 20%, var(--color-background));
 }
 
@@ -1293,34 +1319,14 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   color: var(--color-error-text);
 }
 
-.visibility-toggle--private:hover:not(:disabled) {
+@media (hover: hover) {
+  .visibility-toggle--private:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-error) 20%, var(--color-background));
+  }
+}
+
+.visibility-toggle--private:active:not(:disabled) {
   background-color: color-mix(in srgb, var(--color-error) 20%, var(--color-background));
-}
-
-.detail-row {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-  color: var(--color-on-surface-variant);
-  font-size: var(--font-size-base);
-}
-
-/* Flex items default to min-width: auto (their own content's width), which lets
-   a long unbroken value (coordinates, a place name, a partner chip row) push
-   the row past the sheet's width instead of wrapping. Constrain every row's
-   value cell so it shrinks to the available width and wraps there. */
-.detail-row > *:not(.detail-icon) {
-  min-width: 0;
-  overflow-wrap: break-word;
-}
-
-.detail-row.align-start {
-  align-items: flex-start;
-}
-
-.detail-icon {
-  flex-shrink: 0;
-  color: var(--color-outline);
 }
 
 /* Same line box as the resolved owner text, so the swap causes no reflow. Fill derives
@@ -1351,25 +1357,259 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
 .coords {
   font-variant-numeric: tabular-nums;
-  font-size: var(--font-size-sm);
 }
 
-.round-trip-hint {
-  font-size: var(--font-size-sm);
-  font-style: italic;
-  color: var(--color-on-surface-variant);
+/* ── Header card ── */
+/* Washed in the activity colour; completed adds a success ring, private a dashed edge
+   (only you see it). Both states also stamp the badge, so they read at a glance. */
+.hero {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border-radius: var(--card-radius);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--type-tint) 16%, var(--color-background)),
+    color-mix(in srgb, var(--type-tint) 4%, var(--color-background))
+  );
+  box-shadow: inset 0 0 0 0 transparent;
+  transition: box-shadow var(--motion-duration-medium) var(--motion-ease-emphasized);
 }
 
-.point-meta {
-  font-size: var(--font-size-sm);
-  color: var(--color-on-surface-variant);
+.hero--completed {
+  box-shadow: inset 0 0 0 2px var(--color-success);
+}
+
+.hero--private {
+  outline: 1.5px dashed var(--color-outline);
+  outline-offset: -1.5px;
+}
+
+/* Both: the dashes step inside the ring rather than overprinting it. */
+.hero--completed.hero--private {
+  outline-offset: -6px;
+}
+
+.hero-badge {
+  position: relative;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-pill);
+  background-color: var(--type-tint);
+  color: var(--color-on-primary);
+}
+
+.hero-stamp {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-pill);
+  /* Ring in the card colour cuts the stamp out of the badge. */
+  box-shadow: 0 0 0 2px var(--color-background);
+  color: var(--color-on-primary);
+}
+
+.hero-stamp--done {
+  right: -4px;
+  bottom: -4px;
+  background-color: var(--color-success);
+}
+
+.hero-stamp--private {
+  right: -4px;
+  top: -4px;
+  background-color: var(--color-on-surface-variant);
+}
+
+.stamp-enter-active {
+  transition:
+    transform var(--motion-duration-medium) var(--motion-ease-spring),
+    opacity var(--motion-duration-short) var(--motion-ease-standard);
+}
+
+.stamp-leave-active {
+  transition:
+    transform var(--motion-duration-short) var(--motion-ease-standard),
+    opacity var(--motion-duration-short) var(--motion-ease-standard);
+}
+
+.stamp-enter-from,
+.stamp-leave-to {
+  transform: scale(0);
+  opacity: 0;
+}
+
+.hero-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-xxs);
+  min-width: 0;
+}
+
+.hero-type {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-on-surface);
+  letter-spacing: -0.01em;
+}
+
+.hero-meta {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
 }
 
-.point-elevation {
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xxs);
+  margin-top: var(--spacing-xxs);
+  padding: 2px var(--spacing-sm);
+  border-radius: var(--chip-radius);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  background-color: color-mix(in srgb, var(--color-success) 12%, var(--color-background));
+  color: var(--color-success-text);
+}
+
+/* ── Sections: heading, then facts as label-over-value ── */
+.facts-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--heading-section-size);
+  font-weight: var(--heading-section-weight);
+  letter-spacing: var(--heading-section-tracking);
+  color: var(--heading-section-color);
+}
+
+.fact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-sm);
+}
+
+.fact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs);
+  min-width: 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--card-radius);
+  background-color: var(--color-surface-variant);
+}
+
+/* The goal spans the row in the activity colour: its elevation is the headline number. */
+.fact--goal {
+  grid-column: 1 / -1;
+  background-color: color-mix(in srgb, var(--type-tint) 10%, var(--color-background));
+}
+
+.fact-label .base-icon {
+  color: var(--type-tint);
+}
+
+.fact-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xxs);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
   color: var(--color-on-surface-variant);
+}
+
+.fact-value {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-on-surface);
+  overflow-wrap: anywhere;
+}
+
+.fact-value--headline {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.02em;
+  line-height: var(--line-height-tight);
+  font-variant-numeric: tabular-nums;
+}
+
+.fact-sub {
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
+}
+
+/* Details: one card; each text gets an icon tile, rows split by hairlines. */
+.detail-card {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--card-radius);
+  background-color: var(--color-surface-variant);
+}
+
+.detail-card > * {
+  padding-block: var(--spacing-sm);
+}
+
+.detail-card > * + * {
+  border-top: 1px solid var(--color-outline-variant);
+}
+
+.detail-item {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: var(--spacing-sm);
+}
+
+.detail-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background-color: color-mix(in srgb, var(--type-tint) 14%, var(--color-background));
+  color: var(--type-tint);
+}
+
+.detail-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs);
+}
+
+.section-count {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-xs);
+  line-height: 20px;
+  text-align: center;
+  background-color: color-mix(in srgb, var(--type-tint) 14%, var(--color-background));
+  color: var(--type-tint);
+}
+
+/* Free text: full contrast and a relaxed line height for comfortable reading. */
+.body-text {
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-relaxed);
+  color: var(--color-on-surface);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .season-tags {
@@ -1379,19 +1619,19 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 }
 
 .season-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xxs);
   padding: 2px var(--spacing-sm);
   border-radius: var(--chip-radius);
   font-size: var(--font-size-sm);
-  background-color: color-mix(in srgb, var(--color-primary) 12%, transparent);
-  color: var(--color-primary-dark);
+  background-color: var(--color-background);
+  color: var(--color-on-surface);
   font-weight: var(--font-weight-medium);
 }
 
-.description-text {
-  font-size: var(--font-size-base);
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
+.season-tag .base-icon {
+  color: var(--type-tint);
 }
 
 .description-link {
@@ -1400,22 +1640,9 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   text-underline-offset: 2px;
 }
 
-.detail-text {
-  font-size: var(--font-size-base);
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
 /* BaseButton (secondary) provides the look; keep the 44px touch target. */
 .gpx-download-btn {
   min-height: 44px;
-}
-
-.partner-chips-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
 }
 
 .partner-chips {
@@ -1425,11 +1652,37 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 }
 
 .friend-partner-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--chip-min-height);
   padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-md);
+  border-radius: var(--chip-radius);
   font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
   background-color: var(--color-surface-variant);
   color: var(--color-on-surface);
+}
+
+/* Avatar pill: initial in the activity colour, like the tour list's avatars. Two
+   classes so it outranks ContactChip's own scoped `.chip` padding and border. */
+.partner-chips .partner-pill {
+  gap: var(--spacing-xs);
+  padding: 3px var(--spacing-md) 3px 3px;
+  border: none;
+  background-color: var(--color-surface-variant);
+}
+
+.partner-pill::before {
+  content: attr(data-initial);
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  background-color: color-mix(in srgb, var(--type-tint) 18%, var(--color-background));
+  color: var(--type-tint);
 }
 
 .friend-partner-chip--more {

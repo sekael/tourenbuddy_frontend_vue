@@ -545,7 +545,9 @@
       "iconTooltipNotes": "Notes",
       "iconTooltipGpxTrack": "GPX track",
       "iconTooltipPartners": "Partners",
-      "downloadGpxBtn": "Download GPX"
+      "downloadGpxBtn": "Download GPX",
+      "sectionRoute": "Route",
+      "sectionDetails": "Details"
     },
     "filters": {
       "partnerLabel": "Partner",

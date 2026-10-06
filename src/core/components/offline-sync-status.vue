@@ -196,7 +196,7 @@ function reasonText(entry: WriteQueueEntry): string | null {
 <style scoped>
 .sync-toast {
   position: fixed;
-  bottom: calc(var(--spacing-xl) + var(--safe-bottom));
+  bottom: var(--float-bottom);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -215,7 +215,7 @@ function reasonText(entry: WriteQueueEntry): string | null {
 
 /* Pending-text snackbar sits just above the saved toast slot so both can show at once. */
 .sync-toast--pending {
-  bottom: calc(var(--spacing-xl) + var(--safe-bottom) + 3rem);
+  bottom: calc(var(--float-bottom) + 3rem);
 }
 
 /* Persistent icon+count chip, bottom-left, stacked just above the offline chip
@@ -223,7 +223,7 @@ function reasonText(entry: WriteQueueEntry): string | null {
 .sync-chip {
   position: fixed;
   left: var(--spacing-md);
-  bottom: calc(var(--spacing-md) + var(--safe-bottom) + 3rem);
+  bottom: calc(var(--float-corner-bottom) + 3rem);
   display: flex;
   align-items: center;
   gap: var(--spacing-xxs);
@@ -245,7 +245,7 @@ function reasonText(entry: WriteQueueEntry): string | null {
    // drain-connectivity fix, being offline WITH a dead letter is rare and transient. */
 .sync-deadletter {
   position: fixed;
-  bottom: calc(var(--spacing-md) + var(--safe-bottom));
+  bottom: var(--float-corner-bottom);
   left: var(--spacing-md);
   display: flex;
   align-items: center;
@@ -267,7 +267,7 @@ function reasonText(entry: WriteQueueEntry): string | null {
 }
 
 .sync-deadletter--expanded {
-  bottom: calc(var(--spacing-md) + var(--safe-bottom) + 6rem);
+  bottom: calc(var(--float-corner-bottom) + 6rem);
   padding: var(--spacing-xs) var(--spacing-md);
 }
 

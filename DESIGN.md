@@ -131,6 +131,37 @@ sits balanced and the content scrolls. The slot sits in a
 on it drives the scroll box's height. Content inside a dialog must not rely on
 filling a fixed height.
 
+**Mobile sheets fit their content too.** A fit-content bottom sheet
+(`bottom-sheet.vue`) follows its content both ways, like a desktop dialog: the slot
+sits in a natural-height `.content-body`, a ResizeObserver refits, and the height
+glides. It opens at the content height (capped at 70% of the visible viewport).
+Only when the content needs more than that does it show a drag handle — expand to
+the full content (capped at 90%) or drop to peek; a flick moves one snap. Content
+that fits gets no handle: there is nothing to reveal. Browse sheets the user
+sizes against the map (tour list, tour detail) pass `resizable`: always a handle,
+snapping to peek, the opening height (content, ≤ 40%) and full content (≤ 70%).
+Any draggable sheet drags from its header too (not its buttons), and past the top
+snap it rubber-bands instead of stopping dead, so a short sheet still answers the finger.
+The tour detail wears its activity colour (`TOUR_TYPE_COLORS`, as on the map
+marker and list avatar) via one `--type-tint`; completed / private stamp the badge
+(success ring / dashed edge on the header card).
+Tabs inside a mobile sheet keep one height: stack the panels in one grid cell
+(inactive one `visibility: hidden` + `inert`) so switching never resizes the sheet
+(friend requests). Sheets live in a `.sheet-host` (over the page, wrap
+in `<Transition name="sheet">`) or a `.sheet-host--modal` (scrim; rises on mount)
+from `global.css`.
+
+**Sheet ⇄ page fades through.** Swapping a sheet for its full-screen page (and
+back), or closing from a page, never hard-cuts: the outgoing surface fades out via
+`useExitAnimation` while the incoming one fades/rises in. Use that composable for
+any surface its owner removes with `v-if` — a `<Transition>` only plays a leave while
+it stays mounted itself.
+
+**Touch.** Hover fills go inside `@media (hover: hover)` with an identical
+`:active` rule, so taps get feedback and nothing stays tinted after a tap on iOS.
+Bottom-anchored toasts and chips use `--float-bottom` / `--float-corner-bottom`,
+which lift them above any open sheet.
+
 **No needless motion.** Only what the user acted on moves; nothing bounces.
 
 ### Component tokens

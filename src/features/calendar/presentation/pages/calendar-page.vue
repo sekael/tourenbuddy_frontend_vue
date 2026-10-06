@@ -394,9 +394,11 @@ onMounted(() => {
 
       <!-- Contact opened from a friend chip's action menu. Self-adapting: dialog on
            desktop, bottom sheet on mobile. Closing returns to the calendar. -->
-      <div v-if="editContactId !== null" class="sheet-container">
-        <ContactsListSheet :initial-contact-id="editContactId" @close="handleContactsClose" />
-      </div>
+      <Transition name="sheet">
+        <div v-if="editContactId !== null" class="sheet-host">
+          <ContactsListSheet :initial-contact-id="editContactId" @close="handleContactsClose" />
+        </div>
+      </Transition>
     </main>
   </div>
 </template>
@@ -541,25 +543,6 @@ onMounted(() => {
    subtree, so tap-to-advance keeps working. */
 .calendar-page--tour-locked {
   touch-action: none;
-}
-
-/* Host for the contact sheet/dialog (same pattern as map-page): fixed to the
-   visual-viewport bottom on mobile; on desktop the child dialog self-centers. */
-.sheet-container {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 50;
-  display: flex;
-  justify-content: center;
-  pointer-events: none;
-}
-
-@media (min-width: 600px) {
-  .sheet-container {
-    display: contents;
-  }
 }
 
 /* Desktop: sidebar sits to the left of the main column. */

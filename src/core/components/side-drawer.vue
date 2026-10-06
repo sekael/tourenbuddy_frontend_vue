@@ -98,7 +98,7 @@ const isDesktop = useIsDesktop()
   background-color: var(--color-background);
   box-shadow: var(--shadow-lg);
   animation: slide-in-right var(--motion-duration-long) var(--motion-ease-emphasized);
-  /* Restore pointer events — parent sheet-container sets pointer-events: none */
+  /* Restore pointer events — parent sheet-host sets pointer-events: none */
   pointer-events: auto;
   transition:
     max-height var(--motion-duration-medium) var(--motion-ease-emphasized),

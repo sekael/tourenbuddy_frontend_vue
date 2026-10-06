@@ -112,7 +112,13 @@ html.scroll-locked {
   transition: color var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
-[data-tab-indicator] > button:hover:not([aria-selected='true'], [aria-pressed='true']) {
+@media (hover: hover) {
+  [data-tab-indicator] > button:hover:not([aria-selected='true'], [aria-pressed='true']) {
+    color: var(--color-on-surface);
+  }
+}
+
+[data-tab-indicator] > button:active:not([aria-selected='true'], [aria-pressed='true']) {
   color: var(--color-on-surface);
 }
 
@@ -162,6 +168,114 @@ html.scroll-locked {
 .view-pop-enter-from {
   opacity: 0;
   transform: translateX(calc(-1 * var(--motion-offset)));
+}
+
+/* ── Mobile sheets ─────────────────────────────────────────────────────────
+   Hosts for bottom sheets (mobile only; on desktop the host is a layout no-op and
+   the dialog/drawer inside positions and animates itself).
+   - `.sheet-host` — over the map/calendar, no scrim: taps outside the sheet reach
+     the page. Wrap it in `<Transition name="sheet">` to slide in and out.
+   - `.sheet-host--modal` — teleported, scrim + tap-outside to dismiss: the scrim
+     fades and the sheet rises on mount; pair with `useExitAnimation` on the host
+     for the exit. */
+.sheet-host {
+  /* fixed (not absolute) so sheets anchor to the visual viewport bottom in
+     mobile browsers — above Android system nav and bottom browser chrome. */
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  /* Clicks pass through around the sheet so map controls stay usable. */
+  pointer-events: none;
+}
+
+.sheet-host--modal {
+  inset: 0;
+  align-items: flex-end;
+  pointer-events: auto;
+  background: var(--color-backdrop);
+  backdrop-filter: blur(var(--overlay-backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--overlay-backdrop-blur));
+  animation: scrim-in var(--motion-duration-medium) var(--motion-ease-standard) both;
+}
+
+.sheet-host--modal > * {
+  animation: sheet-rise var(--motion-duration-long) var(--motion-ease-emphasized) both;
+}
+
+@keyframes scrim-in {
+  from {
+    background-color: transparent;
+    backdrop-filter: blur(0);
+    -webkit-backdrop-filter: blur(0);
+  }
+}
+
+@keyframes sheet-rise {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+.sheet-enter-active,
+.sheet-leave-active {
+  transition: transform var(--motion-duration-long) var(--motion-ease-emphasized);
+}
+
+.sheet-enter-from,
+.sheet-leave-to {
+  transform: translateY(100%);
+}
+
+@media (min-width: 600px) {
+  .sheet-host {
+    display: contents;
+  }
+
+  .sheet-enter-active,
+  .sheet-leave-active {
+    transition: none;
+  }
+
+  .sheet-enter-from,
+  .sheet-leave-to {
+    transform: none;
+  }
+}
+
+/* A surface playing its exit (`useExitAnimation`) was re-inserted to animate, which
+   would restart its entrance keyframes. */
+[data-exiting],
+[data-exiting] * {
+  animation: none !important;
+}
+
+/* Bottom-anchored toasts and status chips rise above an open sheet instead of
+   covering its actions. `--sheet-inset` is the sheet's on-screen height, published
+   by `bottom-sheet.vue` while it is up (unset otherwise → 0). */
+:root {
+  --float-bottom: max(calc(var(--spacing-xl) + var(--safe-bottom)), calc(var(--sheet-inset, 0px) + var(--spacing-md)));
+  --float-corner-bottom: max(
+    calc(var(--spacing-md) + var(--safe-bottom)),
+    calc(var(--sheet-inset, 0px) + var(--spacing-md))
+  );
+}
+
+/* Touch: no grey tap flash (controls give their own press feedback via
+   --press-scale / :active fills) and no double-tap-zoom delay on controls. */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a,
+button,
+input,
+label,
+select,
+textarea,
+[role='button'] {
+  touch-action: manipulation;
 }
 
 /* Map-control glass — every control floating over the map (speed dial and its

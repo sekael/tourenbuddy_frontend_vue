@@ -60,7 +60,13 @@ const iconSize = computed(() => props.size)
   transform: scale(var(--press-scale));
 }
 
-.base-icon-button:hover:not(:disabled) {
+@media (hover: hover) {
+  .base-icon-button:hover:not(:disabled) {
+    background-color: var(--color-surface-variant);
+  }
+}
+
+.base-icon-button:active:not(:disabled) {
   background-color: var(--color-surface-variant);
 }
 
@@ -69,12 +75,25 @@ const iconSize = computed(() => props.size)
   color: var(--color-on-secondary-container);
 }
 
-.base-icon-button--tonal:hover:not(:disabled) {
+@media (hover: hover) {
+  .base-icon-button--tonal:hover:not(:disabled) {
+    background-color: var(--color-secondary-container-hover);
+  }
+}
+
+.base-icon-button--tonal:active:not(:disabled) {
   background-color: var(--color-secondary-container-hover);
 }
 
 /* Danger tone: red glyph on hover, faint red wash instead of the neutral grey. */
-.base-icon-button--danger:hover:not(:disabled) {
+@media (hover: hover) {
+  .base-icon-button--danger:hover:not(:disabled) {
+    color: var(--color-error);
+    background-color: color-mix(in srgb, var(--color-error) 8%, transparent);
+  }
+}
+
+.base-icon-button--danger:active:not(:disabled) {
   color: var(--color-error);
   background-color: color-mix(in srgb, var(--color-error) 8%, transparent);
 }

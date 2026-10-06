@@ -188,7 +188,13 @@ function handlePillClick(id: string) {
   transition: background var(--motion-duration-short) var(--motion-ease-standard);
 }
 
-.pill:hover:not(:disabled) {
+@media (hover: hover) {
+  .pill:hover:not(:disabled) {
+    background: var(--color-surface);
+  }
+}
+
+.pill:active:not(:disabled) {
   background: var(--color-surface);
 }
 
@@ -224,7 +230,13 @@ function handlePillClick(id: string) {
   border-radius: var(--radius-sm);
 }
 
-.full-row:hover:not(:disabled) {
+@media (hover: hover) {
+  .full-row:hover:not(:disabled) {
+    background: var(--color-surface-variant);
+  }
+}
+
+.full-row:active:not(:disabled) {
   background: var(--color-surface-variant);
 }
 
