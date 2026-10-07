@@ -68,14 +68,17 @@ function cancelBlock() {
 }
 
 async function handleBlockConfirm(reportReason: string | null) {
-  if (!props.linkedFriendUserId)
+  // Capture before awaiting: blocking ends the friendship, so the parent's refetch
+  // clears `linkedFriendUserId` while `block()` is still in flight.
+  const target = props.linkedFriendUserId
+  if (!target)
     return
   blockConfirmOpen.value = false
   try {
-    await blocksStore.block(props.linkedFriendUserId)
+    await blocksStore.block(target)
     snackbar.show(t('blocks.snackbar.blockSuccess'))
     if (reportReason !== null) {
-      await blocksStore.report(props.linkedFriendUserId, reportReason)
+      await blocksStore.report(target, reportReason)
       snackbar.show(t('blocks.snackbar.reportSuccess'))
     }
   }

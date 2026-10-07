@@ -4,7 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { formatPhoneDisplay } from '@/features/contacts/domain/entities/contact'
 import ContactDetailView from '@/features/contacts/presentation/components/contact-detail-view.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
+import BlockConfirmDialog from '@/features/friendships/presentation/components/block-confirm-dialog.vue'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
+import { useUserBlocksStore } from '@/features/friendships/presentation/stores/user-blocks-store'
 
 vi.mock('@/core/logging/use-logger', () => ({
   useLogger: () => ({ error: vi.fn(), info: vi.fn(), warn: vi.fn() }),
@@ -624,6 +626,21 @@ describe('contactDetailView', () => {
 
       expect(friendships.removeFriendship).not.toHaveBeenCalled()
       expect(contacts.deleteContact).toHaveBeenCalledWith('c-1')
+    })
+  })
+
+  describe('block and report', () => {
+    it('should report the blocked user even after blocking unlinks the friend', async () => {
+      const wrapper = mountDetail(mockContact, 'u-2')
+      const blocks = useUserBlocksStore()
+      // block_user ends the friendship; the parent's refetch drops the link mid-flight.
+      vi.mocked(blocks.block).mockImplementation(async () => {
+        await wrapper.setProps({ linkedFriendUserId: null })
+      })
+      await wrapper.find('.base-button--danger-outline').trigger('click')
+      wrapper.findComponent(BlockConfirmDialog).vm.$emit('confirm', 'spam')
+      await flushPromises()
+      expect(blocks.report).toHaveBeenCalledWith('u-2', 'spam')
     })
   })
 })
