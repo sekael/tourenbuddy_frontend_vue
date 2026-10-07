@@ -25,4 +25,4 @@
 - [x] 4.1 Composable tests: persistent glide, surface reuse + `from`, restart re-stages, delayed destroy flushed
 - [x] 4.2 `npm run test`, `npm run type-check`, eslint
 - [x] 4.3 Walk both tours end-to-end in headless Chromium, desktop 1440×900 + iPhone 13 emulation (forward, back across every surface, finish mid-staging, reopen, hand-off)
-- [ ] 4.4 Feel check on a real phone + installed PWA (motion pacing on a real GPU)
+- [x] 4.4 Feel check on a real phone + installed PWA (motion pacing on a real GPU)

@@ -1,6 +1,6 @@
 ## Purpose
 
-Introduce new users to TourenBuddy's core features via a guided spotlight tour. On first arrival at the map after profile onboarding, a welcome screen offers to start the tour, which walks through phone verification, notifications, contacts, friend requests, tours, map controls, and the calendar. On completion, the tour hands off to the calendar with its own one-time welcome and spotlight sequence. Tour progress and the auto-show gate persist on `user_profile` so state follows the user across devices, and the tour is reopenable from the profile sheet.
+Introduce new users to TourenBuddy's core features via a guided spotlight tour. On first arrival at the map after profile onboarding, a welcome screen offers to start the tour, which glides a single spotlight through planning a tour, map switching, offline maps, phone verification, notifications, calendar sync, contacts, friend requests, tours, and the calendar. On completion, the tour hands off to the calendar with its own one-time welcome and spotlight sequence. Tour progress and the auto-show gate persist on `user_profile` so state follows the user across devices, and the tour is reopenable from the profile sheet.
 
 ## Requirements
 
@@ -92,7 +92,7 @@ The tour SHALL allow navigating steps both forward and backward. The system SHAL
 
 ### Requirement: Guided step sequence
 
-The tour SHALL present steps in this order, each opening/driving the real surface and highlighting the corresponding feature with a spotlight and an explanatory popover: (1) phone verification, (2) notification settings, (3) add a contact, (4) your contacts list, (5) friend requests, (6) my tours (own/friends tabs), (7) add a location, (8) switching maps, (9) open the calendar. Steps whose surface is a page-level overlay (contacts, friend-requests, tours) SHALL open the actual sheet and target a stable anchor that exists even for a new user with empty lists. The final "open the calendar" step SHALL spotlight the calendar-open control in the My Tours sheet header (teaching the user where the calendar lives) without navigating away. When driving the app to a step's surface, the tour SHALL spotlight each intermediate navigation control it actuates (e.g. the menu FAB, a menu item) with a short hint label naming that control (e.g. "Open menu", "Open contacts").
+The tour SHALL present steps in this order, each opening/driving the real surface and highlighting the corresponding feature with a spotlight and an explanatory popover: (1) plan a tour (the add-tour control in the bottom action bar), (2) switching maps (the base-map panel), (3) offline maps (the offline-maps entry in the speed-dial menu), (4) phone verification, (5) notification settings, (6) calendar sync (the calendar-sync row of the profile), (7) contacts (the add-contact control, covering the contacts list), (8) friend requests, (9) my tours (own/friends tabs), (10) open the calendar. Steps sharing a surface SHALL be adjacent, and moving between them SHALL NOT replay the navigation path. Steps whose surface is a page-level overlay (contacts, friend-requests, tours, profile) SHALL open the actual sheet and target a stable anchor that exists even for a new user with empty lists. The final "open the calendar" step SHALL spotlight the calendar-open control in the My Tours sheet header (teaching the user where the calendar lives) without navigating away. When driving the app to a step's surface, the tour SHALL spotlight each intermediate navigation control it actuates (e.g. the menu FAB, a menu item) with a short hint label naming that control (e.g. "Open menu", "Open contacts"), starting from the surface already on screen when that surface lies on the path (e.g. an open speed-dial menu, an open contacts sheet).
 
 #### Scenario: Advancing through all steps
 
@@ -109,6 +109,16 @@ The tour SHALL present steps in this order, each opening/driving the real surfac
 - **WHEN** reaching a step requires actuating intermediate controls (e.g. opening the menu FAB then a menu item)
 - **THEN** each such control is spotlighted in turn with a short hint label naming it before the next surface opens
 
+#### Scenario: Next step on the same surface
+
+- **WHEN** the user advances from a step to one on the same surface (e.g. phone verification → notifications in the profile sheet)
+- **THEN** the surface stays open, no intermediate controls are re-spotlighted, and the spotlight moves directly to the new target
+
+#### Scenario: Path starts from the open surface
+
+- **WHEN** the next step's path passes through the surface already on screen (e.g. contacts → friend requests, or the open speed-dial menu → a menu entry)
+- **THEN** the tour continues from that surface instead of closing it and replaying the path from the map
+
 #### Scenario: Target requires an overlay to be open
 
 - **WHEN** a step targets an element that lives inside an overlay that is currently closed (e.g. the phone-verification or notification section inside the profile sheet)
@@ -121,12 +131,12 @@ The tour SHALL present steps in this order, each opening/driving the real surfac
 
 ### Requirement: Control banner and non-blocking behavior
 
-While the tour is active, the system SHALL display a control banner fixed at the top of the screen (above the spotlight overlay/popover) showing a "Finish tour" control, the current step's short title, the current step position as `X / Y`, and back/forward arrow controls. The tour's popover SHALL contain only the step title and description (no footer buttons). The tour SHALL be dismissible at any step via the banner's "Finish tour" control, and SHALL never force the user to complete an action (e.g. it must not require actually verifying a phone number to proceed). Tapping the dimmed backdrop SHALL advance to the next step rather than dismiss the tour. The highlighted control SHALL be inert (non-interactive) while the tour is active.
+While the tour is active, the system SHALL display a control banner fixed at the top of the screen (above the spotlight overlay/popover) showing a "Finish tour" control, the current step's short title, a progress indicator (a progress line filled to `X / Y` and the text `X / Y`), and back/forward arrow controls, with the forward control visually emphasized as the primary action. When the step changes, the title SHALL cross-fade and the progress line SHALL animate to its new length. The tour's popover SHALL contain only the step title and description (no footer buttons). The tour SHALL be dismissible at any step via the banner's "Finish tour" control, and SHALL never force the user to complete an action (e.g. it must not require actually verifying a phone number to proceed). Tapping the dimmed backdrop SHALL advance to the next step rather than dismiss the tour. The highlighted control SHALL be inert (non-interactive) while the tour is active.
 
 #### Scenario: Banner shows title, progress and navigation
 
 - **WHEN** the tour is on step N of M
-- **THEN** the banner shows the current step's short title and `N / M`, the back arrow is disabled on the first step, the forward arrow advances (and completes the tour past the last step), and the back arrow returns to the previous step
+- **THEN** the banner shows the current step's short title, a progress line filled to N/M, and `N / M`; the back arrow is disabled on the first step, the forward arrow advances (and completes the tour past the last step), and the back arrow returns to the previous step
 
 #### Scenario: User finishes the tour mid-sequence
 
@@ -178,7 +188,7 @@ All tour titles and descriptions SHALL be provided through `vue-i18n` keys with 
 
 ### Requirement: Stable spotlight popover placement
 
-For each step the system SHALL position the popover so that it does not visibly jump after first appearing, does not overlap its own spotlight cutout, and is not clipped by the viewport edges on either mobile or desktop. The system SHALL reveal the spotlight before the popover and position the popover only once the target's layout has settled. A step MAY declare a per-step popover side so a target sitting low in a tall surface does not overflow the screen bottom (where it would otherwise be flipped up into the top control banner). A spotlit target SHALL stay fully visible inside its cutout, including parts that extend beyond its parent element.
+For each step the system SHALL position the popover so that it does not visibly jump after first appearing, does not overlap its own spotlight cutout, and is not clipped by the viewport edges on either mobile or desktop. The system SHALL move the spotlight onto the target before the popover appears and attach the popover only once the spotlight has arrived and the target's layout has settled. A step MAY declare a per-step popover side so a target sitting low in a tall surface does not overflow the screen bottom (where it would otherwise be flipped up into the top control banner). A spotlit target SHALL stay fully visible inside its cutout, including parts that extend beyond its parent element.
 
 #### Scenario: Surface whose layout settles after opening
 
@@ -188,7 +198,7 @@ For each step the system SHALL position the popover so that it does not visibly 
 #### Scenario: Spotlight precedes the popover
 
 - **WHEN** a step is staged and its target has settled
-- **THEN** the spotlight cutout is shown first and the popover is attached afterwards, against the final target rect
+- **THEN** the spotlight cutout arrives on the target first and the popover is attached afterwards, against the final target rect
 
 #### Scenario: Target sits low in a tall surface
 
@@ -218,3 +228,32 @@ When the onboarding (map) tour is completed by advancing past its final step, th
 
 - **WHEN** the user ends the map tour early via "Finish tour" before the final step
 - **THEN** no hand-off intent is set and the app is NOT navigated to the calendar
+
+### Requirement: Continuous tour motion
+
+While a tour runs, the dimmed overlay SHALL stay up continuously from the first spotlight until the tour ends: moving between waypoints and steps SHALL glide the spotlight cutout from its current position to the next target rather than removing and re-raising the overlay. While the app switches surfaces, the cutout SHALL collapse in place and then grow onto the next control, never tracking an element that is being removed. A visible popover SHALL fade out before the spotlight moves, and each new popover SHALL fade in. Ending the tour by any path SHALL fade the overlay and popover out. The pre-tour welcome screen SHALL fade in and out. When the user prefers reduced motion, the spotlight SHALL jump without gliding and the fades SHALL be skipped. A tour started while a previous tour is still fading out SHALL NOT be affected by that fade-out.
+
+#### Scenario: Advancing between two steps
+
+- **WHEN** the user advances from one step to the next
+- **THEN** the current popover fades out, the spotlight glides (or collapses and regrows across a surface change) onto the next target without the overlay disappearing, and the new popover fades in
+
+#### Scenario: Waypoint before a surface opens
+
+- **WHEN** the tour spotlights an intermediate control and then actuates it (e.g. a menu entry that opens a sheet)
+- **THEN** the hint fades out and the spotlight holds still while the control is actuated, and it does not jump to the screen corner when the control disappears
+
+#### Scenario: Finishing the tour
+
+- **WHEN** the tour ends (finish, completion, navigation away)
+- **THEN** the overlay and popover fade out instead of disappearing in a single frame
+
+#### Scenario: Reduced motion
+
+- **WHEN** the operating system requests reduced motion
+- **THEN** the spotlight moves to each target without gliding and no fade animations run
+
+#### Scenario: Tour restarted during the fade-out
+
+- **WHEN** a tour (the same or the calendar tour after the hand-off) starts while the previous one is still fading out
+- **THEN** the previous overlay is removed immediately and the new tour runs unaffected
