@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.42.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.42.0...tourenbuddy-frontend-v0.42.1) (2026-10-07)
+
+
+### Bug Fixes
+
+* **tours:** Restore tour list scrolling on Android ([#309](https://github.com/sekael/tourenbuddy_frontend_vue/issues/309)) ([2d3f200](https://github.com/sekael/tourenbuddy_frontend_vue/commit/2d3f200e2b93c080f844d1ba0863cc8069074920))
+
 ## [0.42.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.41.0...tourenbuddy-frontend-v0.42.0) (2026-10-07)
 
 
