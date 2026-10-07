@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.42.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.41.0...tourenbuddy-frontend-v0.42.0) (2026-10-07)
+
+
+### Features
+
+* Calendar availability sync ([#302](https://github.com/sekael/tourenbuddy_frontend_vue/issues/302)) ([1f6b794](https://github.com/sekael/tourenbuddy_frontend_vue/commit/1f6b794c7ddb665b666b187d383f69299668d400))
+* Calendar sync UI ([#305](https://github.com/sekael/tourenbuddy_frontend_vue/issues/305)) ([1ef8ac8](https://github.com/sekael/tourenbuddy_frontend_vue/commit/1ef8ac87c8ecb77bc2f6062dbee08e969b1b5b8d))
+* Calendar sync worker ([#304](https://github.com/sekael/tourenbuddy_frontend_vue/issues/304)) ([cf819de](https://github.com/sekael/tourenbuddy_frontend_vue/commit/cf819de8d247fe2795c59b074f30e5daa4c2db30))
+* Mobile design polish ([#307](https://github.com/sekael/tourenbuddy_frontend_vue/issues/307)) ([a06ca19](https://github.com/sekael/tourenbuddy_frontend_vue/commit/a06ca1986f1089a657c6170f4844b4142e55cef9))
+* Modern design preview ([#306](https://github.com/sekael/tourenbuddy_frontend_vue/issues/306)) ([4bf7140](https://github.com/sekael/tourenbuddy_frontend_vue/commit/4bf71402be0cdd7b51c49e64c9237fb0f7223f95))
+* **onboarding:** Smooth, modern guided tours with refreshed steps ([#308](https://github.com/sekael/tourenbuddy_frontend_vue/issues/308)) ([7f3871b](https://github.com/sekael/tourenbuddy_frontend_vue/commit/7f3871bfd78bf17a4465daa16df48a25149832e7))
+
 ## [0.41.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.40.2...tourenbuddy-frontend-v0.41.0) (2026-09-17)
 
 
