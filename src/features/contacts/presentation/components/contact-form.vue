@@ -339,7 +339,6 @@ defineExpose({ submit, validateAndCollect })
 
 .input-sm {
   padding: var(--spacing-xs) var(--spacing-sm);
-  font-size: var(--font-size-sm);
 }
 
 .phones-section {

@@ -1237,7 +1237,6 @@ defineExpose({
 }
 
 .input-sm {
-  font-size: var(--font-size-sm);
   padding: var(--spacing-xs) var(--spacing-sm);
 }
 

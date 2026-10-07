@@ -159,6 +159,8 @@ it stays mounted itself.
 
 **Touch.** Hover fills go inside `@media (hover: hover)` with an identical
 `:active` rule, so taps get feedback and nothing stays tinted after a tap on iOS.
+Form fields never go below 16px (iOS zooms into smaller ones on focus and stays
+zoomed); `global.css` sets the floor and `field-font-size.test.ts` guards it.
 Bottom-anchored toasts and chips use `--float-bottom` / `--float-corner-bottom`,
 which lift them above any open sheet.
 

@@ -205,6 +205,7 @@
       "verifyBtn": "Bestätigen",
       "verifyError": "Ungültiger oder abgelaufener Code. Bitte versuche es erneut.",
       "resendBtn": "Code erneut senden",
+      "resendCountdown": "Erneut senden in {seconds}s",
       "resendSuccess": "Code erneut gesendet! Prüfe Deine E-Mails.",
       "resendError": "Code konnte nicht erneut gesendet werden. Bitte versuche es erneut.",
       "backBtn": "Zurück"

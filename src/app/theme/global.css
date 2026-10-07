@@ -300,9 +300,13 @@ button {
   font-size: inherit;
 }
 
+/* iOS zooms the page into any field under 16px on focus and never zooms back out.
+   Fields get no UA 13.33px: at least 1rem, larger where the parent text is. */
 input,
+select,
 textarea {
   font-family: inherit;
+  font-size: max(1rem, 1em);
 }
 
 /* Accessible name without visible chrome — for labels on placeholder-only

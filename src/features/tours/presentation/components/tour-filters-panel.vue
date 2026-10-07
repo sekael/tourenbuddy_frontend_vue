@@ -315,7 +315,7 @@ const completionOptions = [
   border: 1.5px solid var(--color-outline-variant);
   border-radius: var(--input-radius);
   padding: var(--spacing-xxs) var(--spacing-sm);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-base);
   color: var(--color-on-surface);
   background: var(--input-bg);
 }
