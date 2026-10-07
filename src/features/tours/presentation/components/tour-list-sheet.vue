@@ -333,12 +333,12 @@ function handleRowClick(tourId: string) {
 </template>
 
 <style scoped>
-/* The list owns its scrolling, not the shell. That is the precondition for an
-   overlay that does not scroll with the rows — `position: absolute` inside a
-   scrolling ancestor scrolls with the content — and it is why the header needs no
-   `position: sticky`: it stays put because it sits OUTSIDE the scroller.
-   `height: 100%` survives the sheet's natural-height measurement, which sets the
-   sheet itself to `height: auto`, leaving this percentage to resolve to `auto`. */
+/* The sheet's `.content` is the one scroller. Its body keeps its natural height
+   (that is how the sheet measures what to fit), so nothing in here ever gets a
+   definite height to scroll within. Keep it that way: a nested `overflow: auto`
+   that never overflows still catches the touch on Chromium (Android), and with
+   `overscroll-behavior: contain` it refuses to hand the gesture on to the sheet —
+   the list stops scrolling. iOS skips such boxes, which hides the bug there. */
 .list-view {
   display: flex;
   flex-direction: column;
@@ -431,12 +431,6 @@ function handleRowClick(tourId: string) {
   overflow: hidden;
 }
 
-.tours-scroll {
-  height: 100%;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
 /* Opaque, not a translucent scrim: tour names bleeding through the filter chips is
    the same legibility failure this component already fixed in its header. */
 .filters-overlay {
@@ -444,10 +438,10 @@ function handleRowClick(tourId: string) {
   inset: 0;
   z-index: 2;
   background-color: var(--color-background);
+  /* Scrolls only when the list is shorter than the panel. No `overscroll-behavior`
+     (see `.list-view`): past either end it chains to the sheet's `.content`, which
+     contains it, so it never reaches the map. */
   overflow-y: auto;
-  /* Without this, flicking past the end of a short filter list chains outward to
-     the sheet drag and the map behind it. */
-  overscroll-behavior: contain;
   outline: none;
 }
 
