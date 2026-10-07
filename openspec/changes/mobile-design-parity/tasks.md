@@ -34,5 +34,5 @@
 ## 6. Verification
 - [x] 5.1 Tests: sheet fit grow/shrink/cap, sticky peek, drag ceiling, flick, rotation, stacked inset; exit composable
 - [x] 5.2 `npm run test`, `npm run type-check`, `npx eslint .`, `vite build`
-- [ ] 5.3 On-device pass (iOS Safari + PWA, Android Chrome + PWA): sheet ⇄ page fade-through (profile section, contact edit, tour edit, tour creation), modal sheets, calendar sheets, toasts over sheets, no sticky hover; guided tour end-to-end (map + calendar)
-- [ ] 5.4 iOS PWA: check status-bar legibility over white page bars (follow-up if unreadable)
+- [x] 5.3 On-device pass (iOS Safari + PWA, Android Chrome + PWA): sheet ⇄ page fade-through (profile section, contact edit, tour edit, tour creation), modal sheets, calendar sheets, toasts over sheets, no sticky hover; guided tour end-to-end (map + calendar)
+- [x] 5.4 iOS PWA: check status-bar legibility over white page bars (follow-up if unreadable)

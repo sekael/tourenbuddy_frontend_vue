@@ -1537,7 +1537,11 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
   color: var(--color-on-surface);
-  overflow-wrap: anywhere;
+  /* Break long words at syllables with a hyphen (in the page language), and mid-word
+     only when no hyphenation point exists — never "Schreckhornhütt|e". */
+  overflow-wrap: break-word;
+  -webkit-hyphens: auto;
+  hyphens: auto;
 }
 
 .fact-value--headline {
@@ -1609,7 +1613,11 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   line-height: var(--line-height-relaxed);
   color: var(--color-on-surface);
   white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  /* Break long words at syllables with a hyphen (in the page language), and mid-word
+     only when no hyphenation point exists — never "Schreckhornhütt|e". */
+  overflow-wrap: break-word;
+  -webkit-hyphens: auto;
+  hyphens: auto;
 }
 
 .season-tags {
