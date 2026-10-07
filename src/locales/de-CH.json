@@ -45,7 +45,7 @@
     "tour": {
       "welcome": {
         "title": "Lerne deinen Kalender kennen",
-        "body": "Eine kurze Tour durch den Kalender, deine Verfügbarkeit und die Saisonübersicht. Klicke irgendwo, um fortzufahren, oder nutze die Navigation oben."
+        "body": "Eine kurze Tour durch deine Tage, das Teilen deiner Verfügbarkeit und die Saisonübersicht. Tippe irgendwo, um fortzufahren, oder nutze die Navigation oben."
       },
       "todayNav": {
         "title": "Zurück zu heute springen",
@@ -53,7 +53,7 @@
       },
       "availability": {
         "title": "Verfügbarkeit teilen",
-        "body": "Tippe hier, um die Tage zu markieren, an denen du Zeit hast. Deine Freunde sehen sie und können Touren mit dir planen."
+        "body": "Tippe hier, um die Tage zu markieren, an denen du Zeit hast. Freunde sehen sie und können Touren mit dir planen – oder verbinde im Profil deinen Kalender, um sie automatisch auszufüllen."
       },
       "dayChips": {
         "title": "Touren und Freunde auf einen Blick",
@@ -849,12 +849,8 @@
         "body": "Wähle hier, welche Benachrichtigungen du zu Freundschaftsanfragen, Toureneinladungen und Änderungen an Touren erhältst."
       },
       "addContact": {
-        "title": "Kontakt hinzufügen",
-        "body": "Füge Kontakte aus deinem Telefonbuch oder von Hand hinzu, damit du sie später mit Touren verknüpfen kannst."
-      },
-      "contacts": {
         "title": "Deine Kontakte",
-        "body": "Alle Kontakte, die du hinzugefügt hast, erscheinen hier. Tippe auf einen Kontakt um Details zu sehen und neue Kontaktmethoden hinzuzufügen."
+        "body": "Füge Personen aus deinem Telefonbuch oder von Hand hinzu und verknüpfe sie mit deinen Touren. Alle, die du hinzufügst, erscheinen in dieser Liste."
       },
       "friendRequests": {
         "title": "Freundschaftsanfragen",
@@ -865,16 +861,16 @@
         "body": "Wechsle mit diesen Tabs zwischen deinen eigenen Touren und denen deiner Freunde, so dass ihr zusammen planen und geniessen könnt."
       },
       "addLocation": {
-        "title": "Tour hinzufügen",
-        "body": "Tippe hier, um eine Markierung zu setzen und irgendwo auf der Karte ein neues Tourenziel zu planen."
+        "title": "Tour planen",
+        "body": "Tippe hier und setze eine Markierung auf dein Ziel – Gipfel, Kletterfels oder Hütte. TourenBuddy schlägt einen Namen vor und ermittelt die Höhe für dich."
       },
       "basemap": {
         "title": "Karte wechseln",
-        "body": "Wechsle zwischen verschiedenen Karten, ganz nach deinem Geschmack."
+        "body": "Wähle die Grundkarte, die zu deiner Tour passt – von der detaillierten Swisstopo-Karte bis zum klassischen Look."
       },
       "welcome": {
         "title": "Willkommen bei TourenBuddy",
-        "body": "Wir zeigen dir alles Wichtige in einer kurzen Einführung. Klicke während der Tour einfach auf den Bildschirm oder benutze die Navigation um fortzufahren.",
+        "body": "Eine kurze Tour durch das Wichtigste: Touren planen, Karten, Freunde und der Kalender. Tippe irgendwo, um fortzufahren, oder nutze die Navigation oben.",
         "start": "Tour starten",
         "skip": "Vorerst überspringen",
         "dismiss": "Nicht mehr anzeigen"
@@ -882,13 +878,14 @@
       "labels": {
         "phone": "Telefonnummer verifizieren",
         "notifications": "Benachrichtigungen",
-        "addContact": "Kontakt hinzufügen",
-        "contacts": "Kontaktliste",
+        "addContact": "Kontakte",
         "friendRequests": "Freundschaftsanfragen",
         "tours": "Deine Touren",
-        "addLocation": "Tour hinzufügen",
+        "addLocation": "Tour planen",
         "basemap": "Karte wechseln",
-        "openCalendar": "Kalender öffnen"
+        "openCalendar": "Kalender öffnen",
+        "offlineMap": "Offline-Karten",
+        "calendarSync": "Kalender verbinden"
       },
       "nav": {
         "openMenu": "Menü öffnen",
@@ -908,7 +905,15 @@
       },
       "openCalendar": {
         "title": "Kalender öffnen",
-        "body": "Plane Touren nach Datum, trage deine Verfügbarkeit ein und sieh, wann Freunde Zeit haben – alles im Kalender."
+        "body": "Plane Touren nach Datum, teile, wann du Zeit hast, und sieh, wann Freunde verfügbar sind. Fahre fort, um ihn anzusehen."
+      },
+      "offlineMap": {
+        "title": "Karten offline nutzen",
+        "body": "Kein Empfang am Berg? Lade vor dem Aufbruch eine Region – oder die ganze Schweiz – herunter. Auch deine Touren und Kontakte bleiben offline verfügbar."
+      },
+      "calendarSync": {
+        "title": "Kalender verbinden",
+        "body": "Verbinde deinen Arbeits- oder Privatkalender, und deine freien Tage werden automatisch als verfügbar markiert. Die Inhalte werden nie gespeichert."
       }
     }
   },

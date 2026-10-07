@@ -25,6 +25,7 @@ export type TourSurface
     | 'tours' // My Tours list sheet (own / friends tabs)
     | 'tour-bar' // always-visible bottom tour action bar
     | 'base-map-panel' // speed-dial base-map switcher panel
+    | 'menu' // speed-dial menu, open with nothing expanded
     | 'today-nav' // calendar: the planned/calendar nav tab (tap-again jumps to today)
     | 'availability' // calendar: availability edit FAB (planned view)
     | 'day-chips' // calendar: the today cell's demo tour/friend chips (planned view)
@@ -61,8 +62,40 @@ export interface OnboardingStep {
   scrollInline?: ScrollLogicalPosition
 }
 
-/** The onboarding steps, in presentation order. */
+/**
+ * The onboarding steps, in presentation order. Grouped by surface — map,
+ * you (profile), people (contacts), tours — so consecutive steps on the same
+ * surface only glide the spotlight instead of re-driving the navigation.
+ * Ends on the calendar entry: completing the tour hands off to /calendar.
+ */
 export const ONBOARDING_STEPS: OnboardingStep[] = [
+  {
+    // Open with the core action. Nothing to navigate, so the tour starts calm.
+    surface: 'tour-bar',
+    target: '[data-tour="add-tour"]',
+    titleKey: 'onboarding.tour.addLocation.title',
+    bodyKey: 'onboarding.tour.addLocation.body',
+    labelKey: 'onboarding.tour.labels.addLocation',
+    // The action bar is pinned to the viewport bottom: there's no room for the
+    // default `bottom` placement, so driver.js would flip the popover up.
+    side: 'top',
+  },
+  {
+    surface: 'base-map-panel',
+    target: '[data-tour="basemap"]',
+    titleKey: 'onboarding.tour.basemap.title',
+    bodyKey: 'onboarding.tour.basemap.body',
+    labelKey: 'onboarding.tour.labels.basemap',
+  },
+  {
+    // The menu entry itself (not the manage sheet behind it): one tap away, and
+    // the speed-dial stays open from the base-map step — only the panel folds.
+    surface: 'menu',
+    target: '[data-tour="menu-offline-map"]',
+    titleKey: 'onboarding.tour.offlineMap.title',
+    bodyKey: 'onboarding.tour.offlineMap.body',
+    labelKey: 'onboarding.tour.labels.offlineMap',
+  },
   {
     surface: 'profile',
     target: '[data-tour="phone-verification"]',
@@ -83,23 +116,20 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     side: 'top',
   },
   {
+    surface: 'profile',
+    target: '[data-tour="calendar-sync"]',
+    titleKey: 'onboarding.tour.calendarSync.title',
+    bodyKey: 'onboarding.tour.calendarSync.body',
+    labelKey: 'onboarding.tour.labels.calendarSync',
+    // Right below Notifications — same reasoning, popover above.
+    side: 'top',
+  },
+  {
     surface: 'contacts',
     target: '[data-tour="add-contact"]',
     titleKey: 'onboarding.tour.addContact.title',
     bodyKey: 'onboarding.tour.addContact.body',
     labelKey: 'onboarding.tour.labels.addContact',
-  },
-  {
-    surface: 'contacts',
-    // Spotlight a single entry, not the whole `.contacts-content` scroll
-    // container — that flex:1 box fills the sheet, so highlighting it made a
-    // giant cutout and left driver.js no room below for the popover (it flipped
-    // up behind the pinned banner). The first contact row (or the empty-state
-    // for a brand-new user) is compact, so the popover drops cleanly beneath it.
-    target: '[data-tour="contacts"] .empty-state, [data-tour="contacts"] .contact-row',
-    titleKey: 'onboarding.tour.contacts.title',
-    bodyKey: 'onboarding.tour.contacts.body',
-    labelKey: 'onboarding.tour.labels.contacts',
   },
   {
     surface: 'friend-requests',
@@ -116,29 +146,10 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     labelKey: 'onboarding.tour.labels.tours',
   },
   {
-    surface: 'tour-bar',
-    target: '[data-tour="add-tour"]',
-    titleKey: 'onboarding.tour.addLocation.title',
-    bodyKey: 'onboarding.tour.addLocation.body',
-    labelKey: 'onboarding.tour.labels.addLocation',
-    // The action bar is pinned to the viewport bottom: there's no room for the
-    // default `bottom` placement, so driver.js flips the popover up and the
-    // arrow detaches from the target. Pin `top` so it's placed (and its arrow
-    // aligned) against the spotlighted button from the start.
-    side: 'top',
-  },
-  {
-    surface: 'base-map-panel',
-    target: '[data-tour="basemap"]',
-    titleKey: 'onboarding.tour.basemap.title',
-    bodyKey: 'onboarding.tour.basemap.body',
-    labelKey: 'onboarding.tour.labels.basemap',
-  },
-  {
     // Final step: point at the calendar-open button in the My Tours sheet header
-    // (teaching where the calendar lives). The `tours` surface opens that sheet;
-    // this step spotlights the button WITHOUT navigating — the hand-off to
-    // /calendar happens on tour completion, not here.
+    // (teaching where the calendar lives). Same surface as the previous step, so
+    // the spotlight just glides up. No navigation here — the hand-off to
+    // /calendar happens on tour completion.
     surface: 'tours',
     target: '[data-tour="open-calendar"]',
     titleKey: 'onboarding.tour.openCalendar.title',

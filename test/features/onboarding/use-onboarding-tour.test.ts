@@ -41,9 +41,9 @@ vi.mock('driver.js', () => ({
 
 // --- helpers -----------------------------------------------------------------
 const LAST = ONBOARDING_STEPS.length - 1
-// Highlighting now waits for the target's position to settle (~5 frames of
-// 16 ms), so flushing a step takes a beat longer than a single macrotask.
-const flush = () => new Promise(r => setTimeout(r, 300))
+// Highlighting waits for the scroll and the target's position to settle (~5
+// frames of 16 ms, twice) plus the glide, so a step takes a few hundred ms.
+const flush = () => new Promise(r => setTimeout(r, 400))
 const lastDriver = () => driverInstances[driverInstances.length - 1]
 // A target is highlighted twice: spotlight-only first, then re-highlighted with
 // the popover once the layout settles. Assert against the popover-bearing call.
@@ -67,7 +67,7 @@ function makeOptions(overrides: Partial<Parameters<typeof useOnboardingTour>[0]>
     canAutoStart: vi.fn(() => true),
     getResumeStep: vi.fn(() => 0),
     // Tiny pacing so real-timer tests stay fast (prod defaults are >1s/step).
-    pace: { holdMs: 20, gapMs: 20 },
+    pace: { holdMs: 20, glideMs: 20, fadeMs: 0 },
     ...overrides,
   }
 }
@@ -232,6 +232,7 @@ describe('useOnboardingTour — persistence', () => {
     await flush()
 
     tour.finish()
+    await flush() // the overlay fades out before the driver is destroyed
 
     expect(opts.saveTourStep).toHaveBeenCalledWith(2)
     expect(lastDriver().destroyed).toBe(true)
@@ -317,7 +318,7 @@ describe('useOnboardingTour — missing target', () => {
 })
 
 describe('useOnboardingTour — staging spotlights', () => {
-  it('runs the discrete sequence: waypoint spotlight on → off → target spotlight on', async () => {
+  it('should glide one persistent mask from the waypoint to the target instead of re-creating it', async () => {
     vi.useFakeTimers()
     document.body.innerHTML
       = `<button data-tour="open-menu"></button><div ${ONBOARDING_STEPS[0].target.slice(1, -1)}></div>`
@@ -331,16 +332,69 @@ describe('useOnboardingTour — staging spotlights', () => {
     await vi.advanceTimersByTimeAsync(3000)
     vi.useRealTimers()
 
-    // Two separate masks: the waypoint's is torn down before the target's goes up.
+    expect(driverInstances).toHaveLength(1)
+    const d = lastDriver()
+    const target = document.querySelector(ONBOARDING_STEPS[0].target)
+    expect(d.highlighted[0].element).toBe(document.querySelector('[data-tour="open-menu"]'))
+    expect(d.highlighted[0].popover).toBeUndefined() // no hintKey → bare spotlight
+    // The waypoint is frozen on the anchor before it is actuated (it may unmount).
+    expect(d.highlighted[1].element.classList.contains('onboarding-tour-anchor')).toBe(true)
+    // Two-phase reveal on the target: glide in without copy, then the popover.
+    expect(d.highlighted.at(-2).element).toBe(target)
+    expect(d.highlighted.at(-2).popover).toBeUndefined()
+    expect(popoverTitle(d)).toBe(ONBOARDING_STEPS[0].titleKey)
+    expect(d.destroyed).toBe(false)
+  })
+
+  it('should not re-stage when the next step is on the surface already on screen', async () => {
+    const steps = [
+      { ...ONBOARDING_STEPS[0], surface: 'profile' as const, target: '[data-tour="a"]' },
+      { ...ONBOARDING_STEPS[1], surface: 'profile' as const, target: '[data-tour="b"]' },
+      { ...ONBOARDING_STEPS[2], surface: 'contacts' as const, target: '[data-tour="c"]' },
+    ]
+    document.body.innerHTML = '<div data-tour="a"></div><div data-tour="b"></div><div data-tour="c"></div>'
+    const opts = makeOptions({ steps })
+    const tour = useOnboardingTour(opts)
+    tour.startTour(0)
+    await flush()
+    tour.next()
+    await flush()
+    tour.next()
+    await flush()
+
+    expect(opts.stage.mock.calls.map(c => [c[0], c[2]])).toEqual([
+      ['profile', null],
+      ['contacts', 'profile'], // `from` lets the host take the short path
+    ])
+  })
+
+  it('should re-stage from scratch after a restart, even on the same surface', async () => {
+    mountAllAnchors()
+    const opts = makeOptions()
+    const tour = useOnboardingTour(opts)
+    tour.startTour(0)
+    await flush()
+    tour.finish()
+    tour.startTour(0)
+    await flush()
+
+    expect(opts.stage).toHaveBeenCalledTimes(2)
+    expect(opts.stage.mock.calls[1][2]).toBeNull()
+  })
+
+  it('should not let a finished tour\'s delayed destroy tear down a tour started right after', async () => {
+    mountAllAnchors()
+    const tour = useOnboardingTour(makeOptions({ pace: { holdMs: 20, glideMs: 20, fadeMs: 200 } }))
+    tour.startTour(0)
+    await flush()
+    const first = lastDriver()
+    tour.finish() // fade-out pending
+    tour.startTour(0)
+    await flush()
+
+    expect(first.destroyed).toBe(true) // flushed before the new driver was made
     expect(driverInstances).toHaveLength(2)
-    const [waypoint, target] = driverInstances
-    expect(waypoint.highlighted[0].element).toBe(document.querySelector('[data-tour="open-menu"]'))
-    expect(waypoint.highlighted[0].popover).toBeUndefined() // no hintKey → bare spotlight
-    expect(waypoint.destroyed).toBe(true)
-    // Two-phase reveal: spotlight first (no copy), then the popover.
-    expect(target.highlighted[0].popover).toBeUndefined()
-    expect(popoverTitle(target)).toBe(ONBOARDING_STEPS[0].titleKey)
-    expect(target.destroyed).toBe(false)
+    expect(lastDriver().destroyed).toBe(false)
   })
 
   it('attaches a hint popover to a waypoint when a hintKey is given', async () => {
@@ -357,10 +411,10 @@ describe('useOnboardingTour — staging spotlights', () => {
     await vi.advanceTimersByTimeAsync(3000)
     vi.useRealTimers()
 
-    const [waypoint] = driverInstances
+    const hint = lastDriver().highlighted.find(h => h.popover?.description === 'onboarding.tour.nav.openMenu')
     // Hint popover: description only (mocked t echoes the key), no title.
-    expect(waypoint.highlighted[0].popover?.description).toBe('onboarding.tour.nav.openMenu')
-    expect(waypoint.highlighted[0].popover?.title).toBeUndefined()
+    expect(hint?.element).toBe(document.querySelector('[data-tour="open-menu"]'))
+    expect(hint?.popover?.title).toBeUndefined()
   })
 
   it('skips a spotlight whose control never appears, still highlighting the target', async () => {

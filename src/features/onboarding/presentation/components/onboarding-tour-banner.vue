@@ -40,8 +40,21 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="bannerEl" class="tour-banner" role="region" :aria-label="t('onboarding.tour.bannerLabel')">
-    <span class="step-title">{{ title }}</span>
+  <div ref="bannerEl" class="tour-banner fab-glass" role="region" :aria-label="t('onboarding.tour.bannerLabel')">
+    <!-- Keyed on the title: the old label fades up and out, the new one rises in. -->
+    <Transition name="title-swap" mode="out-in">
+      <span :key="title" class="step-title">{{ title }}</span>
+    </Transition>
+
+    <div
+      class="progress-track"
+      role="progressbar"
+      :aria-valuemin="1"
+      :aria-valuemax="total"
+      :aria-valuenow="current"
+    >
+      <div class="progress-fill" :style="{ transform: `scaleX(${current / total})` }" />
+    </div>
 
     <div class="controls">
       <BaseButton variant="secondary" size="sm" class="finish-btn" @click="emit('finish')">
@@ -63,7 +76,7 @@ onUnmounted(() => {
           name="arrow_forward"
           :label="t('onboarding.tour.controls.next')"
           size="sm"
-          class="nav-btn"
+          class="nav-btn nav-btn--next"
           :disabled="busy"
           @click="emit('next')"
         />
@@ -97,16 +110,49 @@ onUnmounted(() => {
      narrow column and breaking mid-word. */
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm);
   /* Constant width across steps so a long title never resizes the banner;
      capped to the viewport on narrow screens. */
   width: min(24rem, calc(100vw - 2 * var(--spacing-md)));
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-sm);
   border-radius: var(--radius-lg);
-  background-color: var(--color-fab-surface);
-  border: 1px solid var(--color-fab-border);
+  /* Surface, blur and border from the shared `.fab-glass` (same family as the
+     map controls); only the deeper shadow is the banner's own. */
   box-shadow: var(--shadow-lg);
   pointer-events: auto;
+}
+
+/* Thin progress line: scales instead of animating width, so it's compositor-only. */
+.progress-track {
+  height: 3px;
+  border-radius: var(--radius-pill);
+  background-color: color-mix(in srgb, var(--color-fab-on-surface) 18%, transparent);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background-color: var(--color-fab-on-surface);
+  transform-origin: left center;
+  transition: transform var(--motion-duration-long) var(--motion-ease-emphasized);
+}
+
+.title-swap-enter-active,
+.title-swap-leave-active {
+  transition:
+    opacity var(--motion-duration-short) var(--motion-ease-standard),
+    transform var(--motion-duration-short) var(--motion-ease-emphasized);
+}
+
+.title-swap-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.title-swap-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 .controls {
@@ -139,6 +185,7 @@ onUnmounted(() => {
 }
 
 .step-title {
+  display: block;
   /* Full banner width, wrapping at word boundaries — there's room now, so a
      long label breaks between words (never mid-word). */
   width: 100%;
@@ -182,6 +229,24 @@ onUnmounted(() => {
   cursor: default;
 }
 
+.nav-btn {
+  transition:
+    opacity var(--motion-duration-short) var(--motion-ease-standard),
+    background-color var(--motion-duration-short) var(--motion-ease-standard);
+}
+
+/* Forward is the primary action: a filled circle in the on-colour. */
+.tour-banner .nav-btn--next:not(:disabled) {
+  background-color: var(--color-fab-on-surface);
+  color: var(--color-fab-surface);
+}
+
+@media (hover: hover) {
+  .tour-banner .nav-btn--next:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-fab-on-surface) 88%, transparent);
+  }
+}
+
 /* Slide/fade in from the top (Transition name="tour-slide" in map-page). */
 .tour-slide-enter-active,
 .tour-slide-leave-active {
@@ -193,6 +258,6 @@ onUnmounted(() => {
 .tour-slide-enter-from,
 .tour-slide-leave-to {
   opacity: 0;
-  transform: translateX(-50%) translateY(-16px);
+  transform: translateX(-50%) translateY(-16px) scale(0.98);
 }
 </style>

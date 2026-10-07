@@ -123,7 +123,7 @@ onMounted(() => {
         </button>
       </li>
       <li>
-        <button type="button" class="row row--nav" @click="emit('open', 'calendar')">
+        <button type="button" class="row row--nav" data-tour="calendar-sync" @click="emit('open', 'calendar')">
           <BaseIcon name="calendar_today" class="row-icon" />
           <span class="row-text">
             <span class="row-label">{{ t('calendar.sync.title') }}</span>
