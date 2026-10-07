@@ -146,19 +146,6 @@ async function centerDemoToday() {
 
 async function stageCalendarSurface(surface: TourSurface, ctx: StageContext) {
   switch (surface) {
-    case 'today-nav':
-      // The nav tab lives on both views, but its tap-again-to-today action only
-      // applies to the planned view — land there so the copy matches the state.
-      if (activeView.value !== 'planned')
-        setView('planned')
-      await centerDemoToday()
-      break
-    case 'availability':
-      // Availability lives on the planned view (the default); make sure we're there.
-      if (activeView.value !== 'planned')
-        setView('planned')
-      await centerDemoToday()
-      break
     case 'day-chips':
       // First spotlight the demo day cell/row as a waypoint, then open the same
       // day's detail overview; the step's final target is the opened detail panel.
@@ -167,6 +154,17 @@ async function stageCalendarSurface(surface: TourSurface, ctx: StageContext) {
       await centerDemoToday()
       await ctx.spotlight('[data-tour="demo-chips"]', 'calendar.tour.nav.dayDetails')
       plannedCalendar.value?.openDetailForDay(new Date())
+      break
+    case 'availability':
+    case 'today-nav':
+      // Both live on the planned view (the default): fold the day detail away
+      // and keep today centered so the row never jumps between steps. The nav
+      // tab's tap-again-to-today action only applies to the planned view, so
+      // landing there also keeps the copy true.
+      plannedCalendar.value?.closeDetail()
+      if (activeView.value !== 'planned')
+        setView('planned')
+      await centerDemoToday()
       break
     case 'seasons':
       plannedCalendar.value?.closeDetail()
@@ -318,14 +316,17 @@ onMounted(() => {
       </Transition>
     </Teleport>
     <Teleport to="body">
-      <OnboardingWelcome
-        v-if="tourWelcome"
-        title-key="calendar.tour.welcome.title"
-        body-key="calendar.tour.welcome.body"
-        @start="calendarTour.startFromWelcome()"
-        @skip="calendarTour.skipWelcome()"
-        @dismiss="calendarTour.dismissWelcome()"
-      />
+      <Transition name="welcome">
+        <OnboardingWelcome
+          v-if="tourWelcome"
+          title-key="calendar.tour.welcome.title"
+          body-key="calendar.tour.welcome.body"
+          icon="calendar_today"
+          @start="calendarTour.startFromWelcome()"
+          @skip="calendarTour.skipWelcome()"
+          @dismiss="calendarTour.dismissWelcome()"
+        />
+      </Transition>
     </Teleport>
 
     <CalendarNav :active="activeView" @select="onNavSelect" />

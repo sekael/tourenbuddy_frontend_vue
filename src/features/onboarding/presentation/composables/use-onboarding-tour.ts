@@ -14,12 +14,12 @@ class TourEnded extends Error {}
 export interface StageContext {
   /**
    * Spotlight an intermediate control (the speed-dial FAB, a menu item, a tab)
-   * on the way to the step's target: previous spotlight off → wait for the
-   * control to exist and stop moving → spotlight on → hold a beat. Pass a
-   * `hintKey` to attach a short one-line popover ("Open menu", "Open contacts")
-   * naming the control; omit it for a bare spotlight. No-op if the control
-   * never appears. Rejects once the tour has ended (finished mid-staging), so
-   * `stage` stops before opening anything else — let it propagate.
+   * on the way to the step's target: wait for the control to exist and stop
+   * moving → glide the spotlight onto it → hold a beat. Pass a `hintKey` to
+   * attach a short one-line popover ("Open menu", "Open contacts") naming the
+   * control; omit it for a bare spotlight. No-op if the control never appears.
+   * Rejects once the tour has ended (finished mid-staging), so `stage` stops
+   * before opening anything else — let it propagate.
    */
   spotlight: (selector: string, hintKey?: string) => Promise<void>
 }
@@ -33,10 +33,13 @@ export interface UseOnboardingTourOptions {
   steps: OnboardingStep[]
   /**
    * Make a step's surface visible (open the right overlay / speed-dial view).
-   * May be async — staging an overlay animates it in. Use `ctx.spotlight` to
-   * highlight each control on the navigation path before opening the next one.
+   * Only called when the step's surface differs from the one already staged —
+   * consecutive steps on the same surface just glide the spotlight. `from` is
+   * the surface currently on screen (null at start), so the host can take the
+   * shortest path (e.g. contacts → friend requests without reopening contacts).
+   * Use `ctx.spotlight` to highlight each control on the navigation path.
    */
-  stage: (surface: TourSurface, ctx: StageContext) => void | Promise<void>
+  stage: (surface: TourSurface, ctx: StageContext, from: TourSurface | null) => void | Promise<void>
   /** Close whatever the tour opened once it ends. */
   cleanup: () => void
   /**
@@ -64,13 +67,44 @@ export interface UseOnboardingTourOptions {
 
 /** Pacing of the staged transitions. */
 export interface TourPace {
-  /** How long a waypoint spotlight is held so the user can register it. */
+  /** How long a waypoint spotlight (and its hint) is held so the user can register it. */
   holdMs: number
-  /** Breath between a spotlight going down and the next one going up. */
-  gapMs: number
+  /** Spotlight glide between two targets. driver.js tweens over a fixed 400 ms. */
+  glideMs: number
+  /** Popover / overlay fade-out before the spotlight moves on or the tour ends. */
+  fadeMs: number
 }
 
-const DEFAULT_PACE: TourPace = { holdMs: 2000, gapMs: 500 }
+const DEFAULT_PACE: TourPace = { holdMs: 1100, glideMs: 420, fadeMs: 200 }
+
+// driver.js keeps ONE module-level state, shared by every driver instance. A
+// tour's fade-out destroys its driver a beat after teardown; if another tour
+// (the calendar tour after the map hand-off, a quick replay) starts within that
+// window, the late destroy would wipe the new tour's state. Module-level so any
+// instance can flush it before creating its own driver.
+let pendingDestroy: (() => void) | null = null
+function flushPendingDestroy() {
+  pendingDestroy?.()
+}
+
+/**
+ * A fixed, invisible box the spotlight can rest on while the app navigates
+ * between surfaces. Highlighting a real element that then unmounts (a closing
+ * sheet, a collapsing menu) leaves driver.js measuring a detached node — the
+ * cutout snaps to the top-left corner on the next scroll/resize refresh.
+ */
+let anchorEl: HTMLElement | null = null
+function anchorAt(x: number, y: number, width: number, height: number): HTMLElement {
+  if (!anchorEl || !anchorEl.isConnected) {
+    anchorEl = document.createElement('div')
+    anchorEl.className = 'onboarding-tour-anchor'
+    anchorEl.setAttribute('aria-hidden', 'true')
+    Object.assign(anchorEl.style, { position: 'fixed', pointerEvents: 'none', visibility: 'hidden' })
+    document.body.appendChild(anchorEl)
+  }
+  Object.assign(anchorEl.style, { left: `${x}px`, top: `${y}px`, width: `${width}px`, height: `${height}px` })
+  return anchorEl
+}
 
 export function useOnboardingTour(options: UseOnboardingTourOptions) {
   const { t } = useI18n({ useScope: 'global' })
@@ -84,12 +118,27 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
   // the driver.js tour itself runs). The component renders its own backdrop.
   const showWelcome = ref(false)
   const currentIndex = ref(0)
-  // True while a step is being staged (mask removed, app being driven). Nav
-  // controls are inert during this window so rapid clicks can't overlap stages.
+  // True while a step is being staged (app being driven, spotlight gliding).
+  // Nav controls are inert during this window so rapid clicks can't overlap stages.
   const isStaging = ref(false)
+  // One driver for the whole run: re-highlighting a live driver glides the
+  // cutout from target to target instead of dropping the mask and raising a new
+  // one (the old off → pause → on cycle that made every step feel choppy).
   let driverObj: Driver | null = null
+  // The surface currently on screen; steps sharing it skip staging entirely.
+  let stagedSurface: TourSurface | null = null
+  // Rect the spotlight last settled on — where a parked cutout collapses to.
+  let lastRect: DOMRect | null = null
+  // Bumped per highlight so a late `refreshAfterMotion` from an older one bails.
+  let highlightSeq = 0
 
-  const pace: TourPace = { ...DEFAULT_PACE, ...options.pace }
+  const reducedMotion = typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const pace: TourPace = {
+    ...DEFAULT_PACE,
+    ...(reducedMotion ? { glideMs: 0, fadeMs: 0 } : {}),
+    ...options.pace,
+  }
   const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
   const clamp = (i: number) => Math.max(0, Math.min(i, LAST_INDEX))
 
@@ -159,19 +208,28 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
     const banner = document.querySelector<HTMLElement>('.tour-banner')
     if (!popover || !banner)
       return
-    const minTop = banner.getBoundingClientRect().bottom + 8
-    const rect = popover.getBoundingClientRect()
+    // Layout boxes (offset*), not getBoundingClientRect: both the popover and
+    // the banner may still be mid entrance animation (translate + scale), which
+    // skews the visual rect. Both are `position: fixed`, so the offsets are
+    // viewport coordinates.
+    const minTop = banner.offsetTop + banner.offsetHeight + 8
     // Only nudge on a real overlap. An unconditional write re-places every
     // popover driver already positioned correctly — the same needless
     // reposition `refreshAfterMotion` guards against.
-    if (rect.top < minTop)
+    if (popover.offsetTop < minTop)
       popover.style.top = `${minTop}px`
     // driver.js clamps to the viewport with no margin, leaving edge-anchored
     // popovers flush against the screen edge. Keep the same 12px gutter the
-    // sheets use. `right` is reset so the pair can't stretch the box.
+    // sheets use on both sides. `right` is reset so the pair can't stretch the box.
+    // Two passes: the popover is shrink-to-fit, so moving it left gives it room
+    // to widen — re-measure once so the wider box still keeps the gutter.
     const gutter = 12
-    if (rect.right > window.innerWidth - gutter) {
-      popover.style.left = `${Math.max(gutter, window.innerWidth - gutter - rect.width)}px`
+    for (let pass = 0; pass < 2; pass++) {
+      const x = popover.offsetLeft
+      const clamped = Math.max(gutter, Math.min(x, window.innerWidth - gutter - popover.offsetWidth))
+      if (clamped === x)
+        break
+      popover.style.left = `${clamped}px`
       popover.style.right = 'auto'
     }
   }
@@ -181,6 +239,32 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
    * the token moves on, the run is dead — even if a new tour is already running.
    */
   let runToken = 0
+
+  /**
+   * Drop the driver. Animated: the overlay + popover fade out (CSS keyed on the
+   * body class) and the driver is destroyed once they're gone, so the tour
+   * dissolves instead of vanishing in one frame.
+   */
+  function releaseDriver() {
+    const obj = driverObj
+    driverObj = null
+    stagedSurface = null
+    lastRect = null
+    if (!obj)
+      return
+    flushPendingDestroy()
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const destroy = () => {
+      clearTimeout(timer)
+      pendingDestroy = null
+      document.body.classList.remove('onboarding-tour-leaving')
+      obj.destroy()
+      anchorEl?.remove()
+    }
+    document.body.classList.add('onboarding-tour-leaving')
+    pendingDestroy = destroy
+    timer = setTimeout(destroy, pace.fadeMs)
+  }
 
   function teardown() {
     runToken++
@@ -192,8 +276,7 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
     // race the mobile route transition loses). Only clean up if a tour/welcome
     // was actually up.
     const wasActive = isRunning.value || showWelcome.value
-    driverObj?.destroy()
-    driverObj = null
+    releaseDriver()
     isRunning.value = false
     isStaging.value = false
     showWelcome.value = false
@@ -264,58 +347,76 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
     }
   }
 
-  function makeDriver(): Driver {
-    return driver({
-      animate: true,
+  function ensureDriver(): Driver {
+    if (driverObj)
+      return driverObj
+    flushPendingDestroy()
+    driverObj = driver({
+      animate: !reducedMotion,
       allowClose: false, // no Esc / backdrop-close; "Finish tour" is the only dismiss
       overlayClickBehavior: () => advance(), // backdrop tap advances
       disableActiveInteraction: true, // highlighted control is inert
+      overlayColor: 'rgb(8, 15, 32)', // deep slate rather than flat black
+      overlayOpacity: 0.62,
       stageRadius: 18, // softer spotlight cutout corners (default 5)
       // Tighter than driver's default 10: an edge-flush target (the mobile
       // bottom-nav tabs) otherwise pushes the cutout past the viewport edge.
-      stagePadding: 4,
+      stagePadding: 6,
+      popoverOffset: 14,
       popoverClass: 'onboarding-tour-popover',
     })
+    return driverObj
   }
 
-  /** Turn the current spotlight off (mask fully down). True if one was up. */
-  function maskOff(): boolean {
-    const hadMask = driverObj !== null
-    driverObj?.destroy()
-    driverObj = null
-    return hadMask
+  /**
+   * Fade the visible popover out before the spotlight moves. driver.js hides it
+   * with `display:none` the instant a new highlight starts — a hard cut.
+   */
+  async function fadeOutPopover() {
+    const popover = document.querySelector<HTMLElement>('.driver-popover')
+    if (!popover || popover.style.display === 'none' || popover.classList.contains('is-leaving'))
+      return
+    popover.classList.add('is-leaving')
+    await sleep(pace.fadeMs)
   }
 
-  /** Spotlight off + a beat of breath, so off → on never reads as a jump. */
-  async function maskOffAndBreathe() {
-    if (maskOff())
-      await sleep(pace.gapMs)
+  /**
+   * Rest the spotlight on the invisible anchor: either frozen exactly where it
+   * is (`shrink = false`, before the highlighted control unmounts) or collapsed
+   * to a point at its centre (`shrink = true`, while the app swaps surfaces).
+   * The next highlight then glides out of that spot to its new target.
+   */
+  function park(shrink: boolean) {
+    if (!driverObj || !lastRect)
+      return
+    const r = lastRect
+    const anchor = shrink
+      ? anchorAt(r.x + r.width / 2, r.y + r.height / 2, 0, 0)
+      : anchorAt(r.x, r.y, r.width, r.height)
+    highlightSeq++
+    driverObj.highlight({ element: anchor })
   }
 
   /**
    * Re-anchor stage + popover once any residual motion stops. driver.js
-   * positions the popover ONCE at highlight time while the stage tweens with
-   * live rects — so a sheet-transition tail or a smooth scroll that finishes
-   * after `highlight()` leaves the popover pinned to a stale rect (cutout
-   * right, message floating over it). Fire-and-forget; cancelled implicitly
-   * when the driver instance changes (next step / finish).
+   * positions the popover ONCE at highlight time — so a sheet-transition tail
+   * or a scroll that finishes after the popover is attached leaves it pinned
+   * to a stale rect. Fire-and-forget; bails when a newer highlight took over.
    */
-  async function refreshAfterMotion(el: Element) {
+  async function refreshAfterMotion(el: Element, seq: number) {
     const obj = driverObj
-    if (!obj)
-      return
     // Snapshot where the popover was anchored, so we only re-position if the
     // target actually drifted. A blind refresh re-runs driver's placement even
-    // when nothing moved — that needless reposition is the visible popover
-    // "jump" the user sees; skipping it keeps the message put once it's placed.
+    // when nothing moved — that needless reposition is a visible "jump".
     const before = el.getBoundingClientRect()
+    const stale = () => seq !== highlightSeq || driverObj !== obj || !isRunning.value
     // Give late motion a chance to start…
-    await sleep(pace.gapMs)
-    if (driverObj !== obj || !isRunning.value)
+    await sleep(pace.glideMs)
+    if (stale())
       return
     // …then wait for it to stop and recompute with fresh rects.
     await waitForPosition(el, 1500)
-    if (driverObj !== obj || !isRunning.value)
+    if (stale())
       return
     const after = el.getBoundingClientRect()
     const moved
@@ -324,17 +425,18 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
         || Math.abs(after.width - before.width) > 1
         || Math.abs(after.height - before.height) > 1
     if (moved) {
-      obj.refresh()
+      lastRect = after
+      obj!.refresh()
       clampPopoverBelowBanner() // refresh re-places the popover from scratch
     }
   }
 
   /**
    * Wait until `el`'s bounding rect is stable for several consecutive frames
-   * (~80 ms of stillness). Sheets and menus animate in — highlighting
-   * mid-animation pins the popover at a stale position, since driver.js
-   * positions it exactly once. The window must be generous enough to also
-   * catch motion that hasn't started yet (transition delays).
+   * (~80 ms of stillness). Sheets and menus animate in — attaching a popover
+   * mid-animation pins it at a stale position, since driver.js positions it
+   * exactly once. The window must be generous enough to also catch motion that
+   * hasn't started yet (transition delays).
    */
   async function waitForPosition(el: Element, timeoutMs = 1200): Promise<void> {
     const frame = () => new Promise(resolve => setTimeout(resolve, 16))
@@ -357,53 +459,71 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
   }
 
   /**
-   * Spotlight an intermediate navigation control. Self-contained sequence:
-   * control exists + stopped moving → spotlight on → hold → spotlight OFF →
-   * breath. Tearing down before returning matters: the caller's next move is
-   * opening another surface, and a leftover spotlight would stay pinned on the
-   * old control during that transition. Handed to `stage` via the context.
-   * No-op if the element never appears or the tour ended mid-wait.
+   * Glide the spotlight onto `el`, then — once the glide is done and the target
+   * stopped moving — attach `popover` against the final rect. Two phases because
+   * driver.js places a popover passed with a gliding highlight at the glide's
+   * MIDPOINT (against an in-between rect) and never moves it again. Returns
+   * false if a newer highlight or a teardown took over meanwhile.
+   */
+  async function moveTo(el: Element, popover?: Popover): Promise<boolean> {
+    await fadeOutPopover()
+    if (!isRunning.value)
+      return false
+    const obj = ensureDriver()
+    const seq = ++highlightSeq
+    obj.highlight({ element: el })
+    await Promise.all([sleep(pace.glideMs), waitForPosition(el)])
+    if (seq !== highlightSeq || driverObj !== obj || !isRunning.value)
+      return false
+    lastRect = el.getBoundingClientRect()
+    if (popover) {
+      // Same element → no glide: driver renders the popover immediately (and
+      // snaps the cutout to the settled rect, a no-op unless it drifted).
+      obj.highlight({ element: el, popover })
+      clampPopoverBelowBanner()
+      void refreshAfterMotion(el, seq)
+    }
+    return true
+  }
+
+  /**
+   * Spotlight an intermediate navigation control: control exists + stopped
+   * moving → glide onto it (+ hint) → hold → hint fades and the cutout freezes
+   * in place on the anchor, because the caller's next move actuates the
+   * control — which typically unmounts it (menu item → sheet). Handed to
+   * `stage` via the context. No-op if the element never appears.
    */
   async function spotlight(selector: string, hintKey?: string) {
     if (!isRunning.value)
       return
-    await maskOffAndBreathe() // safety: normally already down
     const el = await waitForElement(selector, 700)
     if (!el || !isRunning.value)
       return
     await waitForPosition(el)
-    if (!isRunning.value)
-      return
-    driverObj = makeDriver()
     // A hinted waypoint shows a short, description-only popover ("Open menu")
     // naming the control; without a hint it stays a bare spotlight. No forced
     // side — driver.js auto-places it to fit, since waypoints sit anywhere
     // (bottom-right FAB, mid-list menu item, action-bar tab).
-    driverObj.highlight(
-      hintKey
-        ? {
-            element: el,
-            popover: {
-              description: t(hintKey),
-              showButtons: [],
-              popoverClass: 'onboarding-hint-popover',
-            },
-          }
-        : { element: el },
-    )
-    clampPopoverBelowBanner()
-    void refreshAfterMotion(el)
+    const moved = await moveTo(el, hintKey
+      ? { description: t(hintKey), showButtons: [], popoverClass: 'onboarding-tour-popover onboarding-hint-popover' }
+      : undefined)
+    if (!moved)
+      return
     await sleep(pace.holdMs)
-    await maskOffAndBreathe()
+    if (!isRunning.value)
+      return
+    await fadeOutPopover()
+    park(false)
   }
 
   /**
-   * Move to `index`. Every step replays its full path from scratch. The cycle:
-   *   1. previous spotlight off,
-   *   2. drive the navigation — `stage` spotlights each waypoint (FAB → menu
-   *      item → …), each one: off → ready (position settled) → on → hold,
-   *   3. waypoint spotlight off, wait for the target to settle, then mask up
-   *      on the target + its message.
+   * Move to `index`. The cycle:
+   *   1. popover fades out,
+   *   2. if the surface changes: the cutout collapses while `stage` drives the
+   *      navigation, gliding over each waypoint (FAB → menu item → …),
+   *   3. the target is scrolled into view and settles, the spotlight glides
+   *      onto it, then its message fades in.
+   * Steps on the surface already on screen skip 2 and simply glide.
    * `direction` (+1 / -1) decides which way to skip a target that never shows.
    */
   async function goToStep(index: number, direction: 1 | -1, token = runToken) {
@@ -426,13 +546,18 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
       currentIndex.value = clamped
       const step: OnboardingStep = steps[clamped]
 
-      // 1. Remove the dark mask completely while we navigate.
-      await maskOffAndBreathe()
+      await fadeOutPopover()
       if (!alive())
         return
 
-      // 2. Drive the app to the target, spotlighting each waypoint en route.
-      await options.stage(step.surface, ctx)
+      if (step.surface !== stagedSurface) {
+        park(true)
+        const from = stagedSurface
+        // Unknown until stage completes: a stage cut short leaves a half-open UI.
+        stagedSurface = null
+        await options.stage(step.surface, ctx, from)
+        stagedSurface = step.surface
+      }
       const el = await waitForElement(step.target)
 
       // Tour may have been finished during the awaited navigation.
@@ -450,44 +575,22 @@ export function useOnboardingTour(options: UseOnboardingTourOptions) {
         return
       }
 
-      // 3. Target settled in place → fresh mask up. Never highlight a moving
-      //    element. (Waypoint spotlights tear themselves down; this maskOff is a
-      //    safety net.)
-      await maskOffAndBreathe()
       // Scroll the whole target into view first: driver.js only auto-scrolls
-      // fully off-screen elements, so a tall section (e.g. the notification
-      // toggles in the mobile profile sheet) would peek just its header.
-      // `block: 'start'` tops the section so its content is visible. The
-      // scroll MUST be instant: a smooth scroll starts asynchronously, so the
-      // stability check below can pass before it even begins — the popover
-      // then first paints at the stale pre-scroll position and visibly jumps.
-      // The mask is down here, so there is nothing to animate for anyway.
+      // fully off-screen elements, so a tall section would peek just its header.
+      // Smooth (the cutout is parked or resting on a neighbour meanwhile); the
+      // short pause lets the scroll start before the stability check, which
+      // otherwise could pass before it begins.
       el.scrollIntoView({
-        behavior: 'instant',
+        behavior: reducedMotion ? 'instant' : 'smooth',
         block: step.scrollBlock ?? 'start',
         inline: step.scrollInline ?? 'nearest',
       })
+      await sleep(reducedMotion ? 0 : 60)
       await waitForPosition(el)
       if (!alive())
         return
 
-      // Two-phase reveal — the user's required order: surface → spotlight →
-      // message. driver.js positions the popover exactly ONCE, at highlight
-      // time. Putting up the mask can itself reflow the page (a vertically
-      // centered dialog re-centers under the overlay; scrollbar suppression
-      // shifts it sideways), so a popover attached in the same call is pinned to
-      // the pre-mask rect and then visibly jumps. Instead: raise the spotlight
-      // alone, let the mask paint and the layout settle beneath it, and only
-      // THEN attach the popover — measured against the final, stable rect.
-      driverObj = makeDriver()
-      driverObj.highlight({ element: el })
-      await sleep(pace.gapMs)
-      await waitForPosition(el)
-      if (driverObj === null || !alive())
-        return
-      driverObj.highlight({ element: el, popover: buildPopover(clamped) })
-      clampPopoverBelowBanner()
-      void refreshAfterMotion(el)
+      await moveTo(el, buildPopover(clamped))
     }
     catch (error) {
       if (!(error instanceof TourEnded))

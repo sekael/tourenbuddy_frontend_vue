@@ -8,10 +8,11 @@ import BaseIcon from '@/core/components/base-icon.vue'
 // title/body with calendar-specific copy. The three action labels stay shared —
 // they are generic (Start / Skip / Don't show again).
 const props = withDefaults(
-  defineProps<{ titleKey?: string, bodyKey?: string }>(),
+  defineProps<{ titleKey?: string, bodyKey?: string, icon?: string }>(),
   {
     titleKey: 'onboarding.tour.welcome.title',
     bodyKey: 'onboarding.tour.welcome.body',
+    icon: 'explore',
   },
 )
 
@@ -27,7 +28,9 @@ const { t } = useI18n({ useScope: 'global' })
 <template>
   <div class="welcome-backdrop" role="dialog" aria-modal="true" :aria-label="t(props.titleKey)">
     <div class="welcome-card">
-      <BaseIcon name="explore" class="welcome-icon" />
+      <span class="welcome-badge" aria-hidden="true">
+        <BaseIcon :name="props.icon" class="welcome-icon" />
+      </span>
       <h2 class="welcome-title">
         {{ t(props.titleKey) }}
       </h2>
@@ -80,14 +83,44 @@ const { t } = useI18n({ useScope: 'global' })
   .welcome-backdrop {
     padding: var(--spacing-lg);
     background-color: var(--color-backdrop-strong);
+    backdrop-filter: blur(var(--overlay-backdrop-blur));
+    -webkit-backdrop-filter: blur(var(--overlay-backdrop-blur));
   }
 
   .welcome-card {
-    max-width: 360px;
+    max-width: 380px;
     padding: var(--spacing-xl);
     border-radius: var(--radius-lg);
     background-color: var(--color-background);
     box-shadow: var(--shadow-lg);
+  }
+}
+
+/* Icon in a soft tinted disc with a slow halo — the one decorative flourish. */
+.welcome-badge {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: var(--spacing-xs);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-background));
+}
+
+.welcome-badge::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 30%, transparent);
+  animation: welcome-halo 2.4s var(--motion-ease-standard) 0.6s infinite;
+}
+
+@keyframes welcome-halo {
+  70%,
+  100% {
+    box-shadow: 0 0 0 16px transparent;
   }
 }
 
@@ -96,8 +129,66 @@ const { t } = useI18n({ useScope: 'global' })
   font-size: var(--icon-size-xl);
 }
 
+/* Entrance: card contents rise in one after another. */
+.welcome-card > * {
+  animation: welcome-rise var(--motion-duration-long) var(--motion-ease-emphasized) backwards;
+}
+
+.welcome-card > :nth-child(2) {
+  animation-delay: calc(var(--motion-stagger) * 2);
+}
+
+.welcome-card > :nth-child(3) {
+  animation-delay: calc(var(--motion-stagger) * 3);
+}
+
+.welcome-card > :nth-child(4) {
+  animation-delay: calc(var(--motion-stagger) * 4);
+}
+
+@keyframes welcome-rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-offset));
+  }
+}
+
+/* <Transition name="welcome"> in the host pages: the backdrop fades, the card
+   settles in (desktop); on exit everything fades out together. */
+.welcome-enter-active,
+.welcome-leave-active {
+  transition: opacity var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+.welcome-enter-active .welcome-card,
+.welcome-leave-active .welcome-card {
+  transition: transform var(--motion-duration-medium) var(--motion-ease-emphasized);
+}
+
+.welcome-enter-from,
+.welcome-leave-to {
+  opacity: 0;
+}
+
+.welcome-enter-from .welcome-card {
+  transform: scale(0.97);
+}
+
+.welcome-leave-to .welcome-card {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-badge::after,
+  .welcome-card > * {
+    animation: none;
+  }
+}
+
 .welcome-title {
-  font-size: var(--font-size-xl);
+  font-size: var(--overlay-title-size);
+  letter-spacing: var(--overlay-title-tracking);
+  line-height: 1.2;
   font-weight: var(--font-weight-semibold);
   color: var(--color-on-surface);
 }

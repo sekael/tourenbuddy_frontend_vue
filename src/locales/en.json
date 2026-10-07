@@ -45,7 +45,7 @@
     "tour": {
       "welcome": {
         "title": "Get to know your calendar",
-        "body": "A quick tour of the calendar, sharing your availability, and the seasonal overview. Click anywhere to continue or use the buttons at the top."
+        "body": "A quick tour of your days, sharing availability and the seasonal overview. Tap anywhere to continue, or use the controls at the top."
       },
       "todayNav": {
         "title": "Jump back to today",
@@ -53,7 +53,7 @@
       },
       "availability": {
         "title": "Share your availability",
-        "body": "Tap here to mark the days you're free. Your friends can see them and plan tours with you."
+        "body": "Tap here to mark the days you're free. Friends see them and can plan tours with you — or connect your calendar in your profile to fill them in automatically."
       },
       "dayChips": {
         "title": "Tours and friends at a glance",
@@ -849,12 +849,8 @@
         "body": "Choose here which notifications you get about friend requests, tour invites and tour updates."
       },
       "addContact": {
-        "title": "Add a contact",
-        "body": "Add contacts from your phone book or by hand so you can link them to tours."
-      },
-      "contacts": {
         "title": "Your contacts",
-        "body": "Everyone you've added as a contact shows up here. Tap a contact to see their details and add more contact methods."
+        "body": "Add people from your phone book or by hand and link them to your tours. Everyone you add shows up in this list."
       },
       "friendRequests": {
         "title": "Friend requests",
@@ -865,16 +861,16 @@
         "body": "Switch between your own tours and your friends' tours with these tabs to plan and enjoy tours together."
       },
       "addLocation": {
-        "title": "Add a tour",
-        "body": "Tap here to drop a pin and plan a new tour objective anywhere on the map."
+        "title": "Plan a tour",
+        "body": "Tap here and drop a pin on your objective — summit, crag or hut. TourenBuddy suggests a name and looks up the elevation for you."
       },
       "basemap": {
         "title": "Switch the map",
-        "body": "Swap between different maps to suit your style."
+        "body": "Pick the base map that suits your tour, from the detailed Swisstopo map to the classic look."
       },
       "welcome": {
         "title": "Welcome to TourenBuddy",
-        "body": "Let's show you around during a quick guided tour of the essentials. Click anywhere to continue the tour or use the buttons at the top.",
+        "body": "A quick tour of the essentials: planning tours, maps, friends and the calendar. Tap anywhere to continue, or use the controls at the top.",
         "start": "Start tour",
         "skip": "Skip for now",
         "dismiss": "Don't show again"
@@ -882,13 +878,14 @@
       "labels": {
         "phone": "Verify phone number",
         "notifications": "Notification settings",
-        "addContact": "Add a contact",
-        "contacts": "Contacts list",
+        "addContact": "Contacts",
         "friendRequests": "Friend requests",
         "tours": "Your tours",
-        "addLocation": "Add a tour",
+        "addLocation": "Plan a tour",
         "basemap": "Switch maps",
-        "openCalendar": "Open calendar"
+        "openCalendar": "Open calendar",
+        "offlineMap": "Offline maps",
+        "calendarSync": "Calendar sync"
       },
       "nav": {
         "openMenu": "Open menu",
@@ -908,7 +905,15 @@
       },
       "openCalendar": {
         "title": "Open the calendar",
-        "body": "Plan tours by date, set your availability, and see when friends are free — all in the calendar."
+        "body": "Plan tours by date, share when you're free, and see when friends are available. Continue to take a look."
+      },
+      "offlineMap": {
+        "title": "Take maps offline",
+        "body": "No signal up there? Download a region — or all of Switzerland — before you head out. Your tours and contacts stay available offline too."
+      },
+      "calendarSync": {
+        "title": "Sync your calendar",
+        "body": "Connect your work or personal calendar and your free days are marked as available automatically. Its contents are never stored."
       }
     }
   },

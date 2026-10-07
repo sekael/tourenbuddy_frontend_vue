@@ -6,37 +6,11 @@ import type { OnboardingStep } from '@/features/onboarding/presentation/onboardi
  * `use-onboarding-tour.ts`). `calendar-page.vue` owns the concrete `stage`
  * function that opens each surface (switch to the seasons view, etc.).
  *
- * Covers issue #248 steps 2–4: edit availability, meaning of the day-chips
- * (shown as demo chips — a new user has no real data), and the seasonal overview.
+ * Order follows the screen: what a day shows (demo chips — a new user has no
+ * real data), sharing availability, then the nav — the calendar tab's
+ * jump-to-today and, right next to it, the seasonal overview.
  */
 export const CALENDAR_TOUR_STEPS: OnboardingStep[] = [
-  {
-    // Opening step: teach the calendar nav tab's double action (tap-again on the
-    // planned view scrolls back to today). Purely informational — the tour can't
-    // trigger the scroll itself; it points at the tab and explains. `side:'bottom'`
-    // drops the popover below the tab: on the desktop sidebar the tab sits high
-    // (right under the pinned banner), so a `top` placement gets clipped by the
-    // banner and reflowed to the side — `bottom` clears it. On mobile the tab is
-    // in the viewport-pinned bottom nav, where driver.js auto-flips the popover up
-    // (no room below), landing it mid-screen clear of the banner.
-    surface: 'today-nav',
-    target: '[data-tour="nav-planned"]',
-    titleKey: 'calendar.tour.todayNav.title',
-    bodyKey: 'calendar.tour.todayNav.body',
-    labelKey: 'calendar.tour.labels.todayNav',
-    side: 'bottom',
-  },
-  {
-    // Planned view is the default; the FAB is always visible there.
-    surface: 'availability',
-    target: '[data-tour="availability-edit"]',
-    titleKey: 'calendar.tour.availability.title',
-    bodyKey: 'calendar.tour.availability.body',
-    labelKey: 'calendar.tour.labels.availability',
-    // The FAB sits bottom-right; place the popover above it so it can't overflow
-    // the viewport bottom (where driver.js would flip it into the banner).
-    side: 'top',
-  },
   {
     // The demo chips render on the today cell while the tour runs (belt-and-
     // suspenders gated). The cell is a waypoint; the opened detail overview is
@@ -50,8 +24,34 @@ export const CALENDAR_TOUR_STEPS: OnboardingStep[] = [
     scrollBlock: 'center',
   },
   {
-    // The stage switches to the seasons view (spotlighting the seasons nav first)
-    // and a demo season bar renders so the axis isn't the zero-tour disclaimer.
+    // Planned view is the default; the FAB is always visible there.
+    surface: 'availability',
+    target: '[data-tour="availability-edit"]',
+    titleKey: 'calendar.tour.availability.title',
+    bodyKey: 'calendar.tour.availability.body',
+    labelKey: 'calendar.tour.labels.availability',
+    // The FAB sits bottom-right; place the popover above it so it can't overflow
+    // the viewport bottom (where driver.js would flip it into the banner).
+    side: 'top',
+  },
+  {
+    // The calendar nav tab's double action (tap-again on the planned view
+    // scrolls back to today). Purely informational — the tour points at the tab
+    // and explains. `side:'bottom'`: on the desktop sidebar the tab sits high
+    // (right under the pinned banner), so a `top` placement gets clipped by the
+    // banner — `bottom` clears it. On mobile the tab is in the viewport-pinned
+    // bottom nav, where driver.js auto-flips the popover up (no room below).
+    surface: 'today-nav',
+    target: '[data-tour="nav-planned"]',
+    titleKey: 'calendar.tour.todayNav.title',
+    bodyKey: 'calendar.tour.todayNav.body',
+    labelKey: 'calendar.tour.labels.todayNav',
+    side: 'bottom',
+  },
+  {
+    // The stage spotlights the seasons nav (one glide over from the previous
+    // step's tab), switches to the seasons view, and a demo season bar renders
+    // so the axis isn't the zero-tour disclaimer.
     surface: 'seasons',
     // Spotlight the demo ROW itself (not the whole track). Banner clearance +
     // column fit come from the `.calendar-canvas.tour-seasons` overrides in

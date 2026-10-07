@@ -238,30 +238,36 @@ function closeOverlay() {
 // --- Onboarding tour ---------------------------------------------------------
 // The tour composable knows only abstract surfaces; this page owns the concrete
 // overlays + speed-dial, so it translates each surface into open/close calls.
-// Every step replays its full navigation path from a clean slate (overlays
-// closed) so spotlight positions are deterministic — also when stepping back.
-// Each waypoint carries a short hint ("Open menu", "Open contacts") via
-// `ctx.spotlight(selector, hintKey)`, which waits for the control to settle
-// before highlighting so the mask never lags an animation.
-async function stageTourSurface(surface: TourSurface, ctx: StageContext) {
-  // Open a speed-dial-backed sheet the way a user would: spotlight the FAB,
-  // pop the menu, spotlight the menu item, then open the sheet.
-  async function openViaMenu(name: OverlayName, itemSelector: string, itemHintKey: string) {
+// `from` is the surface already on screen: the path starts from there when it
+// can (menu still open, contacts already showing) and from a clean slate
+// otherwise. Each waypoint carries a short hint ("Open menu", "Open contacts")
+// via `ctx.spotlight(selector, hintKey)`, which waits for the control to settle.
+async function stageTourSurface(surface: TourSurface, ctx: StageContext, from: TourSurface | null) {
+  // The speed-dial menu, open with nothing expanded. Reuses an open menu
+  // (folding the base-map panel back in) instead of replaying the FAB.
+  async function showMenu() {
+    if (from === 'menu' || from === 'base-map-panel') {
+      mapOverlayRef.value?.openMenu()
+      return
+    }
+    closeOverlay()
+    mapOverlayRef.value?.closeMenu()
     await ctx.spotlight('[data-tour="open-menu"]', 'onboarding.tour.nav.openMenu')
     mapOverlayRef.value?.openMenu()
+  }
+  // Open a speed-dial-backed sheet the way a user would: menu → item → sheet.
+  async function openViaMenu(name: OverlayName, itemSelector: string, itemHintKey: string) {
+    await showMenu()
     await ctx.spotlight(itemSelector, itemHintKey)
+    mapOverlayRef.value?.closeMenu()
     openOverlay(name)
   }
 
-  closeOverlay()
-  mapOverlayRef.value?.closeMenu()
-
   switch (surface) {
     case 'profile': {
-      // The Notifications row's summary ("Push and email", …) comes from the
-      // prefs fetch. Ensure prefs are loaded BEFORE the highlight so the
-      // spotlighted row is complete; the fetch overlaps the waypoint
-      // spotlights, so the wait is normally free.
+      // The Notifications / Calendar sync rows' summaries come from fetches.
+      // Load them BEFORE the highlight so the spotlighted rows are complete;
+      // the fetch overlaps the waypoint spotlights, so the wait is normally free.
       const prefsReady = notificationsStore.prefs ? null : notificationsStore.loadPrefs()
       await openViaMenu('profile', '[data-tour="menu-profile"]', 'onboarding.tour.nav.profile')
       await prefsReady
@@ -271,23 +277,29 @@ async function stageTourSurface(surface: TourSurface, ctx: StageContext) {
       await openViaMenu('contacts', '[data-tour="menu-contacts"]', 'onboarding.tour.nav.contacts')
       break
     case 'friend-requests':
-      // Reached through the contacts sheet: open it, then spotlight the
-      // switch-to-requests button before opening the requests view.
-      await openViaMenu('contacts', '[data-tour="menu-contacts"]', 'onboarding.tour.nav.contacts')
+      // Reached through the contacts sheet — already open when coming from it.
+      if (from !== 'contacts')
+        await openViaMenu('contacts', '[data-tour="menu-contacts"]', 'onboarding.tour.nav.contacts')
       await ctx.spotlight('[data-tour="open-friend-requests"]', 'onboarding.tour.nav.friendRequests')
       openOverlay('friend-requests')
       break
     case 'tours':
       // The My-tours sheet opens from the bottom action bar, not the speed-dial.
+      closeOverlay()
+      mapOverlayRef.value?.closeMenu()
       await ctx.spotlight('[data-tour="open-tours"]', 'onboarding.tour.nav.tours')
       openOverlay('tours')
       break
     case 'tour-bar':
-      // No overlay — the bottom action bar (add-location button) is always visible.
+      // No overlay — the bottom action bar (add-tour button) is always visible.
+      closeOverlay()
+      mapOverlayRef.value?.closeMenu()
+      break
+    case 'menu':
+      await showMenu()
       break
     case 'base-map-panel':
-      await ctx.spotlight('[data-tour="open-menu"]', 'onboarding.tour.nav.openMenu')
-      mapOverlayRef.value?.openMenu()
+      await showMenu()
       await ctx.spotlight('[data-tour="menu-base-map"]', 'onboarding.tour.nav.baseMap')
       mapOverlayRef.value?.openBaseMap()
       break
@@ -391,6 +403,9 @@ onUnmounted(() => {
 // "Show app tour" in the profile sheet bumps this signal — resume at last step.
 watch(reopenSignal, () => {
   onboardingTour.startTour(userProfileStore.profile?.onboardingTourLastStep ?? 0)
+  // The profile sheet closes itself before signalling, so the start-time capture
+  // above saw no overlay — an early quit must still return to the profile.
+  tourOrigin = 'profile'
 })
 
 function handleTourSelectedFromList(tourId: string) {
@@ -839,10 +854,12 @@ function handleDialogClose() {
     <!-- Pre-tour welcome (auto-start only). Teleported to <body> so it stacks
          above the map + sheets, the same as the tour banner. -->
     <Teleport to="body">
-      <OnboardingWelcome
-        v-if="tourWelcome" @start="onboardingTour.startFromWelcome()"
-        @skip="onboardingTour.skipWelcome()" @dismiss="onboardingTour.dismissWelcome()"
-      />
+      <Transition name="welcome">
+        <OnboardingWelcome
+          v-if="tourWelcome" @start="onboardingTour.startFromWelcome()"
+          @skip="onboardingTour.skipWelcome()" @dismiss="onboardingTour.dismissWelcome()"
+        />
+      </Transition>
     </Teleport>
 
     <Teleport to="body">
