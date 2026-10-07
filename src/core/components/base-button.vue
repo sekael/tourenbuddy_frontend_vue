@@ -65,7 +65,13 @@ const buttonClasses = computed(() => [`base-button--${variant.value}`, `base-but
   box-shadow: 0 6px 16px -6px rgba(37, 99, 235, 0.5);
 }
 
-.base-button--primary:hover:not(:disabled) {
+@media (hover: hover) {
+  .base-button--primary:hover:not(:disabled) {
+    background-color: var(--color-primary-dark);
+  }
+}
+
+.base-button--primary:active:not(:disabled) {
   background-color: var(--color-primary-dark);
 }
 
@@ -75,7 +81,13 @@ const buttonClasses = computed(() => [`base-button--${variant.value}`, `base-but
   box-shadow: 0 6px 16px -6px rgba(220, 38, 38, 0.45);
 }
 
-.base-button--danger:hover:not(:disabled) {
+@media (hover: hover) {
+  .base-button--danger:hover:not(:disabled) {
+    background-color: var(--color-error-strong);
+  }
+}
+
+.base-button--danger:active:not(:disabled) {
   background-color: var(--color-error-strong);
 }
 
@@ -91,8 +103,15 @@ const buttonClasses = computed(() => [`base-button--${variant.value}`, `base-but
   color: var(--color-primary-dark);
 }
 
-.base-button--secondary:hover:not(:disabled),
-.base-button--primary-outline:hover:not(:disabled) {
+@media (hover: hover) {
+  .base-button--secondary:hover:not(:disabled),
+  .base-button--primary-outline:hover:not(:disabled) {
+    background-color: var(--color-secondary-container-hover);
+  }
+}
+
+.base-button--secondary:active:not(:disabled),
+.base-button--primary-outline:active:not(:disabled) {
   background-color: var(--color-secondary-container-hover);
 }
 
@@ -101,7 +120,13 @@ const buttonClasses = computed(() => [`base-button--${variant.value}`, `base-but
   color: var(--color-error-text);
 }
 
-.base-button--danger-outline:hover:not(:disabled) {
+@media (hover: hover) {
+  .base-button--danger-outline:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-error) 16%, var(--color-background));
+  }
+}
+
+.base-button--danger-outline:active:not(:disabled) {
   background-color: color-mix(in srgb, var(--color-error) 16%, var(--color-background));
 }
 
@@ -110,7 +135,13 @@ const buttonClasses = computed(() => [`base-button--${variant.value}`, `base-but
   color: var(--color-primary);
 }
 
-.base-button--text:hover:not(:disabled) {
+@media (hover: hover) {
+  .base-button--text:hover:not(:disabled) {
+    background-color: var(--color-surface-variant);
+  }
+}
+
+.base-button--text:active:not(:disabled) {
   background-color: var(--color-surface-variant);
 }
 

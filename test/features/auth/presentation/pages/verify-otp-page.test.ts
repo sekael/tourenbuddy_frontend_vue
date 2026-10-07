@@ -1,6 +1,7 @@
-import { mount } from '@vue/test-utils'
+import { AuthApiError } from '@supabase/supabase-js'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { reactive } from 'vue'
 import VerifyOtpPage from '@/features/auth/presentation/pages/verify-otp-page.vue'
 
@@ -114,25 +115,45 @@ describe('verifyOtpPage', () => {
     expect(mockVerifyOtp).toHaveBeenCalledTimes(1)
   })
 
-  it('should call sendEmailOtp on resend click', async () => {
-    mockSendEmailOtp.mockResolvedValue(undefined)
-    const wrapper = mount(VerifyOtpPage)
-    await wrapper.find('.base-button--secondary').trigger('click')
-    await vi.waitFor(() => expect(mockSendEmailOtp).toHaveBeenCalledWith('test@example.com'))
-  })
+  describe('resend', () => {
+    beforeEach(() => vi.useFakeTimers())
+    afterEach(() => vi.useRealTimers())
 
-  it('should show success message after successful resend', async () => {
-    mockSendEmailOtp.mockResolvedValue(undefined)
-    const wrapper = mount(VerifyOtpPage)
-    await wrapper.find('.base-button--secondary').trigger('click')
-    await vi.waitFor(() => expect(wrapper.text()).toContain('auth.verifyOtp.resendSuccess'))
-  })
+    const resendBtn = (w: ReturnType<typeof mount>) => w.find('.base-button--secondary')
 
-  it('should show error message when resend fails', async () => {
-    mockSendEmailOtp.mockRejectedValue(new Error('network error'))
-    const wrapper = mount(VerifyOtpPage)
-    await wrapper.find('.base-button--secondary').trigger('click')
-    await vi.waitFor(() => expect(wrapper.text()).toContain('auth.verifyOtp.resendError'))
+    it('should hold resend for the cooldown since the code was just sent', async () => {
+      const wrapper = mount(VerifyOtpPage)
+      await resendBtn(wrapper).trigger('click')
+      expect(mockSendEmailOtp).not.toHaveBeenCalled()
+      expect(resendBtn(wrapper).attributes('disabled')).toBeDefined()
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(resendBtn(wrapper).attributes('disabled')).toBeUndefined()
+    })
+
+    it('should wait out the server interval on a 429 instead of failing', async () => {
+      mockSendEmailOtp.mockRejectedValue(new AuthApiError(
+        'For security purposes, you can only request this after 42 seconds.',
+        429,
+        'over_email_send_rate_limit',
+      ))
+      const wrapper = mount(VerifyOtpPage)
+      await vi.advanceTimersByTimeAsync(60_000)
+      await resendBtn(wrapper).trigger('click')
+      await flushPromises()
+      expect(wrapper.text()).not.toContain('auth.verifyOtp.resendError')
+      expect(resendBtn(wrapper).attributes('disabled')).toBeDefined()
+      await vi.advanceTimersByTimeAsync(42_000)
+      expect(resendBtn(wrapper).attributes('disabled')).toBeUndefined()
+    })
+
+    it('should show error message when resend fails otherwise', async () => {
+      mockSendEmailOtp.mockRejectedValue(new Error('network error'))
+      const wrapper = mount(VerifyOtpPage)
+      await vi.advanceTimersByTimeAsync(60_000)
+      await resendBtn(wrapper).trigger('click')
+      await flushPromises()
+      expect(wrapper.text()).toContain('auth.verifyOtp.resendError')
+    })
   })
 
   it('should navigate to home on back button click', async () => {

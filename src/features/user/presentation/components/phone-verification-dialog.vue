@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
+import { fadeOut, useExitAnimation } from '@/core/composables/use-exit-animation'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { formatPhoneForDisplay } from '@/core/utils/phone-normalize'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
@@ -15,6 +16,10 @@ const { t } = useI18n({ useScope: 'global' })
 const displayPhone = computed(() => formatPhoneForDisplay(props.phone))
 const store = useUserProfileStore()
 const isDesktop = useIsDesktop()
+
+// The modal sheet is unmounted by its owner: fade it (and its scrim) out.
+const hostEl = ref<HTMLElement | null>(null)
+useExitAnimation(hostEl, fadeOut)
 
 const otp = ref('')
 const error = ref<string | null>(null)
@@ -87,7 +92,7 @@ async function handleResend() {
 
 <template>
   <Teleport to="body">
-    <div v-if="!isDesktop" class="sheet-container" @click.self="emit('close')">
+    <div v-if="!isDesktop" ref="hostEl" class="sheet-host sheet-host--modal" @click.self="emit('close')">
       <AdaptiveOverlay
         :title="isVerified ? '' : t('user.phoneVerification.title')"
         @close="emit('close')"
@@ -229,16 +234,8 @@ async function handleResend() {
 </template>
 
 <style scoped>
-.sheet-container {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+.sheet-host--modal {
   z-index: 120;
-  background: var(--color-backdrop);
-  backdrop-filter: blur(var(--overlay-backdrop-blur));
-  -webkit-backdrop-filter: blur(var(--overlay-backdrop-blur));
 }
 
 .dialog-content {

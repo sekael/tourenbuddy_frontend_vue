@@ -296,7 +296,11 @@ function formatDate(iso: string): string {
 }
 
 .value {
-  overflow-wrap: anywhere;
+  /* Break long words at syllables with a hyphen (in the page language), and mid-word
+     only when no hyphenation point exists — never "Schreckhornhütt|e". */
+  overflow-wrap: break-word;
+  -webkit-hyphens: auto;
+  hyphens: auto;
 }
 
 .value--old {

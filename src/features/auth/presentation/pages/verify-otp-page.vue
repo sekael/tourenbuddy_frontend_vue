@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { AuthApiError } from '@supabase/supabase-js'
+import { useIntervalFn } from '@vueuse/core'
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
@@ -23,6 +25,21 @@ const error = ref<string | null>(null)
 const isVerifying = ref(false)
 const isResending = ref(false)
 const resendSuccess = ref(false)
+
+// Supabase refuses a second OTP email to the same address inside its minimum interval
+// (hosted default 60s) with a 429. The code was sent just before this page opened, so
+// the button starts cooling down at once instead of letting every early tap fail.
+const RESEND_COOLDOWN = 60
+const cooldown = ref(RESEND_COOLDOWN)
+const { pause, resume } = useIntervalFn(() => {
+  if (--cooldown.value <= 0)
+    pause()
+}, 1000)
+
+function startCooldown(seconds: number) {
+  cooldown.value = seconds
+  resume()
+}
 
 /** Last value handed to `verifyOtp`, so autofill never resubmits a rejected code. */
 const attempted = ref<string | null>(null)
@@ -66,15 +83,25 @@ async function handleVerify() {
 }
 
 async function handleResend() {
+  if (cooldown.value > 0)
+    return
   error.value = null
   resendSuccess.value = false
   isResending.value = true
   try {
     await authStore.sendEmailOtp(email)
     resendSuccess.value = true
+    startCooldown(RESEND_COOLDOWN)
   }
-  catch {
-    error.value = t('auth.verifyOtp.resendError')
+  catch (err) {
+    // "…you can only request this after 42 seconds." — wait out the server's own clock.
+    const wait = err instanceof AuthApiError && err.status === 429
+      ? Number(err.message.match(/(\d+) seconds?/)?.[1] ?? RESEND_COOLDOWN)
+      : 0
+    if (wait)
+      startCooldown(wait)
+    else
+      error.value = t('auth.verifyOtp.resendError')
   }
   finally {
     isResending.value = false
@@ -125,8 +152,14 @@ async function handleResend() {
       </BaseButton>
     </form>
 
-    <BaseButton variant="secondary" :disabled="isResending" @click="handleResend">
-      {{ isResending ? t('auth.shared.sendingBtn') : t('auth.verifyOtp.resendBtn') }}
+    <BaseButton variant="secondary" :disabled="isResending || cooldown > 0" @click="handleResend">
+      {{
+        cooldown > 0
+          ? t('auth.verifyOtp.resendCountdown', { seconds: cooldown })
+          : isResending
+            ? t('auth.shared.sendingBtn')
+            : t('auth.verifyOtp.resendBtn')
+      }}
     </BaseButton>
   </AuthHeroLayout>
 </template>

@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
+import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useSnackbar } from '@/core/composables/use-snackbar'
 import { isOnline } from '@/core/offline/use-online-status'
 import { formatPhoneForDisplay } from '@/core/utils/phone-normalize'
@@ -28,6 +29,7 @@ const { blockedUserIds } = storeToRefs(blocksStore)
 
 type Tab = 'pending' | 'blocked'
 const activeTab = ref<Tab>('pending')
+const isDesktop = useIsDesktop()
 
 // Stale-while-revalidate: only blank the view for the FIRST load (no data yet).
 // Background refetches (accept creates a contact → contacts watch; realtime pokes)
@@ -213,166 +215,181 @@ async function handleCancel(requestId: string) {
         </button>
       </div>
 
-      <template v-if="activeTab === 'pending'">
-        <div v-if="!isOnline" class="offline-note">
-          <BaseIcon name="cloud_off" class="note-icon" />
-          <p class="note-text">
-            {{ t('offlineSync.friendshipsOnlineOnly') }}
-          </p>
-        </div>
+      <!-- Both panels stay rendered. On mobile they share one grid cell, so the
+           panel area is as tall as the taller tab and switching tabs never resizes
+           the sheet; the inactive panel is hidden and inert. -->
+      <div class="tab-panels" :class="{ 'tab-panels--stacked': !isDesktop }">
+        <div
+          class="tab-panel"
+          role="tabpanel"
+          :class="{ 'tab-panel--hidden': activeTab !== 'pending' }"
+          :inert="activeTab !== 'pending' || undefined"
+        >
+          <div v-if="!isOnline" class="offline-note">
+            <BaseIcon name="cloud_off" class="note-icon" />
+            <p class="note-text">
+              {{ t('offlineSync.friendshipsOnlineOnly') }}
+            </p>
+          </div>
 
-        <div class="deny-rights-note">
-          <BaseIcon name="info" class="note-icon" />
-          <p class="note-text">
-            {{ t('friendships.inboxDenyRightsNote') }}
-          </p>
-        </div>
+          <div class="deny-rights-note">
+            <BaseIcon name="info" class="note-icon" />
+            <p class="note-text">
+              {{ t('friendships.inboxDenyRightsNote') }}
+            </p>
+          </div>
 
-        <div v-if="showInitialLoading" class="loading-text">
-          {{ t('contacts.list.loading') }}
-        </div>
+          <div v-if="showInitialLoading" class="loading-text">
+            {{ t('contacts.list.loading') }}
+          </div>
 
-        <template v-else>
-          <section class="section">
-            <h2 class="section-title">
-              {{ t('friendships.requestFrom') }}
-            </h2>
+          <template v-else>
+            <section class="section">
+              <h2 class="section-title">
+                {{ t('friendships.requestFrom') }}
+              </h2>
 
-            <div v-if="incomingRequests.length === 0" class="empty-state">
-              {{ t('friendships.inboxEmpty') }}
-            </div>
+              <div v-if="incomingRequests.length === 0" class="empty-state">
+                {{ t('friendships.inboxEmpty') }}
+              </div>
 
-            <ul v-else class="request-list">
-              <li v-for="req in incomingRequests" :key="req.id" class="request-row">
-                <template v-if="blockingRequest?.id === req.id">
-                  <BlockConfirmDialog
-                    :has-friendship="false"
-                    @cancel="cancelBlock"
-                    @confirm="handleBlockConfirm"
-                  />
-                </template>
-                <template v-else-if="confirmingRequestId === req.id">
-                  <div class="confirm-content">
-                    <p class="confirm-text">
-                      {{ t('friendships.acceptConfirm') }}
-                    </p>
-                    <p class="confirm-warning">
-                      <BaseIcon name="warning" class="warn-icon" />
-                      {{ t('friendships.acceptWarning') }}
-                    </p>
-                    <div class="confirm-actions">
+              <ul v-else class="request-list">
+                <li v-for="req in incomingRequests" :key="req.id" class="request-row">
+                  <template v-if="blockingRequest?.id === req.id">
+                    <BlockConfirmDialog
+                      :has-friendship="false"
+                      @cancel="cancelBlock"
+                      @confirm="handleBlockConfirm"
+                    />
+                  </template>
+                  <template v-else-if="confirmingRequestId === req.id">
+                    <div class="confirm-content">
+                      <p class="confirm-text">
+                        {{ t('friendships.acceptConfirm') }}
+                      </p>
+                      <p class="confirm-warning">
+                        <BaseIcon name="warning" class="warn-icon" />
+                        {{ t('friendships.acceptWarning') }}
+                      </p>
+                      <div class="confirm-actions">
+                        <BaseButton
+                          variant="secondary"
+                          size="sm"
+                          class="action-btn"
+                          data-testid="req-confirm-cancel"
+                          :disabled="isAccepting"
+                          @click="cancelAcceptConfirm"
+                        >
+                          {{ t('friendships.cancel') }}
+                        </BaseButton>
+                        <BaseButton
+                          variant="primary-outline"
+                          size="sm"
+                          class="action-btn"
+                          data-testid="req-accept"
+                          :disabled="isAccepting || !isOnline"
+                          @click="handleAccept(req.id)"
+                        >
+                          {{ isAccepting ? t('friendships.acceptingBtn') : t('friendships.accept') }}
+                        </BaseButton>
+                      </div>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div class="request-info">
+                      <BaseIcon name="person" class="request-icon" />
+                      <div class="request-user-block">
+                        <template v-if="displayNameFor(req, 'incoming')">
+                          <span class="request-user">{{ displayNameFor(req, 'incoming') }}</span>
+                          <span class="request-phone-sub">{{ phoneFor(req.fromUserId) }}</span>
+                        </template>
+                        <span v-else class="request-user">{{ phoneFor(req.fromUserId) }}</span>
+                      </div>
+                    </div>
+                    <div class="request-actions">
+                      <BaseButton
+                        v-if="!blockedUserIds.has(req.fromUserId)"
+                        variant="danger-outline"
+                        size="sm"
+                        class="action-btn"
+                        data-testid="req-block"
+                        :disabled="!isOnline"
+                        @click="startBlock(req)"
+                      >
+                        {{ t('blocks.blockAction') }}
+                      </BaseButton>
                       <BaseButton
                         variant="secondary"
                         size="sm"
                         class="action-btn"
-                        data-testid="req-confirm-cancel"
-                        :disabled="isAccepting"
-                        @click="cancelAcceptConfirm"
+                        data-testid="req-deny"
+                        :disabled="!isOnline"
+                        @click="handleDeny(req.id)"
                       >
-                        {{ t('friendships.cancel') }}
+                        {{ t('friendships.deny') }}
                       </BaseButton>
                       <BaseButton
                         variant="primary-outline"
                         size="sm"
                         class="action-btn"
                         data-testid="req-accept"
-                        :disabled="isAccepting || !isOnline"
-                        @click="handleAccept(req.id)"
+                        :disabled="!isOnline"
+                        @click="startAcceptConfirm(req.id)"
                       >
-                        {{ isAccepting ? t('friendships.acceptingBtn') : t('friendships.accept') }}
+                        {{ t('friendships.accept') }}
                       </BaseButton>
                     </div>
-                  </div>
-                </template>
-                <template v-else>
+                  </template>
+                </li>
+              </ul>
+            </section>
+
+            <section class="section">
+              <h2 class="section-title">
+                {{ t('friendships.requestTo') }}
+              </h2>
+
+              <div v-if="outgoingRequests.length === 0" class="empty-state">
+                {{ t('friendships.inboxEmpty') }}
+              </div>
+
+              <ul v-else class="request-list">
+                <li v-for="req in outgoingRequests" :key="req.id" class="request-row">
                   <div class="request-info">
                     <BaseIcon name="person" class="request-icon" />
                     <div class="request-user-block">
-                      <template v-if="displayNameFor(req, 'incoming')">
-                        <span class="request-user">{{ displayNameFor(req, 'incoming') }}</span>
-                        <span class="request-phone-sub">{{ phoneFor(req.fromUserId) }}</span>
+                      <template v-if="displayNameFor(req, 'outgoing')">
+                        <span class="request-user">{{ displayNameFor(req, 'outgoing') }}</span>
+                        <span class="request-phone-sub">{{ phoneFor(req.toUserId) }}</span>
                       </template>
-                      <span v-else class="request-user">{{ phoneFor(req.fromUserId) }}</span>
+                      <span v-else class="request-user">{{ phoneFor(req.toUserId) }}</span>
                     </div>
                   </div>
-                  <div class="request-actions">
-                    <BaseButton
-                      v-if="!blockedUserIds.has(req.fromUserId)"
-                      variant="danger-outline"
-                      size="sm"
-                      class="action-btn"
-                      data-testid="req-block"
-                      :disabled="!isOnline"
-                      @click="startBlock(req)"
-                    >
-                      {{ t('blocks.blockAction') }}
-                    </BaseButton>
-                    <BaseButton
-                      variant="secondary"
-                      size="sm"
-                      class="action-btn"
-                      data-testid="req-deny"
-                      :disabled="!isOnline"
-                      @click="handleDeny(req.id)"
-                    >
-                      {{ t('friendships.deny') }}
-                    </BaseButton>
-                    <BaseButton
-                      variant="primary-outline"
-                      size="sm"
-                      class="action-btn"
-                      data-testid="req-accept"
-                      :disabled="!isOnline"
-                      @click="startAcceptConfirm(req.id)"
-                    >
-                      {{ t('friendships.accept') }}
-                    </BaseButton>
-                  </div>
-                </template>
-              </li>
-            </ul>
-          </section>
+                  <BaseButton
+                    variant="secondary"
+                    size="sm"
+                    class="action-btn"
+                    data-testid="req-cancel"
+                    :disabled="!isOnline"
+                    @click="handleCancel(req.id)"
+                  >
+                    {{ t('friendships.cancel') }}
+                  </BaseButton>
+                </li>
+              </ul>
+            </section>
+          </template>
+        </div>
 
-          <section class="section">
-            <h2 class="section-title">
-              {{ t('friendships.requestTo') }}
-            </h2>
-
-            <div v-if="outgoingRequests.length === 0" class="empty-state">
-              {{ t('friendships.inboxEmpty') }}
-            </div>
-
-            <ul v-else class="request-list">
-              <li v-for="req in outgoingRequests" :key="req.id" class="request-row">
-                <div class="request-info">
-                  <BaseIcon name="person" class="request-icon" />
-                  <div class="request-user-block">
-                    <template v-if="displayNameFor(req, 'outgoing')">
-                      <span class="request-user">{{ displayNameFor(req, 'outgoing') }}</span>
-                      <span class="request-phone-sub">{{ phoneFor(req.toUserId) }}</span>
-                    </template>
-                    <span v-else class="request-user">{{ phoneFor(req.toUserId) }}</span>
-                  </div>
-                </div>
-                <BaseButton
-                  variant="secondary"
-                  size="sm"
-                  class="action-btn"
-                  data-testid="req-cancel"
-                  :disabled="!isOnline"
-                  @click="handleCancel(req.id)"
-                >
-                  {{ t('friendships.cancel') }}
-                </BaseButton>
-              </li>
-            </ul>
-          </section>
-        </template>
-      </template>
-
-      <template v-else>
-        <BlockedList />
-      </template>
+        <div
+          class="tab-panel"
+          role="tabpanel"
+          :class="{ 'tab-panel--hidden': activeTab !== 'blocked' }"
+          :inert="activeTab !== 'blocked' || undefined"
+        >
+          <BlockedList />
+        </div>
+      </div>
     </div>
   </AdaptiveOverlay>
 </template>
@@ -382,6 +399,31 @@ async function handleCancel(requestId: string) {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xl);
+}
+
+.tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+  min-width: 0;
+}
+
+.tab-panel--hidden {
+  display: none;
+}
+
+/* Mobile: one cell for both panels → constant height across tab switches. */
+.tab-panels--stacked {
+  display: grid;
+}
+
+.tab-panels--stacked > .tab-panel {
+  grid-area: 1 / 1;
+}
+
+.tab-panels--stacked > .tab-panel--hidden {
+  display: flex;
+  visibility: hidden;
 }
 
 .deny-rights-note {

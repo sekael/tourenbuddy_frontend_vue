@@ -92,7 +92,13 @@ const { t } = useI18n({ useScope: 'global' })
   transition: background-color var(--motion-duration-short) var(--motion-ease-standard);
 }
 
-.segment:hover:not(:disabled) {
+@media (hover: hover) {
+  .segment:hover:not(:disabled) {
+    background-color: var(--color-fab-glass-strong);
+  }
+}
+
+.segment:active:not(:disabled) {
   background-color: var(--color-fab-glass-strong);
 }
 

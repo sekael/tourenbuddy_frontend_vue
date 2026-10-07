@@ -439,61 +439,63 @@ function selectFromDetail(tourId: string) {
 
   <!-- Per-day detail list: tours first, then available friends. Bottom sheet on
        mobile, dialog on desktop, over the calendar. -->
-  <div v-if="detailDate" class="sheet-container">
-    <AdaptiveOverlay :title="detailLabel" @close="closeDetail">
-      <div class="detail-body" :data-tour="isDemoDetail ? 'demo-detail' : undefined">
-        <template v-if="detailEntries.length">
-          <h3 class="detail-heading">
-            {{ t('calendar.planned.toursHeading') }}
-          </h3>
-          <button
-            v-for="entry in detailEntries"
-            :key="entry.tour.id"
-            type="button"
-            class="detail-row"
-            @click="selectFromDetail(entry.tour.id)"
-          >
-            <BaseIcon
-              v-if="entry.tour.tourType"
-              :name="TOUR_TYPE_ICONS[entry.tour.tourType]"
-              size="sm"
-              :style="{ color: TOUR_TYPE_COLORS[entry.tour.tourType] }"
-            />
-            <span class="pill-name">{{ entry.tour.name ?? t('tours.infoSheet.unnamedTour') }}</span>
-            <span
-              v-if="entry.dayCount > 1"
-              class="day-counter"
-              role="img"
-              :aria-label="
-                t('calendar.planned.dayCounterLabel', {
-                  day: entry.dayIndex,
-                  total: entry.dayCount,
-                })
-              "
+  <Transition name="sheet">
+    <div v-if="detailDate" class="sheet-host">
+      <AdaptiveOverlay :title="detailLabel" @close="closeDetail">
+        <div class="detail-body" :data-tour="isDemoDetail ? 'demo-detail' : undefined">
+          <template v-if="detailEntries.length">
+            <h3 class="detail-heading">
+              {{ t('calendar.planned.toursHeading') }}
+            </h3>
+            <button
+              v-for="entry in detailEntries"
+              :key="entry.tour.id"
+              type="button"
+              class="detail-row"
+              @click="selectFromDetail(entry.tour.id)"
             >
-              {{ t('calendar.planned.dayCounter', { day: entry.dayIndex, total: entry.dayCount }) }}
-            </span>
-          </button>
-        </template>
-        <template v-if="detailFriends.length">
-          <h3 class="detail-heading">
-            {{ t('calendar.planned.friendsHeading') }}
-          </h3>
-          <button
-            v-for="chip in detailFriends"
-            :key="chip.userId"
-            type="button"
-            class="detail-row"
-            :class="{ 'detail-row--static': !chip.contact }"
-            @click="openFriendMenu(chip, $event)"
-          >
-            <BaseIcon name="person" size="sm" />
-            <span class="pill-name">{{ chip.name }}</span>
-          </button>
-        </template>
-      </div>
-    </AdaptiveOverlay>
-  </div>
+              <BaseIcon
+                v-if="entry.tour.tourType"
+                :name="TOUR_TYPE_ICONS[entry.tour.tourType]"
+                size="sm"
+                :style="{ color: TOUR_TYPE_COLORS[entry.tour.tourType] }"
+              />
+              <span class="pill-name">{{ entry.tour.name ?? t('tours.infoSheet.unnamedTour') }}</span>
+              <span
+                v-if="entry.dayCount > 1"
+                class="day-counter"
+                role="img"
+                :aria-label="
+                  t('calendar.planned.dayCounterLabel', {
+                    day: entry.dayIndex,
+                    total: entry.dayCount,
+                  })
+                "
+              >
+                {{ t('calendar.planned.dayCounter', { day: entry.dayIndex, total: entry.dayCount }) }}
+              </span>
+            </button>
+          </template>
+          <template v-if="detailFriends.length">
+            <h3 class="detail-heading">
+              {{ t('calendar.planned.friendsHeading') }}
+            </h3>
+            <button
+              v-for="chip in detailFriends"
+              :key="chip.userId"
+              type="button"
+              class="detail-row"
+              :class="{ 'detail-row--static': !chip.contact }"
+              @click="openFriendMenu(chip, $event)"
+            >
+              <BaseIcon name="person" size="sm" />
+              <span class="pill-name">{{ chip.name }}</span>
+            </button>
+          </template>
+        </div>
+      </AdaptiveOverlay>
+    </div>
+  </Transition>
 
   <!-- Shared contact-action menu (desktop popover / mobile sheet, self-adapting). -->
   <ContactActionMenu
@@ -632,27 +634,14 @@ function selectFromDetail(tourId: string) {
   cursor: default;
 }
 
-.detail-row:not(.detail-row--static):hover {
-  background-color: var(--color-surface-variant);
-}
-
-/* Host for the detail sheet/dialog: fixed to the visual-viewport bottom on
-   mobile; on desktop the child dialog self-centers (same pattern as map-page). */
-.sheet-container {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 50;
-  display: flex;
-  justify-content: center;
-  pointer-events: none;
-}
-
-@media (min-width: 600px) {
-  .sheet-container {
-    display: contents;
+@media (hover: hover) {
+  .detail-row:not(.detail-row--static):hover {
+    background-color: var(--color-surface-variant);
   }
+}
+
+.detail-row:not(.detail-row--static):active {
+  background-color: var(--color-surface-variant);
 }
 
 /* ── Mobile day-tile list ────────────────────────────────────────────────── */

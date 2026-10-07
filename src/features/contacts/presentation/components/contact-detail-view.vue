@@ -68,14 +68,17 @@ function cancelBlock() {
 }
 
 async function handleBlockConfirm(reportReason: string | null) {
-  if (!props.linkedFriendUserId)
+  // Capture before awaiting: blocking ends the friendship, so the parent's refetch
+  // clears `linkedFriendUserId` while `block()` is still in flight.
+  const target = props.linkedFriendUserId
+  if (!target)
     return
   blockConfirmOpen.value = false
   try {
-    await blocksStore.block(props.linkedFriendUserId)
+    await blocksStore.block(target)
     snackbar.show(t('blocks.snackbar.blockSuccess'))
     if (reportReason !== null) {
-      await blocksStore.report(props.linkedFriendUserId, reportReason)
+      await blocksStore.report(target, reportReason)
       snackbar.show(t('blocks.snackbar.reportSuccess'))
     }
   }
@@ -1237,7 +1240,6 @@ defineExpose({
 }
 
 .input-sm {
-  font-size: var(--font-size-sm);
   padding: var(--spacing-xs) var(--spacing-sm);
 }
 
@@ -1324,7 +1326,13 @@ defineExpose({
   color: var(--color-primary);
 }
 
-button.primary-star:hover {
+@media (hover: hover) {
+  button.primary-star:hover {
+    color: var(--color-primary);
+  }
+}
+
+button.primary-star:active {
   color: var(--color-primary);
 }
 

@@ -164,7 +164,13 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
     transform var(--motion-duration-short) var(--motion-ease-spring);
 }
 
-.compass-fab:hover {
+@media (hover: hover) {
+  .compass-fab:hover {
+    background-color: var(--color-fab-glass-strong);
+  }
+}
+
+.compass-fab:active {
   background-color: var(--color-fab-glass-strong);
 }
 

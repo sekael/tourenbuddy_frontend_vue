@@ -463,6 +463,24 @@ describe('tourInfoSheet', () => {
     contactMethods: [],
   }
 
+  describe('header card state', () => {
+    it('should tint the view with the tour type colour, not the default primary', () => {
+      const wrapper = mountSheet({ tourType: 'paragliding' })
+      expect(wrapper.find('.details').attributes('style')).toContain('--type-tint: #D97706')
+    })
+
+    it('should stamp a completed private tour with both states', () => {
+      const wrapper = mountSheet({ completed: true, visibility: 'private' })
+      expect(wrapper.find('.hero--completed.hero--private').exists()).toBe(true)
+      expect(wrapper.find('.hero-badge').findAll('.hero-stamp')).toHaveLength(2)
+    })
+
+    it('should spell out completion only for a friend viewing the tour', () => {
+      expect(mountSheet({ completed: true }).find('.status-pill').exists()).toBe(false)
+      expect(mountSheet({ completed: true, isFriendTour: true }, 'user-2').find('.status-pill').exists()).toBe(true)
+    })
+  })
+
   describe('partners section', () => {
     it('renders chips in action mode', () => {
       const wrapper = mountSheet({ partnerIds: ['contact-1'] }, 'user-1', [mockContact])

@@ -411,3 +411,55 @@ describe('useOnboardingTour — teardown cleanup gating', () => {
     expect(opts.cleanup).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('useOnboardingTour — finishing mid-staging', () => {
+  // A stage that spotlights a waypoint, then opens the next surface — like the
+  // map's "open menu → open contacts" path.
+  function stagingOptions(opened: () => void) {
+    return makeOptions({
+      stage: vi.fn(async (_surface, ctx) => {
+        await ctx.spotlight('[data-tour="waypoint"]')
+        opened()
+      }),
+    })
+  }
+
+  beforeEach(() => {
+    mountAllAnchors()
+    document.body.insertAdjacentHTML('beforeend', '<div data-tour="waypoint"></div>')
+  })
+
+  it('should not open the next surface when the tour is finished during a waypoint', async () => {
+    const opened = vi.fn()
+    const opts = stagingOptions(opened)
+    const tour = useOnboardingTour(opts)
+    tour.startTour(0)
+    tour.finish()
+    await flush()
+    expect(opened).not.toHaveBeenCalled()
+    expect(tour.isStaging.value).toBe(false)
+  })
+
+  it('should not let a finished run keep staging after the tour is restarted', async () => {
+    const opened = vi.fn()
+    const tour = useOnboardingTour(stagingOptions(opened))
+    tour.startTour(0)
+    tour.finish()
+    tour.startTour(0)
+    await flush()
+    expect(opened).toHaveBeenCalledTimes(1)
+  })
+
+  it('should fire onDismissed on an early finish but not on a route-leave stop', async () => {
+    const onDismissed = vi.fn()
+    const tour = useOnboardingTour(makeOptions({ onDismissed }))
+    tour.startTour(0)
+    await flush()
+    tour.stop()
+    expect(onDismissed).not.toHaveBeenCalled()
+    tour.startTour(0)
+    await flush()
+    tour.finish()
+    expect(onDismissed).toHaveBeenCalledOnce()
+  })
+})

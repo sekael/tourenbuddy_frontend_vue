@@ -63,7 +63,13 @@ function handleClick(event: MouseEvent) {
   cursor: pointer;
 }
 
-.chip:hover {
+@media (hover: hover) {
+  .chip:hover {
+    background-color: var(--color-surface-variant);
+  }
+}
+
+.chip:active {
   background-color: var(--color-surface-variant);
 }
 

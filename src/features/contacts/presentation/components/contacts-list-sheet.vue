@@ -854,7 +854,13 @@ function onFormPhoneInput(phone: string) {
   transition: background-color var(--motion-duration-short) var(--motion-ease-standard);
 }
 
-.contact-row:hover {
+@media (hover: hover) {
+  .contact-row:hover {
+    background-color: var(--color-surface-variant);
+  }
+}
+
+.contact-row:active {
   background-color: var(--color-surface-variant);
 }
 

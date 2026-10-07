@@ -105,7 +105,13 @@ const subtitle = computed(() => [dateLabel.value, partnerSubtitle.value].filter(
   transition: background-color var(--motion-duration-short) var(--motion-ease-standard);
 }
 
-.tour-row:hover {
+@media (hover: hover) {
+  .tour-row:hover {
+    background-color: var(--color-surface-variant);
+  }
+}
+
+.tour-row:active {
   background-color: var(--color-surface-variant);
 }
 

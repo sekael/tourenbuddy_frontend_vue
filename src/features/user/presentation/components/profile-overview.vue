@@ -174,8 +174,15 @@ onMounted(() => {
     transform var(--motion-duration-short) var(--motion-ease-spring);
 }
 
-.identity:hover,
-.row--nav:hover {
+@media (hover: hover) {
+  .identity:hover,
+  .row--nav:hover {
+    background-color: var(--color-secondary-container);
+  }
+}
+
+.identity:active,
+.row--nav:active {
   background-color: var(--color-secondary-container);
 }
 

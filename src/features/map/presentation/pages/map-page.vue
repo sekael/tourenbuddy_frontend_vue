@@ -12,6 +12,7 @@ import DialogWindow from '@/core/components/dialog-window.vue'
 import FeedbackSheet from '@/core/components/feedback-sheet.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useScrollLock } from '@/core/composables/use-scroll-lock'
+import { sheetInset } from '@/core/composables/use-sheet-inset'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { spanDayKeys } from '@/features/calendar/domain/calendar-dates'
 import ContactsListSheet from '@/features/contacts/presentation/components/contacts-list-sheet.vue'
@@ -26,6 +27,7 @@ import OfflineRegionOutline from '@/features/map/presentation/components/offline
 import TourActionBar from '@/features/map/presentation/components/tour-action-bar.vue'
 import TourenbuddyMap from '@/features/map/presentation/components/tourenbuddy-map.vue'
 import { computeBarState } from '@/features/map/presentation/composables/compute-bar-state'
+import { frameTour } from '@/features/map/presentation/composables/frame-tour'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { notifyTourInterest } from '@/features/notifications/data/notify-dispatch'
 import { useNotificationsStore } from '@/features/notifications/presentation/stores/notifications-store'
@@ -293,12 +295,25 @@ async function stageTourSurface(surface: TourSurface, ctx: StageContext) {
   await nextTick()
 }
 
+// The overlay open when the tour started; staging closes it, an early quit
+// reopens it. Only overlays that need no extra state (a selected tour, a drawn
+// region, a creation draft) can be reopened as they were.
+const RESTORABLE_ORIGINS = new Set<OverlayName>(['feedback', 'profile', 'contacts', 'friend-requests', 'tours', 'offline-manage'])
+let tourOrigin: OverlayName | null = null
+
 const onboardingTour = useOnboardingTour({
   steps: ONBOARDING_STEPS,
   stage: stageTourSurface,
   cleanup: () => {
     closeOverlay()
     mapOverlayRef.value?.closeMenu()
+  },
+  // Quit early: back to where the tour was started from (e.g. the profile sheet
+  // for "Show app tour"), not a bare map.
+  onDismissed: () => {
+    if (tourOrigin && RESTORABLE_ORIGINS.has(tourOrigin))
+      openOverlay(tourOrigin)
+    tourOrigin = null
   },
   // Ran to completion (not an early dismissal): hand off to the calendar route.
   // The calendar's own gate decides whether the calendar tour actually starts.
@@ -323,6 +338,12 @@ const {
   currentTitle: tourTitle,
   showWelcome: tourWelcome,
 } = onboardingTour
+
+// Sync: captured as the tour starts, before its first stage closes the overlay.
+watch(tourRunning, (running) => {
+  if (running)
+    tourOrigin = activeOverlay.value
+}, { flush: 'sync' })
 const tourTotal = onboardingTour.totalSteps
 const showCalendarFeatureNotice = ref(false)
 
@@ -475,6 +496,9 @@ onMounted(async () => {
   }
 })
 
+// ponytail: mirrors `.side-drawer { width }` — measure it if the drawer ever resizes.
+const SIDE_DRAWER_WIDTH = 400
+
 async function flyToSelectedTour() {
   if (!selectedTour.value)
     return
@@ -486,15 +510,14 @@ async function flyToSelectedTour() {
     return
   }
   pendingFlyTo.value = false
-  const padding = isDesktop.value
-    ? { top: 0, right: 400, bottom: 0, left: 0 }
-    : { top: 0, right: 0, bottom: sheetContainerRef.value?.offsetHeight ?? 0, left: 0 }
-  mapRef.value?.map?.flyTo({
-    center: [selectedTour.value.goal.lng, selectedTour.value.goal.lat],
-    zoom: 12,
-    duration: 1000,
-    padding,
-  })
+  // Mobile: let the sheet fit its content first (its ResizeObserver runs before the
+  // next paint), so the camera frames against the height it will rest at.
+  if (!isDesktop.value)
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+  const map = mapInstance.value
+  if (!map || !selectedTour.value)
+    return
+  frameTour(map, selectedTour.value, isDesktop.value ? { right: SIDE_DRAWER_WIDTH } : { bottom: sheetInset.value })
 }
 
 watch(sheetContainerRef, async (el) => {
@@ -875,7 +898,7 @@ function handleDialogClose() {
          On desktop, the container uses display:contents so fixed-position dialogs
          position themselves independently and animate via their own CSS. -->
     <Transition :name="sheetTransition" mode="out-in">
-      <div v-if="selectedTour && activeOverlay === 'tour'" key="tour" ref="sheetContainerRef" class="sheet-container">
+      <div v-if="selectedTour && activeOverlay === 'tour'" key="tour" ref="sheetContainerRef" class="sheet-host">
         <TourInfoSheet
           :tour="selectedTour" :edit-picked-point="editPickedPoint" :show-back="tourDetailOrigin !== null"
           :active-pick-type="isPickingForEdit ? pendingPickType : null" @close="closeOverlay" @back="handleTourInfoBack"
@@ -885,38 +908,38 @@ function handleDialogClose() {
           @start-point-change="handleStartPointChange" @end-point-change="handleEndPointChange"
         />
       </div>
-      <div v-else-if="showFeedbackSheet" key="feedback" class="sheet-container">
+      <div v-else-if="showFeedbackSheet" key="feedback" class="sheet-host">
         <FeedbackSheet @close="closeOverlay" />
       </div>
-      <div v-else-if="showProfileSheet" key="profile" class="sheet-container">
+      <div v-else-if="showProfileSheet" key="profile" class="sheet-host">
         <UserProfileSheet @close="closeOverlay" />
       </div>
-      <div v-else-if="showContactDialog" key="contacts" class="sheet-container">
+      <div v-else-if="showContactDialog" key="contacts" class="sheet-host">
         <ContactsListSheet
           :initial-contact-id="editContactId" @close="handleContactsClose"
           @open-friend-requests="handleOpenFriendRequests"
         />
       </div>
-      <div v-else-if="showFriendRequests" key="friend-requests" class="sheet-container">
+      <div v-else-if="showFriendRequests" key="friend-requests" class="sheet-host">
         <FriendRequestsSheet @close="closeOverlay" @back="openOverlay('contacts')" />
       </div>
-      <div v-else-if="showToursList" key="tours" class="sheet-container">
+      <div v-else-if="showToursList" key="tours" class="sheet-host">
         <TourListSheet
           @close="closeOverlay" @select-tour="handleTourSelectedFromList"
           @add-tour="handleListSheetAddTour"
         />
       </div>
-      <div v-else-if="activeOverlay === 'offline-manage'" key="offline-manage" class="sheet-container">
+      <div v-else-if="activeOverlay === 'offline-manage'" key="offline-manage" class="sheet-host">
         <OfflineManageSheet
           @close="closeOverlay" @start-draw="handleStartDrawRegion" @download-whole="handleDownloadWhole"
         />
       </div>
-      <div v-else-if="activeOverlay === 'offline-download' && offlineBbox" key="offline-download" class="sheet-container">
+      <div v-else-if="activeOverlay === 'offline-download' && offlineBbox" key="offline-download" class="sheet-host">
         <OfflineDownloadSheet
           :bbox="offlineBbox" @close="handleOfflineDownloadDone" @done="handleOfflineDownloadDone"
         />
       </div>
-      <div v-else-if="showTourCreationDialog" key="tour-creation" class="sheet-container">
+      <div v-else-if="showTourCreationDialog" key="tour-creation" class="sheet-host">
         <TourCreationDialog
           :initial-elevation="dialogInitialElevation" :initial-name="dialogInitialName"
           :initial-start-point="dialogInitialStartPoint" :initial-end-point="dialogInitialEndPoint"
@@ -957,46 +980,12 @@ function handleDialogClose() {
   touch-action: none;
 }
 
-.sheet-container {
-  /* fixed (not absolute) so sheets anchor to the visual viewport bottom in
-     mobile browsers — sits above Android system nav and Brave bottom chrome,
-     not behind it where page-root 100lvh extends. */
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 50;
-  display: flex;
-  justify-content: center;
-  /* Allow clicks to pass through transparent areas around the sheet so FABs
-     remain interactive even when an overlay is open */
-  pointer-events: none;
-}
-
 .calendar-feature-notice {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
   color: var(--color-on-surface-variant);
   line-height: 1.5;
-}
-
-/* On desktop, make the container a layout no-op so fixed-position dialogs and
-   drawers position themselves relative to the viewport independently */
-@media (min-width: 600px) {
-  .sheet-container {
-    display: contents;
-  }
-}
-
-.sheet-enter-active,
-.sheet-leave-active {
-  transition: transform var(--motion-duration-long) var(--motion-ease-emphasized);
-}
-
-.sheet-enter-from,
-.sheet-leave-to {
-  transform: translateY(100%);
 }
 
 /* MapLibre's attribution links differ from the surrounding text by color alone
@@ -1034,16 +1023,6 @@ function handleDialogClose() {
   .sheet-swap-leave-to {
     transform: none;
     opacity: 1;
-  }
-
-  .sheet-enter-active,
-  .sheet-leave-active {
-    transition: none;
-  }
-
-  .sheet-enter-from,
-  .sheet-leave-to {
-    transform: none;
   }
 }
 </style>

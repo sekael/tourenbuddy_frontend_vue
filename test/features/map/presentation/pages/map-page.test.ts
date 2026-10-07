@@ -68,13 +68,20 @@ const STUB_TOUR = {
   createdAt: new Date(),
 }
 
+// Speed-dial controls the page drives (e.g. the guided tour's staging).
+const overlayMenu = { openMenu: vi.fn(), closeMenu: vi.fn(), openBaseMap: vi.fn() }
+
 function mountMapPage(initialState = {}, stubOverrides: Record<string, unknown> = {}) {
   return mount(MapPage, {
     global: {
       plugins: [createTestingPinia({ createSpy: vi.fn, stubActions: true, initialState })],
       stubs: {
         TourenbuddyMap: TourenbuddyMapStub,
-        MapActionOverlay: { template: '<div />' },
+        MapActionOverlay: {
+          template: '<div />',
+          expose: ['openMenu', 'closeMenu', 'openBaseMap'],
+          setup: () => overlayMenu,
+        },
         LocationPicker: { template: '<div />' },
         TourInfoSheet: TourInfoSheetStub,
         FeedbackSheet: FeedbackSheetStub,
@@ -317,6 +324,21 @@ describe('mapPage', () => {
       expect(wrapper.vm.showCalendarFeatureNotice).toBe(false)
       expect(userProfileStore.dismissCalendarFeatureNotice).toHaveBeenCalledTimes(1)
       expect(userProfileStore.dismissCalendarTour).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('guided tour quit early', () => {
+    it('should return to the overlay the tour was started from, without the menu', async () => {
+      const wrapper = mountMapPage()
+      wrapper.vm.activeOverlay = 'profile'
+      await wrapper.vm.$nextTick()
+
+      wrapper.vm.onboardingTour.startTour(0)
+      wrapper.vm.onboardingTour.finish()
+      await new Promise(r => setTimeout(r, 50))
+
+      expect(wrapper.vm.activeOverlay).toBe('profile')
+      expect(overlayMenu.openMenu).not.toHaveBeenCalled()
     })
   })
 

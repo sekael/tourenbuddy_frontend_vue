@@ -12,6 +12,8 @@ const mockSnackbarShow = vi.fn()
 vi.mock('@/core/composables/use-snackbar', () => ({
   useSnackbar: () => ({ show: mockSnackbarShow }),
 }))
+// Mobile: the sheet's stacked tab panels only apply below the desktop breakpoint.
+vi.mock('@/core/composables/use-is-desktop', () => ({ useIsDesktop: () => false }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (k: string) => k }) }))
 vi.mock('@/core/logging/use-logger', () => ({
   useLogger: () => ({ error: vi.fn(), info: vi.fn(), warn: vi.fn() }),
@@ -253,5 +255,21 @@ describe('friendRequestsSheet (edges only)', () => {
         [{ value: PHONE, isPrimary: true }],
       )
     })
+  })
+})
+
+describe('friendRequestsSheet — tab switch on mobile', () => {
+  it('should keep both panels in one grid cell so switching tabs never resizes the sheet', async () => {
+    const { wrapper } = mountSheet()
+    const panels = () => wrapper.findAll('.tab-panel')
+    expect(wrapper.find('.tab-panels--stacked').exists()).toBe(true)
+    expect(panels()).toHaveLength(2)
+    expect(panels()[1]!.attributes('inert')).toBeDefined()
+
+    await wrapper.findAll('[role="tab"]')[1]!.trigger('click')
+    expect(panels()).toHaveLength(2)
+    expect(panels()[0]!.classes()).toContain('tab-panel--hidden')
+    expect(panels()[0]!.attributes('inert')).toBeDefined()
+    expect(panels()[1]!.attributes('inert')).toBeUndefined()
   })
 })

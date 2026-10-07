@@ -25,7 +25,7 @@ const emit = defineEmits<{ dismiss: [] }>()
 <style scoped>
 .snackbar {
   position: fixed;
-  bottom: calc(var(--spacing-xl) + var(--safe-bottom));
+  bottom: var(--float-bottom);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -54,7 +54,13 @@ const emit = defineEmits<{ dismiss: [] }>()
   opacity: 0.8;
 }
 
-.dismiss-btn:hover {
+@media (hover: hover) {
+  .dismiss-btn:hover {
+    opacity: 1;
+  }
+}
+
+.dismiss-btn:active {
   opacity: 1;
 }
 

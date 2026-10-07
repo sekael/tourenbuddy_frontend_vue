@@ -35,7 +35,13 @@ const emit = defineEmits<{ click: [] }>()
     transform var(--motion-duration-short) var(--motion-ease-spring);
 }
 
-.ext-fab:hover:not(:disabled) {
+@media (hover: hover) {
+  .ext-fab:hover:not(:disabled) {
+    background-color: var(--color-primary-dark);
+  }
+}
+
+.ext-fab:active:not(:disabled) {
   background-color: var(--color-primary-dark);
 }
 

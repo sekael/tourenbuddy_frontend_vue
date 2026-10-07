@@ -51,8 +51,17 @@ defineEmits<{ toggle: [] }>()
     transform var(--motion-duration-short) var(--motion-ease-spring);
 }
 
-.fab:hover,
 .fab.open {
+  background-color: var(--color-fab-glass-strong);
+}
+
+@media (hover: hover) {
+  .fab:hover {
+    background-color: var(--color-fab-glass-strong);
+  }
+}
+
+.fab:active {
   background-color: var(--color-fab-glass-strong);
 }
 

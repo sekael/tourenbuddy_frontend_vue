@@ -205,6 +205,7 @@
       "verifyBtn": "Verify",
       "verifyError": "Invalid or expired code. Please try again.",
       "resendBtn": "Resend code",
+      "resendCountdown": "Resend in {seconds}s",
       "resendSuccess": "Code resent! Check your email.",
       "resendError": "Failed to resend code. Please try again.",
       "backBtn": "Back"
@@ -545,7 +546,9 @@
       "iconTooltipNotes": "Notes",
       "iconTooltipGpxTrack": "GPX track",
       "iconTooltipPartners": "Partners",
-      "downloadGpxBtn": "Download GPX"
+      "downloadGpxBtn": "Download GPX",
+      "sectionRoute": "Route",
+      "sectionDetails": "Details"
     },
     "filters": {
       "partnerLabel": "Partner",

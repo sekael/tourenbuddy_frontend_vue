@@ -1238,7 +1238,14 @@ defineExpose({ cancel: handleCancel, submitBlocked })
   min-height: var(--chip-min-height);
 }
 
-.type-chip:hover {
+@media (hover: hover) {
+  .type-chip:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+}
+
+.type-chip:active {
   border-color: var(--color-primary);
   color: var(--color-primary);
 }
@@ -1285,7 +1292,14 @@ defineExpose({ cancel: handleCancel, submitBlocked })
   min-height: var(--chip-min-height);
 }
 
-.season-chip:hover {
+@media (hover: hover) {
+  .season-chip:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+}
+
+.season-chip:active {
   border-color: var(--color-primary);
   color: var(--color-primary);
 }

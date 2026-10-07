@@ -98,7 +98,7 @@ const isDesktop = useIsDesktop()
   background-color: var(--color-background);
   box-shadow: var(--shadow-lg);
   animation: slide-in-right var(--motion-duration-long) var(--motion-ease-emphasized);
-  /* Restore pointer events — parent sheet-container sets pointer-events: none */
+  /* Restore pointer events — parent sheet-host sets pointer-events: none */
   pointer-events: auto;
   transition:
     max-height var(--motion-duration-medium) var(--motion-ease-emphasized),
@@ -147,9 +147,11 @@ const isDesktop = useIsDesktop()
 }
 
 .drawer-content {
-  /* Published so slotted content can bleed a full-width divider to the drawer edges. */
+  /* Published so slotted content can bleed a full-width divider to the drawer edges.
+     Equal on both sides (with a both-edges gutter below) so content sits centred
+     under the header and lines up with the footer's right-aligned actions. */
   --surface-pad-left: var(--spacing-xl);
-  --surface-pad-right: var(--spacing-xs);
+  --surface-pad-right: var(--spacing-xl);
 
   overflow-y: auto;
   /* Explicit: an unset overflow-x computes to `auto` alongside overflow-y here
@@ -163,7 +165,9 @@ const isDesktop = useIsDesktop()
   padding: var(--spacing-lg) var(--surface-pad-right) var(--spacing-lg) var(--surface-pad-left);
   flex: 1;
   min-height: 0;
-  scrollbar-gutter: stable;
+  /* Both edges: a classic (non-overlay) scrollbar reserves the same space on the
+     left, so it cannot push the content off centre. */
+  scrollbar-gutter: stable both-edges;
   scrollbar-width: thin;
   scrollbar-color: var(--color-outline-variant) transparent;
   opacity: 1;

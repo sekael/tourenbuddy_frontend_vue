@@ -339,7 +339,6 @@ defineExpose({ submit, validateAndCollect })
 
 .input-sm {
   padding: var(--spacing-xs) var(--spacing-sm);
-  font-size: var(--font-size-sm);
 }
 
 .phones-section {
@@ -381,7 +380,13 @@ defineExpose({ submit, validateAndCollect })
   color: var(--color-primary);
 }
 
-.primary-star:hover {
+@media (hover: hover) {
+  .primary-star:hover {
+    color: var(--color-primary);
+  }
+}
+
+.primary-star:active {
   color: var(--color-primary);
 }
 

@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { useWindowSize } from '@vueuse/core'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { fadeOut, useExitAnimation } from '@/core/composables/use-exit-animation'
+import { useSheetInset } from '@/core/composables/use-sheet-inset'
 import BaseIconButton from './base-icon-button.vue'
 
 const props = defineProps<{
@@ -11,11 +14,20 @@ const props = defineProps<{
   /** When set, shows a back arrow button in the header. */
   showBack?: boolean
   /**
-   * Size to min(content height, max-height) and keep refitting on resize,
-   * instead of snapping to peek/default/expanded. For confirm-style sheets
-   * whose whole content must be visible without dragging the sheet up.
+   * Sized by the content, gliding whenever it changes — the mobile twin of
+   * `DialogWindow`. Opens at the content height (capped at 70% of the viewport).
+   * Only if the content needs more than that does the sheet get a drag handle,
+   * to expand up to the full content (capped at 90%) or drop to peek; content
+   * that fits shows no handle, as there is nothing to reveal.
    */
   fitContent?: boolean
+  /**
+   * With `fitContent`: always draggable, even when the content fits. Snaps to
+   * peek, the opening height (content, capped at 40%) and the full content
+   * (capped at 70%). For browse surfaces the user resizes to see more or less of
+   * the map — the tour list and tour detail.
+   */
+  resizable?: boolean
 }>()
 
 const emit = defineEmits<{ close: [], back: [] }>()
@@ -28,30 +40,56 @@ const titleId = 'bottom-sheet-title'
 type Snap = 'peek' | 'default' | 'expanded'
 const SNAP_ORDER: Snap[] = ['peek', 'default', 'expanded']
 
+// Reactive visible-viewport height: snaps follow rotation and URL-bar changes.
+const { height: viewportHeight } = useWindowSize()
 const peekHeight = ref(64)
-const defaultHeight = computed(() => Math.round(window.innerHeight * 0.4))
-const expandedHeight = computed(() => Math.round(window.innerHeight * 0.7))
+const defaultHeight = computed(() => Math.round(viewportHeight.value * 0.4))
+const expandedHeight = computed(() => Math.round(viewportHeight.value * 0.7))
+/** Fit-content ceiling: room above stays for the status bar and a glimpse of the page. */
+const fullHeight = computed(() => Math.round(viewportHeight.value * 0.9))
+/** Natural height (chrome + content), uncapped; 0 until measured. */
+const naturalHeight = ref(0)
+/** The handle's share of `naturalHeight` (0 while it is not rendered). */
+const handleShare = ref(0)
+
+// A fit-content sheet is only resizable when its content does not fit at the
+// opening height. Decided without the handle's own height, so showing or hiding
+// the handle can never flip the decision back.
+const draggable = computed(() => !props.fitContent
+  || props.resizable
+  || naturalHeight.value === 0
+  || naturalHeight.value - handleShare.value > expandedHeight.value)
+
+const snaps = computed<Snap[]>(() => draggable.value ? SNAP_ORDER : ['default'])
 
 function snapHeightPx(snap: Snap): number {
   if (snap === 'peek')
     return peekHeight.value
-  if (snap === 'default')
-    return defaultHeight.value
-  return expandedHeight.value
+  if (!props.fitContent)
+    return snap === 'expanded' ? expandedHeight.value : defaultHeight.value
+  // Unmeasurable (e.g. not laid out yet): fall back to the opening cap.
+  const natural = naturalHeight.value || expandedHeight.value
+  const [opening, full] = props.resizable
+    ? [defaultHeight.value, expandedHeight.value]
+    : [expandedHeight.value, fullHeight.value]
+  return Math.min(natural, snap === 'expanded' ? full : opening)
 }
 
 // ── Internal state ───────────────────────────────────────────────────────────
 // The bottom sheet is view-mode only (data entry goes to a full-screen page),
 // so there's no keyboard-vs-sheet sizing: the applied height is just the resting
 // height the snap/fit/drag logic writes.
-const restingHeight = ref(0)
-const currentHeight = computed(() => restingHeight.value)
+const currentHeight = ref(0)
 const isDragging = ref(false)
-const lastSnap = ref<Snap>('default')
+// Height changes glide, except the very first size (the sheet is still sliding in).
+const glide = ref(false)
+const lastSnap = ref<Snap>(props.fitContent ? 'default' : 'expanded')
 
 const sheetRef = ref<HTMLElement | null>(null)
 const headerRef = ref<HTMLElement | null>(null)
 const handleRef = ref<HTMLElement | null>(null)
+const contentRef = ref<HTMLElement | null>(null)
+const bodyRef = ref<HTMLElement | null>(null)
 
 function updatePeekHeight() {
   const headerEl = headerRef.value
@@ -62,42 +100,104 @@ function updatePeekHeight() {
 
 function applySnap(snap: Snap) {
   lastSnap.value = snap
-  // Set the resting base; `currentHeight` maps it to the applied height.
-  // CSS transition on `height` animates the change.
-  restingHeight.value = snapHeightPx(snap)
+  currentHeight.value = snapHeightPx(snap)
 }
 
+// ── Natural height ───────────────────────────────────────────────────────────
+// Measured arithmetically, without resetting the inline height (so it can glide):
+// everything that is not the scroll box (handle, header, footer, padding) plus what
+// the content needs. `.content-body` keeps its natural height inside the scroll
+// box, so its size is the content's real height however tall the sheet is.
+// Snap caps use the *visible* viewport (`useWindowSize`); CSS `vh` is the large
+// viewport and would let the sheet overshoot on device.
+function measureNaturalHeight() {
+  const sheet = sheetRef.value
+  const content = contentRef.value
+  if (!sheet || !content)
+    return 0
+  const px = (v: string) => Number.parseFloat(v) || 0
+  const sheetStyle = getComputedStyle(sheet)
+  const contentStyle = getComputedStyle(content)
+  // Summed per element rather than `sheet − content`: at the first fit the sheet is
+  // still 0px tall and its header overflows, so it would not count.
+  let natural = px(sheetStyle.paddingTop) + px(sheetStyle.paddingBottom)
+    + px(contentStyle.marginTop) + px(contentStyle.paddingTop) + px(contentStyle.paddingBottom)
+    + (bodyRef.value?.offsetHeight ?? 0)
+  for (const child of sheet.children) {
+    if (child !== content)
+      natural += (child as HTMLElement).offsetHeight
+  }
+  handleShare.value = handleRef.value?.offsetHeight ?? 0
+  return Math.max(0, Math.ceil(natural))
+}
+
+/** Re-fit to the content. Leaves a sheet the user dragged to peek alone. */
+function refit() {
+  if (props.collapsed || isDragging.value)
+    return
+  naturalHeight.value = measureNaturalHeight()
+  if (props.fitContent) {
+    // Content shrank so the handle goes away: back to the one resting height.
+    applySnap(snaps.value.includes(lastSnap.value) ? lastSnap.value : 'default')
+    return
+  }
+  if (lastSnap.value === 'peek')
+    return
+  // Non-fit sheets open at their natural height (capped), then snap normally.
+  const opening = Math.min(naturalHeight.value || expandedHeight.value, expandedHeight.value)
+  currentHeight.value = opening
+  lastSnap.value = nearestSnap(opening, 'up')
+}
+
+// The handle comes and goes with `draggable`; peek includes it.
+watch(draggable, async () => {
+  await nextTick()
+  updatePeekHeight()
+})
+
 // ── Drag logic ───────────────────────────────────────────────────────────────
+/** px/ms — a release faster than this moves one snap in the flick direction. */
+const FLICK_VELOCITY = 0.5
 let startY = 0
 let startHeight = 0
-let lastMoveY = 0
+let prevMove = { y: 0, t: 0 }
+let lastMove = { y: 0, t: 0 }
 let activeDragPointerId: number | null = null
 
+let captureEl: HTMLElement | null = null
+
+/** Rubber-band past the top snap: the sheet follows the finger with growing resistance. */
+const OVERSTRETCH = 48
+function resist(px: number) {
+  return OVERSTRETCH * (1 - 1 / (1 + px / OVERSTRETCH))
+}
+
 function onDragStart(e: PointerEvent) {
-  // Inert while collapsed.
-  if (props.collapsed)
+  // Inert while collapsed or when there is nothing to resize. The header drags
+  // too (a bigger target than the bar), except from its buttons.
+  if (props.collapsed || !draggable.value || (e.target as Element).closest('button, a, input'))
     return
   e.preventDefault()
   isDragging.value = true
   startY = e.clientY
   startHeight = currentHeight.value
-  lastMoveY = e.clientY
+  prevMove = lastMove = { y: e.clientY, t: e.timeStamp }
   activeDragPointerId = e.pointerId
-  ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+  captureEl = e.currentTarget as HTMLElement
+  captureEl.setPointerCapture(e.pointerId)
 }
 
 function onDragMove(e: PointerEvent) {
   if (!isDragging.value)
     return
   e.preventDefault()
-  const delta = e.clientY - startY
-  const clamped = Math.round(
-    Math.max(peekHeight.value, Math.min(expandedHeight.value, startHeight - delta)),
-  )
-  // Drag is gated while the keyboard is open, so writing the resting base here
-  // updates the applied height live (transition is suppressed during the drag).
-  restingHeight.value = clamped
-  lastMoveY = e.clientY
+  const ceiling = snapHeightPx('expanded')
+  const wanted = startHeight - (e.clientY - startY)
+  currentHeight.value = Math.round(wanted > ceiling
+    ? ceiling + resist(wanted - ceiling)
+    : Math.max(peekHeight.value, wanted))
+  prevMove = lastMove
+  lastMove = { y: e.clientY, t: e.timeStamp }
 }
 
 function onDragEnd(e: PointerEvent) {
@@ -106,25 +206,28 @@ function onDragEnd(e: PointerEvent) {
   isDragging.value = false
   activeDragPointerId = null
 
-  const totalDelta = Math.abs(e.clientY - startY)
-  if (totalDelta < 4) {
+  if (Math.abs(e.clientY - startY) < 4) {
     // tap — restore snap without change
-    restingHeight.value = snapHeightPx(lastSnap.value)
+    applySnap(lastSnap.value)
     return
   }
 
-  const dragDirection = lastMoveY < startY ? 'up' : 'down'
-  const snap = nearestSnap(currentHeight.value, dragDirection)
-  applySnap(snap)
+  // Velocity of the last movement; stale if the finger rested before lifting.
+  const dt = lastMove.t - prevMove.t
+  const velocity = dt > 0 && e.timeStamp - lastMove.t < 100 ? (lastMove.y - prevMove.y) / dt : 0
+  const direction = lastMove.y < startY ? 'up' : 'down'
+  applySnap(Math.abs(velocity) > FLICK_VELOCITY
+    ? nextSnap(currentHeight.value, velocity < 0 ? 'up' : 'down')
+    : nearestSnap(currentHeight.value, direction))
 }
 
 function cancelDrag() {
   if (!isDragging.value)
     return
   isDragging.value = false
-  if (activeDragPointerId !== null && handleRef.value) {
+  if (activeDragPointerId !== null && captureEl) {
     try {
-      handleRef.value.releasePointerCapture(activeDragPointerId)
+      captureEl.releasePointerCapture(activeDragPointerId)
     }
     catch {
       // pointer may already be released
@@ -135,13 +238,11 @@ function cancelDrag() {
 }
 
 function nearestSnap(heightPx: number, bias: 'up' | 'down'): Snap {
-  const snaps: Snap[] = ['peek', 'default', 'expanded']
-  let best: Snap = snaps[0]
+  let best: Snap = snaps.value[0]!
   let bestDist = Infinity
 
-  for (const snap of snaps) {
-    const h = snapHeightPx(snap)
-    const dist = Math.abs(h - heightPx)
+  for (const snap of snaps.value) {
+    const dist = Math.abs(snapHeightPx(snap) - heightPx)
     if (dist < bestDist) {
       bestDist = dist
       best = snap
@@ -159,115 +260,97 @@ function nearestSnap(heightPx: number, bias: 'up' | 'down'): Snap {
   return best
 }
 
-// ── Keyboard a11y ────────────────────────────────────────────────────────────
-const snapIndex = computed(() => SNAP_ORDER.indexOf(lastSnap.value))
-
-function onHandleKeydown(e: KeyboardEvent) {
-  const idx = SNAP_ORDER.indexOf(lastSnap.value)
-  if (e.key === 'ArrowUp') {
-    e.preventDefault()
-    applySnap(SNAP_ORDER[Math.min(idx + 1, SNAP_ORDER.length - 1)])
-  }
-  else if (e.key === 'ArrowDown') {
-    e.preventDefault()
-    applySnap(SNAP_ORDER[Math.max(idx - 1, 0)])
-  }
-  else if (e.key === 'Home') {
-    e.preventDefault()
-    applySnap('expanded')
-  }
-  else if (e.key === 'End') {
-    e.preventDefault()
-    applySnap('peek')
-  }
+/** The first snap beyond `heightPx` in the flick direction (or the last one). */
+function nextSnap(heightPx: number, direction: 'up' | 'down'): Snap {
+  const ordered = direction === 'up' ? snaps.value : [...snaps.value].reverse()
+  return ordered.find(snap => direction === 'up'
+    ? snapHeightPx(snap) > heightPx
+    : snapHeightPx(snap) < heightPx) ?? ordered.at(-1)!
 }
 
-// ── Natural height open ──────────────────────────────────────────────────────
-async function openAtNaturalHeight() {
-  isDragging.value = true
-  restingHeight.value = expandedHeight.value
-  await nextTick()
+// ── Keyboard a11y ────────────────────────────────────────────────────────────
+const snapIndex = computed(() => snaps.value.indexOf(lastSnap.value))
 
-  const el = sheetRef.value
-  if (!el) {
-    lastSnap.value = 'expanded'
-    await nextTick()
-    isDragging.value = false
+function onHandleKeydown(e: KeyboardEvent) {
+  const list = snaps.value
+  const idx = list.indexOf(lastSnap.value)
+  const target = ({
+    ArrowUp: list[Math.min(idx + 1, list.length - 1)],
+    ArrowDown: list[Math.max(idx - 1, 0)],
+    Home: 'expanded',
+    End: 'peek',
+  } as Record<string, Snap | undefined>)[e.key]
+  if (!target)
     return
-  }
-
-  // Measure natural content height, then clamp to the expanded ceiling
-  // (innerHeight * 0.7) so the sheet never exceeds 70% of the *visible*
-  // viewport. We can't lean on CSS `max-height: 70vh` for this: `vh` is the
-  // large viewport (full height behind the mobile URL bar), so on-device it's
-  // taller than `innerHeight * 0.7` and the sheet would overshoot. When the
-  // content is taller than the cap, `targetH` lands exactly on the expanded
-  // snap, so it reads as snapped to 70%.
-  el.style.height = 'auto'
-  const measuredH = el.offsetHeight
-  const targetH = measuredH > 0 ? Math.min(measuredH, expandedHeight.value) : expandedHeight.value
-  // Set inline immediately to avoid a flash before Vue's reactive render
-  el.style.height = `${targetH}px`
-
-  restingHeight.value = targetH
-  lastSnap.value = nearestSnap(targetH, 'up')
-  await nextTick()
-  isDragging.value = false
+  e.preventDefault()
+  applySnap(target)
 }
 
 // ── Collapse prop ────────────────────────────────────────────────────────────
 watch(
   () => props.collapsed,
-  (collapsed) => {
+  async (collapsed) => {
     if (collapsed) {
       cancelDrag()
     }
     else {
-      void openAtNaturalHeight()
+      lastSnap.value = props.fitContent ? 'default' : 'expanded'
+      await nextTick()
+      refit()
     }
   },
 )
 
 // ── Viewport resize ──────────────────────────────────────────────────────────
-function onWindowResize() {
+watch(viewportHeight, () => {
   updatePeekHeight()
-  // Re-apply current snap with updated viewport heights — or refit to content.
-  if (props.fitContent)
-    void openAtNaturalHeight()
+  if (props.fitContent || lastSnap.value === 'peek')
+    refit()
   else
-    restingHeight.value = snapHeightPx(lastSnap.value)
-}
+    applySnap(lastSnap.value)
+})
+
+// The map area the sheet covers, for toasts (`--sheet-inset`) and camera framing.
+// The resting height, not the gliding one: a camera move starts before the glide ends.
+const publishInset = useSheetInset()
+watch(currentHeight, (px) => {
+  if (!props.collapsed)
+    publishInset(px)
+})
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
-const headerResizeObserver = ref<ResizeObserver | null>(null)
+let observer: ResizeObserver | undefined
 
 onMounted(() => {
   updatePeekHeight()
 
-  headerResizeObserver.value = new ResizeObserver(() => {
-    updatePeekHeight()
-    if (!isDragging.value) {
+  // Header/handle → peek height; body → content changed (views, tabs, data
+  // loading); sheet → its on-screen height for `--sheet-inset`.
+  observer = new ResizeObserver((entries) => {
+    if (entries.some(entry => entry.target !== sheetRef.value)) {
+      updatePeekHeight()
       if (props.fitContent)
-        void openAtNaturalHeight()
-      else
-        restingHeight.value = snapHeightPx(lastSnap.value)
+        refit()
     }
+    if (sheetRef.value && props.collapsed)
+      publishInset(sheetRef.value.offsetHeight)
   })
-
-  if (headerRef.value)
-    headerResizeObserver.value.observe(headerRef.value)
-  if (handleRef.value)
-    headerResizeObserver.value.observe(handleRef.value)
+  for (const el of [headerRef.value, handleRef.value, bodyRef.value, sheetRef.value]) {
+    if (el)
+      observer.observe(el)
+  }
 
   if (!props.collapsed)
-    void openAtNaturalHeight()
-  window.addEventListener('resize', onWindowResize)
+    refit()
+  requestAnimationFrame(() => requestAnimationFrame(() => (glide.value = true)))
 })
 
 onUnmounted(() => {
-  headerResizeObserver.value?.disconnect()
-  window.removeEventListener('resize', onWindowResize)
+  observer?.disconnect()
 })
+
+// Swapped out by its owner (e.g. for a full-screen page): fade instead of vanishing.
+useExitAnimation(sheetRef, fadeOut)
 
 const sheetStyle = computed(() => {
   if (props.collapsed)
@@ -282,7 +365,8 @@ const sheetStyle = computed(() => {
     class="bottom-sheet"
     :class="{
       'bottom-sheet--collapsed': props.collapsed,
-      'bottom-sheet--dragging': isDragging,
+      'bottom-sheet--still': isDragging || !glide,
+      'bottom-sheet--static': !draggable,
     }"
     :style="sheetStyle"
     role="dialog"
@@ -291,13 +375,13 @@ const sheetStyle = computed(() => {
     :aria-label="!props.title ? (props.ariaLabel ?? t('core.drawer.back')) : undefined"
   >
     <div
-      v-if="!props.collapsed"
+      v-if="!props.collapsed && draggable"
       ref="handleRef"
       class="drag-handle"
       role="separator"
       aria-orientation="horizontal"
       aria-valuemin="0"
-      aria-valuemax="2"
+      :aria-valuemax="snaps.length - 1"
       :aria-valuenow="snapIndex"
       :aria-label="t('core.bottomSheet.resizeHandle')"
       tabindex="0"
@@ -308,7 +392,15 @@ const sheetStyle = computed(() => {
       @keydown="onHandleKeydown"
     />
 
-    <div ref="headerRef" class="header">
+    <div
+      ref="headerRef"
+      class="header"
+      :class="{ 'header--drag': !props.collapsed && draggable }"
+      @pointerdown="onDragStart"
+      @pointermove="onDragMove"
+      @pointerup="onDragEnd"
+      @pointercancel="onDragEnd"
+    >
       <BaseIconButton
         v-if="props.showBack && !props.collapsed"
         name="arrow_back"
@@ -332,8 +424,11 @@ const sheetStyle = computed(() => {
       />
     </div>
 
-    <div v-show="!props.collapsed" class="content">
-      <slot />
+    <div v-show="!props.collapsed" ref="contentRef" class="content">
+      <!-- Natural height (never stretched): measuring it gives the fitted height. -->
+      <div ref="bodyRef" class="content-body">
+        <slot />
+      </div>
     </div>
 
     <div v-if="$slots.footer" v-show="!props.collapsed" class="footer">
@@ -346,10 +441,10 @@ const sheetStyle = computed(() => {
 .bottom-sheet {
   width: 100%;
   max-width: var(--bottom-sheet-max-width, 480px);
-  /* Secondary safety net only — JS clamps the applied height to
-     innerHeight * 0.7. `dvh` (visible viewport) keeps this in step with that
-     clamp; `vh` would be the larger viewport and let the sheet overshoot 70%. */
-  max-height: 70dvh;
+  /* Secondary safety net only — JS clamps the applied height to at most
+     innerHeight * 0.9 (fully expanded fit-content sheet). `dvh` (visible
+     viewport) keeps this in step; `vh` would be the larger viewport. */
+  max-height: 90dvh;
   display: flex;
   flex-direction: column;
   background-color: var(--color-background);
@@ -359,12 +454,17 @@ const sheetStyle = computed(() => {
   /* Compact horizontal padding (md, not xl) so more width goes to content. */
   padding: var(--spacing-sm) var(--spacing-md) 0;
   transition: height var(--motion-duration-medium) var(--motion-ease-emphasized);
-  /* Restore pointer events — parent sheet-container sets pointer-events: none
+  /* Restore pointer events — parent sheet-host sets pointer-events: none
      to allow FAB clicks through transparent areas */
   pointer-events: auto;
 }
 
-.bottom-sheet--dragging {
+.bottom-sheet--static {
+  /* No handle above the header: keep the same breathing room it would give. */
+  padding-top: var(--spacing-md);
+}
+
+.bottom-sheet--still {
   transition: none;
 }
 
@@ -421,6 +521,11 @@ const sheetStyle = computed(() => {
   position: relative;
   z-index: 1;
   background-color: var(--color-background);
+}
+
+/* Drags like the handle: no browser pan may steal the gesture. */
+.header--drag {
+  touch-action: none;
 }
 
 .title {

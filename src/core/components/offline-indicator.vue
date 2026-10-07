@@ -102,7 +102,7 @@ watch(offlineWriteError, (key) => {
 .offline-chip {
   position: fixed;
   left: var(--spacing-md);
-  bottom: calc(var(--spacing-md) + var(--safe-bottom));
+  bottom: var(--float-corner-bottom);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -115,7 +115,7 @@ watch(offlineWriteError, (key) => {
 .offline-snackbar {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--spacing-xl) + var(--safe-bottom));
+  bottom: var(--float-bottom);
   transform: translateX(-50%);
   display: flex;
   align-items: center;

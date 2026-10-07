@@ -284,7 +284,13 @@ const completionOptions = [
   color: var(--chip-selected-color);
 }
 
-.chip:hover:not(.active) {
+@media (hover: hover) {
+  .chip:hover:not(.active) {
+    background-color: var(--color-surface-variant);
+  }
+}
+
+.chip:active:not(.active) {
   background-color: var(--color-surface-variant);
 }
 
@@ -309,7 +315,7 @@ const completionOptions = [
   border: 1.5px solid var(--color-outline-variant);
   border-radius: var(--input-radius);
   padding: var(--spacing-xxs) var(--spacing-sm);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-base);
   color: var(--color-on-surface);
   background: var(--input-bg);
 }
