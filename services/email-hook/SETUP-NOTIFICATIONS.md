@@ -66,8 +66,8 @@ Since change `notification-inbox` the **database** emits every event: each new
 via `pg_net` (after commit, at-most-once, no retry). Clients never call the Worker for
 notifications any more.
 
-| Path            | Caller                     | Auth                                     | Payload                                                                 |
-| --------------- | -------------------------- | ---------------------------------------- | ----------------------------------------------------------------------- |
+| Path            | Caller                     | Auth                                        | Payload                                                                               |
+| --------------- | -------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------- |
 | `/notify/event` | DB trigger (`pg_net`) only | `x-notify-secret` = `NOTIFY_WEBHOOK_SECRET` | the `notifications` row: `{id, recipient_id, type, action, actor_name, tour_name, …}` |
 
 The Worker applies mutes + the email flag and sends push to **every** `push_subscriptions`
