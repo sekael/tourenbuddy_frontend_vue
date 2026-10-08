@@ -35,7 +35,7 @@ notifications(
   id uuid pk default gen_random_uuid(),
   recipient_id uuid not null references auth.users on delete cascade,
   type text not null,            -- notification type (friend_requests | tour_updates | tour_interest | tour_suggestions)
-  action text not null,          -- received | responded | created | updated | deleted | collision | backfill | link_created | link_accepted | link_declined | group_joined | group_evicted | group_member_left | group_dissolved | suggestion_submitted | suggestion_resolved
+  action text not null,          -- received | responded | created | updated | deleted | collision | backfill | link_created | link_declined | group_joined | group_evicted_external | group_dissolved | suggestion_submitted | suggestion_resolved (no link_accepted: group_joined covers it, as the client did)
   actor_id uuid null,            -- no FK: survives actor account deletion
   actor_name text null,          -- snapshot at event time (owner decision)
   tour_id uuid null,             -- no FK: survives tour deletion; client checks existence on open
@@ -82,7 +82,7 @@ Not granted to `authenticated` (`revoke execute … from public, anon, authentic
 | tour deleted | BEFORE DELETE trigger on `tours`, only when `auth.uid() = old.user_id` | row still readable → partner user ids + name; skips account-deletion cascades (no `auth.uid()`) |
 | link request created / accepted / declined | `create_link_request`, `accept_link_request`, `decline_link_request` | RPCs already enforce actor; withdraw emits nothing |
 | group joined | `accept_link_request` | knows pre-existing members |
-| group evicted / member left / dissolved | existing `fn_evict_member_on_tour_change`, `fn_evict_on_friendship_delete`, `fn_dissolve_when_below_two` | cascades happen here; OLD rows give tour names before they vanish; the Worker matrix moves here verbatim |
+| group evicted / dissolved | `fn_evict_member_on_tour_change`, `fn_evict_on_friendship_delete`, tour BEFORE DELETE trigger, via `fn_emit_group_removal` called BEFORE the member rows go | a row trigger on `tour_link_member` would double-count: `fn_dissolve_when_below_two` cascades the last member away mid-statement and an unfriend removes two rows at once; the Worker matrix moves here verbatim |
 | suggestion submitted | `upsert_tour_suggestions` when a *new* batch is created (not on revision) | batch = one call |
 | suggestion resolved | `accept_tour_suggestion(_batch)`, `decline_tour_suggestion` via `fn_resolved_batches` | completion check already exists; auto-declines run through the same path |
 | accepted suggestion → `tour_updates` | `accept_tour_suggestion(_batch)` when an applied field is meaningful, excluding authors (D16) | once per call |

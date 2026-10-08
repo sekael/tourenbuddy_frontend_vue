@@ -699,7 +699,8 @@
       "profile": "Profile",
       "changeBaseMap": "Change base map",
       "feedback": "Feedback",
-      "offlineMap": "Offline maps"
+      "offlineMap": "Offline maps",
+      "inbox": "Inbox"
     },
     "styles": {
       "pickerTooltip": "Change map style",
@@ -784,6 +785,7 @@
     "emailLabel": "Email notifications",
     "emailDescription": "Receive alerts by email",
     "typesLabel": "Alert me about",
+    "typesHint": "Muting stops push and email only — everything still shows up in your inbox.",
     "type": {
       "friend_requests": "Friend requests",
       "tour_updates": "Shared tour changes",
@@ -794,7 +796,7 @@
       "tour_interest": "Notifies when a friend plans the same tour, requests linking a tour, and tours overlap after a new friendship.",
       "tour_suggestions": "Notifies when a tour partner suggests changes to your tour, and when your own suggestions are decided."
     },
-    "allOffDisclaimer": "You won't receive friend request notifications or other important updates. Enable at least one channel to stay informed.",
+    "allOffDisclaimer": "You won't be alerted outside the app. Updates still collect in your inbox.",
     "pushUnavailable": "Not available",
     "installHint": "To enable push notifications, add TourenBuddy to your home screen first.",
     "deniedHint": "Push notifications are blocked. Enable them in your browser or device settings."
@@ -885,7 +887,8 @@
         "basemap": "Switch maps",
         "openCalendar": "Open calendar",
         "offlineMap": "Offline maps",
-        "calendarSync": "Calendar sync"
+        "calendarSync": "Calendar sync",
+        "inbox": "Inbox"
       },
       "nav": {
         "openMenu": "Open menu",
@@ -914,6 +917,10 @@
       "calendarSync": {
         "title": "Sync your calendar",
         "body": "Connect your work or personal calendar and your free days are marked as available automatically. Its contents are never stored."
+      },
+      "inbox": {
+        "title": "Everything in one place",
+        "body": "Friend requests, shared-tour changes and suggestions collect in your inbox — even with push and email off. The badge counts what still needs you."
       }
     }
   },
@@ -986,6 +993,43 @@
       },
       "permanentReason": "This change couldn't be applied and was not saved",
       "transientReason": "The server couldn't be reached — you can try again"
+    }
+  },
+  "inbox": {
+    "title": "Inbox",
+    "empty": "Nothing new yet. Friend requests, shared tours and suggestions show up here.",
+    "loadError": "Couldn't load your inbox.",
+    "markAllRead": "Mark all read",
+    "loadMore": "Load more",
+    "delete": "Delete",
+    "unavailable": "This is no longer available.",
+    "someone": "Someone",
+    "aTour": "a tour",
+    "occurrences": "{count}×",
+    "state": {
+      "unread": "Unread"
+    },
+    "stale": {
+      "answered": "Answered",
+      "resolved": "No longer pending",
+      "tourGone": "Tour deleted"
+    },
+    "entry": {
+      "received": "{actor} sent you a friend request",
+      "responded": "{actor} responded to your friend request",
+      "created": "{actor} shared “{tour}” with you",
+      "updated": "{actor} updated “{tour}”",
+      "deleted": "{actor} removed “{tour}”",
+      "collision": "{actor} planned the same tour as “{tour}”",
+      "backfill": "You and {actor} planned {count} of the same tours",
+      "link_created": "{actor} wants to link “{tour}” with their tour",
+      "link_declined": "{actor} declined your link request for “{tour}”",
+      "group_joined": "{actor} added a tour to your link for “{tour}”",
+      "group_evicted_external": "A tour was removed from the link for “{tour}”",
+      "group_dissolved": "The link for “{tour}” was dissolved",
+      "suggestion_submitted": "{actor} suggested changes to “{tour}”",
+      "suggestion_resolved": "{actor} decided on your suggestions for “{tour}”",
+      "unknown": "New update from {actor}"
     }
   }
 }

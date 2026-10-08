@@ -7,6 +7,7 @@ import { cachedLoad } from '@/core/offline/cached-load'
 import { mutate } from '@/core/offline/mutate'
 import { flushThenRefetch } from '@/core/offline/reconnect'
 import { registerReplay } from '@/core/offline/replay'
+import { isOnline } from '@/core/offline/use-online-status'
 import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { NotificationPreferencesRepositoryImpl } from '../../data/repositories/notification-preferences-repository-impl'
@@ -20,10 +21,12 @@ export const useNotificationsStore = defineStore('notifications', () => {
 
   const prefs = ref<NotificationPreferences | null>(null)
   const pushPermission = ref<NotificationPermission | null>(null)
+  /** Whether THIS browser has push on (permission granted + live subscription). */
+  const pushEnabled = ref(false)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
-  const { subscribe, unsubscribe, ensureSubscription } = useWebPush()
+  const { subscribe, unsubscribe, ensureSubscription, currentSubscription } = useWebPush()
 
   function refreshPermission() {
     if ('Notification' in window)
@@ -36,6 +39,9 @@ export const useNotificationsStore = defineStore('notifications', () => {
       return
 
     refreshPermission()
+    currentSubscription()
+      .then((s) => { pushEnabled.value = s !== null })
+      .catch(err => logger.warn('Failed to read push subscription', err))
     isLoading.value = true
     error.value = null
     try {
@@ -87,40 +93,32 @@ export const useNotificationsStore = defineStore('notifications', () => {
     })
   }
 
+  /**
+   * Push is per device (#148): this toggles THIS browser only and never queues — subscribing
+   * needs the network, so the toggle is disabled offline. Other devices are untouched.
+   */
   async function setPushEnabled(enabled: boolean) {
-    const userId = authStore.currentUser?.id
-    if (!userId || !prefs.value)
+    if (!authStore.currentUser || !isOnline.value)
       return
-
-    const updated: NotificationPreferences = { ...prefs.value, notifPushEnabled: enabled }
-    try {
-      // Online: persist + reconcile the browser/server push subscription (with revert on
-      // denied). Offline: the subscription can't be registered, so only the flag is queued —
-      // the subscription is reconciled on replay, mirroring this body.
-      await persistPrefs(updated, () => reconcilePushOnline(userId, updated))
-    }
-    catch (err) {
-      logger.error('Failed to update push pref', err)
-      throw err
-    }
-  }
-
-  /** Online push write: update the row, subscribe/unsubscribe, revert the row if a subscribe is denied. */
-  async function reconcilePushOnline(userId: string, updated: NotificationPreferences) {
-    await prefsRepository.updatePreferences(userId, updated)
-    prefs.value = updated
-    if (updated.notifPushEnabled) {
-      const ok = await subscribe(userId)
-      if (!ok) {
-        const reverted: NotificationPreferences = { ...updated, notifPushEnabled: false }
-        await prefsRepository.updatePreferences(userId, reverted)
-        prefs.value = reverted
-      }
+    if (enabled) {
+      pushEnabled.value = await subscribe()
       refreshPermission()
     }
     else {
-      await unsubscribe(userId)
+      await unsubscribe()
+      pushEnabled.value = false
     }
+  }
+
+  /**
+   * Sign-out: drop this device's registration while the session can still delete it.
+   * Best-effort and bounded — `serviceWorker.ready` never settles without a registered
+   * worker, and sign-out must not hang on it.
+   */
+  async function removeThisDevice() {
+    // ponytail: fixed 3 s cap; a stuck cleanup leaves one stale row the Worker prunes on 410.
+    await Promise.race([unsubscribe(), new Promise(resolve => setTimeout(resolve, 3000))])
+    pushEnabled.value = false
   }
 
   async function setEmailEnabled(enabled: boolean) {
@@ -165,37 +163,28 @@ export const useNotificationsStore = defineStore('notifications', () => {
   }
 
   /**
-   * Replay a queued notif-prefs write on reconnect (DC3): upsert the flags, then reconcile
-   * the browser/server push subscription to match. No last-write-wins timestamp gate — these
-   * columns are disjoint from the `kind:'profile'` entity yet share the row's `updated_at`, so
-   * a strict gate would false-conflict the user's OWN concurrent profile replay; prefs are
-   * low-stakes so the replayed write (the wall-clock latest) wins unconditionally.
+   * Replay a queued notif-prefs write on reconnect (DC3). No last-write-wins timestamp gate —
+   * these columns are disjoint from the `kind:'profile'` entity yet share the row's
+   * `updated_at`, so a strict gate would false-conflict the user's OWN concurrent profile
+   * replay; prefs are low-stakes so the replayed write (the wall-clock latest) wins.
+   * Entries queued by older builds may carry `notifPushEnabled`; it is ignored (push is
+   * per device now and never queued).
    */
   async function replayNotifPrefs(entry: WriteQueueEntry): Promise<void> {
     const userId = entry.entityId.replace(/^notif:/, '')
-    const desired = entry.payload as NotificationPreferences
-    await prefsRepository.updatePreferences(userId, desired)
-    // Best-effort: prefs are already persisted; a failed (un)subscribe must not fail replay.
-    if (desired.notifPushEnabled) {
-      const ok = await subscribe(userId)
-      if (!ok)
-        await prefsRepository.updatePreferences(userId, { ...desired, notifPushEnabled: false })
-    }
-    else {
-      await unsubscribe(userId)
-    }
+    await prefsRepository.updatePreferences(userId, entry.payload as NotificationPreferences)
   }
   registerReplay('notif-prefs', replayNotifPrefs)
 
   async function ensurePushSubscription() {
-    const userId = authStore.currentUser?.id
-    if (!userId || !prefs.value?.notifPushEnabled)
+    if (!authStore.currentUser)
       return
-    await ensureSubscription(userId)
+    pushEnabled.value = await ensureSubscription()
   }
 
   function clear() {
     prefs.value = null
+    pushEnabled.value = false
     error.value = null
   }
 
@@ -231,10 +220,12 @@ export const useNotificationsStore = defineStore('notifications', () => {
   return {
     prefs,
     pushPermission,
+    pushEnabled,
     isLoading,
     error,
     loadPrefs,
     setPushEnabled,
+    removeThisDevice,
     setEmailEnabled,
     setTypeMuted,
     ensurePushSubscription,

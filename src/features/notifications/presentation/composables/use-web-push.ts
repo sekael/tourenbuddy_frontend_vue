@@ -1,14 +1,42 @@
+import type { PushSubscriptionRepository } from '../../domain/repositories/push-subscription-repository'
 import { env } from '@/core/constants/env'
 import { useLogger } from '@/core/logging/use-logger'
 import { PushSubscriptionRepositoryImpl } from '../../data/repositories/push-subscription-repository-impl'
 
-const repository = new PushSubscriptionRepositoryImpl()
+const defaultRepository = new PushSubscriptionRepositoryImpl()
 
-export function useWebPush() {
+function supported(): boolean {
+  return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
+}
+
+/**
+ * Web Push for THIS browser only (#148). Push is a per-device setting: the source of truth
+ * is the browser's own PushManager subscription, mirrored as one `push_subscriptions` row.
+ * Nothing here touches another device's row.
+ */
+export function useWebPush(repository: PushSubscriptionRepository = defaultRepository) {
   const logger = useLogger('useWebPush')
 
-  async function subscribe(userId: string): Promise<boolean> {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+  /** This browser's live subscription, or null when push is off / unsupported here. */
+  async function currentSubscription(): Promise<PushSubscription | null> {
+    if (!supported() || Notification.permission !== 'granted')
+      return null
+    const registration = await navigator.serviceWorker.ready
+    return registration.pushManager.getSubscription()
+  }
+
+  async function register(subscription: PushSubscription): Promise<void> {
+    const keys = subscription.toJSON().keys ?? {}
+    await repository.register({
+      endpoint: subscription.endpoint,
+      p256dh: keys.p256dh ?? '',
+      auth: keys.auth ?? '',
+      userAgent: navigator.userAgent,
+    })
+  }
+
+  async function subscribe(): Promise<boolean> {
+    if (!supported()) {
       logger.warn('Web Push not supported')
       return false
     }
@@ -27,20 +55,12 @@ export function useWebPush() {
         return false
 
       const registration = await navigator.serviceWorker.ready
-      const existing = await registration.pushManager.getSubscription()
-      const subscription = existing ?? await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidKey),
-      })
-
-      const keys = subscription.toJSON().keys ?? {}
-      await repository.upsertSubscription(userId, {
-        endpoint: subscription.endpoint,
-        p256dh: keys.p256dh ?? '',
-        auth: keys.auth ?? '',
-        userAgent: navigator.userAgent,
-      })
-
+      const subscription = await registration.pushManager.getSubscription()
+        ?? await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidKey),
+        })
+      await register(subscription)
       return true
     }
     catch (err) {
@@ -49,54 +69,52 @@ export function useWebPush() {
     }
   }
 
-  async function unsubscribe(userId: string): Promise<void> {
+  /** Disable push on this device only: drop its row, then the browser subscription. Never throws. */
+  async function unsubscribe(): Promise<void> {
+    let subscription: PushSubscription | null = null
     try {
-      await repository.removeAllForUser(userId)
+      subscription = await currentSubscription()
     }
     catch (err) {
-      logger.error('Failed to remove push subscription rows', err)
+      logger.error('Failed to read browser push subscription', err)
     }
-
-    if (!('serviceWorker' in navigator))
+    if (!subscription)
       return
 
     try {
-      const registration = await navigator.serviceWorker.ready
-      const subscription = await registration.pushManager.getSubscription()
-      if (subscription)
-        await subscription.unsubscribe()
+      await repository.removeSubscription(subscription.endpoint)
+    }
+    catch (err) {
+      logger.error('Failed to remove this device\'s push subscription row', err)
+    }
+    try {
+      await subscription.unsubscribe()
     }
     catch (err) {
       logger.error('Failed to unsubscribe browser from push', err)
     }
   }
 
-  async function ensureSubscription(userId: string): Promise<void> {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window))
-      return
-    if (Notification.permission !== 'granted')
-      return
-
+  /**
+   * On app start: if this browser is subscribed, (re-)register its row. Heals a row the
+   * Worker deleted after a 410 and re-owns an endpoint another account left behind.
+   * Returns whether this device has push on.
+   */
+  async function ensureSubscription(): Promise<boolean> {
     try {
-      const registration = await navigator.serviceWorker.ready
-      const subscription = await registration.pushManager.getSubscription()
+      const subscription = await currentSubscription()
       if (!subscription)
-        return
-
-      const keys = subscription.toJSON().keys ?? {}
-      await repository.upsertSubscription(userId, {
-        endpoint: subscription.endpoint,
-        p256dh: keys.p256dh ?? '',
-        auth: keys.auth ?? '',
-        userAgent: navigator.userAgent,
-      })
+        return false
+      await register(subscription)
+      return true
     }
     catch (err) {
       logger.error('Failed to ensure push subscription', err)
+      return false
     }
   }
 
-  return { subscribe, unsubscribe, ensureSubscription }
+  return { subscribe, unsubscribe, ensureSubscription, currentSubscription }
 }
 
 // `Uint8Array<ArrayBuffer>`, not the default `Uint8Array<ArrayBufferLike>` — only the

@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { isOnline } from '@/core/offline/use-online-status'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
+import { useInboxStore } from '@/features/notifications/presentation/stores/inbox-store'
 
 export type OverlayView = 'closed' | 'menu' | 'base-map'
 
@@ -13,6 +14,7 @@ export function useMapOverlay(emit: {
   (e: 'openContacts'): void
   (e: 'openFeedback'): void
   (e: 'openOfflineMap'): void
+  (e: 'openInbox'): void
 }) {
   const { t } = useI18n({ useScope: 'global' })
 
@@ -20,6 +22,7 @@ export function useMapOverlay(emit: {
   const friendshipsStore = useFriendshipsStore()
   const { isPickingLocation, isDrawingRegion, currentStyleIndex } = storeToRefs(mapStore)
   const { incomingRequests } = storeToRefs(friendshipsStore)
+  const { attentionCount: inboxCount } = storeToRefs(useInboxStore())
 
   const view = ref<OverlayView>('closed')
   const isOpen = computed(() => view.value !== 'closed')
@@ -56,6 +59,8 @@ export function useMapOverlay(emit: {
       badge: pendingIncomingCount.value,
       tooltip: t('map.overlay.contactsTooltip'),
     },
+    // Nearest the trigger: the one entry whose badge the trigger mirrors.
+    { id: 'inbox', icon: 'notifications', label: t('map.overlay.inbox'), badge: inboxCount.value },
   ])
 
   function onMenuSelect(id: string) {
@@ -73,6 +78,10 @@ export function useMapOverlay(emit: {
     else if (id === 'offline-map') {
       view.value = 'closed'
       emit('openOfflineMap')
+    }
+    else if (id === 'inbox') {
+      view.value = 'closed'
+      emit('openInbox')
     }
     else if (id === 'feedback') {
       view.value = 'closed'
@@ -92,6 +101,7 @@ export function useMapOverlay(emit: {
     isDrawingRegion,
     currentStyleIndex,
     pendingIncomingCount,
+    inboxCount,
     menuItems,
     mapStore,
     onMenuSelect,

@@ -26,6 +26,7 @@ import IconDescriptionOutline from '~icons/material-symbols/description-outline'
 import IconDirectionsBike from '~icons/material-symbols/directions-bike'
 import IconDirectionsOutline from '~icons/material-symbols/directions-outline'
 import IconDoNotDisturbOnOutline from '~icons/material-symbols/do-not-disturb-on-outline'
+import IconDoneAll from '~icons/material-symbols/done-all'
 import IconDownhillSkiing from '~icons/material-symbols/downhill-skiing'
 import IconDownload from '~icons/material-symbols/download'
 import IconDownloadForOfflineOutline from '~icons/material-symbols/download-for-offline-outline'
@@ -41,6 +42,7 @@ import IconGroupOutline from '~icons/material-symbols/group-outline'
 import IconHardwareOutline from '~icons/material-symbols/hardware-outline'
 import IconHelpOutline from '~icons/material-symbols/help-outline'
 import IconHiking from '~icons/material-symbols/hiking'
+import IconHistory from '~icons/material-symbols/history'
 import IconHomeOutline from '~icons/material-symbols/home-outline'
 import IconImageOutline from '~icons/material-symbols/image-outline'
 import IconInfoOutline from '~icons/material-symbols/info-outline'
@@ -135,6 +137,7 @@ export const iconRegistry: Record<string, Component> = {
   contacts: IconContactsOutline,
   content_copy: IconContentCopyOutline,
   delete: IconDeleteOutline,
+  done_all: IconDoneAll,
   description: IconDescriptionOutline,
   directions: IconDirectionsOutline,
   directions_bike: IconDirectionsBike,
@@ -151,6 +154,7 @@ export const iconRegistry: Record<string, Component> = {
   group: IconGroupOutline,
   hardware: IconHardwareOutline,
   help: IconHelpOutline,
+  history: IconHistory,
   hiking: IconHiking,
   home: IconHomeOutline,
   image: IconImageOutline,

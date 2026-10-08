@@ -1,0 +1,13 @@
+import type { InboxNotification } from '../entities/inbox-notification'
+
+export interface InboxRepository {
+  /** Newest-first page; `before` is the keyset cursor (an entry's `createdAt`). */
+  listPage: (before: string | null, limit: number) => Promise<InboxNotification[]>
+  /** Every unread entry up to `limit` — the badge must count beyond the first page. */
+  listUnread: (limit: number) => Promise<InboxNotification[]>
+  getById: (id: string) => Promise<InboxNotification | null>
+  markRead: (id: string) => Promise<void>
+  /** Marks unread entries created at or before `cutoff` — later arrivals stay unread. */
+  markAllRead: (cutoff: string) => Promise<void>
+  remove: (id: string) => Promise<void>
+}

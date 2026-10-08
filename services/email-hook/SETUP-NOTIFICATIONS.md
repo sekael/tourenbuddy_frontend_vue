@@ -59,16 +59,21 @@ Note: `group_dissolved` is **no longer** sent through `tour_interest`. Dissoluti
 
 Sent when a tour-link group dissolves (member count fell below 2). Params: `actorName`, `tourName` (the recipient's own tour in the dissolved group), `appUrl` (app tours view). Author distinct dissolution copy here, e.g. "The link for «{{ params.tourName }}» was dissolved."
 
-### Worker endpoints (notifications)
+### Worker endpoint (notifications)
 
-| Path                               | Caller         | Payload                                                              |
-| ---------------------------------- | -------------- | -------------------------------------------------------------------- |
-| `/notify/friend-request-received`  | request sender | `{friendshipId}`                                                     |
-| `/notify/friend-request-responded` | responder      | `{friendshipId}` — also fires `dispatchBackfillDigest` sub-routine   |
-| `/notify/tour-changed`             | tour owner     | `{tourId, action, partnerContactIds?, tourName?}`                    |
-| `/notify/tour-interest`            | tour owner     | `{tourId}` — Worker scans + dispatches `action: collision` per match |
-| `/notify/link-request-event`       | event actor    | `{requestId, event: 'created'\|'accepted'\|'declined'}`              |
-| `/notify/group-membership-event`   | actor          | `{groupId, event, actorTourId?, affectedTourId?, affectedUserId?}`   |
+Since change `notification-inbox` the **database** emits every event: each new
+`public.notifications` row fires an AFTER INSERT trigger that POSTs the row to the Worker
+via `pg_net` (after commit, at-most-once, no retry). Clients never call the Worker for
+notifications any more.
+
+| Path            | Caller                     | Auth                                     | Payload                                                                 |
+| --------------- | -------------------------- | ---------------------------------------- | ----------------------------------------------------------------------- |
+| `/notify/event` | DB trigger (`pg_net`) only | `x-notify-secret` = `NOTIFY_WEBHOOK_SECRET` | the `notifications` row: `{id, recipient_id, type, action, actor_name, tour_name, …}` |
+
+The Worker applies mutes + the email flag and sends push to **every** `push_subscriptions`
+row of the recipient (rows exist ⇔ push enabled on that device; `notif_push_enabled` is no
+longer read). The Brevo `action` param keeps its old values (`collision`, `link_created`,
+`backfill_digest`, …) so existing templates are unchanged.
 
 For each template:
 
@@ -118,11 +123,28 @@ wrangler secret put APP_URL
 
 > **CORS allowlist** is hard-coded in `src/config.ts` (`ALLOWED_ORIGINS`): `localhost:5173`, `test.tourenbuddy.ch`, `tourenbuddy.ch`, `www.tourenbuddy.ch`, plus `*.touringbuddy.pages.dev`. Add any new frontend origin there and redeploy the Worker.
 
-## 4. Apply Supabase migration
+## 4. Apply Supabase migrations + webhook secrets
 
 ```sh
 supabase db push
 ```
+
+Then, once per project, store the webhook target + shared secret in Vault (data, not
+schema — run in the SQL editor, never commit the values). Until both exist the dispatch
+trigger is a silent no-op: the inbox works, push/email don't.
+
+```sql
+select vault.create_secret('https://tourenbuddy-email-hook.<account>.workers.dev', 'notify_hook_url');
+select vault.create_secret('<random 32+ chars>', 'notify_webhook_secret');
+```
+
+and the same secret on the Worker:
+
+```sh
+cd services/email-hook && npx wrangler@latest secret put NOTIFY_WEBHOOK_SECRET
+```
+
+Delivery failures are visible in `net._http_response` (kept ~6 h by pg_net) and the Worker logs.
 
 This adds `notif_push_enabled`, `notif_email_enabled`, `notif_muted_types` columns to `user_profile`
 and creates the `push_subscriptions` table with RLS.
@@ -156,9 +178,13 @@ The CI workflows (`build-web-and-push.yml`, `deploy-preview.yml`) construct `.en
 
 ## 6. Deploy
 
+Order: `supabase db push` → Vault secrets → `NOTIFY_WEBHOOK_SECRET` → Worker → frontend.
+Deploy the Worker right after the migration: until then the trigger POSTs to a Worker
+without `/notify/event` and those pushes are lost (the inbox is unaffected).
+
 ```sh
 # Deploy Worker
-cd services/email-hook && wrangler deploy
+cd services/email-hook && npx wrangler@latest deploy
 
 # Deploy frontend (triggers Cloudflare Pages build)
 git push
@@ -188,6 +214,7 @@ SEND_EMAIL_HOOK_SECRET=v1,whsec_local_dev_only_not_used_for_notify_routes
 VAPID_PUBLIC_KEY=<publicKey>
 VAPID_PRIVATE_KEY=<privateKey>
 VAPID_SUBJECT=mailto:dev@localhost
+NOTIFY_WEBHOOK_SECRET=local-dev-secret
 
 # Email path is optional in local dev — leave blank to skip
 BREVO_API_KEY=
@@ -227,21 +254,31 @@ VITE_NOTIFICATIONS_ENABLED=true
 
 Restart `npm run dev` after editing `.env.local`.
 
+### 2b. Point the local DB at the Worker
+
+`pg_net` runs inside the DB container, so it reaches the host Worker via
+`host.docker.internal`. `supabase/config.toml` reads both Vault entries from the env at
+`supabase start`:
+
+```sh
+NOTIFY_HOOK_URL=http://host.docker.internal:8787 NOTIFY_WEBHOOK_SECRET=local-dev-secret supabase start
+```
+
 ### 3. Manual test flow
 
 1. Open the app in **Chrome/Edge** (Firefox blocks Web Push for `http://localhost` without flags). Sign in as user A. Visit profile → notifications, toggle **Push** on, accept the browser permission prompt. Confirm a row appears in `push_subscriptions` (Studio → Table editor).
 2. Open a **second profile** (incognito or different browser profile), sign in as user B, repeat step 1.
 3. As user A, send a friend request to user B (phone search).
-4. Expect: user B's browser shows a system notification "New friend request — A wants to connect.". `wrangler dev` log shows `POST /notify/friend-request-received 200`.
+4. Expect: user B gets an inbox entry AND a system notification "New friend request — A wants to connect." on every device where B enabled push. `wrangler dev` log shows `POST /notify/event 200`.
 5. As user B, accept (or deny) the request.
-6. Expect: user A's browser shows "Friend request update — B responded to your request." (no accept/decline wording leaked). `wrangler dev` log shows `POST /notify/friend-request-responded 200`.
+6. Expect: user A's browser shows "Friend request update — B responded to your request." (no accept/decline wording leaked). `wrangler dev` log shows `POST /notify/event 200`.
 
 ### 4. Edge cases to verify manually
 
-- Recipient toggles **Push off** → no notification, but `200` returned by worker.
-- Recipient mutes the `friend_requests` type → no notification, `200`.
-- Worker offline (`wrangler dev` killed) → app continues to function; dispatch is fire-and-forget and only logs a warning.
-- Sender lacks JWT (e.g. session expired) → no dispatch (silent return in `notify-dispatch.ts`).
+- Recipient toggles **Push off on one device** → that device stops, their other devices still receive (#148).
+- Recipient mutes the `friend_requests` type → inbox entry only, no push/email, `200`.
+- Worker offline (`wrangler dev` killed) → writes and inbox unaffected; `net._http_response` shows the failed call.
+- Wrong `NOTIFY_WEBHOOK_SECRET` on either side → Worker `401`, inbox unaffected.
 
 ### 5. Email path (optional)
 
@@ -249,9 +286,6 @@ Local Inbucket/Mailpit only receives mail sent via Supabase Auth's local SMTP. T
 
 ## 7. Rollback
 
-If notifications cause issues, disable dispatch without touching the database:
-
-1. Set `VITE_NOTIFICATIONS_ENABLED=false` in Cloudflare Pages environment variables.
-2. Trigger a redeploy (empty commit or Pages dashboard redeploy button).
-
-The `push_subscriptions` table and user preference columns remain — re-enable is instant.
+If push/email cause issues, stop fan-out without touching the inbox: delete the Vault
+secret `notify_hook_url` (the dispatch trigger becomes a no-op), or ship a migration that
+drops `trg_dispatch_notification`. Re-creating the secret re-enables it instantly.

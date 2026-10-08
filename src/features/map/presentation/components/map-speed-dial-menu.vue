@@ -82,7 +82,7 @@ defineExpose({ focusFirst })
         @select="select(item.id)"
       >
         <template v-if="item.badge && item.badge > 0" #badge>
-          <span class="badge">{{ item.badge }}</span>
+          <span class="badge">{{ item.badge > 9 ? '9+' : item.badge }}</span>
         </template>
       </SpeedDialItem>
       <slot v-if="item.id === props.expanded" />

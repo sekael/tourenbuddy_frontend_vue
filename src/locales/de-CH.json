@@ -699,7 +699,8 @@
       "profile": "Profil",
       "changeBaseMap": "Karte ändern",
       "feedback": "Feedback",
-      "offlineMap": "Offline-Karten"
+      "offlineMap": "Offline-Karten",
+      "inbox": "Posteingang"
     },
     "styles": {
       "pickerTooltip": "Kartenstil ändern",
@@ -784,6 +785,7 @@
     "emailLabel": "E-Mail-Benachrichtigungen",
     "emailDescription": "Benachrichtigungen per E-Mail erhalten",
     "typesLabel": "Benachrichtige mich über",
+    "typesHint": "Stummschalten stoppt nur Push und E-Mail – alles erscheint weiterhin in deinem Posteingang.",
     "type": {
       "friend_requests": "Freundschaftsanfragen",
       "tour_updates": "Änderungen an geteilten Touren",
@@ -794,7 +796,7 @@
       "tour_interest": "Wenn ein Freund die gleiche Tour plant, bei Verknüpfungsanfragen und nach neuen Freundschaften.",
       "tour_suggestions": "Benachrichtigt, wenn ein Tourenpartner Änderungen an deiner Tour vorschlägt und wenn über deine Vorschläge entschieden wurde."
     },
-    "allOffDisclaimer": "Du erhältst keine Benachrichtigungen über Freundschaftsanfragen oder andere wichtige Ereignisse. Aktiviere mindestens einen Kanal, um informiert zu bleiben.",
+    "allOffDisclaimer": "Du wirst ausserhalb der App nicht benachrichtigt. Neuigkeiten sammeln sich weiterhin in deinem Posteingang.",
     "pushUnavailable": "Nicht verfügbar",
     "installHint": "Um Push-Benachrichtigungen zu aktivieren, füge TourenBuddy zuerst zum Home-Bildschirm hinzu.",
     "deniedHint": "Push-Benachrichtigungen sind blockiert. Aktiviere sie in den Browser- oder Geräteeinstellungen."
@@ -885,7 +887,8 @@
         "basemap": "Karte wechseln",
         "openCalendar": "Kalender öffnen",
         "offlineMap": "Offline-Karten",
-        "calendarSync": "Kalender verbinden"
+        "calendarSync": "Kalender verbinden",
+        "inbox": "Posteingang"
       },
       "nav": {
         "openMenu": "Menü öffnen",
@@ -914,6 +917,10 @@
       "calendarSync": {
         "title": "Kalender verbinden",
         "body": "Verbinde deinen Arbeits- oder Privatkalender, und deine freien Tage werden automatisch als verfügbar markiert. Die Inhalte werden nie gespeichert."
+      },
+      "inbox": {
+        "title": "Alles an einem Ort",
+        "body": "Freundschaftsanfragen, Änderungen an geteilten Touren und Vorschläge sammeln sich in deinem Posteingang – auch ohne Push und E-Mail. Die Zahl zeigt, was noch auf dich wartet."
       }
     }
   },
@@ -986,6 +993,43 @@
       },
       "permanentReason": "Diese Änderung konnte nicht angewendet und nicht gespeichert werden",
       "transientReason": "Der Server konnte nicht erreicht werden — du kannst es erneut versuchen"
+    }
+  },
+  "inbox": {
+    "title": "Posteingang",
+    "empty": "Noch nichts Neues. Freundschaftsanfragen, geteilte Touren und Vorschläge erscheinen hier.",
+    "loadError": "Der Posteingang konnte nicht geladen werden.",
+    "markAllRead": "Alle als gelesen markieren",
+    "loadMore": "Mehr laden",
+    "delete": "Löschen",
+    "unavailable": "Das ist nicht mehr verfügbar.",
+    "someone": "Jemand",
+    "aTour": "eine Tour",
+    "occurrences": "{count}×",
+    "state": {
+      "unread": "Ungelesen"
+    },
+    "stale": {
+      "answered": "Beantwortet",
+      "resolved": "Nicht mehr offen",
+      "tourGone": "Tour gelöscht"
+    },
+    "entry": {
+      "received": "{actor} hat dir eine Freundschaftsanfrage gesendet",
+      "responded": "{actor} hat auf deine Freundschaftsanfrage geantwortet",
+      "created": "{actor} hat «{tour}» mit dir geteilt",
+      "updated": "{actor} hat «{tour}» aktualisiert",
+      "deleted": "{actor} hat «{tour}» entfernt",
+      "collision": "{actor} hat dieselbe Tour wie «{tour}» geplant",
+      "backfill": "Du und {actor} habt {count} gleiche Touren geplant",
+      "link_created": "{actor} möchte «{tour}» mit dir verknüpfen",
+      "link_declined": "{actor} hat deine Verknüpfungsanfrage für «{tour}» abgelehnt",
+      "group_joined": "{actor} hat eine Tour zur Verknüpfung mit «{tour}» hinzugefügt",
+      "group_evicted_external": "Eine Tour wurde aus der Verknüpfung mit «{tour}» entfernt",
+      "group_dissolved": "Die Verknüpfung für «{tour}» wurde aufgelöst",
+      "suggestion_submitted": "{actor} schlägt Änderungen an «{tour}» vor",
+      "suggestion_resolved": "{actor} hat über deine Vorschläge für «{tour}» entschieden",
+      "unknown": "Neuigkeit von {actor}"
     }
   }
 }
