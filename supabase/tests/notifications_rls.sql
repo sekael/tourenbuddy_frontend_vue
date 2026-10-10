@@ -45,7 +45,9 @@ create function pg_temp.resave(
   p_notes text default null,
   p_completed boolean default null,
   p_visibility text default null,
-  p_partner_ids uuid[] default null
+  p_partner_ids uuid[] default null,
+  p_seasons text[] default null,
+  p_start_point text default null
 ) returns void
   language plpgsql as $$
 declare
@@ -65,8 +67,8 @@ begin
     p_elevation           := t.elevation,
     p_gpx_filepath        := t.gpx_filepath,
     p_description         := t.description,
-    p_seasons             := t.seasons,
-    p_start_point         := t.start_point::text,
+    p_seasons             := coalesce(p_seasons, t.seasons),
+    p_start_point         := coalesce(p_start_point, t.start_point::text),
     p_end_point           := t.end_point::text,
     p_equipment           := t.equipment,
     p_notes               := coalesce(p_notes, t.notes),
@@ -191,6 +193,27 @@ select pg_temp.resave('cccccccc-0000-0000-0000-000000000002', p_name := 'Secret'
 reset role;
 select pg_temp.check((select count(*) from public.notifications) = 0, '8c going private is silent');
 update public.tours set visibility = 'friends' where id = 'cccccccc-0000-0000-0000-000000000002';
+
+-- 8d — Seasons and start / end points are partner-facing. Optional points must not make
+--      every save meaningful (st_equals(null, null) is null): a re-save without points
+--      stays silent.
+update public.tours set start_point = null, end_point = null
+where id = 'cccccccc-0000-0000-0000-000000000002';
+delete from public.notifications;
+set local role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'patrick', 'role', 'authenticated')::text, true);
+select pg_temp.resave('cccccccc-0000-0000-0000-000000000002', p_notes := 'still silent');
+reset role;
+select pg_temp.check(pg_temp.n(:'jakob', 'updated') = 0, '8d-a re-save without start/end point is silent');
+set local role authenticated;
+select pg_temp.resave('cccccccc-0000-0000-0000-000000000002', p_seasons := array['summer']);
+reset role;
+select pg_temp.check(pg_temp.n(:'jakob', 'updated') = 1, '8d-b seasons edit notifies');
+delete from public.notifications;
+set local role authenticated;
+select pg_temp.resave('cccccccc-0000-0000-0000-000000000002', p_start_point := 'POINT(7.9 46.5)');
+reset role;
+select pg_temp.check(pg_temp.n(:'jakob', 'updated') = 1, '8d-c start point edit notifies');
 
 -- 9 — Newly-added partner gets `created`; a removed partner is silent.
 set local role authenticated;

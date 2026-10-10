@@ -59,6 +59,7 @@
 - [x] 7a.6 Entries open a tour only if it's own or a current partner tour, checked after a fresh friend-tour refetch; collision opens the recipient's own tour; stale chip uses the same rule ("No longer available")
 - [x] 7a.7 Losing access deletes the user's entries for that tour (partner removed, private, deleted, unfriended); re-share notifies as `created` — migration `20261010065119_notification_visibility_cleanup.sql`, DB tests 12v / 12a-2 / 17
 - [x] 7a.8 "Clear inbox" with inline confirm; offline-queued `removeAll(cutoff)`
+- [x] 7a.9 Seasons and start/end point (location, name) count as meaningful edits, also for accepted suggestions — migration `20261010070418_notification_meaningful_points_seasons.sql`, DB tests 8d-a..c
 - [ ] 7a.5 Deploy: `supabase db push` (new migrations) and `cd services/email-hook && npx wrangler@latest deploy` (push copy)
 
 ## 8. Integration verification
