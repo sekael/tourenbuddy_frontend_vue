@@ -35,7 +35,7 @@ notifications(
   id uuid pk default gen_random_uuid(),
   recipient_id uuid not null references auth.users on delete cascade,
   type text not null,            -- notification type (friend_requests | tour_updates | tour_interest | tour_suggestions)
-  action text not null,          -- received | responded | created | updated | deleted | collision | backfill | link_created | link_declined | group_joined | group_evicted_external | group_dissolved | suggestion_submitted | suggestion_resolved (no link_accepted: group_joined covers it, as the client did)
+  action text not null,          -- received | responded | created | updated | deleted | collision | backfill | link_created | link_declined | group_joined | group_evicted_external | group_dissolved | suggestion_submitted | suggestion_revised | suggestion_resolved (no link_accepted: group_joined covers it, as the client did)
   actor_id uuid null,            -- no FK: survives actor account deletion
   actor_name text null,          -- snapshot at event time (owner decision)
   tour_id uuid null,             -- no FK: survives tour deletion; client checks existence on open
@@ -83,7 +83,7 @@ Not granted to `authenticated` (`revoke execute … from public, anon, authentic
 | link request created / accepted / declined | `create_link_request`, `accept_link_request`, `decline_link_request` | RPCs already enforce actor; withdraw emits nothing |
 | group joined | `accept_link_request` | knows pre-existing members |
 | group evicted / dissolved | `fn_evict_member_on_tour_change`, `fn_evict_on_friendship_delete`, tour BEFORE DELETE trigger, via `fn_emit_group_removal` called BEFORE the member rows go | a row trigger on `tour_link_member` would double-count: `fn_dissolve_when_below_two` cascades the last member away mid-statement and an unfriend removes two rows at once; the Worker matrix moves here verbatim |
-| suggestion submitted | `upsert_tour_suggestions` when a *new* batch is created (not on revision) | batch = one call |
+| suggestion submitted / revised | `upsert_tour_suggestions`: `suggestion_submitted` for a *new* batch, `suggestion_revised` for a revision (explicit submit, can be days apart) | one per call |
 | suggestion resolved | `accept_tour_suggestion(_batch)`, `decline_tour_suggestion` via `fn_resolved_batches` | completion check already exists; auto-declines run through the same path |
 | accepted suggestion → `tour_updates` | `accept_tour_suggestion(_batch)` when an applied field is meaningful, excluding authors (D16) | once per call |
 
@@ -156,7 +156,7 @@ Not granted to `authenticated` (`revoke execute … from public, anon, authentic
 - [Deploy window: migration live before Worker deploy → webhook 404s] → deploy Worker immediately after `supabase db push`; lost pushes limited to that window, inbox unaffected. Reverse order is worse (old endpoints gone while old clients still post — harmless 404s but no DB emission yet → no push at all).
 - [Old cached PWA clients still post to removed endpoints] → 404, fire-and-forget, no double send since DB is the only emitter.
 - [Behaviour change: collision scan now on create + solo tours] → more `tour_interest` pings; matches spec; called out in PR.
-- [Semantic port bugs (meaningful filter, group matrix) when moving TS → SQL] → pgTAP tests per emission site for edge cases (actor excluded, non-meaningful edit silent, partner removal silent, revision silent, withdraw silent, cascade dissolution).
+- [Semantic port bugs (meaningful filter, group matrix) when moving TS → SQL] → pgTAP tests per emission site for edge cases (actor excluded, non-meaningful edit silent, partner removal silent, revision → `suggestion_revised`, withdraw silent, cascade dissolution).
 - [Exception guard hides bugs] → `raise warning` lands in Postgres logs; pgTAP asserts rows are actually emitted.
 - [Badge ceiling] → the unread query is capped at 99; the display caps at `9+`, so this is invisible.
 - [Collapsed repeats send no push] → intended (grill Q2); the user still sees the bumped entry and its count.

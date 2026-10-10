@@ -155,6 +155,12 @@ For shared-tour edits and same-tour collision events, when the recipient already
 ### Requirement: Opening an entry deep-links and marks it read
 Activating an entry SHALL mark it read and navigate to its subject: the tour info sheet for tour, suggestion, interest and link events; the friend requests sheet for friend-request events; the backfill collisions list for digests. Entries SHALL NOT offer inline actions (accept, decline, review); acting happens on the target surface. If the subject no longer exists the entry SHALL still be marked read and the app SHALL show a "no longer available" message instead of navigating.
 
+An entry SHALL open a tour only if the user may access it at the moment of activation: a tour they own, or a friend tour they are currently a partner on. A tour the user was removed from, or that went private, SHALL be treated as no longer available — even though the entry once named it. Access SHALL be decided against a fresh server read when online, never solely against cached data. A collision entry SHALL open the recipient's own colliding tour, not the other user's. The stale chip SHALL apply the same rule.
+
+When a user loses access to a tour — removed as partner, the tour made private or deleted, or the friendship with its owner ended — the database SHALL delete the entries that user holds about that tour (a `deleted` notice is kept). Regaining access SHALL NOT restore them: the inbox continues from the next event, and a tour shared again SHALL notify its partners as newly shared.
+
+The user SHALL be able to clear the inbox: after an inline confirmation, every entry they have seen is deleted (entries arriving later stay). Clearing SHALL work offline and sync on reconnect.
+
 #### Scenario: Open a shared-tour entry
 - **WHEN** the user taps an unread "tour updated" entry
 - **THEN** the entry becomes read and the tour's info sheet opens
@@ -162,6 +168,22 @@ Activating an entry SHALL mark it read and navigate to its subject: the tour inf
 #### Scenario: Subject gone
 - **WHEN** the user taps an entry whose tour was deleted
 - **THEN** the entry becomes read and a "no longer available" snackbar is shown
+
+#### Scenario: Removed partner
+- **WHEN** a user taps an entry for a tour whose owner has since removed them as partner
+- **THEN** the entry becomes read, the tour does not open, and a "no longer available" snackbar is shown
+
+#### Scenario: Tour went private
+- **WHEN** a user taps an entry for a friend's tour that has since been made private
+- **THEN** the tour does not open, even if a cached copy is still on the device
+
+#### Scenario: Re-shared tour starts over
+- **WHEN** a tour the user is a partner on goes private and is later shared with friends again
+- **THEN** the entries from before are gone and the user receives one new "shared with you" entry
+
+#### Scenario: Clear inbox
+- **WHEN** the user taps "Clear inbox" and confirms
+- **THEN** every entry is deleted; tapping "Clear inbox" without confirming deletes nothing
 
 #### Scenario: Opened via push
 - **WHEN** the user opens the app by tapping a push notification

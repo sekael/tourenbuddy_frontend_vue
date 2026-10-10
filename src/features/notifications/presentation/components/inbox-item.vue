@@ -2,6 +2,7 @@
 import type { InboxNotification, InboxStaleReason } from '../../domain/entities/inbox-notification'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import { inboxText } from '../inbox-text'
 
@@ -9,13 +10,6 @@ const props = defineProps<{ entry: InboxNotification, stale: InboxStaleReason | 
 const emit = defineEmits<{ open: [], delete: [] }>()
 
 const { t, locale } = useI18n({ useScope: 'global' })
-
-const TYPE_ICONS: Record<InboxNotification['type'], string> = {
-  friend_requests: 'person_add',
-  tour_updates: 'route',
-  tour_interest: 'link',
-  tour_suggestions: 'edit',
-}
 
 // Stale overrides unread (D7): a resolved subject needs no attention, read or not.
 const state = computed(() => (props.stale ? 'stale' : props.entry.readAt ? 'read' : 'unread'))
@@ -78,14 +72,15 @@ function onClick() {
 
 <template>
   <li class="item-wrap">
+    <!-- Revealed under the row while it is swiped away. -->
+    <span v-if="offset" class="swipe-bg" aria-hidden="true"><BaseIcon name="delete" /></span>
     <button
       class="item" :class="`item--${state}`"
-      :style="offset ? { transform: `translateX(${offset}px)` } : undefined"
+      :style="offset ? { transform: `translateX(${offset}px)`, transition: 'none' } : undefined"
       :aria-label="ariaLabel" data-testid="inbox-item"
       @pointerdown="onPointerDown" @pointermove="onPointerMove"
       @pointerup="onPointerUp" @pointercancel="onPointerUp" @click="onClick"
     >
-      <BaseIcon :name="TYPE_ICONS[entry.type]" class="type-icon" />
       <span class="body">
         <span class="text">{{ text }}</span>
         <span class="meta">
@@ -98,9 +93,10 @@ function onClick() {
       </span>
       <span v-if="state === 'unread'" class="dot" data-testid="unread-dot" aria-hidden="true" />
     </button>
-    <button class="delete" :aria-label="t('inbox.delete')" :title="t('inbox.delete')" @click="emit('delete')">
-      <BaseIcon name="delete" />
-    </button>
+    <BaseIconButton
+      class="delete" name="delete" size="sm" tone="danger" :label="t('inbox.delete')"
+      @click="emit('delete')"
+    />
   </li>
 </template>
 
@@ -110,45 +106,64 @@ function onClick() {
   display: flex;
   align-items: center;
   list-style: none;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
 }
 
 .item {
+  position: relative;
   flex: 1;
   min-width: 0;
   display: flex;
   align-items: flex-start;
   gap: var(--spacing-sm);
   padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   text-align: start;
   touch-action: pan-y;
-  transition: transform var(--motion-duration-short) var(--motion-ease-standard);
+  transition:
+    transform var(--motion-duration-short) var(--motion-ease-standard),
+    background-color var(--motion-duration-short) var(--motion-ease-standard);
 }
 
-/* D7 token table: unread / read / stale */
+/* D7 token table: unread / read / stale. Rows are opaque so the swipe layer only
+   shows where the row has moved off it. */
 .item--unread {
   background-color: var(--color-surface-variant);
   color: var(--color-on-surface);
-  font-weight: var(--font-weight-semibold);
-}
-.item--unread .type-icon {
-  color: var(--color-primary);
+  font-weight: var(--font-weight-medium);
 }
 .item--read {
   background-color: var(--color-background);
   color: var(--color-on-surface);
   font-weight: var(--font-weight-regular);
 }
-.item--read .type-icon {
-  color: var(--color-on-surface-variant);
-}
 .item--stale {
   background-color: var(--color-background);
   color: var(--color-on-surface-variant);
   font-weight: var(--font-weight-regular);
 }
-.item--stale .type-icon {
-  color: var(--color-outline);
+
+@media (hover: hover) {
+  .item--read:hover,
+  .item--stale:hover {
+    background-color: var(--color-surface-variant);
+  }
+}
+.item--read:active,
+.item--stale:active {
+  background-color: var(--color-surface-variant);
+}
+
+.swipe-bg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-inline-end: var(--spacing-lg);
+  background-color: var(--color-error-container);
+  color: var(--color-error-text);
 }
 
 .body {
@@ -160,7 +175,7 @@ function onClick() {
 }
 .text {
   font-size: var(--font-size-base);
-  line-height: 1.35;
+  line-height: var(--line-height-normal);
   overflow-wrap: anywhere;
 }
 .meta {
@@ -192,24 +207,22 @@ function onClick() {
 .dot {
   width: 8px;
   height: 8px;
-  margin-top: 6px;
+  margin-top: 7px;
   border-radius: 50%;
   background-color: var(--color-primary);
   flex-shrink: 0;
 }
 
-/* Pointer devices: no swipe gesture, so a delete button appears on hover/focus. */
+/* Touch: the swipe deletes. Pointer devices get the button on hover/focus. */
 .delete {
   display: none;
-  padding: var(--spacing-xs);
-  color: var(--color-on-surface-variant);
-  border-radius: var(--radius-sm);
 }
 
 @media (hover: hover) {
   .delete {
-    display: inline-flex;
+    display: flex;
     opacity: 0;
+    transition: opacity var(--motion-duration-short) var(--motion-ease-standard);
   }
   .item-wrap:hover .delete,
   .delete:focus-visible {

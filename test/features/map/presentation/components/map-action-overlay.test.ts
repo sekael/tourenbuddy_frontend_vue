@@ -1,8 +1,10 @@
 import { createTestingPinia } from '@pinia/testing'
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import MapActionOverlay from '@/features/map/presentation/components/map-action-overlay.vue'
+import { useInboxStore } from '@/features/notifications/presentation/stores/inbox-store'
 
 function mountOverlay(
   options: {
@@ -162,33 +164,35 @@ describe('mapActionOverlay', () => {
   })
 
   describe('badge bubble-up', () => {
-    it('should show trigger dot when pendingIncomingCount > 0 and menu closed', () => {
-      const wrapper = mountOverlay({
-        incomingRequests: [{ id: '1', status: 'pending' }],
-      })
-      expect(wrapper.find('.dot').exists()).toBe(true)
+    it('should count only inbox entries on the trigger, not pending friend requests too', async () => {
+      const wrapper = mountOverlay({ incomingRequests: [{ id: '1', status: 'pending' }] })
+      // @pinia/testing getters are writable stubs. The request's own entry is among these 2.
+      ;(useInboxStore() as unknown as { attentionCount: number }).attentionCount = 2
+      await nextTick()
+      expect(wrapper.get('[data-testid="trigger-count"]').text()).toBe('2')
     })
 
-    it('should not show trigger dot when no pending requests', () => {
-      const wrapper = mountOverlay({ incomingRequests: [] })
-      expect(wrapper.find('.dot').exists()).toBe(false)
+    it('should not mark contacts for resolved friend requests', async () => {
+      const wrapper = mountOverlay({ incomingRequests: [{ id: '1', status: 'accepted' }] })
+      await wrapper.find('[aria-haspopup="menu"]').trigger('click')
+      expect(wrapper.find('[data-testid="menu-dot"]').exists()).toBe(false)
     })
 
-    it('should hide trigger dot while menu is open', async () => {
+    it('should hide the trigger count while the menu is open', async () => {
       const wrapper = mountOverlay({
         incomingRequests: [{ id: '1', status: 'pending' }],
       })
       await wrapper.find('[aria-haspopup="menu"]').trigger('click')
-      expect(wrapper.find('.dot').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="trigger-count"]').exists()).toBe(false)
     })
 
-    it('should show badge on contacts menu item when menu open', async () => {
+    it('should show a dot, not a count, on contacts for a pending friend request', async () => {
       const wrapper = mountOverlay({
         incomingRequests: [{ id: '1', status: 'pending' }],
       })
       await wrapper.find('[aria-haspopup="menu"]').trigger('click')
-      expect(wrapper.find('.badge').exists()).toBe(true)
-      expect(wrapper.find('.badge').text()).toBe('1')
+      expect(wrapper.find('[data-testid="menu-dot"]').exists()).toBe(true)
+      expect(wrapper.find('.badge').exists()).toBe(false)
     })
   })
 

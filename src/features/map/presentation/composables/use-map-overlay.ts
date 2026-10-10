@@ -56,10 +56,11 @@ export function useMapOverlay(emit: {
       id: 'contacts',
       icon: 'group',
       label: t('map.overlay.contacts'),
-      badge: pendingIncomingCount.value,
+      // A dot, not a count: each request is already an inbox entry, counted there.
+      dot: pendingIncomingCount.value > 0,
       tooltip: t('map.overlay.contactsTooltip'),
     },
-    // Nearest the trigger: the one entry whose badge the trigger mirrors.
+    // Nearest the trigger: the one count the trigger mirrors (friend requests included).
     { id: 'inbox', icon: 'notifications', label: t('map.overlay.inbox'), badge: inboxCount.value },
   ])
 
@@ -100,7 +101,6 @@ export function useMapOverlay(emit: {
     isPickingLocation,
     isDrawingRegion,
     currentStyleIndex,
-    pendingIncomingCount,
     inboxCount,
     menuItems,
     mapStore,

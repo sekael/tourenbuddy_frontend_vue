@@ -20,11 +20,14 @@ export const INBOX_PAGE_SIZE = 20
 /** Unread fetch cap. The badge shows `9+` past 9, so counting further buys nothing. */
 const UNREAD_CAP = 99
 const ALL_KEY_PREFIX = 'inbox-all:'
+/** Own key, not ALL_KEY_PREFIX: a queued clear must not coalesce into a queued mark-all. */
+const CLEAR_KEY_PREFIX = 'inbox-clear:'
 
 /** Actions whose subject is a pending request/batch that can be resolved elsewhere. */
 const PENDING_SUBJECT: Record<string, 'friend' | 'batch' | 'link'> = {
   received: 'friend',
   suggestion_submitted: 'batch',
+  suggestion_revised: 'batch',
   link_created: 'link',
 }
 
@@ -82,9 +85,24 @@ export const useInboxStore = defineStore('inbox', () => {
   const pendingLinkIds = computed(() => new Set(
     linksStore.pendingRequests.filter(r => r.status === 'pending').map(r => r.id),
   ))
-  const visibleTourIds = computed(() => new Set(
-    [...toursStore.tours, ...toursStore.friendTours].map(t => t.id),
-  ))
+  // What an entry may open: the user's own tours and friend tours they are a partner on
+  // NOW. A non-partner friend tour is readable from the Friends list, but an entry must
+  // not reopen a tour after its recipient was removed from it (nor one gone private —
+  // RLS drops that from friendTours entirely).
+  const openableTourIds = computed(() => new Set([
+    ...toursStore.tours.map(t => t.id),
+    ...toursStore.friendTours.filter(t => t.isPartner === true).map(t => t.id),
+  ]))
+
+  /** The tour an entry opens. A collision names the actor's tour; it opens the recipient's own. */
+  function targetTourId(e: InboxNotification): string | null {
+    const own = e.ref.other_tour_id
+    return e.action === 'collision' && typeof own === 'string' ? own : e.tourId
+  }
+
+  function canOpenTour(tourId: string): boolean {
+    return openableTourIds.value.has(tourId)
+  }
 
   function staleReason(e: InboxNotification): InboxStaleReason | null {
     const subject = PENDING_SUBJECT[e.action]
@@ -96,7 +114,8 @@ export const useInboxStore = defineStore('inbox', () => {
     if (subject === 'link' && linksReady.value && !pendingLinkIds.value.has(refId('request_id') ?? ''))
       return 'resolved'
     // A `deleted` entry is ABOUT a gone tour — that is its message, not staleness.
-    if (e.tourId && e.action !== 'deleted' && toursReady.value && !visibleTourIds.value.has(e.tourId))
+    const tourId = targetTourId(e)
+    if (tourId && e.action !== 'deleted' && toursReady.value && !canOpenTour(tourId))
       return 'tourGone'
     return null
   }
@@ -244,10 +263,29 @@ export const useInboxStore = defineStore('inbox', () => {
     return write(id, 'delete', {}, rows => rows.filter(e => e.id !== id), () => repository.remove(id))
   }
 
+  function clearAll() {
+    if (!uid.value || entries.value.length === 0)
+      return
+    // Same cutoff rule as markAllRead: only what the user has seen goes. The server delete
+    // also takes older pages never loaded, so there is nothing left to page through.
+    const cutoff = sorted.value[0]!.createdAt
+    hasMore.value = false
+    cursor = null
+    return write(
+      `${CLEAR_KEY_PREFIX}${uid.value}`,
+      'delete',
+      { cutoff },
+      rows => rows.filter(e => e.createdAt > cutoff),
+      () => repository.removeAll(cutoff),
+    )
+  }
+
   // Idempotent by construction: read_at is monotonic and a delete of a gone row is a
   // no-op, so there is no LWW gate (D7).
   async function replayInbox(entry: WriteQueueEntry): Promise<void> {
-    if (entry.entityId.startsWith(ALL_KEY_PREFIX))
+    if (entry.entityId.startsWith(CLEAR_KEY_PREFIX))
+      await repository.removeAll((entry.payload as { cutoff: string }).cutoff)
+    else if (entry.entityId.startsWith(ALL_KEY_PREFIX))
       await repository.markAllRead((entry.payload as { cutoff: string }).cutoff)
     else if (entry.op === 'delete')
       await repository.remove(entry.entityId)
@@ -287,11 +325,14 @@ export const useInboxStore = defineStore('inbox', () => {
     error,
     attentionCount,
     staleReason,
+    targetTourId,
+    canOpenTour,
     load,
     loadMore,
     find,
     markRead,
     markAllRead,
+    clearAll,
     remove,
     clear,
   }

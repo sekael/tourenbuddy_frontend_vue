@@ -22,7 +22,7 @@ const read = {
 }
 
 describe('inboxOverlay', () => {
-  it('should disable mark-all and hide "Load more" when nothing is unread and history ended', async () => {
+  it('should hide mark-all and hide "Load more" when nothing is unread and history ended', async () => {
     const pinia = createTestingPinia({
       createSpy: vi.fn,
       initialState: { inbox: { hasMore: false, isLoading: false, error: null } },
@@ -33,7 +33,7 @@ describe('inboxOverlay', () => {
     store.entries = [read]
     const wrapper = mount(InboxOverlay, { global: { plugins: [pinia], stubs: { InboxItem: true } } })
 
-    expect(wrapper.get('[data-testid="mark-all-read"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-testid="mark-all-read"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="load-more"]').exists()).toBe(false)
   })
 
@@ -42,5 +42,20 @@ describe('inboxOverlay', () => {
     const wrapper = mount(InboxOverlay, { global: { plugins: [pinia], stubs: { InboxItem: true } } })
 
     expect(wrapper.find('[data-testid="inbox-empty"]').exists()).toBe(true)
+  })
+
+  it('should clear the inbox only after the inline confirmation', async () => {
+    const pinia = createTestingPinia({ createSpy: vi.fn, initialState: { inbox: { hasMore: false, isLoading: false, error: null } } })
+    const { useInboxStore } = await import('@/features/notifications/presentation/stores/inbox-store')
+    const store = useInboxStore(pinia)
+    // @ts-expect-error — overriding a computed for the test
+    store.entries = [read]
+    const wrapper = mount(InboxOverlay, { global: { plugins: [pinia], stubs: { InboxItem: true } } })
+
+    await wrapper.get('[data-testid="clear-inbox"]').trigger('click')
+    expect(store.clearAll).not.toHaveBeenCalled()
+    await wrapper.get('[data-testid="clear-inbox-confirm"]').trigger('click')
+
+    expect(store.clearAll).toHaveBeenCalledOnce()
   })
 })

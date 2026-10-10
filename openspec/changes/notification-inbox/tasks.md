@@ -50,6 +50,17 @@
 - [x] 7.6 Deep links: `tour=<id>`, `notification=<id>` handling (mark read, strip param), missing tour → `inbox.unavailable` snackbar; verify unit test for missing-tour path
 - [x] 7.7 Onboarding: add inbox menu-entry step after offline maps, menu kept open between them, per `onboarding-tour` delta; verify onboarding steps test + walk the guided tour end-to-end in the app
 
+## 7a. First-test follow-ups
+
+- [x] 7a.1 Suggestion revisions notify the owner as `suggestion_revised` (new migration `20261009050133_notification_suggestion_revised.sql`; client text, stale check, Worker push copy, DB test 11s-a)
+- [x] 7a.2 Inbox rows drop the leading type icon (read as a button); swipe reveals a delete layer; pointer delete uses `BaseIconButton`
+- [x] 7a.3 "Mark all read" is a labelled button, shown only while something is unread
+- [x] 7a.4 Speed-dial trigger mirrors the inbox count only (friend requests are inbox entries — no double count); Contacts shows a dot for pending requests
+- [x] 7a.6 Entries open a tour only if it's own or a current partner tour, checked after a fresh friend-tour refetch; collision opens the recipient's own tour; stale chip uses the same rule ("No longer available")
+- [x] 7a.7 Losing access deletes the user's entries for that tour (partner removed, private, deleted, unfriended); re-share notifies as `created` — migration `20261010065119_notification_visibility_cleanup.sql`, DB tests 12v / 12a-2 / 17
+- [x] 7a.8 "Clear inbox" with inline confirm; offline-queued `removeAll(cutoff)`
+- [ ] 7a.5 Deploy: `supabase db push` (new migrations) and `cd services/email-hook && npx wrangler@latest deploy` (push copy)
+
 ## 8. Integration verification
 
 - [ ] 8.1 Local end-to-end with `supabase start` + `wrangler dev`: two browsers/accounts — friend request, shared-tour edit, suggestion batch each create exactly one inbox entry and one push on each of two registered devices; push off on device 1 keeps device 2 receiving; muted type → inbox only

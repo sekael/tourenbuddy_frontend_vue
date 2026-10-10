@@ -140,8 +140,9 @@ type. The event SHALL be emitted by the database in the same transaction as the 
 write. Notification failure SHALL NOT fail or roll back the suggestion write. No other
 partner on the tour SHALL be notified.
 
-Revising a pending batch SHALL NOT re-notify the owner, who has already been told the
-batch exists and whose review surface updates live. A change made after a batch was fully
+Revising a pending batch SHALL notify the owner once per submitted revision as a distinct
+`suggestion_revised` event (not a fresh submission): a revision can arrive hours or days
+later and changes what the owner is asked to review. A change made after a batch was fully
 resolved forms a new batch and SHALL notify as a fresh submission.
 
 #### Scenario: Owner notified once per batch
@@ -152,9 +153,9 @@ resolved forms a new batch and SHALL notify as a fresh submission.
 - **WHEN** a partner submits suggestions on a tour with three other marked partners
 - **THEN** none of the other partners receives a notification
 
-#### Scenario: Revision is silent
-- **WHEN** the author revises their still-pending batch
-- **THEN** no notification is emitted
+#### Scenario: Revision notifies as revised
+- **WHEN** the author revises and resubmits their still-pending batch
+- **THEN** the owner receives one `suggestion_revised` notification and no second `suggestion_submitted`
 
 #### Scenario: Post-resolution change notifies as a new submission
 - **WHEN** the author proposes a change after their previous batch was fully resolved

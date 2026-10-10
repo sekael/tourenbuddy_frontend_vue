@@ -17,6 +17,10 @@
 
 begin;
 
+-- Start from an empty inbox: manual testing on the local stack leaves rows behind, and
+-- every count below assumes only this run's emissions (rolled back at the end).
+delete from public.notifications;
+
 -- Count a recipient's entries for an action.
 create function pg_temp.n(p_recipient uuid, p_action text) returns int
   language sql as $$
@@ -235,7 +239,7 @@ select pg_temp.check(
   (select count(*) from public.notifications where recipient_id = :'selim'::uuid) = 0,
   '11b cancel emits nothing');
 
--- 11s — Suggestions (D16): one `submitted` per new batch, revisions silent, partial
+-- 11s — Suggestions (D16): one `submitted` per new batch, one `revised` per revision, partial
 --       resolution silent, full resolution notifies the author once, authors excluded
 --       from the tour_updates fanout, withdraw silent.
 delete from public.notifications;
@@ -246,7 +250,9 @@ select public.upsert_tour_suggestions('cccccccc-0000-0000-0000-000000000002', 'd
 select public.upsert_tour_suggestions('cccccccc-0000-0000-0000-000000000002', 'dddddddd-0000-0000-0000-0000000000b1',
   '[{"field":"name","value":"Suggested"},{"field":"notes","value":"tea"}]');
 reset role;
-select pg_temp.check(pg_temp.n(:'patrick', 'suggestion_submitted') = 1, '11s-a revision is silent');
+select pg_temp.check(
+  pg_temp.n(:'patrick', 'suggestion_submitted') = 1 and pg_temp.n(:'patrick', 'suggestion_revised') = 1,
+  '11s-a a revision notifies as revised, not as a new submission');
 set local role authenticated;
 select set_config('request.jwt.claims', json_build_object('sub', :'patrick', 'role', 'authenticated')::text, true);
 select public.decline_tour_suggestion(
@@ -287,6 +293,36 @@ reset role;
 select pg_temp.check(pg_temp.n(:'jakob', 'link_declined') = 1, '11l-b declined notifies initiator');
 select pg_temp.check(pg_temp.n(:'patrick', 'link_created') = 2, '11l-c withdraw adds nothing beyond its create');
 
+-- 12v — Losing access clears the recipient's entries for the tour; regaining starts over
+--       from the next event (re-share / re-add -> `created`).
+delete from public.notifications;
+set local role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'patrick', 'role', 'authenticated')::text, true);
+select pg_temp.resave('cccccccc-0000-0000-0000-000000000002', p_name := 'Visible');
+select pg_temp.resave('cccccccc-0000-0000-0000-000000000002', p_visibility := 'private');
+reset role;
+select pg_temp.check(
+  (select count(*) from public.notifications where recipient_id = :'jakob'::uuid) = 0,
+  '12v-a going private clears the partner''s entries');
+set local role authenticated;
+select pg_temp.resave('cccccccc-0000-0000-0000-000000000002', p_name := 'Suggested', p_visibility := 'friends');
+reset role;
+select pg_temp.check(
+  pg_temp.n(:'jakob', 'created') = 1
+  and (select count(*) from public.notifications where recipient_id = :'jakob'::uuid) = 1,
+  '12v-b re-share starts over with created');
+set local role authenticated;
+select pg_temp.resave('cccccccc-0000-0000-0000-000000000002', p_partner_ids := '{}'::uuid[]);
+reset role;
+select pg_temp.check(
+  (select count(*) from public.notifications where recipient_id = :'jakob'::uuid) = 0,
+  '12v-c partner removal clears the removed partner''s entries');
+set local role authenticated;
+select pg_temp.resave('cccccccc-0000-0000-0000-000000000002',
+  p_partner_ids := array['aaaaaaaa-0000-0000-0000-000000000001'::uuid]);
+reset role;
+select pg_temp.check(pg_temp.n(:'jakob', 'created') = 1, '12v-d re-added partner starts over with created');
+
 -- 12 — Owner delete notifies friend partners; a service-role delete emits nothing.
 delete from public.notifications;
 set local role authenticated;
@@ -296,6 +332,9 @@ reset role;
 select pg_temp.check(
   (select tour_name from public.notifications where recipient_id = :'jakob'::uuid and action = 'deleted') = 'Suggested',
   '12a deleted carries the name snapshot');
+select pg_temp.check(
+  (select count(*) from public.notifications where recipient_id = :'jakob'::uuid) = 1,
+  '12a-2 delete keeps only the deleted notice');
 delete from public.notifications;
 select set_config('request.jwt.claims', '{}', true);
 delete from public.tours where id = 'cccccccc-0000-0000-0000-000000000003';
@@ -333,5 +372,16 @@ select pg_temp.check(
 select pg_temp.check(
   (select command from cron.job where jobname = 'purge-old-notifications') like '%interval ''90 days''%',
   '16 purge job scheduled for 90 days');
+
+-- 17 — Unfriend clears each side's entries about the other's tours.
+insert into public.notifications (recipient_id, type, action, tour_id, tour_name)
+values (:'selim', 'tour_updates', 'updated', 'cccccccc-0000-0000-0000-000000000001', 'Büelehora');
+delete from public.friendships
+where (request_user_id = :'patrick' and response_user_id = :'selim')
+   or (request_user_id = :'selim' and response_user_id = :'patrick');
+select pg_temp.check(
+  (select count(*) from public.notifications
+   where recipient_id = :'selim'::uuid and tour_id = 'cccccccc-0000-0000-0000-000000000001') = 0,
+  '17 unfriend clears entries about the ex-friend''s tours');
 
 rollback;

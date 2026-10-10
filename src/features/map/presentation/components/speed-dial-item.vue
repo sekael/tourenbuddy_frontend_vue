@@ -34,6 +34,7 @@ defineEmits<{ select: [] }>()
 
 <style scoped>
 .item-row {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-sm);
@@ -79,7 +80,6 @@ defineEmits<{ select: [] }>()
 }
 
 .icon-wrap {
-  position: relative;
   display: flex;
 }
 

@@ -10,4 +10,6 @@ export interface InboxRepository {
   /** Marks unread entries created at or before `cutoff` — later arrivals stay unread. */
   markAllRead: (cutoff: string) => Promise<void>
   remove: (id: string) => Promise<void>
+  /** Deletes every entry created at or before `cutoff` — later arrivals stay. */
+  removeAll: (cutoff: string) => Promise<void>
 }

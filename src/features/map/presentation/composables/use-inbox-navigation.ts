@@ -22,7 +22,7 @@ export function useInboxNavigation(open: {
   const toursStore = useToursStore()
   const snackbar = useSnackbar()
 
-  function openEntry(entry: InboxNotification) {
+  async function openEntry(entry: InboxNotification) {
     if (entry.action === 'received') {
       open.overlay('friend-requests')
       return
@@ -36,10 +36,17 @@ export function useInboxNavigation(open: {
       router.push({ name: 'backfill-collisions', params: { friendshipId } })
       return
     }
-    const visible = entry.tourId
-      && [...toursStore.tours, ...toursStore.friendTours].some(tour => tour.id === entry.tourId)
-    if (entry.tourId && visible && entry.action !== 'deleted')
-      open.tour(entry.tourId)
+    const tourId = inboxStore.targetTourId(entry)
+    if (!tourId || entry.action === 'deleted') {
+      snackbar.show(t('inbox.unavailable'))
+      return
+    }
+    // Decide on the server's answer, not the store: the list may be an offline-cache
+    // paint from before the recipient lost access. Online this awaits the fresh fetch;
+    // offline the cache is all there is.
+    await toursStore.loadFriendTours()
+    if (inboxStore.canOpenTour(tourId))
+      open.tour(tourId)
     else
       snackbar.show(t('inbox.unavailable'))
   }
@@ -59,7 +66,7 @@ export function useInboxNavigation(open: {
         return
       }
       inboxStore.markRead(entry.id)
-      openEntry(entry)
+      await openEntry(entry)
     },
     { immediate: true },
   )

@@ -15,6 +15,7 @@ export const INBOX_ACTIONS = [
   'group_evicted_external',
   'group_dissolved',
   'suggestion_submitted',
+  'suggestion_revised',
   'suggestion_resolved',
 ] as const
 

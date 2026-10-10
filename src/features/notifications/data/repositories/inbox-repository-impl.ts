@@ -67,4 +67,11 @@ export class InboxRepositoryImpl implements InboxRepository {
     if (error)
       throw new Error(error.message)
   }
+
+  async removeAll(cutoff: string): Promise<void> {
+    // RLS scopes the delete to the caller's own rows.
+    const { error } = await supabase.from('notifications').delete().lte('created_at', cutoff)
+    if (error)
+      throw new Error(error.message)
+  }
 }

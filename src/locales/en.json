@@ -1001,6 +1001,10 @@
     "loadError": "Couldn't load your inbox.",
     "markAllRead": "Mark all read",
     "loadMore": "Load more",
+    "clearAll": "Clear inbox",
+    "clearConfirm": "Delete all entries?",
+    "clearAllConfirm": "Delete all",
+    "cancel": "Cancel",
     "delete": "Delete",
     "unavailable": "This is no longer available.",
     "someone": "Someone",
@@ -1012,7 +1016,7 @@
     "stale": {
       "answered": "Answered",
       "resolved": "No longer pending",
-      "tourGone": "Tour deleted"
+      "tourGone": "No longer available"
     },
     "entry": {
       "received": "{actor} sent you a friend request",
@@ -1028,6 +1032,7 @@
       "group_evicted_external": "A tour was removed from the link for “{tour}”",
       "group_dissolved": "The link for “{tour}” was dissolved",
       "suggestion_submitted": "{actor} suggested changes to “{tour}”",
+      "suggestion_revised": "{actor} revised their suggestions for “{tour}”",
       "suggestion_resolved": "{actor} decided on your suggestions for “{tour}”",
       "unknown": "New update from {actor}"
     }

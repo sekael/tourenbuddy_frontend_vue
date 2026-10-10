@@ -7,6 +7,10 @@ VAPID_PRIVATE_KEY=
 VAPID_SUBJECT=mailto:dev@localhost
 NOTIFICATIONS_ENABLED=true
 
+# Must match NOTIFY_WEBHOOK_SECRET in supabase/.env. Format: "<hex32>".
+# Generate: openssl rand -hex 32
+NOTIFY_WEBHOOK_SECRET=
+
 # Must match SEND_EMAIL_HOOK_SECRET in supabase/.env. Format: "v1,whsec_<base64>".
 # Generate: echo "v1,whsec_$(openssl rand -base64 48 | tr -d '\n')"
 SEND_EMAIL_HOOK_SECRET=

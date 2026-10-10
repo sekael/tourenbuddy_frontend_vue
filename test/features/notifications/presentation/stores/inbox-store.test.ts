@@ -10,10 +10,11 @@ const repo = vi.hoisted(() => ({
   markRead: vi.fn(),
   markAllRead: vi.fn(),
   remove: vi.fn(),
+  removeAll: vi.fn(),
 }))
 const state = vi.hoisted(() => ({
   friendships: { isLoading: false, incomingRequests: [] as Array<{ id: string, status: string }> },
-  tours: { isLoading: false, tours: [] as Array<{ id: string }>, friendTours: [] as Array<{ id: string }> },
+  tours: { isLoading: false, tours: [] as Array<{ id: string }>, friendTours: [] as Array<{ id: string, isPartner?: boolean }> },
   suggestions: { loading: false, suggestions: [] as Array<{ batchId: string, status: string }> },
   links: { loading: false, pendingRequests: [] as Array<{ id: string, status: string }> },
 }))
@@ -68,7 +69,7 @@ describe('useInboxStore', () => {
     Object.assign(state.tours, { tours: [], friendTours: [] })
     repo.listPage.mockResolvedValue([])
     repo.listUnread.mockResolvedValue([])
-    for (const fn of [repo.markRead, repo.markAllRead, repo.remove])
+    for (const fn of [repo.markRead, repo.markAllRead, repo.remove, repo.removeAll])
       fn.mockResolvedValue(undefined)
   })
 
@@ -111,6 +112,24 @@ describe('useInboxStore', () => {
     expect(store.attentionCount).toBe(1)
   })
 
+  it('should not let an entry open a friend tour its recipient was removed from', () => {
+    // Still friends-visible (Friends list shows it), but no longer a partner.
+    Object.assign(state.tours, { tours: [{ id: 'own' }], friendTours: [{ id: 't1', isPartner: false }] })
+    const store = useInboxStore()
+
+    expect(store.canOpenTour('t1')).toBe(false)
+    expect(store.staleReason(entry(1, { tourId: 't1' }))).toBe('tourGone')
+  })
+
+  it('should resolve a collision to the recipient\'s own tour, never the actor\'s', () => {
+    Object.assign(state.tours, { tours: [{ id: 'own' }], friendTours: [{ id: 'theirs', isPartner: false }] })
+    const store = useInboxStore()
+    const collision = entry(1, { type: 'tour_interest', action: 'collision', tourId: 'theirs', ref: { other_tour_id: 'own' } })
+
+    expect(store.targetTourId(collision)).toBe('own')
+    expect(store.staleReason(collision)).toBeNull()
+  })
+
   it('should report no more pages when the last page comes back short', async () => {
     repo.listPage.mockResolvedValueOnce(range(20, 10)).mockResolvedValueOnce(range(5))
     const store = useInboxStore()
@@ -135,6 +154,23 @@ describe('useInboxStore', () => {
     await replayQueue()
 
     expect(repo.markAllRead).toHaveBeenCalledExactlyOnceWith(seen[0]!.createdAt)
+  })
+
+  it('should replay an offline clear as one delete up to the newest SEEN entry, not the clock', async () => {
+    const seen = range(3)
+    repo.listPage.mockResolvedValue(seen)
+    const store = useInboxStore()
+    await store.load()
+
+    isOnline.value = false
+    await store.markAllRead()
+    await store.clearAll()
+    expect(store.entries).toEqual([])
+    isOnline.value = true
+    await replayQueue()
+
+    expect(repo.removeAll).toHaveBeenCalledExactlyOnceWith(seen[0]!.createdAt)
+    expect(repo.remove).not.toHaveBeenCalled()
   })
 
   it('should coalesce an offline read followed by a delete into one delete', async () => {

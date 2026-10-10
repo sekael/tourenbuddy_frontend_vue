@@ -999,10 +999,14 @@
     "title": "Posteingang",
     "empty": "Noch nichts Neues. Freundschaftsanfragen, geteilte Touren und Vorschläge erscheinen hier.",
     "loadError": "Der Posteingang konnte nicht geladen werden.",
-    "markAllRead": "Alle als gelesen markieren",
+    "markAllRead": "Alle gelesen",
     "loadMore": "Mehr laden",
+    "clearAll": "Posteingang leeren",
+    "clearConfirm": "Alle Einträge löschen?",
+    "clearAllConfirm": "Alle löschen",
+    "cancel": "Abbrechen",
     "delete": "Löschen",
-    "unavailable": "Das ist nicht mehr verfügbar.",
+    "unavailable": "Diese Nachricht ist nicht mehr verfügbar.",
     "someone": "Jemand",
     "aTour": "eine Tour",
     "occurrences": "{count}×",
@@ -1012,7 +1016,7 @@
     "stale": {
       "answered": "Beantwortet",
       "resolved": "Nicht mehr offen",
-      "tourGone": "Tour gelöscht"
+      "tourGone": "Nicht mehr verfügbar"
     },
     "entry": {
       "received": "{actor} hat dir eine Freundschaftsanfrage gesendet",
@@ -1028,6 +1032,7 @@
       "group_evicted_external": "Eine Tour wurde aus der Verknüpfung mit «{tour}» entfernt",
       "group_dissolved": "Die Verknüpfung für «{tour}» wurde aufgelöst",
       "suggestion_submitted": "{actor} schlägt Änderungen an «{tour}» vor",
+      "suggestion_revised": "{actor} hat die Vorschläge für «{tour}» überarbeitet",
       "suggestion_resolved": "{actor} hat über deine Vorschläge für «{tour}» entschieden",
       "unknown": "Neuigkeit von {actor}"
     }

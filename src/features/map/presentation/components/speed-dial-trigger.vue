@@ -3,8 +3,7 @@ import BaseIcon from '@/core/components/base-icon.vue'
 
 defineProps<{
   isOpen: boolean
-  hasBadge?: boolean
-  /** Inbox attention count, mirrored from the menu entry (shown instead of the dot). */
+  /** Inbox attention count, mirrored from the menu entry (friend requests included). */
   count?: number
   titleOpen: string
   titleClosed: string
@@ -31,7 +30,6 @@ defineEmits<{ toggle: [] }>()
     <span v-if="count && !isOpen" class="count" data-testid="trigger-count" aria-hidden="true">
       {{ count > 9 ? '9+' : count }}
     </span>
-    <span v-else-if="hasBadge && !isOpen" class="dot" aria-hidden="true" />
   </div>
 </template>
 
@@ -94,18 +92,6 @@ defineEmits<{ toggle: [] }>()
 
 .icon-close.hidden {
   transform: rotate(-90deg) scale(0.8);
-}
-
-.dot {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background-color: var(--color-fab-on-surface);
-  border: 2px solid var(--color-fab-surface);
-  pointer-events: none;
 }
 
 /* Same pill as the menu item badges, so the count reads as one signal in two places. */

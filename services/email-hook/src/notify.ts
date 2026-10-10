@@ -84,11 +84,15 @@ function tourPushTitle(type: NotificationType, action: string, locale: 'en' | 'd
     if (locale === 'de') {
       return action === 'suggestion_submitted'
         ? 'Änderungsvorschlag erhalten'
-        : 'Dein Vorschlag wurde entschieden'
+        : action === 'suggestion_revised'
+          ? 'Änderungsvorschlag überarbeitet'
+          : 'Dein Vorschlag wurde entschieden'
     }
     return action === 'suggestion_submitted'
       ? 'Changes suggested for your tour'
-      : 'Your suggestions were decided'
+      : action === 'suggestion_revised'
+        ? 'Suggested changes revised'
+        : 'Your suggestions were decided'
   }
   if (type === 'tour_interest') {
     if (locale === 'de') {
@@ -141,6 +145,11 @@ function tourPushBody(
       return locale === 'de'
         ? `${actorName} schlägt Änderungen an «${tour}» vor.`
         : `${actorName} suggested changes to “${tour}”.`
+    }
+    if (action === 'suggestion_revised') {
+      return locale === 'de'
+        ? `${actorName} hat die Vorschläge für «${tour}» überarbeitet.`
+        : `${actorName} revised their suggestions for “${tour}”.`
     }
     // No accepted/declined tally: "3 / 1" reads as a score, not an outcome. The batch's
     // per-field verdicts are one tap away in the tour's suggestion history.
