@@ -53,8 +53,13 @@ default_pool_size = 20
 # Maximum number of client connections allowed.
 max_client_conn = 100
 
-# [db.vault]
-# secret_key = "env(SECRET_VALUE)"
+# Notification webhook (change: notification-inbox). Unset locally => the dispatch
+# trigger is a no-op and only the inbox works. To push locally, run `npx wrangler dev` in
+# services/email-hook and export before `supabase start`:
+#   NOTIFY_HOOK_URL=http://host.docker.internal:8787  NOTIFY_WEBHOOK_SECRET=<same as .dev.vars>
+[db.vault]
+notify_hook_url = "env(NOTIFY_HOOK_URL)"
+notify_webhook_secret = "env(NOTIFY_WEBHOOK_SECRET)"
 
 [db.migrations]
 # If disabled, migrations will be skipped during a db push or reset.

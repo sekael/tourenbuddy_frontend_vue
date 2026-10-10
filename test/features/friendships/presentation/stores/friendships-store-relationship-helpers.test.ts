@@ -48,11 +48,6 @@ vi.mock('@/core/realtime/use-realtime-subscription', () => ({
   }),
 }))
 
-vi.mock('@/features/notifications/data/notify-dispatch', () => ({
-  notifyFriendRequestReceived: vi.fn(),
-  notifyFriendRequestResponded: vi.fn(),
-}))
-
 async function verifiedStore() {
   mockCurrentUser.value = { id: 'user-me', phone_confirmed_at: '2024-01-01T00:00:00Z' }
   const store = useFriendshipsStore()

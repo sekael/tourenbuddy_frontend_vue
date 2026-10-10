@@ -16,8 +16,11 @@ export const ALL_NOTIFICATION_TYPES: NotificationType[] = [
   'tour_suggestions',
 ]
 
+/**
+ * Account-wide prefs. Push is NOT here: it is a per-device setting derived from this
+ * browser's subscription (#148) — see `notificationsStore.pushEnabled`.
+ */
 export interface NotificationPreferences {
-  notifPushEnabled: boolean
   notifEmailEnabled: boolean
   notifMutedTypes: NotificationType[]
 }

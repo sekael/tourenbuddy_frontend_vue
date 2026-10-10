@@ -5,8 +5,13 @@ export interface PushSubscriptionData {
   userAgent: string
 }
 
+/**
+ * Push subscriptions are per DEVICE (#148): every call is scoped to one browser endpoint.
+ * There is deliberately no "remove all for user" — disabling push on one device must never
+ * silence the others.
+ */
 export interface PushSubscriptionRepository {
-  upsertSubscription: (userId: string, data: PushSubscriptionData) => Promise<void>
+  /** Register (or re-own) this browser's endpoint for the signed-in user. */
+  register: (data: PushSubscriptionData) => Promise<void>
   removeSubscription: (endpoint: string) => Promise<void>
-  removeAllForUser: (userId: string) => Promise<void>
 }

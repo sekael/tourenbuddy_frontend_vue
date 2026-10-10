@@ -11,13 +11,11 @@ import { cachedLoad } from '@/core/offline/cached-load'
 import { mutate } from '@/core/offline/mutate'
 import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
-import { notifyTourChanged, notifyTourSuggestion } from '@/features/notifications/data/notify-dispatch'
 import {
   bucketForField,
   SupabaseTourSuggestionsRepository,
 } from '@/features/tours/data/repositories/tour-suggestions-repository-impl'
 import { groupIntoBatches } from '@/features/tours/domain/entities/tour-suggestion'
-import { isMeaningfulSuggestionField } from '@/features/tours/domain/tour-notifications'
 
 const repository = new SupabaseTourSuggestionsRepository()
 
@@ -167,14 +165,13 @@ export const useTourSuggestionsStore = defineStore('tourSuggestions', () => {
 
   /**
    * Submit or revise a batch (design D12) — ONE idempotent reconciling call, never a
-   * multi-write sequence. `isRevision` decides only the notification: the owner already
-   * knows an unresolved batch exists and their review sheet updates live (D16).
+   * multi-write sequence. The DB tells a revision from a new batch itself and notifies the
+   * owner only for the latter (D16).
    */
   async function submitBatch(
     tourId: string,
     batchId: string,
     items: SuggestionItem[],
-    isRevision = false,
   ) {
     error.value = null
     // Writes are online-only (D6). Offline suggest/accept would need a replay handler per
@@ -184,8 +181,6 @@ export const useTourSuggestionsStore = defineStore('tourSuggestions', () => {
     return mutate(async () => {
       try {
         await repository.upsertBatch(tourId, batchId, items)
-        if (!isRevision && items.length > 0)
-          notifyTourSuggestion(batchId, 'submitted')
         await load()
       }
       catch (err) {
@@ -230,35 +225,13 @@ export const useTourSuggestionsStore = defineStore('tourSuggestions', () => {
     })
   }
 
-  /**
-   * The shared tail of every owner-side resolution. Dispatch happens HERE, on success —
-   * never from the realtime `onChange` (architecture rule: realtime is UI-sync only).
-   */
+  /** The shared tail of every owner-side resolution. */
   async function resolve(run: () => Promise<ResolveResult>, fallbackMessage: string) {
     error.value = null
     return mutate(async () => {
       try {
         const result = await run()
-
-        // The author hears once, on the batch's transition to fully resolved (D16). D7's
-        // auto-declines surface their batches through the same list.
-        for (const batchId of result.resolvedBatches)
-          notifyTourSuggestion(batchId, 'resolved')
-
-        // An accepted partner-facing field is a tour change like any other: the OTHER
-        // partners need it. The actor is dropped by the Worker's JWT match; the author is
-        // excluded explicitly — they already have their own `tour_suggestions` notice.
-        if (result.tourId && result.fields.some(isMeaningfulSuggestionField)) {
-          const authorIds = [
-            ...new Set(
-              suggestions.value
-                .filter(s => s.tourId === result.tourId)
-                .map(s => s.suggesterId),
-            ),
-          ]
-          notifyTourChanged(result.tourId, 'updated', undefined, authorIds)
-        }
-
+        // Resolution + tour-update notifications are emitted by the accept/decline RPCs.
         await load()
         return result
       }

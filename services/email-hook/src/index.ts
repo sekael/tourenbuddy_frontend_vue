@@ -4,15 +4,7 @@ import { verifySupabaseJwt } from './auth'
 import { handleTourFeed } from './calendar/outbound'
 import { purgePastAvailability, syncAllUsers, syncUser } from './calendar/sync'
 import { corsHeaders, jsonResponse, resolveLocale } from './config'
-import {
-  handleFriendRequestReceived,
-  handleFriendRequestResponded,
-  handleGroupMembershipEvent,
-  handleLinkRequestEvent,
-  handleTourChanged,
-  handleTourInterest,
-  handleTourSuggestion,
-} from './notify'
+import { handleEvent } from './notify'
 
 interface SupabaseHookPayload {
   user: {
@@ -141,32 +133,9 @@ export default {
         return withCors(await handleCalendarSync(request, env), request)
       }
 
-      if (url.pathname === '/notify/friend-request-received') {
-        return withCors(await handleFriendRequestReceived(request, env), request)
-      }
-
-      if (url.pathname === '/notify/friend-request-responded') {
-        return withCors(await handleFriendRequestResponded(request, env), request)
-      }
-
-      if (url.pathname === '/notify/tour-changed') {
-        return withCors(await handleTourChanged(request, env), request)
-      }
-
-      if (url.pathname === '/notify/tour-interest') {
-        return withCors(await handleTourInterest(request, env), request)
-      }
-
-      if (url.pathname === '/notify/link-request-event') {
-        return withCors(await handleLinkRequestEvent(request, env), request)
-      }
-
-      if (url.pathname === '/notify/tour-suggestion') {
-        return withCors(await handleTourSuggestion(request, env), request)
-      }
-
-      if (url.pathname === '/notify/group-membership-event') {
-        return withCors(await handleGroupMembershipEvent(request, env), request)
+      // Server-to-server from the DB dispatch trigger (pg_net): no CORS.
+      if (url.pathname === '/notify/event') {
+        return await handleEvent(request, env)
       }
 
       // Default: Supabase Auth email hook (verifies signature internally, no CORS — server-to-server)

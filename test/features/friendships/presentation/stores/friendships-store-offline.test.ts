@@ -59,12 +59,6 @@ vi.mock('@/core/realtime/use-realtime-subscription', () => ({
   }),
 }))
 
-vi.mock('@/features/notifications/data/notify-dispatch', () => ({
-  notifyFriendRequestReceived: vi.fn(),
-  notifyFriendRequestResponded: vi.fn(),
-  notifyGroupMembershipEvent: vi.fn(),
-}))
-
 describe('useFriendshipsStore offline hydrate (gap)', () => {
   beforeEach(() => {
     setActivePinia(createPinia())

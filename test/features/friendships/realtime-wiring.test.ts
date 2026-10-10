@@ -42,11 +42,6 @@ vi.mock('@/core/logging/use-logger', () => ({
   useLogger: () => ({ error: vi.fn(), info: vi.fn(), warn: vi.fn() }),
 }))
 
-vi.mock('@/features/notifications/data/notify-dispatch', () => ({
-  notifyFriendRequestReceived: mockNotifyReceived,
-  notifyFriendRequestResponded: mockNotifyResponded,
-}))
-
 describe('friendshipsStore — realtime wiring', () => {
   beforeEach(() => {
     setActivePinia(createPinia())

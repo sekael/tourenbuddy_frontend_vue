@@ -17,12 +17,6 @@ import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscripti
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { FriendshipRepositoryImpl } from '@/features/friendships/data/repositories/friendship-repository-impl'
 import { useUserBlocksStore } from '@/features/friendships/presentation/stores/user-blocks-store'
-import {
-  notifyFriendRequestReceived,
-  notifyFriendRequestResponded,
-  notifyGroupMembershipEvent,
-} from '@/features/notifications/data/notify-dispatch'
-import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
 
 type FriendRequestVM = FriendRequest & { _optimistic?: boolean }
 
@@ -33,16 +27,11 @@ interface FriendshipsSnapshot {
   friendships: Friendship[]
 }
 
-/** One pre-delete tour-link eviction notice, snapshotted at enqueue (DC6). */
-interface GroupEvictionNotice {
-  groupId: string
-  event: 'evicted_external' | 'dissolved'
-  recipients: string[]
-  recipientTourNames: Record<string, string>
-}
-
-/** Replay payload for a queued unfriend: the target + the pre-delete notices to fire. */
-interface FriendshipRemovalReplay { otherUserId: string, groupNotifications: GroupEvictionNotice[] }
+/**
+ * Replay payload for a queued unfriend. Entries queued by older builds also carry
+ *  `groupNotifications`, ignored now that the DB emits group events.
+ */
+interface FriendshipRemovalReplay { otherUserId: string }
 
 const repository: FriendshipRepository = new FriendshipRepositoryImpl()
 
@@ -271,26 +260,10 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     friendships.value = s.friendships
   }
 
-  /**
-   * Deferred-notify seam (DC6) for unfriend: fire one group-membership event per affected
-   * tour-link group with the PRE-delete recipient snapshot — inline when online, or on
-   * successful replay. The groups are gone server-side by now, hence the carried recipients.
-   */
-  function notifyGroupEvictions(otherUserId: string, notices: GroupEvictionNotice[]) {
-    for (const n of notices) {
-      notifyGroupMembershipEvent(n.groupId, n.event, {
-        affectedUserId: otherUserId,
-        recipients: n.recipients,
-        recipientTourNames: n.recipientTourNames,
-      })
-    }
-  }
-
-  /** Replay a queued unfriend on reconnect (DC3): idempotent delete + deferred eviction notify. */
+  /** Replay a queued unfriend on reconnect (DC3): idempotent delete (the DB emits group events). */
   async function replayFriendshipWrite(entry: WriteQueueEntry): Promise<void> {
-    const { otherUserId, groupNotifications } = entry.payload as FriendshipRemovalReplay
+    const { otherUserId } = entry.payload as FriendshipRemovalReplay
     await repository.removeFriendship(otherUserId)
-    notifyGroupEvictions(otherUserId, groupNotifications)
   }
   registerReplay('friendship', replayFriendshipWrite)
 
@@ -314,7 +287,6 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     try {
       const created = await repository.sendRequest(toUserId)
       outgoingRequests.value = outgoingRequests.value.filter(r => r.id !== tempId && r.id !== created.id).concat(created)
-      notifyFriendRequestReceived(created.id)
       return created
     }
     catch (err) {
@@ -346,7 +318,6 @@ export const useFriendshipsStore = defineStore('friendships', () => {
 
       try {
         await repository.accept(requestId)
-        notifyFriendRequestResponded(requestId)
       }
       catch (err) {
         // Rollback
@@ -366,7 +337,6 @@ export const useFriendshipsStore = defineStore('friendships', () => {
 
     try {
       await repository.deny(requestId)
-      notifyFriendRequestResponded(requestId)
     }
     catch (err) {
       if (req)
@@ -499,12 +469,6 @@ export const useFriendshipsStore = defineStore('friendships', () => {
     if (!removed)
       return
 
-    // Snapshot tour-link groups that will be cascade-evicted by the friendship-delete
-    // trigger. MUST happen at enqueue, before the delete: the trigger tears down members +
-    // dissolves groups in the same txn, and friend tours stop being visible the moment the
-    // friendship row is gone — so the recipients are unrecoverable afterwards. Carried in the
-    // queue payload and fired on successful replay (mirrors tours' linkSnapshot, DC6).
-    const groupNotifications = useTourLinksStore().snapshotFriendshipRemovalNotifications(otherUserId)
     const applied: FriendshipsSnapshot = {
       incoming: incomingRequests.value,
       outgoing: outgoingRequests.value,
@@ -516,7 +480,6 @@ export const useFriendshipsStore = defineStore('friendships', () => {
         friendships.value = applied.friendships
         try {
           await repository.removeFriendship(otherUserId)
-          notifyGroupEvictions(otherUserId, groupNotifications)
         }
         catch (err) {
           friendships.value = [...friendships.value, removed]
@@ -528,7 +491,7 @@ export const useFriendshipsStore = defineStore('friendships', () => {
         entityId: `friendship:${otherUserId}`,
         kind: 'friendship',
         op: 'delete',
-        payload: { otherUserId, groupNotifications } satisfies FriendshipRemovalReplay,
+        payload: { otherUserId } satisfies FriendshipRemovalReplay,
         baseSnapshot: snapshotRefs(),
       },
       cacheKey: `friendships:${uid}`,

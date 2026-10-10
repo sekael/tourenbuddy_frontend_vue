@@ -32,11 +32,6 @@ vi.mock('@/core/components/adaptive-overlay.vue', () => ({
 vi.mock('@/core/realtime/use-realtime-subscription', () => ({
   useRealtimeSubscription: vi.fn().mockReturnValue({ status: { value: 'idle' }, stop: vi.fn() }),
 }))
-vi.mock('@/features/notifications/data/notify-dispatch', () => ({
-  notifyFriendRequestReceived: vi.fn(),
-  notifyFriendRequestResponded: vi.fn(),
-}))
-
 function mountSheet(incoming = [makeRequest()]) {
   return mount(FriendRequestsSheet, {
     global: {

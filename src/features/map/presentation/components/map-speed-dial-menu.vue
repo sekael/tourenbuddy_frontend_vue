@@ -7,6 +7,8 @@ export interface SpeedDialMenuItem {
   icon: string
   label: string
   badge?: number
+  /** Attention without a number (shown when there is no badge). */
+  dot?: boolean
   disabled?: boolean
   tooltip?: string
 }
@@ -82,7 +84,10 @@ defineExpose({ focusFirst })
         @select="select(item.id)"
       >
         <template v-if="item.badge && item.badge > 0" #badge>
-          <span class="badge">{{ item.badge }}</span>
+          <span class="badge">{{ item.badge > 9 ? '9+' : item.badge }}</span>
+        </template>
+        <template v-else-if="item.dot" #badge>
+          <span class="dot" data-testid="menu-dot" />
         </template>
       </SpeedDialItem>
       <slot v-if="item.id === props.expanded" />
@@ -154,22 +159,36 @@ defineExpose({ focusFirst })
   }
 }
 
-/* Pinned to the icon's top-right corner */
+/* Sits on the pill's top-right border (the item row is its containing block), ringed
+   like the trigger's count so it reads as one signal in two places. */
 .badge {
   position: absolute;
-  top: -8px;
-  right: -10px;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 3px;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
   border-radius: var(--radius-pill);
   background-color: var(--color-fab-on-surface);
   color: var(--color-primary-dark);
+  border: 2px solid var(--color-fab-surface);
   font-size: 10px;
   font-weight: var(--font-weight-semibold);
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
+}
+
+.dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--color-fab-on-surface);
+  border: 2px solid var(--color-fab-surface);
   pointer-events: none;
 }
 </style>

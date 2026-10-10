@@ -41,6 +41,7 @@ import IconGroupOutline from '~icons/material-symbols/group-outline'
 import IconHardwareOutline from '~icons/material-symbols/hardware-outline'
 import IconHelpOutline from '~icons/material-symbols/help-outline'
 import IconHiking from '~icons/material-symbols/hiking'
+import IconHistory from '~icons/material-symbols/history'
 import IconHomeOutline from '~icons/material-symbols/home-outline'
 import IconImageOutline from '~icons/material-symbols/image-outline'
 import IconInfoOutline from '~icons/material-symbols/info-outline'
@@ -151,6 +152,7 @@ export const iconRegistry: Record<string, Component> = {
   group: IconGroupOutline,
   hardware: IconHardwareOutline,
   help: IconHelpOutline,
+  history: IconHistory,
   hiking: IconHiking,
   home: IconHomeOutline,
   image: IconImageOutline,

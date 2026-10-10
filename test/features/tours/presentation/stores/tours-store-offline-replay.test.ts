@@ -5,7 +5,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { supabase } from '@/core/utils/supabase'
 import 'fake-indexeddb/auto'
 
-// Deferred-notify (10.3) + conflict/LWW (10.5) at the store's registered replay handler.
+// Replay (10.3) + conflict/LWW (10.5) at the store's registered replay handler. Notifications
+// are emitted by the DB inside the replayed RPC, so the client asserts only the write.
 // The offline ENQUEUE is exercised for real (proving zero notifications offline); the
 // REPLAY side is driven with hand-crafted queue entries via a mocked `peekAllOrdered`, so
 // the handler's op-keyed dispatch + last-write-wins gate are asserted without depending on
@@ -15,7 +16,6 @@ const {
   mockCreate,
   mockUpdate,
   mockGetUpdatedAt,
-  mockNotifyTourChanged,
   peekAllOrdered,
   remove,
   deadLetter,
@@ -24,7 +24,6 @@ const {
   mockCreate: vi.fn().mockResolvedValue(undefined),
   mockUpdate: vi.fn().mockResolvedValue(true),
   mockGetUpdatedAt: vi.fn(),
-  mockNotifyTourChanged: vi.fn(),
   peekAllOrdered: vi.fn().mockResolvedValue([]),
   remove: vi.fn().mockResolvedValue(undefined),
   deadLetter: vi.fn().mockResolvedValue(undefined),
@@ -39,12 +38,6 @@ vi.mock('@/core/offline/write-queue', async importOriginal => ({
   remove,
   deadLetter,
   bumpAttempt,
-}))
-
-vi.mock('@/features/notifications/data/notify-dispatch', () => ({
-  notifyTourChanged: mockNotifyTourChanged,
-  notifyTourDeleted: vi.fn(),
-  notifyTourInterest: vi.fn(),
 }))
 
 vi.mock('@/features/tours/data/repositories/tours-repository-impl', () => ({
@@ -80,14 +73,6 @@ vi.mock('@/core/realtime/use-realtime-subscription', () => ({
   useRealtimeSubscription: () => ({ status: { value: 'idle' }, stop: vi.fn() }),
 }))
 
-vi.mock('@/features/tour-links/presentation/stores/tour-links-store', () => ({
-  useTourLinksStore: () => ({
-    snapshotTourGroupContext: () => null,
-    dispatchEvictionIfHappened: vi.fn().mockResolvedValue(undefined),
-    dispatchEvictionNotification: vi.fn(),
-  }),
-}))
-
 const { isOnline } = await import('@/core/offline/use-online-status')
 const { replayQueue } = await import('@/core/offline/replay')
 const { useToursStore } = await import('@/features/tours/presentation/stores/tours-store')
@@ -98,7 +83,7 @@ function draft(over: Partial<TourDraft> = {}): TourDraft {
   return {
     name: 'Rigi',
     plannedDate: null,
-    partnerIds: ['contact-1'], // shareable (isShareableTour needs ≥1 partner) so notify can fire
+    partnerIds: ['contact-1'],
     tourType: null,
     elevation: null,
     gpxFilepath: null,
@@ -135,7 +120,7 @@ describe('tours-store offline write → replay', () => {
     )
   })
 
-  it('offline create dispatches ZERO notifications and never touches the server', async () => {
+  it('offline create never touches the server', async () => {
     const store = useToursStore()
     isOnline.value = false
     const id = await store.createTourFromDraft(draft(), goal)
@@ -143,22 +128,9 @@ describe('tours-store offline write → replay', () => {
     expect(id).toBeTruthy()
     expect(store.tours).toHaveLength(1) // optimistically applied
     expect(mockCreate).not.toHaveBeenCalled() // enqueued, not written
-    expect(mockNotifyTourChanged).not.toHaveBeenCalled() // deferred, not fired at enqueue
   })
 
-  it('replaying a create dispatches exactly one "created" notification', async () => {
-    useToursStore() // registers the 'tour' replay handler
-    peekAllOrdered.mockResolvedValue([entry({ entityId: 't1', op: 'create' })])
-
-    await replayQueue()
-
-    expect(mockCreate).toHaveBeenCalledTimes(1)
-    expect(mockNotifyTourChanged).toHaveBeenCalledTimes(1)
-    expect(mockNotifyTourChanged).toHaveBeenCalledWith('t1', 'created')
-    expect(remove).toHaveBeenCalledWith('t1')
-  })
-
-  it('a coalesced create-then-edit replays as ONE call + "created", never "updated"', async () => {
+  it('a coalesced create-then-edit replays as ONE create call, never an update', async () => {
     useToursStore()
     // create + offline edits collapse to a single op=create carrying the final payload (DC1).
     peekAllOrdered.mockResolvedValue([entry({ entityId: 't1', op: 'create', payload: { draft: draft({ name: 'Renamed' }), goal } })])
@@ -166,10 +138,10 @@ describe('tours-store offline write → replay', () => {
     await replayQueue()
 
     expect(mockUpdate).not.toHaveBeenCalled() // replayed as a create, not an update
-    expect(mockNotifyTourChanged).toHaveBeenCalledWith('t1', 'created')
+    expect(mockCreate).toHaveBeenCalledTimes(1)
   })
 
-  it('a replayed update whose server row is newer (LWW loser) never writes, notifies, or retries', async () => {
+  it('a replayed update whose server row is newer (LWW loser) never writes or retries', async () => {
     useToursStore()
     peekAllOrdered.mockResolvedValue([entry({
       entityId: 't-x',
@@ -183,7 +155,6 @@ describe('tours-store offline write → replay', () => {
     await replayQueue()
 
     expect(mockUpdate).not.toHaveBeenCalled() // gated out — must not clobber the newer server row
-    expect(mockNotifyTourChanged).not.toHaveBeenCalled()
     expect(bumpAttempt).not.toHaveBeenCalled() // not a transient retry
     expect(deadLetter).toHaveBeenCalledWith('t-x', 'conflict') // surfaced as a conflict
   })
