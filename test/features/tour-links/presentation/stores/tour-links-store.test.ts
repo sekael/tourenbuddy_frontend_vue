@@ -8,12 +8,6 @@ vi.mock('@/core/realtime/use-realtime-subscription', () => ({
   useRealtimeSubscription: () => ({}),
 }))
 
-// Mock notify-dispatch so wire-side effects don't leak.
-vi.mock('@/features/notifications/data/notify-dispatch', () => ({
-  notifyTourLinkRequestEvent: vi.fn(),
-  notifyGroupMembershipEvent: vi.fn(),
-}))
-
 // Mock auth + tours stores via createPinia — kept minimal.
 vi.mock('@/features/auth/presentation/stores/auth-store', () => ({
   useAuthStore: () => ({ isAuthenticated: true, currentUser: { id: 'me' } }),
@@ -65,15 +59,5 @@ describe('tour-links-store', () => {
     mockRepo.listPendingRequestsForTours.mockResolvedValue([])
     const store = useTourLinksStore()
     await expect(store.createRequest('t1', 'tf')).rejects.toThrow('predicate_failed')
-  })
-
-  it('withdrawRequest does NOT call notify dispatch helper', async () => {
-    const { notifyTourLinkRequestEvent } = await import('@/features/notifications/data/notify-dispatch')
-    mockRepo.withdrawRequest.mockResolvedValue(undefined)
-    mockRepo.listGroupsForTours.mockResolvedValue([])
-    mockRepo.listPendingRequestsForTours.mockResolvedValue([])
-    const store = useTourLinksStore()
-    await store.withdrawRequest('r1')
-    expect(notifyTourLinkRequestEvent).not.toHaveBeenCalled()
   })
 })

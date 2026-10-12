@@ -31,13 +31,6 @@ vi.mock('@/features/tours/data/repositories/tour-suggestions-repository-impl', a
   }
 })
 
-const notifySuggestion = vi.hoisted(() => vi.fn())
-const notifyChanged = vi.hoisted(() => vi.fn())
-vi.mock('@/features/notifications/data/notify-dispatch', () => ({
-  notifyTourSuggestion: notifySuggestion,
-  notifyTourChanged: notifyChanged,
-}))
-
 vi.mock('@/features/auth/presentation/stores/auth-store', () => ({
   useAuthStore: vi.fn().mockReturnValue({
     currentUser: { id: 'owner-1' },
@@ -103,7 +96,6 @@ describe('useTourSuggestionsStore', () => {
 
     expect(mockUpsert).not.toHaveBeenCalled()
     expect(enqueueSpy).not.toHaveBeenCalled()
-    expect(notifySuggestion).not.toHaveBeenCalled()
   })
 
   it('should surface a named RPC error to `error` instead of throwing at the caller', async () => {
@@ -122,47 +114,6 @@ describe('useTourSuggestionsStore', () => {
 
     await expect(store.accept(row() as never)).rejects.toThrow('already_resolved')
     expect(store.error).toBe('tour_suggestion.already_resolved')
-  })
-
-  it('should NOT notify the author while the batch is only partially resolved', async () => {
-    // D16: a partially resolved batch stays silent — the owner has not finished deciding.
-    mockDecline.mockResolvedValueOnce({ resolvedBatches: [], fields: [] })
-    const store = useTourSuggestionsStore()
-
-    await store.decline('s1')
-
-    expect(notifySuggestion).not.toHaveBeenCalled()
-  })
-
-  it('should notify the author exactly once when the batch becomes fully resolved', async () => {
-    mockDecline.mockResolvedValueOnce({ resolvedBatches: ['b1'], fields: [] })
-    const store = useTourSuggestionsStore()
-
-    await store.decline('s1')
-
-    expect(notifySuggestion).toHaveBeenCalledTimes(1)
-    expect(notifySuggestion).toHaveBeenCalledWith('b1', 'resolved')
-  })
-
-  it('should not dispatch tour_updates for an accepted cosmetic field', async () => {
-    // `notes` is deliberately outside the partner-facing set.
-    mockAccept.mockResolvedValueOnce({ resolvedBatches: [], fields: ['notes'], tourId: 't1' })
-    const store = useTourSuggestionsStore()
-
-    await store.accept(row({ field: 'notes' }) as never)
-
-    expect(notifyChanged).not.toHaveBeenCalled()
-  })
-
-  it('should exclude the suggestion authors from the tour_updates fanout', async () => {
-    mockList.mockResolvedValue([row({ suggesterId: 'friend-1' })])
-    mockAccept.mockResolvedValueOnce({ resolvedBatches: [], fields: ['goal'], tourId: 't1' })
-    const store = useTourSuggestionsStore()
-    await store.load()
-
-    await store.accept(row() as never)
-
-    expect(notifyChanged).toHaveBeenCalledWith('t1', 'updated', undefined, ['friend-1'])
   })
 
   it('should refetch on every (re-)subscribe — a hidden tab drops events', async () => {

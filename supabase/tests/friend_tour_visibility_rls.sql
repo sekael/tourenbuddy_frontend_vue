@@ -5,13 +5,18 @@
 -- uses, so auth.uid() resolves). Wrapped in a transaction and rolled back, so the
 -- local seed is left untouched.
 --
--- Run against the local stack:
---   psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -f supabase/tests/friend_tour_visibility_rls.sql
--- A failing assertion RAISEs and aborts with a non-zero exit code.
+-- pgTAP. Assertions assume pristine seed data, so reset first:
+--   supabase db reset && supabase test db
 
 \set ON_ERROR_STOP on
 
+\set patrick '11111111-1111-1111-1111-111111111111'
+\set jakob '22222222-2222-2222-2222-222222222222'
+\set reni '33333333-3333-3333-3333-333333333333'
+
 begin;
+create extension if not exists pgtap with schema extensions;
+select plan(6);
 
 -- Seed identities (see supabase/seed.sql)
 --   Patrick 1111 (owner), Jakob 2222 (friend + partner on tour ...02),
@@ -23,93 +28,45 @@ begin;
 
 -- 4.1 — Non-friend (Reni, pending only) gets zero rows from the friend view.
 set local role authenticated;
-select set_config('request.jwt.claims', json_build_object('sub', '33333333-3333-3333-3333-333333333333', 'role', 'authenticated')::text, true);
-do $$
-begin
-  if (select count(*) from public.friend_tours_view) <> 0 then
-    raise exception '4.1 FAIL: non-friend Reni sees % friend tours, expected 0',
-      (select count(*) from public.friend_tours_view);
-  end if;
-  raise notice '4.1 OK: non-friend sees zero friend tours';
-end $$;
+select set_config('request.jwt.claims', json_build_object('sub', :'reni', 'role', 'authenticated')::text, true);
+select is((select count(*)::int from public.friend_tours_view), 0, '4.1 non-friend sees zero friend tours');
 reset role;
 
 -- 4.3a — Friend (Jakob) sees both of Patrick's friends-visible tours.
 set local role authenticated;
-select set_config('request.jwt.claims', json_build_object('sub', '22222222-2222-2222-2222-222222222222', 'role', 'authenticated')::text, true);
-do $$
-begin
-  if (select count(*) from public.friend_tours_view) <> 2 then
-    raise exception '4.3a FAIL: friend Jakob sees % tours, expected 2',
-      (select count(*) from public.friend_tours_view);
-  end if;
-  raise notice '4.3a OK: friend sees both friends-visible tours';
-end $$;
+select set_config('request.jwt.claims', json_build_object('sub', :'jakob', 'role', 'authenticated')::text, true);
+select is((select count(*)::int from public.friend_tours_view), 2, '4.3a friend sees both friends-visible tours');
 
 -- 4.3b — Partner friend (Jakob on tour ...02) gets full detail (planned_date present).
-do $$
-declare r record;
-begin
-  select is_partner, planned_date, partner_names into r
-  from public.friend_tours_view where id = 'cccccccc-0000-0000-0000-000000000002';
-  if not r.is_partner then
-    raise exception '4.3b FAIL: Jakob should be a partner on tour ...02';
-  end if;
-  if r.planned_date is null then
-    raise exception '4.3b FAIL: partner friend must see planned_date';
-  end if;
-  -- Regression guard: partner roster must resolve to profile names, not [].
-  if json_array_length(r.partner_names) = 0 then
-    raise exception '4.3b FAIL: partner friend must see partner_names, got empty';
-  end if;
-  raise notice '4.3b OK: partner friend sees ungated detail + partner names';
-end $$;
+--        Regression guard: partner roster must resolve to profile names, not [].
+select ok(
+  (select is_partner and planned_date is not null and json_array_length(partner_names) > 0
+   from public.friend_tours_view where id = 'cccccccc-0000-0000-0000-000000000002'),
+  '4.3b partner friend sees ungated detail + partner names');
 
 -- 4.3c — Non-partner friend (Jakob on tour ...01) gets gated columns.
-do $$
-declare r record;
-begin
-  select is_partner, planned_date into r
-  from public.friend_tours_view where id = 'cccccccc-0000-0000-0000-000000000001';
-  if r.is_partner then
-    raise exception '4.3c FAIL: Jakob is not a partner on tour ...01';
-  end if;
-  if r.planned_date is not null then
-    raise exception '4.3c FAIL: non-partner friend must have planned_date gated to null';
-  end if;
-  raise notice '4.3c OK: non-partner friend sees gated columns';
-end $$;
+select ok(
+  (select not is_partner and planned_date is null
+   from public.friend_tours_view where id = 'cccccccc-0000-0000-0000-000000000001'),
+  '4.3c non-partner friend sees gated columns');
 reset role;
 
 -- 4.2 — Private tour is invisible even to a marked partner friend.
 update public.tours set visibility = 'private' where id = 'cccccccc-0000-0000-0000-000000000002';
 set local role authenticated;
-select set_config('request.jwt.claims', json_build_object('sub', '22222222-2222-2222-2222-222222222222', 'role', 'authenticated')::text, true);
-do $$
-begin
-  if exists (select 1 from public.friend_tours_view where id = 'cccccccc-0000-0000-0000-000000000002') then
-    raise exception '4.2 FAIL: private tour visible to partner friend';
-  end if;
-  if (select count(*) from public.friend_tours_view) <> 1 then
-    raise exception '4.2 FAIL: Jakob should still see the other (friends) tour';
-  end if;
-  raise notice '4.2 OK: private tour hidden from partner friend';
-end $$;
+select set_config('request.jwt.claims', json_build_object('sub', :'jakob', 'role', 'authenticated')::text, true);
+select ok(
+  not exists (select 1 from public.friend_tours_view where id = 'cccccccc-0000-0000-0000-000000000002'),
+  '4.2 private tour hidden from partner friend');
 reset role;
 
 -- 4.4 — Removing the friendship revokes all read access.
 delete from public.friendships
-where (request_user_id = '11111111-1111-1111-1111-111111111111'
-       and response_user_id = '22222222-2222-2222-2222-222222222222');
+where request_user_id = :'patrick' and response_user_id = :'jakob';
 set local role authenticated;
-select set_config('request.jwt.claims', json_build_object('sub', '22222222-2222-2222-2222-222222222222', 'role', 'authenticated')::text, true);
-do $$
-begin
-  if (select count(*) from public.friend_tours_view) <> 0 then
-    raise exception '4.4 FAIL: ex-friend still sees % tours', (select count(*) from public.friend_tours_view);
-  end if;
-  raise notice '4.4 OK: removing friendship revokes access';
-end $$;
+select set_config('request.jwt.claims', json_build_object('sub', :'jakob', 'role', 'authenticated')::text, true);
+select is((select count(*)::int from public.friend_tours_view), 0, '4.4 removing friendship revokes access');
 reset role;
 
+select * from finish();
 rollback;

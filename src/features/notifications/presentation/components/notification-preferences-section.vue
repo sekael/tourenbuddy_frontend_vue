@@ -6,18 +6,20 @@ import { useI18n } from 'vue-i18n'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
+import { isOnline } from '@/core/offline/use-online-status'
 import { ALL_NOTIFICATION_TYPES } from '../../domain/entities/notification-preferences'
 import { useNotificationCapability } from '../composables/use-notification-capability'
 import { useNotificationsStore } from '../stores/notifications-store'
 
 const { t } = useI18n({ useScope: 'global' })
 const notificationsStore = useNotificationsStore()
-const { prefs, pushPermission, isLoading } = storeToRefs(notificationsStore)
+const { prefs, pushPermission, pushEnabled, isLoading } = storeToRefs(notificationsStore)
 const { pushSupported, requiresPwaInstall } = useNotificationCapability()
 const isDesktop = useIsDesktop()
 
+// Push is this device's state (#148), email is account-wide.
 const allOff = computed(
-  () => prefs.value !== null && !prefs.value.notifPushEnabled && !prefs.value.notifEmailEnabled,
+  () => prefs.value !== null && !pushEnabled.value && !prefs.value.notifEmailEnabled,
 )
 const pushDenied = computed(() => pushPermission.value === 'denied')
 const unavailableHint = computed(() => {
@@ -75,8 +77,10 @@ onMounted(() => {
           <label v-else-if="pushSupported" class="switch">
             <input
               type="checkbox"
-              :checked="prefs.notifPushEnabled"
+              :checked="pushEnabled"
+              :disabled="!isOnline"
               :aria-label="t('notifications.pushLabel')"
+              data-testid="push-toggle"
               @change="handlePushToggle"
             >
             <span class="track" />
@@ -99,6 +103,7 @@ onMounted(() => {
 
       <div class="types-block" :class="{ 'types-block--disabled': allOff }">
         <span class="types-label">{{ t('notifications.typesLabel') }}</span>
+        <span class="row-description">{{ t('notifications.typesHint') }}</span>
         <ul class="rows">
           <li
             v-for="type in ALL_NOTIFICATION_TYPES"
@@ -126,7 +131,7 @@ onMounted(() => {
         </ul>
       </div>
 
-      <p v-if="allOff" class="disclaimer">
+      <p v-if="allOff" class="disclaimer" data-testid="all-off-hint">
         {{ t('notifications.allOffDisclaimer') }}
       </p>
     </template>

@@ -312,8 +312,7 @@ async function handleSuggestSubmit(
       removedAttachmentIds: proposedRemovals,
     })
 
-    const isRevision = myPendingSuggestions.value.some(s => s.batchId === batchId)
-    await suggestionsStore.submitBatch(props.tour.id, batchId, items, isRevision)
+    await suggestionsStore.submitBatch(props.tour.id, batchId, items)
 
     if (suggestionsStore.error) {
       saveError.value = suggestionsStore.error

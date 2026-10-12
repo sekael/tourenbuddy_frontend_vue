@@ -56,7 +56,7 @@ export interface TourNotificationEmailParams {
   type: 'tour_updates' | 'tour_interest' | 'tour_suggestions'
   /**
    * 'created' | 'updated' | 'deleted' for tour_updates; 'interest' for tour_interest;
-   * 'suggestion_submitted' | 'suggestion_resolved' for tour_suggestions.
+   * 'suggestion_submitted' | 'suggestion_revised' | 'suggestion_resolved' for tour_suggestions.
    */
   action: string
   actorName: string

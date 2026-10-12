@@ -36,7 +36,6 @@ describe('notificationPreferencesRepositoryImpl', () => {
       eq: vi.fn().mockReturnThis(),
       maybeSingle: vi.fn().mockResolvedValue({
         data: {
-          notif_push_enabled: true,
           notif_email_enabled: false,
           notif_muted_types: ['friend_requests'],
         },
@@ -46,7 +45,6 @@ describe('notificationPreferencesRepositoryImpl', () => {
 
     const result = await repo.getPreferences('user-1')
     expect(result).toEqual({
-      notifPushEnabled: true,
       notifEmailEnabled: false,
       notifMutedTypes: ['friend_requests'],
     })
@@ -58,7 +56,6 @@ describe('notificationPreferencesRepositoryImpl', () => {
       eq: vi.fn().mockReturnThis(),
       maybeSingle: vi.fn().mockResolvedValue({
         data: {
-          notif_push_enabled: true,
           notif_email_enabled: true,
           notif_muted_types: ['friend_requests', 'unknown_future_type'],
         },
@@ -86,13 +83,11 @@ describe('notificationPreferencesRepositoryImpl', () => {
     mockFrom.mockReturnValue({ update: updateFn, eq: eqFn } as never)
 
     await repo.updatePreferences('user-1', {
-      notifPushEnabled: false,
       notifEmailEnabled: true,
       notifMutedTypes: [],
     })
 
     expect(updateFn).toHaveBeenCalledWith({
-      notif_push_enabled: false,
       notif_email_enabled: true,
       notif_muted_types: [],
     })

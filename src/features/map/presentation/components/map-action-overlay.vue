@@ -18,6 +18,7 @@ const emit = defineEmits<{
   openContacts: []
   openFeedback: []
   openOfflineMap: []
+  openInbox: []
   resetBearing: []
   dismissOverlay: []
 }>()
@@ -29,6 +30,7 @@ const {
   isPickingLocation,
   isDrawingRegion,
   currentStyleIndex,
+  inboxCount,
   pendingIncomingCount,
   menuItems,
   onMenuSelect,
@@ -111,7 +113,8 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
 
     <SpeedDialTrigger
       :is-open="isOpen"
-      :has-badge="pendingIncomingCount > 0"
+      :count="inboxCount"
+      :dot="pendingIncomingCount > 0"
       :title-open="t('map.overlay.menuClose')"
       :title-closed="t('map.overlay.menuOpen')"
       :class="{ 'trigger--overlay-active': overlayActive }"

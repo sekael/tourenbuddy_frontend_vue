@@ -97,6 +97,14 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     labelKey: 'onboarding.tour.labels.offlineMap',
   },
   {
+    // Same open menu as the offline-maps step — the spotlight just glides down.
+    surface: 'menu',
+    target: '[data-tour="menu-inbox"]',
+    titleKey: 'onboarding.tour.inbox.title',
+    bodyKey: 'onboarding.tour.inbox.body',
+    labelKey: 'onboarding.tour.labels.inbox',
+  },
+  {
     surface: 'profile',
     target: '[data-tour="phone-verification"]',
     titleKey: 'onboarding.tour.phone.title',

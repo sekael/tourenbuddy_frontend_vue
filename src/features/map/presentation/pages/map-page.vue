@@ -9,6 +9,7 @@ import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import BaseButton from '@/core/components/base-button.vue'
 import DialogWindow from '@/core/components/dialog-window.vue'
+import ErrorSnackbar from '@/core/components/error-snackbar.vue'
 import FeedbackSheet from '@/core/components/feedback-sheet.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useScrollLock } from '@/core/composables/use-scroll-lock'
@@ -28,8 +29,10 @@ import TourActionBar from '@/features/map/presentation/components/tour-action-ba
 import TourenbuddyMap from '@/features/map/presentation/components/tourenbuddy-map.vue'
 import { computeBarState } from '@/features/map/presentation/composables/compute-bar-state'
 import { frameTour } from '@/features/map/presentation/composables/frame-tour'
+import { useInboxNavigation } from '@/features/map/presentation/composables/use-inbox-navigation'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
-import { notifyTourInterest } from '@/features/notifications/data/notify-dispatch'
+import InboxOverlay from '@/features/notifications/presentation/components/inbox-overlay.vue'
+import { useInboxStore } from '@/features/notifications/presentation/stores/inbox-store'
 import { useNotificationsStore } from '@/features/notifications/presentation/stores/notifications-store'
 import OnboardingTourBanner from '@/features/onboarding/presentation/components/onboarding-tour-banner.vue'
 import OnboardingWelcome from '@/features/onboarding/presentation/components/onboarding-welcome.vue'
@@ -57,6 +60,7 @@ type OverlayName
     | 'tour'
     | 'tour-creation'
     | 'friend-requests'
+    | 'inbox'
     | 'offline-manage'
     | 'offline-download'
 
@@ -72,6 +76,7 @@ const userProfileStore = useUserProfileStore()
 const authStore = useAuthStore()
 const onboardingTourStore = useOnboardingTourStore()
 const notificationsStore = useNotificationsStore()
+const inboxStore = useInboxStore()
 const isDesktop = useIsDesktop()
 
 const { isPickingLocation, isDrawingRegion, selectedTourId } = storeToRefs(mapStore)
@@ -310,7 +315,7 @@ async function stageTourSurface(surface: TourSurface, ctx: StageContext, from: T
 // The overlay open when the tour started; staging closes it, an early quit
 // reopens it. Only overlays that need no extra state (a selected tour, a drawn
 // region, a creation draft) can be reopened as they were.
-const RESTORABLE_ORIGINS = new Set<OverlayName>(['feedback', 'profile', 'contacts', 'friend-requests', 'tours', 'offline-manage'])
+const RESTORABLE_ORIGINS = new Set<OverlayName>(['feedback', 'profile', 'contacts', 'friend-requests', 'inbox', 'tours', 'offline-manage'])
 let tourOrigin: OverlayName | null = null
 
 const onboardingTour = useOnboardingTour({
@@ -456,6 +461,14 @@ function handleContactsClose() {
   closeOverlay()
 }
 
+const { openEntry: openInboxEntry, snackbar: inboxSnackbar } = useInboxNavigation({
+  overlay: name => openOverlay(name),
+  tour: (tourId) => {
+    closeOverlay()
+    mapStore.selectTour(tourId)
+  },
+})
+
 function handleOpenFriendRequests() {
   editContactId.value = null
   openOverlay('friend-requests')
@@ -493,6 +506,7 @@ onMounted(async () => {
     toursStore.loadTours(),
     contactsStore.loadContacts(),
     tourSuggestionsStore.load(),
+    inboxStore.load(),
   ])
 
   // Consume a one-shot handoff from the calendar route (open the tours list, or
@@ -821,9 +835,6 @@ async function performCreate(
       // inserts the rows, which need the tour row to exist for their FK.
       if (draftId)
         await attachmentsStore.commitStaged(draftId, newId)
-      // Fire-and-forget: Worker scans for friend-owned colliding tours and dispatches
-      // tour_interest notifications. Replaces the legacy "decline duplicate → signal" flow.
-      notifyTourInterest(newId)
     }
   }
   finally {
@@ -877,12 +888,15 @@ function handleDialogClose() {
       </DialogWindow>
     </Teleport>
 
+    <ErrorSnackbar :message="inboxSnackbar.snackbar.value.message" :visible="inboxSnackbar.snackbar.value.visible" @dismiss="inboxSnackbar.dismiss" />
+
     <TourenbuddyMap ref="mapRef" @tour-clicked="handleTourClicked" @map-background-click="handleMapBackgroundClick" />
 
     <MapActionOverlay
       ref="mapOverlayRef" :bearing="mapBearing" :overlay-active="activeOverlay !== null"
       @open-feedback="openOverlay('feedback')" @open-profile="openOverlay('profile')"
       @open-contacts="openOverlay('contacts')" @open-offline-map="openOverlay('offline-manage')"
+      @open-inbox="openOverlay('inbox')"
       @reset-bearing="handleResetBearing" @dismiss-overlay="closeOverlay"
     />
 
@@ -939,6 +953,9 @@ function handleDialogClose() {
       </div>
       <div v-else-if="showFriendRequests" key="friend-requests" class="sheet-host">
         <FriendRequestsSheet @close="closeOverlay" @back="openOverlay('contacts')" />
+      </div>
+      <div v-else-if="activeOverlay === 'inbox'" key="inbox" class="sheet-host">
+        <InboxOverlay @close="closeOverlay" @open="openInboxEntry" />
       </div>
       <div v-else-if="showToursList" key="tours" class="sheet-host">
         <TourListSheet

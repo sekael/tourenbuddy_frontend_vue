@@ -94,23 +94,27 @@ The system SHALL delete a `tour_link_group` whenever, after any eviction or casc
 - **THEN** the group persists with those two members
 
 ### Requirement: Tour save fires collision-detected notification
-After any tour create or update, the system SHALL invoke the notification Worker to scan for friend-owned tours satisfying the collision predicate and dispatch a `tour_interest` notification to each colliding owner. The notification SHALL be best-effort: failures SHALL NOT block or roll back the tour write.
+After the owner creates or meaningfully updates a friends-visible tour — whether or not it has partners — the system SHALL, in the same transaction, scan for friend-owned tours satisfying the collision predicate and emit a `tour_interest` notification to each colliding owner. Push/email delivery SHALL be best-effort: failures SHALL NOT block or roll back the tour write.
 
 #### Scenario: New tour collides with a friend tour
 - **WHEN** owner A saves a tour whose goal is within 200 m, with the same non-null `tour_type`, and with friends-visibility matching a friend B's tour also at friends-visibility
-- **THEN** the Worker dispatches a `tour_interest` notification to B naming A as the friend who planned the same tour
+- **THEN** a `tour_interest` notification naming A as the friend who planned the same tour is emitted for B
+
+#### Scenario: Solo tour without partners
+- **WHEN** owner A creates a friends-visible tour with no partners that collides with friend B's tour
+- **THEN** a `tour_interest` notification is emitted for B
 
 #### Scenario: Owner muted the type
 - **WHEN** B has `tour_interest` in `notif_muted_types`
-- **THEN** no notification is dispatched to B even though the scan finds the collision
+- **THEN** no push or email is sent to B even though the scan finds the collision; B's inbox still records it
 
 #### Scenario: No collision found
 - **WHEN** the saved tour has no friend-owned collisions
-- **THEN** no notification is dispatched
+- **THEN** no notification is emitted
 
 #### Scenario: Worker dispatch failure does not fail the save
-- **WHEN** the Worker call fails or times out
-- **THEN** the tour write still succeeds and the failure is logged client-side
+- **WHEN** push/email delivery for the emitted event fails
+- **THEN** the tour write still succeeds and the failure is logged server-side
 
 ### Requirement: Friendship-accept backfill scan and digest
 When a friendship transitions to accepted, the system SHALL scan the two users' tours for collisions matching the collision predicate and SHALL send one batched digest notification per side listing those collisions for review. The digest SHALL be dispatched under the `tour_interest` notification type, honor the recipient's preferences, and exclude any pair already in the same group or with a pending request between them.
@@ -132,7 +136,7 @@ When a friendship transitions to accepted, the system SHALL scan the two users' 
 - **THEN** that pair is excluded from the digest
 
 ### Requirement: Group-membership-change notifications
-When the membership of a `tour_link_group` changes, the system SHALL dispatch `tour_interest`-typed notifications to keep opted-in participants informed, honoring each recipient's `notif_push_enabled`, `notif_email_enabled`, and `notif_muted_types`. Failures SHALL NOT block the underlying DB write.
+When the membership of a `tour_link_group` changes, the system SHALL emit `tour_interest`-typed notifications in the same transaction as the membership change, including changes caused by cascades (tour edits, friendship removal), so participants stay informed. Push/email delivery SHALL honor each recipient's push registrations, `notif_email_enabled`, and `notif_muted_types`. Failures SHALL NOT block the underlying DB write.
 
 #### Scenario: New member joins — pre-existing members notified
 - **WHEN** C joins an existing group containing A and B via accepted link request
@@ -149,6 +153,10 @@ When the membership of a `tour_link_group` changes, the system SHALL dispatch `t
 #### Scenario: Dissolution — lone remaining member notified
 - **WHEN** an eviction or cascade drops a group's member count below 2
 - **THEN** the lone remaining member (if any) receives a notification that the group has dissolved
+
+#### Scenario: Recipients resolved after cascade
+- **WHEN** a friendship deletion cascades eviction and dissolution in one transaction
+- **THEN** each affected member is notified once with the tour name as it was before the cascade
 
 ### Requirement: Link request notification
 When a link request is created, the system SHALL notify the target tour's owner of the pending request under the `tour_interest` notification type. When a request is accepted or declined, the system SHALL notify the initiator's owner of the resolution under the same type. Withdrawals SHALL NOT emit a notification. Failures SHALL NOT block the underlying DB write.
@@ -332,7 +340,6 @@ The database SHALL enforce row-level security on `tour_link_group`, `tour_link_m
 #### Scenario: Initiator can withdraw, target can respond
 - **WHEN** A updates a `tour_link_request` row whose `initiator_tour_id` is owned by A, setting status to `withdrawn`
 - **THEN** the update is accepted; if A attempts to set status to `accepted` on a row where A is not the target owner, the update is rejected
-
 
 ### Requirement: Friends are named by the viewer's contact name
 

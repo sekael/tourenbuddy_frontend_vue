@@ -16,43 +16,15 @@ import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscripti
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
-import {
-  notifyTourChanged,
-  notifyTourDeleted,
-  notifyTourInterest,
-} from '@/features/notifications/data/notify-dispatch'
-import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
 import { ToursRepositoryImpl } from '@/features/tours/data/repositories/tours-repository-impl'
 import { removeGpx, uploadGpxToKey } from '@/features/tours/data/services/gpx-storage-service'
-import { isMeaningfulTourChange, isShareableTour } from '@/features/tours/domain/tour-notifications'
 
 const repository = new ToursRepositoryImpl()
-
-/** Link-group audience snapshot for deferred eviction dispatch (DC6). */
-type LinkSnapshot = ReturnType<ReturnType<typeof useTourLinksStore>['snapshotTourGroupContext']>
 
 /** Serializable replay payload for a tour create/update — the write to re-run (DC3). */
 interface TourWritePayload {
   draft: TourDraft
   goal: { lng: number, lat: number }
-}
-
-/**
- * Context for the shared deferred-notify seam (DC6). Populated identically by the
- * online action body and the reconnect replay handler, so a notification fires once,
- * on successful write, keyed on `op` — never at enqueue time, never twice.
- */
-interface TourNotifyContext {
-  op: WriteQueueEntry['op']
-  id: string
-  /** New desired state (create/update); null for delete. */
-  draft: TourDraft | null
-  goal: { lng: number, lat: number } | null
-  /** Resolved new gpx filepath after the edit (update). */
-  gpxFilepath: string | null
-  /** Server baseline: null for create; the pre-write tour for update/delete. */
-  previous: Tour | null
-  linkSnapshot: LinkSnapshot
 }
 
 export const useToursStore = defineStore('tours', () => {
@@ -272,60 +244,6 @@ export const useToursStore = defineStore('tours', () => {
     }
   }
 
-  // DC6 deferred notification + eviction dispatch, keyed on ctx.op. Called by BOTH the
-  // online action body and the replay handler (identical by construction) — fires exactly
-  // one notification for the net op, best-effort, only after a successful write. Enqueue
-  // fires nothing.
-  function dispatchTourWriteNotifications(ctx: TourNotifyContext): void {
-    switch (ctx.op) {
-      case 'create': {
-        const draft = ctx.draft
-        if (draft && isShareableTour(draft.visibility, draft.partnerIds)) {
-          notifyTourChanged(ctx.id, 'created')
-        }
-        break
-      }
-      case 'update': {
-        const { draft, previous, goal, gpxFilepath } = ctx
-        // Eviction fires regardless of shareable/meaningful (a friends → private flip
-        // on a linked tour trips it precisely when the notify below is suppressed).
-        useTourLinksStore().dispatchEvictionIfHappened(ctx.linkSnapshot, ctx.id).catch((err) => {
-          logger.warn('dispatchEvictionIfHappened (tour update notify) failed', err)
-        })
-        const effVis = draft?.visibility ?? previous?.visibility
-        if (draft && previous && goal && isShareableTour(effVis, draft.partnerIds)) {
-          const meaningful = isMeaningfulTourChange(previous, draft, { goal, gpxFilepath })
-          // Completion is deliberately NOT part of isMeaningfulTourChange (a form edit
-          // never touches it), so a setCompleted-as-update flip needs its own trigger.
-          // `!= null` skips form edits that leave `completed` undefined — only a
-          // deliberate toggle sets it — so this can't spuriously fire on a plain edit.
-          const completionFlipped = draft.completed != null && draft.completed !== previous.completed
-          if (meaningful || completionFlipped) {
-            const prevPartners = new Set(previous.partnerIds)
-            const addedIds = draft.partnerIds.filter(cid => !prevPartners.has(cid))
-            notifyTourChanged(ctx.id, 'updated', addedIds)
-            // Interest scan stays gated on a meaningful edit — a completion/visibility
-            // toggle alone shouldn't re-scan colliding friend tours (avoids notify spam).
-            if (meaningful && effVis === 'friends')
-              notifyTourInterest(ctx.id)
-          }
-        }
-        break
-      }
-      case 'delete': {
-        const previous = ctx.previous
-        if (previous && isShareableTour(previous.visibility, previous.partnerIds)) {
-          notifyTourDeleted(previous.partnerIds, previous.name ?? '')
-        }
-
-        if (ctx.linkSnapshot)
-          useTourLinksStore().dispatchEvictionNotification(ctx.linkSnapshot)
-        break
-      }
-      default:
-    }
-  }
-
   /**
    * The GPX blob to ride on a queue entry, iff it was staged offline and still needs
    * uploading (pending mark). Gating on the mark — not mere cache presence — keeps a blob
@@ -354,7 +272,10 @@ export const useToursStore = defineStore('tours', () => {
     }
   }
 
-  /** Replay a queued tour write on reconnect (DC3): one idempotent call by op + deferred notify (DC6). */
+  /**
+   * Replay a queued tour write on reconnect (DC3): one idempotent call by op. Notifications
+   * are emitted by the DB inside that call, so a replay notifies exactly once (no seam).
+   */
   async function replayTourWrite(entry: WriteQueueEntry): Promise<void> {
     const payload = entry.payload as TourWritePayload
     if (entry.op === 'delete') {
@@ -389,17 +310,6 @@ export const useToursStore = defineStore('tours', () => {
       if (!updated)
         throw new PermanentReplayError('tour was deleted on the server')
     }
-
-    const isWrite = entry.op !== 'delete'
-    dispatchTourWriteNotifications({
-      op: entry.op,
-      id: entry.entityId,
-      draft: isWrite ? payload.draft : null,
-      goal: isWrite ? payload.goal : null,
-      gpxFilepath: isWrite ? (payload.draft.gpxFilepath ?? null) : null,
-      previous: (entry.baseSnapshot as Tour | undefined) ?? null,
-      linkSnapshot: (entry.linkSnapshot as LinkSnapshot) ?? null,
-    })
   }
   registerReplay('tour', replayTourWrite)
 
@@ -422,17 +332,8 @@ export const useToursStore = defineStore('tours', () => {
         // (Online, GPX is uploaded at file-pick time in the form; its path rides in via draft.)
         await repository.createTourWithPartners(id, draft, goal)
         await loadTours()
-        dispatchTourWriteNotifications({
-          op: 'create',
-          id,
-          draft,
-          goal,
-          gpxFilepath: draft.gpxFilepath ?? null,
-          previous: null,
-          linkSnapshot: null,
-        })
       },
-      intent: { entityId: id, kind: 'tour', op: 'create', payload: { draft, goal }, blobs, linkSnapshot: null },
+      intent: { entityId: id, kind: 'tour', op: 'create', payload: { draft, goal }, blobs },
       projectedBytes: blobBytes(blobs),
       cacheKey: cacheKey(),
       current: tours.value,
@@ -455,11 +356,6 @@ export const useToursStore = defineStore('tours', () => {
     const previousFilepath = existing?.gpxFilepath ?? null
     const newFilepath = gpxRemoved ? null : (draft.gpxFilepath ?? null)
     const draftWithFilepath: TourDraft = { ...draft, gpxFilepath: newFilepath }
-
-    // Snapshot link-group audience BEFORE the write: an eviction trigger may fire and
-    // the dissolution trigger may wipe the group. Carried on the queue entry so a
-    // replayed write can still run the deferred eviction dispatch (DC6).
-    const linkSnapshot = useTourLinksStore().snapshotTourGroupContext(id)
 
     const applyEdit = (rows: Tour[]): Tour[] =>
       existing
@@ -486,8 +382,8 @@ export const useToursStore = defineStore('tours', () => {
           logger.error('updateTour failed', err)
           throw err
         }
-        // false ⇒ the tour is gone (concurrent delete). Roll back the optimistic rewrite
-        // (and skip notify), else we'd resurrect a phantom row locally.
+        // false ⇒ the tour is gone (concurrent delete). Roll back the optimistic rewrite,
+        // else we'd resurrect a phantom row locally.
         if (!updated) {
           tours.value = rollback
           error.value = 'Failed to update tour'
@@ -501,15 +397,6 @@ export const useToursStore = defineStore('tours', () => {
             logger.warn('Tour updated but old GPX blob removal failed (orphan)', err)
           }
         }
-        dispatchTourWriteNotifications({
-          op: 'update',
-          id,
-          draft: draftWithFilepath,
-          goal,
-          gpxFilepath: newFilepath,
-          previous: existing,
-          linkSnapshot,
-        })
       },
       intent: {
         entityId: id,
@@ -519,7 +406,6 @@ export const useToursStore = defineStore('tours', () => {
         blobs,
         baseSnapshot: existing,
         baseUpdatedAt: existing?.updatedAt ?? undefined,
-        linkSnapshot,
       },
       projectedBytes: blobBytes(blobs),
       cacheKey: cacheKey(),
@@ -531,8 +417,8 @@ export const useToursStore = defineStore('tours', () => {
 
   // setCompleted / setVisibility are field-toggles modelled as a full tour update
   // (Path Y unification): they build a draft from the current tour with the one field
-  // changed and reuse updateTour — so they queue, replay, coalesce, notify (deferred
-  // seam) and evict through the exact same path as a form edit, online or offline.
+  // changed and reuse updateTour — so they queue, replay and coalesce through the exact
+  // same path as a form edit, online or offline (the DB emits any notification).
   async function setCompleted(tourId: string, completed: boolean) {
     const tour = tours.value.find(t => t.id === tourId)
     if (!tour)
@@ -549,10 +435,7 @@ export const useToursStore = defineStore('tours', () => {
   }
 
   async function deleteTour(id: string) {
-    // Capture what notify + eviction need BEFORE the row (and its tour_partners) are
-    // gone; both are dispatched only AFTER a confirmed delete (in the shared seam).
     const tour = tours.value.find(t => t.id === id) ?? null
-    const linkSnapshot = useTourLinksStore().snapshotTourGroupContext(id)
 
     return mutate<Tour>({
       run: async () => {
@@ -566,17 +449,8 @@ export const useToursStore = defineStore('tours', () => {
           }
         }
         tours.value = tours.value.filter(t => t.id !== id)
-        dispatchTourWriteNotifications({
-          op: 'delete',
-          id,
-          draft: null,
-          goal: null,
-          gpxFilepath: null,
-          previous: tour,
-          linkSnapshot,
-        })
       },
-      intent: { entityId: id, kind: 'tour', op: 'delete', payload: {}, baseSnapshot: tour, linkSnapshot },
+      intent: { entityId: id, kind: 'tour', op: 'delete', payload: {}, baseSnapshot: tour },
       cacheKey: cacheKey(),
       current: tours.value,
       apply: rows => rows.filter(t => t.id !== id),

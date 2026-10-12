@@ -7,7 +7,7 @@ export class NotificationPreferencesRepositoryImpl implements NotificationPrefer
   async getPreferences(userId: string): Promise<NotificationPreferences | null> {
     const { data, error } = await supabase
       .from('user_profile')
-      .select('notif_push_enabled, notif_email_enabled, notif_muted_types')
+      .select('notif_email_enabled, notif_muted_types')
       .eq('id', userId)
       .maybeSingle()
 
@@ -23,7 +23,6 @@ export class NotificationPreferencesRepositoryImpl implements NotificationPrefer
     const { error } = await supabase
       .from('user_profile')
       .update({
-        notif_push_enabled: prefs.notifPushEnabled,
         notif_email_enabled: prefs.notifEmailEnabled,
         notif_muted_types: prefs.notifMutedTypes,
       })

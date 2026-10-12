@@ -139,7 +139,7 @@ of `tours`; correctness beats the maintenance cost of a trigger-kept link table.
 
 Two notification types ride the existing client→Worker fire-and-forget path
 (`notify-dispatch.ts` → `services/email-hook`), honoring each recipient's
-`notif_push_enabled` / `notif_email_enabled` / `notif_muted_types`:
+`notif_email_enabled` / `notif_muted_types` (push: per registered device):
 
 - **`tour_updates`** — a shared tour you partner on was created / updated / deleted.
   Fired by the **owner**'s client; the Worker resolves recipients as

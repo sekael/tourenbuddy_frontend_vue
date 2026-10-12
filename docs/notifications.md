@@ -12,8 +12,8 @@ then fans out push + email.
 
 - **Recipient resolution is the Worker's job.** The client sends ids/actions only.
 - **Failures never block the write.** Dispatch is best-effort; errors are logged.
-- **Per-recipient gates:** every dispatch honors `notif_push_enabled`, `notif_email_enabled`,
-  and `notif_muted_types` on the recipient's `user_profile`.
+- **Per-recipient gates:** every dispatch honors `notif_email_enabled` and `notif_muted_types`
+  on the recipient's `user_profile`; push goes to each registered `push_subscriptions` device.
 - **Actor is always suppressed** from the recipient set.
 - Notifications require `VITE_NOTIFICATIONS_ENABLED` + `VITE_NOTIFY_HOOK_URL` client-side;
   absent → the dispatcher short-circuits.

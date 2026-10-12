@@ -185,7 +185,7 @@ describe('userProfileSheet', () => {
 
   describe('overview summaries', () => {
     it('should report notifications off when push and email are both disabled', () => {
-      useNotificationsStore().prefs = { notifPushEnabled: false, notifEmailEnabled: false, notifMutedTypes: [] }
+      useNotificationsStore().prefs = { notifEmailEnabled: false, notifMutedTypes: [] }
       const wrapper = mount(UserProfileSheet)
       expect(wrapper.text()).toContain('user.profile.notificationsSummary.off')
     })
