@@ -469,6 +469,18 @@ const { openEntry: openInboxEntry, snackbar: inboxSnackbar } = useInboxNavigatio
   },
 })
 
+// Section the next profile open lands on; plain menu opens show the overview.
+const profileSection = ref<'notifications' | undefined>()
+watch(activeOverlay, (name) => {
+  if (name !== 'profile')
+    profileSection.value = undefined
+})
+
+function openNotificationSettings() {
+  profileSection.value = 'notifications'
+  openOverlay('profile')
+}
+
 function handleOpenFriendRequests() {
   editContactId.value = null
   openOverlay('friend-requests')
@@ -943,7 +955,7 @@ function handleDialogClose() {
         <FeedbackSheet @close="closeOverlay" />
       </div>
       <div v-else-if="showProfileSheet" key="profile" class="sheet-host">
-        <UserProfileSheet @close="closeOverlay" />
+        <UserProfileSheet :initial-section="profileSection" @close="closeOverlay" />
       </div>
       <div v-else-if="showContactDialog" key="contacts" class="sheet-host">
         <ContactsListSheet
@@ -955,7 +967,7 @@ function handleDialogClose() {
         <FriendRequestsSheet @close="closeOverlay" @back="openOverlay('contacts')" />
       </div>
       <div v-else-if="activeOverlay === 'inbox'" key="inbox" class="sheet-host">
-        <InboxOverlay @close="closeOverlay" @open="openInboxEntry" />
+        <InboxOverlay @close="closeOverlay" @open="openInboxEntry" @open-settings="openNotificationSettings" />
       </div>
       <div v-else-if="showToursList" key="tours" class="sheet-host">
         <TourListSheet

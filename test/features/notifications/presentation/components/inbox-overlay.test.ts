@@ -75,8 +75,11 @@ describe('inboxOverlay', () => {
   it('should open a known release note in place and mark it read', async () => {
     const { wrapper, store } = await mountWith({ ...read, type: 'release_notes', action: 'published', ref: { note_id: '2026-10-availability-reminders' } })
     expect(store.markRead).toHaveBeenCalledWith('n1')
-    expect(wrapper.get('[data-testid="release-note-body"]').text()).toBe('releaseNotes.2026-10-availability-reminders.body')
+    expect(wrapper.get('[data-testid="release-note-body"]').text()).toBe('releaseNotes.2026-10-availability-reminders.intro')
     expect(wrapper.emitted('open')).toBeUndefined()
+
+    await wrapper.get('[data-testid="release-note-settings"]').trigger('click')
+    expect(wrapper.emitted('openSettings')).toHaveLength(1)
   })
 
   it('should hand an unknown release note to the host, which reports it unavailable', async () => {

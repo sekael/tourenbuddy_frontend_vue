@@ -1046,12 +1046,28 @@
       "upcoming": "«{tour}» ist in 5 Tagen",
       "published": "Neu: {title}",
       "publishedUnknown": "Neuigkeiten"
+    },
+    "releaseNote": {
+      "heading": "Neuigkeiten",
+      "eyebrow": "Neu in TourenBuddy",
+      "settingsAction": "Benachrichtigungen",
+      "settingsHint": "Beides kommt auch per Push und E-Mail. Du entscheidest, was du erhältst."
     }
   },
   "releaseNotes": {
     "2026-10-availability-reminders": {
       "title": "Freie Tage und Erinnerungen",
-      "body": "Jeden Montag zeigt dir dein Posteingang, welche Freunde, mit denen du eine Tour teilst, an deinen freien Tagen auch Zeit haben. Und fünf Tage vor einer geplanten Tour erhalten alle Beteiligten eine Erinnerung. Beides kommt auch per Push und E-Mail – du kannst es jederzeit unter Profil → Benachrichtigungen ausschalten."
+      "intro": "Zwei kleine Neuerungen, damit aus Plänen öfter echte Tourentage werden.",
+      "features": {
+        "availability": {
+          "title": "Wer diese Woche Zeit hat",
+          "body": "Jeden Montag zeigt dir dein Posteingang, welche Freunde, mit denen du eine Tour teilst, an deinen freien Tagen auch Zeit haben."
+        },
+        "reminders": {
+          "title": "Erinnerung fünf Tage vorher",
+          "body": "Alle Beteiligten einer geplanten Tour erhalten fünf Tage vorher einen Hinweis – Zeit, Verhältnisse, Ausrüstung und Partner."
+        }
+      }
     }
   }
 }

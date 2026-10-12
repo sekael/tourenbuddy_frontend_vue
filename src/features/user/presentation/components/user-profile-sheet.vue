@@ -26,6 +26,7 @@ import { useUserProfileStore } from '@/features/user/presentation/stores/user-pr
 import PhoneVerificationDialog from './phone-verification-dialog.vue'
 import ProfileOverview from './profile-overview.vue'
 
+const props = defineProps<{ initialSection?: ProfileSection }>()
 const emit = defineEmits<{ close: [] }>()
 
 const router = useRouter()
@@ -40,7 +41,8 @@ const notificationsStore = useNotificationsStore()
 
 const isDesktop = useIsDesktop()
 // The overview shows everything at a glance; each section opens as its own view.
-const view = ref<'overview' | ProfileSection>('overview')
+// A deep link (e.g. a release note's settings shortcut) may open straight into a section.
+const view = ref<'overview' | ProfileSection>(props.initialSection ?? 'overview')
 const isEditing = computed(() => view.value === 'edit')
 // On mobile every section takes a full-screen page (forms get the keyboard's room,
 // the overview sheet keeps its own height); `editAsPage` also hides the in-form

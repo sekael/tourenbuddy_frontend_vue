@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ReleaseNote } from '../../data/release-notes'
 import type { InboxNotification } from '../../domain/entities/inbox-notification'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref } from 'vue'
@@ -9,8 +10,9 @@ import BaseIcon from '@/core/components/base-icon.vue'
 import { findReleaseNote } from '../../data/release-notes'
 import { useInboxStore } from '../stores/inbox-store'
 import InboxItem from './inbox-item.vue'
+import ReleaseNoteView from './release-note-view.vue'
 
-const emit = defineEmits<{ close: [], open: [entry: InboxNotification] }>()
+const emit = defineEmits<{ close: [], open: [entry: InboxNotification], openSettings: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 const store = useInboxStore()
@@ -26,7 +28,7 @@ function clearAll() {
 }
 
 /** A release note being read, shown in place of the list (back returns to it). */
-const noteId = ref<string | null>(null)
+const note = ref<ReleaseNote | null>(null)
 
 // Entries are static records: a tap opens the subject where acting happens (no inline
 // actions, D7). The host decides where that is; reading is recorded here. A known
@@ -34,9 +36,9 @@ const noteId = ref<string | null>(null)
 // which reports it unavailable.
 function open(entry: InboxNotification) {
   store.markRead(entry.id)
-  const note = entry.type === 'release_notes' ? findReleaseNote(entry.ref.note_id) : null
-  if (note)
-    noteId.value = note.id
+  const known = entry.type === 'release_notes' ? findReleaseNote(entry.ref.note_id) : null
+  if (known)
+    note.value = known
   else
     emit('open', entry)
 }
@@ -49,21 +51,19 @@ onMounted(() => {
 
 <template>
   <AdaptiveOverlay
-    :title="noteId ? t(`releaseNotes.${noteId}.title`) : t('inbox.title')" :show-back="!!noteId" fit-content
-    @close="emit('close')" @back="noteId = null"
+    :title="note ? t('inbox.releaseNote.heading') : t('inbox.title')" :show-back="!!note" fit-content
+    @close="emit('close')" @back="note = null"
   >
     <template #header-actions>
       <BaseButton
-        v-if="hasUnread && !noteId" variant="primary-outline" size="sm"
+        v-if="hasUnread && !note" variant="primary-outline" size="sm"
         data-testid="mark-all-read" @click="store.markAllRead()"
       >
         {{ t('inbox.markAllRead') }}
       </BaseButton>
     </template>
 
-    <p v-if="noteId" class="note" data-testid="release-note-body">
-      {{ t(`releaseNotes.${noteId}.body`) }}
-    </p>
+    <ReleaseNoteView v-if="note" :note="note" @open-settings="emit('openSettings')" />
     <div v-else class="content">
       <p v-if="error && entries.length === 0" class="empty">
         {{ t('inbox.loadError') }}
@@ -106,12 +106,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.note {
-  margin: 0;
-  padding-bottom: var(--spacing-md);
-  font-size: var(--font-size-base);
-  line-height: var(--line-height-normal);
-}
 .content {
   display: flex;
   flex-direction: column;

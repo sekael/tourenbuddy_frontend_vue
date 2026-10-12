@@ -1046,12 +1046,28 @@
       "upcoming": "“{tour}” is in 5 days",
       "published": "What’s new: {title}",
       "publishedUnknown": "What’s new"
+    },
+    "releaseNote": {
+      "heading": "What’s new",
+      "eyebrow": "New in TourenBuddy",
+      "settingsAction": "Notification settings",
+      "settingsHint": "Both also arrive by push and email. You decide which ones."
     }
   },
   "releaseNotes": {
     "2026-10-availability-reminders": {
       "title": "Free days and tour reminders",
-      "body": "Every Monday your inbox now shows which friends you share a tour with are free on days you are free too. And five days before a planned tour, everyone on it gets a reminder. Both also arrive by push and email — you can turn them off anytime under Profile → Notifications."
+      "intro": "Two small additions that make it easier to turn plans into actual days out.",
+      "features": {
+        "availability": {
+          "title": "Who’s free this week",
+          "body": "Every Monday your inbox shows which friends you share a tour with are free on days you are free too."
+        },
+        "reminders": {
+          "title": "Reminder five days ahead",
+          "body": "Everyone on a planned tour gets a nudge five days before — time to check conditions, gear and partners."
+        }
+      }
     }
   }
 }
