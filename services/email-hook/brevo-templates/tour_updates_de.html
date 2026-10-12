@@ -67,7 +67,10 @@
       <div class="body">
         <p>Hallo,</p>
         <p>
-          {% if params.action == "availability_weekly" %}{{ params.actorName }} {% if params.moreCount > 0 %}und {{ params.moreCount }} weitere haben{% else %}hat{% endif %} diese Woche an Tagen Zeit, an denen du auch Zeit hast.{% elif params.action == "tour_reminder" %}Die Tour «{{ params.tourName }}» ist in 5 Tagen. Zeit, Verhältnisse, Ausrüstung und Partner zu prüfen.{% else %}<strong>{{ params.actorName }}</strong>
+          {% if params.action == "availability_weekly" %}{{ params.actorName }} {% if params.moreCount > 0 %}und {{
+          params.moreCount }} weitere haben{% else %}hat{% endif %} diese Woche an Tagen Zeit, an denen du auch Zeit
+          hast.{% elif params.action == "tour_reminder" %}Die Tour «{{ params.tourName }}» ist in 5 Tagen. Zeit,
+          Verhältnisse, Ausrüstung und Partner zu prüfen.{% else %}<strong>{{ params.actorName }}</strong>
           {% if params.action == "created" %}hat die Tour{% elif params.action == "deleted" %}hat die geteilte Tour{%
           else %}hat die geteilte Tour{% endif %}
           <strong>{{ params.tourName }}</strong>, auf der du Partner bist, {% if params.action == "created" %}mit dir
