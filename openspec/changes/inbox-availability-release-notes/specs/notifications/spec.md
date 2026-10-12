@@ -3,7 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Notification preference channels
-The system SHALL allow each user to independently enable or disable push and email notification channels, and to mute specific notification types from a defined, extensible set. Channels and mutes SHALL govern push and email delivery only; they SHALL NOT affect the in-app notification inbox, which records every event. The email channel is an account-wide setting; the push channel is a per-device setting (see "Per-device push toggle"). The set defines five types: `friend_requests` (received and responded events), `tour_updates` (shared-tour created, edited, or deleted events), `tour_interest` (a friend has planned the same tour as one of yours, or a link request between your tours is created, accepted, or declined; also the friendship-accept backfill digest), `tour_suggestions` (a partner proposed changes to your tour, or your own proposal was accepted or declined), and `availability` (a friend became available on a day you are available). Release-note inbox entries SHALL NOT be a mutable type: they are never pushed or emailed. The enum value `'tour_interest'` SHALL be retained unchanged; only the user-facing label and description in the preferences UI SHALL be reworded to reflect the collaboration-suggestion semantics.
+The system SHALL allow each user to independently enable or disable push and email notification channels, and to mute specific notification types from a defined, extensible set. Channels and mutes SHALL govern push and email delivery only; they SHALL NOT affect the in-app notification inbox, which records every event. The email channel is an account-wide setting; the push channel is a per-device setting (see "Per-device push toggle"). The set defines six types: `friend_requests` (received and responded events), `tour_updates` (shared-tour created, edited, or deleted events), `tour_interest` (a friend has planned the same tour as one of yours, or a link request between your tours is created, accepted, or declined; also the friendship-accept backfill digest), `tour_suggestions` (a partner proposed changes to your tour, or your own proposal was accepted or declined), `availability` (the weekly summary of friends you share a tour with who are free on days you are free), and `tour_reminders` (one of your tours, or a friend's tour you are a partner on, is five days away). New types SHALL be delivered by default; existing users are not muted for them. Release-note inbox entries SHALL NOT be a mutable type: they are never pushed or emailed. The enum value `'tour_interest'` SHALL be retained unchanged; only the user-facing label and description in the preferences UI SHALL be reworded to reflect the collaboration-suggestion semantics.
 
 `tour_suggestions` SHALL be a distinct mutable type rather than folded into `tour_updates`: a user who does not want to hear about every edit to a shared tour may still want to hear that someone is waiting on their decision.
 
@@ -49,8 +49,16 @@ The system SHALL allow each user to independently enable or disable push and ema
 
 #### Scenario: User mutes availability
 - **WHEN** the user mutes `availability`
-- **THEN** that type is added to `notif_muted_types` and no availability overlap push or email is sent to that user, regardless of channel state, while inbox entries are still recorded
+- **THEN** that type is added to `notif_muted_types` and no weekly availability summary push or email is sent to that user, regardless of channel state, while inbox entries are still recorded
+
+#### Scenario: User mutes tour_reminders
+- **WHEN** the user mutes `tour_reminders`
+- **THEN** that type is added to `notif_muted_types` and no tour reminder push or email is sent to that user, regardless of channel state, while inbox entries are still recorded
+
+#### Scenario: New types on by default
+- **WHEN** an existing user with push enabled has never changed their mutes
+- **THEN** they receive availability summaries and tour reminders by push
 
 #### Scenario: Release notes not listed
 - **WHEN** the preferences UI renders the muted-types section
-- **THEN** it lists the five mutable types and no release-notes row
+- **THEN** it lists the six mutable types and no release-notes row

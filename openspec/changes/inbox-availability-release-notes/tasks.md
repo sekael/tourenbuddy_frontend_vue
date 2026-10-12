@@ -2,46 +2,46 @@
 
 ## 1. Git Setup
 
-- [ ] 1.1 Create the feature branch from latest `main`: `git fetch origin && git checkout main && git pull && git checkout -b feat/300-inbox-availability-release-notes` (in the container `git fetch` fails — branch from local `main` and say so); verify `git branch --show-current`
+- [x] 1.1 Create the feature branch from latest `main`: `git fetch origin && git checkout main && git pull && git checkout -b feat/300-inbox-availability-release-notes` (in the container `git fetch` fails — branch from local `main` and say so); verify `git branch --show-current`
 
 ## 2. Database
 
-- [ ] 2.1 `supabase migration new inbox_availability_release_notes`: replace `notifications_type_check` with the six types; verify pgTAP: inserting an `availability` row as service role succeeds, an unknown type fails
-- [ ] 2.2 Same migration: `fn_emit_notification` collapses `('availability','overlap')` and merges `ref.dates` (sorted union) on collapse (D2); verify pgTAP: two overlaps from the same friend while unread → one row, both dates, `occurrences = 2`
-- [ ] 2.3 Same migration: availability emission — `security definer` function + `AFTER INSERT` and `AFTER UPDATE` statement triggers with transition tables on `user_availability`, explicit `p_actor`, never raises (D1); verify pgTAP: manual mark overlap, several days in one write → one entry, calendar-sync day notifies, re-save / past day / non-friend / clear are silent, actor never notified
-- [ ] 2.4 Same migration: `user_release_note_state` (revoke from anon/authenticated, `grant all` to service_role, RLS on, no policies) + `record_release_note(p_version, p_released_on)` definer RPC (D5); verify pgTAP: first call creates one entry, second call and call after deleting the entry create none, newer version creates one, account created after release date gets none, malformed version rejected, direct table access rejected
-- [ ] 2.5 Same migration: recreate `trg_dispatch_notification` with `when (new.type <> 'release_notes')` (D6) and extend `fn_clear_notifications_on_unfriend` to availability entries (D8); verify pgTAP: unfriend deletes both sides' availability entries; trigger definition shows the `WHEN` clause
+- [ ] 2.1 `supabase migration new inbox_availability_release_notes`: replace `notifications_type_check` with the seven types (D5); verify pgTAP: inserting `availability`, `tour_reminders`, `release_notes` rows as service role succeeds, an unknown type fails
+- [ ] 2.2 Same migration: shared-tour gate (D1) + `fn_weekly_availability_summary()` (definer, never raises) and `cron.schedule('weekly-availability-summary', '0 5 * * 1', …)` — purge previous weeks, insert one actor-less row per user with `ref {week_start, friend_ids, dates}`, `not exists` guard (D2, D4); verify pgTAP: overlap with partner-on-own-tour and partner-on-friend's-tour → one entry listing all friends and dates; private tour / completed tour / no shared tour / overlap next week → none; manual and calendar rows both count; second run → no new row; last week's rows (read and unread) deleted
+- [ ] 2.3 Same migration: `fn_tour_reminders()` (definer, never raises) and `cron.schedule('tour-reminders', '0 5 * * *', …)` — exact `planned_date = current_date + 5`, owner + friend partners on friends-visible tours, actor-less, `ref {planned_date}`, `not exists` guard (D3, D4); verify pgTAP: owner and friend partner reminded; private tour → owner only; non-friend partner, completed, no date, 4 or 6 days ahead → none; second run → no new row; moved date reminds again
+- [ ] 2.4 Same migration: `user_release_note_state` (revoke from anon/authenticated, `grant all` to service_role, RLS on, no policies) + `record_release_note(p_note_id, p_since)` definer RPC (D7); verify pgTAP: first call creates one entry, second call and call after deleting the entry create none, a different id creates one, account created after `p_since` gets none, malformed id rejected, direct table access rejected
+- [ ] 2.5 Same migration: recreate `trg_dispatch_notification` with `when (new.type <> 'release_notes')` (D8); verify pgTAP: trigger definition shows the `WHEN` clause
 - [ ] 2.6 Apply locally (`supabase db reset`), run `supabase test db`; all files pass
 
 ## 3. Worker (`services/email-hook`)
 
-- [ ] 3.1 Add `availability` to `NotificationType`; push copy (`en`, `de-CH`) and push URL `/calendar?day=<first>&notification=<id>` for `(availability, overlap)`; email via generic template with `action = 'availability_overlap'` (D9); verify Worker unit test for copy, URL and mute; `npx tsc --noEmit` passes
-- [ ] 3.2 Update `services/email-hook/SETUP-NOTIFICATIONS.md` and `docs/notifications.md` (new type, release notes never dispatched); verify grep shows both types documented
+- [ ] 3.1 Add `availability` and `tour_reminders` to `NotificationType`; actor-less push copy (`en`, `de-CH`) for `(availability, weekly)` (first friend name looked up from `ref.friend_ids[0]` + count) and `(tour_reminders, upcoming)`; URL stays `/?notification=<id>`; email via generic template with `action = 'availability_weekly'` / `'tour_reminder'` (D10); verify Worker unit tests for copy (incl. single friend, deleted first friend), mute check; `npx tsc --noEmit` passes
+- [ ] 3.2 Update `services/email-hook/SETUP-NOTIFICATIONS.md` and `docs/notifications.md` (two new types, cron jobs, release notes never dispatched); verify grep shows all three types documented
 
-## 4. Client — types and availability entries
+## 4. Client — types, summary and reminder entries
 
-- [ ] 4.1 Split `MUTABLE_NOTIFICATION_TYPES` (5) / `INBOX_NOTIFICATION_TYPES` (6) and wire prefs parsing vs. inbox row schema (D3); verify unit tests: prefs parse keeps `availability`, inbox schema accepts `release_notes`, still drops unknown types
-- [ ] 4.2 Preferences: `availability` mute row with label/description (`en`, `de-CH`); verify component test renders five rows and no release-notes row
-- [ ] 4.3 Availability entry rendering: `event_available` icon registered in `core/components/icons.ts`, text with actor + day count + first day, "Past" stale chip when all days passed; verify component/unit tests for text, collapsed day count, stale rule
-- [ ] 4.4 Availability deep link opens `/calendar?day=<earliest non-past day>` and marks read; verify unit test incl. entry whose first day already passed
+- [ ] 4.1 Split `MUTABLE_NOTIFICATION_TYPES` (6) / `INBOX_NOTIFICATION_TYPES` (7) and wire prefs parsing vs. inbox row schema (D5); verify unit tests: prefs parse keeps both new types, inbox schema accepts `release_notes`, still drops unknown types
+- [ ] 4.2 Preferences: `availability` and `tour_reminders` mute rows with label/description (`en`, `de-CH`); verify component test renders six rows and no release-notes row
+- [ ] 4.3 Availability summary rendering: `event_available` icon registered in `core/components/icons.ts`, "{first friend} and N more" with names from the friends store, never stale (D9); verify component/unit tests: one friend, several friends, unknown friend id
+- [ ] 4.4 Availability deep link opens `/calendar?day=<first listed day ≥ today>` and marks read; verify unit test incl. summary whose first day already passed
+- [ ] 4.5 Tour reminder rendering + deep link through the existing tour access check and stale rules; verify component test: opens tour, lost access → `inbox.unavailable`
 
 ## 5. Client — release notes
 
-- [ ] 5.1 Vite `define` `__APP_VERSION__` from `package.json` (+ `env.d.ts` declaration and Vitest define); verify `npm run type-check` and a unit test reading it
-- [ ] 5.2 Registry `features/notifications/data/release-notes.ts` + selection (newest ≤ app version, semver compare) + first note copy in `en`/`de-CH`; verify unit tests: no note, exact version, newer build picks newest older note, pre-release ordering `0.9.0 < 0.10.0`
-- [ ] 5.3 Repository + inbox store: call `record_release_note` once per app start when signed in and online; log and skip on failure or offline (D7); verify store tests: offline → not called, failure → no throw, online → called once with the selected note
-- [ ] 5.4 Release-note entry: renders note title, opens note dialog, marks read, unknown version → `inbox.unavailable` snackbar, never stale; verify component tests
-- [ ] 5.5 Walk the guided tour end-to-end (no new targets expected; preferences copy still accurate); verify by running the app
+- [ ] 5.1 Registry `features/notifications/data/release-notes.ts` (`{ id, since }[]`, current = last entry, header comment: ids unique, never remove entries) + first note copy in `en`/`de-CH` announcing the weekly summary and reminders and pointing to Preferences (D6); verify unit tests: empty registry → no note, current is the last entry, ids unique and match the RPC's id pattern
+- [ ] 5.2 Repository + inbox store: call `record_release_note` once per app start when signed in and online; log and skip on failure or offline (D9); verify store tests: offline → not called, failure → no throw, online → called once with the current note
+- [ ] 5.3 Release-note entry: renders note title, opens note dialog, marks read, unknown id → `inbox.unavailable` snackbar, never stale; verify component tests
+- [ ] 5.4 Walk the guided tour end-to-end (preferences copy still accurate with two new rows); verify by running the app
 
 ## 6. Integration verification
 
-- [ ] 6.1 Local end-to-end (`supabase start` + `wrangler dev`): two friends mark overlapping days → one inbox entry + one push, second overlap while unread → merged days, no push; new build with a note → one entry on two devices, none after delete + reload, no push
+- [ ] 6.1 Local end-to-end (`supabase start` + `wrangler dev`): run both job functions by hand (`select public.fn_weekly_availability_summary()` / `fn_tour_reminders()`) → expected entries + pushes, second run → nothing; new build with a note → one entry on two devices, none after delete + reload, no push
 - [ ] 6.2 `npm run test`, `npm run type-check`, `supabase test db` all pass
 
 ## 7. Finalize
 
 - [ ] 7.1 Run `npx eslint src test --fix` (not `.`, sweeps worktrees) and verify zero warnings; never `npm run format`
-- [ ] 7.2 Prompt owner to commit with a ready-to-copy message, e.g. `feat(notifications): availability overlap and release-note inbox entries` (body: refs #300)
+- [ ] 7.2 Prompt owner to commit with a ready-to-copy message, e.g. `feat(notifications): weekly availability summary, tour reminders and release notes` (body: refs #300)
 - [ ] 7.3 Prompt owner to push and open a PR to `main`, listing deploy order: `npx wrangler@latest deploy` → `supabase db push` → merge
 
 ## Workflow follow-up
