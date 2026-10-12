@@ -180,10 +180,13 @@ defineExpose({ focusFirst })
   pointer-events: none;
 }
 
+/* On the pill's rounded corner, not its bounding box: the arc at 45° sits
+   r·(1 − 1/√2) ≈ 7px in from each edge (r = 24px for the 48px pill and the landscape
+   circle alike), so the 12px dot centred there half-overlaps the outline. */
 .dot {
   position: absolute;
-  top: -3px;
-  right: -3px;
+  top: 1px;
+  right: 1px;
   width: 12px;
   height: 12px;
   border-radius: 50%;

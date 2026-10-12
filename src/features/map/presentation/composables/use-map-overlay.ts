@@ -102,6 +102,7 @@ export function useMapOverlay(emit: {
     isDrawingRegion,
     currentStyleIndex,
     inboxCount,
+    pendingIncomingCount,
     menuItems,
     mapStore,
     onMenuSelect,

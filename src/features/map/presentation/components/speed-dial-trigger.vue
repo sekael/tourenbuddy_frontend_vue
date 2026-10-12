@@ -5,6 +5,8 @@ defineProps<{
   isOpen: boolean
   /** Inbox attention count, mirrored from the menu entry (friend requests included). */
   count?: number
+  /** Attention with nothing to count (e.g. a pending friend request whose entry was read). */
+  dot?: boolean
   titleOpen: string
   titleClosed: string
 }>()
@@ -30,6 +32,7 @@ defineEmits<{ toggle: [] }>()
     <span v-if="count && !isOpen" class="count" data-testid="trigger-count" aria-hidden="true">
       {{ count > 9 ? '9+' : count }}
     </span>
+    <span v-else-if="dot && !isOpen" class="dot" data-testid="trigger-dot" aria-hidden="true" />
   </div>
 </template>
 
@@ -111,6 +114,19 @@ defineEmits<{ toggle: [] }>()
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
+}
+
+/* On the circle's edge at 45° (r = 26px → ~7.6px in from the box corner). */
+.dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--color-fab-on-surface);
+  border: 2px solid var(--color-fab-surface);
   pointer-events: none;
 }
 </style>

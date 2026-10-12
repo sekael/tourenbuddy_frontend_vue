@@ -64,7 +64,7 @@
 
 ## 8. Integration verification
 
-- [ ] 8.1 Local end-to-end with `supabase start` + `wrangler dev`: two browsers/accounts — friend request, shared-tour edit, suggestion batch each create exactly one inbox entry and one push on each of two registered devices; push off on device 1 keeps device 2 receiving; muted type → inbox only
+- [x] 8.1 Local end-to-end with `supabase start` + `wrangler dev`: two browsers/accounts — friend request, shared-tour edit, suggestion batch each create exactly one inbox entry and one push on each of two registered devices; push off on device 1 keeps device 2 receiving; muted type → inbox only
 - [ ] 8.2 `npm run test`, `npm run type-check`, `supabase test db` all pass
 
 ## 9. Finalize

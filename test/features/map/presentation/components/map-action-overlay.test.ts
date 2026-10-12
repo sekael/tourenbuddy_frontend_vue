@@ -172,6 +172,20 @@ describe('mapActionOverlay', () => {
       expect(wrapper.get('[data-testid="trigger-count"]').text()).toBe('2')
     })
 
+    it('should show only a dot on the trigger for a pending request with nothing unread', () => {
+      const wrapper = mountOverlay({ incomingRequests: [{ id: '1', status: 'pending' }] })
+      expect(wrapper.find('[data-testid="trigger-dot"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="trigger-count"]').exists()).toBe(false)
+    })
+
+    it('should prefer the count over the dot once anything is unread', async () => {
+      const wrapper = mountOverlay({ incomingRequests: [{ id: '1', status: 'pending' }] })
+      ;(useInboxStore() as unknown as { attentionCount: number }).attentionCount = 1
+      await nextTick()
+      expect(wrapper.get('[data-testid="trigger-count"]').text()).toBe('1')
+      expect(wrapper.find('[data-testid="trigger-dot"]').exists()).toBe(false)
+    })
+
     it('should not mark contacts for resolved friend requests', async () => {
       const wrapper = mountOverlay({ incomingRequests: [{ id: '1', status: 'accepted' }] })
       await wrapper.find('[aria-haspopup="menu"]').trigger('click')
