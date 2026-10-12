@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.43.1...tourenbuddy-frontend-v0.44.0) (2026-10-12)
+
+
+### Features
+
+* Notifications for availability and tour reminders ([#314](https://github.com/sekael/tourenbuddy_frontend_vue/issues/314)) ([8ab49b9](https://github.com/sekael/tourenbuddy_frontend_vue/commit/8ab49b96d63c9bb06fde54499df8be34bd1e23e1))
+
 ## [0.43.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.43.0...tourenbuddy-frontend-v0.43.1) (2026-10-12)
 
 
