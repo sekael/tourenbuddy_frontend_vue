@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.43.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.43.0...tourenbuddy-frontend-v0.43.1) (2026-10-12)
+
+
+### Bug Fixes
+
+* **ci:** Allow workflow dispatch for release job ([#315](https://github.com/sekael/tourenbuddy_frontend_vue/issues/315)) ([cac51df](https://github.com/sekael/tourenbuddy_frontend_vue/commit/cac51dfc009d78edc9f02b3f23c024e2791c7605))
+* Hide mobile tooltips ([#313](https://github.com/sekael/tourenbuddy_frontend_vue/issues/313)) ([18ec38d](https://github.com/sekael/tourenbuddy_frontend_vue/commit/18ec38d448524bebf3a3d7c6f82c396d4fec120d))
+* Hide mobile tooltips ([#313](https://github.com/sekael/tourenbuddy_frontend_vue/issues/313)) ([87810ab](https://github.com/sekael/tourenbuddy_frontend_vue/commit/87810abc385f54887f12148e267a80e098e04aa7))
+* Hide mobile tooltips ([#313](https://github.com/sekael/tourenbuddy_frontend_vue/issues/313)) ([faba763](https://github.com/sekael/tourenbuddy_frontend_vue/commit/faba7636139b7a42b48465e0527ed8c105787e3e))
+
 ## [0.43.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.42.1...tourenbuddy-frontend-v0.43.0) (2026-10-12)
 
 
