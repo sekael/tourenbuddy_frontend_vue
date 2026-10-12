@@ -6,6 +6,9 @@ import NotificationPreferencesSection from '@/features/notifications/presentatio
 import { useNotificationCapability } from '@/features/notifications/presentation/composables/use-notification-capability'
 import { useNotificationsStore } from '@/features/notifications/presentation/stores/notifications-store'
 
+const isDesktop = ref(true)
+vi.mock('@/core/composables/use-is-desktop', () => ({ useIsDesktop: () => isDesktop }))
+
 vi.mock('@/features/notifications/presentation/composables/use-notification-capability', () => ({
   useNotificationCapability: vi.fn(),
 }))
@@ -36,6 +39,7 @@ function mountComponent(prefsOverride = {}, storeOverride: Record<string, unknow
 describe('notificationPreferencesSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    isDesktop.value = true
     vi.mocked(useNotificationCapability).mockReturnValue({
       pushSupported: ref(true),
       requiresPwaInstall: ref(false),
@@ -96,6 +100,15 @@ describe('notificationPreferencesSection', () => {
     expect(infoBtn.exists()).toBe(true)
     expect(infoBtn.attributes('aria-label')).toBe('notifications.deniedHint')
     expect(infoBtn.classes()).toContain('unavailable__info--warning')
+  })
+
+  it('should show the hint inline instead of a tooltip in mobile view', () => {
+    isDesktop.value = false
+    const wrapper = mountComponent({}, { pushPermission: 'denied' })
+
+    expect(wrapper.find('.unavailable__label').exists()).toBe(true)
+    expect(wrapper.find('.unavailable__info').exists()).toBe(false)
+    expect(wrapper.find('.row-description').text()).toBe('notifications.deniedHint')
   })
 
   it('should render push toggle when push is supported and not denied', () => {

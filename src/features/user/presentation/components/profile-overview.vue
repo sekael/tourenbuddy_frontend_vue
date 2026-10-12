@@ -3,6 +3,7 @@ import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
+import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { SUPPORTED_LOCALES } from '@/core/i18n/supported'
 import { formatPhoneForDisplay } from '@/core/utils/phone-normalize'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
@@ -11,6 +12,8 @@ import { useLocaleStore } from '@/features/i18n/presentation/stores/use-locale-s
 import { useNotificationCapability } from '@/features/notifications/presentation/composables/use-notification-capability'
 import { useNotificationsStore } from '@/features/notifications/presentation/stores/notifications-store'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
+import AppUpdateNotice from './app-update-notice.vue'
+import AppVersionLine from './app-version-line.vue'
 
 export type ProfileSection = 'edit' | 'notifications' | 'calendar'
 
@@ -19,6 +22,7 @@ export type ProfileSection = 'edit' | 'notifications' | 'calendar'
 const emit = defineEmits<{ open: [section: ProfileSection], showTour: [], signOut: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
+const isDesktop = useIsDesktop()
 const authStore = useAuthStore()
 const userProfileStore = useUserProfileStore()
 const localeStore = useLocaleStore()
@@ -63,12 +67,14 @@ onMounted(() => {
 
 <template>
   <div class="overview">
+    <AppUpdateNotice />
+
     <button
       type="button"
       class="identity"
       data-testid="edit-profile-btn"
       data-tour="phone-verification"
-      :title="t('user.profile.editBtn')"
+      :title="isDesktop ? t('user.profile.editBtn') : undefined"
       @click="emit('open', 'edit')"
     >
       <span class="avatar" aria-hidden="true">{{ displayName.charAt(0).toUpperCase() }}</span>
@@ -147,6 +153,8 @@ onMounted(() => {
       <BaseIcon name="logout" />
       {{ t('user.profile.signOutBtn') }}
     </BaseButton>
+
+    <AppVersionLine />
   </div>
 </template>
 

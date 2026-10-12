@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useIsDesktop } from '../composables/use-is-desktop'
 import BaseIcon from './base-icon.vue'
 
 type Size = 'sm' | 'md' | 'lg'
@@ -7,7 +8,7 @@ type Size = 'sm' | 'md' | 'lg'
 const props = withDefaults(defineProps<{
   /** Material Symbols ligature name. */
   name: string
-  /** Accessible name — exposed via aria-label + title (icon glyph is decorative). */
+  /** Accessible name — aria-label always; also a title tooltip in desktop view only. */
   label: string
   size?: Size
   shape?: 'round' | 'square'
@@ -21,6 +22,8 @@ const props = withDefaults(defineProps<{
   tone: 'default',
   variant: 'standard',
 })
+
+const isDesktop = useIsDesktop()
 
 // Glyph tracks the button size so the icon stays proportionate to its target.
 const iconSize = computed(() => props.size)
@@ -37,7 +40,7 @@ const iconSize = computed(() => props.size)
       `base-icon-button--${props.variant}`,
     ]"
     :aria-label="props.label"
-    :title="props.label"
+    :title="isDesktop ? props.label : undefined"
   >
     <BaseIcon :name="props.name" :size="iconSize" />
   </button>

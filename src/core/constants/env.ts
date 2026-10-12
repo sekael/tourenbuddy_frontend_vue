@@ -9,6 +9,8 @@ const envSchema = z.object({
   VITE_SUPABASE_ANON_KEY: z.string().min(1),
   VITE_VAPID_PUBLIC_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
   VITE_NOTIFY_HOOK_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+  // PR previews only (deploy-preview.yml): the commit the preview was built from.
+  VITE_BUILD_COMMIT: z.preprocess(emptyToUndefined, z.string().optional()),
   VITE_NOTIFICATIONS_ENABLED: z
     .string()
     .optional()

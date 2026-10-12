@@ -1,3 +1,4 @@
+import type { Ref } from 'vue'
 import { createTestingPinia } from '@pinia/testing'
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -5,6 +6,14 @@ import { nextTick } from 'vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import MapActionOverlay from '@/features/map/presentation/components/map-action-overlay.vue'
 import { useInboxStore } from '@/features/notifications/presentation/stores/inbox-store'
+
+// The mock factory runs at import time, before module-scope code, so it fills a hoisted holder.
+const pwa = vi.hoisted(() => ({ updateAvailable: undefined as unknown as Ref<boolean> }))
+vi.mock('@/core/composables/use-pwa-update', async () => {
+  const { ref } = await import('vue')
+  pwa.updateAvailable = ref(false)
+  return { usePwaUpdate: () => ({ updateAvailable: pwa.updateAvailable }) }
+})
 
 function mountOverlay(
   options: {
@@ -38,6 +47,7 @@ function mountOverlay(
 describe('mapActionOverlay', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    pwa.updateAvailable.value = false
   })
 
   describe('collapsed state', () => {
@@ -207,6 +217,37 @@ describe('mapActionOverlay', () => {
       await wrapper.find('[aria-haspopup="menu"]').trigger('click')
       expect(wrapper.find('[data-testid="menu-dot"]').exists()).toBe(true)
       expect(wrapper.find('.badge').exists()).toBe(false)
+    })
+  })
+
+  describe('pending app update', () => {
+    function profileItem(wrapper: ReturnType<typeof mountOverlay>) {
+      return wrapper.findAll('[role="menuitem"]').find(b => b.text().includes('map.overlay.profile'))!
+    }
+
+    it('should show a dot on the trigger when an update waits and nothing is unread', () => {
+      pwa.updateAvailable.value = true
+      const wrapper = mountOverlay()
+      expect(wrapper.find('[data-testid="trigger-dot"]').exists()).toBe(true)
+    })
+
+    it('should keep the inbox count on the trigger and mark the profile item instead', async () => {
+      pwa.updateAvailable.value = true
+      const wrapper = mountOverlay()
+      ;(useInboxStore() as unknown as { attentionCount: number }).attentionCount = 2
+      await nextTick()
+      expect(wrapper.get('[data-testid="trigger-count"]').text()).toBe('2')
+
+      await wrapper.find('[aria-haspopup="menu"]').trigger('click')
+      expect(profileItem(wrapper).find('[data-testid="menu-dot"]').exists()).toBe(true)
+      expect(profileItem(wrapper).attributes('aria-label')).toBe('map.overlay.profileUpdateAvailable')
+    })
+
+    it('should not mark the profile item without a pending update', async () => {
+      const wrapper = mountOverlay()
+      await wrapper.find('[aria-haspopup="menu"]').trigger('click')
+      expect(profileItem(wrapper).find('[data-testid="menu-dot"]').exists()).toBe(false)
+      expect(profileItem(wrapper).attributes('aria-label')).toBe('map.overlay.profileTooltip')
     })
   })
 

@@ -2,6 +2,7 @@ import type { SpeedDialMenuItem } from '../components/map-speed-dial-menu.vue'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { usePwaUpdate } from '@/core/composables/use-pwa-update'
 import { isOnline } from '@/core/offline/use-online-status'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
@@ -23,6 +24,7 @@ export function useMapOverlay(emit: {
   const { isPickingLocation, isDrawingRegion, currentStyleIndex } = storeToRefs(mapStore)
   const { incomingRequests } = storeToRefs(friendshipsStore)
   const { attentionCount: inboxCount } = storeToRefs(useInboxStore())
+  const { updateAvailable } = usePwaUpdate()
 
   const view = ref<OverlayView>('closed')
   const isOpen = computed(() => view.value !== 'closed')
@@ -50,7 +52,9 @@ export function useMapOverlay(emit: {
       id: 'profile',
       icon: 'account_circle',
       label: t('map.overlay.profile'),
-      tooltip: t('map.overlay.profileTooltip'),
+      // The tooltip is also the accessible name: the dot alone is aria-hidden.
+      tooltip: updateAvailable.value ? t('map.overlay.profileUpdateAvailable') : t('map.overlay.profileTooltip'),
+      dot: updateAvailable.value,
     },
     {
       id: 'contacts',
@@ -103,6 +107,7 @@ export function useMapOverlay(emit: {
     currentStyleIndex,
     inboxCount,
     pendingIncomingCount,
+    updateAvailable,
     menuItems,
     mapStore,
     onMenuSelect,

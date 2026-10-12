@@ -129,13 +129,13 @@ onUnmounted(() => {
             <div v-for="action in actions" :key="action.methodId" class="method-row">
               <span class="method-label">{{ action.label }}</span>
               <div class="method-actions">
-                <a :href="action.call" class="menu-action-btn sheet-action-btn" title="Call">
+                <a :href="action.call" class="menu-action-btn sheet-action-btn" aria-label="Call">
                   <BaseIcon name="call" />
                 </a>
                 <a
                   :href="action.whatsApp"
                   class="menu-action-btn sheet-action-btn"
-                  title="WhatsApp"
+                  aria-label="WhatsApp"
                   target="_blank"
                   rel="noopener noreferrer"
                 >

@@ -5,6 +5,7 @@ import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
+import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { isOnline } from '@/core/offline/use-online-status'
 import { ALL_NOTIFICATION_TYPES } from '../../domain/entities/notification-preferences'
 import { useNotificationCapability } from '../composables/use-notification-capability'
@@ -14,12 +15,18 @@ const { t } = useI18n({ useScope: 'global' })
 const notificationsStore = useNotificationsStore()
 const { prefs, pushPermission, pushEnabled, isLoading } = storeToRefs(notificationsStore)
 const { pushSupported, requiresPwaInstall } = useNotificationCapability()
+const isDesktop = useIsDesktop()
 
 // Push is this device's state (#148), email is account-wide.
 const allOff = computed(
   () => prefs.value !== null && !pushEnabled.value && !prefs.value.notifEmailEnabled,
 )
 const pushDenied = computed(() => pushPermission.value === 'denied')
+const unavailableHint = computed(() => {
+  if (requiresPwaInstall.value)
+    return t('notifications.installHint')
+  return pushDenied.value ? t('notifications.deniedHint') : null
+})
 
 function isTypeMuted(type: NotificationType): boolean {
   return prefs.value?.notifMutedTypes.includes(type) ?? false
@@ -49,27 +56,21 @@ onMounted(() => {
 
     <template v-else-if="prefs">
       <ul class="rows">
-        <li class="row">
-          <span class="row-label">{{ t('notifications.pushLabel') }}</span>
-          <span v-if="requiresPwaInstall" class="unavailable">
+        <li class="row" :class="{ 'row--with-description': unavailableHint && !isDesktop }">
+          <div class="row-text">
+            <span class="row-label">{{ t('notifications.pushLabel') }}</span>
+            <!-- Mobile has no tooltips: the explanation is shown inline instead. -->
+            <span v-if="unavailableHint && !isDesktop" class="row-description">{{ unavailableHint }}</span>
+          </div>
+          <span v-if="unavailableHint" class="unavailable">
             <span class="unavailable__label">{{ t('notifications.pushUnavailable') }}</span>
-            <BaseTooltip :text="t('notifications.installHint')">
+            <BaseTooltip v-if="isDesktop" :text="unavailableHint">
               <BaseIconButton
                 name="info"
-                :label="t('notifications.installHint')"
+                :label="unavailableHint"
                 size="sm"
                 class="unavailable__info"
-              />
-            </BaseTooltip>
-          </span>
-          <span v-else-if="pushDenied" class="unavailable">
-            <span class="unavailable__label">{{ t('notifications.pushUnavailable') }}</span>
-            <BaseTooltip :text="t('notifications.deniedHint')">
-              <BaseIconButton
-                name="info"
-                :label="t('notifications.deniedHint')"
-                size="sm"
-                class="unavailable__info unavailable__info--warning"
+                :class="{ 'unavailable__info--warning': !requiresPwaInstall }"
               />
             </BaseTooltip>
           </span>

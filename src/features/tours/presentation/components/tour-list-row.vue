@@ -4,6 +4,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/core/components/base-icon.vue'
 import { useFormatter } from '@/core/composables/use-formatter'
+import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { resolveContactName } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useFriendDisplayName } from '@/features/friendships/presentation/composables/use-friend-display-name'
@@ -14,6 +15,7 @@ const props = defineProps<{ tour: Tour }>()
 const emit = defineEmits<{ click: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
+const isDesktop = useIsDesktop()
 const { formatDate } = useFormatter()
 const contactsStore = useContactsStore()
 const suggestionsStore = useTourSuggestionsStore()
@@ -85,7 +87,7 @@ const subtitle = computed(() => [dateLabel.value, partnerSubtitle.value].filter(
     </div>
     <span
       v-if="pendingSuggestions > 0" class="suggestion-badge"
-      :title="t('tours.suggestions.pendingCount', { count: pendingSuggestions })"
+      :title="isDesktop ? t('tours.suggestions.pendingCount', { count: pendingSuggestions }) : undefined"
     >
       <BaseIcon name="feedback" />
       {{ pendingSuggestions }}

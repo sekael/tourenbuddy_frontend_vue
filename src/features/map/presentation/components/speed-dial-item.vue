@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import BaseIcon from '@/core/components/base-icon.vue'
+import { useIsDesktop } from '@/core/composables/use-is-desktop'
 
 // One glass pill per action: label, then icon. Used by the speed-dial menu and the
 // base-map options alike, so every expanding map menu looks and moves the same.
@@ -12,6 +13,8 @@ defineProps<{
 }>()
 
 defineEmits<{ select: [] }>()
+
+const isDesktop = useIsDesktop()
 </script>
 
 <template>
@@ -20,7 +23,7 @@ defineEmits<{ select: [] }>()
     class="item-row fab-glass"
     :disabled="disabled"
     :aria-disabled="disabled"
-    :title="tooltip ?? label"
+    :title="isDesktop ? tooltip ?? label : undefined"
     :aria-label="tooltip ?? label"
     @click="$emit('select')"
   >

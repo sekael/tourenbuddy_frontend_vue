@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onUnmounted, ref } from 'vue'
+import { useIsDesktop } from '../composables/use-is-desktop'
 import { useIsTouch } from '../composables/use-is-touch'
 
 const props = defineProps<{
@@ -7,6 +8,9 @@ const props = defineProps<{
   disabled?: boolean
 }>()
 
+// Tooltips exist only in desktop view: on mobile the slot renders bare (no bubble,
+// no aria-describedby) — anything a mobile user needs must be visible inline.
+const isDesktop = useIsDesktop()
 const isTouch = useIsTouch()
 const visible = ref(false)
 const wrapperRef = ref<HTMLElement | null>(null)
@@ -51,7 +55,7 @@ function computePosition() {
 }
 
 function showTooltip() {
-  if (props.disabled)
+  if (props.disabled || !isDesktop.value)
     return
   computePosition()
   visible.value = true
@@ -107,7 +111,7 @@ onUnmounted(() => {
   <span
     ref="wrapperRef"
     class="tooltip-wrapper"
-    :aria-describedby="tooltipId"
+    :aria-describedby="isDesktop ? tooltipId : undefined"
     @mouseenter="onMouseEnter"
     @mouseleave="onMouseLeave"
     @click="onClick"
@@ -116,7 +120,7 @@ onUnmounted(() => {
   >
     <slot />
   </span>
-  <Teleport to="body">
+  <Teleport v-if="isDesktop" to="body">
     <span
       :id="tooltipId"
       ref="bubbleRef"

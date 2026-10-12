@@ -32,6 +32,7 @@ const {
   currentStyleIndex,
   inboxCount,
   pendingIncomingCount,
+  updateAvailable,
   menuItems,
   onMenuSelect,
   selectStyle,
@@ -114,7 +115,7 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
     <SpeedDialTrigger
       :is-open="isOpen"
       :count="inboxCount"
-      :dot="pendingIncomingCount > 0"
+      :dot="pendingIncomingCount > 0 || updateAvailable"
       :title-open="t('map.overlay.menuClose')"
       :title-closed="t('map.overlay.menuOpen')"
       :class="{ 'trigger--overlay-active': overlayActive }"
