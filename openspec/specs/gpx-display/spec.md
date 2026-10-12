@@ -127,7 +127,7 @@ If the user cancels tour creation or edit before submitting, the system SHALL ro
 
 ### Requirement: Icon-only replace and remove for existing GPX tracks
 
-When the form displays a GPX file (either an existing track loaded from the tour or a freshly pre-uploaded one), the Replace and Remove controls SHALL be rendered as icon-only buttons with accessible tooltips.
+When the form displays a GPX file (either an existing track loaded from the tour or a freshly pre-uploaded one), the Replace and Remove controls SHALL be rendered as icon-only buttons with accessible labels and, in desktop view, tooltips.
 
 #### Scenario: Existing track shown with icon controls
 
@@ -136,5 +136,5 @@ When the form displays a GPX file (either an existing track loaded from the tour
 
 #### Scenario: Tooltip text on hover
 
-- **WHEN** the user hovers the Replace or Remove icon button
+- **WHEN** the user hovers the Replace or Remove icon button in desktop view
 - **THEN** the browser SHALL display a tooltip with the localized action label

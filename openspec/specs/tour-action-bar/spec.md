@@ -66,7 +66,7 @@ The bar SHALL be hidden entirely while any of the following are true: `mapStore.
 
 ### Requirement: Tour action bar wires into existing flows
 
-Activating the My Tours segment SHALL open the tours list overlay via the same code path used previously by the speed-dial entry (`activeOverlay === 'tours'`). Activating the Add-tour segment SHALL invoke `mapStore.setPickingLocation(true)` to enter the existing goal-pick → tour-creation-dialog flow; if the user is not authenticated the Add-tour segment SHALL render disabled with an explanatory tooltip.
+Activating the My Tours segment SHALL open the tours list overlay via the same code path used previously by the speed-dial entry (`activeOverlay === 'tours'`). Activating the Add-tour segment SHALL invoke `mapStore.setPickingLocation(true)` to enter the existing goal-pick → tour-creation-dialog flow; if the user is not authenticated the Add-tour segment SHALL render disabled with an explanatory tooltip (desktop view only).
 
 #### Scenario: My Tours segment opens tour list
 

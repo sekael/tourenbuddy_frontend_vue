@@ -164,6 +164,12 @@ zoomed); `global.css` sets the floor and `field-font-size.test.ts` guards it.
 Bottom-anchored toasts and chips use `--float-bottom` / `--float-corner-bottom`,
 which lift them above any open sheet.
 
+**Tooltips are desktop-only.** `BaseTooltip` bubbles and native `title` hints exist
+only in desktop view (`useIsDesktop()`, ≥600px); in mobile view neither renders. So a
+tooltip may only repeat what's already discoverable — anything a mobile user needs
+(why a control is unavailable, what to do next) is shown inline in mobile view. The
+accessible name (`aria-label`) stays on every viewport.
+
 **No needless motion.** Only what the user acted on moves; nothing bounces.
 
 ### Component tokens
@@ -215,7 +221,7 @@ badges migrate faithfully), optional `weight`. Always decorative
 ### IconButton — `base-icon-button.vue`
 
 Inline icon-only button (close, back, dismiss, inline actions). Props: `name`,
-`label` (→ `aria-label` + `title`), `size` (`sm`/`md`/`lg`), `shape`
+`label` (→ `aria-label`; also `title` in desktop view only), `size` (`sm`/`md`/`lg`), `shape`
 (`round` default, `square`), `tone` (`danger` tints on hover), `variant`
 (`standard` transparent, `tonal` on the secondary container). **Navigation chrome
 — close and back in every sheet, dialog, drawer and page — is `tonal`**; other

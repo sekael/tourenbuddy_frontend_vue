@@ -267,7 +267,7 @@ Application components SHALL reference design tokens (`var(--*)`) and shared bas
 
 ### Requirement: Shared icon-only button component
 
-The system SHALL provide a shared `IconButton` component for inline icon-only buttons (close, back, dismiss, inline icon actions). It SHALL render a single `Icon`, expose token-driven sizing, and forward native button attributes including `disabled` and an accessible label (`aria-label`/`title`). Its corner shape SHALL be prop/token-driven (default round; a square option available). It SHALL offer a **tonal** variant on the control container, which every close and back button in sheets, dialogs, drawers, and pages SHALL use; other inline icon actions stay transparent.
+The system SHALL provide a shared `IconButton` component for inline icon-only buttons (close, back, dismiss, inline icon actions). It SHALL render a single `Icon`, expose token-driven sizing, and forward native button attributes including `disabled` and an accessible label (`aria-label` on every viewport; `title` in desktop view only). Its corner shape SHALL be prop/token-driven (default round; a square option available). It SHALL offer a **tonal** variant on the control container, which every close and back button in sheets, dialogs, drawers, and pages SHALL use; other inline icon actions stay transparent.
 
 #### Scenario: Icon-only button renders accessibly
 
@@ -566,6 +566,20 @@ Hover fills SHALL apply only on devices whose primary pointer can hover (`@media
 
 - **WHEN** the user taps a tour row on a touch device and lifts the finger
 - **THEN** the row shows its tint while pressed and returns to rest after release, with no grey tap flash
+
+### Requirement: Tooltips exist only in desktop view
+
+Tooltips — the shared `BaseTooltip` bubble and native `title` hints on controls — SHALL render only in desktop view (viewport ≥600px, `useIsDesktop()`). In mobile view no tooltip bubble SHALL render, no `title` attribute SHALL be set, and the anchor SHALL carry no `aria-describedby` to a tooltip. Information a mobile user needs SHALL NOT live only in a tooltip; it SHALL be shown inline in mobile view. Accessible names (`aria-label`) SHALL be kept on every viewport.
+
+#### Scenario: Touching a tooltip anchor on a phone
+
+- **WHEN** the user taps or long-presses a control that has a tooltip in mobile view
+- **THEN** no tooltip bubble or native title hint appears
+
+#### Scenario: Hovering a tooltip anchor on desktop
+
+- **WHEN** the user hovers a control that has a tooltip in desktop view
+- **THEN** the tooltip appears as before
 
 ### Requirement: Floating toasts clear open sheets
 

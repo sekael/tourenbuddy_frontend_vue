@@ -47,7 +47,7 @@ The tour list SHALL own its own scroll container rather than scrolling within th
 #### Scenario: Add-tour disabled when unauthenticated
 
 - **WHEN** the user is not authenticated
-- **THEN** the Add-tour button SHALL render disabled with the existing `signInToAddToursTooltip` tooltip text
+- **THEN** the Add-tour button SHALL render disabled with the existing `signInToAddToursTooltip` tooltip text (desktop view only)
 
 #### Scenario: Add-tour visible in both mobile and desktop layouts
 

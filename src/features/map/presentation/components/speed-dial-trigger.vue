@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import BaseIcon from '@/core/components/base-icon.vue'
+import { useIsDesktop } from '@/core/composables/use-is-desktop'
 
 defineProps<{
   isOpen: boolean
@@ -9,6 +10,8 @@ defineProps<{
 }>()
 
 defineEmits<{ toggle: [] }>()
+
+const isDesktop = useIsDesktop()
 </script>
 
 <template>
@@ -20,7 +23,7 @@ defineEmits<{ toggle: [] }>()
       aria-haspopup="menu"
       :aria-expanded="isOpen"
       aria-controls="speed-dial-menu"
-      :title="isOpen ? titleOpen : titleClosed"
+      :title="isDesktop ? (isOpen ? titleOpen : titleClosed) : undefined"
       @click="$emit('toggle')"
     >
       <BaseIcon name="menu" class="icon icon-menu" :class="{ hidden: isOpen }" />

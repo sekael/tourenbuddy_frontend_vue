@@ -231,7 +231,7 @@ The RPC MUST be scoped strictly to the caller: it MUST NOT return rows for block
 
 ### Requirement: Blocked-status badge on every contact reference
 
-The system SHALL display a visual blocked-status indicator (red `block` material symbol with a localized tooltip) anywhere a blocked contact is referenced in the UI. The indicator MUST appear:
+The system SHALL display a visual blocked-status indicator (red `block` material symbol with a localized tooltip in desktop view) anywhere a blocked contact is referenced in the UI. The indicator MUST appear:
 - next to the contact name in the contact list, in place of (or alongside) the friend badge,
 - next to the contact name in the contact detail view's name section, mirroring the friend-icon placement.
 

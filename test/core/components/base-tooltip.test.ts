@@ -2,11 +2,11 @@ import { mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 
-function mockMatchMedia(hoverNone: boolean) {
+function mockMatchMedia(hoverNone: boolean, desktop = true) {
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
     value: vi.fn().mockImplementation((query: string) => ({
-      matches: hoverNone,
+      matches: query.includes('hover') ? hoverNone : desktop,
       media: query,
       onchange: null,
       addListener: vi.fn(),
@@ -91,7 +91,7 @@ describe('baseTooltip', () => {
     })
   })
 
-  describe('on touch device (mobile)', () => {
+  describe('on touch device in desktop view (tablet)', () => {
     beforeEach(() => mockMatchMedia(true))
 
     it('should show bubble on touchstart', async () => {
@@ -165,6 +165,23 @@ describe('baseTooltip', () => {
       await wrapper.vm.$nextTick()
       expect(getBubble()?.classList.contains('tooltip-bubble--visible')).toBe(true)
       vi.useRealTimers()
+    })
+  })
+
+  describe('in mobile view', () => {
+    beforeEach(() => mockMatchMedia(true, false))
+
+    it('should render no bubble and no aria-describedby, even on touchstart or mouseenter', async () => {
+      const wrapper = mount(BaseTooltip, {
+        props: { text: 'Hint' },
+        slots: { default: '<span>icon</span>' },
+        attachTo: container,
+      })
+      const anchor = wrapper.find('.tooltip-wrapper')
+      await anchor.trigger('touchstart')
+      await anchor.trigger('mouseenter')
+      expect(getBubble()).toBeNull()
+      expect(anchor.attributes('aria-describedby')).toBeUndefined()
     })
   })
 

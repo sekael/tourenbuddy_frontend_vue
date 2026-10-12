@@ -3,6 +3,7 @@ import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
+import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { SUPPORTED_LOCALES } from '@/core/i18n/supported'
 import { formatPhoneForDisplay } from '@/core/utils/phone-normalize'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
@@ -19,6 +20,7 @@ export type ProfileSection = 'edit' | 'notifications' | 'calendar'
 const emit = defineEmits<{ open: [section: ProfileSection], showTour: [], signOut: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
+const isDesktop = useIsDesktop()
 const authStore = useAuthStore()
 const userProfileStore = useUserProfileStore()
 const localeStore = useLocaleStore()
@@ -68,7 +70,7 @@ onMounted(() => {
       class="identity"
       data-testid="edit-profile-btn"
       data-tour="phone-verification"
-      :title="t('user.profile.editBtn')"
+      :title="isDesktop ? t('user.profile.editBtn') : undefined"
       @click="emit('open', 'edit')"
     >
       <span class="avatar" aria-hidden="true">{{ displayName.charAt(0).toUpperCase() }}</span>
