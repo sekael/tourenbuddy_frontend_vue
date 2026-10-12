@@ -1,9 +1,8 @@
-# Spec Delta
-
 ## Purpose
+
 Announce new features to existing users inside the app, once per user, at the moment they actually run the build that contains them.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Release notes ship with the app
 Release notes SHALL be part of the app bundle, each identified by a unique id chosen when the note is written (not the app version) and carrying the date it was written and a localized (`en`, `de-CH`) title and body. The note copy SHALL NOT name a version. The current note SHALL be the most recently added one. Not every release needs a note.
@@ -50,11 +49,11 @@ Release-note entries SHALL NOT be sent by push or email and SHALL NOT appear as 
 - **THEN** no push or email is sent
 
 ### Requirement: Reading a release note
-Activating a release-note entry SHALL mark it read and show the note's localized title and body in the current app locale. A release-note entry SHALL never be stale. If the running build no longer contains the note, the app SHALL show the "no longer available" message.
+Activating a release-note entry SHALL mark it read and show the note in the current app locale: its date, title, introduction and a list of highlights, plus a shortcut to the notification settings when the note announces notification changes. A release-note entry SHALL never be stale. If the running build no longer contains the note, the app SHALL show the "no longer available" message.
 
 #### Scenario: Open note
 - **WHEN** the user taps a release-note entry
-- **THEN** the entry becomes read and the note is shown
+- **THEN** the entry becomes read and the note is shown with its highlights
 
 #### Scenario: Unknown note
 - **WHEN** the user taps a release-note entry whose id the running build does not contain

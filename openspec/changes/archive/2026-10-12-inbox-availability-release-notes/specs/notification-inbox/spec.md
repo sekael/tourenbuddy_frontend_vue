@@ -76,7 +76,7 @@ The user SHALL be able to clear the inbox: after an inline confirmation, every e
 
 #### Scenario: Open a release-note entry
 - **WHEN** the user taps a release-note entry
-- **THEN** the entry becomes read and the note's title and body are shown
+- **THEN** the entry becomes read and the note is shown
 
 ### Requirement: Staleness is derived from live state
 An entry SHALL be stale when its subject is no longer actionable or no longer exists: an answered or cancelled friend request; a suggestion batch no longer pending; a link request no longer pending; a referenced tour that no longer exists or is no longer visible. Informational entries (tour updated, group events, digests, tour reminders) SHALL be stale only when their tour no longer exists or is no longer visible. Availability summaries and release-note entries SHALL never be stale; summaries are deleted once their week has passed. Staleness SHALL be computed client-side and SHALL NOT modify the stored entry.

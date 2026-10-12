@@ -11,7 +11,7 @@
 - [x] 2.3 Same migration: `fn_tour_reminders()` (definer, never raises) and `cron.schedule('tour-reminders', '0 5 * * *', …)` — exact `planned_date = current_date + 5`, owner + friend partners on friends-visible tours, actor-less, `ref {planned_date}`, `not exists` guard (D3, D4); verify pgTAP: owner and friend partner reminded; private tour → owner only; non-friend partner, completed, no date, 4 or 6 days ahead → none; second run → no new row; moved date reminds again
 - [x] 2.4 Same migration: `user_release_note_state` (revoke from anon/authenticated, `grant all` to service_role, RLS on, no policies) + `record_release_note(p_note_id, p_since)` definer RPC (D7); verify pgTAP: first call creates one entry, second call and call after deleting the entry create none, a different id creates one, account created after `p_since` gets none, malformed id rejected, direct table access rejected
 - [x] 2.5 Same migration: recreate `trg_dispatch_notification` with `when (new.type <> 'release_notes')` (D8); verify pgTAP: trigger definition shows the `WHEN` clause
-- [ ] 2.6 Apply locally (`supabase db reset`), run `supabase test db`; all files pass — *applied via `supabase migration up --db-url` and all 5 pgTAP files pass via psql from the container (no docker there); owner to run the real `supabase db reset && supabase test db` on the Mac. New cases live in `supabase/tests/notification_jobs.sql` (notifications_rls.sql unfriends seed users mid-run)*
+- [x] 2.6 Apply locally (`supabase db reset`), run `supabase test db`; all files pass — *applied via `supabase migration up --db-url` and all 5 pgTAP files pass via psql from the container (no docker there); owner to run the real `supabase db reset && supabase test db` on the Mac. New cases live in `supabase/tests/notification_jobs.sql` (notifications_rls.sql unfriends seed users mid-run)*
 
 ## 3. Worker (`services/email-hook`)
 
@@ -35,7 +35,7 @@
 
 ## 6. Integration verification
 
-- [ ] 6.1 Local end-to-end (`supabase start` + `wrangler dev`): run both job functions by hand (`select public.fn_weekly_availability_summary()` / `fn_tour_reminders()`) → expected entries + pushes, second run → nothing; new build with a note → one entry on two devices, none after delete + reload, no push
+- [x] 6.1 Local end-to-end (`supabase start` + `wrangler dev`): run both job functions by hand (`select public.fn_weekly_availability_summary()` / `fn_tour_reminders()`) → expected entries + pushes, second run → nothing; new build with a note → one entry on two devices, none after delete + reload, no push
 - [x] 6.2 `npm run test`, `npm run type-check`, `supabase test db` all pass
 
 ## 7. Finalize
