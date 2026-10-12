@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.43.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.42.1...tourenbuddy-frontend-v0.43.0) (2026-10-12)
+
+
+### Features
+
+* Notification inbox ([#311](https://github.com/sekael/tourenbuddy_frontend_vue/issues/311)) ([6513179](https://github.com/sekael/tourenbuddy_frontend_vue/commit/65131795a5b0b27455e13f574d54c914637555a0))
+
 ## [0.42.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.42.0...tourenbuddy-frontend-v0.42.1) (2026-10-07)
 
 
