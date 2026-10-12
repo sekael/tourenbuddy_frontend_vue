@@ -10,7 +10,6 @@ The `notif_push_enabled` drop showed that users can stay on an old build indefin
 - The app also checks for a newer build when it returns to the foreground (throttled to 15 min), not only on page load, so long-open PWA sessions notice updates.
 - Dismissing the update banner hides it only until the next app start; it no longer clears the update state.
 - The profile menu item announces "update available" to screen readers.
-- Background tabs reload onto the new version when they become visible (fixes old tabs 404ing on stale lazy chunks).
 - Not included: an inbox entry for available updates (future change).
 
 ## Capabilities

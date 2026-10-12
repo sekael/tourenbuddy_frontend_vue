@@ -12,6 +12,8 @@ import { useLocaleStore } from '@/features/i18n/presentation/stores/use-locale-s
 import { useNotificationCapability } from '@/features/notifications/presentation/composables/use-notification-capability'
 import { useNotificationsStore } from '@/features/notifications/presentation/stores/notifications-store'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
+import AppUpdateNotice from './app-update-notice.vue'
+import AppVersionLine from './app-version-line.vue'
 
 export type ProfileSection = 'edit' | 'notifications' | 'calendar'
 
@@ -65,6 +67,8 @@ onMounted(() => {
 
 <template>
   <div class="overview">
+    <AppUpdateNotice />
+
     <button
       type="button"
       class="identity"
@@ -149,6 +153,8 @@ onMounted(() => {
       <BaseIcon name="logout" />
       {{ t('user.profile.signOutBtn') }}
     </BaseButton>
+
+    <AppVersionLine />
   </div>
 </template>
 

@@ -26,9 +26,9 @@ State lives at module scope, created on first call: `updateAvailable` (= `needRe
 - *Alternative — hourly interval (+ foreground)*: a hidden PWA's timers are suspended on mobile anyway, and an update only matters when the user looks at the app; no interval means no timer to clean up. Owner chose foreground-only.
 - Throttle: switching between the app and Maps/messengers while planning would otherwise fire a request per switch, competing with tiles on weak connections.
 
-### D2b — Deferred reload for hidden windows
-The `controllerchange` listener reloads immediately when visible (as today); when hidden it sets `reloadPending` and reloads on the next `visibilitychange` → visible. Today a hidden tab keeps old code under the new worker and 404s on its next lazy chunk (old hashes are in neither the new precache nor the new deployment).
-- *Alternative — reload hidden tabs immediately*: can drop state the user expects on return. Rejected.
+### D2b — Background windows: the plugin reloads them
+vite-plugin-pwa's prompt flow registers its own `controlling` listener in every window that saw the waiting worker and reloads it as soon as the new worker takes control — visible or hidden (`register.js`). So no window keeps running old code whose lazy chunks are gone. The app's own `controllerchange` listener stays as before: reload once, only when visible.
+- *Considered — defer hidden windows' reload until shown* (owner's first choice): the plugin's listener can't be removed, so deferring would mean replacing its prompt flow with hand-wired `workbox-window` (~40 lines to own across upgrades). Dropped after the browser walk showed the plugin reloads hidden windows anyway; owner accepted the plugin behavior.
 
 ### D3 — App version from `package.json` via Vite `define`; commit only on previews
 `define: { __APP_VERSION__: JSON.stringify(pkg.version) }` + `declare const __APP_VERSION__: string` in `env.d.ts`, mirrored in the Vitest config. release-please bumps `package.json` in the release PR, so the deploy build carries the released version. (The planned `inbox-availability-release-notes` change reuses this define — its task 5.1 shrinks to a reuse.)

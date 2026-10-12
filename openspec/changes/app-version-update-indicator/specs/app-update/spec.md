@@ -70,8 +70,8 @@ While an update is pending, the profile item in the speed-dial menu SHALL show a
 - **THEN** it is announced as "Profile, update available"
 
 ### Requirement: Every open window moves to the new version
-When an update is applied, every open app window SHALL end up on the new version: visible windows reload immediately, and a window that was hidden reloads when it next becomes visible.
+When an update is applied, every open app window SHALL reload onto the new version, including windows in the background, so no window keeps running code whose files are no longer deployed.
 
 #### Scenario: Second tab
 - **WHEN** the user applies the update in one tab while a second app tab is in the background
-- **THEN** the second tab reloads onto the new version as soon as the user switches to it
+- **THEN** the second tab reloads onto the new version without waiting for the user to switch to it

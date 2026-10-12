@@ -4,21 +4,21 @@ import BaseButton from '@/core/components/base-button.vue'
 import { usePwaUpdate } from '@/core/composables/use-pwa-update'
 
 const { t } = useI18n({ useScope: 'global' })
-const { needRefresh, accept, dismiss } = usePwaUpdate()
+const { showBanner, apply, dismissBanner } = usePwaUpdate()
 </script>
 
 <template>
   <Transition name="banner">
-    <div v-if="needRefresh" class="banner" role="status">
+    <div v-if="showBanner" class="banner" role="status">
       <div class="content">
         <p class="text">
           {{ t('core.pwa.update.message') }}
         </p>
         <div class="actions">
-          <BaseButton variant="text" size="sm" @click="dismiss">
+          <BaseButton variant="text" size="sm" @click="dismissBanner">
             {{ t('core.pwa.update.dismiss') }}
           </BaseButton>
-          <BaseButton variant="primary" size="sm" @click="accept">
+          <BaseButton variant="primary" size="sm" @click="apply">
             {{ t('core.pwa.update.action') }}
           </BaseButton>
         </div>

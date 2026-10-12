@@ -246,7 +246,8 @@
         "off": "Off"
       },
       "calendarSummary": "Not connected | {count} calendar | {count} calendars",
-      "calendarProblem": "Sync problem"
+      "calendarProblem": "Sync problem",
+      "version": "Version {version}"
     },
     "phoneVerification": {
       "title": "Verify your phone",
@@ -700,7 +701,8 @@
       "changeBaseMap": "Change base map",
       "feedback": "Feedback",
       "offlineMap": "Offline maps",
-      "inbox": "Inbox"
+      "inbox": "Inbox",
+      "profileUpdateAvailable": "Profile, update available"
     },
     "styles": {
       "pickerTooltip": "Change map style",

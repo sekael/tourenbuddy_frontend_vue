@@ -1,4 +1,5 @@
 import type { Plugin } from 'vite'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
 import vue from '@vitejs/plugin-vue'
 import Icons from 'unplugin-icons/vite'
@@ -24,7 +25,10 @@ export function useRegisterSW() {
   }
 }
 
+const appVersion: string = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version
+
 export default defineConfig({
+  define: { __APP_VERSION__: JSON.stringify(appVersion) },
   plugins: [vue(), Icons({ compiler: 'vue3' }), virtualPwaRegisterStub()],
   resolve: {
     alias: {
