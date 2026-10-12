@@ -1,8 +1,8 @@
 import type { NotificationPreferences, NotificationType } from '../../domain/entities/notification-preferences'
 import { z } from 'zod'
-import { ALL_NOTIFICATION_TYPES } from '../../domain/entities/notification-preferences'
+import { MUTABLE_NOTIFICATION_TYPES } from '../../domain/entities/notification-preferences'
 
-const knownTypeSet = new Set<string>(ALL_NOTIFICATION_TYPES)
+const knownTypeSet = new Set<string>(MUTABLE_NOTIFICATION_TYPES)
 
 export const notificationPreferencesRowSchema = z
   .object({

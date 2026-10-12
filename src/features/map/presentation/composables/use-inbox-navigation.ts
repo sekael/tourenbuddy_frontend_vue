@@ -22,7 +22,18 @@ export function useInboxNavigation(open: {
   const toursStore = useToursStore()
   const snackbar = useSnackbar()
 
+  // TODO(me): open the calendar focused on the summary's first listed day that isn't past.
+  //   See task list at the end of this response.
+  function openSummary(_entry: InboxNotification) {
+    router.push({ name: 'calendar' })
+  }
+
   async function openEntry(entry: InboxNotification) {
+    // A weekly availability summary has no tour: it leads to the calendar.
+    if (entry.action === 'weekly') {
+      openSummary(entry)
+      return
+    }
     if (entry.action === 'received') {
       open.overlay('friend-requests')
       return

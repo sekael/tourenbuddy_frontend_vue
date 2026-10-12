@@ -56,12 +56,15 @@ export interface TourNotificationEmailParams {
   type: 'tour_updates' | 'tour_interest' | 'tour_suggestions'
   /**
    * 'created' | 'updated' | 'deleted' for tour_updates; 'interest' for tour_interest;
-   * 'suggestion_submitted' | 'suggestion_revised' | 'suggestion_resolved' for tour_suggestions.
+   * 'suggestion_submitted' | 'suggestion_revised' | 'suggestion_resolved' for tour_suggestions;
+   * 'availability_weekly' | 'tour_reminder' for the job entries (sent as tour_updates).
    */
   action: string
   actorName: string
   tourName: string
   appUrl: string
+  /** Further friends in an availability summary beyond `actorName`. */
+  moreCount?: number
 }
 
 /**
@@ -102,6 +105,7 @@ export async function sendTourNotificationEmail(
         actorName: params.actorName,
         tourName: params.tourName,
         appUrl: params.appUrl,
+        moreCount: params.moreCount ?? 0,
       },
     }),
   })

@@ -1,6 +1,7 @@
 import { createTestingPinia } from '@pinia/testing'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
+import InboxItem from '@/features/notifications/presentation/components/inbox-item.vue'
 import InboxOverlay from '@/features/notifications/presentation/components/inbox-overlay.vue'
 
 vi.mock('@/core/components/adaptive-overlay.vue', () => ({
@@ -57,5 +58,31 @@ describe('inboxOverlay', () => {
     await wrapper.get('[data-testid="clear-inbox-confirm"]').trigger('click')
 
     expect(store.clearAll).toHaveBeenCalledOnce()
+  })
+
+  async function mountWith(entry: Record<string, unknown>) {
+    const pinia = createTestingPinia({ createSpy: vi.fn, initialState: { inbox: { hasMore: false, isLoading: false, error: null } } })
+    const { useInboxStore } = await import('@/features/notifications/presentation/stores/inbox-store')
+    const store = useInboxStore(pinia)
+    // @ts-expect-error — overriding a computed for the test
+    store.entries = [entry]
+    const wrapper = mount(InboxOverlay, { global: { plugins: [pinia], stubs: { InboxItem: true } } })
+    wrapper.findComponent(InboxItem).vm.$emit('open')
+    await wrapper.vm.$nextTick()
+    return { wrapper, store }
+  }
+
+  it('should open a known release note in place and mark it read', async () => {
+    const { wrapper, store } = await mountWith({ ...read, type: 'release_notes', action: 'published', ref: { note_id: '2026-10-availability-reminders' } })
+    expect(store.markRead).toHaveBeenCalledWith('n1')
+    expect(wrapper.get('[data-testid="release-note-body"]').text()).toBe('releaseNotes.2026-10-availability-reminders.body')
+    expect(wrapper.emitted('open')).toBeUndefined()
+  })
+
+  it('should hand an unknown release note to the host, which reports it unavailable', async () => {
+    const { wrapper, store } = await mountWith({ ...read, type: 'release_notes', action: 'published', ref: { note_id: 'gone-note' } })
+    expect(store.markRead).toHaveBeenCalledWith('n1')
+    expect(wrapper.find('[data-testid="release-note-body"]').exists()).toBe(false)
+    expect(wrapper.emitted('open')).toHaveLength(1)
   })
 })

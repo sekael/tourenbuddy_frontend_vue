@@ -124,6 +124,13 @@ describe('notificationPreferencesSection', () => {
     expect(wrapper.text()).toContain('notifications.type.friend_requests')
   })
 
+  it('should list the six mutable types and no release-notes row', () => {
+    const wrapper = mountComponent()
+    expect(wrapper.findAll('.types-block .row')).toHaveLength(6)
+    expect(wrapper.text()).toContain('notifications.typeDescription.tour_reminders')
+    expect(wrapper.text()).not.toContain('release_notes')
+  })
+
   it('should call setEmailEnabled when email toggle changes', async () => {
     const wrapper = mountComponent()
     const store = useNotificationsStore()

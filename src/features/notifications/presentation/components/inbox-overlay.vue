@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
+import { findReleaseNote } from '../../data/release-notes'
 import { useInboxStore } from '../stores/inbox-store'
 import InboxItem from './inbox-item.vue'
 
@@ -24,11 +25,20 @@ function clearAll() {
   store.clearAll()
 }
 
+/** A release note being read, shown in place of the list (back returns to it). */
+const noteId = ref<string | null>(null)
+
 // Entries are static records: a tap opens the subject where acting happens (no inline
-// actions, D7). The host decides where that is; reading is recorded here.
+// actions, D7). The host decides where that is; reading is recorded here. A known
+// release note is the one subject that lives here; an unknown one goes to the host,
+// which reports it unavailable.
 function open(entry: InboxNotification) {
   store.markRead(entry.id)
-  emit('open', entry)
+  const note = entry.type === 'release_notes' ? findReleaseNote(entry.ref.note_id) : null
+  if (note)
+    noteId.value = note.id
+  else
+    emit('open', entry)
 }
 
 onMounted(() => {
@@ -38,17 +48,23 @@ onMounted(() => {
 </script>
 
 <template>
-  <AdaptiveOverlay :title="t('inbox.title')" fit-content @close="emit('close')">
+  <AdaptiveOverlay
+    :title="noteId ? t(`releaseNotes.${noteId}.title`) : t('inbox.title')" :show-back="!!noteId" fit-content
+    @close="emit('close')" @back="noteId = null"
+  >
     <template #header-actions>
       <BaseButton
-        v-if="hasUnread" variant="primary-outline" size="sm"
+        v-if="hasUnread && !noteId" variant="primary-outline" size="sm"
         data-testid="mark-all-read" @click="store.markAllRead()"
       >
         {{ t('inbox.markAllRead') }}
       </BaseButton>
     </template>
 
-    <div class="content">
+    <p v-if="noteId" class="note" data-testid="release-note-body">
+      {{ t(`releaseNotes.${noteId}.body`) }}
+    </p>
+    <div v-else class="content">
       <p v-if="error && entries.length === 0" class="empty">
         {{ t('inbox.loadError') }}
       </p>
@@ -90,6 +106,12 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.note {
+  margin: 0;
+  padding-bottom: var(--spacing-md);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+}
 .content {
   display: flex;
   flex-direction: column;

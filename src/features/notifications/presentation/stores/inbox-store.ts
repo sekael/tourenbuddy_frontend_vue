@@ -8,12 +8,14 @@ import { cachedLoad } from '@/core/offline/cached-load'
 import { mutate } from '@/core/offline/mutate'
 import { flushThenRefetch } from '@/core/offline/reconnect'
 import { registerReplay } from '@/core/offline/replay'
+import { isOnline } from '@/core/offline/use-online-status'
 import { useRealtimeSubscription } from '@/core/realtime/use-realtime-subscription'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
 import { useTourSuggestionsStore } from '@/features/tours/presentation/stores/tour-suggestions-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
+import { currentReleaseNote } from '../../data/release-notes'
 import { InboxRepositoryImpl } from '../../data/repositories/inbox-repository-impl'
 
 export const INBOX_PAGE_SIZE = 20
@@ -317,6 +319,23 @@ export const useInboxStore = defineStore('inbox', () => {
     if (!v)
       clear()
   })
+
+  // Release note (D9): once per app start per signed-in user. The RPC is idempotent
+  // server-side, so this only saves a round trip. Offline or failed → the next online
+  // start retries; realtime delivers the new row like any other.
+  let releaseNoteTriedFor: string | null = null
+  watch(uid, async (id) => {
+    const note = currentReleaseNote()
+    if (!id || !note || !isOnline.value || releaseNoteTriedFor === id)
+      return
+    releaseNoteTriedFor = id
+    try {
+      await repository.recordReleaseNote(note.id, note.since)
+    }
+    catch (err) {
+      logger.warn('Failed to record release note', err)
+    }
+  }, { immediate: true })
 
   return {
     entries: sorted,

@@ -12,4 +12,6 @@ export interface InboxRepository {
   remove: (id: string) => Promise<void>
   /** Deletes every entry created at or before `cutoff` — later arrivals stay. */
   removeAll: (cutoff: string) => Promise<void>
+  /** Records the caller's entry for a release note, once per user; true if one was created. */
+  recordReleaseNote: (noteId: string, since: string) => Promise<boolean>
 }

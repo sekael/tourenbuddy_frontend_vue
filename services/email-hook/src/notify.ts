@@ -15,9 +15,17 @@ export interface NotificationRow {
   action: string
   actor_name: string | null
   tour_name: string | null
+  ref?: { friend_ids?: string[] } | null
 }
 
-type NotificationType = 'friend_requests' | 'tour_updates' | 'tour_interest' | 'tour_suggestions'
+// `release_notes` never reaches the Worker: the dispatch trigger skips it (D8).
+type NotificationType
+  = | 'friend_requests'
+    | 'tour_updates'
+    | 'tour_interest'
+    | 'tour_suggestions'
+    | 'availability'
+    | 'tour_reminders'
 
 interface UserProfileRow {
   notif_email_enabled: boolean
@@ -55,6 +63,20 @@ async function fetchUserEmail(userId: string, env: Env): Promise<string | null> 
   return user.email ?? null
 }
 
+/** Display name of the summary's first friend; null if the profile is gone or nameless. */
+async function fetchDisplayName(userId: string | undefined, env: Env): Promise<string | null> {
+  if (!userId)
+    return null
+  const res = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/user_profile?id=eq.${encodeURIComponent(userId)}&select=first_name,last_name`,
+    { headers: serviceHeaders(env) },
+  )
+  if (!res.ok)
+    return null
+  const rows = (await res.json()) as { first_name: string | null, last_name: string | null }[]
+  return [rows[0]?.first_name, rows[0]?.last_name].filter(Boolean).join(' ') || null
+}
+
 /** Constant-time string compare, so the secret can't be recovered by timing the 401. */
 function secretMatches(given: string, expected: string): boolean {
   const a = new TextEncoder().encode(given)
@@ -77,6 +99,30 @@ function friendPushCopy(action: string, locale: 'en' | 'de', actor: string): { t
   return received
     ? { title: 'New friend request', body: `${actor} wants to connect.` }
     : { title: 'Friend request update', body: `${actor} responded to your request.` }
+}
+
+// Actor-less job entries (D10): the weekly availability summary and the 5-day reminder.
+function availabilityPushCopy(locale: 'en' | 'de', friend: string, more: number): { title: string, body: string } {
+  if (locale === 'de') {
+    return {
+      title: 'Freunde haben diese Woche Zeit',
+      body: more > 0
+        ? `${friend} und ${more} weitere haben diese Woche Zeit, wenn du Zeit hast.`
+        : `${friend} hat diese Woche Zeit, wenn du Zeit hast.`,
+    }
+  }
+  return {
+    title: 'Friends free this week',
+    body: more > 0
+      ? `${friend} and ${more} more are free this week when you are.`
+      : `${friend} is free this week when you are.`,
+  }
+}
+
+function reminderPushCopy(locale: 'en' | 'de', tourName: string): { title: string, body: string } {
+  return locale === 'de'
+    ? { title: 'Tour in 5 Tagen', body: `«${tourName}» ist in 5 Tagen.` }
+    : { title: 'Tour in 5 days', body: `“${tourName}” is in 5 days.` }
 }
 
 function tourPushTitle(type: NotificationType, action: string, locale: 'en' | 'de'): string {
@@ -197,6 +243,15 @@ function tourPushBody(
 
 function sendEmail(row: NotificationRow, toEmail: string, locale: string | null, actorName: string, appUrl: string, env: Env): Promise<void> {
   const tourName = row.tour_name ?? ''
+  // Job entries ride the generic tour_updates template, which branches on these actions.
+  if (row.type === 'availability' || row.type === 'tour_reminders') {
+    const action = row.type === 'availability' ? 'availability_weekly' : 'tour_reminder'
+    const moreCount = Math.max((row.ref?.friend_ids?.length ?? 1) - 1, 0)
+    return sendTourNotificationEmail(
+      { toEmail, locale, type: 'tour_updates', action, actorName, tourName, appUrl, moreCount },
+      env,
+    )
+  }
   if (row.type === 'friend_requests') {
     return sendFriendNotificationEmail(
       { toEmail, locale, actorName, appUrl, event: row.action === 'received' ? 'received' : 'responded' },
@@ -247,15 +302,23 @@ export async function handleEvent(request: Request, env: Env): Promise<Response>
     return jsonResponse(200, { skipped: 'muted' })
 
   const locale = resolveLocale(profile.locale)
-  const actorName = row.actor_name || 'Someone'
+  const friendIds = row.ref?.friend_ids ?? []
+  // The summary has no actor: its "actor" in the copy is the first friend, named now (D2).
+  const actorName = row.type === 'availability'
+    ? (await fetchDisplayName(friendIds[0], env)) || (locale === 'de' ? 'Ein Freund' : 'A friend')
+    : row.actor_name || 'Someone'
   // The app resolves the entry's own deep link and marks it read (one place for routing).
   const url = `${env.APP_URL || DEFAULT_APP_URL}/?notification=${encodeURIComponent(row.id)}`
   const copy = row.type === 'friend_requests'
     ? friendPushCopy(row.action, locale, actorName)
-    : {
-        title: tourPushTitle(row.type, row.action, locale),
-        body: tourPushBody(row.type, row.action, locale, actorName, row.tour_name ?? ''),
-      }
+    : row.type === 'availability'
+      ? availabilityPushCopy(locale, actorName, Math.max(friendIds.length - 1, 0))
+      : row.type === 'tour_reminders'
+        ? reminderPushCopy(locale, row.tour_name ?? '')
+        : {
+            title: tourPushTitle(row.type, row.action, locale),
+            body: tourPushBody(row.type, row.action, locale, actorName, row.tour_name ?? ''),
+          }
 
   const tasks: Promise<void>[] = [dispatchPushToUser(row.recipient_id, { ...copy, url }, env)]
   if (profile.notif_email_enabled && email)

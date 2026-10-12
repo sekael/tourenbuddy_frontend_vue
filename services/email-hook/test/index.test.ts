@@ -34,6 +34,11 @@ vi.mock('standardwebhooks', () => ({
   }),
 }))
 
+// Pass the push payload through in clear so tests can read the copy.
+vi.mock('@block65/webcrypto-web-push', () => ({
+  buildPushPayload: vi.fn(async (msg: { data: string }) => ({ method: 'POST', body: msg.data })),
+}))
+
 function makeRequest(body: unknown, headers: Record<string, string> = {}, path = '/') {
   return new Request(`https://worker.example.com${path}`, {
     method: 'POST',
@@ -221,6 +226,73 @@ describe('notify/event', () => {
     await worker.fetch(eventRequest({ ...ROW, type: 'tour_interest', action: 'backfill' }), env as never)
     const brevo = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(c => c[0] === 'https://api.brevo.com/v3/smtp/email')
     expect(JSON.parse(brevo![1].body as string).params.action).toBe('backfill_digest')
+  })
+
+  describe('actor-less job entries', () => {
+    const PUSH_ENDPOINT = 'https://push.example/sub'
+
+    /** Recipient profile + one push device; the first friend's profile is `friend` (null = deleted). */
+    function mockJobSupabase(friend: { first_name: string, last_name: string } | null, muted: string[] = []) {
+      globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.includes('/rest/v1/user_profile') && url.includes('select=first_name'))
+          return new Response(JSON.stringify(friend ? [friend] : []), { status: 200 })
+        if (url.includes('/rest/v1/user_profile'))
+          return new Response(JSON.stringify([{ notif_email_enabled: true, notif_muted_types: muted, locale: 'en' }]), { status: 200 })
+        if (url.includes('/auth/v1/admin/users/'))
+          return new Response(JSON.stringify({ email: 'b@example.com' }), { status: 200 })
+        if (url.includes('/rest/v1/push_subscriptions'))
+          return new Response(JSON.stringify([{ id: 's1', user_id: 'user-b', endpoint: PUSH_ENDPOINT, p256dh: 'k', auth: 'a' }]), { status: 200 })
+        return new Response('OK', { status: 201 })
+      }) as typeof fetch
+    }
+
+    function bodyOf(url: string) {
+      const call = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(c => c[0] === url)
+      return call ? JSON.parse(call[1].body as string) : undefined
+    }
+
+    const SUMMARY = { ...ROW, type: 'availability', action: 'weekly', actor_name: null }
+
+    it('should name a single friend without a count', async () => {
+      mockJobSupabase({ first_name: 'Anna', last_name: 'Muster' })
+      await worker.fetch(eventRequest({ ...SUMMARY, ref: { friend_ids: ['f1'] } }), ENV as never)
+      expect(bodyOf(PUSH_ENDPOINT).body).toBe('Anna Muster is free this week when you are.')
+    })
+
+    it('should name the first friend plus the count of the others in push and email', async () => {
+      mockJobSupabase({ first_name: 'Anna', last_name: 'Muster' })
+      const env = { ...ENV, BREVO_TEMPLATE_TOUR_UPDATES_EN: '50' }
+      await worker.fetch(eventRequest({ ...SUMMARY, ref: { friend_ids: ['f1', 'f2', 'f3'] } }), env as never)
+      expect(bodyOf(PUSH_ENDPOINT).body).toBe('Anna Muster and 2 more are free this week when you are.')
+      expect(bodyOf(PUSH_ENDPOINT).url).toBe('https://test.tourenbuddy.ch/?notification=n1')
+      expect(bodyOf('https://api.brevo.com/v3/smtp/email').params).toMatchObject({
+        action: 'availability_weekly',
+        actorName: 'Anna Muster',
+        moreCount: 2,
+      })
+    })
+
+    it('should fall back to a generic name when the first friend is gone', async () => {
+      mockJobSupabase(null)
+      await worker.fetch(eventRequest({ ...SUMMARY, ref: { friend_ids: ['gone', 'f2'] } }), ENV as never)
+      expect(bodyOf(PUSH_ENDPOINT).body).toBe('A friend and 1 more are free this week when you are.')
+    })
+
+    it('should send nothing for a muted summary', async () => {
+      mockJobSupabase({ first_name: 'Anna', last_name: 'Muster' }, ['availability'])
+      await worker.fetch(eventRequest({ ...SUMMARY, ref: { friend_ids: ['f1'] } }), ENV as never)
+      expect(bodyOf(PUSH_ENDPOINT)).toBeUndefined()
+      expect(calledUrls().some(u => u.includes('select=first_name'))).toBe(false)
+    })
+
+    it('should remind with the tour name and the tour_reminder email action', async () => {
+      mockJobSupabase(null)
+      const env = { ...ENV, BREVO_TEMPLATE_TOUR_UPDATES_EN: '50' }
+      await worker.fetch(eventRequest({ ...ROW, type: 'tour_reminders', action: 'upcoming', actor_name: null, tour_name: 'Piz Ela' }), env as never)
+      expect(bodyOf(PUSH_ENDPOINT).body).toBe('“Piz Ela” is in 5 days.')
+      expect(bodyOf('https://api.brevo.com/v3/smtp/email').params.action).toBe('tour_reminder')
+    })
   })
 
   it('should return 400 for a row without recipient', async () => {

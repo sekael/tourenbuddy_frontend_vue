@@ -1,4 +1,5 @@
 import type { InboxNotification } from '@/features/notifications/domain/entities/inbox-notification'
+import { flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import 'fake-indexeddb/auto'
@@ -11,6 +12,7 @@ const repo = vi.hoisted(() => ({
   markAllRead: vi.fn(),
   remove: vi.fn(),
   removeAll: vi.fn(),
+  recordReleaseNote: vi.fn(),
 }))
 const state = vi.hoisted(() => ({
   friendships: { isLoading: false, incomingRequests: [] as Array<{ id: string, status: string }> },
@@ -71,6 +73,7 @@ describe('useInboxStore', () => {
     repo.listUnread.mockResolvedValue([])
     for (const fn of [repo.markRead, repo.markAllRead, repo.remove, repo.removeAll])
       fn.mockResolvedValue(undefined)
+    repo.recordReleaseNote.mockResolvedValue(true)
   })
 
   afterEach(() => {
@@ -200,5 +203,21 @@ describe('useInboxStore', () => {
     await replayQueue()
 
     expect(await getEntry('n1')).toBeUndefined()
+  })
+
+  describe('release note recording', () => {
+    it('should not record while offline (the next online start does)', async () => {
+      isOnline.value = false
+      useInboxStore()
+      await flushPromises()
+      expect(repo.recordReleaseNote).not.toHaveBeenCalled()
+    })
+
+    it('should swallow a failed recording instead of breaking the inbox', async () => {
+      repo.recordReleaseNote.mockRejectedValue(new Error('network'))
+      useInboxStore()
+      await flushPromises()
+      expect(repo.recordReleaseNote).toHaveBeenCalledTimes(1)
+    })
   })
 })

@@ -1,6 +1,6 @@
 import type { InboxNotification } from '../../domain/entities/inbox-notification'
 import { z } from 'zod'
-import { ALL_NOTIFICATION_TYPES } from '../../domain/entities/notification-preferences'
+import { INBOX_NOTIFICATION_TYPES } from '../../domain/entities/notification-preferences'
 
 export const INBOX_COLUMNS
   = 'id, type, action, actor_id, actor_name, tour_id, tour_name, ref, occurrences, read_at, created_at'
@@ -10,7 +10,7 @@ export const inboxNotificationRowSchema = z
     id: z.string().uuid(),
     // Unknown types are rejected (not rendered generically): the type picks the icon,
     // mute group and deep-link family, none of which exist for a type this build lacks.
-    type: z.enum(ALL_NOTIFICATION_TYPES as [string, ...string[]]),
+    type: z.enum(INBOX_NOTIFICATION_TYPES as [string, ...string[]]),
     action: z.string().min(1),
     actor_id: z.string().uuid().nullable(),
     actor_name: z.string().nullable(),
