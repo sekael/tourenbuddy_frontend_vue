@@ -71,8 +71,7 @@ notifications any more.
 | `/notify/event` | DB trigger (`pg_net`) only | `x-notify-secret` = `NOTIFY_WEBHOOK_SECRET` | the `notifications` row: `{id, recipient_id, type, action, actor_name, tour_name, …}` |
 
 The Worker applies mutes + the email flag and sends push to **every** `push_subscriptions`
-row of the recipient (rows exist ⇔ push enabled on that device; `notif_push_enabled` is no
-longer read). The Brevo `action` param keeps its old values (`collision`, `link_created`,
+row of the recipient (rows exist ⇔ push enabled on that device; there is no account-wide push flag). The Brevo `action` param keeps its old values (`collision`, `link_created`,
 `backfill_digest`, …) so existing templates are unchanged.
 
 For each template:
@@ -146,7 +145,7 @@ cd services/email-hook && npx wrangler@latest secret put NOTIFY_WEBHOOK_SECRET
 
 Delivery failures are visible in `net._http_response` (kept ~6 h by pg_net) and the Worker logs.
 
-This adds `notif_push_enabled`, `notif_email_enabled`, `notif_muted_types` columns to `user_profile`
+This adds `notif_email_enabled`, `notif_muted_types` columns to `user_profile`
 and creates the `push_subscriptions` table with RLS.
 
 ## 5. Set frontend environment variables

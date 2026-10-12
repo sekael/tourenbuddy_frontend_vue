@@ -24,7 +24,6 @@ See proposal.md → Why. Current state that shapes the approach:
 - Guaranteed push/email delivery (no retry/outbox; inbox is the record).
 - Availability and release-note entries (deferred; the `type` column accepts them later without schema change).
 - Grouping/collapsing similar entries, undo for delete, per-entry snooze.
-- Dropping `notif_push_enabled` (later migration once old PWA clients have updated).
 
 ## Decisions
 
@@ -115,7 +114,7 @@ Not granted to `authenticated` (`revoke execute … from public, anon, authentic
 - Disable → `removeSubscription(endpoint)` (already exists) + `subscription.unsubscribe()`. `removeAllForUser` deleted.
 - Sign-out → same as disable, **before** `supabase.auth.signOut()` (needs the JWT for the RLS delete); best-effort, never blocks sign-out.
 - Toggle is disabled while offline (PushManager subscribe needs network); the `notif-prefs` queue entry stops carrying push state. Existing queued entries still replay (extra field ignored).
-- `notif_push_enabled` no longer read/written by client or Worker. Migration deletes `push_subscriptions` rows of users with `notif_push_enabled = false` (shouldn't exist, defensive) so the "rows = enabled" invariant holds from day one.
+- `notif_push_enabled` no longer read/written by client or Worker. Migration deletes `push_subscriptions` rows of users with `notif_push_enabled = false` (shouldn't exist, defensive) so the "rows = enabled" invariant holds from day one. A follow-up migration in this change drops the column (`20261012091353_drop_notif_push_enabled.sql`); old PWA builds that still select it see the prefs error state until they take the update prompt — accepted, push keeps working off the rows.
 - **Alternative — keep account flag + only fix `removeAllForUser`**: leaves the misleading "on" toggle on new devices (owner rejected).
 
 ### D7 — Client inbox
@@ -172,4 +171,4 @@ Not granted to `authenticated` (`revoke execute … from public, anon, authentic
 2. Local Vault secrets via `[db.vault]` in `supabase/config.toml` with `env(...)` values (`NOTIFY_HOOK_URL=http://host.docker.internal:8787`, dev secret).
 3. Prod: `supabase db push` (prompt owner) → set Vault secrets once via `select vault.create_secret(...)` (data, not schema) → `wrangler secret put NOTIFY_WEBHOOK_SECRET` → `npx wrangler@latest deploy` → merge frontend.
 4. Rollback: new migration dropping the dispatch trigger (inbox keeps working, pushes stop) + redeploy previous Worker and frontend tag. No data migration to undo.
-5. Follow-up: drop `notif_push_enabled` column; remove `VITE_NOTIFICATIONS_ENABLED` / `VITE_NOTIFY_HOOK_URL` if no longer used by the client.
+5. Follow-up: remove `VITE_NOTIFICATIONS_ENABLED` / `VITE_NOTIFY_HOOK_URL` if no longer used by the client.

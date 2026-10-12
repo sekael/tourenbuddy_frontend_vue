@@ -7,8 +7,8 @@ Realtime latency over public WebSocket, long-lived auth, and PWA install on a
 real device.
 
 For every email-or-push case below: confirm the recipient has
-`notif_email_enabled` / `notif_push_enabled` on and the relevant type is not
-muted. Use two real users (A, B) who are friends, both with verified phones.
+`notif_email_enabled` on (email) or push enabled on the receiving device (push) and
+the relevant type is not muted. Use two real users (A, B) who are friends, both with verified phones.
 
 | #   | Area                   | Setup                                                                                    | Action                                                                | Expected                                                                                                                                                                                         |
 | --- | ---------------------- | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

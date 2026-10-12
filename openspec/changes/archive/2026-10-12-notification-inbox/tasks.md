@@ -35,6 +35,7 @@
 - [x] 5.2 `use-web-push` + repository: register via RPC, disable removes only this endpoint, delete `removeAllForUser`; toggle state from permission + live subscription; toggle disabled offline; drop `notifPushEnabled` from prefs entity/store/queue; verify unit tests: disable on device B leaves other rows (repo mock asserts endpoint-scoped delete), new device shows off
 - [x] 5.3 Sign-out removes this device's row + unsubscribes before `auth.signOut()`, best-effort; verify unit test: failing removal does not block sign-out
 - [x] 5.4 Preferences copy: disclaimer → inbox hint; mute section states push/email only (`en`, `de-CH`); verify component test for hint visibility with push off on device + email off
+- [x] 5.5 Migration `20261012091353_drop_notif_push_enabled.sql` drops `user_profile.notif_push_enabled` (no reader left in client or Worker); verify `supabase test db`, `npm run test`, `npm run type-check` pass
 
 ## 6. Remove client dispatch
 
@@ -60,20 +61,20 @@
 - [x] 7a.7 Losing access deletes the user's entries for that tour (partner removed, private, deleted, unfriended); re-share notifies as `created` — migration `20261010065119_notification_visibility_cleanup.sql`, DB tests 12v / 12a-2 / 17
 - [x] 7a.8 "Clear inbox" with inline confirm; offline-queued `removeAll(cutoff)`
 - [x] 7a.9 Seasons and start/end point (location, name) count as meaningful edits, also for accepted suggestions — migration `20261010070418_notification_meaningful_points_seasons.sql`, DB tests 8d-a..c
-- [ ] 7a.5 Deploy: `supabase db push` (new migrations) and `cd services/email-hook && npx wrangler@latest deploy` (push copy)
+- [x] 7a.5 Deploy: `supabase db push` (new migrations) and `cd services/email-hook && npx wrangler@latest deploy` (push copy)
 
 ## 8. Integration verification
 
 - [x] 8.1 Local end-to-end with `supabase start` + `wrangler dev`: two browsers/accounts — friend request, shared-tour edit, suggestion batch each create exactly one inbox entry and one push on each of two registered devices; push off on device 1 keeps device 2 receiving; muted type → inbox only
-- [ ] 8.2 `npm run test`, `npm run type-check`, `supabase test db` all pass
+- [x] 8.2 `npm run test`, `npm run type-check`, `supabase test db` all pass
 
 ## 9. Finalize
 
 - [x] 9.1 Run `npx eslint src test --fix` (not `.`, sweeps worktrees) and verify zero warnings; never `npm run format`
-- [ ] 9.2 Prompt owner to commit with a ready-to-copy message, e.g. `feat(notifications): add in-app notification inbox with db-emitted events and per-device push` (body: closes #300, closes #148, behaviour fix: collision scan on create/solo tours)
-- [ ] 9.3 Prompt owner to push and open a PR to `main`, listing deploy order: `supabase db push` → Vault secrets → `wrangler secret put NOTIFY_WEBHOOK_SECRET` → `npx wrangler@latest deploy` → merge
+- [x] 9.2 Prompt owner to commit with a ready-to-copy message, e.g. `feat(notifications): add in-app notification inbox with db-emitted events and per-device push` (body: closes #300, closes #148, behaviour fix: collision scan on create/solo tours)
+- [x] 9.3 Prompt owner to push and open a PR to `main`, listing deploy order: `supabase db push` → Vault secrets → `wrangler secret put NOTIFY_WEBHOOK_SECRET` → `npx wrangler@latest deploy` → merge
 
 ## Workflow follow-up
 
 - Archive the change with `openspec-archive` after merge and deploy.
-- File follow-ups: drop `notif_push_enabled`; availability + release-note inbox entries; optional `dispatched_at` retry if lost pushes matter.
+- Follow-up change `inbox-availability-release-notes`: availability + release-note inbox entries. `dispatched_at` push retry dropped (not retrying pushes for now).
