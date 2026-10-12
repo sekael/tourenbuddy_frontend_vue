@@ -32,7 +32,7 @@ A failure while recording an inbox entry SHALL NOT abort or roll back the user's
 - **THEN** the tour save commits and a warning is logged
 
 ### Requirement: Inbox event coverage
-The inbox SHALL record the same event set that push/email notify about: friend request received and responded; shared tour created (incl. newly-added partner), meaningfully updated, deleted; same-tour collision detected; friendship-accept backfill digest; link request created, accepted, declined; group member joined, evicted, dissolved; suggestion batch submitted and fully resolved. Recipient rules SHALL match the corresponding push/email requirements.
+The inbox SHALL record the same event set that push/email notify about: friend request received and responded; shared tour created (incl. newly-added partner), meaningfully updated, deleted; same-tour collision detected; friendship-accept backfill digest; link request created, accepted, declined; group member joined, evicted, dissolved; suggestion batch submitted and fully resolved; the weekly availability summary; the five-day tour reminder. The inbox SHALL additionally hold release-note entries, which have no push/email counterpart. Recipient rules SHALL match the corresponding push/email requirements.
 
 #### Scenario: Suggestion batch recorded once
 - **WHEN** a partner submits four field suggestions in one batch
@@ -45,6 +45,18 @@ The inbox SHALL record the same event set that push/email notify about: friend r
 #### Scenario: Withdrawal not recorded
 - **WHEN** an initiator withdraws a pending link request
 - **THEN** no inbox entry is created
+
+#### Scenario: Weekly summary recorded
+- **WHEN** the Monday job finds an eligible friend free on a day the user is free this week
+- **THEN** the user has one availability summary entry
+
+#### Scenario: Tour reminder recorded
+- **WHEN** the user's tour is planned five days from today
+- **THEN** the user has one tour reminder entry
+
+#### Scenario: Release note recorded
+- **WHEN** the user first runs a build carrying a release note
+- **THEN** the user has one release-note entry
 
 ### Requirement: Entry content survives source deletion
 Each entry SHALL store its event type, action, and references to the involved tour/friendship/group/batch, plus the actor's display name and the tour name as they were at event time, so the entry renders even after the tour is deleted or the friendship ends.
@@ -122,7 +134,7 @@ Each entry SHALL render in exactly one of three states: unread, read, or stale, 
 - **THEN** the announced label includes the stale reason
 
 ### Requirement: Staleness is derived from live state
-An entry SHALL be stale when its subject is no longer actionable or no longer exists: an answered or cancelled friend request; a suggestion batch no longer pending; a link request no longer pending; a referenced tour that no longer exists or is no longer visible. Informational entries (tour updated, group events, digests) SHALL be stale only when their tour no longer exists. Staleness SHALL be computed client-side and SHALL NOT modify the stored entry.
+An entry SHALL be stale when its subject is no longer actionable or no longer exists: an answered or cancelled friend request; a suggestion batch no longer pending; a link request no longer pending; a referenced tour that no longer exists or is no longer visible. Informational entries (tour updated, group events, digests, tour reminders) SHALL be stale only when their tour no longer exists or is no longer visible. Availability summaries and release-note entries SHALL never be stale; summaries are deleted once their week has passed. Staleness SHALL be computed client-side and SHALL NOT modify the stored entry.
 
 #### Scenario: Request cancelled
 - **WHEN** A cancels a friend request B has not opened
@@ -135,6 +147,10 @@ An entry SHALL be stale when its subject is no longer actionable or no longer ex
 #### Scenario: Informational entry stays live
 - **WHEN** a "tour updated" entry's tour still exists
 - **THEN** the entry is not stale regardless of later edits
+
+#### Scenario: Summary never stale
+- **WHEN** some days listed in this week's availability summary are already past
+- **THEN** the entry renders without a stale chip
 
 ### Requirement: Repeated unread events collapse
 For shared-tour edits and same-tour collision events, when the recipient already has an unread entry with the same type, action, tour and actor, the system SHALL update that entry (move it to the top, increment its occurrence count) instead of creating a new one. A collapsed occurrence SHALL NOT send push or email. Once the entry is read, the next occurrence SHALL create a new entry.
@@ -152,7 +168,7 @@ For shared-tour edits and same-tour collision events, when the recipient already
 - **THEN** B has two separate entries
 
 ### Requirement: Opening an entry deep-links and marks it read
-Activating an entry SHALL mark it read and navigate to its subject: the tour info sheet for tour, suggestion, interest and link events; the friend requests sheet for friend-request events; the backfill collisions list for digests. Entries SHALL NOT offer inline actions (accept, decline, review); acting happens on the target surface. If the subject no longer exists the entry SHALL still be marked read and the app SHALL show a "no longer available" message instead of navigating.
+Activating an entry SHALL mark it read and navigate to its subject: the tour info sheet for tour, suggestion, interest, link and tour reminder events; the friend requests sheet for friend-request events; the backfill collisions list for digests; the calendar focused on the earliest listed day that is not in the past for availability summaries; the note itself for release-note entries. Entries SHALL NOT offer inline actions (accept, decline, review); acting happens on the target surface. If the subject no longer exists the entry SHALL still be marked read and the app SHALL show a "no longer available" message instead of navigating.
 
 An entry SHALL open a tour only if the user may access it at the moment of activation: a tour they own, or a friend tour they are currently a partner on. A tour the user was removed from, or that went private, SHALL be treated as no longer available — even though the entry once named it. Access SHALL be decided against a fresh server read when online, never solely against cached data. A collision entry SHALL open the recipient's own colliding tour, not the other user's. The stale chip SHALL apply the same rule.
 
@@ -187,6 +203,18 @@ The user SHALL be able to clear the inbox: after an inline confirmation, every e
 #### Scenario: Opened via push
 - **WHEN** the user opens the app by tapping a push notification
 - **THEN** the corresponding inbox entry is marked read
+
+#### Scenario: Open an availability summary
+- **WHEN** on Wednesday 2030-01-09 the user taps a summary listing 2030-01-08 and 2030-01-11
+- **THEN** the entry becomes read and the calendar opens focused on 2030-01-11
+
+#### Scenario: Open a tour reminder
+- **WHEN** the user taps a tour reminder for a tour they still may access
+- **THEN** the entry becomes read and the tour's info sheet opens
+
+#### Scenario: Open a release-note entry
+- **WHEN** the user taps a release-note entry
+- **THEN** the entry becomes read and the note is shown
 
 ### Requirement: Mark all read
 The inbox SHALL offer a "mark all as read" action, enabled only while unread entries exist, that marks every entry read.
@@ -225,7 +253,7 @@ The inbox SHALL show the last-synced entries while offline. Marking read and del
 - **THEN** the entry is read on the server
 
 ### Requirement: Users only access their own entries
-A user SHALL only be able to read, mark read, and delete their own entries and SHALL NOT be able to create entries.
+A user SHALL only be able to read, mark read, and delete their own entries and SHALL NOT be able to create entries, except recording their own release-note entry through the dedicated release-note operation, which only accepts a note and only ever creates an entry for the caller.
 
 #### Scenario: Forged insert
 - **WHEN** an authenticated client attempts to insert an inbox entry
@@ -234,6 +262,10 @@ A user SHALL only be able to read, mark read, and delete their own entries and S
 #### Scenario: Foreign entry
 - **WHEN** a client requests another user's entries
 - **THEN** none are returned
+
+#### Scenario: Release-note recording is self-only
+- **WHEN** a client records a release note
+- **THEN** the entry is created for the caller only, with no actor and type `release_notes`
 
 ### Requirement: Blocking removes the blocked user's entries
 When a user blocks another user, the system SHALL delete the blocker's inbox entries caused by the blocked user.

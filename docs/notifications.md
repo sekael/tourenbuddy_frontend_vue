@@ -20,11 +20,17 @@ then fans out push + email.
 
 ## Mute types (`notif_muted_types`)
 
-| Mute key          | Covers                                                         |
-| ----------------- | -------------------------------------------------------------- |
-| `friend_requests` | Friend request received / responded                            |
-| `tour_updates`    | Shared-tour created / updated / deleted                        |
-| `tour_interest`   | Collision scan + tour-link lifecycle + group-membership events |
+| Mute key           | Covers                                                         |
+| ------------------ | -------------------------------------------------------------- |
+| `friend_requests`  | Friend request received / responded                            |
+| `tour_updates`     | Shared-tour created / updated / deleted                        |
+| `tour_interest`    | Collision scan + tour-link lifecycle + group-membership events |
+| `tour_suggestions` | Suggestion batch submitted / revised / resolved                |
+| `availability`     | Weekly availability summary (Monday job)                       |
+| `tour_reminders`   | Tour reminder 5 days before the planned date (daily job)       |
+
+`release_notes` is an inbox-only type, **not** mutable: the dispatch trigger skips it, so it
+is never pushed or emailed.
 
 ## Notification catalogue
 
@@ -78,6 +84,24 @@ Notes: link-request **withdrawals** are intentionally silent. Group-membership r
 the design's membership matrix (joined → pre-existing members; evicted_external → evicted +
 remaining; dissolved → lone remaining member); the actor is suppressed by JWT match. Group
 dissolution emails use a dedicated template.
+
+### Scheduled jobs — types `availability`, `tour_reminders`
+
+Inserted by `pg_cron` jobs (migration `20261012125754_inbox_availability_release_notes.sql`),
+actor-less, pushed through the same dispatch trigger → `/notify/event`.
+
+| Job (`cron.job`)              | Schedule (UTC) | Function                           | Recipient                                                                                                                 | Push title (EN / DE)                                    | Push body EN                                                    |
+| ----------------------------- | -------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------- |
+| `weekly-availability-summary` | `0 5 * * 1`    | `fn_weekly_availability_summary()` | user with ≥ 1 friend free on a shared free day this week, gated by a shared non-completed friends-visible tour (`weekly`) | Friends free this week / Freunde haben diese Woche Zeit | {first friend} (and N more) is/are free this week when you are. |
+| `tour-reminders`              | `0 5 * * *`    | `fn_tour_reminders()`              | owner + friend partners (friends-visible only) of tours planned exactly `current_date + 5` (`upcoming`)                   | Tour in 5 days / Tour in 5 Tagen                        | "{tour}" is in 5 days.                                          |
+
+The summary job first deletes previous weeks' summaries. Both are idempotent per run. Emails use
+the generic `tour_updates` template with `action` `availability_weekly` / `tour_reminder`.
+
+### Release notes — type `release_notes` (inbox only)
+
+Recorded by the client calling `record_release_note(note_id, since)` once per app start; a
+per-user marker (`user_release_note_state`) keeps it once-only. Never dispatched.
 
 ## Known gaps
 

@@ -4,7 +4,8 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
-import { inboxText } from '../inbox-text'
+import { useFriendDisplayName } from '@/features/friendships/presentation/composables/use-friend-display-name'
+import { inboxText, summaryFriendIds } from '../inbox-text'
 
 const props = defineProps<{ entry: InboxNotification, stale: InboxStaleReason | null }>()
 const emit = defineEmits<{ open: [], delete: [] }>()
@@ -13,7 +14,12 @@ const { t, locale } = useI18n({ useScope: 'global' })
 
 // Stale overrides unread (D7): a resolved subject needs no attention, read or not.
 const state = computed(() => (props.stale ? 'stale' : props.entry.readAt ? 'read' : 'unread'))
-const text = computed(() => inboxText(props.entry, t))
+// A summary names its first friend, resolved now (not stored). The line renders once,
+// final: blank until the name settles, never a placeholder name that gets swapped.
+const { displayName: friendName, isResolved: textReady } = useFriendDisplayName(
+  () => (props.entry.action === 'weekly' ? summaryFriendIds(props.entry)[0] ?? null : null),
+)
+const text = computed(() => inboxText(props.entry, t, friendName.value))
 const ariaLabel = computed(() => [
   text.value,
   props.stale ? t(`inbox.stale.${props.stale}`) : state.value === 'unread' ? t('inbox.state.unread') : null,
@@ -82,7 +88,7 @@ function onClick() {
       @pointerup="onPointerUp" @pointercancel="onPointerUp" @click="onClick"
     >
       <span class="body">
-        <span class="text">{{ text }}</span>
+        <span class="text">{{ textReady ? text : '\u00A0' }}</span>
         <span class="meta">
           <span>{{ relativeTime }}</span>
           <span v-if="entry.occurrences > 1" class="count">{{ t('inbox.occurrences', { count: entry.occurrences }) }}</span>

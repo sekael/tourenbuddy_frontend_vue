@@ -792,11 +792,15 @@
       "friend_requests": "Freundschaftsanfragen",
       "tour_updates": "Änderungen an geteilten Touren",
       "tour_interest": "Hinweise auf gleiche Touren",
-      "tour_suggestions": "Tourenvorschläge"
+      "tour_suggestions": "Tourenvorschläge",
+      "availability": "Freunde mit Zeit",
+      "tour_reminders": "Tourenerinnerungen"
     },
     "typeDescription": {
       "tour_interest": "Wenn ein Freund die gleiche Tour plant, bei Verknüpfungsanfragen und nach neuen Freundschaften.",
-      "tour_suggestions": "Benachrichtigt, wenn ein Tourenpartner Änderungen an deiner Tour vorschlägt und wenn über deine Vorschläge entschieden wurde."
+      "tour_suggestions": "Benachrichtigt, wenn ein Tourenpartner Änderungen an deiner Tour vorschlägt und wenn über deine Vorschläge entschieden wurde.",
+      "availability": "Jeden Montag: Freunde, mit denen du eine Tour teilst und die an deinen freien Tagen Zeit haben.",
+      "tour_reminders": "Fünf Tage vor einer geplanten Tour – deiner oder der eines Freundes, bei der du Partner bist."
     },
     "allOffDisclaimer": "Du wirst ausserhalb der App nicht benachrichtigt. Neuigkeiten sammeln sich weiterhin in deinem Posteingang.",
     "pushUnavailable": "Nicht verfügbar",
@@ -850,7 +854,7 @@
       },
       "notifications": {
         "title": "Immer auf dem Laufenden",
-        "body": "Wähle hier, welche Benachrichtigungen du zu Freundschaftsanfragen, Toureneinladungen und Änderungen an Touren erhältst."
+        "body": "Wähle hier, welche Benachrichtigungen du erhältst: Freundschaftsanfragen, Änderungen und Vorschläge zu Touren, Tourenerinnerungen und Freunde, die Zeit haben, wenn du Zeit hast."
       },
       "addContact": {
         "title": "Deine Kontakte",
@@ -922,7 +926,7 @@
       },
       "inbox": {
         "title": "Alles an einem Ort",
-        "body": "Freundschaftsanfragen, Änderungen an geteilten Touren und Vorschläge sammeln sich in deinem Posteingang – auch ohne Push und E-Mail. Die Zahl zeigt, was noch auf dich wartet."
+        "body": "Freundschaftsanfragen, Änderungen an geteilten Touren, Vorschläge und Tourenerinnerungen sammeln sich in deinem Posteingang – auch ohne Push und E-Mail. Die Zahl zeigt, was noch auf dich wartet."
       }
     }
   },
@@ -1036,7 +1040,34 @@
       "suggestion_submitted": "{actor} schlägt Änderungen an «{tour}» vor",
       "suggestion_revised": "{actor} hat die Vorschläge für «{tour}» überarbeitet",
       "suggestion_resolved": "{actor} hat über deine Vorschläge für «{tour}» entschieden",
-      "unknown": "Neuigkeit von {actor}"
+      "unknown": "Neuigkeit von {actor}",
+      "weekly": "{actor} hat diese Woche an deinen freien Tagen Zeit",
+      "weeklyMore": "{actor} und {count} weitere haben diese Woche an deinen freien Tagen Zeit",
+      "upcoming": "«{tour}» ist in 5 Tagen",
+      "published": "Neu: {title}",
+      "publishedUnknown": "Neuigkeiten"
+    },
+    "releaseNote": {
+      "heading": "Neuigkeiten",
+      "eyebrow": "Neu in TourenBuddy",
+      "settingsAction": "Benachrichtigungen",
+      "settingsHint": "Beides kommt auch per Push und E-Mail. Du entscheidest, was du erhältst."
+    }
+  },
+  "releaseNotes": {
+    "2026-10-availability-reminders": {
+      "title": "Freie Tage und Erinnerungen",
+      "intro": "Zwei kleine Neuerungen, damit aus Plänen öfter echte Tourentage werden.",
+      "features": {
+        "availability": {
+          "title": "Wer diese Woche Zeit hat",
+          "body": "Jeden Montag zeigt dir dein Posteingang, welche Freunde, mit denen du eine Tour teilst, an deinen freien Tagen auch Zeit haben."
+        },
+        "reminders": {
+          "title": "Erinnerung fünf Tage vorher",
+          "body": "Alle Beteiligten einer geplanten Tour erhalten fünf Tage vorher einen Hinweis – Zeit, Verhältnisse, Ausrüstung und Partner."
+        }
+      }
     }
   }
 }

@@ -57,14 +57,15 @@ describe('notificationPreferencesRepositoryImpl', () => {
       maybeSingle: vi.fn().mockResolvedValue({
         data: {
           notif_email_enabled: true,
-          notif_muted_types: ['friend_requests', 'unknown_future_type'],
+          notif_muted_types: ['friend_requests', 'unknown_future_type', 'availability', 'tour_reminders', 'release_notes'],
         },
         error: null,
       }),
     } as never)
 
     const result = await repo.getPreferences('user-1')
-    expect(result?.notifMutedTypes).toEqual(['friend_requests'])
+    // release_notes is inbox-only: never a mute, even if a forged row lists it.
+    expect(result?.notifMutedTypes).toEqual(['friend_requests', 'availability', 'tour_reminders'])
   })
 
   it('should throw on supabase error', async () => {

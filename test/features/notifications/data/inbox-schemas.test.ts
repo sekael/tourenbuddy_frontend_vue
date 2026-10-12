@@ -17,7 +17,11 @@ const valid = {
 
 describe('parseInboxRows', () => {
   it('should drop a row with a type this build does not know', () => {
-    expect(parseInboxRows([{ ...valid, type: 'release_notes' }])).toEqual([])
+    expect(parseInboxRows([{ ...valid, type: 'tour_invites' }])).toEqual([])
+  })
+
+  it('should keep inbox-only release notes, which are not a mutable type', () => {
+    expect(parseInboxRows([{ ...valid, type: 'release_notes', action: 'published' }])).toHaveLength(1)
   })
 
   it('should drop malformed rows and keep the valid ones', () => {

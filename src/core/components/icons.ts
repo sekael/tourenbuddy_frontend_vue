@@ -6,6 +6,7 @@ import IconAddLocationAltOutline from '~icons/material-symbols/add-location-alt-
 import IconArrowBack from '~icons/material-symbols/arrow-back'
 import IconArrowForward from '~icons/material-symbols/arrow-forward'
 import IconAttachFile from '~icons/material-symbols/attach-file'
+import IconAutoAwesomeOutline from '~icons/material-symbols/auto-awesome-outline'
 import IconBackpackOutline from '~icons/material-symbols/backpack-outline'
 import IconBadgeOutline from '~icons/material-symbols/badge-outline'
 import IconBlockOutline from '~icons/material-symbols/block-outline'
@@ -32,6 +33,7 @@ import IconDownloadForOfflineOutline from '~icons/material-symbols/download-for-
 import IconDragIndicator from '~icons/material-symbols/drag-indicator'
 import IconEcoOutline from '~icons/material-symbols/eco-outline'
 import IconEditOutline from '~icons/material-symbols/edit-outline'
+import IconEventAvailableOutline from '~icons/material-symbols/event-available-outline'
 import IconExpandLess from '~icons/material-symbols/expand-less'
 import IconExploreOutline from '~icons/material-symbols/explore-outline'
 import IconFeedbackOutline from '~icons/material-symbols/feedback-outline'
@@ -120,6 +122,7 @@ export const iconRegistry: Record<string, Component> = {
   arrow_back: IconArrowBack,
   arrow_forward: IconArrowForward,
   attach_file: IconAttachFile,
+  auto_awesome: IconAutoAwesomeOutline,
   backpack: IconBackpackOutline,
   badge: IconBadgeOutline,
   block: IconBlockOutline,
@@ -145,6 +148,7 @@ export const iconRegistry: Record<string, Component> = {
   drag_indicator: IconDragIndicator,
   eco: IconEcoOutline,
   edit: IconEditOutline,
+  event_available: IconEventAvailableOutline,
   expand_less: IconExpandLess,
   explore: IconExploreOutline,
   feedback: IconFeedbackOutline,

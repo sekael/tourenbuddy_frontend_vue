@@ -31,7 +31,7 @@ Create the templates by pasting the corresponding files from `brevo-templates/`:
 | `friend_request_responded_en.html` + `.txt` | `friend_request_responded_en` | Never reveals accept/decline                                                                                                  |
 | `friend_request_responded_de.html` + `.txt` | `friend_request_responded_de` |                                                                                                                               |
 | `tour_updates_en.html` + `.txt`             | `tour_updates_en`             | Generic; params: `action`, `actorName`, `tourName`, `appUrl`                                                                  |
-| `tour_updates_de.html` + `.txt`             | `tour_updates_de`             | `action` ∈ created/updated/deleted                                                                                            |
+| `tour_updates_de.html` + `.txt`             | `tour_updates_de`             | `action` ∈ created/updated/deleted/availability_weekly/tour_reminder; `moreCount` for availability_weekly                     |
 | `tour_interest_en.html` + `.txt`            | `tour_interest_en`            | params: `action`, `actorName`, `tourName`, `appUrl`                                                                           |
 | `tour_interest_de.html` + `.txt`            | `tour_interest_de`            | `action` ∈ collision / link_created / link_accepted / link_declined / group_joined / group_evicted_external / backfill_digest |
 | `tour_link_deleted_en.html` + `.txt`        | `tour_link_deleted_en`        | Group dissolution; params: `actorName`, `tourName`, `appUrl`                                                                  |
@@ -54,6 +54,19 @@ The reworked `tour_interest` channel covers all "same-tour collaboration suggest
 Note: `group_dissolved` is **no longer** sent through `tour_interest`. Dissolution emails use the dedicated `tour_link_deleted_{en,de}` templates instead — remove the `group_dissolved` branch from the `tour_interest` template. (The push notification copy for dissolution is unchanged and still built in the Worker.)
 
 `backfill_digest` copy must be **generic** — do NOT inject `tourName`/`{tour}` (it is sent empty). Suggested copy: "{{ params.actorName }} planned the same tours as you. Check them out on TourenBuddy." with a CTA button to `{{ params.appUrl }}`. The Worker sets `appUrl` to `/friends/:friendshipId/backfill-collisions` for this action.
+
+### Job entries (`availability`, `tour_reminders`)
+
+Inserted by two `pg_cron` jobs (`weekly-availability-summary` Mondays 05:00 UTC,
+`tour-reminders` daily 05:00 UTC), actor-less. Both reuse the `tour_updates` templates — re-paste
+`tour_updates_{en,de}` into Brevo, which gained these branches:
+
+| action                | Trigger                                | params                                                                   |
+| --------------------- | -------------------------------------- | ------------------------------------------------------------------------ |
+| `availability_weekly` | Weekly availability summary            | `actorName` = first friend (looked up at dispatch), `moreCount` = others |
+| `tour_reminder`       | Tour planned exactly 5 days from today | `tourName`                                                               |
+
+`release_notes` entries are **never** dispatched (the trigger's `WHEN` clause skips them).
 
 ### `tour_link_deleted` template
 

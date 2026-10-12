@@ -7,7 +7,7 @@ import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { isOnline } from '@/core/offline/use-online-status'
-import { ALL_NOTIFICATION_TYPES } from '../../domain/entities/notification-preferences'
+import { MUTABLE_NOTIFICATION_TYPES } from '../../domain/entities/notification-preferences'
 import { useNotificationCapability } from '../composables/use-notification-capability'
 import { useNotificationsStore } from '../stores/notifications-store'
 
@@ -106,14 +106,14 @@ onMounted(() => {
         <span class="row-description">{{ t('notifications.typesHint') }}</span>
         <ul class="rows">
           <li
-            v-for="type in ALL_NOTIFICATION_TYPES"
+            v-for="type in MUTABLE_NOTIFICATION_TYPES"
             :key="type"
             class="row row--with-description"
           >
             <div class="row-text">
               <span class="row-label">{{ t(`notifications.type.${type}`) }}</span>
               <span
-                v-if="type === 'tour_interest' || type === 'tour_suggestions'"
+                v-if="type !== 'friend_requests' && type !== 'tour_updates'"
                 class="row-description"
               >{{ t(`notifications.typeDescription.${type}`) }}</span>
             </div>

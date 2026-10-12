@@ -792,11 +792,15 @@
       "friend_requests": "Friend requests",
       "tour_updates": "Shared tour changes",
       "tour_interest": "Same-tour collaboration suggestions",
-      "tour_suggestions": "Tour change suggestions"
+      "tour_suggestions": "Tour change suggestions",
+      "availability": "Friends free this week",
+      "tour_reminders": "Tour reminders"
     },
     "typeDescription": {
       "tour_interest": "Notifies when a friend plans the same tour, requests linking a tour, and tours overlap after a new friendship.",
-      "tour_suggestions": "Notifies when a tour partner suggests changes to your tour, and when your own suggestions are decided."
+      "tour_suggestions": "Notifies when a tour partner suggests changes to your tour, and when your own suggestions are decided.",
+      "availability": "Every Monday: friends you share a tour with who are free on days you are free.",
+      "tour_reminders": "Five days before a planned tour — yours, or a friend’s you are a partner on."
     },
     "allOffDisclaimer": "You won't be alerted outside the app. Updates still collect in your inbox.",
     "pushUnavailable": "Not available",
@@ -850,7 +854,7 @@
       },
       "notifications": {
         "title": "Stay in the loop",
-        "body": "Choose here which notifications you get about friend requests, tour invites and tour updates."
+        "body": "Choose here which notifications you get: friend requests, tour updates and suggestions, tour reminders, and friends who are free when you are."
       },
       "addContact": {
         "title": "Your contacts",
@@ -922,7 +926,7 @@
       },
       "inbox": {
         "title": "Everything in one place",
-        "body": "Friend requests, shared-tour changes and suggestions collect in your inbox — even with push and email off. The badge counts what still needs you."
+        "body": "Friend requests, shared-tour changes, suggestions and tour reminders collect in your inbox — even with push and email off. The badge counts what still needs you."
       }
     }
   },
@@ -1036,7 +1040,34 @@
       "suggestion_submitted": "{actor} suggested changes to “{tour}”",
       "suggestion_revised": "{actor} revised their suggestions for “{tour}”",
       "suggestion_resolved": "{actor} decided on your suggestions for “{tour}”",
-      "unknown": "New update from {actor}"
+      "unknown": "New update from {actor}",
+      "weekly": "{actor} is free on days you’re free this week",
+      "weeklyMore": "{actor} and {count} more are free on days you’re free this week",
+      "upcoming": "“{tour}” is in 5 days",
+      "published": "What’s new: {title}",
+      "publishedUnknown": "What’s new"
+    },
+    "releaseNote": {
+      "heading": "What’s new",
+      "eyebrow": "New in TourenBuddy",
+      "settingsAction": "Notification settings",
+      "settingsHint": "Both also arrive by push and email. You decide which ones."
+    }
+  },
+  "releaseNotes": {
+    "2026-10-availability-reminders": {
+      "title": "Free days and tour reminders",
+      "intro": "Two small additions that make it easier to turn plans into actual days out.",
+      "features": {
+        "availability": {
+          "title": "Who’s free this week",
+          "body": "Every Monday your inbox shows which friends you share a tour with are free on days you are free too."
+        },
+        "reminders": {
+          "title": "Reminder five days ahead",
+          "body": "Everyone on a planned tour gets a nudge five days before — time to check conditions, gear and partners."
+        }
+      }
     }
   }
 }

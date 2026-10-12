@@ -1,4 +1,4 @@
-<!-- Subject: {{ params.actorName }} hat eine Tour auf TourenBuddy {% if params.action == "created" %}geteilt{% elif params.action == "deleted" %}entfernt{% else %}aktualisiert{% endif %} -->
+<!-- Subject: {% if params.action == "availability_weekly" %}Freunde haben diese Woche an deinen freien Tagen Zeit{% elif params.action == "tour_reminder" %}«{{ params.tourName }}» ist in 5 Tagen{% else %}{{ params.actorName }} hat eine Tour auf TourenBuddy {% if params.action == "created" %}geteilt{% elif params.action == "deleted" %}entfernt{% else %}aktualisiert{% endif %}{% endif %} -->
 <!doctype html>
 <html lang="de">
   <head>
@@ -67,11 +67,14 @@
       <div class="body">
         <p>Hallo,</p>
         <p>
-          <strong>{{ params.actorName }}</strong>
+          {% if params.action == "availability_weekly" %}{{ params.actorName }} {% if params.moreCount > 0 %}und {{
+          params.moreCount }} weitere haben{% else %}hat{% endif %} diese Woche an Tagen Zeit, an denen du auch Zeit
+          hast.{% elif params.action == "tour_reminder" %}Die Tour «{{ params.tourName }}» ist in 5 Tagen. Zeit,
+          Verhältnisse, Ausrüstung und Partner zu prüfen.{% else %}<strong>{{ params.actorName }}</strong>
           {% if params.action == "created" %}hat die Tour{% elif params.action == "deleted" %}hat die geteilte Tour{%
           else %}hat die geteilte Tour{% endif %}
           <strong>{{ params.tourName }}</strong>, auf der du Partner bist, {% if params.action == "created" %}mit dir
-          geteilt{% elif params.action == "deleted" %}entfernt{% else %}aktualisiert{% endif %}.
+          geteilt{% elif params.action == "deleted" %}entfernt{% else %}aktualisiert{% endif %}.{% endif %}
         </p>
         <a href="{{ params.appUrl }}/?tours=1" class="cta">Touren ansehen</a>
       </div>

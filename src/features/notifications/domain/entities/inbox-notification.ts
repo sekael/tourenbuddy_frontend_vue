@@ -1,4 +1,4 @@
-import type { NotificationType } from './notification-preferences'
+import type { InboxNotificationType } from './notification-preferences'
 
 /**
  * One inbox entry — a row of the `notifications` event log (change: notification-inbox,
@@ -7,7 +7,7 @@ import type { NotificationType } from './notification-preferences'
  */
 export interface InboxNotification {
   id: string
-  type: NotificationType
+  type: InboxNotificationType
   action: string
   actorId: string | null
   actorName: string | null

@@ -74,4 +74,11 @@ export class InboxRepositoryImpl implements InboxRepository {
     if (error)
       throw new Error(error.message)
   }
+
+  async recordReleaseNote(noteId: string, since: string): Promise<boolean> {
+    const { data, error } = await supabase.rpc('record_release_note', { p_note_id: noteId, p_since: since })
+    if (error)
+      throw new Error(error.message)
+    return data === true
+  }
 }
