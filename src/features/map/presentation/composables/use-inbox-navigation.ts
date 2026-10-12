@@ -3,6 +3,7 @@ import { watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useSnackbar } from '@/core/composables/use-snackbar'
+import { todayKey } from '@/features/calendar/domain/calendar-dates'
 import { useInboxStore } from '@/features/notifications/presentation/stores/inbox-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
@@ -22,10 +23,17 @@ export function useInboxNavigation(open: {
   const toursStore = useToursStore()
   const snackbar = useSnackbar()
 
-  // TODO(me): open the calendar focused on the summary's first listed day that isn't past.
-  //   See task list at the end of this response.
-  function openSummary(_entry: InboxNotification) {
-    router.push({ name: 'calendar' })
+  // The calendar focused on the summary's first listed day that isn't past. `todayKey` is
+  // the LOCAL date: toISOString would still say yesterday right after midnight in Zurich.
+  // Nothing left (or malformed ref) → the calendar unfocused; the summary is still valid.
+  function openSummary(entry: InboxNotification) {
+    const dates = Array.isArray(entry.ref.dates) ? entry.ref.dates : []
+    const today = todayKey()
+    const day = dates
+      .filter((d): d is string => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d))
+      .sort()
+      .find(d => d >= today)
+    router.push(day ? { name: 'calendar', query: { day } } : { name: 'calendar' })
   }
 
   async function openEntry(entry: InboxNotification) {

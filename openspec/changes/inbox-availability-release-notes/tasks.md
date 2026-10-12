@@ -23,7 +23,7 @@
 - [x] 4.1 Split `MUTABLE_NOTIFICATION_TYPES` (6) / `INBOX_NOTIFICATION_TYPES` (7) and wire prefs parsing vs. inbox row schema (D5); verify unit tests: prefs parse keeps both new types, inbox schema accepts `release_notes`, still drops unknown types
 - [x] 4.2 Preferences: `availability` and `tour_reminders` mute rows with label/description (`en`, `de-CH`); verify component test renders six rows and no release-notes row
 - [x] 4.3 Availability summary rendering: `event_available` icon registered in `core/components/icons.ts`, "{first friend} and N more" with names from the friends store, never stale (D9); verify component/unit tests: one friend, several friends, unknown friend id — *impl note: no per-type icons exist in inbox rows, so `event_available` was not added (would be the only icon); names via `useFriendDisplayName` (canonical contact name, settle gate)*
-- [ ] 4.4 (owner gap: `openSummary` in `use-inbox-navigation.ts`) Availability deep link opens `/calendar?day=<first listed day ≥ today>` and marks read; verify unit test incl. summary whose first day already passed
+- [x] 4.4 Availability deep link opens `/calendar?day=<first listed day ≥ today>` and marks read; verify unit test incl. summary whose first day already passed
 - [x] 4.5 Tour reminder rendering + deep link through the existing tour access check and stale rules; verify component test: opens tour, lost access → `inbox.unavailable`
 
 ## 5. Client — release notes
@@ -36,13 +36,13 @@
 ## 6. Integration verification
 
 - [ ] 6.1 Local end-to-end (`supabase start` + `wrangler dev`): run both job functions by hand (`select public.fn_weekly_availability_summary()` / `fn_tour_reminders()`) → expected entries + pushes, second run → nothing; new build with a note → one entry on two devices, none after delete + reload, no push
-- [ ] 6.2 `npm run test`, `npm run type-check`, `supabase test db` all pass
+- [x] 6.2 `npm run test`, `npm run type-check`, `supabase test db` all pass
 
 ## 7. Finalize
 
 - [x] 7.1 Run `npx eslint src test --fix` (not `.`, sweeps worktrees) and verify zero warnings; never `npm run format`
-- [ ] 7.2 Prompt owner to commit with a ready-to-copy message, e.g. `feat(notifications): weekly availability summary, tour reminders and release notes` (body: refs #300)
-- [ ] 7.3 Prompt owner to push and open a PR to `main`, listing deploy order: `npx wrangler@latest deploy` → `supabase db push` → merge
+- [x] 7.2 Prompt owner to commit with a ready-to-copy message, e.g. `feat(notifications): weekly availability summary, tour reminders and release notes` (body: refs #300)
+- [x] 7.3 Prompt owner to push and open a PR to `main`, listing deploy order: `npx wrangler@latest deploy` → `supabase db push` → merge
 
 ## Workflow follow-up
 
