@@ -62,11 +62,6 @@ vi.mock('@/core/realtime/use-realtime-broadcast', () => ({
   useRealtimeBroadcast: vi.fn().mockReturnValue({ status: { value: 'idle' }, stop: vi.fn() }),
 }))
 
-vi.mock('@/features/notifications/data/notify-dispatch', () => ({
-  notifyFriendRequestReceived: vi.fn(),
-  notifyFriendRequestResponded: vi.fn(),
-}))
-
 vi.mock('@/features/i18n/presentation/stores/use-locale-store', () => ({
   useLocaleStore: () => ({
     get locale() { return mockLocaleStoreLocale.value },

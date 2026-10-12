@@ -16,12 +16,12 @@ function mountComponent(prefsOverride = {}, storeOverride: Record<string, unknow
     initialState: {
       notifications: {
         prefs: {
-          notifPushEnabled: true,
           notifEmailEnabled: true,
           notifMutedTypes: [],
           ...prefsOverride,
         },
         pushPermission: 'default',
+        pushEnabled: true,
         isLoading: false,
         error: null,
         ...storeOverride,
@@ -48,14 +48,26 @@ describe('notificationPreferencesSection', () => {
     expect(wrapper.text()).toContain('notifications.emailLabel')
   })
 
-  it('should show all-off disclaimer when both channels disabled', () => {
-    const wrapper = mountComponent({ notifPushEnabled: false, notifEmailEnabled: false })
-    expect(wrapper.text()).toContain('notifications.allOffDisclaimer')
+  it('should show the inbox hint when push is off on this device and email is off', () => {
+    const wrapper = mountComponent({ notifEmailEnabled: false }, { pushEnabled: false })
+    expect(wrapper.find('[data-testid="all-off-hint"]').text()).toBe('notifications.allOffDisclaimer')
   })
 
-  it('should hide disclaimer when at least one channel is on', () => {
-    const wrapper = mountComponent({ notifPushEnabled: true, notifEmailEnabled: false })
-    expect(wrapper.text()).not.toContain('notifications.allOffDisclaimer')
+  it('should hide the hint when only this device has push on', () => {
+    const wrapper = mountComponent({ notifEmailEnabled: false }, { pushEnabled: true })
+    expect(wrapper.find('[data-testid="all-off-hint"]').exists()).toBe(false)
+  })
+
+  it('should disable the push toggle while offline (subscribing needs the network)', async () => {
+    const { isOnline } = await import('@/core/offline/use-online-status')
+    isOnline.value = false
+    try {
+      const wrapper = mountComponent()
+      expect(wrapper.find('[data-testid="push-toggle"]').attributes('disabled')).toBeDefined()
+    }
+    finally {
+      isOnline.value = true
+    }
   })
 
   it('should show compact unavailable badge when requiresPwaInstall is true', () => {

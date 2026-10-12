@@ -63,11 +63,6 @@ vi.mock('@/core/realtime/use-realtime-subscription', () => ({
   }),
 }))
 
-vi.mock('@/features/notifications/data/notify-dispatch', () => ({
-  notifyFriendRequestReceived: vi.fn(),
-  notifyFriendRequestResponded: vi.fn(),
-}))
-
 const contactWithPhone = {
   id: 'c-1',
   userId: 'user-me',

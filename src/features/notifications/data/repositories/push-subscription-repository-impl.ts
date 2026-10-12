@@ -2,21 +2,15 @@ import type { PushSubscriptionData, PushSubscriptionRepository } from '../../dom
 import { supabase } from '@/core/utils/supabase'
 
 export class PushSubscriptionRepositoryImpl implements PushSubscriptionRepository {
-  async upsertSubscription(userId: string, data: PushSubscriptionData): Promise<void> {
-    const { error } = await supabase
-      .from('push_subscriptions')
-      .upsert(
-        {
-          user_id: userId,
-          endpoint: data.endpoint,
-          p256dh: data.p256dh,
-          auth: data.auth,
-          user_agent: data.userAgent,
-          last_seen_at: new Date().toISOString(),
-        },
-        { onConflict: 'endpoint' },
-      )
-
+  async register(data: PushSubscriptionData): Promise<void> {
+    // RPC, not an upsert: an endpoint left behind by another account on a shared browser
+    // is reassigned server-side, which RLS would reject for a plain upsert.
+    const { error } = await supabase.rpc('register_push_subscription', {
+      p_endpoint: data.endpoint,
+      p_p256dh: data.p256dh,
+      p_auth: data.auth,
+      p_user_agent: data.userAgent,
+    })
     if (error)
       throw new Error(error.message)
   }
@@ -26,16 +20,6 @@ export class PushSubscriptionRepositoryImpl implements PushSubscriptionRepositor
       .from('push_subscriptions')
       .delete()
       .eq('endpoint', endpoint)
-
-    if (error)
-      throw new Error(error.message)
-  }
-
-  async removeAllForUser(userId: string): Promise<void> {
-    const { error } = await supabase
-      .from('push_subscriptions')
-      .delete()
-      .eq('user_id', userId)
 
     if (error)
       throw new Error(error.message)

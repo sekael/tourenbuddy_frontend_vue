@@ -25,11 +25,6 @@ vi.mock('@/features/friendships/data/repositories/friendship-repository-impl', (
 vi.mock('@/core/realtime/use-realtime-subscription', () => ({
   useRealtimeSubscription: vi.fn().mockReturnValue({ status: { value: 'idle' }, stop: vi.fn() }),
 }))
-vi.mock('@/features/notifications/data/notify-dispatch', () => ({
-  notifyFriendRequestReceived: vi.fn(),
-  notifyFriendRequestResponded: vi.fn(),
-}))
-
 function makeBlock(overrides: Partial<UserBlock> = {}): UserBlock {
   return {
     blockerUserId: 'user-me',

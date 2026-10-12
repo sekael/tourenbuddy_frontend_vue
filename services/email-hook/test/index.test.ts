@@ -48,17 +48,6 @@ function makeRequest(body: unknown, headers: Record<string, string> = {}, path =
   })
 }
 
-function makeNotifyRequest(path: string, body: unknown, jwt = 'valid-jwt') {
-  return new Request(`https://worker.example.com${path}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${jwt}`,
-    },
-    body: JSON.stringify(body),
-  })
-}
-
 describe('email-hook worker', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -156,330 +145,87 @@ describe('email-hook worker', () => {
   })
 })
 
-describe('notify routes', () => {
+describe('notify/event', () => {
+  const ENV = { ...VALID_ENV, NOTIFY_WEBHOOK_SECRET: 'hook-secret' }
+  const ROW = {
+    id: 'n1',
+    recipient_id: 'user-b',
+    type: 'friend_requests',
+    action: 'received',
+    actor_name: 'Alice Smith',
+    tour_name: null,
+  }
+
+  function eventRequest(body: unknown, secret = 'hook-secret') {
+    return new Request('https://worker.example.com/notify/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-notify-secret': secret },
+      body: JSON.stringify(body),
+    })
+  }
+
+  /** profile → email → push_subscriptions (no rows) → anything else OK. */
+  function mockSupabase(profile: Record<string, unknown>) {
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('/rest/v1/user_profile'))
+        return new Response(JSON.stringify([profile]), { status: 200 })
+      if (url.includes('/auth/v1/admin/users/'))
+        return new Response(JSON.stringify({ email: 'b@example.com' }), { status: 200 })
+      if (url.includes('/rest/v1/push_subscriptions'))
+        return new Response('[]', { status: 200 })
+      return new Response('OK', { status: 200 })
+    }) as typeof fetch
+  }
+
+  function calledUrls(): string[] {
+    return (fetch as ReturnType<typeof vi.fn>).mock.calls.map(c => String(c[0]))
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('returns 401 when Authorization header is missing for received route', async () => {
-    const req = new Request('https://worker.example.com/notify/friend-request-received', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ friendshipId: 'abc' }),
-    })
-    // JWT verifier calls /auth/v1/user — mock to return 401
-    globalThis.fetch = vi.fn().mockResolvedValue(new Response('', { status: 401 }))
-    const response = await worker.fetch(req, VALID_ENV as never)
+  it('should reject a wrong secret with 401 before touching Supabase', async () => {
+    mockSupabase({ notif_email_enabled: true, notif_muted_types: [], locale: 'en' })
+    const response = await worker.fetch(eventRequest(ROW, 'wrong'), ENV as never)
     expect(response.status).toBe(401)
+    expect(fetch).not.toHaveBeenCalled()
   })
 
-  it('returns 403 when caller is not the sender for received route', async () => {
-    globalThis.fetch = vi.fn()
-      // First call: JWT verify → returns user id = 'user-b'
-      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'user-b' }), { status: 200 }))
-      // Second call: fetch friendship → from_user_id = 'user-a' (not caller)
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify([{ id: 'f1', from_user_id: 'user-a', to_user_id: 'user-b' }]),
-          { status: 200 },
-        ),
-      )
-
-    const req = makeNotifyRequest('/notify/friend-request-received', { friendshipId: 'f1' })
-    const response = await worker.fetch(req, VALID_ENV as never)
-    expect(response.status).toBe(403)
+  it('should fail closed with 500 when the secret is not configured', async () => {
+    mockSupabase({ notif_email_enabled: true, notif_muted_types: [], locale: 'en' })
+    const response = await worker.fetch(eventRequest(ROW), VALID_ENV as never)
+    expect(response.status).toBe(500)
   })
 
-  it('returns 403 when caller is not the responder for responded route', async () => {
-    globalThis.fetch = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'user-a' }), { status: 200 }))
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify([{ id: 'f1', from_user_id: 'user-a', to_user_id: 'user-b' }]),
-          { status: 200 },
-        ),
-      )
-
-    const req = makeNotifyRequest('/notify/friend-request-responded', { friendshipId: 'f1' })
-    const response = await worker.fetch(req, VALID_ENV as never)
-    expect(response.status).toBe(403)
-  })
-
-  it('does not dispatch when recipient has muted friend_requests', async () => {
-    globalThis.fetch = vi.fn()
-      // JWT verify → caller is sender
-      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'user-a' }), { status: 200 }))
-      // Fetch friendship
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify([{ id: 'f1', from_user_id: 'user-a', to_user_id: 'user-b' }]),
-          { status: 200 },
-        ),
-      )
-      // Fetch recipient profile — muted friend_requests
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify([{ id: 'user-b', notif_push_enabled: true, notif_email_enabled: true, notif_muted_types: ['friend_requests'], locale: 'en' }]),
-          { status: 200 },
-        ),
-      )
-      // Fetch actor display name
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify([{ first_name: 'Alice', last_name: 'Smith' }]), { status: 200 }),
-      )
-      // Fetch recipient email
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ id: 'user-b', email: 'b@example.com' }), { status: 200 }),
-      )
-
-    const req = makeNotifyRequest('/notify/friend-request-received', { friendshipId: 'f1' })
-    const response = await worker.fetch(req, VALID_ENV as never)
+  it('should send neither push nor email when the type is muted', async () => {
+    mockSupabase({ notif_email_enabled: true, notif_muted_types: ['friend_requests'], locale: 'en' })
+    const response = await worker.fetch(eventRequest(ROW), ENV as never)
     expect(response.status).toBe(200)
-    // No Brevo or push call should occur (all calls are data fetches above)
-    const brevoCall = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
-      ([url]: [string]) => url === 'https://api.brevo.com/v3/smtp/email',
-    )
-    expect(brevoCall).toBeUndefined()
+    expect(calledUrls().some(u => u.includes('push_subscriptions'))).toBe(false)
+    expect(calledUrls()).not.toContain('https://api.brevo.com/v3/smtp/email')
   })
 
-  it('falls back to EN template when locale is unknown', async () => {
-    globalThis.fetch = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'user-a' }), { status: 200 }))
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify([{ id: 'f1', from_user_id: 'user-a', to_user_id: 'user-b' }]),
-          { status: 200 },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify([{ id: 'user-b', notif_push_enabled: false, notif_email_enabled: true, notif_muted_types: [], locale: 'fr' }]),
-          { status: 200 },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify([{ first_name: 'Alice', last_name: null }]), { status: 200 }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ id: 'user-b', email: 'b@example.com' }), { status: 200 }),
-      )
-      // Brevo call
-      .mockResolvedValueOnce(new Response('OK', { status: 200 }))
-
-    const req = makeNotifyRequest('/notify/friend-request-received', { friendshipId: 'f1' })
-    await worker.fetch(req, VALID_ENV as never)
-
-    const brevoCall = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
-      ([url]: [string]) => url === 'https://api.brevo.com/v3/smtp/email',
-    )
-    expect(brevoCall).toBeDefined()
-    const body = JSON.parse(brevoCall[1].body as string)
-    expect(body.templateId).toBe(30) // EN received template
-  })
-
-  it('tour-changed deleted: excludes a partner who is not the caller\'s friend', async () => {
-    // Authz boundary: partnerContactIds resolve to two users, but only one is a
-    // friend of the caller. The non-friend must be filtered out (recipients ∩ friends).
-    globalThis.fetch = vi.fn()
-      // JWT verify → caller is the owner
-      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'owner' }), { status: 200 }))
-      // resolveUsersByContactIds RPC → two partner users
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(['user-friend', 'user-stranger']), { status: 200 }),
-      )
-      // fetchFriendUserIds → owner is only friends with user-friend
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify([{ request_user_id: 'owner', response_user_id: 'user-friend' }]),
-          { status: 200 },
-        ),
-      )
-      // dispatch to user-friend: profile (push+email off → no outbound sends)
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify([{ id: 'user-friend', notif_push_enabled: false, notif_email_enabled: false, notif_muted_types: [], locale: 'en' }]),
-          { status: 200 },
-        ),
-      )
-      // actor display name
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify([{ first_name: 'Owner', last_name: null }]), { status: 200 }),
-      )
-      // recipient email
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ id: 'user-friend', email: 'f@example.com' }), { status: 200 }),
-      )
-
-    const req = makeNotifyRequest('/notify/tour-changed', {
-      action: 'deleted',
-      partnerContactIds: ['c1', 'c2'],
-      tourName: 'Gfroren Hora',
-    })
-    const response = await worker.fetch(req, VALID_ENV as never)
-
+  it('should skip email but still try push when email is off (no account push flag)', async () => {
+    mockSupabase({ notif_email_enabled: false, notif_muted_types: [], locale: 'en' })
+    const response = await worker.fetch(eventRequest(ROW), ENV as never)
     expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ notified: 1 })
-    // The stranger must never have been resolved to a profile fetch (filtered pre-dispatch).
-    const touchedStranger = (fetch as ReturnType<typeof vi.fn>).mock.calls.some(
-      ([url]: [string]) => url.includes('user-stranger'),
-    )
-    expect(touchedStranger).toBe(false)
+    expect(calledUrls().some(u => u.includes('/rest/v1/push_subscriptions?user_id=eq.user-b'))).toBe(true)
+    expect(calledUrls()).not.toContain('https://api.brevo.com/v3/smtp/email')
   })
 
-  it('tour-changed deleted: no partner contact ids → skipped, nothing dispatched', async () => {
-    globalThis.fetch = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'owner' }), { status: 200 }))
-
-    const req = makeNotifyRequest('/notify/tour-changed', {
-      action: 'deleted',
-      partnerContactIds: [],
-      tourName: 'Solo Tour',
-    })
-    const response = await worker.fetch(req, VALID_ENV as never)
-
-    expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ skipped: 'no_partners' })
-    // Only the JWT verify fetch occurred — no resolution, no dispatch.
-    expect((fetch as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(1)
+  it('should map the backfill action to the Brevo backfill_digest branch', async () => {
+    mockSupabase({ notif_email_enabled: true, notif_muted_types: [], locale: 'en' })
+    const env = { ...ENV, BREVO_TEMPLATE_TOUR_INTEREST_EN: '40' }
+    await worker.fetch(eventRequest({ ...ROW, type: 'tour_interest', action: 'backfill' }), env as never)
+    const brevo = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(c => c[0] === 'https://api.brevo.com/v3/smtp/email')
+    expect(JSON.parse(brevo![1].body as string).params.action).toBe('backfill_digest')
   })
 
-  it('responded route body does not expose accept/decline outcome', async () => {
-    // The responded route sends a generic "responded to your request" message
-    // Verify no accept/decline wording is sent to push or email
-    globalThis.fetch = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'user-b' }), { status: 200 }))
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify([{ id: 'f1', from_user_id: 'user-a', to_user_id: 'user-b' }]),
-          { status: 200 },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify([{ id: 'user-a', notif_push_enabled: false, notif_email_enabled: true, notif_muted_types: [], locale: 'en' }]),
-          { status: 200 },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify([{ first_name: 'Bob', last_name: null }]), { status: 200 }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ id: 'user-a', email: 'a@example.com' }), { status: 200 }),
-      )
-      .mockResolvedValueOnce(new Response('OK', { status: 200 }))
-
-    const req = makeNotifyRequest('/notify/friend-request-responded', { friendshipId: 'f1' })
-    await worker.fetch(req, VALID_ENV as never)
-
-    const brevoCall = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
-      ([url]: [string]) => url === 'https://api.brevo.com/v3/smtp/email',
-    )
-    const body = JSON.parse(brevoCall[1].body as string)
-    // Should use responded template, not received
-    expect(body.templateId).toBe(32) // EN responded template
-    // No accept/decline in the params (outcome is not passed to template)
-    const bodyStr = JSON.stringify(body).toLowerCase()
-    expect(bodyStr).not.toContain('accept')
-    expect(bodyStr).not.toContain('decline')
-  })
-
-  // Tour-updates env needs the tour template ids the base VALID_ENV omits.
-  const TOUR_ENV = { ...VALID_ENV, BREVO_TEMPLATE_TOUR_UPDATES_EN: '40', BREVO_TEMPLATE_TOUR_UPDATES_DE: '41' }
-
-  // URL-routed fetch mock: multi-recipient dispatch fires fetches concurrently, so
-  // ordered mockResolvedValueOnce chains are too brittle here. `users` maps userId →
-  // email so each Brevo call can be tied back to its recipient.
-  function routeTourFetch(opts: {
-    partnerUserIds: string[]
-    friendRows: Array<{ request_user_id: string, response_user_id: string }>
-    addedUserIds: string[]
-  }) {
-    return vi.fn(async (url: string) => {
-      const u = String(url)
-      if (u.includes('/auth/v1/admin/users/')) {
-        const id = decodeURIComponent(u.split('/admin/users/')[1] ?? '')
-        return new Response(JSON.stringify({ id, email: `${id}@example.com` }), { status: 200 })
-      }
-      if (u.includes('/auth/v1/user'))
-        return new Response(JSON.stringify({ id: 'owner' }), { status: 200 })
-      if (u.includes('/rest/v1/tours?'))
-        return new Response(JSON.stringify([{ id: 't1', user_id: 'owner', visibility: 'friends', name: 'Rigi' }]), { status: 200 })
-      if (u.includes('/rpc/tour_partner_user_ids'))
-        return new Response(JSON.stringify(opts.partnerUserIds), { status: 200 })
-      if (u.includes('/rpc/users_by_contact_ids'))
-        return new Response(JSON.stringify(opts.addedUserIds), { status: 200 })
-      if (u.includes('/rest/v1/friendships'))
-        return new Response(JSON.stringify(opts.friendRows), { status: 200 })
-      if (u.includes('/rest/v1/user_profile')) {
-        // Actor-name fetch selects first_name; recipient-profile fetch selects notif_*.
-        if (u.includes('first_name'))
-          return new Response(JSON.stringify([{ first_name: 'Owner', last_name: null }]), { status: 200 })
-        return new Response(
-          JSON.stringify([{ id: 'x', notif_push_enabled: false, notif_email_enabled: true, notif_muted_types: [], locale: 'en' }]),
-          { status: 200 },
-        )
-      }
-      if (u === 'https://api.brevo.com/v3/smtp/email')
-        return new Response('OK', { status: 200 })
-      return new Response('', { status: 200 })
-    })
-  }
-
-  function brevoActionByEmail(email: string): string | undefined {
-    const calls = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
-      ([url]: [string]) => url === 'https://api.brevo.com/v3/smtp/email',
-    )
-    for (const c of calls) {
-      const body = JSON.parse(c[1].body as string)
-      if (body.to?.[0]?.email === email)
-        return body.params?.action
-    }
-    return undefined
-  }
-
-  it('tour-changed updated: newly-added partner gets created, pre-existing gets updated', async () => {
-    globalThis.fetch = routeTourFetch({
-      partnerUserIds: ['user-old', 'user-new'],
-      friendRows: [
-        { request_user_id: 'owner', response_user_id: 'user-old' },
-        { request_user_id: 'user-new', response_user_id: 'owner' },
-      ],
-      addedUserIds: ['user-new'],
-    })
-
-    const req = makeNotifyRequest('/notify/tour-changed', {
-      tourId: 't1',
-      action: 'updated',
-      newPartnerContactIds: ['c-new'],
-    })
-    const response = await worker.fetch(req, TOUR_ENV as never)
-
-    expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ notified: 2 })
-    expect(brevoActionByEmail('user-new@example.com')).toBe('created')
-    expect(brevoActionByEmail('user-old@example.com')).toBe('updated')
-  })
-
-  it('tour-changed updated: no newPartnerContactIds → every recipient gets updated', async () => {
-    globalThis.fetch = routeTourFetch({
-      partnerUserIds: ['user-old'],
-      friendRows: [{ request_user_id: 'owner', response_user_id: 'user-old' }],
-      addedUserIds: [],
-    })
-
-    const req = makeNotifyRequest('/notify/tour-changed', {
-      tourId: 't1',
-      action: 'updated',
-    })
-    const response = await worker.fetch(req, TOUR_ENV as never)
-
-    expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ notified: 1 })
-    expect(brevoActionByEmail('user-old@example.com')).toBe('updated')
-    // The added-resolver RPC must not even be called when no new partners are sent.
-    const calledResolver = (fetch as ReturnType<typeof vi.fn>).mock.calls.some(
-      ([url]: [string]) => String(url).includes('/rpc/users_by_contact_ids'),
-    )
-    expect(calledResolver).toBe(false)
+  it('should return 400 for a row without recipient', async () => {
+    mockSupabase({ notif_email_enabled: true, notif_muted_types: [], locale: 'en' })
+    const response = await worker.fetch(eventRequest({ id: 'n1', type: 'tour_updates' }), ENV as never)
+    expect(response.status).toBe(400)
   })
 })

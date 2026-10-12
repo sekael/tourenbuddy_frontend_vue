@@ -18,6 +18,7 @@ vi.mock('@/features/tours/data/services/swisstopo-name-service', () => ({
 // back-navigation target (and no-op the route-leave guard).
 const { push } = vi.hoisted(() => ({ push: vi.fn() }))
 vi.mock('vue-router', () => ({
+  useRoute: () => ({ query: {} }),
   useRouter: () => ({ push }),
   onBeforeRouteLeave: vi.fn(),
 }))

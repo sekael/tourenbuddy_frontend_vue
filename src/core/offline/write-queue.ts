@@ -36,8 +36,6 @@ export interface WriteQueueEntry {
   baseSnapshot?: unknown
   /** `op=update` only: `baseSnapshot`'s SERVER `updated_at` — the LWW baseline (DC5). NOT a client clock. */
   baseUpdatedAt?: string
-  /** Tours only: `snapshotTourGroupContext(id)` at the first offline edit, for deferred eviction (DC6). */
-  linkSnapshot?: unknown
   /** Monotonic insertion counter — cross-entity drain order for FK deps (DC1). Preserved on coalesce. */
   seq: number
   /** Replay attempts so far — drives capped backoff / dead-letter (DC9). */

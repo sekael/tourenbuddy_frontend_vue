@@ -77,48 +77,30 @@ Note the Worker URL from the deploy output — you need it to configure the Supa
 wrangler dev
 ```
 
-## Notification routes
+## Notification route
 
-Two additional routes handle friend-request push + email dispatch. See `SETUP-NOTIFICATIONS.md` for full operator setup.
+One route fans out push + email for every notification event. See `SETUP-NOTIFICATIONS.md` for full operator setup.
 
-### `POST /notify/friend-request-received`
+### `POST /notify/event`
 
-Called by the client after successfully sending a friend request.
-
-**Request**
-
-```
-Authorization: Bearer <supabase_access_token>
-Content-Type: application/json
-{ "friendshipId": "<uuid>" }
-```
-
-**Behaviour**
-
-- Verifies JWT; rejects 401 if missing/invalid.
-- Loads friendship row; rejects 403 if caller is not `request_user_id`.
-- Fetches recipient prefs + subscriptions via service role.
-- Skips all dispatch if `friend_requests` is in `notif_muted_types`.
-- Dispatches Web Push to every registered browser of the recipient (cleans up 410/404 endpoints).
-- Sends Brevo email using the locale-matching template (`BREVO_TEMPLATE_FRIEND_RECEIVED_EN/DE`).
-
-### `POST /notify/friend-request-responded`
-
-Called by the client after accepting or declining a friend request.
+Called only by the database: an AFTER INSERT trigger on `public.notifications` POSTs the new row via `pg_net` (change `notification-inbox`). Clients never call it.
 
 **Request**
 
 ```
-Authorization: Bearer <supabase_access_token>
+x-notify-secret: <NOTIFY_WEBHOOK_SECRET>
 Content-Type: application/json
-{ "friendshipId": "<uuid>" }
+{ "id": "<uuid>", "recipient_id": "<uuid>", "type": "friend_requests", "action": "received", "actor_name": "…", "tour_name": null, … }
 ```
 
 **Behaviour**
 
-- Same as above but caller must be `response_user_id`.
-- Notifies the original sender (requester).
-- Notification body never reveals accept vs decline.
+- Constant-time secret check; 401 on mismatch, 500 if `NOTIFY_WEBHOOK_SECRET` is unset.
+- Skips all dispatch if `type` is in the recipient's `notif_muted_types`.
+- Dispatches Web Push to every registered device of the recipient (cleans up 410/404 endpoints). No account-wide push flag: rows exist ⇔ push enabled on that device.
+- Sends Brevo email when `notif_email_enabled`, using the locale-matching template.
+- Push/email link: `<APP_URL>/?notification=<id>` — the app marks the entry read and opens its target.
+- Friend-request copy never reveals accept vs decline.
 
 ### Brevo friend-request templates
 

@@ -19,6 +19,7 @@ import { useContactsStore } from '@/features/contacts/presentation/stores/contac
 import PhoneVerificationNotice from '@/features/friendships/presentation/components/phone-verification-notice.vue'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import NotificationPreferencesSection from '@/features/notifications/presentation/components/notification-preferences-section.vue'
+import { useNotificationsStore } from '@/features/notifications/presentation/stores/notifications-store'
 import { useOnboardingTourStore } from '@/features/onboarding/presentation/stores/onboarding-tour-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
@@ -35,6 +36,7 @@ const contactsStore = useContactsStore()
 const toursStore = useToursStore()
 const friendshipsStore = useFriendshipsStore()
 const onboardingTourStore = useOnboardingTourStore()
+const notificationsStore = useNotificationsStore()
 
 const isDesktop = useIsDesktop()
 // The overview shows everything at a glance; each section opens as its own view.
@@ -218,6 +220,9 @@ async function executeDeletePhone() {
 }
 
 async function handleSignOut() {
+  // Before signOut: the row delete needs the session (#148 — a shared device must stop
+  // receiving the previous user's pushes). Bounded + never throws.
+  await notificationsStore.removeThisDevice()
   contactsStore.clear()
   toursStore.clear()
   userProfileStore.clear()

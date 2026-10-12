@@ -43,7 +43,7 @@ const notificationsValue = computed(() => {
   const p = notificationsStore.prefs
   if (!p)
     return ''
-  const push = p.notifPushEnabled && pushSupported.value && notificationsStore.pushPermission !== 'denied'
+  const push = notificationsStore.pushEnabled && pushSupported.value && notificationsStore.pushPermission !== 'denied'
   const email = p.notifEmailEnabled
   const key = push && email ? 'pushAndEmail' : push ? 'push' : email ? 'email' : 'off'
   return t(`user.profile.notificationsSummary.${key}`)

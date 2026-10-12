@@ -25,6 +25,9 @@ export interface Env {
   BREVO_TEMPLATE_TOUR_LINK_DELETED_EN: string
   BREVO_TEMPLATE_TOUR_LINK_DELETED_DE: string
 
+  // Shared secret for POST /notify/event; same value as the Vault `notify_webhook_secret`.
+  NOTIFY_WEBHOOK_SECRET: string
+
   // Optional: app URL used for push deep-links and email links.
   // Defaults to https://test.tourenbuddy.ch if unset.
   // Override to https://tourenbuddy.ch (or www variant) when prod domain goes live.

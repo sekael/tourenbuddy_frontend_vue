@@ -69,11 +69,6 @@ vi.mock('@/core/realtime/use-realtime-subscription', () => ({
   }),
 }))
 
-vi.mock('@/features/notifications/data/notify-dispatch', () => ({
-  notifyFriendRequestReceived: vi.fn(),
-  notifyFriendRequestResponded: vi.fn(),
-}))
-
 vi.mock('@/features/contacts/data/repositories/contacts-repository-impl', () => ({
   ContactsRepositoryImpl: vi.fn(() => ({
     fetchContacts: vi.fn().mockResolvedValue([]),

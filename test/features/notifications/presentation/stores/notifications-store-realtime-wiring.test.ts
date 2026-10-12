@@ -7,7 +7,6 @@ const { mockUseRealtime, mockCurrentUser, mockGetPreferences } = vi.hoisted(() =
   mockUseRealtime: vi.fn(),
   mockCurrentUser: { value: null as { id: string } | null },
   mockGetPreferences: vi.fn().mockResolvedValue({
-    notifPushEnabled: false,
     notifEmailEnabled: false,
     notifMutedTypes: [],
   }),
@@ -29,6 +28,7 @@ vi.mock('@/features/notifications/presentation/composables/use-web-push', () => 
     subscribe: vi.fn(),
     unsubscribe: vi.fn(),
     ensureSubscription: vi.fn(),
+    currentSubscription: vi.fn().mockResolvedValue(null),
   }),
 }))
 
