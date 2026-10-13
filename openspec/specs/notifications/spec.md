@@ -11,7 +11,7 @@ The system SHALL allow each user to independently enable or disable push and ema
 
 #### Scenario: Defaults on first profile creation
 - **WHEN** a new user profile is created
-- **THEN** push and email channels are both disabled (opt-in required) and no notification types are muted
+- **THEN** the email channel is disabled (`notif_email_enabled = false`, opt-in required), push is off on every device until enabled there, and no notification types are muted
 
 #### Scenario: User disables a channel
 - **WHEN** the user toggles the email channel off in profile preferences
@@ -148,14 +148,14 @@ The system SHALL notify the original requester when their friend request receive
 - **THEN** the requester receives notifications on enabled channels stating only that there was a response, never the outcome
 
 ### Requirement: Localization of email content
-The system SHALL select the Brevo template matching `user_profile.locale` (`en`, `de`) for each email notification.
+The system SHALL select the Brevo template matching the recipient's `user_profile.locale`, mapped to a base language (`de-CH`/`de` → `de`, anything else → `en`), for each email notification. Push copy SHALL be localized the same way.
 
 #### Scenario: User locale is en
 - **WHEN** dispatching an email to a user with locale `en`
 - **THEN** the Worker uses the `*_en` template ID
 
 #### Scenario: User locale is de
-- **WHEN** dispatching an email to a user with locale `de`
+- **WHEN** dispatching an email to a user with locale `de-CH`
 - **THEN** the Worker uses the `*_de` template ID
 
 #### Scenario: Unknown or missing locale
@@ -170,11 +170,11 @@ The system SHALL delete push subscription rows whose endpoint returns 404 or 410
 - **THEN** the matching row in `push_subscriptions` is deleted
 
 ### Requirement: Notification click deep link
-A clicked push notification SHALL focus or open the app and navigate to the friend requests view.
+Every push and email SHALL link to `<APP_URL>/?notification=<entry id>`. Opening it SHALL focus an existing app window (or open a new one); the app then resolves that inbox entry's own deep link and marks it read, so routing lives in one place (see `notification-inbox`).
 
 #### Scenario: User clicks a friend request notification
-- **WHEN** the user taps the notification
-- **THEN** an existing app window is focused (or a new one opened) at a URL that opens the friend requests sheet
+- **WHEN** the user taps a `friend_requests` push
+- **THEN** an existing app window is focused (or a new one opened) at `/?notification=<id>`, and the app opens the friend requests sheet and marks the entry read
 
 ### Requirement: Event dispatch authentication
 The notification Worker SHALL only accept event dispatch requests originating from the database, authenticated by a shared secret, and SHALL reject all others. Client applications SHALL NOT be able to trigger push or email dispatch.

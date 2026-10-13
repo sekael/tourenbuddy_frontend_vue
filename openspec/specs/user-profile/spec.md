@@ -1,6 +1,6 @@
 ## Purpose
 
-User profile fields (display name, locale, phone, avatar) with edit flows and validation.
+The user's own profile row (`user_profile`: first and last name, locale, notification preferences, onboarding gates) plus their verified phone on `auth.users`, with edit flows, validation, and cross-device realtime sync.
 
 ## Requirements
 

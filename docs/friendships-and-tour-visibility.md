@@ -1,8 +1,9 @@
 # Friendships & tour visibility
 
 How TourenBuddy decides **who can see which tour, and how much of it** — plus the
-friendship model it builds on and the notifications it emits. This is the
-authorization design for the `friend-tour-visibility` change (issue #85).
+friendship model it builds on. This is the authorization design for the
+`friend-tour-visibility` change (issue #85); notifications are documented in
+[notifications.md](./notifications.md).
 
 ## Friendship model
 
@@ -15,8 +16,8 @@ authorization design for the `friend-tour-visibility` change (issue #85).
 - **`friend_requests`** holds pending/accepted/denied/cancelled requests between two
   verified users. On acceptance a row is written to **`friendships`**
   `(request_user_id, response_user_id)` — an undirected edge (match either column).
-- **Blocking cleans up the edge.** `block` calls
-  `terminate_pending_and_friendship_between`, deleting the friendship. Because every
+- **Blocking cleans up the edge.** `block_user` calls the internal
+  `terminate_pending_and_friendship_between` (not client-callable), deleting the friendship. Because every
   authorization rule below keys on the `friendships` table, a block instantly revokes
   tour visibility and stops shared-tour notifications — no extra bookkeeping.
 
@@ -29,20 +30,22 @@ extensible to `'public'` later).
 - **`friends`** (default): readable by the owner's accepted friends.
 - **`private`**: owner-only. Hidden from _everyone_, including users marked as partners.
 
-Only the owner reads or changes it (the existing `tours_update_own` RLS policy). The
-owner sets it on the create form and toggles it from the info sheet; `update_tour_full`
-deliberately leaves `visibility` untouched so editing a tour never resets it.
+Only the owner changes it: clients have no UPDATE privilege on `tours`, and
+`update_tour_full` raises for a non-owner. The owner sets it on the create form and toggles
+it from the info sheet; both go through `create_tour_full` / `update_tour_full`, whose
+`p_visibility` argument leaves the value untouched when omitted, so editing a tour never
+resets it.
 
 ## Authorization model — two layers
 
 A read decision has two independent questions, enforced in two different places:
 
-| Question     | "May I see this tour at all?"                                         | "May I see _these fields_?"                   |
-| ------------ | --------------------------------------------------------------------- | --------------------------------------------- |
-| Concern      | **row** access                                                        | **column / detail** gating                    |
-| Enforced in  | **RLS policy on `tours`**                                             | **`friend_tours_view` body**                  |
-| Rule         | accepted `friendship(owner, viewer)` **AND** `visibility = 'friends'` | viewer must be a **partner** on the tour      |
-| Gated fields | —                                                                     | `planned_date`, `gpx_filepath`, partner names |
+| Question     | "May I see this tour at all?"                                         | "May I see _these fields_?"                               |
+| ------------ | --------------------------------------------------------------------- | --------------------------------------------------------- |
+| Concern      | **row** access                                                        | **column / detail** gating                                |
+| Enforced in  | **RLS policy on `tours`**                                             | **`friend_tours_view` body**                              |
+| Rule         | accepted `friendship(owner, viewer)` **AND** `visibility = 'friends'` | viewer must be a **partner** on the tour                  |
+| Gated fields | —                                                                     | `planned_date`, `end_date`, `gpx_filepath`, partner names |
 
 RLS is row-level — it cannot null individual columns — which is _why_ the gating lives
 in the view, not the policy.
@@ -64,14 +67,37 @@ every row is exposed.
 **Predicate location determines blast radius:** know which layer enforces each
 predicate, and you know exactly what leaks when a layer is removed.
 
+This is not hypothetical: the owner view `tours_view` was created without the flag and was
+granted to `anon`, so until `20261012144059_security_hardening.sql` anyone with the public
+anon key could read, update and delete every tour through it. It is now
+`security_invoker`, filtered to `user_id = auth.uid()`, and granted SELECT to
+`authenticated` only.
+
+### Known gap: Layer 2 is presentation-level for friends
+
+The `tours_select_friend` RLS policy grants an accepted friend the **whole row** of a
+friends-visible tour on the base table. A non-partner friend who queries `tours` directly
+(rather than `friend_tours_view`) therefore still reads `planned_date`, `end_date` and the
+`gpx_filepath` string — the storage policy still blocks the GPX download itself. Closing it
+means dropping `tours_select_friend` and serving friends through a definer read path
+(definer view or RPC), with the attachment / storage / realtime policies that currently
+rely on that policy rewritten onto a definer helper. Tracked as a follow-up.
+
 ### Why the partner resolver is `security_definer`
 
 Resolving "is this viewer a partner?" must read the owner's _private_ `contacts` /
 `contact_methods` — which the viewer cannot read under RLS. So
 `tour_partner_user_ids(p_tour_id)` is `SECURITY DEFINER` (it bypasses RLS to traverse
 that data). That power is **contained by its return shape**: it returns only `uuid[]`,
-never contact rows, so no private contact data reaches the caller. The view compares
-`auth.uid()` against that set to compute `is_partner`.
+never contact rows, so no private contact data reaches the caller.
+
+It is still the whole roster, so it is an internal helper with no client grant
+(`20261013083452_tour_partner_ids_lockdown.sql` — any friend could call it with a tour id
+from `friend_tours_view` until then). Everything that runs as the viewer — the view's
+`is_partner`, the attachment and storage partner-friend policies — asks
+`is_tour_partner(p_tour_id)` instead: one boolean about the caller. Definer code (RPCs,
+notification jobs) keeps using the roster. Background:
+[supabase-rpc-authorization.md](./supabase-rpc-authorization.md).
 
 ### Partner representation for friends
 
@@ -96,7 +122,9 @@ The `tour-gpx` and `tour-attachments` buckets are otherwise owner-only
 enough — the object fetch itself is blocked. A storage `SELECT` policy on each bucket
 lets a **partner-friend** of a `friends`-visible tour read the blobs (same friendship +
 partner check), while non-partner friends and private tours stay blocked at the
-storage layer.
+storage layer. Those policies match the object by a path stored in a user-writable row,
+so they also require the object to sit under the **tour owner's** prefix — otherwise a
+crafted path could expose a third user's file.
 
 Attachments add one extra layer: the `tour_attachments` **metadata rows** are themselves
 RLS-guarded (originally owner-only), so a partner-friend also needs a table `SELECT`
@@ -116,7 +144,7 @@ read a tour row
    │                                                            (private ⇒ owner-only)
    └─ yes ─► row returned
             │
-            ├─ am I a partner?  (auth.uid() ∈ tour_partner_user_ids(id))
+            ├─ am I a partner?  (is_tour_partner(id))
             │      │
             │      ├─ yes ─► FULL: planned_date, gpx_filepath, partner names
             │      └─ no  ─► GATED: those fields null/empty; name/location/type shown
@@ -137,28 +165,18 @@ of `tours`; correctness beats the maintenance cost of a trigger-kept link table.
 
 ## Notifications
 
-Two notification types ride the existing client→Worker fire-and-forget path
-(`notify-dispatch.ts` → `services/email-hook`), honoring each recipient's
-`notif_email_enabled` / `notif_muted_types` (push: per registered device):
-
-- **`tour_updates`** — a shared tour you partner on was created / updated / deleted.
-  Fired by the **owner**'s client; the Worker resolves recipients as
-  `tour_partner_user_ids ∩ owner's friends − actor`. Only on a **meaningful** edit
-  (name, planned date, goal, tour type, partners, GPX, description, equipment, or a
-  completion flip) — cosmetic/owner-private fields (notes, elevation, seasons,
-  start/end detail) and visibility changes never notify. Private tours notify no one.
-  _Known limitation:_ the `deleted` notification is best-effort — the client fires it
-  before deleting the row, but the Worker may lose the race and 404.
-- **`tour_interest`** — a friend declined a duplicate-save and signaled interest. Fired
-  by the **interested friend**; the Worker authorizes by an accepted friendship between
-  caller and owner **and** `visibility='friends'`, then notifies the owner only. It does
-  not re-verify the 100m collision or partner status (those are UX concerns).
+Shared-tour (`tour_updates`) and same-tour (`tour_interest`) notifications are emitted by the
+database inside the tour RPCs and only ever reach **friend partners** of a friends-visible
+tour (`fn_friend_partner_ids`) or owners of colliding friend tours. Private tours notify no
+one, and losing access deletes the entries about that tour. Details:
+[notifications.md](./notifications.md).
 
 ## Map & list surfacing
 
 - **Map**: own tours + friend tours you partner on (with a friendship indicator in the
-  marker; non-partner friend tours never appear). A partner-friend tour within 100m of
-  an owned tour is suppressed on the map (owned precedence) but stays in the list.
+  marker; non-partner friend tours never appear). A partner-friend tour colliding with an
+  owned tour (≤ 200 m, `COLLISION_RADIUS_M`) is suppressed on the map (owned precedence)
+  but stays in the list.
 - **List ("My Tours")**: separate **Owned** / **Friends** tabs (default Owned, no merged
   list), each with independent search/filter. Non-partner friend tours show in gated
   form with an owner label and a "limited info" hint.
@@ -166,8 +184,8 @@ Two notification types ride the existing client→Worker fire-and-forget path
 ## Where it lives
 
 - Migrations: `supabase/migrations/*_add_tours_visibility.sql`,
-  `*_friend_tour_read_access.sql`
-- RLS checks: `supabase/tests/friend_tour_visibility_rls.sql`
+  `*_friend_tour_read_access.sql`, `*_friend_attachment_access.sql`,
+  `*_security_hardening.sql`, `*_tour_partner_ids_lockdown.sql`
+- RLS checks: `supabase/tests/friend_tour_visibility_rls.sql`, `supabase/tests/security_hardening.sql`
 - Data: `src/features/tours/data/models/visibility.ts`, `…/tour-schema.ts`
-- Domain: `src/features/tours/domain/{collision,tour-notifications}.ts`
-- Worker: `services/email-hook/src/notify.ts` (`handleTourChanged`, `handleTourInterest`)
+- Domain: `src/features/tours/domain/collision.ts`

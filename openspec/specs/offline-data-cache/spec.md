@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Last-known-good IndexedDB copy of every store-loaded collection, namespaced per user, so the app renders offline: loads hydrate from cache, then refetch when the backend is reachable, gated by one shared online/offline signal.
+
+## Requirements
 
 ### Requirement: Store-loaded collections are cached locally for offline read
 
@@ -131,7 +135,8 @@ network; the UI SHALL consult it to indicate offline state to the user.
 On regaining connectivity, the system SHALL refresh cached collections through the
 existing Realtime re-subscription refetch path (the `onSubscribed` full refetch)
 rather than a separate sync mechanism, overwriting the cache with fresh backend
-state. No independent offline sync engine SHALL be introduced in this change.
+state. That refetch SHALL wait for the write-queue drain first (`flushThenRefetch`, see
+`offline-write-sync`), so a replayed write is never clobbered by the snapshot.
 
 #### Scenario: Cache refreshed after reconnect
 
@@ -142,7 +147,8 @@ state. No independent offline sync engine SHALL be introduced in this change.
 ### Requirement: Offline data mutation handling
 
 While offline, the system SHALL queue data mutations (create/update/delete of
-tours, contacts, profile, availability, and unfriend) durably, apply them
+tours, contacts, profile, notification preferences, inbox read/delete state,
+availability, and unfriend) durably, apply them
 optimistically to local state and the read cache, and replay them automatically when
 connectivity returns. It SHALL NOT silently drop an offline mutation. Friend tours
 remain read-only and SHALL NOT be queued. Friend **request** actions (send / accept /
@@ -179,8 +185,8 @@ involvement).
 
 - **WHEN** the user unfriends a contact while offline
 - **THEN** the friendship is removed optimistically, the removal is persisted to the
-  write queue (with its tour-link eviction recipients snapshotted), and it replays on
-  reconnect
+  write queue, and it replays on reconnect as an idempotent `remove_friendship` (the
+  database emits the resulting tour-link group events)
 
 #### Scenario: Online mutation bypasses the queue
 

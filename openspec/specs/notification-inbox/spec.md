@@ -32,7 +32,7 @@ A failure while recording an inbox entry SHALL NOT abort or roll back the user's
 - **THEN** the tour save commits and a warning is logged
 
 ### Requirement: Inbox event coverage
-The inbox SHALL record the same event set that push/email notify about: friend request received and responded; shared tour created (incl. newly-added partner), meaningfully updated, deleted; same-tour collision detected; friendship-accept backfill digest; link request created, accepted, declined; group member joined, evicted, dissolved; suggestion batch submitted and fully resolved; the weekly availability summary; the five-day tour reminder. The inbox SHALL additionally hold release-note entries, which have no push/email counterpart. Recipient rules SHALL match the corresponding push/email requirements.
+The inbox SHALL record the same event set that push/email notify about: friend request received and responded; shared tour created (incl. newly-added partner), meaningfully updated, deleted; same-tour collision detected; friendship-accept backfill digest; link request created and declined; group member joined (the accept event), evicted, dissolved; suggestion batch submitted, revised, and fully resolved; the weekly availability summary; the five-day tour reminder. The inbox SHALL additionally hold release-note entries, which have no push/email counterpart. Recipient rules SHALL match the corresponding push/email requirements.
 
 #### Scenario: Suggestion batch recorded once
 - **WHEN** a partner submits four field suggestions in one batch

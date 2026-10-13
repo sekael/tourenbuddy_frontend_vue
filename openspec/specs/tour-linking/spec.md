@@ -138,28 +138,28 @@ When a friendship transitions to accepted, the system SHALL scan the two users' 
 ### Requirement: Group-membership-change notifications
 When the membership of a `tour_link_group` changes, the system SHALL emit `tour_interest`-typed notifications in the same transaction as the membership change, including changes caused by cascades (tour edits, friendship removal), so participants stay informed. Push/email delivery SHALL honor each recipient's push registrations, `notif_email_enabled`, and `notif_muted_types`. Failures SHALL NOT block the underlying DB write.
 
-#### Scenario: New member joins — pre-existing members notified
-- **WHEN** C joins an existing group containing A and B via accepted link request
-- **THEN** A and B each receive a `tour_interest` notification naming C and identifying the group; C is not notified (C is the actor)
+#### Scenario: New member joins — other members notified
+- **WHEN** a link request is accepted and a tour joins a group (new or existing)
+- **THEN** every owner of a tour in the group except the acceptor receives one `tour_interest` `group_joined` notification naming their own tour in the group; the acceptor (the actor) is not notified
 
 #### Scenario: External eviction — evicted user and remaining members notified
-- **WHEN** A's tour is evicted from a group because of a sibling member's edit, a friendship deletion involving A, or another non-self event
-- **THEN** A receives a notification stating the tour was unlinked, and the remaining group members each receive a notification that A's tour is no longer in the group
+- **WHEN** A's tour is evicted from a group because of a sibling member's edit, a friendship deletion involving A, or another non-self event, and at least two tours remain
+- **THEN** every member owner, the evicted one included and the actor excluded, receives one `group_evicted_external` notification naming their own tour in the group
 
 #### Scenario: Self-eviction via own confirmed edit — only remaining members notified
 - **WHEN** A confirms an edit-warning dialog that evicts A's own tour from a group
 - **THEN** the remaining group members each receive a notification; A is not self-notified
 
-#### Scenario: Dissolution — lone remaining member notified
+#### Scenario: Dissolution — members notified
 - **WHEN** an eviction or cascade drops a group's member count below 2
-- **THEN** the lone remaining member (if any) receives a notification that the group has dissolved
+- **THEN** every member owner of the group before the change, except the actor, receives one `group_dissolved` notification (emitted before the member rows are deleted)
 
 #### Scenario: Recipients resolved after cascade
 - **WHEN** a friendship deletion cascades eviction and dissolution in one transaction
 - **THEN** each affected member is notified once with the tour name as it was before the cascade
 
 ### Requirement: Link request notification
-When a link request is created, the system SHALL notify the target tour's owner of the pending request under the `tour_interest` notification type. When a request is accepted or declined, the system SHALL notify the initiator's owner of the resolution under the same type. Withdrawals SHALL NOT emit a notification. Failures SHALL NOT block the underlying DB write.
+When a link request is created, the system SHALL notify the target tour's owner of the pending request under the `tour_interest` notification type (`link_created`). When a request is declined, the system SHALL notify the initiator's owner (`link_declined`). An accept is announced by the `group_joined` notification above rather than a separate `link_accepted`. Withdrawals SHALL NOT emit a notification. Failures SHALL NOT block the underlying DB write.
 
 #### Scenario: Target notified of new request
 - **WHEN** A creates a pending link request to B's tour
@@ -167,7 +167,7 @@ When a link request is created, the system SHALL notify the target tour's owner 
 
 #### Scenario: Initiator notified of acceptance
 - **WHEN** B accepts the pending request
-- **THEN** A receives a `tour_interest` notification stating the request was accepted
+- **THEN** A receives the `group_joined` notification for the resulting group, and no separate acceptance notification
 
 #### Scenario: Initiator notified of decline
 - **WHEN** B declines the pending request

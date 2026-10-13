@@ -6,7 +6,7 @@ Block another user to prevent friend requests, messages, and discovery between t
 
 ### Requirement: Users can block any other user persistently
 
-The system SHALL allow an authenticated user (the blocker) to record a block against any other user (the blocked) via the `block_user(target_user_id uuid)` RPC, regardless of current relationship state (stranger, pending request, or existing friend). Blocks SHALL be persisted in `public.user_blocks` and propagate across the blocker's devices. Each `(blocker, blocked)` pair has at most one row whose PK never changes. The row carries three timestamps: `first_blocked_at` (immutable, set on first block), `last_blocked_at` (refreshed on each re-block), and `unblocked_at` (set on unblock, NULL while active).
+The system SHALL allow an authenticated user (the blocker) to record a block against any other user (the blocked) via the `block_user(target uuid)` RPC, regardless of current relationship state (stranger, pending request, or existing friend). Blocks SHALL be persisted in `public.user_blocks` and propagate across the blocker's devices. Each `(blocker, blocked)` pair has at most one row whose PK never changes. The row carries three timestamps: `first_blocked_at` (immutable, set on first block), `last_blocked_at` (refreshed on each re-block), and `unblocked_at` (set on unblock, NULL while active).
 
 #### Scenario: First block recorded server-side
 - **WHEN** user A invokes `block_user(B)` and no prior row exists for `(A, B)`
@@ -54,7 +54,7 @@ The system SHALL allow an authenticated user (the blocker) to record a block aga
 
 ### Requirement: Send-friend-request affordance hidden in both block directions
 
-The system SHALL expose `is_blocked_by(target_user_id uuid) returns boolean` as a SECURITY DEFINER function returning true iff `(target_user_id, auth.uid())` is an active block. The function MUST NOT leak any other information. Clients SHALL hide the "send friend request" affordance toward target B whenever EITHER condition holds:
+The system SHALL expose `is_blocked_by(target uuid) returns boolean` as a SECURITY DEFINER function returning true iff `(target, auth.uid())` is an active block. The function MUST NOT leak any other information. Clients SHALL hide the "send friend request" affordance toward target B whenever EITHER condition holds:
 1. `is_blocked_by(B)` returns true (B blocked A — server-side cannot deliver the request anyway).
 2. `B ∈ user-blocks-store.blockedUserIds` for caller A (A blocked B — sending to someone A blocked is nonsensical, and the discovery RPCs already hide B from A's lookups).
 
@@ -146,7 +146,7 @@ The client SHALL expose Block actions from:
 - Contact detail for any contact that has resolved to a registered user via contact-account-linking.
 
 The Block affordance MUST be hidden when:
-- the contact has no resolved registered user (no `target_user_id` available), OR
+- the contact has no resolved registered user (no target user id available), OR
 - the contact is already actively blocked by the caller (resolved either via `linkedFriendUserId ∈ blockedUserIds` or via any contact phone ∈ `blockedPhones`).
 
 Block from an existing friend MUST present a confirmation dialog warning the user that the friendship will be removed. The confirmation dialog SHALL be rendered **inline** within the surface that triggered it (mirroring the existing delete-confirmation pattern used for contact removal) — never as a modal overlay — and the same component / placement SHALL be used on mobile and desktop.

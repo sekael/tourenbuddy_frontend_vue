@@ -62,6 +62,7 @@ IMPORTANT: The app ships **all** fonts and icons in its own bundle. There is **n
   - Add a comment in the edited file explaining the change. Precedent: `20260608062430_friend_tours_realtime_messages_policy.sql` (dropped a no-op `alter table realtime.messages`).
 - NEVER `ALTER TABLE` Supabase-owned tables (`realtime.*`, `auth.*`, `storage.*`) — owned by internal roles, `postgres` is not owner. Policy statements (`create/alter/drop policy`) are allowed. RLS is already enabled on `realtime.messages` and `storage.objects`.
 - NEVER hand-edit prod schema via Supabase Studio/SQL editor — drifts from repo
+- NEVER add a `[db.vault]` block to `supabase/config.toml`: `db push` upserts it into prod Vault, overwriting prod's secrets with local ones. Vault secrets are set by hand per database (`services/email-hook/SETUP-NOTIFICATIONS.md`)
 - `supabase/migrations/_archived/` contains pre-baseline patches — do not run, kept for history only
 - Baseline migration `20260101000000_initial_schema.sql` reflects prod schema at cutover; subsequent changes go in new timestamped files
 - App must run against local Supabase during development — point `VITE_SUPABASE_URL` to local stack URL (`http://127.0.0.1:54321`) in `.env.local`
@@ -71,6 +72,11 @@ IMPORTANT: The app ships **all** fonts and icons in its own bundle. There is **n
   grant all on table public.<name> to anon, authenticated, service_role;
   ```
   RLS still governs row access — these grants only restore Data API exposure. See https://github.com/orgs/supabase/discussions/45329.
+- IMPORTANT: Functions are NOT executable by clients unless granted (default privileges revoked in `20261012144059_security_hardening.sql`). In the migration that creates a function: `grant execute on function public.<fn>(<args>) to authenticated;` (`service_role` keeps EXECUTE by default). Internal helpers called only from other SECURITY DEFINER functions or triggers get NO client grant — a definer helper that takes a user id / tour id without re-checking `auth.uid()` must never be reachable over PostgREST.
+- Every SECURITY DEFINER function MUST `set search_path`; every client-callable one MUST also authorize the caller itself (`auth.uid()`), because it bypasses RLS.
+- Views MUST be `with (security_invoker = true)` and granted `select` only (`revoke all ... from anon, authenticated; grant select ... to authenticated`). A default (definer) view runs as `postgres`, bypasses RLS, and a simple one is auto-updatable — `tours_view` was readable, updatable and deletable with the anon key until 2026-10-12.
+- Storage read grants that match an object by a path stored in a row MUST also pin the object's owner prefix (`split_part(name, '/', 1) = <owner>::text`).
+- Background for all of the above (gates, roles, definer semantics, search_path, worked example): `docs/supabase-rpc-authorization.md`.
 
 ## Internationalization
 

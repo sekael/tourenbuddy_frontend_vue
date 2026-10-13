@@ -6,27 +6,27 @@ Import contacts from the device address book via the Contact Picker API or vCard
 
 ### Requirement: Dedupe identical phones during import
 
-Both import parsers (`useVCardImport.parseVCardText` and `useContactPicker.pickContacts`) SHALL, per contact, collapse multiple `phones` entries that share the same `value` into a single entry before returning. The merge SHALL OR the `isPrimary` flags (any `true` among collapsed entries wins) and SHALL keep the first non-null `label` in input order. Both parsers SHALL ALSO deduplicate `rawPhoneNumbers` per contact by `trim()` + lowercase comparison, preserving first-seen casing.
+Both import parsers (`parseVCardText` in `use-vcard-import.ts` and `useContactPicker().pickContacts`) SHALL, per contact, collapse multiple `phones` entries that share the same `value` into a single entry before returning. The merge SHALL OR the `isPrimary` flags (any `true` among collapsed entries wins) and SHALL keep the first non-null `label` in input order. Both parsers SHALL ALSO deduplicate `rawPhoneNumbers` per contact by `trim()` + lowercase comparison, preserving first-seen casing.
 
 #### Scenario: vCard with two identical TEL lines
 
 - **WHEN** a vCard contains two `TEL;TYPE=CELL:+41 79 123 45 67` lines for the same contact
-- **THEN** `phones` SHALL contain exactly one entry with `value: '+41 79 123 45 67'`, `label: 'Mobile'`, and `isPrimary: true`
+- **THEN** `phones` SHALL contain exactly one entry with `value: '+41791234567'`, `label: 'Mobile'`, and `isPrimary: true`
 
 #### Scenario: vCard with two TEL lines normalizing to the same E.164
 
-- **WHEN** a vCard contains `TEL;TYPE=CELL:+41791234567` and `TEL;TYPE=HOME:079 123 45 67` (both normalize to `+41 79 123 45 67`)
-- **THEN** `phones` SHALL contain exactly one entry with `value: '+41 79 123 45 67'`, `label: 'Mobile'` (first non-null label kept), and `isPrimary: true` (CELL wins under existing primary-selection rules over a deduped set)
+- **WHEN** a vCard contains `TEL;TYPE=CELL:+41791234567` and `TEL;TYPE=HOME:079 123 45 67` (both normalize to `+41791234567`)
+- **THEN** `phones` SHALL contain exactly one entry with `value: '+41791234567'`, `label: 'Mobile'` (first non-null label kept), and `isPrimary: true` (CELL wins under existing primary-selection rules over a deduped set)
 
 #### Scenario: vCard duplicate where second copy carries PREF
 
 - **WHEN** a vCard contains `TEL;TYPE=CELL:+41 79 123 45 67` then `TEL;TYPE=HOME,PREF:+41 79 123 45 67`
-- **THEN** `phones` SHALL contain exactly one entry with `value: '+41 79 123 45 67'`, `label: 'Mobile'` (first non-null label), and `isPrimary: true` (PREF preserved via primary-selection running on the deduped set)
+- **THEN** `phones` SHALL contain exactly one entry with `value: '+41791234567'`, `label: 'Mobile'` (first non-null label), and `isPrimary: true` (PREF preserved via primary-selection running on the deduped set)
 
 #### Scenario: Contact Picker returns duplicate tel values
 
 - **WHEN** the Contact Picker yields a contact with `tel: ['+41 79 123 45 67', '+41 79 123 45 67']`
-- **THEN** `phones` SHALL contain exactly one `PickedPhone` with `value: '+41 79 123 45 67'`, `label: null`, and `isPrimary: true`
+- **THEN** `phones` SHALL contain exactly one `PickedPhone` with `value: '+41791234567'`, `label: null`, and `isPrimary: true`
 
 #### Scenario: Duplicate unparseable raw values collapse
 
@@ -38,72 +38,45 @@ Both import parsers (`useVCardImport.parseVCardText` and `useContactPicker.pickC
 - **WHEN** an imported contact yields two phones with different normalized values
 - **THEN** `phones` SHALL contain two entries and no merge SHALL occur
 
-### Requirement: Parsers emit emails alongside phones
-
-Both `useVCardImport.parseVCardText` and `useContactPicker.pickContacts` SHALL return a per-contact `emails: string[]` array. vCard parser SHALL extract every `EMAIL` field in the block; Contact Picker SHALL request the `email` property in `navigator.contacts.select`. Each email SHALL be trimmed and lowercased; values not matching a basic `<local>@<domain>.<tld>` shape SHALL be dropped silently. The array SHALL be deduplicated by exact (post-lowercase) match preserving first-seen order.
-
-#### Scenario: vCard contains EMAIL lines
-
-- **WHEN** a vCard block contains `EMAIL:foo@example.com` and `EMAIL;TYPE=WORK:Foo@Example.com`
-- **THEN** `emails` SHALL equal `['foo@example.com']`
-
-#### Scenario: Contact Picker returns email values
-
-- **WHEN** the Contact Picker yields `email: ['Foo@Example.com', 'bar@example.com']`
-- **THEN** `emails` SHALL equal `['foo@example.com', 'bar@example.com']`
-
-#### Scenario: Malformed emails dropped
-
-- **WHEN** an importer encounters values like `'not-an-email'` or empty strings
-- **THEN** those values SHALL NOT appear in `emails` and SHALL NOT raise an error
-
-#### Scenario: No email entries
-
-- **WHEN** the source contact has no email data
-- **THEN** `emails` SHALL be an empty array
-
 ### Requirement: Per-contact handling of invalid-only and mixed phone sets
 
-The contact-creation dialog import flow SHALL, for each parsed contact, branch on `(phones.length, rawPhoneNumbers.length, emails.length)`:
+`useContactImport().importContacts` SHALL decide each parsed contact's disposition, in this
+order, and SHALL return one result row per contact (`status` `'imported'` or `'skipped'`
+with a `skipReason`). Outcomes are reported in the import-results view, not by snackbars.
 
-1. If `phones.length === 0` AND `rawPhoneNumbers.length > 0`, the contact SHALL be skipped (no row inserted) and a snackbar resolving i18n key `contacts.errors.noValidPhone` SHALL be displayed, naming the contact.
-2. If `phones.length > 0` AND `rawPhoneNumbers.length > 0`, the contact SHALL be created with only the valid phones; a snackbar resolving i18n key `contacts.errors.someInvalidPhonesDiscarded` SHALL be displayed, naming the contact and the discarded count.
-3. If `phones.length === 0` AND `rawPhoneNumbers.length === 0` AND `emails.length > 0`, the contact SHALL be created with the parsed emails as `email` contact methods and no phone methods (no snackbar).
-4. If `phones.length === 0` AND `rawPhoneNumbers.length === 0` AND `emails.length === 0`, the contact SHALL be created with name only (existing behavior; no snackbar).
-5. If `phones.length > 0` AND `rawPhoneNumbers.length === 0`, the contact SHALL be created normally (existing behavior; no snackbar).
-
-The existing end-of-batch summary snackbar (imported / skipped counts) SHALL continue to fire and SHALL count contacts skipped under rule 1 in its skipped tally.
+1. A contact whose first AND last name match an existing contact (case-insensitive) SHALL
+   be skipped with `skipReason: 'nameDuplicate'`.
+2. A contact with `phones.length === 0` AND `rawPhoneNumbers.length > 0` SHALL be skipped
+   (no row inserted) with `skipReason: 'unparseable'`.
+3. A contact whose every valid phone already belongs to another existing contact SHALL be
+   skipped with `skipReason: 'phoneDuplicate'`.
+4. Otherwise the contact SHALL be created with its valid, non-duplicate phones; any
+   `rawPhoneNumbers` stay on the result row as discarded numbers. A contact with no phone
+   data at all SHALL be created with its name only.
 
 #### Scenario: Contact with TEL entries but none parseable
 
 - **WHEN** the parser returns a contact with `phones: []` and `rawPhoneNumbers: ['ext. 1234']`
-- **THEN** the dialog SHALL NOT create a TourenBuddy contact for that entry AND a snackbar resolving `contacts.errors.noValidPhone` SHALL display the contact's name
+- **THEN** no TourenBuddy contact SHALL be created for that entry AND its result row SHALL have `status: 'skipped'`, `skipReason: 'unparseable'`
 
 #### Scenario: Contact with mixed valid + invalid phones
 
-- **WHEN** the parser returns a contact with `phones: [{ value: '+41 79 123 45 67', ... }]` and `rawPhoneNumbers: ['ext. 1234', 'pbx 100']`
-- **THEN** the dialog SHALL create the contact with one phone method (`+41 79 123 45 67`) AND a snackbar resolving `contacts.errors.someInvalidPhonesDiscarded` SHALL display the name and the discarded count (`2`)
+- **WHEN** the parser returns a contact with `phones: [{ value: '+41791234567', ... }]` and `rawPhoneNumbers: ['ext. 1234', 'pbx 100']`
+- **THEN** the contact SHALL be created with one phone method (`+41791234567`) AND its result row SHALL have `status: 'imported'` and carry both discarded values in `rawPhoneNumbers`
 
-#### Scenario: Contact with no TEL but an email
+#### Scenario: Contact without phone data
 
-- **WHEN** the parser returns a contact with `phones: []`, `rawPhoneNumbers: []`, and `emails: ['friend@example.com']`
-- **THEN** the dialog SHALL create the contact with one `email` contact method and no phone methods, and SHALL emit no per-contact snackbar
+- **WHEN** the parser returns a contact with `phones: []` and `rawPhoneNumbers: []`
+- **THEN** the contact SHALL be created with name only and its result row SHALL have `status: 'imported'`
 
-#### Scenario: Contact with neither phone nor email
+#### Scenario: Skipped contacts counted in the summary
 
-- **WHEN** the parser returns a contact with `phones: []`, `rawPhoneNumbers: []`, and `emails: []`
-- **THEN** the dialog SHALL create the contact with name only and SHALL emit no per-contact snackbar
-
-#### Scenario: Skipped contacts counted in batch summary
-
-- **WHEN** the user imports 5 contacts where 1 is skipped under the invalid-only rule
-- **THEN** the end-of-batch summary SHALL report `4` imported and at least `1` skipped
-
-## MODIFIED Requirements
+- **WHEN** the user imports 5 contacts where 1 is skipped under the unparseable rule
+- **THEN** the results summary SHALL report `4` imported and `1` unparseable
 
 ### Requirement: vCard file import
 
-A `useVCardImport` composable SHALL provide a method to parse `.vcf` (vCard) files and extract contact information. This SHALL work on all browsers including iOS Safari. Every `TEL` line in a vCard block SHALL be processed; entries whose value normalizes successfully via the shared `normalizePhone` utility (see `phone-formatting` spec) SHALL be included in the contact's `phones` array with `value` set to the canonical international form. Entries whose value cannot be normalized SHALL NOT appear in `phones`; their trimmed raw value SHALL instead be appended to the contact's `rawPhoneNumbers` array. Each `phones` entry's `label` SHALL be derived from the `TEL` parameter types (e.g. `TYPE=CELL` → "Mobile", `TYPE=HOME` → "Home", `TYPE=WORK` → "Work"); when no recognised type is present, `label` SHALL be `null`. Primary selection SHALL use the following precedence, stopping at the first rule that selects an entry:
+A `useVCardImport` composable SHALL provide a method to parse `.vcf` (vCard) files and extract contact information. This SHALL work on all browsers including iOS Safari. Every `TEL` line in a vCard block SHALL be processed; entries whose value normalizes successfully via the shared `normalizePhone` utility (see `phone-formatting` spec) SHALL be included in the contact's `phones` array with `value` set to its E.164 form. Entries whose value cannot be normalized SHALL NOT appear in `phones`; their trimmed raw value SHALL instead be appended to the contact's `rawPhoneNumbers` array. Each `phones` entry's `label` SHALL be derived from the `TEL` parameter types (e.g. `TYPE=CELL` → "Mobile", `TYPE=HOME` → "Home", `TYPE=WORK` → "Work"); when no recognised type is present, `label` SHALL be `null`. Primary selection SHALL use the following precedence, stopping at the first rule that selects an entry:
 
 1. A `TEL` entry carrying a preference marker (vCard 3.0 `TYPE=PREF` or vCard 4.0 `PREF=` parameter). When multiple entries carry `PREF=`, the lowest numeric value wins.
 2. The first `TEL` entry whose `TYPE` parameter includes `CELL`.
@@ -136,7 +109,7 @@ Primary selection SHALL operate on the deduplicated `phones` set (see "Dedupe id
 #### Scenario: Extract multiple phones with labels
 
 - **WHEN** a vCard contains `TEL;TYPE=CELL:+41 79 123 45 67` and `TEL;TYPE=HOME:+41 44 222 33 44`
-- **THEN** `phones` SHALL be `[{ value: '+41 79 123 45 67', label: 'Mobile', isPrimary: true }, { value: '+41 44 222 33 44', label: 'Home', isPrimary: false }]`
+- **THEN** `phones` SHALL be `[{ value: '+41791234567', label: 'Mobile', isPrimary: true }, { value: '+41442223344', label: 'Home', isPrimary: false }]`
 
 #### Scenario: vCard 3.0 PREF marker selects primary
 
@@ -166,7 +139,7 @@ Primary selection SHALL operate on the deduplicated `phones` set (see "Dedupe id
 #### Scenario: Normalize national phone number per entry
 
 - **WHEN** a vCard contains `TEL;TYPE=CELL:0791234567`
-- **THEN** that entry's `value` SHALL equal `+41 79 123 45 67` (normalized using default region `CH`)
+- **THEN** that entry's `value` SHALL equal `+41791234567` (normalized using default region `CH`)
 
 #### Scenario: Unparseable phone goes to rawPhoneNumbers, not phones
 
@@ -190,7 +163,7 @@ Primary selection SHALL operate on the deduplicated `phones` set (see "Dedupe id
 
 ### Requirement: Import contacts via Contact Picker API
 
-The `useContactPicker` composable SHALL provide a `pickContacts()` method that opens the native contact picker requesting `name`, `tel`, and `email` properties with multi-select enabled. Each `tel` entry returned by the platform whose value normalizes successfully via `normalizePhone` SHALL be included in the contact's `phones` array with `value` set to the canonical international form. Entries whose value cannot be normalized SHALL NOT appear in `phones`; their trimmed raw value SHALL instead be appended to `rawPhoneNumbers`. The first parseable `tel` entry (in source order) SHALL be marked `isPrimary: true` in the deduplicated `phones` set (the Contact Picker API does not expose preference). `label` SHALL be `null` for every entry.
+The `useContactPicker` composable SHALL provide a `pickContacts()` method that opens the native contact picker requesting the `name` and `tel` properties with multi-select enabled. Each `tel` entry returned by the platform whose value normalizes successfully via `normalizePhone` SHALL be included in the contact's `phones` array with `value` set to its E.164 form. Entries whose value cannot be normalized SHALL NOT appear in `phones`; their trimmed raw value SHALL instead be appended to `rawPhoneNumbers`. The first parseable `tel` entry (in source order) SHALL be marked `isPrimary: true` in the deduplicated `phones` set (the Contact Picker API does not expose preference). `label` SHALL be `null` for every entry.
 
 #### Scenario: User selects a contact with multiple phones
 
@@ -200,7 +173,7 @@ The `useContactPicker` composable SHALL provide a `pickContacts()` method that o
 #### Scenario: User selects a contact with one parseable phone
 
 - **WHEN** the user selects a contact with a single parseable phone
-- **THEN** `phones` SHALL contain one entry with the canonical international value and `isPrimary: true`
+- **THEN** `phones` SHALL contain one entry with the E.164 value and `isPrimary: true`
 
 #### Scenario: User selects a contact with an unparseable phone
 
@@ -214,7 +187,7 @@ The `useContactPicker` composable SHALL provide a `pickContacts()` method that o
 
 #### Scenario: User cancels picker
 
-- **WHEN** the user dismisses the native contact picker without selecting
+- **WHEN** the user dismisses the native contact picker without selecting, or the API is unsupported
 - **THEN** the composable SHALL return an empty array
 
 ### Requirement: Import skips phones already held by another contact
@@ -240,12 +213,12 @@ importing the contact's remaining, non-duplicate phones.
 ### Requirement: Import results are presented as a grouped summary box
 
 The import-results view MUST present outcomes as a summary box with distinct grouped
-categories — at minimum: imported, skipped as already on another contact, and
-unparseable — rather than a single bare "X skipped" label. Each non-empty category
+categories — imported, skipped as already on another contact, skipped as a name
+duplicate, and unparseable — rather than a single bare "X skipped" label. Each non-empty category
 SHALL show its count and enough context to identify what it refers to.
 
 #### Scenario: Skipped cross-contact duplicates are reported in the summary
-- **WHEN** an import skips one or more phones/emails because they already exist on other contacts
+- **WHEN** an import skips one or more contacts because all their phones already exist on other contacts
 - **THEN** the results summary box shows a "already on another contact" category with the skipped count, distinct from the unparseable category
 
 #### Scenario: Empty categories are omitted
@@ -254,47 +227,51 @@ SHALL show its count and enough context to identify what it refers to.
 
 ### Requirement: Importing via Contact Picker
 
-The contact creation dialog SHALL display import options based on platform capabilities and commit every imported phone per contact.
+The contact creation dialog SHALL display import options based on platform capabilities (the
+"Import from contacts" button only where the Contact Picker API exists), run every parsed
+contact through `useContactImport().importContacts`, and then switch to the import-results
+view.
 
 #### Scenario: Importing via Contact Picker
 
 - **WHEN** the user taps "Import from contacts" and selects device contacts
-- **THEN** the app SHALL create a TourenBuddy contact for each selected contact, insert one `contact_methods` phone row per entry in the contact's `phones` array, and display a snackbar confirming the count
+- **THEN** the app SHALL create a TourenBuddy contact for each importable selected contact, with one `contact_methods` phone row per non-duplicate entry in its `phones` array, and SHALL show the import-results view
 
 #### Scenario: Importing via vCard file
 
 - **WHEN** the user taps "Import from file" and selects a `.vcf` file
-- **THEN** the app SHALL parse the file, create a TourenBuddy contact for each vCard entry with one `contact_methods` phone row per phone in `phones`, and display a snackbar confirming the count
+- **THEN** the app SHALL parse the file, create a TourenBuddy contact for each importable vCard entry with one `contact_methods` phone row per non-duplicate phone, and SHALL show the import-results view
 
 #### Scenario: Import with duplicate prevention
 
 - **WHEN** an imported contact (from either method) matches an existing TourenBuddy contact by first name AND last name (case-insensitive)
-- **THEN** the import SHALL skip that contact and the snackbar SHALL indicate how many were skipped
+- **THEN** the import SHALL skip that contact and the results summary SHALL count it as a name duplicate
 
 ### Requirement: Import results surface unparseable phones
 
-The contact creation dialog SHALL distinguish imported contacts whose primary phone could not be normalized so the user knows which entries to fix. When a contact has multiple phones, the import-results row SHALL show the primary phone inline and the remaining phones collapsed behind a "+N more" indicator.
+Only valid phones are ever stored, so the import-results row SHALL surface the numbers that
+could not be normalized (`rawPhoneNumbers`) so the user knows which entries to fix. The row
+SHALL show the primary phone inline, formatted for display, with the remaining valid phones
+collapsed behind a "+N more" indicator.
 
-#### Scenario: Import-results row for unparseable primary phone
+#### Scenario: Import-results row with discarded numbers
 
-- **WHEN** the import-results view renders a row whose primary phone `value` is non-null but does not match the canonical international format
-- **THEN** the row SHALL display a visible "couldn't parse" indicator next to the phone number (e.g. an info icon or muted label) so the user can open the contact and fix it
+- **WHEN** the import-results view renders a row whose `rawPhoneNumbers` is non-empty and whose skip reason is not a duplicate
+- **THEN** the row SHALL display a warning marker with the first discarded value (and a count of further ones), and a tooltip listing all of them
 
-#### Scenario: Import-results row for canonical primary phone
+#### Scenario: Import-results row without discarded numbers
 
-- **WHEN** the import-results view renders a row whose primary phone `value` is in canonical international format (or the contact has no phones)
-- **THEN** no "couldn't parse" indicator SHALL be shown
+- **WHEN** the import-results view renders a row whose `rawPhoneNumbers` is empty
+- **THEN** no discarded-number indicator SHALL be shown
 
 #### Scenario: Import-results row collapses secondary phones
 
 - **WHEN** an imported contact has more than one phone
 - **THEN** the import-results row SHALL display only the primary phone inline and a "+N more" indicator where N is the count of remaining phones
 
-## ADDED Requirements
-
 ### Requirement: Import results integrate connect prompt
 
-The import-results component SHALL, after parsing vCard or device-picker contacts, batch-call `useFriendshipsStore().findUsersByPhones(uniquePhones)` once for the union of unique normalized phone values across all parsed rows. Each result row whose phones include a matched verified user (excluding the caller) SHALL render the inline connect prompt defined by the `contact-account-linking` capability. Importing the contact and sending the friend request SHALL be independent operations — neither blocks the other.
+The import-results component SHALL, after parsing vCard or device-picker contacts, batch-call `useFriendshipsStore().findUsersByPhones(uniquePhones)` once for the union of unique normalized phone values across all parsed rows. The call SHALL only be made when the caller's own phone is verified. Each result row whose primary phone matches a verified user who is not the caller and not already a friend SHALL render the inline connect prompt defined by the `contact-account-linking` capability. Importing the contact and sending the friend request SHALL be independent operations — neither blocks the other.
 
 #### Scenario: Import-results renders prompts
 

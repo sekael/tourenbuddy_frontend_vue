@@ -73,6 +73,9 @@ begin
   );
 end;
 $$;
+-- Called as `authenticated`; new functions get no implicit EXECUTE (20261012144059).
+grant execute on function pg_temp.resave(uuid, text, text, boolean, text, uuid[], text[], text)
+  to authenticated;
 
 \set patrick '11111111-1111-1111-1111-111111111111'
 \set jakob '22222222-2222-2222-2222-222222222222'

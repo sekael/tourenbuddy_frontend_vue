@@ -207,7 +207,7 @@ function handleRowClick(tourId: string) {
     <!-- Escape is bound here, not on the panel: focus may legitimately sit in the
          search input, which is the panel's SIBLING, so a listener on the panel root
          would never see that keydown. This is the nearest common ancestor. -->
-    <div v-else class="list-view" @keydown.escape="closeFilters">
+    <div v-else class="list-view" :class="{ 'list-view--drawer': isDesktop }" @keydown.escape="closeFilters">
       <div ref="listHeaderEl" class="list-header">
         <div
           class="tabs"
@@ -333,12 +333,15 @@ function handleRowClick(tourId: string) {
 </template>
 
 <style scoped>
-/* The sheet's `.content` is the one scroller. Its body keeps its natural height
-   (that is how the sheet measures what to fit), so nothing in here ever gets a
-   definite height to scroll within. Keep it that way: a nested `overflow: auto`
+/* Mobile: the sheet's `.content` is the one scroller. Its body keeps its natural
+   height (that is how the sheet measures what to fit), so nothing in here ever gets
+   a definite height to scroll within. Keep it that way: a nested `overflow: auto`
    that never overflows still catches the touch on Chromium (Android), and with
    `overscroll-behavior: contain` it refuses to hand the gesture on to the sheet —
-   the list stops scrolling. iOS skips such boxes, which hides the bug there. */
+   the list stops scrolling. iOS skips such boxes, which hides the bug there.
+   Desktop is the opposite: the side drawer is 100vh, so `height: 100%` resolves,
+   the list exactly fills the drawer's scroller and `.list-region` clips the rows —
+   there the list must scroll itself (`.list-view--drawer`). */
 .list-view {
   display: flex;
   flex-direction: column;
@@ -429,6 +432,15 @@ function handleRowClick(tourId: string) {
   min-height: 0;
   position: relative;
   overflow: hidden;
+}
+
+/* Desktop only (see `.list-view`). `overflow-x` explicit: unset, it computes to
+   `auto` and the tab-swap slide would flash a horizontal scrollbar. */
+.list-view--drawer .tours-scroll {
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 /* Opaque, not a translucent scrim: tour names bleeding through the filter chips is

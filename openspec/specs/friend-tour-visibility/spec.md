@@ -1,7 +1,7 @@
 # friend-tour-visibility Specification
 
 ## Purpose
-TBD - created by archiving change friend-tour-visibility. Update Purpose after archive.
+Per-tour `private` / `friends` visibility and the two-layer read model for friends: friends see friends-visible tours, and only marked partners see the gated details (dates, GPX, attachments, partner roster), delivered live via a per-viewer broadcast topic.
 ## Requirements
 
 ### Requirement: Per-tour visibility setting
@@ -17,7 +17,7 @@ Each tour SHALL carry a `visibility` value of either `private` or `friends`, def
 
 #### Scenario: Non-owner cannot change visibility
 - **WHEN** a user who is not the owner attempts to update a tour's visibility
-- **THEN** the update is rejected by RLS and the value is unchanged
+- **THEN** the write is rejected (no direct UPDATE privilege; `update_tour_full` raises for a non-owner) and the value is unchanged
 
 #### Scenario: Invalid visibility value rejected
 - **WHEN** a write sets `visibility` to any value other than `private` or `friends`
@@ -48,9 +48,15 @@ The friend-read view SHALL never expose the owner's raw `partner_ids`. When a fr
 
 `end_date` SHALL be gated by exactly the same predicate as `planned_date`: a viewer who may not learn when a tour starts SHALL NOT learn how long it lasts.
 
+Code that runs as the client (the friend-read view, the partner-friend RLS and storage policies) SHALL only learn whether the **caller** is a partner (`is_tour_partner`). The resolved partner user-id set (`tour_partner_user_ids`) SHALL NOT be client-callable; only server-side SECURITY DEFINER code (RPCs, notification jobs) uses it.
+
 #### Scenario: Non-partner friend sees gated fields
 - **WHEN** friend B reads owner A's `friends`-visible tour on which B is not a partner
 - **THEN** the returned row has empty partner names, `planned_date` null, `end_date` null, and `gpx_filepath` null, while name/location/type remain visible
+
+#### Scenario: Non-partner friend cannot read the roster directly
+- **WHEN** friend B, not a partner on owner A's `friends`-visible tour, calls `tour_partner_user_ids` with that tour's id
+- **THEN** the call is rejected with a permission error, and `is_tour_partner` for that tour returns false for B
 
 #### Scenario: Partner friend sees full detail
 - **WHEN** friend B reads a tour on which B is a marked partner (B's verified phone matches a partner contact)
@@ -90,6 +96,8 @@ GPX track files **and tour attachments** SHALL be readable by a partner-friend o
 
 Owner-only write isolation SHALL be preserved when a partner suggests a file: the partner writes only into their **own** uid prefix, and the tour owner gains SELECT solely on objects referenced by a suggestion on their own tour. No policy SHALL grant any user write access to another user's prefix.
 
+Every cross-user read grant SHALL also pin the object's first path segment: partner-friend grants only match objects under the tour **owner's** uid prefix, and suggestion grants only match objects under the **suggester's** uid prefix. The paths these grants match on (`tours.gpx_filepath`, `tour_attachments.storage_path`, a suggestion's `storagePath`) are written by users, so without the pin a crafted path could expose a third user's private object.
+
 #### Scenario: Partner friend downloads the GPX
 - **WHEN** a partner-friend requests the GPX object of a friends-visible tour they are a partner on
 - **THEN** the storage policy permits the download
@@ -106,20 +114,24 @@ Owner-only write isolation SHALL be preserved when a partner suggests a file: th
 - **WHEN** any non-owner requests the GPX object or attachments of a private tour
 - **THEN** the storage policy and table RLS deny access
 
+#### Scenario: Crafted path to a third user's object is denied
+- **WHEN** a tour's `gpx_filepath` or attachment `storage_path`, or a suggestion's `storagePath`, names an object under a third user's prefix
+- **THEN** no partner-friend or suggestion grant permits reading that object
+
 #### Scenario: Partner cannot write into the owner's prefix
 - **WHEN** a marked partner attempts to upload directly into the tour owner's storage prefix
 - **THEN** the storage policy denies the write, and staging under the partner's own prefix remains the only path
 
 ### Requirement: Friend tours on the map
-The map SHALL display, in addition to the user's own tours, **all** friend tours the user is permitted to read — both those the user is a marked partner on and those they are not. Such friend markers SHALL carry a friendship indicator within the marker, participate in clustering, and otherwise behave like owned-tour markers.
+The map SHALL display, in addition to the user's own tours, the friend tours the user is a **marked partner** on. Friend tours the user may read but is not a partner on SHALL NOT get a marker (they remain listed in the Friends tab). Friend markers SHALL carry a friendship indicator within the marker, participate in clustering, and otherwise behave like owned-tour markers. A partner friend tour colliding with an owned tour (see `tour-collision-handling`) SHALL be suppressed in favour of the owned marker, except while it is the selected tour, when it replaces the owned marker(s) it collides with.
 
 #### Scenario: Partner friend tour rendered with indicator
 - **WHEN** the map loads and the user is a partner on a friend's `friends`-visible tour
 - **THEN** the tour appears as a marker with a friendship indicator and is included in clustering
 
-#### Scenario: Non-partner friend tour also rendered
+#### Scenario: Non-partner friend tour has no marker
 - **WHEN** a friend has a `friends`-visible tour on which the user is not a partner
-- **THEN** the tour still appears on the map as a friend marker (gated detail applies only when the tour is opened)
+- **THEN** the tour has no map marker but is listed in the Friends tab in gated form
 
 ### Requirement: Owned and friends list tabs
 The tour list ("My Tours") SHALL default to owned tours and SHALL present two separate tabs — Owned and Friends — with no merged list. Search and filtering SHALL operate independently within each tab. The Friends tab SHALL list all friend tours the user is permitted to read, with non-partner tours shown in gated form.
@@ -276,7 +288,7 @@ Friend-tour realtime MUST be wired through a shared `src/core/realtime/use-realt
 
 ### Requirement: Friend-tour broadcast handler MUST NOT dispatch notifications
 
-The friend-tour broadcast handler MUST NOT trigger any notification dispatch (push or email). Realtime remains UI-sync only; `tour_updates` fanout stays in the Worker.
+The friend-tour broadcast handler MUST NOT trigger any notification dispatch (push or email). Realtime remains UI-sync only; `tour_updates` events are recorded by the database inside the tour write RPCs (see `notification-inbox`).
 
 #### Scenario: No notification dispatch from the broadcast handler
 - **WHEN** a friend-tour `refetch` broadcast is received

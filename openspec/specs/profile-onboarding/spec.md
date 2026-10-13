@@ -1,6 +1,6 @@
 ## Purpose
 
-Guided first-run flow to capture the minimum profile data required to use the app (display name, locale, phone).
+Guided first-run flow to capture the minimum profile data required to use the app (first and last name, optionally a verified phone).
 
 ## Requirements
 
@@ -18,10 +18,10 @@ An onboarding page at `/onboarding` SHALL collect first name, last name, and pho
 - **WHEN** an authenticated user with a complete profile navigates to `/map`
 - **THEN** the router guard SHALL allow navigation to `/map` without redirect
 
-#### Scenario: User who previously skipped onboarding is not redirected
+#### Scenario: User who skipped onboarding in this session is not redirected
 
-- **WHEN** an authenticated user with an incomplete profile who previously skipped onboarding navigates to `/map`
-- **THEN** the router guard SHALL allow navigation to `/map` (skip flag stored in localStorage)
+- **WHEN** an authenticated user with an incomplete profile who skipped onboarding earlier in the current app session navigates to `/map`
+- **THEN** the router guard SHALL allow navigation to `/map`
 
 ### Requirement: Onboarding form with validation
 
@@ -44,12 +44,12 @@ The onboarding form SHALL validate that first name and last name are non-empty s
 
 ### Requirement: Skip onboarding option
 
-Users SHALL be able to skip the onboarding flow. A skip action SHALL set a `skippedOnboarding` flag in localStorage and navigate to `/map`.
+Users SHALL be able to skip the onboarding flow. A skip action SHALL set the in-memory `sessionSkipped` flag on the user-profile store and navigate to `/map`. The flag is not persisted: it clears on sign-out and on a full reload, so an incomplete profile is offered onboarding again in the next session.
 
 #### Scenario: User skips onboarding
 
 - **WHEN** user clicks "Skip" on the onboarding page
-- **THEN** `skippedOnboarding` SHALL be set to `true` in localStorage and user SHALL be navigated to `/map`
+- **THEN** `sessionSkipped` SHALL become `true` and the user SHALL be navigated to `/map`
 
 #### Scenario: Reminder text displayed
 
@@ -62,7 +62,7 @@ A router `beforeEach` guard SHALL check profile completeness for routes with `re
 
 #### Scenario: Guard redirects incomplete profile
 
-- **WHEN** navigation targets a route with `requiresCompleteProfile: true` AND the user's profile is incomplete AND `skippedOnboarding` is not set in localStorage
+- **WHEN** navigation targets a route with `requiresCompleteProfile: true` AND the user's profile is loaded and incomplete AND `sessionSkipped` is false
 - **THEN** the guard SHALL redirect to `/onboarding`
 
 #### Scenario: Guard allows complete profile

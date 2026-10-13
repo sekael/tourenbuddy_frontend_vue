@@ -1,14 +1,18 @@
 # tourenbuddy-email-hook
 
-Cloudflare Worker implementing the Supabase "Send Email Hook". Receives Supabase auth email payloads via HMAC-verified webhook, picks a Brevo transactional template based on the user's locale, and sends the OTP code email.
+Cloudflare Worker with three jobs:
 
-See implementation spec: `../../openspec/changes/switch-auth-to-otp/`
+1. **Supabase "Send Email Hook"** — receives Supabase auth email payloads via a Standard-Webhooks-signed request, picks a Brevo transactional template by the user's locale, and sends the OTP code email.
+2. **Notification delivery** — `POST /notify/event`, called by the database for every new inbox row; sends push and email.
+3. **Calendar** — scheduled and on-demand calendar feed sync, plus the outbound `.ics` tour feed.
+
+Spec: [`openspec/specs/auth-email-hook`](../../openspec/specs/auth-email-hook/spec.md). Deploys are manual (`wrangler deploy`); CI never ships the Worker.
 
 ## Brevo templates
 
 Create the Brevo transactional templates under **Transactional → Templates → Create a template**.
 
-### OTP sign-in templates (currently used by the worker)
+### OTP sign-in templates
 
 | Template name | Subject (Brevo)                 | Language |
 | ------------- | ------------------------------- | -------- |
@@ -22,21 +26,19 @@ Required template params (passed by Worker):
 
 Include a "Do not share this code. It expires in 1 hour." warning in the template body.
 
-### Friend-notification templates (planned)
+### Notification templates
 
-The worker source (`src/index.ts`) does **not** yet dispatch friend-related emails — these template IDs are reserved for the upcoming feature and are already declared in `.dev.vars.example` so configuration can be staged ahead of implementation.
+Notification emails use one template per type and locale (copy-ready drafts in `brevo-templates/`), parameterized by `action`:
 
-| Template name         | Subject (suggested)                 | Language | Trigger                                 |
-| --------------------- | ----------------------------------- | -------- | --------------------------------------- |
-| `friend_received_en`  | `New friend request on TourenBuddy` | EN       | Recipient receives a new friend request |
-| `friend_received_de`  | `Neue Freundschaftsanfrage`         | DE       | "                                       |
-| `friend_responded_en` | `Your friend request was answered`  | EN       | Sender's request is accepted or denied  |
-| `friend_responded_de` | `Deine Freundschaftsanfrage`        | DE       | "                                       |
+| Secret (EN / DE)                              | Used for                                                                                     |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `BREVO_TEMPLATE_FRIEND_RECEIVED_EN` / `_DE`   | friend request received                                                                      |
+| `BREVO_TEMPLATE_FRIEND_RESPONDED_EN` / `_DE`  | friend request responded (outcome never disclosed)                                           |
+| `BREVO_TEMPLATE_TOUR_UPDATES_EN` / `_DE`      | shared-tour created/updated/deleted, suggestions, weekly availability summary, tour reminder |
+| `BREVO_TEMPLATE_TOUR_INTEREST_EN` / `_DE`     | collision, backfill digest, link created/declined, group joined/evicted                      |
+| `BREVO_TEMPLATE_TOUR_LINK_DELETED_EN` / `_DE` | group dissolved                                                                              |
 
-Common template params (when wired up):
-
-- `{{ params.actor_name }}` — display name of the other user
-- `{{ params.app_url }}` — link back into the app
+A missing or non-numeric template id skips that email (logged); push is unaffected.
 
 Sender for all templates: `no-reply@tourenbuddy.ch`. Note the numeric `templateId` from each template's detail page — you need it for the matching env var.
 
@@ -49,15 +51,9 @@ wrangler secret put BREVO_API_KEY
 wrangler secret put SEND_EMAIL_HOOK_SECRET
 wrangler secret put BREVO_TEMPLATE_EN   # numeric ID of otp_en template
 wrangler secret put BREVO_TEMPLATE_DE   # numeric ID of otp_de template
-
-# Reserved for the planned friend-notification feature — set in advance so
-# config is in place when the worker starts dispatching them. Not yet read
-# by src/index.ts.
-wrangler secret put BREVO_TEMPLATE_FRIEND_RECEIVED_EN
-wrangler secret put BREVO_TEMPLATE_FRIEND_RECEIVED_DE
-wrangler secret put BREVO_TEMPLATE_FRIEND_RESPONDED_EN
-wrangler secret put BREVO_TEMPLATE_FRIEND_RESPONDED_DE
 ```
+
+Notification and calendar secrets (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, VAPID keys, `NOTIFY_WEBHOOK_SECRET`, the template ids above, optional `APP_URL`) are listed in [SETUP-NOTIFICATIONS.md](./SETUP-NOTIFICATIONS.md).
 
 No `[vars]` configuration required in `wrangler.toml`.
 
@@ -102,23 +98,11 @@ Content-Type: application/json
 - Push/email link: `<APP_URL>/?notification=<id>` — the app marks the entry read and opens its target.
 - Friend-request copy never reveals accept vs decline.
 
-### Brevo friend-request templates
-
-| Secret name                          | Template purpose                  |
-| ------------------------------------ | --------------------------------- |
-| `BREVO_TEMPLATE_FRIEND_RECEIVED_EN`  | "New friend request" — English    |
-| `BREVO_TEMPLATE_FRIEND_RECEIVED_DE`  | "New friend request" — German     |
-| `BREVO_TEMPLATE_FRIEND_RESPONDED_EN` | "Friend request update" — English |
-| `BREVO_TEMPLATE_FRIEND_RESPONDED_DE` | "Friend request update" — German  |
-
-Template params: `{{ params.actorName }}`, `{{ params.appUrl }}`
-
-Copy-ready HTML and TXT drafts are in `brevo-templates/`.
-
 ## Calendar sync (#287)
 
-Uses the existing `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` secrets; no new secrets. Design:
-`openspec/changes/calendar-availability-sync/design.md` (D3–D10).
+Uses the existing `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` secrets; no new secrets. Spec:
+[`openspec/specs/calendar-sync`](../../openspec/specs/calendar-sync/spec.md); design in the archived
+change `openspec/changes/archive/2026-10-02-calendar-availability-sync/design.md` (D3–D10).
 
 - **Cron** `0 */6 * * *` (`wrangler.toml` `[triggers]`) → `scheduled()` syncs every user with a feed.
 - **`POST /calendar/sync`** — `Authorization: Bearer <user JWT>`; syncs the caller only. Returns

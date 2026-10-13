@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - created by archiving change gpx-track-support. Update Purpose after archive.
+Optional GPX track per tour: stored in the private `tour-gpx` Storage bucket under the owner's prefix, rendered on the map in a darker tour-type colour, fetched lazily and cached, and downloadable as the original file.
 
 ## Requirements
 
@@ -33,7 +33,7 @@ The system SHALL persist user-uploaded GPX files in a private Supabase Storage b
 
 ### Requirement: Bucket access control
 
-The system SHALL enforce access on `tour-gpx` via RLS policies on `storage.objects` that authorise writes by the path's user prefix and reads by joining the `tours` row identified by the path. INSERT, UPDATE, and DELETE policies SHALL require `(storage.foldername(name))[1] = auth.uid()::text` and SHALL NOT depend on the existence of a `tours` row, so pre-upload during tour creation is permitted. The SELECT policy SHALL authorise the tour's owner today (`auth.uid() = tours.user_id`) using a defensive comparison that does not raise on malformed paths, and MUST be structured so that adding shared-tour and public-tour clauses later requires only an `OR` extension to the SELECT policy — no path or schema migration of existing data.
+The system SHALL enforce access on `tour-gpx` via RLS policies on `storage.objects`. INSERT, UPDATE, DELETE and the owner's SELECT SHALL require the object's first path segment to equal `auth.uid()::text` and SHALL NOT depend on the existence of a `tours` row, so pre-upload during tour creation is permitted. Additional SELECT grants SHALL be additive (`OR`): a partner-friend of a friends-visible tour may read the object named by that tour's `gpx_filepath` when it lies in the tour owner's prefix (see `friend-tour-visibility`), and a tour owner may read a pending GPX suggestion's staged object in the suggester's prefix (see `tour-suggestions`). The bucket SHALL cap objects at 10 MiB.
 
 #### Scenario: Authenticated user uploads under their prefix
 
@@ -47,37 +47,32 @@ The system SHALL enforce access on `tour-gpx` via RLS policies on `storage.objec
 
 #### Scenario: Owner reads own track
 
-- **WHEN** an authenticated user requests a signed URL for `${userId}/${tourId}.gpx` and owns that tour
+- **WHEN** an authenticated user requests a signed URL for an object under their own prefix
 - **THEN** Supabase returns a valid time-limited URL
 
-#### Scenario: Non-owner read denied
+#### Scenario: Unrelated user read denied
 
-- **WHEN** an authenticated user requests `${otherUserId}/${tourId}.gpx` for a tour they do not own
+- **WHEN** an authenticated user who is neither the owner nor a partner-friend requests `${otherUserId}/${tourId}.gpx`
 - **THEN** Supabase responds with an RLS denial
-
-#### Scenario: Malformed object name does not raise
-
-- **WHEN** an object exists in the bucket whose name does not match the `${uuid}/${uuid}.gpx` pattern
-- **THEN** policy evaluation completes without raising and the row is simply not authorised for SELECT
 
 ### Requirement: Cascade deletion
 
-The system SHALL delete the GPX Storage object when its associated tour is deleted, when the user explicitly removes the track from the tour, or when the user replaces it via re-upload (overwrite semantics).
+The client SHALL delete the GPX Storage object when its tour is deleted (online, or on replay of a queued delete), when the user removes the track from the tour, and when a replace leaves the previous object behind. Removal is best-effort: a failed removal SHALL be logged and SHALL NOT fail the tour write. There is no database-side cleanup, so a crash between the row delete and the object removal can orphan the object.
 
 #### Scenario: Tour deleted
 
 - **WHEN** a user deletes a tour with `gpx_filepath` set
-- **THEN** the corresponding Storage object is removed (client-initiated, with DB trigger as fallback)
+- **THEN** the client removes the corresponding Storage object after the row is deleted
 
 #### Scenario: Track removed in edit
 
 - **WHEN** a user clicks the remove-track action and saves the tour
-- **THEN** the Storage object is deleted and `gpx_filepath` is set to null
+- **THEN** `gpx_filepath` is set to null and the previous Storage object is removed
 
-#### Scenario: Orphan cleanup safety net
+#### Scenario: Removal fails
 
-- **WHEN** a tour row is deleted but the client did not clean up Storage (e.g., crash)
-- **THEN** the `AFTER DELETE` trigger on `tours` removes the object using the stored `gpx_filepath`
+- **WHEN** the Storage removal fails after the tour row was deleted
+- **THEN** the tour stays deleted and a warning is logged
 
 ### Requirement: Track rendering with darker tour-type color
 

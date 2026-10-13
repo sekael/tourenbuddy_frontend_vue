@@ -37,7 +37,6 @@ On first application load (no persisted user choice), the system SHALL select th
 - **WHEN** the user has no persisted locale and no `navigator.languages` entry matches a supported code or base
 - **THEN** the active locale SHALL be `en`
 
-## MODIFIED Requirements
 
 ### Requirement: Locale persistence per device
 

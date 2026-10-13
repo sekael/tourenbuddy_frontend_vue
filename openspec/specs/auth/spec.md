@@ -16,7 +16,7 @@ The app SHALL display an OTP verification page at `/auth/verify-otp` where users
 #### Scenario: Invalid or expired code
 
 - **WHEN** Supabase returns an error from `verifyOtp` (wrong code, expired, used)
-- **THEN** the page SHALL display a localized error message under the input, clear the input, and remain on `/auth/verify-otp`
+- **THEN** the page SHALL display the error's message under the input (a localized generic message when the error carries none), clear the input, and remain on `/auth/verify-otp`
 
 #### Scenario: Rejected code is not resubmitted unchanged
 
@@ -30,8 +30,18 @@ The app SHALL display an OTP verification page at `/auth/verify-otp` where users
 
 #### Scenario: Resend code
 
-- **WHEN** the user clicks the resend button on `/auth/verify-otp`
-- **THEN** the app SHALL call `sendEmailOtp(email)` and SHALL display a localized confirmation that a new code was sent
+- **WHEN** the user clicks the resend button on `/auth/verify-otp` after its cooldown has elapsed
+- **THEN** the app SHALL call `sendEmailOtp(email)`, SHALL display a localized confirmation that a new code was sent, and SHALL restart the 60-second cooldown
+
+#### Scenario: Resend is cooling down
+
+- **WHEN** the page opens (a code was just sent), or a code was resent less than 60 seconds ago
+- **THEN** the resend button SHALL be disabled and SHALL show a localized countdown of the remaining seconds
+
+#### Scenario: Resend hits the server's rate limit
+
+- **WHEN** `sendEmailOtp` rejects with HTTP 429 naming a wait in seconds
+- **THEN** the page SHALL restart the countdown with that wait instead of showing an error; any other failure SHALL show a localized resend error
 
 #### Scenario: Back to email entry
 
@@ -98,8 +108,6 @@ name.
   a placeholder and no visible label
 - **THEN** the field is announced by its associated visually-hidden `<label>`, and the
   name remains available after the placeholder is replaced by typed input
-
-## MODIFIED Requirements
 
 ### Requirement: Email entry page collects user email
 
@@ -348,22 +356,3 @@ When the auth store calls `signInWithOtp` and the user does not yet exist, the r
 - **WHEN** a new user with active i18n locale `en` requests an OTP
 - **THEN** the call SHALL pass `options.data.locale = 'en'`
 
-## REMOVED Requirements
-
-### Requirement: Magic link callback page completes session
-
-**Reason**: Magic links break the installed-PWA experience — the link always opens in the system browser, not the standalone PWA window, leaving the user unable to complete sign-in inside the app. Replaced by 6-digit OTP code entry in `/auth/verify-otp`.
-
-**Migration**: Delete `src/features/auth/presentation/pages/callback-page.vue` and the `/auth/callback` route. Remove `https://app.tourenbuddy.ch/auth/callback` from the Supabase Auth → URL Configuration → Redirect URLs allowlist. Anyone holding an unredeemed magic link SHALL request a new code.
-
-### Requirement: Email entry page collects user email (magic-link variant)
-
-**Reason**: The `signInWithOtp` call no longer passes `emailRedirectTo`; see the MODIFIED variant above. This requirement is superseded.
-
-**Migration**: Update `email-entry-page.vue` to call `sendEmailOtp(email)` and navigate to `/auth/verify-otp?email=<email>` instead of `/auth/check-email`. The `check-email-page.vue` file SHALL be deleted.
-
-### Requirement: Home page presents a "Get Started" call to action
-
-**Reason**: Issue #260 — the intermediate landing screen carried no information the sign-in screen did not, costing every signed-out user an extra tap and page load before they could enter their email.
-
-**Migration**: The email form moved onto `/`; `src/features/auth/presentation/pages/email-entry-page.vue` and the `/auth/email` route were deleted, and the `auth.home` i18n block (`subtitle`, `getStartedBtn`) was removed from every locale.

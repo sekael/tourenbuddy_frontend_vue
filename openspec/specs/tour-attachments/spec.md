@@ -6,22 +6,27 @@ Attach images and PDFs to tours, stored in Supabase Storage with signed-URL retr
 
 ### Requirement: Per-tour attachment storage
 
-The system SHALL persist file attachments associated with a tour in a dedicated `tour_attachments` table and a private Supabase Storage bucket `tour-attachments`. Attachment rows SHALL be readable, writable, and deletable only by the owning user via RLS.
+The system SHALL persist file attachments associated with a tour in a dedicated `tour_attachments` table and a private Supabase Storage bucket `tour-attachments` (10 MiB per object). Attachment rows and objects SHALL be readable by the tour's owner and, for a friends-visible tour, by its partner-friends (see `friend-tour-visibility`); everyone else SHALL be denied. Rows SHALL be writable and deletable only by the owner, and an inserted or updated row SHALL reference a tour the caller owns.
 
 #### Scenario: Owner reads own attachments
 
 - **WHEN** an authenticated user queries attachments for a tour they own
 - **THEN** the rows for that tour SHALL be returned
 
-#### Scenario: Non-owner cannot read attachments
+#### Scenario: Unrelated user cannot read attachments
 
-- **WHEN** an authenticated user queries attachments for a tour owned by another user
+- **WHEN** an authenticated user who is neither the owner nor a partner-friend queries attachments for another user's tour
 - **THEN** the query SHALL return zero rows
 
-#### Scenario: Non-owner cannot read storage object
+#### Scenario: Unrelated user cannot read storage object
 
-- **WHEN** an authenticated user attempts to generate a signed URL for an attachment they do not own
+- **WHEN** an authenticated user who is neither the owner nor a partner-friend attempts to generate a signed URL for an attachment
 - **THEN** the Storage API SHALL deny the request
+
+#### Scenario: Attachment row on someone else's tour is rejected
+
+- **WHEN** a user inserts a `tour_attachments` row whose `tour_id` belongs to another user, even with their own `user_id`
+- **THEN** RLS SHALL reject the insert
 
 ### Requirement: Attachment count limit per tour
 
@@ -293,8 +298,13 @@ A partner suggesting a GPX track or an attachment SHALL upload the file to a sta
 under their **own** uid prefix (`<suggester_uid>/suggestions/<tour_id>/<uuid>`) in the
 existing bucket, so that no policy granting a non-owner write access to another user's
 prefix is required. The tour owner SHALL be granted SELECT on objects referenced by a
-suggestion on their own tour, so the review sheet can render the proposed file. No other
+pending suggestion on their own tour — and only when the object lies under that
+suggestion's author's prefix — so the review sheet can render the proposed file. No other
 user SHALL gain access to a staged object.
+
+#### Scenario: Suggestion naming another user's object grants nothing
+- **WHEN** a suggestion's `storagePath` names an object outside its author's prefix
+- **THEN** the tour owner's suggestion read grant does not cover that object
 
 #### Scenario: Partner uploads a staged file
 - **WHEN** a marked partner uploads a suggested photo for a friend's tour

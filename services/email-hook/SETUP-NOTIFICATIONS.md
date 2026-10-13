@@ -142,8 +142,10 @@ supabase db push
 ```
 
 Then, once per project, store the webhook target + shared secret in Vault (data, not
-schema — run in the SQL editor, never commit the values). Until both exist the dispatch
-trigger is a silent no-op: the inbox works, push/email don't.
+schema — run in the SQL editor, never commit the values, never via `config.toml`
+`[db.vault]`). Until both exist the dispatch trigger is a silent no-op: the inbox works,
+push/email don't. To fix a wrong value later: `select vault.update_secret(id, '<value>') from
+vault.secrets where name = '<name>';`
 
 ```sql
 select vault.create_secret('https://tourenbuddy-email-hook.<account>.workers.dev', 'notify_hook_url');
@@ -163,13 +165,14 @@ and creates the `push_subscriptions` table with RLS.
 
 ## 5. Set frontend environment variables
 
-In **Cloudflare Pages → Settings → Environment variables** (and in your local `.env.local`):
+As GitHub Actions secrets (below — the Pages dashboard is not read by CI) and in your local `.env.local`:
 
 ```
 VITE_VAPID_PUBLIC_KEY=<publicKey from step 1>
 VITE_NOTIFY_HOOK_URL=https://tourenbuddy-email-hook.<your-account>.workers.dev
-VITE_NOTIFICATIONS_ENABLED=true
 ```
+
+`VITE_VAPID_PUBLIC_KEY` lets a browser subscribe to push. `VITE_NOTIFY_HOOK_URL` is only used for the calendar endpoints (on-demand sync, `.ics` feed URL) — notification dispatch goes database → Worker through the Vault entries above.
 
 > **The `VITE_` prefix is required for these** — Vite only exposes env vars with that prefix to client code. Do NOT add `VITE_` prefix to Worker secrets (step 3); those are read server-side without the prefix. `VITE_VAPID_PUBLIC_KEY` (frontend) and `VAPID_PUBLIC_KEY` (Worker) must hold the **same value** — they are the same keypair, just named per consumer convention.
 
@@ -261,7 +264,6 @@ VITE_SUPABASE_URL=http://127.0.0.1:54321
 VITE_SUPABASE_ANON_KEY=<from `supabase status`>
 VITE_VAPID_PUBLIC_KEY=<same publicKey from step 1>
 VITE_NOTIFY_HOOK_URL=http://127.0.0.1:8787
-VITE_NOTIFICATIONS_ENABLED=true
 ```
 
 Restart `npm run dev` after editing `.env.local`.
@@ -269,12 +271,17 @@ Restart `npm run dev` after editing `.env.local`.
 ### 2b. Point the local DB at the Worker
 
 `pg_net` runs inside the DB container, so it reaches the host Worker via
-`host.docker.internal`. `supabase/config.toml` reads both Vault entries from the env at
-`supabase start`:
+`host.docker.internal`. Create both Vault entries in the **local** Studio SQL editor
+(`http://127.0.0.1:54323`); the secret must match `.dev.vars`. `supabase db reset` wipes them,
+so re-run after every reset:
 
-```sh
-NOTIFY_HOOK_URL=http://host.docker.internal:8787 NOTIFY_WEBHOOK_SECRET=local-dev-secret supabase start
+```sql
+select vault.create_secret('http://host.docker.internal:8787', 'notify_hook_url');
+select vault.create_secret('local-dev-secret', 'notify_webhook_secret');
 ```
+
+Never put them in a `[db.vault]` block in `config.toml`: `supabase db push` upserts those
+entries into prod and overwrites its real Worker URL + secret.
 
 ### 3. Manual test flow
 

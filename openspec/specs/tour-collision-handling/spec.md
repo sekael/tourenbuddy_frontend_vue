@@ -6,7 +6,7 @@ Collision detection and visualization for same-objective tour planning among fri
 ## Requirements
 
 ### Requirement: Goal collision detection
-Two tours SHALL be treated as the same objective when ALL of the following hold: their goal points lie within a 200 m radius of each other; both have a non-null `tour_type` and the values are equal; both have `visibility = 'friends'`; and their owners are mutual accepted friends. Collision distance SHALL be computed with the existing tour distance utility. This predicate SHALL be the single source of truth used by both the client (info-sheet collision notice, map precedence, link suggestions) and the notification Worker (post-save scan, friendship-accept backfill scan).
+Two tours SHALL be treated as the same objective when ALL of the following hold: their goal points lie within a 200 m radius of each other; both have a non-null `tour_type` and the values are equal; both have `visibility = 'friends'`; and their owners are mutual accepted friends. Collision distance SHALL be computed with the existing tour distance utility. The same predicate SHALL be applied by the client (`domain/collision.ts`, `COLLISION_RADIUS_M = 200`: info-sheet collision notice, map precedence, link suggestions) and by the database (`fn_collision_predicate` and the `fn_scan_*` helpers: post-save scan in the tour RPCs, friendship-accept backfill scan, link-request checks); the two radii SHALL be kept in sync.
 
 #### Scenario: All conditions met
 - **WHEN** A's tour and B's tour are within 200 m, share the same non-null `tour_type`, are both friends-visible, and A and B are accepted friends

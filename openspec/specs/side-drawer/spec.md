@@ -1,6 +1,6 @@
 ## Purpose
 
-Slide-out navigation and account drawer anchored to the side of the viewport.
+Right-edge desktop panel (a bottom sheet on mobile) that hosts the tour list and tour detail beside the still-interactive map.
 
 ## Requirements
 
@@ -41,7 +41,7 @@ The `SideDrawer` SHALL animate in from the right edge on desktop with a horizont
 
 ### Requirement: SideDrawer API contract
 
-The `SideDrawer` component SHALL accept the same props as `BottomSheet` (`title?: string`, `ariaLabel?: string`), emit a `close` event, and provide a default slot for content.
+The `SideDrawer` component SHALL accept `title?: string`, `ariaLabel?: string`, `collapsed?: boolean` and `backLabel?: string`, emit `close` and `back`, and provide a default slot for content plus optional `header-actions` and `footer` slots. When `backLabel` is set (desktop), the header SHALL show a back button labelled with it that emits `back`.
 
 #### Scenario: Props and emits match BottomSheet
 

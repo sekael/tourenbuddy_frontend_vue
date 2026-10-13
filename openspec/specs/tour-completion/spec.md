@@ -20,12 +20,12 @@ The tour entity, Zod schema, and Supabase-backed repository SHALL persist a `com
 
 ### Requirement: Owner-only completion updates
 
-Only the owner of a tour SHALL be able to change its `completed` field. Enforcement SHALL be server-side via existing Supabase RLS on the `tours` table (owner-only update policy); the UI SHALL also hide or disable the toggle control for non-owners.
+Only the owner of a tour SHALL be able to change its `completed` field. Enforcement SHALL be server-side: clients hold no UPDATE privilege on `tours`, and the only write path, `update_tour_full`, raises for a caller who is not the owner. The UI SHALL also hide or disable the toggle control for non-owners.
 
 #### Scenario: Non-owner update rejected by RLS
 
-- **WHEN** a non-owner client attempts to update the `completed` field of a tour
-- **THEN** Supabase RLS SHALL reject the update
+- **WHEN** a non-owner client attempts to update the `completed` field of a tour, directly or through `update_tour_full`
+- **THEN** the write SHALL be rejected (no privilege for a direct UPDATE; the RPC raises "access denied")
 
 #### Scenario: Owner can mark and unmark
 

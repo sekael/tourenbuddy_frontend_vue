@@ -1,12 +1,12 @@
 ## Purpose
 
-Extended tour entity fields beyond the baseline (e.g., difficulty, duration estimate, description) and their persistence.
+Extended tour entity fields beyond the baseline (type, elevation, GPX reference, description, seasons, start/end points, equipment, notes, completion, multi-day span) and their persistence.
 
 ## Requirements
 
 ### Requirement: Tour type enum
 
-A Zod enum SHALL define the allowed tour activity types: `skiing-snowboarding`, `skitour-splitboarding`, `ski-mountaineering`, `paragliding`, `hiking`, `mountaineering`, `climbing`, `mountain-biking`, `trailrunning`.
+A Zod enum (`tour-type.ts`) SHALL define the allowed tour activity types, mirrored by the `tours_tour_type_check` constraint: `skiing`, `snowboarding`, `skitour`, `splitboarding`, `ski-mountaineering`, `paragliding`, `hiking`, `mountaineering`, `climbing`, `mountain-biking`, `trailrunning`. Each type SHALL map to an i18n key, an icon, a marker colour, a darker track colour and a lighter preview colour.
 
 #### Scenario: Valid tour type parsed
 
@@ -32,18 +32,18 @@ The tour schema SHALL include an `elevation` field (number, nullable) representi
 - **WHEN** a tour row has `elevation` as null
 - **THEN** the schema SHALL accept it as null
 
-### Requirement: GPX track as GeoJSON
+### Requirement: GPX track reference
 
-The tour schema SHALL include a `gpxTrack` field (GeoJSON FeatureCollection, nullable) for storing parsed GPX track data.
+The tour schema SHALL include a `gpxFilepath` field (string, nullable) holding the object key of the tour's GPX file in the private `tour-gpx` Storage bucket (`<owner uid>/<tour id>.gpx`). The track itself is never stored in the row; it is fetched and parsed on demand (see `gpx-tracks`).
 
 #### Scenario: Tour with GPX track
 
-- **WHEN** a tour row contains a `gpx_track` jsonb value
-- **THEN** the schema SHALL parse it as a GeoJSON FeatureCollection
+- **WHEN** a tour row contains a non-null `gpx_filepath`
+- **THEN** the schema SHALL parse it as the string `gpxFilepath`
 
 #### Scenario: Tour without GPX track
 
-- **WHEN** a tour row has `gpx_track` as null
+- **WHEN** a tour row has `gpx_filepath` as null
 - **THEN** the schema SHALL accept it as null
 
 ### Requirement: Description field
@@ -71,7 +71,7 @@ The tour schema SHALL include a `seasons` field (array of season enum values, nu
 
 ### Requirement: Start and end points
 
-The tour schema SHALL include `startPoint` (object with lng/lat, nullable) and `endPoint` (object with lng/lat, nullable).
+The tour schema SHALL include `startPoint` and `endPoint` (each an object with lng/lat, nullable), each with an optional `…Name` (string) and `…Elevation` (integer metres) filled from the Swisstopo services when the point is set.
 
 #### Scenario: Start point without end point
 
@@ -103,9 +103,10 @@ The tour schema SHALL include a `notes` field (string, nullable) for miscellaneo
 
 ### Requirement: Extended TourDraft
 
-The `TourDraft` interface SHALL be expanded to include all new optional fields: `tourType`,
-`elevation`, `gpxTrack`, `description`, `seasons`, `startPoint`, `endPoint`, `equipment`,
-`notes`, `endDate`.
+The `TourDraft` interface SHALL be expanded to include all new fields: `tourType`,
+`elevation`, `gpxFilepath`, `description`, `seasons`, `startPoint`, `endPoint`,
+`startPointName`, `startPointElevation`, `endPointName`, `endPointElevation`, `equipment`,
+`notes`, `endDate`, and the optional `completed` and `visibility`.
 
 #### Scenario: Draft with all fields
 
