@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.44.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.44.0...tourenbuddy-frontend-v0.44.1) (2026-10-13)
+
+
+### Bug Fixes
+
+* **db:** Harden database access rules for tours, functions, attachments, friend requests and storage ([632941f](https://github.com/sekael/tourenbuddy_frontend_vue/commit/632941f545ec738bdfcdbd95739037855f68d464))
+* **db:** Stop exposing tour partner rosters to friends ([632941f](https://github.com/sekael/tourenbuddy_frontend_vue/commit/632941f545ec738bdfcdbd95739037855f68d464))
+* **supabase:** Stop db push from overwriting prod Vault secrets ([632941f](https://github.com/sekael/tourenbuddy_frontend_vue/commit/632941f545ec738bdfcdbd95739037855f68d464))
+* **tours:** Restore attachment uploads for tour owners ([632941f](https://github.com/sekael/tourenbuddy_frontend_vue/commit/632941f545ec738bdfcdbd95739037855f68d464))
+* **tours:** Restore tour list scrolling in the desktop side drawer ([632941f](https://github.com/sekael/tourenbuddy_frontend_vue/commit/632941f545ec738bdfcdbd95739037855f68d464))
+* **web:** Send anti-framing and nosniff security headers ([632941f](https://github.com/sekael/tourenbuddy_frontend_vue/commit/632941f545ec738bdfcdbd95739037855f68d464))
+
 ## [0.44.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.43.1...tourenbuddy-frontend-v0.44.0) (2026-10-12)
 
 
