@@ -62,6 +62,7 @@ IMPORTANT: The app ships **all** fonts and icons in its own bundle. There is **n
   - Add a comment in the edited file explaining the change. Precedent: `20260608062430_friend_tours_realtime_messages_policy.sql` (dropped a no-op `alter table realtime.messages`).
 - NEVER `ALTER TABLE` Supabase-owned tables (`realtime.*`, `auth.*`, `storage.*`) — owned by internal roles, `postgres` is not owner. Policy statements (`create/alter/drop policy`) are allowed. RLS is already enabled on `realtime.messages` and `storage.objects`.
 - NEVER hand-edit prod schema via Supabase Studio/SQL editor — drifts from repo
+- NEVER add a `[db.vault]` block to `supabase/config.toml`: `db push` upserts it into prod Vault, overwriting prod's secrets with local ones. Vault secrets are set by hand per database (`services/email-hook/SETUP-NOTIFICATIONS.md`)
 - `supabase/migrations/_archived/` contains pre-baseline patches — do not run, kept for history only
 - Baseline migration `20260101000000_initial_schema.sql` reflects prod schema at cutover; subsequent changes go in new timestamped files
 - App must run against local Supabase during development — point `VITE_SUPABASE_URL` to local stack URL (`http://127.0.0.1:54321`) in `.env.local`

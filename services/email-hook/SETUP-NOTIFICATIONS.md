@@ -142,8 +142,10 @@ supabase db push
 ```
 
 Then, once per project, store the webhook target + shared secret in Vault (data, not
-schema — run in the SQL editor, never commit the values). Until both exist the dispatch
-trigger is a silent no-op: the inbox works, push/email don't.
+schema — run in the SQL editor, never commit the values, never via `config.toml`
+`[db.vault]`). Until both exist the dispatch trigger is a silent no-op: the inbox works,
+push/email don't. To fix a wrong value later: `select vault.update_secret(id, '<value>') from
+vault.secrets where name = '<name>';`
 
 ```sql
 select vault.create_secret('https://tourenbuddy-email-hook.<account>.workers.dev', 'notify_hook_url');
@@ -269,12 +271,17 @@ Restart `npm run dev` after editing `.env.local`.
 ### 2b. Point the local DB at the Worker
 
 `pg_net` runs inside the DB container, so it reaches the host Worker via
-`host.docker.internal`. `supabase/config.toml` reads both Vault entries from the env at
-`supabase start`:
+`host.docker.internal`. Create both Vault entries in the **local** Studio SQL editor
+(`http://127.0.0.1:54323`); the secret must match `.dev.vars`. `supabase db reset` wipes them,
+so re-run after every reset:
 
-```sh
-NOTIFY_HOOK_URL=http://host.docker.internal:8787 NOTIFY_WEBHOOK_SECRET=local-dev-secret supabase start
+```sql
+select vault.create_secret('http://host.docker.internal:8787', 'notify_hook_url');
+select vault.create_secret('local-dev-secret', 'notify_webhook_secret');
 ```
+
+Never put them in a `[db.vault]` block in `config.toml`: `supabase db push` upserts those
+entries into prod and overwrites its real Worker URL + secret.
 
 ### 3. Manual test flow
 

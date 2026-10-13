@@ -335,7 +335,7 @@ src/
   sw.ts                      # Service worker (precache, runtime caching, push)
 test/                        # Unit tests mirroring src/ structure
 supabase/
-  config.toml                # Local stack config (auth, hooks, SMTP, SMS, Vault)
+  config.toml                # Local stack config (auth, hooks, SMTP, SMS); no [db.vault]
   migrations/                # Versioned schema changes
   tests/                     # pgTAP RLS / notification tests
   seed.sql                   # Local-only test data (auto-loaded on `supabase db reset`)
