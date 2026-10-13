@@ -1,7 +1,7 @@
 # calendar-view Specification
 
 ## Purpose
-TBD - created by archiving change calendar-view-planned-tours. Update Purpose after archive.
+Full-screen `/calendar` page with a **Planned** month view (owned tours by date, plus the user's own availability) and a **Seasons** view (owned tours by season), with tour detail opening from and returning to the originating view.
 ## Requirements
 
 ### Requirement: Calendar route and full-screen shell

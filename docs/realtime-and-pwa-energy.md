@@ -11,8 +11,9 @@ database when the same user mutates data in another tab or device, or when
 something they have access to changes server-side (a friend accepting a
 request, a tour being linked, a block being lifted).
 
-It is **never** the trigger for user-facing notifications. Push / email
-dispatch is owned by store actions and the `services/email-hook` Worker. If you
+It is **never** the trigger for user-facing notifications. Notifications are
+recorded by the database in the writing transaction and delivered by the
+`services/email-hook` Worker (see [notifications.md](./notifications.md)). If you
 catch yourself thinking "I'll fire a notification from `onChange`", stop —
 that path will double-fire, drop on missed events, and bypass the recipient's
 mute settings.
@@ -126,7 +127,9 @@ Concretely:
 
 ## Where it lives
 
-- Composable: `src/core/realtime/use-realtime-subscription.ts`
-- Subscribers: `src/features/{tours,friendships,tour-links}/presentation/stores/*`
+- Composables: `src/core/realtime/use-realtime-subscription.ts` (`postgres_changes`),
+  `src/core/realtime/use-realtime-broadcast.ts` (private `friend-tours:<uid>` /
+  `availability:<uid>` topics)
+- Subscribers: the stores under `src/features/{tours,contacts,user,friendships,tour-links,calendar,notifications}/presentation/stores/*`
 - Architecture summary: `.claude/architecture.md` → Realtime
 - Service Worker (separate concern, OS-level push only): `src/sw.ts`

@@ -20,27 +20,24 @@ When a user provides a phone number, the system SHALL call `supabase.auth.update
 
 ### Requirement: Phone uniqueness pre-check before OTP send
 
-Before invoking `supabase.auth.updateUser({ phone })` to dispatch an OTP, the system SHALL attempt to detect whether the supplied E.164 phone number is already verified by a different user.
+Before dispatching an OTP, the system SHALL check whether the supplied E.164 number is already verified by a different user via the `is_phone_registered(p_phone)` RPC (`checkPhoneAvailability`). The RPC is callable by any authenticated user — not only phone-verified ones — so a user adding their first phone is told up front, and it SHALL return only a boolean, never the owning user's id. A `true` result SHALL raise `PhoneAlreadyRegisteredError` without calling `updateUser`.
 
-For callers whose own `phone_confirmed_at` is set, detection SHALL use the existing `find_user_by_phone` RPC; if it returns a UUID that is non-null and differs from the caller's `auth.uid()`, the system SHALL abort the OTP send and raise a `PhoneAlreadyRegisteredError`.
-
-For callers without a verified phone (RPC returns NULL by design), the system SHALL invoke `supabase.auth.updateUser` and translate any returned error whose message matches the pattern `/already|exists|registered|in use/i` into the same `PhoneAlreadyRegisteredError`. Unmatched errors SHALL be propagated unchanged.
+As a backstop, when `supabase.auth.updateUser({ phone })` itself returns an error whose message matches `/already|exists|registered|in use/i`, the system SHALL translate it into the same `PhoneAlreadyRegisteredError`. Unmatched errors SHALL be propagated unchanged.
 
 #### Scenario: Conflict detected by pre-check
 
-- **WHEN** the caller is phone-verified and `find_user_by_phone(p_phone)` returns a UUID ≠ `auth.uid()`
+- **WHEN** `is_phone_registered(p_phone)` returns `true`
 - **THEN** `supabase.auth.updateUser` SHALL NOT be called
 - **AND** a `PhoneAlreadyRegisteredError` SHALL be thrown
 
 #### Scenario: Number belongs to caller (re-verify)
 
-- **WHEN** the pre-check returns the caller's own UUID
-- **THEN** the OTP send SHALL proceed normally
+- **WHEN** the number is verified only on the caller's own account
+- **THEN** the RPC returns `false` (the caller is excluded) and the OTP send proceeds normally
 
-#### Scenario: Pre-check inconclusive, fallback to error mapping
+#### Scenario: Conflict surfaced by Supabase
 
-- **WHEN** the caller is unverified so `find_user_by_phone` returns NULL
-- **AND** Supabase responds with an error matching `/already|exists|registered|in use/i`
+- **WHEN** the pre-check passed but Supabase responds with an error matching `/already|exists|registered|in use/i`
 - **THEN** the error SHALL be re-thrown as `PhoneAlreadyRegisteredError`
 
 #### Scenario: Unrelated Supabase error preserved

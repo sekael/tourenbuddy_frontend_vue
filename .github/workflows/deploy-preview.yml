@@ -48,9 +48,8 @@ jobs:
           {
             echo "VITE_SUPABASE_URL=$SUPABASE_URL"
             echo "VITE_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY"
-            [ -n "$VAPID_PUBLIC_KEY" ] && echo "VITE_VAPID_PUBLIC_KEY=$VAPID_PUBLIC_KEY"
-            [ -n "$NOTIFY_HOOK_URL" ]  && echo "VITE_NOTIFY_HOOK_URL=$NOTIFY_HOOK_URL"
-            echo "VITE_NOTIFICATIONS_ENABLED=true"
+            [ -z "$VAPID_PUBLIC_KEY" ] || echo "VITE_VAPID_PUBLIC_KEY=$VAPID_PUBLIC_KEY"
+            [ -z "$NOTIFY_HOOK_URL" ]  || echo "VITE_NOTIFY_HOOK_URL=$NOTIFY_HOOK_URL"
             echo "VITE_BUILD_COMMIT=$PR_HEAD_SHA"
           } > .env
           echo "=== Secret presence (values redacted) ==="
@@ -64,9 +63,12 @@ jobs:
 
       - name: Sanitize branch name for Pages
         id: branch
+        # Via env, never `${{ }}` inside `run:` — a branch name like `x$(cmd)` would execute.
+        env:
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           # Pages requires lowercase, alphanumeric + dashes, max 28 chars
-          slug=$(echo "${{ github.head_ref }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | cut -c1-28 | sed 's/-*$//')
+          slug=$(echo "$HEAD_REF" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | cut -c1-28 | sed 's/-*$//')
           echo "slug=$slug" >> "$GITHUB_OUTPUT"
 
       - name: Deploy to Cloudflare Pages

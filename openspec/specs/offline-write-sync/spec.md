@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Durable IndexedDB outbox for offline mutations: one coalesced entry per entity, applied optimistically, replayed FIFO through the single `mutate()` seam on reconnect, with last-write-wins conflicts and a dead-letter for permanent failures.
+
+## Requirements
 
 ### Requirement: Offline mutations are queued durably, coalesced per entity
 
@@ -51,11 +55,15 @@ the user's edit durable until the session is real.
 
 #### Scenario: Notification preferences are queued offline
 
-- **WHEN** the push or email notification preference (or a per-type mute) is toggled
-  offline
-- **THEN** the change is applied optimistically, queued under its own entry, and
-  replayed on reconnect — the push browser/server subscription is reconciled to the
-  synced flag at replay time, since it cannot be registered while offline
+- **WHEN** the email notification preference or a per-type mute is toggled offline
+- **THEN** the change is applied optimistically, queued under its own `notif-prefs`
+  entry, and replayed on reconnect
+
+#### Scenario: Push toggle is not queued
+
+- **WHEN** the user is offline
+- **THEN** the per-device push toggle is disabled — subscribing needs the network, and
+  push is a property of this browser, not a synced preference
 
 #### Scenario: Cross-entity dependency order
 
@@ -90,8 +98,9 @@ offline), atomically.
 
 When connectivity returns, the system SHALL drain the queue by replaying each entry
 as a **single idempotent operation** (a create or update of the entity's final
-state, or a delete) plus its file upload and deferred notification, in cross-entity dependency
-order. The drain SHALL complete before the reconnect refetch overwrites the store
+state, or a delete) plus its file upload, in cross-entity dependency order. Entries are
+dispatched to a per-kind replay handler (`registerReplay`: `tour`, `contact`, `profile`,
+`notif-prefs`, `availability`, `friendship`, `inbox`). The drain SHALL complete before the reconnect refetch overwrites the store
 and cache, so freshly-flushed writes are never clobbered by a stale server snapshot.
 
 A drain SHALL NOT run without an authenticated session. When no session is available —
@@ -109,9 +118,9 @@ every entry pending for a later attempt.
 #### Scenario: Replay as one idempotent operation
 
 - **WHEN** a queued tour entry is replayed
-- **THEN** it is written via a single idempotent create (or update), the GPX file uploaded
-  (best-effort), and the notification dispatched — equivalent to having performed the
-  action online, and safe to retry without duplication
+- **THEN** the staged GPX file is uploaded first, then the tour is written via a single
+  idempotent create (or update) RPC, which records its notifications server-side —
+  equivalent to having performed the action online, and safe to retry without duplication
 
 #### Scenario: Drain triggered while the session is still unverified
 
@@ -129,9 +138,10 @@ every entry pending for a later attempt.
 
 ### Requirement: Notifications for queued writes are deferred until replay
 
-The system SHALL NOT dispatch a notification at the time an offline mutation is
-enqueued. It SHALL dispatch the notification only when the mutation's replay
-succeeds, and exactly once.
+Notifications are recorded by the database inside the write RPCs and triggers (see
+`notification-inbox`), so an offline mutation SHALL produce no notification while it
+sits in the queue, and its replay SHALL produce them exactly once — the idempotent
+create/update RPCs emit only on the call that actually changes the row.
 
 #### Scenario: No notification while offline
 
@@ -140,8 +150,9 @@ succeeds, and exactly once.
 
 #### Scenario: Notification fires once on replay
 
-- **WHEN** the queued write replays successfully
-- **THEN** its notification is dispatched exactly once
+- **WHEN** the queued write replays successfully, including after a retry of a replay
+  whose response was lost
+- **THEN** its notification is recorded exactly once
 
 ### Requirement: Conflicts resolve by row-level last-write-wins with the loser surfaced
 

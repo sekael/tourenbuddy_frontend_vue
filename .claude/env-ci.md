@@ -2,9 +2,9 @@
 
 ## CI
 
-- **PR checks** (`analyze-and-test.yml`): lint → type-check → vitest
+- **PR checks** (`analyze-and-test.yml`): lint → locale parity → type-check → test type-check (non-blocking) → vitest. Database pgTAP suites and the Worker's tests are NOT run in CI — run them locally (see `testing.md`).
 - **PR build smoke** (`test-build-web.yml`): build only, no deploy
-- **PR preview deploy** (`deploy-preview.yml`): build + deploy to `https://<branch-slug>.tourenbuddy.pages.dev` on every PR to `main`. Posts/updates sticky comment with preview URL. Skipped for forked PRs. Branch slug is lowercased, sanitized to `[a-z0-9-]`, capped at 28 chars.
+- **PR preview deploy** (`deploy-preview.yml`): build + deploy to `https://<branch-slug>.touringbuddy.pages.dev` on every PR to `main` (Pages project `tourenbuddy`, subdomain `touringbuddy`). Posts/updates sticky comment with preview URL. Skipped for forked PRs. Branch slug is lowercased, sanitized to `[a-z0-9-]`, capped at 28 chars.
 - **PR preview cleanup** (`cleanup-preview.yml`): on PR close (merged or not), deletes all preview deployments associated with the branch slug via the Cloudflare API, keeping the Pages deployments list tidy.
 - **Release** (`release.yml`): release-please auto-versions on merge to `main`
 - **Deploy** (`build-web-and-push.yml`): build → Cloudflare Pages `main` branch (triggered by release-please)
@@ -20,10 +20,10 @@ All client vars need `VITE_` prefix. Validated at startup via Zod in `core/const
 - `VITE_SUPABASE_URL` — Supabase project URL
 - `VITE_SUPABASE_ANON_KEY` — Supabase anonymous (publishable) key
 
-**Notifications (optional, gated by `VITE_NOTIFICATIONS_ENABLED`):**
-- `VITE_VAPID_PUBLIC_KEY` — Web Push VAPID public key. MUST match Worker's `VAPID_PUBLIC_KEY` secret.
-- `VITE_NOTIFY_HOOK_URL` — `services/email-hook` Worker URL (e.g. `https://tourenbuddy-email-hook.<account>.workers.dev`)
-- `VITE_NOTIFICATIONS_ENABLED` — `true` to enable dispatch; absent / `false` short-circuits client-side.
+**Optional:**
+- `VITE_VAPID_PUBLIC_KEY` — Web Push VAPID public key, used to subscribe this browser. MUST match the Worker's `VAPID_PUBLIC_KEY` secret. Unset → push can't be enabled (logged).
+- `VITE_NOTIFY_HOOK_URL` — `services/email-hook` Worker URL (e.g. `https://tourenbuddy-email-hook.<account>.workers.dev`). Used for the on-demand calendar sync (`/calendar/sync`) and the outbound tour feed URL (`/calendar/<token>.ics`). Notification dispatch does NOT use it — the database calls the Worker (Vault `notify_hook_url`).
+- `VITE_BUILD_COMMIT` — PR previews only: commit shown next to the app version.
 
 Access via `env` object from `core/constants/env.ts`, never `import.meta.env` directly in feature code.
 

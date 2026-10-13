@@ -75,7 +75,7 @@ The system SHALL emit edit notifications only when a partner-facing field change
 - **THEN** an edit notification is emitted for friend partners
 
 #### Scenario: Non-meaningful change suppressed
-- **WHEN** only notes/elevation/seasons/start-end detail change and no partner-facing field differs
+- **WHEN** only notes, the tour elevation, or start/end-point elevations change and no partner-facing field differs
 - **THEN** no edit notification is emitted
 
 #### Scenario: Going private does not notify
@@ -121,7 +121,7 @@ When a friendship transitions to accepted, the system SHALL, in the same transac
 - **THEN** no digest push or email is sent to X even if collisions exist, while X's inbox still records the digest
 
 ### Requirement: Link-request lifecycle notifications
-The system SHALL emit `tour_interest` notifications for link-request lifecycle events in the same transaction as the request write: created (notify target owner), accepted/declined (notify initiator owner), withdrawn (no notification). Only the legitimate actor can perform each transition (initiator for create/withdraw, target for accept/decline), so a notification can only result from that actor's write. Failures SHALL NOT block or roll back the underlying DB write.
+The system SHALL emit `tour_interest` notifications for link-request lifecycle events in the same transaction as the request write: created (`link_created`, notify the target owner), declined (`link_declined`, notify the initiator owner), withdrawn (no notification). An accept SHALL NOT emit a separate `link_accepted`: it emits `group_joined` to every owner of a tour in the resulting group except the acceptor — in a two-tour link that is exactly the initiator, who would otherwise be told twice. Only the legitimate actor can perform each transition (initiator for create/withdraw, target for accept/decline), so a notification can only result from that actor's write. Failures SHALL NOT block or roll back the underlying DB write.
 
 #### Scenario: Link request created
 - **WHEN** A creates a request from A's tour to B's tour
@@ -129,7 +129,7 @@ The system SHALL emit `tour_interest` notifications for link-request lifecycle e
 
 #### Scenario: Link request accepted
 - **WHEN** B accepts a request from A's tour to B's tour
-- **THEN** A receives a `tour_interest` notification stating the request was accepted
+- **THEN** A (and any other owner already in the group) receives one `tour_interest` `group_joined` notification naming their own tour in the group, and B receives none
 
 #### Scenario: Link request declined
 - **WHEN** B declines a request from A's tour to B's tour

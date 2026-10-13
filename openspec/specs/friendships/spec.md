@@ -112,7 +112,7 @@ The system SHALL permit at most one `friend_requests` row with `status = 'pendin
 
 ### Requirement: Send affordance toward a pending requester resolves by accepting
 
-When the current user is offered a connect affordance toward a matched user who already has a **pending incoming** request to the current user, the UI MUST present an "accept" action that resolves that existing request (calling the accept path) rather than a "send" action that would create a reciprocal pending row. Detection MUST be from client store state (the caller's incoming-request list). On success the UI MUST display an explicit inline disclaimer that the users are now friends, and the responded notification to the original requester MUST fire exactly as it does for an explicit accept. The contact-flow gating that selects a match for the connect prompt MUST surface incoming-pending matches (not only suppress outgoing-pending ones) so this affordance is reachable from the add-contact and contact-detail flows.
+When the current user is offered a connect affordance toward a matched user who already has a **pending incoming** request to the current user, the UI MUST present an "accept" action that resolves that existing request (calling the accept path) rather than a "send" action that would create a reciprocal pending row. Detection MUST be from client store state (the caller's incoming-request list). On success the UI MUST display an explicit inline disclaimer that the users are now friends, and the responded notification to the original requester MUST be recorded exactly as it is for an explicit accept. The contact-flow gating that selects a match for the connect prompt MUST surface incoming-pending matches (not only suppress outgoing-pending ones) so this affordance is reachable from the add-contact and contact-detail flows.
 
 #### Scenario: Connect prompt switches to accept for an incoming pending request
 
@@ -122,7 +122,7 @@ When the current user is offered a connect affordance toward a matched user who 
 #### Scenario: Accepting via the prompt shows the now-friends disclaimer and notifies
 
 - **WHEN** the current user activates the accept affordance toward user B
-- **THEN** the friendship `{current user, B}` is formed, an inline "you are now friends" confirmation is shown in place, and the friend-request-responded notification is dispatched to B
+- **THEN** the friendship `{current user, B}` is formed, an inline "you are now friends" confirmation is shown in place, and the database records the friend-request `responded` notification for B
 
 #### Scenario: Concurrent cross-send is rejected with a retry prompt
 
@@ -223,23 +223,50 @@ When the store performs an optimistic write and a Realtime event for the same ro
 
 ### Requirement: Strict separation of push and Realtime concerns
 
-The system MUST keep push / email and Realtime as two independent pathways:
+The system MUST keep notifications and Realtime as two independent pathways:
+- Friend-request notifications SHALL be recorded by the database in the transaction that
+  changes the request (trigger `fn_notify_friend_request`: `received` to the recipient on a
+  pending INSERT; `responded` to the sender when a pending row becomes `accepted` or
+  `denied`; cancellation notifies nobody). No client code dispatches them (see
+  `notification-inbox`).
 - Realtime event handlers MUST NOT trigger any notification dispatch (push or email).
 - The service worker `push` and `notificationclick` handlers MUST NOT mutate in-app store state nor trigger Realtime / store refetches; they MAY only display the OS notification and focus/navigate a client.
 
-Notification dispatch remains driven exclusively by explicit, intent-bound store actions (`sendRequest`, `accept`, `deny`). UI updates remain driven exclusively by Realtime + store actions in the active tab.
-
-#### Scenario: Realtime event does not double-dispatch notifications
+#### Scenario: Realtime event does not dispatch notifications
 - **WHEN** a `friend_requests` INSERT event is received by any client
-- **THEN** no call is made to `notifyFriendRequestReceived` or `notifyFriendRequestResponded` from the Realtime handler
+- **THEN** no notification dispatch is made from the Realtime handler
 
-#### Scenario: Existing notification pathways remain intact
-- **WHEN** a user sends, accepts, or denies a friend request through the store
-- **THEN** the corresponding `notifyFriendRequest*` dispatch fires exactly once, as it does today, regardless of whether Realtime is connected
+#### Scenario: Notification recorded once per transition
+- **WHEN** a user sends, accepts, or denies a friend request
+- **THEN** exactly one `friend_requests` notification row is recorded for the other party, regardless of whether Realtime is connected or which client performed the write
 
 #### Scenario: Service worker never mutates store state
 - **WHEN** the service worker receives a `push` event or handles a `notificationclick`
 - **THEN** it calls only `showNotification` / `clients.matchAll` / `focus` / `navigate` / `openWindow`; it does not `postMessage` payloads that callers interpret as store mutations and does not perform any DB fetches
+
+### Requirement: Direct friend_requests writes are limited to deny and cancel
+
+Clients SHALL hold UPDATE privilege on `friend_requests` only for the `status` and
+`responded_at` columns. RLS SHALL let the recipient move a pending row only to `denied` and
+the sender only to `cancelled`; acceptance SHALL go exclusively through
+`accept_friend_request`, which also forms the friendship. A directly inserted row SHALL start
+`pending`.
+
+#### Scenario: Recipient denies directly
+- **WHEN** the recipient updates a pending request to `status = 'denied'`
+- **THEN** the update succeeds and the sender is notified
+
+#### Scenario: Direct accept is rejected
+- **WHEN** the recipient updates a pending request to `status = 'accepted'` without the RPC
+- **THEN** RLS rejects the update, so no accepted request can exist without its friendship
+
+#### Scenario: Parties cannot be rewritten
+- **WHEN** a party updates `from_user_id` or `to_user_id` on a request
+- **THEN** the update is rejected for lack of column privilege
+
+#### Scenario: Direct insert in a terminal status is rejected
+- **WHEN** a client inserts a `friend_requests` row with any status other than `pending`
+- **THEN** RLS rejects the insert
 
 ### Requirement: Realtime replication enabled for friendship tables
 
@@ -256,8 +283,6 @@ The database SHALL include `public.friend_requests` and `public.friendships` in 
 #### Scenario: RLS still gates visibility
 - **WHEN** an authenticated client subscribes to `postgres_changes` on these tables
 - **THEN** they receive only events for rows their existing SELECT RLS policies already permit
-
-## ADDED Requirements
 
 ### Requirement: Friend request send path consults block state server-side
 

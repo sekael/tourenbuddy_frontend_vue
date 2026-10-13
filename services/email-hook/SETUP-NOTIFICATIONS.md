@@ -163,13 +163,14 @@ and creates the `push_subscriptions` table with RLS.
 
 ## 5. Set frontend environment variables
 
-In **Cloudflare Pages → Settings → Environment variables** (and in your local `.env.local`):
+As GitHub Actions secrets (below — the Pages dashboard is not read by CI) and in your local `.env.local`:
 
 ```
 VITE_VAPID_PUBLIC_KEY=<publicKey from step 1>
 VITE_NOTIFY_HOOK_URL=https://tourenbuddy-email-hook.<your-account>.workers.dev
-VITE_NOTIFICATIONS_ENABLED=true
 ```
+
+`VITE_VAPID_PUBLIC_KEY` lets a browser subscribe to push. `VITE_NOTIFY_HOOK_URL` is only used for the calendar endpoints (on-demand sync, `.ics` feed URL) — notification dispatch goes database → Worker through the Vault entries above.
 
 > **The `VITE_` prefix is required for these** — Vite only exposes env vars with that prefix to client code. Do NOT add `VITE_` prefix to Worker secrets (step 3); those are read server-side without the prefix. `VITE_VAPID_PUBLIC_KEY` (frontend) and `VAPID_PUBLIC_KEY` (Worker) must hold the **same value** — they are the same keypair, just named per consumer convention.
 
@@ -261,7 +262,6 @@ VITE_SUPABASE_URL=http://127.0.0.1:54321
 VITE_SUPABASE_ANON_KEY=<from `supabase status`>
 VITE_VAPID_PUBLIC_KEY=<same publicKey from step 1>
 VITE_NOTIFY_HOOK_URL=http://127.0.0.1:8787
-VITE_NOTIFICATIONS_ENABLED=true
 ```
 
 Restart `npm run dev` after editing `.env.local`.

@@ -6,7 +6,7 @@ Core tour entity (location, planned date, owner) with CRUD, persistence, and rea
 
 ### Requirement: Realtime synchronization of tour list state
 
-The system SHALL keep the in-app tours list of the authenticated user in sync across the user's devices in real time, without requiring a page reload, by subscribing to Supabase Realtime `postgres_changes` on `public.tours` and `public.tour_attachments`, each filtered to the authenticated user via `user_id=eq.${currentUserId}`. `public.tour_partners` is intentionally excluded: every in-app partner-set change is preceded by an UPDATE/INSERT/DELETE on the parent `tours` row, so the `tours` subscription captures it transitively.
+The system SHALL keep the in-app tours list of the authenticated user in sync across the user's devices in real time, without requiring a page reload, by subscribing to Supabase Realtime `postgres_changes` on `public.tours`, `public.tour_partners` and `public.tour_attachments`, each filtered to the authenticated user via `user_id=eq.${currentUserId}`. `tour_partners` is bound because a contact-delete cascade changes the partner set without touching the parent `tours` row (see "Tour partner set reconciles across devices on contact delete").
 
 #### Scenario: Tour created on device A appears on device B
 - **WHEN** user creates a tour on device A while device B has the app open and is signed in as the same user
@@ -40,7 +40,7 @@ The system SHALL keep the in-app tours list of the authenticated user in sync ac
 
 The `tours-store` MUST NOT call `supabase.channel(...)` or `supabase.removeChannel(...)` directly. It SHALL wire Realtime via `src/core/realtime/use-realtime-subscription.ts`, supplying:
 - a channel key of the form `tours-${currentUserId}` so per-user channels deduplicate,
-- a single binding on `tours` with `event: '*'` and filter `user_id=eq.${currentUserId}`,
+- two bindings, on `tours` and on `tour_partners`, each with `event: '*'` and filter `user_id=eq.${currentUserId}`,
 - an `onChange` callback that debounces a full `loadTours()` refetch,
 - an `onSubscribed` callback that runs `loadTours()` once after `SUBSCRIBED`, so no write between baseline and stream is lost.
 
@@ -72,7 +72,7 @@ The tours store's local writes (create / update / delete) MAY arrive at the Real
 
 ### Requirement: Realtime handler MUST NOT dispatch notifications
 
-Tour Realtime event handlers MUST NOT trigger any notification dispatch (push or email). Realtime remains a UI-sync pathway only; any notification dispatch for tours, if introduced later, MUST live exclusively in explicit store actions.
+Tour Realtime event handlers MUST NOT trigger any notification dispatch (push or email). Realtime remains a UI-sync pathway only; tour notifications are recorded by the database inside the tour write RPCs and the delete trigger (see `shared-tour-notifications`).
 
 #### Scenario: No notification dispatch from Realtime
 - **WHEN** any `postgres_changes` event for `tours` / `tour_attachments` is received
@@ -80,14 +80,14 @@ Tour Realtime event handlers MUST NOT trigger any notification dispatch (push or
 
 ### Requirement: Realtime replication enabled for tour-related tables
 
-The database SHALL include `public.tours` and `public.tour_attachments` in the `supabase_realtime` publication, with RLS remaining the sole authorization gate (no policy widening). Both tables SHALL have `REPLICA IDENTITY FULL` so DELETE and UPDATE payloads carry every column, allowing server-side filters on `user_id` to match reliably under all event types. `public.tour_partners` is NOT added to the publication — partner-set changes are observed transitively via the parent `tours` UPDATE event.
+The database SHALL include `public.tours`, `public.tour_partners` and `public.tour_attachments` in the `supabase_realtime` publication, with RLS remaining the sole authorization gate (no policy widening). All three tables SHALL have `REPLICA IDENTITY FULL` so DELETE and UPDATE payloads carry every column, allowing server-side filters on `user_id` to match reliably under all event types.
 
 #### Scenario: Tables are members of supabase_realtime
 - **WHEN** the publication is inspected after migrations are applied
-- **THEN** `public.tours` and `public.tour_attachments` are members of `supabase_realtime`, and `public.tour_partners` is NOT
+- **THEN** `public.tours`, `public.tour_partners` and `public.tour_attachments` are members of `supabase_realtime`
 
 #### Scenario: Replica identity is FULL on both tables
-- **WHEN** `pg_class.relreplident` is inspected for either table
+- **WHEN** `pg_class.relreplident` is inspected for any of these tables
 - **THEN** the value is `'f'` (FULL)
 
 #### Scenario: RLS still gates visibility
@@ -190,16 +190,39 @@ exists it SHALL make no change and SHALL NOT recreate the row.
 - **WHEN** an update is issued for a tour id that no longer exists on the server
 - **THEN** no row is created and the caller can observe that no row was updated
 
-### Requirement: Standalone visibility toggle is preserved
+### Requirement: Standalone visibility and completion toggles ride the update call
 
-The standalone visibility-toggle action SHALL remain available independently of tour
-creation and editing, applying its tour-links eviction and friendship-facing side
-effects. The atomic create/update visibility parameter SHALL be additive and SHALL
-NOT remove or bypass the standalone toggle.
+The standalone visibility toggle and the completion toggle (outside the create/edit form)
+SHALL remain available, and SHALL be applied as an ordinary `update_tour_full` call carrying
+the tour's whole current draft plus the changed `visibility` / `completed` value. They SHALL
+therefore queue offline like any other tour edit, and their side effects (tour-link eviction,
+suggestion voiding, notification cleanup) SHALL come from the database triggers that react to
+the row change. There SHALL be no direct column write to `tours` from the client.
 
 #### Scenario: Visibility toggled outside create/edit
 
 - **WHEN** the user toggles a tour's visibility directly (not through the create or
   edit form)
-- **THEN** the visibility change is applied with its usual eviction/notification side
-  effects, independently of the atomic create/update path
+- **THEN** one `update_tour_full` call persists it, and the database applies the eviction
+  and notification side effects
+
+#### Scenario: Toggled offline
+
+- **WHEN** the user marks a tour completed while offline
+- **THEN** the change is queued as the tour's single coalesced update entry and replays on reconnect
+
+### Requirement: Owner read surface is tours_view, caller-scoped
+
+The owner SHALL read their tours through `tours_view`, which SHALL run with the caller's
+privileges (`security_invoker`), SHALL only ever return rows owned by the caller, and SHALL be
+granted `SELECT` only, to `authenticated` only. Friends read other users' tours through
+`friend_tours_view` (see `friend-tour-visibility`). All tour writes go through the tour RPCs;
+the client holds no direct INSERT/UPDATE on `tours` or `tour_partners`.
+
+#### Scenario: Signed-out caller
+- **WHEN** a request with only the public anon key selects, updates or deletes through `tours_view`
+- **THEN** it is rejected for lack of privilege
+
+#### Scenario: Friend's tours never appear on the owner surface
+- **WHEN** a user who has friends with friends-visible tours selects from `tours_view`
+- **THEN** only the caller's own tours are returned

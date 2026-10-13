@@ -1,7 +1,27 @@
 ## Purpose
 
 Installable Progressive Web App with offline-capable shell, manifest, service worker, and runtime tile caching.
+
 ## Requirements
+
+### Requirement: Installable app with a prompt-driven service worker
+The app SHALL ship a web manifest (`TourenBuddy`, `display: standalone`, `start_url: /`, 192/512 px icons) and a custom service worker built with `vite-plugin-pwa` (`strategies: 'injectManifest'`, `src/sw.ts`, `registerType: 'prompt'`). The service worker SHALL precache the app shell (js, css, html, icons, svg, woff2) and SHALL serve the precached `index.html` for every in-app navigation, so client routes cold-start offline. A new service worker SHALL only take over after the user accepts the update prompt (see `app-update`), but an activated worker SHALL claim already-open clients immediately.
+
+#### Scenario: Offline cold start on a client route
+- **WHEN** the installed app is reopened offline on `/calendar`
+- **THEN** the precached app shell is served and the app boots
+
+### Requirement: Runtime caching rules
+The service worker SHALL apply these runtime strategies:
+- Swisstopo vector tiles (`vectortiles*.geo.admin.ch`): explicitly downloaded offline-map entries first (see `offline-map`), otherwise stale-while-revalidate in `swisstopo-tiles` (500 entries, 30 days).
+- Swisstopo WMTS raster tiles: stale-while-revalidate (500 entries, 30 days).
+- GPX objects in Supabase Storage: stale-while-revalidate (100 entries, 30 days).
+- Tour attachment objects: network-only — signed URLs are short-lived and SHALL NOT be cached by the service worker.
+- Welcome-screen background images: cache-first (4 entries, 30 days).
+
+#### Scenario: Attachment fetch is never cached
+- **WHEN** an attachment is fetched through a signed URL
+- **THEN** the response does not enter any service-worker cache
 ### Requirement: Service worker push handler
 The service worker SHALL handle `push` events by displaying a notification with the title and body provided by the Worker payload.
 
@@ -10,8 +30,8 @@ The service worker SHALL handle `push` events by displaying a notification with 
 - **THEN** it shows a notification using `registration.showNotification(title, { body, data: { url } })`
 
 #### Scenario: Empty or malformed payload
-- **WHEN** the payload cannot be parsed as JSON
-- **THEN** a generic localized fallback notification is shown
+- **WHEN** the payload cannot be parsed as JSON, or lacks a field
+- **THEN** a generic fallback is used for the missing part (title `TourenBuddy`, an English generic body, URL `/`) — the service worker has no access to the app's locale
 
 ### Requirement: Service worker notification click handler
 The service worker SHALL focus an existing client window or open a new one at the notification's deep-link URL when the user taps a notification.

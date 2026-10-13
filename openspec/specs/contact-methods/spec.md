@@ -28,128 +28,123 @@ When the user initiates deletion of a phone `contact_method`, the confirmation U
 - **WHEN** the user confirms phone-method deletion for which the warning was displayed
 - **THEN** the phone method is deleted and the database removes the friendship and/or terminates the pending request (per the `friendships` capability)
 
-### Requirement: addContact accepts emails for import flows
+### Requirement: Contact methods are written as part of the contact aggregate
 
-The contacts store's `addContact` action SHALL accept an optional `emails: string[]` argument. After phones are inserted, each email SHALL be inserted as an `email` contact method via `contactMethodsRepository.addMethod`. Emails SHALL be deduplicated by lowercase-trim comparison before insertion. The first email in input order SHALL be inserted with `isPrimary: true`; remaining emails SHALL be inserted with `isPrimary: false`. If both `phones` and `emails` are non-empty, both arrays SHALL be inserted in full (no method-type interaction). Existing callers that omit `emails` SHALL behave identically to today.
+There SHALL be no per-method repository or RPC. Every method mutation in the contacts store
+(`addMethodToContact`, `updateMethodOnContact`, `setPrimaryPhoneOnContact`,
+`removeMethodFromContact`) SHALL build the contact's whole desired method set, with
+client-minted method ids, and write it through the single update seam
+(`updateContactFull` → RPC `update_contact_full`), which reconciles the stored method set to
+exactly that list in one transaction. New contacts SHALL be written the same way through
+`create_contact_full`. Phone values SHALL be stored in E.164 form; `method_type` is
+immutable server-side.
 
-#### Scenario: addContact called with emails only
+#### Scenario: Adding a method rewrites the aggregate
 
-- **WHEN** `addContact(firstName, lastName, displayName, phones: [], source: 'import', emails: ['friend@example.com', 'other@example.com'])` is called
-- **THEN** the repository SHALL insert two `email` contact methods AND zero phone methods, with the first email having `isPrimary: true`
+- **WHEN** `addMethodToContact(contactId, { methodType: 'phone', value: '079 123 45 67' })` is called
+- **THEN** the store SHALL call `update_contact_full` with the contact's existing methods plus a new method whose `value` is `+41791234567` and whose id was minted on the client
 
-#### Scenario: addContact called with phones and emails
+#### Scenario: Reconciliation removes methods absent from the list
 
-- **WHEN** `addContact` is called with one phone and one email
-- **THEN** one `phone` method and one `email` method SHALL be inserted, each marked `isPrimary: true` within its method type
+- **WHEN** `update_contact_full` receives a method list that omits a stored method id
+- **THEN** that stored method SHALL be deleted in the same transaction
 
-#### Scenario: Email dedupe before insertion
+#### Scenario: Offline method edits queue as one contact write
 
-- **WHEN** `addContact` is called with `emails: ['Foo@Example.com', 'foo@example.com']`
-- **THEN** exactly one `email` method SHALL be inserted with `value: 'foo@example.com'`
+- **WHEN** a method is added, edited or removed while offline
+- **THEN** the change SHALL be queued as one coalesced `contact` update entry and replayed as one `update_contact_full` call (see `offline-write-sync`)
 
-#### Scenario: addContact called without emails argument (existing callers)
+### Requirement: Map contact-method unique-violations to friendly errors
 
-- **WHEN** `addContact` is called without the `emails` argument
-- **THEN** behavior SHALL match today (only phones, if any, are inserted)
+The contacts repository SHALL detect Postgres error `code === '23505'` from the aggregate
+write RPCs and SHALL map it to a typed error from `core/exceptions/`:
+`contact_methods_unique_per_contact` → `DuplicateContactMethodError` (i18n key
+`contacts.errors.duplicateMethod`), and `contact_methods_value_unique_per_user` →
+`DuplicateContactAcrossContactsError` (i18n key `contacts.errors.duplicateAcrossContacts`).
+The raw Postgres message and constraint name SHALL NOT be propagated to user-facing
+snackbars. Both i18n keys SHALL exist in `en.json` and `de-CH.json`.
 
-### Requirement: Map contact-method unique-violation to friendly error
+#### Scenario: Same value twice on one contact
 
-The `ContactMethodsRepository` and any repository path that inserts into `contact_methods` SHALL detect Postgres error `code === '23505'` originating from constraint `contact_methods_unique_per_contact` and SHALL throw a typed `DuplicateContactMethodError` (in `core/exceptions/`) carrying the i18n key `contacts.errors.duplicateMethod`. The raw Postgres message and constraint name SHALL NOT be propagated to user-facing snackbars. The i18n key SHALL exist in both `en.json` and `de-CH.json` with a human-readable message.
+- **WHEN** an aggregate write rejects with `code === '23505'` naming `contact_methods_unique_per_contact`
+- **THEN** the repository SHALL throw `DuplicateContactMethodError`
 
-#### Scenario: Unique-violation surfaced as typed error
+#### Scenario: Value already on another contact
 
-- **WHEN** an insert into `contact_methods` rejects with Postgres `code === '23505'` and `constraint === 'contact_methods_unique_per_contact'`
-- **THEN** the repository SHALL throw `DuplicateContactMethodError` whose message resolves via i18n key `contacts.errors.duplicateMethod`
+- **WHEN** an aggregate write rejects with `code === '23505'` naming `contact_methods_value_unique_per_user`
+- **THEN** the repository SHALL throw `DuplicateContactAcrossContactsError`
 
 #### Scenario: Other Postgres errors pass through unchanged
 
-- **WHEN** an insert into `contact_methods` rejects with a non-`23505` error
-- **THEN** the repository SHALL NOT map the error and SHALL propagate it unchanged
-
-#### Scenario: i18n keys present in all locales
-
-- **WHEN** the locale bundles are loaded
-- **THEN** `contacts.errors.duplicateMethod`, `contacts.errors.noValidPhone`, and `contacts.errors.someInvalidPhonesDiscarded` SHALL be defined in both `en.json` and `de-CH.json`
+- **WHEN** an aggregate write rejects with any other error
+- **THEN** the repository SHALL NOT map it
 
 ### Requirement: Single primary phone invariant
 
-When a contact has one or more phone contact methods, exactly one SHALL have `isPrimary = true`. The application layer (Pinia store + repository helper) SHALL enforce this invariant on every write that adds, updates, or removes a phone method.
+When a contact has one or more phone contact methods, exactly one SHALL have
+`isPrimary = true`. The contacts store SHALL enforce this on every aggregate it builds, and
+the database SHALL back it with the `contact_methods_one_primary_phone` partial unique index.
 
 #### Scenario: First phone added becomes primary
 
 - **WHEN** `addMethodToContact(contactId, { methodType: 'phone', value, isPrimary: false })` is called and the contact has zero phone methods
-- **THEN** the store SHALL override `isPrimary` to `true` before calling the repository
+- **THEN** the new phone SHALL be written with `isPrimary: true`
 
-#### Scenario: Second phone added with isPrimary=true demotes existing primary
+#### Scenario: Phone added as primary demotes the existing primary
 
 - **WHEN** `addMethodToContact(contactId, { methodType: 'phone', value, isPrimary: true })` is called and the contact already has a primary phone
-- **THEN** the existing primary phone's `is_primary` SHALL be set to `false` and the new phone SHALL be inserted with `is_primary = true`
+- **THEN** the written aggregate SHALL mark every other phone `isPrimary: false` and the new phone `isPrimary: true`
 
-#### Scenario: Second phone added with isPrimary=false keeps existing primary
+#### Scenario: Phone added as non-primary keeps the existing primary
 
-- **WHEN** `addMethodToContact(contactId, { methodType: 'phone', value, isPrimary: false })` is called and the contact already has a primary phone
-- **THEN** the new phone SHALL be inserted with `is_primary = false` and the existing primary SHALL be unchanged
+- **WHEN** `addMethodToContact` is called with `isPrimary: false` and the contact already has a primary phone
+- **THEN** the new phone SHALL be written with `isPrimary: false` and the existing primary SHALL be unchanged
 
-#### Scenario: Removing the primary promotes next phone
+#### Scenario: Setting another phone primary
 
-- **WHEN** `removeMethodFromContact(contactId, methodId)` is called with the current primary phone's id and the contact has additional phone methods
-- **THEN** after removal the store SHALL call `setPrimaryPhone` with the id of the next remaining phone method (by insertion order) so exactly one phone remains primary
+- **WHEN** `setPrimaryPhoneOnContact(contactId, methodId)` is called for a phone method
+- **THEN** the written aggregate SHALL mark exactly that phone primary; a non-phone or unknown `methodId` SHALL throw without writing
+
+#### Scenario: Removing the primary promotes the next phone
+
+- **WHEN** `removeMethodFromContact(contactId, methodId)` removes the primary phone and other phones remain
+- **THEN** the first remaining phone (by stored order) SHALL be written as primary
 
 #### Scenario: Removing a non-primary phone leaves primary unchanged
 
-- **WHEN** `removeMethodFromContact` is called with a non-primary phone's id
-- **THEN** no primary promotion SHALL occur
+- **WHEN** `removeMethodFromContact` removes a non-primary phone
+- **THEN** no promotion SHALL occur
 
 #### Scenario: Removing the only phone leaves no primary
 
 - **WHEN** the last phone method of a contact is removed
 - **THEN** no promotion occurs and the contact has zero phone methods
 
-### Requirement: ContactMethodsRepository setPrimaryPhone is transactional
+#### Scenario: Multiple phones added manually
 
-The `ContactMethodsRepository` SHALL expose `setPrimaryPhone(contactId, methodId)` backed by a Supabase RPC (Postgres function) that executes both the clear-siblings UPDATE and the set-target UPDATE inside a single database transaction. On any failure (invalid id, RLS violation, method not a phone, method belongs to a different contact), the transaction SHALL roll back so the previously primary phone remains primary.
+- **WHEN** `addContact` is called with `source: 'manual'` and more than one phone
+- **THEN** exactly one phone SHALL be marked primary, or the call SHALL throw without writing; with `source: 'import'` the primary SHALL instead be resolved from the phones' labels
 
-#### Scenario: Flip primary between two phones — success
+### Requirement: Server row is the source of truth after a write
 
-- **WHEN** `setPrimaryPhone(contactId, newPrimaryId)` is called and the contact has another phone method with `is_primary = true`
-- **THEN** inside one transaction the DB SHALL set `is_primary = false` on every other phone method of the contact and set `is_primary = true` on `newPrimaryId`
-- **AND** the repository SHALL resolve with the updated rows
+Online, the contacts store SHALL NOT change local state ahead of the write: it SHALL replace
+the contact with the canonical row the aggregate RPC returns once the write succeeds.
+Offline, the write SHALL be applied optimistically only after it is durably queued (see
+`offline-write-sync`).
 
-#### Scenario: Target method id does not exist — rollback
+#### Scenario: Successful write adopts the server's aggregate
 
-- **WHEN** `setPrimaryPhone(contactId, methodId)` is called with a `methodId` that does not belong to `contactId` or is not of type phone
-- **THEN** the transaction SHALL roll back and no row's `is_primary` value SHALL change
-- **AND** the repository SHALL reject with an error
+- **WHEN** `update_contact_full` succeeds online
+- **THEN** the store SHALL replace the contact with the returned row, including its server `updatedAt`
 
-#### Scenario: RPC rejection preserves previous primary
+#### Scenario: Rejected online write leaves local state untouched
 
-- **WHEN** the `setPrimaryPhone` RPC call rejects for any reason
-- **THEN** a subsequent fetch of the contact SHALL show the same phone method as primary as before the call
-
-#### Scenario: Setting primary on already-primary method
-
-- **WHEN** `setPrimaryPhone(contactId, methodId)` is called where `methodId` is already the primary
-- **THEN** after the call the contact still has exactly one primary phone equal to `methodId`
-
-### Requirement: Database is source of truth for primary
-
-The `contact_methods.is_primary` column in Supabase SHALL be the authoritative value for whether a contact method is primary. The client store SHALL NOT mutate local `isPrimary` state ahead of a successful repository write. When a write to change primary status fails, the local state SHALL remain aligned with the last known DB state.
-
-#### Scenario: Failed primary change does not alter local state
-
-- **WHEN** the user selects a non-primary phone as primary and the repository call rejects
-- **THEN** the contacts store `contacts` array SHALL continue to show the previously primary phone as primary
-
-#### Scenario: Successful primary change updates local state from repository response
-
-- **WHEN** the repository call to change primary succeeds
-- **THEN** the store SHALL update local `isPrimary` flags using the returned rows (not pre-computed values)
-
-## MODIFIED Requirements
+- **WHEN** an online aggregate write rejects (for example with a duplicate-method error)
+- **THEN** the contact in the store SHALL still show its previous methods and primary
 
 ### Requirement: Primary phone helper
 
-A `getPrimaryPhone(contact)` utility function SHALL extract the primary phone number from a contact's methods array, preferring the phone method explicitly marked `isPrimary = true` and falling back to the first phone method in insertion order when none is marked primary (legacy data).
+A `getPrimaryPhone(contact)` utility function (`domain/entities/contact.ts`) SHALL extract the primary phone number from a contact's methods array, preferring the phone method explicitly marked `isPrimary = true` and falling back to the first phone method in insertion order when none is marked primary (legacy data).
 
 #### Scenario: Contact has primary phone
 
@@ -170,22 +165,3 @@ A `getPrimaryPhone(contact)` utility function SHALL extract the primary phone nu
 
 - **WHEN** a contact has phone methods but none with `isPrimary: true`
 - **THEN** `getPrimaryPhone` SHALL return the first phone method's `value` in insertion order
-
-### Requirement: ContactMethods repository
-
-A `ContactMethodsRepository` interface SHALL provide methods to add, update, remove, and re-order primary status of contact methods in the `contact_methods` table.
-
-#### Scenario: Add phone method
-
-- **WHEN** `addMethod(contactId, { methodType: 'phone', value: '+41 79 123 45 67', isPrimary: true })` is called
-- **THEN** the repository SHALL INSERT into `contact_methods` and return the created row
-
-#### Scenario: Remove method
-
-- **WHEN** `removeMethod(methodId)` is called
-- **THEN** the repository SHALL DELETE the row from `contact_methods`
-
-#### Scenario: Set primary phone
-
-- **WHEN** `setPrimaryPhone(contactId, methodId)` is called
-- **THEN** the repository SHALL clear `is_primary` on sibling phone methods of the same contact, then set `is_primary = true` on the target method

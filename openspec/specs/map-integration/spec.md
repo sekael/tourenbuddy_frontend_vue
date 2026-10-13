@@ -20,11 +20,11 @@ The app SHALL render a full-screen MapLibre GL JS map on the `/map` page using S
 
 ### Requirement: Map style switching
 
-The map SHALL support switching between two Swisstopo styles: "Base" (vector tiles) and "Full Color" (WMTS raster style loaded from a local JSON file).
+The map SHALL support switching between two Swisstopo styles: "Base" (the `ch.swisstopo.basemap.vt` vector style) and "Classic" (WMTS raster style loaded from a local JSON file). Switching styles needs the network and SHALL be disabled offline.
 
-#### Scenario: Switch to full color style
+#### Scenario: Switch to classic style
 
-- **WHEN** the user selects "Full Color" from the style picker
+- **WHEN** the user selects "Classic" from the style picker
 - **THEN** the map SHALL load the WMTS style from `public/swisstopo_wmts_style.json` and re-render
 
 #### Scenario: Switch back to base style
@@ -298,7 +298,7 @@ surface SHALL NOT reach the map.
 
 ### Requirement: Map action overlay with FABs
 
-The map page SHALL display entries in the bottom-right speed dial for: feedback, base map style picker, offline maps, user profile, and contacts. The previously top-level Tours and Add-tour FABs SHALL NOT be part of the speed dial — they are owned by the persistent bottom-center tour action bar. The speed-dial trigger SHALL be disabled while any overlay is active (`activeOverlay !== null`).
+The map page SHALL display entries in the bottom-right speed dial, in this order: feedback, base map style picker, offline maps, user profile, contacts, and the notification inbox (nearest the trigger, carrying the inbox badge — see `notification-inbox`). Profile shows a dot when an app update is available; contacts shows a dot while incoming friend requests are pending. The previously top-level Tours and Add-tour FABs SHALL NOT be part of the speed dial — they are owned by the persistent bottom-center tour action bar. The speed-dial trigger SHALL be disabled while any overlay is active (`activeOverlay !== null`).
 
 #### Scenario: Style picker button
 
@@ -375,7 +375,7 @@ A Pinia store (`useMapStore`) SHALL manage map-related state: `isPickingLocation
 
 ### Requirement: Map action overlay icons
 
-Each speed-dial entry SHALL show its label followed by a Material Symbols icon: `feedback` for feedback, `map` for the base map picker, `download_for_offline` for offline maps, `account_circle` for profile, and `group` for contacts. Every entry, the trigger, and the compass SHALL wear the shared map-control glass surface (semi-transparent brand fill with backdrop blur) for visual separation from map content.
+Each speed-dial entry SHALL show its label followed by a Material Symbols icon: `feedback` for feedback, `map` for the base map picker, `download_for_offline` for offline maps, `account_circle` for profile, `group` for contacts, and `notifications` for the inbox. Every entry, the trigger, and the compass SHALL wear the shared map-control glass surface (semi-transparent brand fill with backdrop blur) for visual separation from map content.
 
 #### Scenario: FABs display Material Symbols
 
@@ -407,32 +407,31 @@ The location picker and the offline-region drawing SHALL use the shared `Button`
 
 ### Requirement: Map action overlay exposes a feedback entry point
 
-The map action overlay SHALL render a Feedback floating action button and SHALL emit an `openFeedback` event when the button is activated, without owning any feedback sheet state itself.
+The speed-dial menu SHALL contain a Feedback item, and the map action overlay SHALL emit an `openFeedback` event when it is selected, without owning any feedback sheet state itself.
 
-#### Scenario: Feedback FAB rendered
+#### Scenario: Feedback item listed
 
-- **WHEN** the map action overlay is mounted and the user is not currently picking a location
-- **THEN** a Feedback FAB SHALL be rendered alongside the existing profile and contacts FABs
+- **WHEN** the speed-dial menu is open and the user is not picking a location
+- **THEN** a Feedback item SHALL be listed alongside the other entries
 
-#### Scenario: Feedback FAB emits event
+#### Scenario: Feedback item emits event
 
-- **WHEN** the user taps the Feedback FAB
-- **THEN** the overlay SHALL emit the `openFeedback` event
-- **AND** the overlay SHALL NOT mutate any local sheet visibility state
+- **WHEN** the user selects the Feedback item
+- **THEN** the menu SHALL close, the overlay SHALL emit the `openFeedback` event, and it SHALL NOT mutate any sheet visibility state
 
 ### Requirement: Map page owns feedback sheet visibility
 
-The map page SHALL own the visibility state of the Feedback sheet and SHALL render the shared `FeedbackSheet` component in response to the overlay's `openFeedback` event, consistent with how the profile and contact sheets are wired.
+The map page SHALL own the Feedback sheet's visibility through its single-active overlay state and SHALL render the shared `FeedbackSheet` component in response to the overlay's `openFeedback` event, consistent with how the profile and contact sheets are wired.
 
 #### Scenario: Map page opens feedback sheet
 
 - **WHEN** the map action overlay emits `openFeedback`
-- **THEN** the map page SHALL set its `showFeedbackSheet` state to true and render the `FeedbackSheet` component
+- **THEN** the map page SHALL set `activeOverlay` to `'feedback'` (closing any other overlay) and render the `FeedbackSheet` component
 
 #### Scenario: Sheet close clears state
 
 - **WHEN** the `FeedbackSheet` emits its close event
-- **THEN** the map page SHALL set `showFeedbackSheet` to false and unmount the sheet
+- **THEN** the map page SHALL reset `activeOverlay` and unmount the sheet
 
 ### Requirement: Tour selection shows info
 

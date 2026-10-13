@@ -119,35 +119,23 @@ Input fields SHALL have a clean border style with `--color-outline-variant` bord
 
 ### Requirement: Consistent modal bottom sheet contract
 
-All modal bottom sheet components in the application SHALL follow a consistent contract: they SHALL accept an `open` (or `modelValue`) boolean prop, emit a `close` event when dismissed, and support backdrop-click dismissal from their parent container.
-
-#### Scenario: Sheet accepts open prop
-
-- **WHEN** a parent renders a bottom sheet component with `:open="true"`
-- **THEN** the sheet SHALL be visible
+Overlay components (for example `FeedbackSheet`, `UserProfileSheet`, `ContactsListSheet`, `TourListSheet`, `TourInfoSheet`, the inbox) SHALL NOT own their visibility and SHALL NOT take an `open` prop: the parent page mounts at most one of them at a time through its single-active overlay state and unmounts it when the component emits `close`. Each SHALL render through a shared container — `AdaptiveOverlay` (bottom sheet below 600px, dialog window from 600px, optionally a full-screen page for data entry on mobile) or `SideDrawer` — so dismissal affordances behave the same everywhere.
 
 #### Scenario: Sheet emits close on dismiss
 
-- **WHEN** the user triggers a dismiss action (close button, backdrop click, or Escape key)
-- **THEN** the sheet component SHALL emit a `close` event
-- **AND** the parent SHALL be responsible for updating the controlling state
+- **WHEN** the user triggers a dismiss action (close button, backdrop or map-background click, or Escape)
+- **THEN** the overlay component SHALL emit `close`
+- **AND** the parent SHALL clear its active-overlay state, unmounting the component
 
-#### Scenario: Sheet does not own its own visibility
+#### Scenario: Opening one overlay closes the other
 
-- **WHEN** a sheet component receives `:open="false"`
-- **THEN** the sheet SHALL not render or be hidden
-- **AND** the sheet SHALL NOT toggle its own visibility internally
+- **WHEN** an overlay is open and the parent activates a different one
+- **THEN** the first overlay SHALL unmount before the second mounts
 
-#### Scenario: Backdrop provided by parent
+#### Scenario: Container follows the viewport
 
-- **WHEN** a sheet is open
-- **THEN** the map page (or parent container) SHALL render a full-screen transparent backdrop element behind the sheet
-- **AND** the backdrop SHALL forward click events to the sheet's close handler
-
-#### Scenario: All existing sheets conform to contract
-
-- **WHEN** `UserProfileSheet`, `ContactCreationSheet`, `FeedbackSheet`, and `TourInfoSheet` are reviewed
-- **THEN** each SHALL expose an `open`/`modelValue` prop and a `close` emit consistent with this contract
+- **WHEN** the same overlay opens below 600px and from 600px
+- **THEN** it SHALL render as a bottom sheet and as a dialog window respectively, with the same content and `close` contract
 
 ### Requirement: Full-viewport page root contract
 

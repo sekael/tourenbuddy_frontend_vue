@@ -71,6 +71,11 @@ IMPORTANT: The app ships **all** fonts and icons in its own bundle. There is **n
   grant all on table public.<name> to anon, authenticated, service_role;
   ```
   RLS still governs row access — these grants only restore Data API exposure. See https://github.com/orgs/supabase/discussions/45329.
+- IMPORTANT: Functions are NOT executable by clients unless granted (default privileges revoked in `20261012144059_security_hardening.sql`). In the migration that creates a function: `grant execute on function public.<fn>(<args>) to authenticated;` (`service_role` keeps EXECUTE by default). Internal helpers called only from other SECURITY DEFINER functions or triggers get NO client grant — a definer helper that takes a user id / tour id without re-checking `auth.uid()` must never be reachable over PostgREST.
+- Every SECURITY DEFINER function MUST `set search_path`; every client-callable one MUST also authorize the caller itself (`auth.uid()`), because it bypasses RLS.
+- Views MUST be `with (security_invoker = true)` and granted `select` only (`revoke all ... from anon, authenticated; grant select ... to authenticated`). A default (definer) view runs as `postgres`, bypasses RLS, and a simple one is auto-updatable — `tours_view` was readable, updatable and deletable with the anon key until 2026-10-12.
+- Storage read grants that match an object by a path stored in a row MUST also pin the object's owner prefix (`split_part(name, '/', 1) = <owner>::text`).
+- Background for all of the above (gates, roles, definer semantics, search_path, worked example): `docs/supabase-rpc-authorization.md`.
 
 ## Internationalization
 

@@ -227,10 +227,17 @@ has resolved their proposal.
 ### Requirement: Acceptance applies inside the definer RPC and stamps the tour
 
 Accepting a suggestion SHALL apply the change with a targeted update to `tours` inside a
-SECURITY DEFINER RPC that carries its own explicit owner gate. The tour's `updated_at`
-SHALL advance so the offline last-write-wins baseline stays coherent, and friend viewers
-SHALL be signalled to refetch. The tour SHALL be unchanged until acceptance. Accepting
-SHALL NOT alter the tour's partner set, visibility or completion.
+SECURITY DEFINER RPC (`accept_tour_suggestion` / `accept_tour_suggestion_batch`) that
+carries its own explicit owner gate. The internal helper that performs the column write
+(`fn_apply_tour_suggestion`) SHALL NOT be executable by clients — otherwise a partner could
+apply their own suggestion without the owner. The tour's `updated_at` SHALL advance so the
+offline last-write-wins baseline stays coherent, and friend viewers SHALL be signalled to
+refetch. The tour SHALL be unchanged until acceptance. Accepting SHALL NOT alter the tour's
+partner set, visibility or completion.
+
+#### Scenario: Partner cannot self-apply
+- **WHEN** a partner calls the apply helper directly for their own pending suggestion
+- **THEN** the call is rejected for lack of privilege and the tour is unchanged
 
 #### Scenario: Accept stamps updated_at
 - **WHEN** the owner accepts a suggestion

@@ -26,8 +26,11 @@ jobs:
     steps:
       - name: Sanitize branch name for Pages
         id: branch
+        # Via env, never `${{ }}` inside `run:` — a branch name like `x$(cmd)` would execute.
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
-          slug=$(echo "${{ github.event.pull_request.head.ref }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | cut -c1-28 | sed 's/-*$//')
+          slug=$(echo "$HEAD_REF" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | cut -c1-28 | sed 's/-*$//')
           echo "slug=$slug" >> "$GITHUB_OUTPUT"
 
       - name: Delete preview deployments for branch

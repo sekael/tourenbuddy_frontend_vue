@@ -6,7 +6,7 @@ Baseline Vue 3 + TypeScript + Vite project structure, build pipeline, linting, a
 
 ### Requirement: Project initializes with Vite and TypeScript
 
-The project SHALL have a working `package.json` with all dependencies from CLAUDE.md, a `vite.config.ts` with Vue and PWA plugins, `tsconfig.json` for strict TypeScript, and ESLint/Prettier configuration using `@antfu/eslint-config`.
+The project SHALL have a working `package.json` with all dependencies from AGENTS.md, a `vite.config.ts` with Vue and PWA plugins, `tsconfig.json` for strict TypeScript, and ESLint/Prettier configuration using `@antfu/eslint-config`.
 
 #### Scenario: Fresh install and dev server start
 
@@ -23,7 +23,7 @@ The project SHALL have a working `package.json` with all dependencies from CLAUD
 - **WHEN** a developer runs `npm run type-check`
 - **THEN** `vue-tsc` completes with no type errors
 
-### Requirement: Directory structure follows CLAUDE.md convention
+### Requirement: Directory structure follows AGENTS.md convention
 
 The `src/` directory SHALL be organized as: `app/` (router, theme), `core/` (constants, utils, exceptions, logging, composables, components), and `features/` (feature modules with domain/data/presentation layers).
 
@@ -34,7 +34,7 @@ The `src/` directory SHALL be organized as: `app/` (router, theme), `core/` (con
 
 ### Requirement: Environment variables validated at startup
 
-The app SHALL validate `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` using a Zod schema at startup. The validated `env` object SHALL be the only way to access environment variables in feature code.
+The app SHALL validate its environment with a Zod schema at startup (`core/constants/env.ts`): `VITE_SUPABASE_URL` (URL) and `VITE_SUPABASE_ANON_KEY` are required; `VITE_VAPID_PUBLIC_KEY`, `VITE_NOTIFY_HOOK_URL` (URL) and `VITE_BUILD_COMMIT` are optional, with empty strings treated as unset. The validated `env` object SHALL be the only way to access environment variables in feature code.
 
 #### Scenario: Missing environment variable
 
@@ -66,7 +66,7 @@ A `useLogger` composable SHALL wrap `consola` to provide structured logging. No 
 
 ### Requirement: Design tokens defined as CSS custom properties
 
-Theme tokens SHALL be defined as CSS custom properties: spacing scale (xxs=4px through xxl=32px), border radius (sm=8px, md=16px, lg=24px), and an orange-based color palette.
+Theme tokens SHALL be defined as CSS custom properties in `app/theme/tokens.css`, in two tiers: primitives (slate/blue/red/green/amber ramps; spacing xxs=4px, xs=8px, sm=12px, md=16px, lg=20px, xl=24px, xxl=32px, 3xl=48px; radius sm=10px, md=20px, lg=28px, plus pill/round; shadows sm/md/lg) and semantic aliases (`--color-primary` = blue-600 on slate neutrals, surfaces, error/success, ...). Component code SHALL reference the semantic tier, never the raw palette (see `design-system`).
 
 #### Scenario: Component uses spacing token
 

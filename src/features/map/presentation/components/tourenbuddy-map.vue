@@ -46,7 +46,7 @@ let gpxLayer: ReturnType<typeof useGpxTrackLayer> | null = null
 
 // The map shows the user's own tours plus only the friend tours the user is a
 // partner on — non-partner friend tours never get a marker (the Friends list
-// still shows every shared tour). A partner friend tour colliding (within 100m)
+// still shows every shared tour). A partner friend tour colliding (COLLISION_RADIUS_M)
 // with an owned tour is suppressed — owned tours take precedence.
 const mapTours = computed(() => {
   const partnerFriendTours = friendTours.value.filter(t => t.isPartner === true)

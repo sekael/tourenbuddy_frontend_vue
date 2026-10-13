@@ -144,11 +144,9 @@ When the user initiates contact deletion, the confirmation UI MUST detect whethe
 - **WHEN** the user confirms deletion of a contact for which the warning was displayed
 - **THEN** the contact is deleted and the database removes the corresponding `friendships` row(s) and/or terminates pending `friend_requests` (per the `friendships` capability)
 
-## MODIFIED Requirements
-
 ### Requirement: Contacts store
 
-A Pinia store (`useContactsStore`) SHALL manage the list of contacts (including their contact methods) with reactive `contacts`, `isLoading`, and `error` state. The `addContact` action SHALL accept multiple phone entries and enforce the single-primary invariant on write.
+A Pinia store (`useContactsStore`) SHALL manage the list of contacts (including their contact methods) with reactive `contacts`, `isLoading`, and `error` state. The `addContact` action SHALL accept multiple phone entries, enforce the single-primary invariant, and write the contact and its methods as one aggregate (`create_contact_full`, client-minted ids) through the `mutate()` seam, so it also queues offline.
 
 #### Scenario: Auto-load on authentication
 
@@ -158,7 +156,7 @@ A Pinia store (`useContactsStore`) SHALL manage the list of contacts (including 
 #### Scenario: Add contact with multiple phones
 
 - **WHEN** `addContact(firstName, lastName?, displayName?, phones?)` is called with `phones = [{ value: v1, isPrimary: true }, { value: v2, isPrimary: false }]`
-- **THEN** the store SHALL create the contact, then insert both phone contact methods — the first with `is_primary = true`, the second with `is_primary = false` — add the full contact with ordered methods to the local list, and re-sort by firstName
+- **THEN** the store SHALL write the contact and both phone methods in one `create_contact_full` call — the first with `is_primary = true`, the second with `is_primary = false` — add the returned contact to the local list, and re-sort by firstName
 
 #### Scenario: Add contact with one phone
 
@@ -172,8 +170,8 @@ A Pinia store (`useContactsStore`) SHALL manage the list of contacts (including 
 
 #### Scenario: Add contact with multiple phones but none primary
 
-- **WHEN** `addContact` is called with two or more phones and none is marked `isPrimary: true`
-- **THEN** the store SHALL throw a validation error and SHALL NOT create the contact
+- **WHEN** `addContact` is called with `source: 'manual'` and two or more phones of which not exactly one is marked `isPrimary: true`
+- **THEN** the store SHALL throw a validation error and SHALL NOT create the contact (with `source: 'import'` the primary is resolved from the phone labels instead)
 
 #### Scenario: Store update reflects in list
 
@@ -213,8 +211,6 @@ Each contact in the list SHALL display the resolved contact name (using existing
 
 - **WHEN** user taps a contact row in the list
 - **THEN** the sheet navigates to the detail/edit view for that contact
-
-## ADDED Requirements
 
 ### Requirement: Contacts list shows friendship icon
 

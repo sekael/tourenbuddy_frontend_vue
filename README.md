@@ -7,7 +7,7 @@ TourenBuddy aims to be your one tool to keep track of objectives and touring par
 ## Disclaimer
 
 Most of the code in this repository has been generated with Claude Code using specification-driven development based on the `openspec` framework.
-You may view the configuration and settings used for code generation anytime under [CLAUDE.md](./CLAUDE.md) and [.claude](./.claude/).
+You may view the configuration and settings used for code generation anytime under [AGENTS.md](./AGENTS.md) (imported by [CLAUDE.md](./CLAUDE.md)) and [.claude](./.claude/).
 The current version of the specification used in development is always available at [openspec](./openspec/specs/).
 
 ## Prerequisites
@@ -82,7 +82,7 @@ Committed `supabase/config.toml` ships with both `[auth.email.smtp]` and `[auth.
 
 ### Email mode B — Cloudflare worker + Brevo templates (matches production)
 
-Production uses the Cloudflare worker in `services/email-hook/` as Supabase's [Send Email Hook](https://supabase.com/docs/guides/auth/auth-hooks/send-email-hook). The worker picks a Brevo transactional template per user locale (EN/DE) and submits via the Brevo API. `supabase/config.toml` already has the hook enabled — it points at `http://host.docker.internal:8787/`.
+Production uses the Cloudflare worker in `services/email-hook/` as Supabase's [Send Email Hook](https://supabase.com/docs/guides/auth/auth-hooks/send-email-hook). The worker picks a Brevo transactional template per user locale (EN/DE) and submits via the Brevo API. `supabase/config.toml` already points the hook at `http://host.docker.internal:8787/` but ships it with `enabled = false` — set `enabled = true` under `[auth.hook.send_email]` for this mode (do not commit the flip).
 
 1. Generate a shared HMAC secret (Standard Webhooks format expected by Supabase):
 
@@ -94,17 +94,15 @@ Production uses the Cloudflare worker in `services/email-hook/` as Supabase's [S
    - `supabase/.env` → `SEND_EMAIL_HOOK_SECRET=`
    - `services/email-hook/.dev.vars` → `SEND_EMAIL_HOOK_SECRET=`
 
-2. Fill remaining values in `services/email-hook/.dev.vars` (see `.dev.vars.example` for the full list including the friend-related notification templates):
+2. Fill remaining values in `services/email-hook/.dev.vars` (copy `.dev.vars.example`). The OTP path needs only:
 
    ```env
    BREVO_API_KEY=<Brevo "API Keys" tab key — NOT an SMTP key>
    BREVO_TEMPLATE_EN=<numeric ID of otp_en transactional template>
    BREVO_TEMPLATE_DE=<numeric ID of otp_de transactional template>
-   BREVO_TEMPLATE_FRIEND_RECEIVED_EN=...
-   BREVO_TEMPLATE_FRIEND_RECEIVED_DE=...
-   BREVO_TEMPLATE_FRIEND_RESPONDED_EN=...
-   BREVO_TEMPLATE_FRIEND_RESPONDED_DE=...
    ```
+
+   Notification and calendar values are listed in [SETUP-NOTIFICATIONS.md](./services/email-hook/SETUP-NOTIFICATIONS.md).
 
 3. Start the worker (separate terminal, port 8787):
 
@@ -175,7 +173,7 @@ enabled = false # default locally; flip to true to send real SMS via Twilio Veri
 
 ### Caveats
 
-- `supabase db reset` wipes `auth.users` but `supabase/seed.sql` re-creates the three seeded test users (Patrick / Jakob / Reni) automatically. Real signups still need to be re-done after a reset and burn Brevo quota in mode B and Twilio quota when SMS Verify is enabled.
+- `supabase db reset` wipes `auth.users` but `supabase/seed.sql` re-creates the five seeded test users (Patrick / Jakob / Reni / Selim / Anna) automatically. Real signups still need to be re-done after a reset and burn Brevo quota in mode B and Twilio quota when SMS Verify is enabled.
 - If the Send Email Hook is enabled but `wrangler dev` is not running, signup will fail with hook timeout.
 - Brevo has two distinct credential types: **SMTP keys** (mode C) vs **API keys** (mode B). They are not interchangeable.
 - Twilio Verify expects a **Verify Service SID** (`VAxxx`), not a Messaging Service SID — using the wrong one yields error 21212.
@@ -185,13 +183,17 @@ enabled = false # default locally; flip to true to send real SMS via Twilio Veri
 
 ## Local test users (seeded)
 
-`supabase/seed.sql` runs automatically on every `supabase db reset` (never pushed to prod) and seeds three phone-verified test users with a friendship graph, contacts and tours so friend/tour features can be exercised end-to-end:
+`supabase/seed.sql` runs automatically on every `supabase db reset` (never pushed to prod) and seeds five phone-verified test users with a friendship graph, contacts and tours so friend/tour features can be exercised end-to-end:
 
-| Name    | Email                    | Phone          | Relations                                     |
-| ------- | ------------------------ | -------------- | --------------------------------------------- |
-| Patrick | `patrick@tourenbuddy.ch` | `+41790000001` | friends with Jakob; pending request from Reni |
-| Jakob   | `jakob@tourenbuddy.ch`   | `+41790000002` | friends with Patrick                          |
-| Reni    | `reni@tourenbuddy.ch`    | `+41790000003` | sent pending friend request to Patrick        |
+| Name    | Email                    | Phone          | Relations                                                      |
+| ------- | ------------------------ | -------------- | -------------------------------------------------------------- |
+| Patrick | `patrick@tourenbuddy.ch` | `+41790000001` | friends with Jakob and Selim; pending request from Reni        |
+| Jakob   | `jakob@tourenbuddy.ch`   | `+41790000002` | friends with Patrick; partner on Patrick's tour "Gfroren Hora" |
+| Reni    | `reni@tourenbuddy.ch`    | `+41790000003` | pending requests to Patrick and Selim                          |
+| Selim   | `selim@tourenbuddy.ch`   | `+41790000004` | no profile name; friends with Patrick; pending request to Anna |
+| Anna    | `anna@tourenbuddy.ch`    | `+41790000005` | pending request from Selim                                     |
+
+Tours: Patrick's "Büelehora" (no partners — friends see it gated) and "Gfroren Hora" (partner Jakob), and Jakob's "Piz Ela" (partner Patrick — use it to try tour suggestions).
 
 Re-running `supabase db reset` is idempotent — every insert uses `ON CONFLICT DO NOTHING` on fixed UUIDs.
 
@@ -210,7 +212,7 @@ Switch to mode B/C only when explicitly testing the production-equivalent email 
 
 ### Phone verification — fixed SMS OTP (no app login)
 
-The app verifies a user's phone number separately from login (phone verification gates friend features). Seeded users already have `phone_confirmed_at` set, so no in-app verification is needed for them. If you need to re-trigger the phone-verification flow against a seeded user, `supabase/config.toml` defines `[auth.sms.test_otp]` mapping all three phone numbers to the fixed code **`123456`**, and Twilio is enabled with placeholder credentials (required by GoTrue for `test_otp` to short-circuit — no real SMS is sent):
+The app verifies a user's phone number separately from login (phone verification gates friend features). Seeded users already have `phone_confirmed_at` set, so no in-app verification is needed for them. If you need to re-trigger the phone-verification flow against a seeded user, `supabase/config.toml` defines `[auth.sms.test_otp]` mapping the first three phone numbers to the fixed code **`123456`**, and Twilio is enabled with placeholder credentials (required by GoTrue for `test_otp` to short-circuit — no real SMS is sent):
 
 ```toml
 [auth.sms.twilio]
@@ -248,16 +250,19 @@ Baseline `supabase/migrations/20260101000000_initial_schema.sql` reflects prod s
 
 ## Available Commands
 
-| Command              | Description                                    |
-| -------------------- | ---------------------------------------------- |
-| `npm run dev`        | Start dev server with hot reload               |
-| `npm run build`      | Type-check and build for production            |
-| `npm run preview`    | Preview the production build locally           |
-| `npm run test`       | Run unit tests (single pass)                   |
-| `npm run test:watch` | Run unit tests in watch mode                   |
-| `npm run type-check` | Check TypeScript types without building        |
-| `npm run lint`       | Lint all source files (zero warnings enforced) |
-| `npm run format`     | Format all files with Prettier                 |
+| Command                   | Description                                          |
+| ------------------------- | ---------------------------------------------------- |
+| `npm run dev`             | Start dev server with hot reload                     |
+| `npm run build`           | Type-check and build for production                  |
+| `npm run preview`         | Preview the production build locally                 |
+| `npm run test`            | Run unit tests (single pass)                         |
+| `npm run test:watch`      | Run unit tests in watch mode                         |
+| `npm run type-check`      | Check TypeScript types without building              |
+| `npm run type-check:test` | Type-check `test/` + `scripts/` (non-blocking in CI) |
+| `npm run lint`            | Lint all source files (zero warnings enforced)       |
+| `npm run check:locales`   | Fail if `de-CH.json` misses keys from `en.json`      |
+
+Formatting is enforced by ESLint (`npx eslint --fix <paths>`); do not run `npm run format`. Database RLS tests live in `supabase/tests/` (pgTAP, run with `supabase test db` after `supabase db reset`); the Worker has its own suite (`cd services/email-hook && npm test`).
 
 ## Tech Stack
 
@@ -267,17 +272,20 @@ Frontend:
 - **Vite** — build tool and dev server
 - **Pinia** — state management (composition API stores)
 - **Vue Router 4** — client-side routing with auth guards
-- **Supabase** — backend (PostgreSQL + Auth via email/OTP)
+- **Supabase** — backend (PostgreSQL + Auth via email/OTP + Realtime + Storage)
 - **MapLibre GL JS** — map rendering
 - **Swisstopo** — Swiss topographic vector tiles (free, no API key required)
+- **vue-i18n** — English and Swiss German
+- **PWA** (`vite-plugin-pwa`, custom service worker) — installable, offline app shell, offline base map, IndexedDB data cache with an offline write queue, Web Push
 - **Zod** — runtime validation and type inference
-- **Vitest** — unit testing
+- **Vitest** + happy-dom — unit testing
 
 Backend:
 
-- Supabase PostgreSQL (PostGIS) with auto-generated REST + Auth (email OTP)
-- Supabase Storage for GPX uploads (bucket `tour-gpx`, owner-scoped RLS)
-- Cloudflare worker (`services/email-hook/`) — Supabase Send Email Hook → Brevo transactional templates per locale
+- Supabase PostgreSQL (PostGIS) with auto-generated REST + Auth (email OTP); all writes that need more than RLS go through SECURITY DEFINER RPCs
+- Notification events recorded in the database (`public.notifications`, the in-app inbox) and handed to the Worker after commit via `pg_net`; `pg_cron` runs retention, weekly availability summaries and tour reminders
+- Supabase Storage: `tour-gpx` (GPX tracks) and `tour-attachments` (images/PDFs), both private and owner-prefixed
+- Cloudflare worker (`services/email-hook/`) — Supabase Send Email Hook → Brevo OTP templates; push/email delivery for notification events; calendar feed sync (cron + on demand) and the outbound `.ics` tour feed
 
 Infrastructure:
 
@@ -289,7 +297,7 @@ Infrastructure:
 
 ### Preview deployments
 
-Every PR to `main` triggers `.github/workflows/deploy-preview.yml`, which builds the frontend with production secrets and deploys to `https://<branch-slug>.tourenbuddy.pages.dev`. The workflow posts a sticky comment on the PR with the preview URL. Preview builds use the **production** Supabase, Worker, Brevo, and VAPID infrastructure — test data lands in prod, so use throwaway accounts and clean up after.
+Every PR to `main` triggers `.github/workflows/deploy-preview.yml`, which builds the frontend with production secrets and deploys to `https://<branch-slug>.touringbuddy.pages.dev` (the Pages project is named `tourenbuddy`, its subdomain is `touringbuddy`). The workflow posts a sticky comment on the PR with the preview URL. Preview builds use the **production** Supabase, Worker, Brevo, and VAPID infrastructure — test data lands in prod, so use throwaway accounts and clean up after.
 
 For enabling push and email notifications, see [services/email-hook/SETUP-NOTIFICATIONS.md](./services/email-hook/SETUP-NOTIFICATIONS.md).
 
@@ -299,28 +307,41 @@ For enabling push and email notifications, see [services/email-hook/SETUP-NOTIFI
 src/
   app/
     router/                  # Vue Router config and navigation guards
-    theme/                   # CSS custom properties, design tokens
+    theme/                   # Design tokens, typography, safe-area
   core/
-    composables/             # Shared composables (useSnackbar, etc.)
-    components/              # Shared UI components
-    constants/               # Environment validation
+    auth/                    # Session trust (offline-adopted sessions)
+    components/              # Shared UI (overlays, buttons, icons registry, snackbar, ...)
+    composables/             # Shared composables (useSnackbar, usePwaUpdate, ...)
+    constants/               # Zod-validated env, feedback links
     exceptions/              # Custom error classes
+    i18n/                    # vue-i18n setup, locale detection/persistence
     logging/                 # Logger composable wrapping consola
-    utils/                   # Supabase client singleton
+    offline/                 # IndexedDB data cache, write queue, replay, reconnect
+    realtime/                # Shared Supabase Realtime subscription primitive
+    utils/                   # Supabase client, phone normalization, LV95, uploads
   features/
-    auth/                    # Email OTP authentication flow
-    contacts/                # Contact management (tour partners)
-    map/                     # MapLibre map, location picker, overlays
-    tours/                   # Tour creation, listing, map markers
-    user/                    # User profile + phone verification
+    auth/                    # Email OTP sign-in
+    calendar/                # Calendar page, availability, calendar feed sync
+    contacts/                # Contacts, contact methods, device/vCard import
+    friendships/             # Friend requests, friendships, blocks
+    i18n/                    # Locale store
+    map/                     # MapLibre map, markers/clusters, overlays, offline map
+    notifications/           # Inbox, push registration, notification preferences
+    onboarding/              # Guided product tour (driver.js)
+    tour-links/              # Linking same-objective tours between friends
+    tours/                   # Tours, GPX, attachments, suggestions, list/filters
+    user/                    # Profile, onboarding page, phone verification
+  locales/                   # en.json, de-CH.json
+  sw.ts                      # Service worker (precache, runtime caching, push)
 test/                        # Unit tests mirroring src/ structure
 supabase/
-  config.toml                # Local stack config (auth, hooks, SMTP, SMS)
+  config.toml                # Local stack config (auth, hooks, SMTP, SMS, Vault)
   migrations/                # Versioned schema changes
+  tests/                     # pgTAP RLS / notification tests
   seed.sql                   # Local-only test data (auto-loaded on `supabase db reset`)
   .env / .env.example        # Secrets for env() interpolation in config.toml
 services/
-  email-hook/                # Cloudflare worker (Supabase Send Email Hook → Brevo)
+  email-hook/                # Cloudflare worker (Auth email hook, notification delivery, calendar)
     .dev.vars                # Local worker secrets (gitignored)
 ```
 
@@ -340,3 +361,5 @@ Verified-phone users befriend each other and share tours. Who can read which tou
 how much of it is exposed (per-tour `private`/`friends` visibility + non-partner
 detail gating), the two-layer authorization model, and the shared-tour notifications
 are documented in **[docs/friendships-and-tour-visibility.md](docs/friendships-and-tour-visibility.md)**.
+How a client call is authorized in the database (roles, function grants, SECURITY DEFINER,
+`search_path`) is explained in **[docs/supabase-rpc-authorization.md](docs/supabase-rpc-authorization.md)**.
