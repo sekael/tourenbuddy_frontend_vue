@@ -1,9 +1,10 @@
 import type { Ref } from 'vue'
 import { createTestingPinia } from '@pinia/testing'
 import { mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import BaseIcon from '@/core/components/base-icon.vue'
+import { isOnline } from '@/core/offline/use-online-status'
 import MapActionOverlay from '@/features/map/presentation/components/map-action-overlay.vue'
 import { useInboxStore } from '@/features/notifications/presentation/stores/inbox-store'
 
@@ -307,9 +308,9 @@ describe('mapActionOverlay', () => {
 
     it('should check exactly the current base map among the options', async () => {
       const wrapper = mountOverlay()
-      ;(wrapper.vm as unknown as { openBaseMap: () => void }).openBaseMap()
+      ;(wrapper.vm as unknown as { openMapLayers: () => void }).openMapLayers()
       await wrapper.vm.$nextTick()
-      const options = wrapper.findAll('[role="menuitemradio"]')
+      const options = wrapper.findAll('[role="radio"]')
       expect(options.length).toBeGreaterThan(1)
       expect(options.map(o => o.attributes('aria-checked'))).toEqual(
         options.map((_, i) => String(i === 0)),
@@ -317,28 +318,50 @@ describe('mapActionOverlay', () => {
     })
   })
 
-  describe('base-map options', () => {
-    async function openOptions() {
-      const wrapper = mountOverlay()
+  describe('map layers panel', () => {
+    async function openPanel(options: Parameters<typeof mountOverlay>[0] = {}) {
+      const wrapper = mountOverlay(options)
       await wrapper.find('[aria-haspopup="menu"]').trigger('click')
-      await wrapper.find('[data-tour="menu-base-map"]').trigger('click')
+      await wrapper.find('[data-tour="menu-map-layers"]').trigger('click')
       return wrapper
     }
 
-    it('should unfold beside the base-map item while the rest of the menu stays, inert', async () => {
-      const wrapper = await openOptions()
-      const slot = wrapper.find('[data-tour="menu-base-map"]').element.parentElement!
-      expect(slot.querySelector('[data-tour="basemap"]')).not.toBeNull()
+    afterEach(() => {
+      isOnline.value = true
+    })
+
+    it('should unfold beside the map layers item while the rest of the menu stays, inert', async () => {
+      const wrapper = await openPanel()
+      const slot = wrapper.find('[data-tour="menu-map-layers"]').element.parentElement!
+      expect(slot.querySelector('[data-tour="map-layers"]')).not.toBeNull()
       const items = wrapper.findAll('#speed-dial-menu > .item-slot > [role="menuitem"]')
       expect(items.length).toBeGreaterThan(1)
       expect(items.every(i => i.attributes('inert') !== undefined)).toBe(true)
     })
 
     it('should collapse the whole menu once a base map is chosen', async () => {
-      const wrapper = await openOptions()
-      await wrapper.findAll('[role="menuitemradio"]')[1]!.trigger('click')
+      const wrapper = await openPanel()
+      await wrapper.findAll('[role="radio"]')[1]!.trigger('click')
       expect(wrapper.find('#speed-dial-menu').exists()).toBe(false)
-      expect(wrapper.find('[data-tour="basemap"]').exists()).toBe(false)
+      expect(wrapper.find('[data-tour="map-layers"]').exists()).toBe(false)
+    })
+
+    it('should keep the panel open while toggling overlays', async () => {
+      const wrapper = await openPanel()
+      const toggles = () => wrapper.findAll('[aria-pressed]')
+      await toggles()[0]!.trigger('click')
+      await toggles()[1]!.trigger('click')
+      expect(wrapper.find('[data-tour="map-layers"]').exists()).toBe(true)
+      expect(toggles().map(t => t.attributes('aria-pressed'))).toEqual(['true', 'true'])
+    })
+
+    it('should disable base maps offline but keep overlay toggles and the entry usable', async () => {
+      isOnline.value = false
+      const wrapper = await openPanel()
+      expect(wrapper.find('[data-tour="menu-map-layers"]').attributes('disabled')).toBeUndefined()
+      expect(wrapper.findAll('[role="radio"]').every(r => r.attributes('disabled') !== undefined)).toBe(true)
+      expect(wrapper.findAll('[aria-pressed]').every(r => r.attributes('disabled') === undefined)).toBe(true)
+      expect(wrapper.text()).toContain('map.layers.needsConnection')
     })
   })
 })

@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useMapOverlay } from '../composables/use-map-overlay'
-import MapBaseMapPanel from './map-base-map-panel.vue'
+import MapLayersPanel from './map-layers-panel.vue'
 import MapSpeedDialMenu from './map-speed-dial-menu.vue'
 import SpeedDialTrigger from './speed-dial-trigger.vue'
 
@@ -30,10 +30,12 @@ const {
   isPickingLocation,
   isDrawingRegion,
   currentStyleIndex,
+  activeOverlays,
   inboxCount,
   pendingIncomingCount,
   updateAvailable,
   menuItems,
+  mapStore,
   onMenuSelect,
   selectStyle,
 } = useMapOverlay(emit)
@@ -61,19 +63,19 @@ function closeMenu() {
 }
 
 // Imperative openers for the onboarding tour to demonstrate the navigation
-// path (open the speed-dial menu, then the base-map switcher) — both live
+// path (open the speed-dial menu, then the map layers panel) — both live
 // inside this component's `view`, not the page-level overlay set.
 function openMenu() {
   if (!isPickingLocation.value)
     view.value = 'menu'
 }
 
-function openBaseMap() {
+function openMapLayers() {
   if (!isPickingLocation.value)
-    view.value = 'base-map'
+    view.value = 'map-layers'
 }
 
-defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
+defineExpose({ isOpen, closeMenu, openMenu, openMapLayers })
 </script>
 
 <template>
@@ -93,21 +95,23 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
       </button>
     </BaseTooltip>
 
-    <!-- Base-map options unfold beside "Change base map"; the menu stays open but
-         inert behind them, and everything closes together. -->
+    <!-- The layers panel unfolds beside "Map layers"; the menu stays open but
+         inert behind it, and everything closes together. -->
     <Transition name="dial">
       <MapSpeedDialMenu
         v-if="isOpen"
         ref="menuRef"
         :items="menuItems"
-        :expanded="view === 'base-map' ? 'base-map' : null"
+        :expanded="view === 'map-layers' ? 'map-layers' : null"
         @select="onMenuSelect"
       >
-        <MapBaseMapPanel
-          v-if="view === 'base-map'"
+        <MapLayersPanel
+          v-if="view === 'map-layers'"
           class="unfolded"
           :current-style-index="currentStyleIndex"
-          @select="selectStyle"
+          :active-overlays="activeOverlays"
+          @select-style="selectStyle"
+          @toggle-overlay="mapStore.toggleOverlay"
         />
       </MapSpeedDialMenu>
     </Transition>
@@ -138,7 +142,7 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
   align-items: flex-end;
   z-index: 15;
   /* Only the controls and the backdrop take taps: a tap anywhere else — gaps,
-     inert menu items behind the base-map options — lands on the backdrop (open)
+     inert menu items behind the layers panel — lands on the backdrop (open)
      or the map (closed). */
   pointer-events: none;
 }
@@ -187,19 +191,14 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
 }
 
 /* Expanding menus unfold from where they were opened: the speed-dial items rise
-   from the trigger one after another, nearest first; base-map options slide out
-   of "Change base map", top first. Closing is one quiet fade. The items animate
+   from the trigger one after another, nearest first; the layers panel slides out
+   of "Map layers". Closing is one quiet fade. The items animate
    on mount (they mount only when a menu opens) rather than under
    `dial-enter-active`: the Transition root has no transition of its own, so Vue
    would drop that class after one frame and cut the animation short. */
 .overlay :deep(.item-row) {
   animation: dial-rise var(--motion-duration-medium) var(--motion-ease-emphasized) backwards;
   animation-delay: calc(var(--ri) * var(--motion-stagger));
-}
-
-.unfolded :deep(.item-row) {
-  animation-name: dial-unfold;
-  animation-delay: calc(var(--i) * var(--motion-stagger));
 }
 
 .dial-leave-active {
@@ -214,13 +213,6 @@ defineExpose({ isOpen, closeMenu, openMenu, openBaseMap })
   from {
     opacity: 0;
     transform: translateY(var(--motion-offset)) scale(0.96);
-  }
-}
-
-@keyframes dial-unfold {
-  from {
-    opacity: 0;
-    transform: translateX(var(--motion-offset)) scale(0.96);
   }
 }
 

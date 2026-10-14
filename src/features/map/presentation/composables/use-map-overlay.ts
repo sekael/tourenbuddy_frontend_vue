@@ -3,12 +3,11 @@ import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePwaUpdate } from '@/core/composables/use-pwa-update'
-import { isOnline } from '@/core/offline/use-online-status'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { useInboxStore } from '@/features/notifications/presentation/stores/inbox-store'
 
-export type OverlayView = 'closed' | 'menu' | 'base-map'
+export type OverlayView = 'closed' | 'menu' | 'map-layers'
 
 export function useMapOverlay(emit: {
   (e: 'openProfile'): void
@@ -21,7 +20,7 @@ export function useMapOverlay(emit: {
 
   const mapStore = useMapStore()
   const friendshipsStore = useFriendshipsStore()
-  const { isPickingLocation, isDrawingRegion, currentStyleIndex } = storeToRefs(mapStore)
+  const { isPickingLocation, isDrawingRegion, currentStyleIndex, activeOverlays } = storeToRefs(mapStore)
   const { incomingRequests } = storeToRefs(friendshipsStore)
   const { attentionCount: inboxCount } = storeToRefs(useInboxStore())
   const { updateAvailable } = usePwaUpdate()
@@ -45,8 +44,8 @@ export function useMapOverlay(emit: {
       label: t('map.overlay.feedback'),
       tooltip: t('map.overlay.feedbackTooltip'),
     },
-    // Switching base map (Classic isn't cached) is network-only — greyed offline.
-    { id: 'base-map', icon: 'map', label: t('map.overlay.changeBaseMap'), disabled: !isOnline.value },
+    // Always enabled: offline only the panel's base-map section is disabled.
+    { id: 'map-layers', icon: 'layers', label: t('map.overlay.mapLayers') },
     { id: 'offline-map', icon: 'download_for_offline', label: t('map.overlay.offlineMap') },
     {
       id: 'profile',
@@ -77,8 +76,8 @@ export function useMapOverlay(emit: {
       view.value = 'closed'
       emit('openProfile')
     }
-    else if (id === 'base-map') {
-      view.value = 'base-map'
+    else if (id === 'map-layers') {
+      view.value = 'map-layers'
     }
     else if (id === 'offline-map') {
       view.value = 'closed'
@@ -94,6 +93,7 @@ export function useMapOverlay(emit: {
     }
   }
 
+  // A base pick closes the panel; overlay toggles keep it open (handled by the store).
   function selectStyle(index: number) {
     mapStore.setStyleIndex(index)
     view.value = 'closed'
@@ -105,6 +105,7 @@ export function useMapOverlay(emit: {
     isPickingLocation,
     isDrawingRegion,
     currentStyleIndex,
+    activeOverlays,
     inboxCount,
     pendingIncomingCount,
     updateAvailable,

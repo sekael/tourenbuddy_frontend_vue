@@ -1,5 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 
 describe('useMapStore', () => {
@@ -83,5 +84,45 @@ describe('useMapStore', () => {
       expect(store.previewGoal).toEqual({ lng: 8.2, lat: 46.8 })
       expect(store.previewTourType).toBe('hiking')
     })
+  })
+})
+
+describe('useMapStore overlays', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    vi.restoreAllMocks()
+  })
+
+  function storeWith(stored: string) {
+    localStorage.setItem('tb.map.overlays', stored)
+    setActivePinia(createPinia())
+    return useMapStore()
+  }
+
+  it('should start with no overlays on corrupt JSON', () => {
+    expect(storeWith('{not json').activeOverlays).toEqual([])
+  })
+
+  it('should drop unknown ids but keep known ones', () => {
+    expect(storeWith('["ski","snowshoe"]').activeOverlays).toEqual(['ski'])
+  })
+
+  it('should start with no overlays when localStorage throws', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('SecurityError')
+    })
+    setActivePinia(createPinia())
+    expect(useMapStore().activeOverlays).toEqual([])
+  })
+
+  it('should keep the toggle in memory when saving throws', async () => {
+    setActivePinia(createPinia())
+    const store = useMapStore()
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('QuotaExceeded')
+    })
+    store.toggleOverlay('ski')
+    await nextTick()
+    expect(store.activeOverlays).toEqual(['ski'])
   })
 })

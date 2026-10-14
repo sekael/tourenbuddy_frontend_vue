@@ -4,6 +4,8 @@ import BaseIcon from '@/core/components/base-icon.vue'
 const props = defineProps<{
   message: string
   visible: boolean
+  /** A neutral hint (e.g. "zoom in") instead of an error. */
+  info?: boolean
 }>()
 
 const emit = defineEmits<{ dismiss: [] }>()
@@ -11,7 +13,7 @@ const emit = defineEmits<{ dismiss: [] }>()
 
 <template>
   <Transition name="snackbar">
-    <div v-if="props.visible" class="snackbar error" role="alert">
+    <div v-if="props.visible" class="snackbar" :class="props.info ? 'info' : 'error'" :role="props.info ? 'status' : 'alert'">
       <span class="message">{{ props.message }}</span>
       <!-- Bespoke button kept (color: inherit on the colored snackbar surface);
            glyph routed through BaseIcon. -->
@@ -41,6 +43,11 @@ const emit = defineEmits<{ dismiss: [] }>()
 .error {
   background-color: var(--color-error);
   color: var(--color-on-error);
+}
+
+.info {
+  background-color: var(--color-inverse-surface);
+  color: var(--color-on-inverse-surface);
 }
 
 .message {

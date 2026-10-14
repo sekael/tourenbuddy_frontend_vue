@@ -2,9 +2,7 @@
 import BaseIcon from '@/core/components/base-icon.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 
-// One glass pill per action: label, then icon. Used by the speed-dial menu and the
-// base-map options alike, so every expanding map menu looks and moves the same.
-// Choice items pass role="menuitemradio", aria-checked and the `selected` class.
+// One glass pill per action in the speed-dial menu: label, then icon.
 defineProps<{
   icon: string
   label: string
@@ -55,10 +53,6 @@ const isDesktop = useIsDesktop()
     transform var(--motion-duration-short) var(--motion-ease-spring);
 }
 
-.item-row.selected {
-  background-color: var(--color-fab-glass-strong);
-}
-
 @media (hover: hover) {
   .item-row:hover:not(:disabled) {
     background-color: var(--color-fab-glass-strong);
@@ -67,10 +61,6 @@ const isDesktop = useIsDesktop()
 
 .item-row:active:not(:disabled) {
   background-color: var(--color-fab-glass-strong);
-}
-
-.item-row.selected {
-  font-weight: var(--font-weight-semibold);
 }
 
 .item-row:active:not(:disabled) {

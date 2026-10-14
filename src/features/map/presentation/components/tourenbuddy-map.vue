@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Map as MapLibreMap } from 'maplibre-gl'
+import type { LngLat, Map as MapLibreMap, Point } from 'maplibre-gl'
 import maplibregl from 'maplibre-gl'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -15,11 +15,12 @@ import { tourDetailMarkers } from '@/features/tours/domain/tour-detail-markers'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import { useGpxTrackLayer } from './gpx-track-layer'
 import { DETAIL_CIRCLE_LAYER_ID, TOUR_LAYER_IDS, useToursMarkerLayer } from './tours-marker-layer'
+import { useTrailLayers } from './trail-layers'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
 const emit = defineEmits<{
   tourClicked: [tourId: string]
-  mapBackgroundClick: []
+  mapBackgroundClick: [tap: { point: Point, lngLat: LngLat }]
 }>()
 
 const { t } = useI18n({ useScope: 'global' })
@@ -31,8 +32,16 @@ const toursStore = useToursStore()
 const mapStore = useMapStore()
 const tourLinksStore = useTourLinksStore()
 const { tours, friendTours } = storeToRefs(toursStore)
-const { currentStyleIndex, selectedTourId, previewGoal, previewTourType, previewStart, previewEnd }
-  = storeToRefs(mapStore)
+const {
+  currentStyleIndex,
+  selectedTourId,
+  previewGoal,
+  previewTourType,
+  previewStart,
+  previewEnd,
+  activeOverlays,
+  trailCard,
+} = storeToRefs(mapStore)
 const { groupIdByTourId } = storeToRefs(tourLinksStore)
 
 const linkedTourIds = computed(() => new Set(groupIdByTourId.value.keys()))
@@ -43,6 +52,7 @@ defineExpose({ map })
 
 let markerLayer: ReturnType<typeof useToursMarkerLayer> | null = null
 let gpxLayer: ReturnType<typeof useGpxTrackLayer> | null = null
+let trailLayers: ReturnType<typeof useTrailLayers> | null = null
 
 // The map shows the user's own tours plus only the friend tours the user is a
 // partner on — non-partner friend tours never get a marker (the Friends list
@@ -117,6 +127,10 @@ onMounted(() => {
   window.visualViewport?.addEventListener('resize', onVisualViewportResize)
 
   mapInstance.on('load', async () => {
+    // First: the overlay stack must sit below everything added after it.
+    trailLayers = useTrailLayers(mapInstance!)
+    trailLayers.setup(activeOverlays.value, trailCard.value)
+
     markerLayer = useToursMarkerLayer(
       mapInstance!,
       (tourId) => {
@@ -142,7 +156,7 @@ onMounted(() => {
         layers.push(DETAIL_CIRCLE_LAYER_ID)
       const hits = mapInstance!.queryRenderedFeatures(e.point, { layers })
       if (hits.length === 0) {
-        emit('mapBackgroundClick')
+        emit('mapBackgroundClick', { point: e.point, lngLat: e.lngLat })
       }
     })
   })
@@ -179,6 +193,9 @@ watch(detailMarkers, (markers) => {
   markerLayer?.updateDetailMarkers(markers)
 })
 
+watch(activeOverlays, ids => trailLayers?.setVisible(ids))
+watch(trailCard, card => trailLayers?.setHighlight(card))
+
 // Watch for map style changes
 watch(currentStyleIndex, (index) => {
   if (!mapInstance)
@@ -188,6 +205,7 @@ watch(currentStyleIndex, (index) => {
     markerLayer?.cleanup()
     mapInstance.setStyle(style.style)
     mapInstance.once('style.load', async () => {
+      trailLayers?.setup(activeOverlays.value, trailCard.value)
       await markerLayer?.setup()
       markerLayer?.updateTours(renderedTours.value, selectedTourId.value, linkedTourIds.value)
       markerLayer?.updatePreview(previewGoal.value, previewTourType.value)

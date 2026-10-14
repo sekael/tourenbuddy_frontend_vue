@@ -111,7 +111,7 @@ defineExpose({ focusFirst })
 
 /* The options overflow this slot by design. driver.js clips the parent of a
    spotlit element (`overflow: hidden !important`), which would hide them during
-   the guided tour's base-map step. */
+   the guided tour's map layers step. */
 .item-slot--expanded {
   z-index: 1;
   overflow: visible !important;

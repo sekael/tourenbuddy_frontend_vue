@@ -24,7 +24,7 @@ export type TourSurface
     | 'friend-requests' // friend-requests sheet
     | 'tours' // My Tours list sheet (own / friends tabs)
     | 'tour-bar' // always-visible bottom tour action bar
-    | 'base-map-panel' // speed-dial base-map switcher panel
+    | 'map-layers-panel' // speed-dial map layers panel (base map + trail overlays)
     | 'menu' // speed-dial menu, open with nothing expanded
     | 'today-nav' // calendar: the planned/calendar nav tab (tap-again jumps to today)
     | 'availability' // calendar: availability edit FAB (planned view)
@@ -81,15 +81,15 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     side: 'top',
   },
   {
-    surface: 'base-map-panel',
-    target: '[data-tour="basemap"]',
-    titleKey: 'onboarding.tour.basemap.title',
-    bodyKey: 'onboarding.tour.basemap.body',
-    labelKey: 'onboarding.tour.labels.basemap',
+    surface: 'map-layers-panel',
+    target: '[data-tour="map-layers"]',
+    titleKey: 'onboarding.tour.mapLayers.title',
+    bodyKey: 'onboarding.tour.mapLayers.body',
+    labelKey: 'onboarding.tour.labels.mapLayers',
   },
   {
     // The menu entry itself (not the manage sheet behind it): one tap away, and
-    // the speed-dial stays open from the base-map step — only the panel folds.
+    // the speed-dial stays open from the map layers step — only the panel folds.
     surface: 'menu',
     target: '[data-tour="menu-offline-map"]',
     titleKey: 'onboarding.tour.offlineMap.title',

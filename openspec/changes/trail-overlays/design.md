@@ -79,7 +79,8 @@ request all derive from it. `identifiable` marks the overlays that lookup querie
 `map-store` gains `activeOverlays: Ref<TrailOverlayId[]>` + `toggleOverlay(id)`. It is read from
 `localStorage` (`tb.map.overlays`) once at store creation, Zod-parsed (`z.array(z.string())`, then filtered
 to known ids so one stale entry doesn't wipe the rest), written on change, and wrapped in try/catch like
-`use-tour-filters.ts`. It also gains `trailCard: Ref<{ candidates: Trail[], selectedId: string | null } | null>`.
+`use-tour-filters.ts`. It also gains `trailCard: Ref<{ candidates: Trail[], more: number, selectedId: string | null } | null>`
+(`more` = hits beyond the 8 shown).
 Device-local on purpose: overlay choice is situational per device (desk planning vs. phone in the field),
 and syncing it via `user_profile` would cost a migration plus offline-queue plumbing for a preference.
 `currentStyleIndex` stays unpersisted, because Classic on an offline cold start would be blank.
@@ -146,7 +147,8 @@ graph builder and a routing step. All are additive. No repository interface now:
   togglable offline (visibility only).
 - A base pick closes the panel. Overlay toggles keep it open.
 
-Thumbnails: four static 144×144 PNGs in `public/map-layers/`, captured once at Engelberg z14. The overlay
+Thumbnails: four static 144×144 PNGs in `public/map-layers/`, rendered once headless at 8.368/46.781 z13
+(above Engelberg, where both networks cross). The overlay
 thumbnails are composited over the Base capture, so you see trails on a map. They are precached by the
 existing `injectManifest` glob (covers `png`). No network on open, no pop-in, works offline.
 
@@ -162,6 +164,9 @@ opened as page overlay `trail-info`. There are two states:
   ascent time, ↑/↓ m, and "Open in SAC tour portal" (`target="_blank" rel="noopener"`). Missing fields are
   omitted, and there's a no-info variant. Back arrow to the list when it came from one.
 - Footer "© swisstopo".
+- Highlight is orange (`--orange-500`), not the accent blue: Swisstopo draws ski routes blue.
+- Snackbars: "zoom in" uses a new neutral `info` tone of `ErrorSnackbar` (`role="status"`); the lookup error
+  keeps the error tone.
 
 **Framing:** `frame-tour.ts` is refactored into `frameBounds(map, bounds, covered)`. `frameTour` becomes a
 thin wrapper building bounds from goal/start/end. The card frames the candidates' (list) or the route's

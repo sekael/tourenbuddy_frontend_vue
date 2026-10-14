@@ -5,6 +5,7 @@ import { NavigationRoute, registerRoute } from 'workbox-routing'
 import { CacheFirst, NetworkOnly, StaleWhileRevalidate } from 'workbox-strategies'
 import { OFFLINE_MAP_CACHE } from './features/map/data/services/offline-map-cache'
 import { pickTileResponse } from './features/map/data/services/pick-tile-response'
+import { TRAIL_OVERLAYS } from './features/map/data/trail-overlays'
 
 declare const self: ServiceWorkerGlobalScope
 
@@ -63,7 +64,20 @@ registerRoute(
     }),
 )
 
-// Swisstopo WMTS raster tiles
+// Trail overlays (hiking/ski networks change ~yearly): cache-first, so a viewed tile
+// costs no request for 30 days. Own cache so they never evict Classic tiles.
+// Registered BEFORE the generic WMTS route (Workbox evaluates in registration order).
+const TRAIL_LAYER_IDS = new Set(TRAIL_OVERLAYS.map(o => o.layerBodId))
+registerRoute(
+  // Path: /1.0.0/<layerBodId>/default/current/3857/{z}/{x}/{y}.png
+  ({ url }) => url.origin === 'https://wmts.geo.admin.ch' && TRAIL_LAYER_IDS.has(url.pathname.split('/')[2] ?? ''),
+  new CacheFirst({
+    cacheName: 'swisstopo-trail-overlays',
+    plugins: [new ExpirationPlugin({ maxEntries: 1500, maxAgeSeconds: 60 * 60 * 24 * 30 })],
+  }),
+)
+
+// Swisstopo WMTS raster tiles (Classic base map)
 registerRoute(
   ({ url }) => url.origin === 'https://wmts.geo.admin.ch',
   new StaleWhileRevalidate({

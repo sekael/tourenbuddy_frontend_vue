@@ -698,16 +698,36 @@
       "tours": "Touren",
       "contacts": "Kontakte",
       "profile": "Profil",
-      "changeBaseMap": "Karte ändern",
+      "mapLayers": "Kartenebenen",
       "feedback": "Feedback",
       "offlineMap": "Offline-Karten",
       "inbox": "Posteingang",
       "profileUpdateAvailable": "Profil, Update verfügbar"
     },
     "styles": {
-      "pickerTooltip": "Kartenstil ändern",
       "base": "Basiskarte",
       "classic": "Klassisch"
+    },
+    "layers": {
+      "baseMap": "Grundkarte",
+      "needsConnection": "Benötigt eine Verbindung",
+      "overlays": {
+        "title": "Überlagerungen",
+        "hiking": "Wanderwege",
+        "ski": "Skitouren"
+      }
+    },
+    "trail": {
+      "skiRoute": "Skitour",
+      "listTitle": "{count} Skitouren",
+      "target": "{name} · {altitude} m",
+      "metres": "{value} m",
+      "more": "+{count} weitere – hineinzoomen",
+      "backToList": "Skitouren",
+      "openSac": "Im SAC-Tourenportal öffnen",
+      "noInfo": "Keine Routeninformationen verfügbar",
+      "zoomIn": "Hineinzoomen, um Routendetails zu sehen",
+      "lookupError": "Routeninfo konnte nicht geladen werden"
     },
     "cluster": {
       "label": "Cluster aus {count} Touren",
@@ -872,9 +892,9 @@
         "title": "Tour planen",
         "body": "Tippe hier und setze eine Markierung auf dein Ziel – Gipfel, Kletterfels oder Hütte. TourenBuddy schlägt einen Namen vor und ermittelt die Höhe für dich."
       },
-      "basemap": {
-        "title": "Karte wechseln",
-        "body": "Wähle die Grundkarte, die zu deiner Tour passt – von der detaillierten Swisstopo-Karte bis zum klassischen Look."
+      "mapLayers": {
+        "title": "Kartenebenen",
+        "body": "Wähle eine Grundkarte und blende Wanderwege oder Skitouren darüber ein, in beliebiger Kombination. Schalte Skitouren ein und tippe auf eine, um Details zu sehen."
       },
       "welcome": {
         "title": "Willkommen bei TourenBuddy",
@@ -890,7 +910,7 @@
         "friendRequests": "Freundschaftsanfragen",
         "tours": "Deine Touren",
         "addLocation": "Tour planen",
-        "basemap": "Karte wechseln",
+        "mapLayers": "Kartenebenen",
         "openCalendar": "Kalender öffnen",
         "offlineMap": "Offline-Karten",
         "calendarSync": "Kalender verbinden",
@@ -900,7 +920,7 @@
         "openMenu": "Menü öffnen",
         "profile": "Profil öffnen",
         "contacts": "Kontakte öffnen",
-        "baseMap": "Karte wechseln",
+        "mapLayers": "Kartenebenen öffnen",
         "friendRequests": "Anfragen öffnen",
         "tours": "Touren öffnen"
       },
