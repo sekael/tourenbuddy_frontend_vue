@@ -183,9 +183,12 @@ A new SW route, registered **before** the generic WMTS route, matches `wmts.geo.
 segment is in `TRAIL_OVERLAYS` and uses `CacheFirst` in a dedicated `swisstopo-trail-overlays` cache
 (`ExpirationPlugin` 1500 entries, 30 days). The existing `swisstopo-wmts` SWR route keeps serving Classic.
 
-*Why CacheFirst, not SWR like the base map:* SWR answers from the cache but **still refetches every tile in
-the background** to refresh it. That's right for data that changes, and wasteful for trail networks that
-change about once a year, especially for the heavy low-zoom tiles. *Why a dedicated cache:* sharing the
+*Why CacheFirst, not SWR like the base map:* SWR answers from the cache but **still issues a background
+request per tile view**. With Swisstopo's `max-age=3600` + `ETag` that is usually an HTTP-cache hit or a
+`304`, and a full re-download only after the browser evicts its HTTP cache (common on phones). The cost is
+requests, radio wake-ups and competing bandwidth on poor mountain connections, not mostly payload. Not
+worth paying for networks that change about once a year. (Moving the base map to the same rule is
+#325.) *Why a dedicated cache:* sharing the
 500-entry cap would make Classic and overlays evict each other. The worst case is about 20–30 MB. Side
 effect: overlay tiles you've already viewed render offline for 30 days.
 
