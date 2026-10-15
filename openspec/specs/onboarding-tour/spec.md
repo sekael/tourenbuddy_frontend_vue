@@ -92,7 +92,7 @@ The tour SHALL allow navigating steps both forward and backward. The system SHAL
 
 ### Requirement: Guided step sequence
 
-The tour SHALL present steps in this order, each opening/driving the real surface and highlighting the corresponding feature with a spotlight and an explanatory popover: (1) plan a tour (the add-tour control in the bottom action bar), (2) switching maps (the base-map panel), (3) offline maps (the offline-maps entry in the speed-dial menu), (4) the notification inbox (the inbox entry in the speed-dial menu), (5) phone verification, (6) notification settings, (7) calendar sync (the calendar-sync row of the profile), (8) contacts (the add-contact control, covering the contacts list), (9) friend requests, (10) my tours (own/friends tabs), (11) open the calendar. Steps sharing a surface SHALL be adjacent, and moving between them SHALL NOT replay the navigation path. Steps whose surface is a page-level overlay (contacts, friend-requests, tours, profile) SHALL open the actual sheet and target a stable anchor that exists even for a new user with empty lists. The inbox step SHALL spotlight the inbox menu entry without opening the inbox. The final "open the calendar" step SHALL spotlight the calendar-open control in the My Tours sheet header (teaching the user where the calendar lives) without navigating away. When driving the app to a step's surface, the tour SHALL spotlight each intermediate navigation control it actuates (e.g. the menu FAB, a menu item) with a short hint label naming that control (e.g. "Open menu", "Open contacts"), starting from the surface already on screen when that surface lies on the path (e.g. an open speed-dial menu, an open contacts sheet).
+The tour SHALL present steps in this order, each opening/driving the real surface and highlighting the corresponding feature with a spotlight and an explanatory popover: (1) plan a tour (the add-tour control in the bottom action bar), (2) map layers (the map layers panel, covering base-map choice and trail overlays), (3) offline maps (the offline-maps entry in the speed-dial menu), (4) the notification inbox (the inbox entry in the speed-dial menu), (5) phone verification, (6) notification settings, (7) calendar sync (the calendar-sync row of the profile), (8) contacts (the add-contact control, covering the contacts list), (9) friend requests, (10) my tours (own/friends tabs), (11) open the calendar. Steps sharing a surface SHALL be adjacent, and moving between them SHALL NOT replay the navigation path. Steps whose surface is a page-level overlay (contacts, friend-requests, tours, profile) SHALL open the actual sheet and target a stable anchor that exists even for a new user with empty lists. The inbox step SHALL spotlight the inbox menu entry without opening the inbox. The final "open the calendar" step SHALL spotlight the calendar-open control in the My Tours sheet header (teaching the user where the calendar lives) without navigating away. When driving the app to a step's surface, the tour SHALL spotlight each intermediate navigation control it actuates (e.g. the menu FAB, a menu item) with a short hint label naming that control (e.g. "Open menu", "Open contacts"), starting from the surface already on screen when that surface lies on the path (e.g. an open speed-dial menu, an open contacts sheet).
 
 #### Scenario: Advancing through all steps
 
@@ -133,6 +133,11 @@ The tour SHALL present steps in this order, each opening/driving the real surfac
 
 - **WHEN** a step's target element cannot be found in the DOM after its overlay is opened
 - **THEN** the tour skips that step rather than highlighting an empty region or erroring
+
+#### Scenario: Map layers step
+
+- **WHEN** the tour reaches the map layers step
+- **THEN** the speed-dial menu is open, the "Map layers" entry is spotlighted with its hint label, the layers panel unfolds, and the spotlight covers the whole panel with a popover explaining base maps and trail overlays and that ski routes can be tapped for details, without changing the user's base map or overlays
 
 ### Requirement: Control banner and non-blocking behavior
 
