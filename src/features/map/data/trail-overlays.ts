@@ -11,6 +11,8 @@ export interface TrailOverlay {
   thumbnail: string
   /** BaseIcon name on the panel tile, so the overlay reads without decoding map colors. */
   icon: string
+  /** Chip background behind the icon, in the overlay's map color (default: the panel blue). */
+  iconColor?: string
   /** Whether a map tap looks up features of this overlay. */
   identifiable: boolean
 }
@@ -24,6 +26,7 @@ export const TRAIL_OVERLAYS: TrailOverlay[] = [
     labelKey: 'map.layers.overlays.hiking',
     thumbnail: '/map-layers/hiking.png',
     icon: 'hiking',
+    iconColor: 'var(--red-600)',
     identifiable: false,
   },
   {

@@ -16,13 +16,14 @@ vi.mock('@/core/offline/use-online-status', () => ({ isOnline: mockIsOnline }))
 let onControllerChange: (() => void) | undefined
 let onVisibilityChange: (() => void) | undefined
 
-Object.defineProperty(navigator, 'serviceWorker', {
-  value: { addEventListener: (event: string, fn: () => void) => {
+const mockServiceWorker = {
+  controller: null as object | null,
+  addEventListener: (event: string, fn: () => void) => {
     if (event === 'controllerchange')
       onControllerChange = fn
-  } },
-  configurable: true,
-})
+  },
+}
+Object.defineProperty(navigator, 'serviceWorker', { value: mockServiceWorker, configurable: true })
 
 function setVisibility(state: 'visible' | 'hidden') {
   Object.defineProperty(document, 'visibilityState', { value: state, configurable: true })
@@ -46,6 +47,7 @@ describe('usePwaUpdate', () => {
     mockUseRegisterSW.mockClear()
     onControllerChange = undefined
     onVisibilityChange = undefined
+    mockServiceWorker.controller = {}
     // Capture instead of registering: listeners of earlier tests' instances must not fire.
     vi.spyOn(document, 'addEventListener').mockImplementation(((event: string, fn: () => void) => {
       if (event === 'visibilitychange')
@@ -133,5 +135,14 @@ describe('usePwaUpdate', () => {
     setVisibility('hidden')
     onControllerChange!()
     expect(reloadSpy).not.toHaveBeenCalled()
+  })
+
+  it('should not reload when the first install claims an uncontrolled page', async () => {
+    mockServiceWorker.controller = null
+    await load()
+    onControllerChange!()
+    expect(reloadSpy).not.toHaveBeenCalled()
+    onControllerChange!() // a later update in the same session still reloads
+    expect(reloadSpy).toHaveBeenCalledTimes(1)
   })
 })

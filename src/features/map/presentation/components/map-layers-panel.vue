@@ -54,7 +54,7 @@ function onBaseKeydown(e: KeyboardEvent) {
         <LayerTile
           v-for="overlay in TRAIL_OVERLAYS" :key="overlay.id"
           :aria-pressed="props.activeOverlays.includes(overlay.id)" :label="t(overlay.labelKey)"
-          :thumbnail="overlay.thumbnail" :icon="overlay.icon" :selected="props.activeOverlays.includes(overlay.id)"
+          :thumbnail="overlay.thumbnail" :icon="overlay.icon" :icon-color="overlay.iconColor" :selected="props.activeOverlays.includes(overlay.id)"
           @select="emit('toggleOverlay', overlay.id)"
         />
       </div>
