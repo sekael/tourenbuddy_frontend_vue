@@ -197,8 +197,10 @@ These are registered before the generic routes:
    10 min.
    - A route-file 404 → refresh, rebuild the URL from the new template, retry once. A second 404 means the
      route was removed: treat it as a miss (no card, no snackbar).
-   - A ski-source tile `error` event (`map.on('error')`, filtered on the source id) → refresh. This is the
-     safety net if the redirect fails verification.
+   - A ski-source tile `error` event (`map.on('error')`, filtered on the source id) **without an HTTP
+     status** (CORS/network failure, i.e. a blocked redirect) → refresh. A tile `404` is NOT a trigger: the
+     tile set is sparse (no file where no route runs), so 404 is the normal empty-tile answer. Locally
+     (`wrangler pages dev`) the 302 carries `Access-Control-Allow-Origin`, so this is only the safety net.
    - Only network or validation failures keep the existing `lookupError` snackbar.
 
 ## Risks / Trade-offs
