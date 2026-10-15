@@ -39,6 +39,10 @@ Set at **repo → Settings → Secrets and variables → Actions**:
 
 > URL-typed secrets MUST include the protocol. `tourenbuddy-email-hook.workers.dev` ❌ → `https://tourenbuddy-email-hook.workers.dev` ✅
 
+## Ski-route data (`tourenbuddy-data` Pages project)
+
+Weekly scheduled job `.github/workflows/ski-route-data.yml` rebuilds the self-hosted ski-route tiles + route files from Swisstopo and deploys them to `https://tourenbuddy-data.pages.dev`, independent of app releases. Failures, `force`, keepalive: `docs/ski-route-data.md`.
+
 ## Worker (`services/email-hook`)
 
 Separate deploy via `wrangler deploy` (manual). Worker secrets use **plain names, no `VITE_` prefix** (Workers env model — Vite prefix has no meaning server-side). See `services/email-hook/SETUP-NOTIFICATIONS.md` for the full list and `wrangler secret put` flow.
