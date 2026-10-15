@@ -52,15 +52,15 @@ The ski raster overlay from Swisstopo's WMTS still draws every route line. Our d
 A standard [TileJSON 3.0](https://github.com/mapbox/tilejson-spec) document that MapLibre reads
 natively, plus two fields of our own:
 
-| Field                 | Example                                                                               | Used by                                           |
-| --------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| `tiles`               | `["https://tourenbuddy-data.pages.dev/ski-routes/2025-12-15T091422/{z}/{x}/{y}.pbf"]` | MapLibre; the app derives route-file URLs from it |
-| `minzoom` / `maxzoom` | `11` / `13`                                                                           | MapLibre: no requests below 11, overzoom above 13 |
-| `bounds`              | `[6.78, 45.86, 10.55, 47.33]`                                                         | MapLibre: no requests outside                     |
-| `attribution`         | `©swisstopo`                                                                          | Map attribution (licence requirement)             |
-| `vector_layers`       | layer `routes` + field types                                                          | Documentation of the tile schema                  |
-| `version`             | `2025-12-15T091422`                                                                   | Workflow: "is this release already published?"    |
-| `count`               | `2941`                                                                                | Workflow: ±30% sanity check                       |
+| Field                 | Example                                                                               | Used by                                                                                                 |
+| --------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `tiles`               | `["https://tourenbuddy-data.pages.dev/ski-routes/2025-12-15T091422/{z}/{x}/{y}.pbf"]` | MapLibre; the app derives route-file URLs from it                                                       |
+| `minzoom` / `maxzoom` | `11` / `13`                                                                           | MapLibre: no requests below 11, overzoom above 13                                                       |
+| `bounds`              | `[6.78, 45.86, 10.55, 47.33]`                                                         | MapLibre: no requests outside                                                                           |
+| `attribution`         | `© swisstopo`                                                                         | Map attribution (licence requirement); must match Swisstopo's string exactly or MapLibre shows it twice |
+| `vector_layers`       | layer `routes` + field types                                                          | Documentation of the tile schema                                                                        |
+| `version`             | `2025-12-15T091422`                                                                   | Workflow: "is this release already published?"                                                          |
+| `count`               | `2941`                                                                                | Workflow: ±30% sanity check                                                                             |
 
 The manifest is the only indirection. The app hard-codes one URL,
 `https://tourenbuddy-data.pages.dev/ski-routes.json`, and everything else follows from it.

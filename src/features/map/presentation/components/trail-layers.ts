@@ -24,6 +24,9 @@ const SELECTED_LAYER_ID = 'trail-highlight-selected'
 const HIGHLIGHT_COLOR = '#f97316'
 
 const layerId = (id: TrailOverlayId) => `trail-overlay-${id}`
+// Swisstopo's exact string (base map + Classic use it too): MapLibre merges identical
+// attributions only, so any variant shows up as a second credit.
+const SWISSTOPO_ATTRIBUTION = '© swisstopo'
 
 interface CardState { candidates: Trail[], selectedId: string | null }
 
@@ -54,7 +57,7 @@ export function useTrailLayers(map: MapLibreMap) {
       tiles: [wmtsTileUrl(overlay.layerBodId)],
       tileSize: 256,
       maxzoom: overlay.maxzoom,
-      attribution: '© swisstopo',
+      attribution: SWISSTOPO_ATTRIBUTION,
     })
     map.addLayer({
       id: layerId(id),
@@ -70,7 +73,8 @@ export function useTrailLayers(map: MapLibreMap) {
 
     addOverlay('hiking', active)
     // Only routes with route info are in these tiles, so everything here is marked.
-    map.addSource(SKI_ROUTES_SOURCE_ID, { type: 'vector', url: SKI_ROUTES_TILEJSON })
+    // Source options override the TileJSON's attribution (MapLibre `loadTileJson`).
+    map.addSource(SKI_ROUTES_SOURCE_ID, { type: 'vector', url: SKI_ROUTES_TILEJSON, attribution: SWISSTOPO_ATTRIBUTION })
     map.addLayer({
       'id': CLICKABLE_HALO_LAYER_ID,
       'type': 'line',

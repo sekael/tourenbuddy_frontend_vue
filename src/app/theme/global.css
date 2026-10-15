@@ -78,9 +78,9 @@ html.scroll-locked {
    cannot be locked from here at all; it stops the gesture on its own subtree
    with `touch-action: none` instead (see `.calendar-page--tour-locked`).
 
-   Deliberately NO `touch-action` at this level either — that would impose a
-   gesture policy on the map canvas and on every scroll region inside an
-   overlay. */
+   The root's `touch-action: pan-x pan-y` (below, Touch) only removes page
+   ZOOM: every scroll region still pans, and the map canvas sets its own
+   `touch-action: none` and handles pinch itself. Nothing here locks scrolling. */
 
 /* Segmented tabs — ONE look for every tab row and segmented switch. A row opts
    in with `data-tab-indicator` plus inline `--tab-index` / `--tab-count`; its
@@ -263,19 +263,15 @@ html.scroll-locked {
 }
 
 /* Touch: no grey tap flash (controls give their own press feedback via
-   --press-scale / :active fills) and no double-tap-zoom delay on controls. */
+   --press-scale / :active fills), and no page zoom — the app is a fixed-scale
+   PWA and only the map zooms. `pan-x pan-y` allows scrolling everywhere but no
+   pinch or double-tap zoom (so no double-tap delay either); `touch-action`
+   intersects down the tree, so no descendant can re-enable it. Do NOT use
+   `manipulation` on controls: it explicitly ALLOWS pinch-zoom (it made pinching
+   the tour pill or speed dial zoom the whole app). iOS: see main.ts. */
 html {
   -webkit-tap-highlight-color: transparent;
-}
-
-a,
-button,
-input,
-label,
-select,
-textarea,
-[role='button'] {
-  touch-action: manipulation;
+  touch-action: pan-x pan-y;
 }
 
 /* Map-control glass — every control floating over the map (speed dial and its

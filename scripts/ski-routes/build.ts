@@ -214,7 +214,9 @@ function main() {
     name: 'TourenBuddy ski routes',
     version: a.version,
     count: features.length,
-    attribution: '©swisstopo',
+    // Exactly Swisstopo's own string (base map, Classic, overlays): MapLibre merges
+    // identical attributions only, so '©swisstopo' would show a second credit.
+    attribution: '© swisstopo',
     minzoom: MIN_ZOOM,
     maxzoom: MAX_ZOOM,
     bounds: bounds(features),

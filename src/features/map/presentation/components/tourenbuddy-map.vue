@@ -5,6 +5,7 @@ import { storeToRefs } from 'pinia'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { SWISSTOPO_STYLES } from '@/features/map/data/swisstopo-styles'
+import { TRAIL_OVERLAYS } from '@/features/map/data/trail-overlays'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
 import {
@@ -53,6 +54,19 @@ defineExpose({ map })
 let markerLayer: ReturnType<typeof useToursMarkerLayer> | null = null
 let gpxLayer: ReturnType<typeof useGpxTrackLayer> | null = null
 let trailLayers: ReturnType<typeof useTrailLayers> | null = null
+
+// Map-layers panel previews: fetched + decoded once the first tiles are in, and held
+// here so the browser keeps them in its memory cache — the panel then opens with its
+// thumbnails already painted instead of popping them in.
+const layerThumbnails: HTMLImageElement[] = []
+function preloadLayerThumbnails() {
+  layerThumbnails.push(...[...SWISSTOPO_STYLES, ...TRAIL_OVERLAYS].map(({ thumbnail }) => {
+    const img = new Image()
+    img.src = thumbnail
+    img.decode().catch(() => {}) // best effort: the panel still loads it on open
+    return img
+  }))
+}
 
 // The map shows the user's own tours plus only the friend tours the user is a
 // partner on — non-partner friend tours never get a marker (the Friends list
@@ -127,6 +141,7 @@ onMounted(() => {
   window.visualViewport?.addEventListener('resize', onVisualViewportResize)
 
   mapInstance.on('load', async () => {
+    preloadLayerThumbnails()
     // First: the overlay stack must sit below everything added after it.
     trailLayers = useTrailLayers(mapInstance!)
     trailLayers.setup(trailLayerState())
@@ -170,6 +185,7 @@ function onVisualViewportResize() {
 
 onUnmounted(() => {
   window.visualViewport?.removeEventListener('resize', onVisualViewportResize)
+  layerThumbnails.length = 0
   markerLayer?.cleanup()
   mapInstance?.remove()
   mapInstance = null
