@@ -40,7 +40,7 @@ vi.mock('@/features/friendships/data/repositories/friendship-repository-impl', (
   })),
 }))
 
-function mountPrompt(opts: { beforeSend?: () => Promise<void>, showDismiss?: boolean } = {}) {
+function mountPrompt(opts: { beforeSend?: () => Promise<void>, beforeDismiss?: () => Promise<void>, showDismiss?: boolean } = {}) {
   return mount(ConnectPrompt, {
     props: { matchedUserId: 'user-42', ...opts },
     global: {
@@ -84,6 +84,7 @@ describe('connectPrompt', () => {
       const store = useFriendshipsStore()
       vi.mocked(store.sendRequest).mockImplementation(async () => {
         callOrder.push('send')
+        return null
       })
 
       await wrapper.find('.base-button--primary').trigger('click')

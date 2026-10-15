@@ -74,6 +74,7 @@ describe('useContactImport', () => {
         firstName: 'Anna',
         lastName: 'B',
         displayName: null,
+        updatedAt: null,
         contactMethods: [],
       },
     ]

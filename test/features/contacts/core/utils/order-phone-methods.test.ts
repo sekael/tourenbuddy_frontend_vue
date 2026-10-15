@@ -10,11 +10,13 @@ function makeContact(
     firstName: 'Test',
     lastName: null,
     displayName: null,
+    updatedAt: null,
     contactMethods: methods.map(m => ({
       ...m,
       contactId: 'c1',
       value: `+41 79 ${m.id}`,
       label: null,
+      isValid: true,
     })),
   }
 }

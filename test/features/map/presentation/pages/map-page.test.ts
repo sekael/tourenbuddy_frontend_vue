@@ -1,3 +1,5 @@
+import type { VueWrapper } from '@vue/test-utils'
+import type { ComponentPublicInstance } from 'vue'
 import { createTestingPinia } from '@pinia/testing'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -91,7 +93,28 @@ const STUB_TOUR = {
 // Speed-dial controls the page drives (e.g. the guided tour's staging).
 const overlayMenu = { openMenu: vi.fn(), closeMenu: vi.fn(), openMapLayers: vi.fn() }
 
-function mountMapPage(initialState = {}, stubOverrides: Record<string, unknown> = {}) {
+/** `<script setup>` state the tests drive directly; the page exposes none of it publicly. */
+interface MapPageInternals {
+  activeOverlay: string | null
+  pendingLocation: { lng: number, lat: number } | null
+  pendingPickType: 'goal' | 'start' | 'end'
+  dialogInitialName: string | null
+  dialogInitialElevation: number | null
+  tourDetailOrigin: 'list' | 'cal-seasons' | 'cal-planned' | null
+  tourDetailOriginDay: string | null
+  showCalendarFeatureNotice: boolean
+  onboardingTour: { startTour: (step: number) => void, finish: () => void }
+  openOverlay: (name: string) => void
+  handleLocationConfirmed: (location: { lng: number, lat: number }) => Promise<void>
+  handleTourCreated: (...args: unknown[]) => Promise<void>
+  handleDialogClose: () => void
+  dismissCalendarFeatureNotice: () => void
+}
+
+function mountMapPage(
+  initialState = {},
+  stubOverrides: Record<string, unknown> = {},
+): VueWrapper<ComponentPublicInstance & MapPageInternals> {
   return mount(MapPage, {
     global: {
       plugins: [createTestingPinia({ createSpy: vi.fn, stubActions: true, initialState })],
@@ -111,7 +134,7 @@ function mountMapPage(initialState = {}, stubOverrides: Record<string, unknown> 
         ...stubOverrides,
       },
     },
-  })
+  }) as unknown as VueWrapper<ComponentPublicInstance & MapPageInternals>
 }
 
 describe('mapPage', () => {

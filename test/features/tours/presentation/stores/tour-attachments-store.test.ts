@@ -114,17 +114,14 @@ describe('useTourAttachmentsStore — validateBatch', () => {
     // 3 existing + batch of 4 = 7 > 5
     const files = Array.from({ length: 4 }, (_, i) => makeFile(`img${i}.png`, 'image/png'))
     const err = store.validateBatch(files, 3)
-    expect(err?.code).toBe('limit_reached')
-    expect(err?.remaining).toBe(2) // 5 - 3
-    expect(err?.selected).toBe(4)
+    expect(err).toEqual({ code: 'limit_reached', remaining: 2, selected: 4 }) // 5 - 3 left
   })
 
   it('should reject adding any file when tour is already at limit', () => {
     const store = useTourAttachmentsStore()
     const file = makeFile('img.png', 'image/png')
     const err = store.validateBatch([file], 5)
-    expect(err?.code).toBe('limit_reached')
-    expect(err?.remaining).toBe(0)
+    expect(err).toEqual({ code: 'limit_reached', remaining: 0, selected: 1 })
   })
 
   it('should accept a valid jpeg under 10 MB when capacity exists', () => {

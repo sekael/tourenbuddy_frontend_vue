@@ -37,7 +37,7 @@ function mountComposable(userId = ref<string | null>('user-a')) {
     defineComponent({
       setup() {
         api = useFriendDisplayName(userId)
-        return () => h('span', api.isResolved.value ? api.displayName.value : 'SKELETON')
+        return () => h('span', api.isResolved.value ? (api.displayName.value ?? '') : 'SKELETON')
       },
     }),
     { global: { plugins: [pinia] } },

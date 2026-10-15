@@ -23,9 +23,7 @@ beforeEach(() => {
       disconnect() {}
     },
   )
-  // @ts-expect-error stubbing browser API for tests
   HTMLElement.prototype.setPointerCapture = vi.fn()
-  // @ts-expect-error stubbing browser API for tests
   HTMLElement.prototype.releasePointerCapture = vi.fn()
 })
 

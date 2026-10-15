@@ -17,6 +17,7 @@ function makeContact(
     firstName: 'Test',
     lastName: null,
     displayName: null,
+    updatedAt: null,
     contactMethods: methods.map(m => ({
       id: m.id,
       contactId: id,
@@ -71,6 +72,7 @@ describe('buildContactActions', () => {
       firstName: 'Test',
       lastName: null,
       displayName: null,
+      updatedAt: null,
       contactMethods: [],
     }
     expect(buildContactActions(contact)).toHaveLength(0)

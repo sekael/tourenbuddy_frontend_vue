@@ -8,9 +8,11 @@ import {
   haversineMeters,
   solveSplitZoom,
 } from '@/features/map/presentation/components/cluster-tree'
+import { TOUR_FILL } from '../../../../fixtures/tour-fill'
 
 function makeTour(id: string, lng: number, lat: number): Tour {
   return {
+    ...TOUR_FILL,
     id,
     userId: 'user-1',
     plannedDate: null,

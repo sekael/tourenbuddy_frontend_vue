@@ -1,3 +1,4 @@
+import type { Contact } from '@/features/contacts/domain/entities/contact'
 import { createTestingPinia } from '@pinia/testing'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -35,6 +36,7 @@ const mockContact = {
   firstName: 'Anna',
   lastName: 'Meier',
   displayName: null,
+  updatedAt: null,
   contactMethods: [
     {
       id: 'm-1',
@@ -48,7 +50,7 @@ const mockContact = {
   ],
 }
 
-function mountDetail(contact = mockContact, linkedFriendUserId: string | null = null) {
+function mountDetail(contact: Contact = mockContact, linkedFriendUserId: string | null = null) {
   return mount(ContactDetailView, {
     props: { contact, linkedFriendUserId },
     global: {
@@ -567,7 +569,7 @@ describe('contactDetailView', () => {
     it('should call deleteContact and emit deleted when confirmed', async () => {
       const wrapper = mountDetail()
       const store = useContactsStore()
-      vi.mocked(store.deleteContact).mockResolvedValue(undefined)
+      vi.mocked(store.deleteContact).mockResolvedValue({ queued: false, failed: false, value: undefined })
 
       await wrapper.find('[data-testid="delete-btn"]').trigger('click')
       await wrapper.find('.base-button--danger').trigger('click')
@@ -618,7 +620,7 @@ describe('contactDetailView', () => {
       const wrapper = mountDetail(mockContact, null)
       const friendships = useFriendshipsStore()
       const contacts = useContactsStore()
-      vi.mocked(contacts.deleteContact).mockResolvedValue(undefined)
+      vi.mocked(contacts.deleteContact).mockResolvedValue({ queued: false, failed: false, value: undefined })
 
       await wrapper.find('[data-testid="delete-btn"]').trigger('click')
       await wrapper.find('.base-button--danger').trigger('click')

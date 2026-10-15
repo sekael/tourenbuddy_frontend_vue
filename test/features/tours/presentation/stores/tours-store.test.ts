@@ -2,6 +2,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
+import { DRAFT_FILL, TOUR_FILL } from '../../../../fixtures/tour-fill'
 
 const {
   mockListTours,
@@ -74,6 +75,7 @@ const mockTours = [
   {
     id: 'tour-1',
     userId: 'user-123',
+    ...TOUR_FILL,
     plannedDate: null,
     goal: { lng: 8.2, lat: 46.8 },
     name: 'Rigi Tour',
@@ -116,6 +118,7 @@ describe('useToursStore', () => {
       {
         name: 'Test',
         plannedDate: null,
+        ...DRAFT_FILL,
         partnerIds: [],
         tourType: null,
         elevation: null,
@@ -151,6 +154,7 @@ describe('useToursStore', () => {
       {
         name: 'Test',
         plannedDate: null,
+        ...DRAFT_FILL,
         partnerIds: [],
         tourType: null,
         elevation: null,
@@ -178,6 +182,7 @@ describe('useToursStore', () => {
       {
         name: 'Rigi',
         plannedDate: new Date('2026-07-15'),
+        ...DRAFT_FILL,
         partnerIds: ['contact-1'],
         tourType: 'hiking',
         elevation: 1798,
@@ -235,6 +240,7 @@ describe('useToursStore', () => {
         {
           name: 'Rigi',
           plannedDate: null,
+          ...DRAFT_FILL,
           partnerIds: [],
           tourType: null,
           elevation: null,
@@ -262,6 +268,7 @@ describe('useToursStore', () => {
       const updatedDraft = {
         name: 'Rigi Updated',
         plannedDate: null,
+        ...DRAFT_FILL,
         partnerIds: [],
         tourType: null,
         elevation: 1800,
@@ -297,6 +304,7 @@ describe('useToursStore', () => {
           {
             name: 'Ghost Edit',
             plannedDate: null,
+            ...DRAFT_FILL,
             partnerIds: [],
             tourType: null,
             elevation: null,
@@ -328,6 +336,7 @@ describe('useToursStore', () => {
           {
             name: 'X',
             plannedDate: null,
+            ...DRAFT_FILL,
             partnerIds: [],
             tourType: null,
             elevation: null,
@@ -426,6 +435,7 @@ describe('useToursStore', () => {
     const tourWithPartner = {
       id: 'tour-a',
       userId: 'user-123',
+      ...TOUR_FILL,
       plannedDate: null,
       goal: { lng: 8.2, lat: 46.8 },
       name: 'Alpine Tour',
@@ -445,6 +455,7 @@ describe('useToursStore', () => {
     const tourWithoutPartner = {
       id: 'tour-b',
       userId: 'user-123',
+      ...TOUR_FILL,
       plannedDate: null,
       goal: { lng: 7.1, lat: 46.5 },
       name: 'Valley Tour',

@@ -1,6 +1,7 @@
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ToursRepositoryImpl } from '@/features/tours/data/repositories/tours-repository-impl'
+import { DRAFT_FILL } from '../../../../fixtures/tour-fill'
 
 const mockRpc = vi.fn()
 const mockFrom = vi.fn()
@@ -13,6 +14,7 @@ vi.mock('@/core/utils/supabase', () => ({
 }))
 
 const baseDraft: TourDraft = {
+  ...DRAFT_FILL,
   name: 'Test Tour',
   plannedDate: null,
   partnerIds: [],

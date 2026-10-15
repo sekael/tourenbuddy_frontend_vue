@@ -1,7 +1,7 @@
 import { createTestingPinia } from '@pinia/testing'
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import NotificationPreferencesSection from '@/features/notifications/presentation/components/notification-preferences-section.vue'
 import { useNotificationCapability } from '@/features/notifications/presentation/composables/use-notification-capability'
 import { useNotificationsStore } from '@/features/notifications/presentation/stores/notifications-store'
@@ -41,8 +41,8 @@ describe('notificationPreferencesSection', () => {
     vi.clearAllMocks()
     isDesktop.value = true
     vi.mocked(useNotificationCapability).mockReturnValue({
-      pushSupported: ref(true),
-      requiresPwaInstall: ref(false),
+      pushSupported: computed(() => true),
+      requiresPwaInstall: computed(() => false),
     })
   })
 
@@ -76,8 +76,8 @@ describe('notificationPreferencesSection', () => {
 
   it('should show compact unavailable badge when requiresPwaInstall is true', () => {
     vi.mocked(useNotificationCapability).mockReturnValue({
-      pushSupported: ref(false),
-      requiresPwaInstall: ref(true),
+      pushSupported: computed(() => false),
+      requiresPwaInstall: computed(() => true),
     })
 
     const wrapper = mountComponent()

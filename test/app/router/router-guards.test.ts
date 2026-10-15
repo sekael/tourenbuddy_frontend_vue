@@ -52,7 +52,7 @@ describe('setupRouterGuards', () => {
   function runGuard(
     to: ReturnType<typeof makeRoute>,
     authStore: ReturnType<typeof makeAuthStore>,
-    profileStore: ReturnType<typeof makeProfileStore>,
+    profileStore: Parameters<typeof setupRouterGuards>[1],
   ) {
     setupRouterGuards(authStore, profileStore)
     return capturedGuard(to)

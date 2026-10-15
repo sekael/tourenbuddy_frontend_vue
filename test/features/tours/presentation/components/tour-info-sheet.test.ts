@@ -5,6 +5,7 @@ import { nextTick } from 'vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import TourInfoSheet from '@/features/tours/presentation/components/tour-info-sheet.vue'
+import { TOUR_FILL } from '../../../../fixtures/tour-fill'
 
 const mockDownloadOriginal = vi.fn()
 
@@ -81,6 +82,7 @@ const ContactActionMenuStub = {
 }
 
 const mockTour = {
+  ...TOUR_FILL,
   id: 'tour-1',
   userId: 'user-1',
   name: 'Rigi Tour',
@@ -196,7 +198,7 @@ describe('tourInfoSheet', () => {
       const wrapper = mountSheet()
       const { useToursStore } = await import('@/features/tours/presentation/stores/tours-store')
       const store = useToursStore()
-      vi.mocked(store.updateTour).mockResolvedValue(undefined)
+      vi.mocked(store.updateTour).mockResolvedValue({ queued: false, failed: false, value: undefined })
 
       // Enter edit
       await wrapper.find('[data-testid="edit-btn"]').trigger('click')
@@ -333,7 +335,7 @@ describe('tourInfoSheet', () => {
       const wrapper = mountSheet()
       const { useToursStore } = await import('@/features/tours/presentation/stores/tours-store')
       const store = useToursStore()
-      vi.mocked(store.deleteTour).mockResolvedValue(undefined)
+      vi.mocked(store.deleteTour).mockResolvedValue({ queued: false, failed: false, value: undefined })
 
       await wrapper.find('[data-testid="delete-btn"]').trigger('click')
       await wrapper.find('[data-testid="delete-confirm-btn"]').trigger('click')
@@ -460,6 +462,7 @@ describe('tourInfoSheet', () => {
     firstName: 'Anna',
     lastName: null,
     displayName: null,
+    updatedAt: null,
     contactMethods: [],
   }
 
@@ -516,6 +519,7 @@ describe('tourInfoSheet', () => {
             value: '+41791111111',
             label: null,
             isPrimary: true,
+            isValid: true,
           },
           {
             id: 'method-2',
@@ -524,6 +528,7 @@ describe('tourInfoSheet', () => {
             value: '+41792222222',
             label: null,
             isPrimary: false,
+            isValid: true,
           },
         ],
       }
@@ -546,6 +551,7 @@ describe('tourInfoSheet', () => {
             value: '+41791111111',
             label: null,
             isPrimary: false,
+            isValid: true,
           },
           {
             id: 'method-2',
@@ -554,6 +560,7 @@ describe('tourInfoSheet', () => {
             value: '+41792222222',
             label: null,
             isPrimary: true,
+            isValid: true,
           },
         ],
       }
