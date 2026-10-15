@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, ref } from 'vue'
+import { focusForKeyboard } from '@/core/utils/keyboard-focus'
 import SpeedDialItem from './speed-dial-item.vue'
 
 export interface SpeedDialMenuItem {
@@ -21,7 +22,7 @@ const menuEl = ref<HTMLElement | null>(null)
 async function focusFirst() {
   await nextTick()
   const btns = menuEl.value?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')
-  btns?.[0]?.focus()
+  focusForKeyboard(btns?.[0])
 }
 
 function onKeydown(e: KeyboardEvent) {

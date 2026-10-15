@@ -3,6 +3,7 @@ import type { TrailOverlayId } from '@/features/map/data/trail-overlays'
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { isOnline } from '@/core/offline/use-online-status'
+import { focusForKeyboard } from '@/core/utils/keyboard-focus'
 import { SWISSTOPO_STYLES } from '@/features/map/data/swisstopo-styles'
 import { TRAIL_OVERLAYS } from '@/features/map/data/trail-overlays'
 import LayerTile from './layer-tile.vue'
@@ -11,10 +12,10 @@ const props = defineProps<{ currentStyleIndex: number, activeOverlays: TrailOver
 const emit = defineEmits<{ selectStyle: [index: number], toggleOverlay: [id: TrailOverlayId] }>()
 const { t } = useI18n({ useScope: 'global' })
 
-// The panel replaces the menu: hand focus to the current base map (or the first
-// overlay offline, when the base tiles are disabled).
+// The panel replaces the menu: keyboard users get focus handed to the current base map
+// (or the first overlay offline, when the base tiles are disabled).
 const panelEl = ref<HTMLElement | null>(null)
-onMounted(() => panelEl.value?.querySelector<HTMLElement>('button:not(:disabled)')?.focus())
+onMounted(() => focusForKeyboard(panelEl.value?.querySelector<HTMLElement>('button:not(:disabled)')))
 
 // Radio-group keys: arrows move the choice within the base maps.
 function onBaseKeydown(e: KeyboardEvent) {
