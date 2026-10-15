@@ -29,14 +29,16 @@ vi.mock('vue-router', () => ({
 }))
 
 const TAP = { point: { x: 100, y: 100 }, lngLat: { lng: 8.4, lat: 46.8 } }
-// Just enough MapLibre for the trail-lookup path; `zoom` is set per test.
+// Just enough MapLibre for the trail-lookup and tour-framing paths; `zoom` is set per test.
 const fakeMap = {
   zoom: 13,
   getZoom: () => fakeMap.zoom,
   getBounds: () => ({ getWest: () => 8, getSouth: () => 46, getEast: () => 9, getNorth: () => 47 }),
-  getContainer: () => ({ clientWidth: 400, clientHeight: 800 }),
+  getContainer: () => ({ clientWidth: 400, clientHeight: 800, getBoundingClientRect: () => ({ width: 400, height: 800 }) }),
   project: () => ({ x: 0, y: 0 }),
   getBearing: () => 0,
+  cameraForBounds: () => undefined,
+  flyTo: vi.fn(),
   on: vi.fn(),
 }
 

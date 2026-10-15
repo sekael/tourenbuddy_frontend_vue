@@ -81,7 +81,7 @@ describe('useTrailLookup', () => {
   })
 
   it('should cap at eight nearest candidates and count the rest', async () => {
-    vi.mocked(identifySkiRoutes).mockResolvedValueOnce([10, 3, 7, 1, 9, 11, 2, 5, 12, 4, 8, 6].map(trailAt))
+    vi.mocked(identifySkiRoutes).mockResolvedValueOnce([10, 3, 7, 1, 9, 11, 2, 5, 12, 4, 8, 6].map(x => trailAt(x)))
     const hits = await create().lookup(TAP)
     expect(hits?.candidates.map(c => c.id)).toEqual(['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8'])
     expect(hits?.more).toBe(2)
