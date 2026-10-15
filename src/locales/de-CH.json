@@ -894,7 +894,7 @@
       },
       "mapLayers": {
         "title": "Kartenebenen",
-        "body": "Wähle eine Grundkarte und blende Wanderwege oder Skitouren darüber ein, in beliebiger Kombination. Mit Skitouren tippst du auf eine markierte Route, um Details zu sehen."
+        "body": "Wähle eine Grundkarte und blende Wanderwege oder Skitouren darüber ein, in beliebiger Kombination. Mit Skitouren zoomst du hinein, bis die Routen Schwierigkeits-Badges zeigen, und tippst dann für Details auf eine Route."
       },
       "welcome": {
         "title": "Willkommen bei TourenBuddy",
@@ -1086,6 +1086,24 @@
         "reminders": {
           "title": "Erinnerung fünf Tage vorher",
           "body": "Alle Beteiligten einer geplanten Tour erhalten fünf Tage vorher einen Hinweis – Zeit, Verhältnisse, Ausrüstung und Partner."
+        }
+      }
+    },
+    "2026-10-trail-overlays": {
+      "title": "Wanderwege und Skitouren auf der Karte",
+      "intro": "Das markierte Wegnetz der Schweiz direkt auf deiner Karte. Einschalten unter Kartenebenen im Menü.",
+      "features": {
+        "hiking": {
+          "title": "Wanderwege",
+          "body": "Alle offiziellen Wander-, Bergwander- und Alpinwanderwege über jeder Grundkarte, beliebig kombinierbar mit Skitouren."
+        },
+        "ski": {
+          "title": "Skitouren mit Schwierigkeit",
+          "body": "Die SAC-Skitourenrouten. Zoomst du hinein, erhält jede Route ein Badge mit ihrer Schwierigkeit, eingefärbt von leicht bis extrem."
+        },
+        "details": {
+          "title": "Routendetails mit einem Tipp",
+          "body": "Tippe auf eine markierte Route für Gipfel, Aufstiegszeit, Höhenmeter und Schwierigkeit, samt Link ins SAC-Tourenportal. Wo sich Routen überlagern, wählst du eine aus der Liste."
         }
       }
     }

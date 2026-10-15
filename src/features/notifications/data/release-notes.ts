@@ -28,6 +28,15 @@ export const RELEASE_NOTES: readonly ReleaseNote[] = [
     ],
     action: 'notification-settings',
   },
+  {
+    id: '2026-10-trail-overlays',
+    since: '2026-10-15',
+    features: [
+      { key: 'hiking', icon: 'hiking' },
+      { key: 'ski', icon: 'downhill_skiing' },
+      { key: 'details', icon: 'info' },
+    ],
+  },
 ]
 
 export function currentReleaseNote(notes: readonly ReleaseNote[] = RELEASE_NOTES): ReleaseNote | null {
