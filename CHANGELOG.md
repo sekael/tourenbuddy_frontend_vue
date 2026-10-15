@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.45.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.44.1...tourenbuddy-frontend-v0.45.0) (2026-10-15)
+
+
+### Features
+
+* Trail overlays ([#327](https://github.com/sekael/tourenbuddy_frontend_vue/issues/327)) ([94b3060](https://github.com/sekael/tourenbuddy_frontend_vue/commit/94b3060edf5491fc48eb9b79051614d0bc86a40e))
+
 ## [0.44.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.44.0...tourenbuddy-frontend-v0.44.1) (2026-10-13)
 
 
