@@ -47,7 +47,7 @@ Published layout (`https://tourenbuddy-data.pages.dev`):
 /_headers                                 CORS `*`; `immutable, max-age=31536000` on /ski-routes/*
 ```
 
-`<version>` is the STAC `updated` date (`2025-12-15`). The TileJSON carries `tiles`, `minzoom: 11`,
+`<version>` is the gpkg asset's STAC `updated` timestamp without colons/fraction (`2025-12-15T091422`). The TileJSON carries `tiles`, `minzoom: 11`,
 `maxzoom: 13`, `bounds`, `attribution: "©swisstopo"`, `version`. About 5.6k files in total.
 
 *Alternatives:*
@@ -64,7 +64,7 @@ Published layout (`https://tourenbuddy-data.pages.dev`):
 
 Tiles clip at tile edges and simplify below z13, so they can't give one continuous geometry per route.
 Each feature in the `routes` layer carries only what marking and hit-testing need: `id` (the GeoPackage
-SAC route id `sacid` as a string — the SAC portal's own id, stable across releases unlike the GeoPackage `fid`, and what future tour↔route links would store), `difficulty` (numeric grade, may be null) and `difficulty_de`/`_fr`/`_it`/`_en`.
+SAC route id `sacid` as a string — the SAC portal's own id, stable across releases unlike the GeoPackage `fid`, and what future tour↔route links would store), `grade` (the app's own `skiDifficultyGrade` of `difficulty_de`, imported by the build so halo and badge colors can't diverge; may be null) and `difficulty_de`/`_fr`/`_it`/`_en`.
 Everything else, including the full geometry, lives in `routes/<id>.json`. That is the exact feature shape
 the current mapper already handles (`properties` = Swisstopo fields, `LineString | MultiLineString`), so
 `mapSkiRoute` and its Zod schema are kept as they are. `Trail`, `trail-card`, the highlight source and
@@ -76,7 +76,7 @@ and snapping (#324 D6) needs full polylines anyway.
 
 ### D3 — Build pipeline: `ogr2ogr` → Node script → `tippecanoe`
 
-`scripts/ski-routes/build.mjs`, run by the Action:
+`scripts/ski-routes/build.ts` (run with `npx tsx`, the repo's script convention), run by the Action:
 
 1. `ogr2ogr -f GeoJSONSeq -t_srs EPSG:4326 -where "target_name IS NOT NULL AND source = 'swisstopo_sac'"`
    with `-lco COORDINATE_PRECISION=6`. 6 decimals is about 0.1 m, which is lossless relative to the data.
@@ -91,8 +91,8 @@ and snapping (#324 D6) needs full polylines anyway.
 The buffer covers the halo width + blur (≈ 12 px of 256), so halos join at tile edges. That gets checked
 visually at a tile edge.
 
-GDAL and tippecanoe come from apt on `ubuntu-latest` (`gdal-bin`, `tippecanoe`). If tippecanoe isn't
-packaged there, build it from the tagged source (cached). No npm dependency is added.
+GDAL and tippecanoe come from apt on the pinned `ubuntu-24.04` runner (`gdal-bin`, `tippecanoe` 2.49 from universe — verified). No npm dependency
+is added.
 
 ### D4 — Scheduled workflow `ski-route-data.yml`
 
@@ -125,7 +125,7 @@ packaged there, build it from the tagged source (cached). No npm dependency is a
 transparent. The stack order and layer ids stay the same, so the draw-order requirements don't change.
 
 - **Halo:** `source-layer: 'routes'`, `minzoom: 11`, and `visibility` follows the ski overlay (today it's
-  implicitly empty data). Color comes from a MapLibre `interpolate` on `difficulty`. The stops are the
+  implicitly empty data). Color comes from a MapLibre `interpolate` on `grade`. The stops are the
   same as `GRADE_COLORS` at grades 1, 4, 7, …, since `gradeColor` mixes linearly in RGB like `interpolate`.
   A `case` gives grey for null. `ski-badge.ts` exports the stops so there is one ramp.
 - **Badges:** `minzoom: 11`, `icon-image: ['concat', 'ski-badge|', ['get', labelField]]`.
