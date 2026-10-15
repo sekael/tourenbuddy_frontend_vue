@@ -8,6 +8,7 @@ const contact = {
   firstName: 'Anna',
   lastName: 'Meier',
   displayName: null,
+  updatedAt: null,
   contactMethods: [],
 }
 

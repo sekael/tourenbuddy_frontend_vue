@@ -248,6 +248,7 @@ describe('useUserProfileStore', () => {
       onboardingTourLastStep: 0,
       calendarTourShowOnFirstOpen: true,
       calendarFeatureNoticeShowAtSignIn: false,
+      updatedAt: null,
     }
 
     it('saveTourStep persists the resume index', async () => {
@@ -296,6 +297,7 @@ describe('useUserProfileStore', () => {
       expect(mockUpsertProfile).toHaveBeenLastCalledWith(
         expect.objectContaining({
           calendarFeatureNoticeShowAtSignIn: false,
+          updatedAt: null,
           calendarTourShowOnFirstOpen: true,
         }),
       )
@@ -323,6 +325,7 @@ describe('useUserProfileStore', () => {
         onboardingTourLastStep: 0,
         calendarTourShowOnFirstOpen: true,
         calendarFeatureNoticeShowAtSignIn: false,
+        updatedAt: null,
       }
       store.clear()
 

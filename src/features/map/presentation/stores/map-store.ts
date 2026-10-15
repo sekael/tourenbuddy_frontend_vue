@@ -1,6 +1,33 @@
+import type { TrailOverlayId } from '@/features/map/data/trail-overlays'
+import type { Trail } from '@/features/map/domain/entities/trail'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, shallowRef, watch } from 'vue'
+import { z } from 'zod'
+import { TRAIL_OVERLAYS } from '@/features/map/data/trail-overlays'
+
+const OVERLAYS_STORAGE_KEY = 'tb.map.overlays'
+
+/** Persisted overlays, filtered to known ids so one stale entry doesn't wipe the rest. */
+function readStoredOverlays(): TrailOverlayId[] {
+  try {
+    const parsed = z.array(z.string()).safeParse(JSON.parse(localStorage.getItem(OVERLAYS_STORAGE_KEY) ?? '[]'))
+    if (parsed.success)
+      return TRAIL_OVERLAYS.map(o => o.id).filter(id => parsed.data.includes(id))
+  }
+  catch {
+    // localStorage unavailable or corrupt JSON — fall back to all off.
+  }
+  return []
+}
+
+/** Ski routes found by one tap, nearest first; `selectedId` null = list view. */
+export interface TrailCard {
+  candidates: Trail[]
+  /** Hits beyond `candidates` (the "+N more" note). */
+  more: number
+  selectedId: string | null
+}
 
 /**
  * Transient handoff from the calendar route to the map page. The calendar lives
@@ -41,6 +68,45 @@ export const useMapStore = defineStore('map', () => {
   const previewEnd = ref<{ lng: number, lat: number } | null>(null)
   /** One-shot cross-route intent from the calendar (see PendingIntent). */
   const pendingIntent = ref<PendingIntent | null>(null)
+  /** Visible trail overlays, kept in draw order; persisted per device. */
+  const activeOverlays = ref<TrailOverlayId[]>(readStoredOverlays())
+  const trailCard = ref<TrailCard | null>(null)
+  /** Ski routes in view that carry route info: marked on the map, and tappable. */
+  const clickableTrails = shallowRef<Trail[]>([])
+
+  watch(activeOverlays, (ids) => {
+    try {
+      localStorage.setItem(OVERLAYS_STORAGE_KEY, JSON.stringify(ids))
+    }
+    catch {
+      // Not persisted this time; the in-memory choice still applies.
+    }
+  })
+
+  function toggleOverlay(id: TrailOverlayId) {
+    const next = new Set(activeOverlays.value)
+    if (!next.delete(id))
+      next.add(id)
+    activeOverlays.value = TRAIL_OVERLAYS.map(o => o.id).filter(i => next.has(i))
+  }
+
+  /** One hit opens its details directly; several open the list. */
+  function showTrails(candidates: Trail[], more: number) {
+    trailCard.value = { candidates, more, selectedId: candidates.length === 1 ? candidates[0]!.id : null }
+  }
+
+  function selectTrail(id: string | null) {
+    if (trailCard.value)
+      trailCard.value = { ...trailCard.value, selectedId: id }
+  }
+
+  function clearTrails() {
+    trailCard.value = null
+  }
+
+  function setClickableTrails(trails: Trail[]) {
+    clickableTrails.value = trails
+  }
 
   function setPendingIntent(intent: PendingIntent) {
     pendingIntent.value = intent
@@ -95,6 +161,14 @@ export const useMapStore = defineStore('map', () => {
     previewStart,
     previewEnd,
     pendingIntent,
+    activeOverlays,
+    trailCard,
+    clickableTrails,
+    toggleOverlay,
+    showTrails,
+    selectTrail,
+    clearTrails,
+    setClickableTrails,
     setPendingIntent,
     consumePendingIntent,
     setPickingLocation,

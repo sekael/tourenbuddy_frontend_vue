@@ -6,8 +6,10 @@ import { useContactsStore } from '@/features/contacts/presentation/stores/contac
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useTourFilters } from '@/features/tours/presentation/composables/use-tour-filters'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
+import { TOUR_FILL } from '../../../../fixtures/tour-fill'
 
 const baseTour: Tour = {
+  ...TOUR_FILL,
   id: '1',
   userId: 'u-1',
   name: 'Alpine Hike',

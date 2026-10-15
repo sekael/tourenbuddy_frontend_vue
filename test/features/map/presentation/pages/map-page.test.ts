@@ -1,7 +1,11 @@
+import type { VueWrapper } from '@vue/test-utils'
+import type { ComponentPublicInstance } from 'vue'
 import { createTestingPinia } from '@pinia/testing'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick, ref } from 'vue'
+import { isOnline } from '@/core/offline/use-online-status'
+import { identifySkiRoutes } from '@/features/map/data/services/swisstopo-trail-service'
 import MapPage from '@/features/map/presentation/pages/map-page.vue'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
@@ -9,6 +13,9 @@ import { useUserProfileStore } from '@/features/user/presentation/stores/user-pr
 
 vi.mock('@/features/tours/data/services/swisstopo-elevation-service', () => ({
   getElevation: vi.fn().mockResolvedValue(1234),
+}))
+vi.mock('@/features/map/data/services/swisstopo-trail-service', () => ({
+  identifySkiRoutes: vi.fn().mockResolvedValue([]),
 }))
 vi.mock('@/features/tours/data/services/swisstopo-name-service', () => ({
   suggestTourName: vi.fn().mockResolvedValue('Mocked Peak'),
@@ -23,13 +30,27 @@ vi.mock('vue-router', () => ({
   onBeforeRouteLeave: vi.fn(),
 }))
 
+const TAP = { point: { x: 100, y: 100 }, lngLat: { lng: 8.4, lat: 46.8 } }
+// Just enough MapLibre for the trail-lookup and tour-framing paths; `zoom` is set per test.
+const fakeMap = {
+  zoom: 13,
+  getZoom: () => fakeMap.zoom,
+  getBounds: () => ({ getWest: () => 8, getSouth: () => 46, getEast: () => 9, getNorth: () => 47 }),
+  getContainer: () => ({ clientWidth: 400, clientHeight: 800, getBoundingClientRect: () => ({ width: 400, height: 800 }) }),
+  project: () => ({ x: 0, y: 0 }),
+  getBearing: () => 0,
+  cameraForBounds: () => undefined,
+  flyTo: vi.fn(),
+  on: vi.fn(),
+}
+
 // Stubs for all heavy child components
 const TourenbuddyMapStub = {
   name: 'TourenbuddyMap',
   template: '<div data-testid="map" />',
   emits: ['tourClicked', 'mapBackgroundClick'],
   expose: ['map'],
-  setup: () => ({ map: null }),
+  setup: () => ({ map: fakeMap }),
 }
 const TourInfoSheetStub = {
   name: 'TourInfoSheet',
@@ -70,9 +91,30 @@ const STUB_TOUR = {
 }
 
 // Speed-dial controls the page drives (e.g. the guided tour's staging).
-const overlayMenu = { openMenu: vi.fn(), closeMenu: vi.fn(), openBaseMap: vi.fn() }
+const overlayMenu = { openMenu: vi.fn(), closeMenu: vi.fn(), openMapLayers: vi.fn() }
 
-function mountMapPage(initialState = {}, stubOverrides: Record<string, unknown> = {}) {
+/** `<script setup>` state the tests drive directly; the page exposes none of it publicly. */
+interface MapPageInternals {
+  activeOverlay: string | null
+  pendingLocation: { lng: number, lat: number } | null
+  pendingPickType: 'goal' | 'start' | 'end'
+  dialogInitialName: string | null
+  dialogInitialElevation: number | null
+  tourDetailOrigin: 'list' | 'cal-seasons' | 'cal-planned' | null
+  tourDetailOriginDay: string | null
+  showCalendarFeatureNotice: boolean
+  onboardingTour: { startTour: (step: number) => void, finish: () => void }
+  openOverlay: (name: string) => void
+  handleLocationConfirmed: (location: { lng: number, lat: number }) => Promise<void>
+  handleTourCreated: (...args: unknown[]) => Promise<void>
+  handleDialogClose: () => void
+  dismissCalendarFeatureNotice: () => void
+}
+
+function mountMapPage(
+  initialState = {},
+  stubOverrides: Record<string, unknown> = {},
+): VueWrapper<ComponentPublicInstance & MapPageInternals> {
   return mount(MapPage, {
     global: {
       plugins: [createTestingPinia({ createSpy: vi.fn, stubActions: true, initialState })],
@@ -80,7 +122,7 @@ function mountMapPage(initialState = {}, stubOverrides: Record<string, unknown> 
         TourenbuddyMap: TourenbuddyMapStub,
         MapActionOverlay: {
           template: '<div />',
-          expose: ['openMenu', 'closeMenu', 'openBaseMap'],
+          expose: ['openMenu', 'closeMenu', 'openMapLayers'],
           setup: () => overlayMenu,
         },
         LocationPicker: { template: '<div />' },
@@ -92,12 +134,13 @@ function mountMapPage(initialState = {}, stubOverrides: Record<string, unknown> 
         ...stubOverrides,
       },
     },
-  })
+  }) as unknown as VueWrapper<ComponentPublicInstance & MapPageInternals>
 }
 
 describe('mapPage', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+    localStorage.clear()
   })
 
   describe('map background click dismissal', () => {
@@ -112,7 +155,7 @@ describe('mapPage', () => {
       await wrapper.vm.$nextTick()
       expect(wrapper.find('[data-testid="tour-info-sheet"]').exists()).toBe(true)
 
-      await wrapper.findComponent({ name: 'TourenbuddyMap' }).vm.$emit('mapBackgroundClick')
+      await wrapper.findComponent({ name: 'TourenbuddyMap' }).vm.$emit('mapBackgroundClick', TAP)
       await wrapper.vm.$nextTick()
 
       expect(mapStore.selectTour).toHaveBeenCalledWith(null)
@@ -125,7 +168,7 @@ describe('mapPage', () => {
       await wrapper.vm.$nextTick()
       expect(wrapper.find('[data-testid="feedback-sheet"]').exists()).toBe(true)
 
-      await wrapper.findComponent({ name: 'TourenbuddyMap' }).vm.$emit('mapBackgroundClick')
+      await wrapper.findComponent({ name: 'TourenbuddyMap' }).vm.$emit('mapBackgroundClick', TAP)
       await wrapper.vm.$nextTick()
 
       expect(wrapper.find('[data-testid="feedback-sheet"]').exists()).toBe(false)
@@ -138,7 +181,7 @@ describe('mapPage', () => {
       await wrapper.vm.$nextTick()
       expect(wrapper.find('[data-testid="profile-sheet"]').exists()).toBe(true)
 
-      await wrapper.findComponent({ name: 'TourenbuddyMap' }).vm.$emit('mapBackgroundClick')
+      await wrapper.findComponent({ name: 'TourenbuddyMap' }).vm.$emit('mapBackgroundClick', TAP)
       await wrapper.vm.$nextTick()
 
       expect(wrapper.find('[data-testid="profile-sheet"]').exists()).toBe(false)
@@ -151,11 +194,62 @@ describe('mapPage', () => {
       wrapper.vm.activeOverlay = 'feedback'
       await wrapper.vm.$nextTick()
 
-      await wrapper.findComponent({ name: 'TourenbuddyMap' }).vm.$emit('mapBackgroundClick')
+      await wrapper.findComponent({ name: 'TourenbuddyMap' }).vm.$emit('mapBackgroundClick', TAP)
       await wrapper.vm.$nextTick()
 
       expect(mapStore.selectTour).not.toHaveBeenCalledWith(null)
       expect(wrapper.find('[data-testid="feedback-sheet"]').exists()).toBe(false)
+    })
+  })
+
+  describe('ski route taps', () => {
+    const skiOn = { map: { activeOverlays: ['ski'] } }
+    const route = { name: null, targetName: 'Peak', targetAltitude: null, difficulty: null, ascentTime: null, ascentM: null, descentM: null, sacUrl: null }
+    // fakeMap.project puts every vertex at (0, 0): a tap there hits, one far away misses.
+    const trail = { overlay: 'ski', id: 'r1', lines: [[[8.4, 46.8], [8.41, 46.81]]], route }
+
+    beforeEach(() => {
+      fakeMap.zoom = 13
+      isOnline.value = true
+      vi.mocked(identifySkiRoutes).mockReset().mockResolvedValue([])
+    })
+
+    it('should ask to zoom in without a lookup below the lookup zoom', async () => {
+      fakeMap.zoom = 11
+      const wrapper = mountMapPage(skiOn)
+
+      await wrapper.findComponent({ name: 'TourenbuddyMap' }).vm.$emit('mapBackgroundClick', TAP)
+      await flushPromises()
+
+      expect(identifySkiRoutes).not.toHaveBeenCalled()
+      expect(wrapper.find('[role="status"]').text()).toBe('map.trail.zoomIn')
+    })
+
+    it('should only close a tour sheet, without a lookup', async () => {
+      const wrapper = mountMapPage(skiOn)
+      wrapper.vm.activeOverlay = 'feedback'
+      await flushPromises()
+      const loads = vi.mocked(identifySkiRoutes).mock.calls.length
+
+      await wrapper.findComponent({ name: 'TourenbuddyMap' }).vm.$emit('mapBackgroundClick', TAP)
+      await flushPromises()
+
+      expect(identifySkiRoutes).toHaveBeenCalledTimes(loads)
+      expect(wrapper.vm.activeOverlay).toBeNull()
+    })
+
+    it('should close an open trail card when the next tap misses', async () => {
+      vi.mocked(identifySkiRoutes).mockResolvedValueOnce([trail as never])
+      const wrapper = mountMapPage(skiOn, { TrailCard: { template: '<div data-testid="trail-card" />' } })
+      const map = wrapper.findComponent({ name: 'TourenbuddyMap' })
+
+      await map.vm.$emit('mapBackgroundClick', { ...TAP, point: { x: 0, y: 0 } })
+      await flushPromises()
+      expect(wrapper.vm.activeOverlay).toBe('trail-info')
+
+      await map.vm.$emit('mapBackgroundClick', { ...TAP, point: { x: 300, y: 300 } })
+      await flushPromises()
+      expect(wrapper.vm.activeOverlay).toBeNull()
     })
   })
 

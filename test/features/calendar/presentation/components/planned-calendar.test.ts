@@ -210,7 +210,7 @@ describe('plannedCalendar — mobile day-tile list', () => {
     await wrapper.vm.$nextTick()
 
     expect(spy).toHaveBeenCalled()
-    expect((spy.mock.instances[0] as Element).getAttribute('data-day')).toBe('2024-06-15')
+    expect((spy.mock.contexts[0] as Element).getAttribute('data-day')).toBe('2024-06-15')
     spy.mockRestore()
   })
 })

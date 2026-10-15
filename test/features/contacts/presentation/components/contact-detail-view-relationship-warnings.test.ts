@@ -40,6 +40,7 @@ const mockContact = {
   firstName: 'Anna',
   lastName: null,
   displayName: null,
+  updatedAt: null,
   contactMethods: [
     {
       id: 'm-1',

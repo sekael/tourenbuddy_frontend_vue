@@ -8,11 +8,13 @@ function makeContact(methods: Array<{ id: string, value: string, isPrimary: bool
     firstName: 'Test',
     lastName: null,
     displayName: null,
+    updatedAt: null,
     contactMethods: methods.map(m => ({
       ...m,
       contactId: 'c1',
       methodType: 'phone' as const,
       label: null,
+      isValid: true,
     })),
   }
 }

@@ -22,10 +22,10 @@ const {
       phone_confirmed_at: string | null
     } | null,
   },
-  mockFindUserByPhone: vi.fn<[string], Promise<string | null>>(),
-  mockFindUsersByPhones: vi.fn<[string[]], Promise<{ phone: string, userId: string }[]>>(),
-  mockListFriendships: vi.fn<[], Promise<Friendship[]>>(),
-  mockListIncoming: vi.fn<[], Promise<FriendRequest[]>>(),
+  mockFindUserByPhone: vi.fn<(phone: string) => Promise<string | null>>(),
+  mockFindUsersByPhones: vi.fn<(phones: string[]) => Promise<{ phone: string, userId: string }[]>>(),
+  mockListFriendships: vi.fn<() => Promise<Friendship[]>>(),
+  mockListIncoming: vi.fn<() => Promise<FriendRequest[]>>(),
   mockPickContacts: vi.fn(),
 }))
 

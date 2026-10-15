@@ -44,7 +44,8 @@ const mockTours = [
 
 function mountSheet(
   options: {
-    tours?: typeof mockTours
+    /** Seeds the store state as-is; rows may break the Tour type (e.g. a null name). */
+    tours?: unknown[]
     isLoading?: boolean
     isAuthenticated?: boolean
     /** Needed for focus assertions — focus() is a no-op on a detached tree. */

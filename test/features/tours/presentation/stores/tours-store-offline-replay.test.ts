@@ -3,6 +3,7 @@ import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { supabase } from '@/core/utils/supabase'
+import { DRAFT_FILL } from '../../../../fixtures/tour-fill'
 import 'fake-indexeddb/auto'
 
 // Replay (10.3) + conflict/LWW (10.5) at the store's registered replay handler. Notifications
@@ -81,6 +82,7 @@ const removeGpxMock = vi.mocked(removeGpx)
 
 function draft(over: Partial<TourDraft> = {}): TourDraft {
   return {
+    ...DRAFT_FILL,
     name: 'Rigi',
     plannedDate: null,
     partnerIds: ['contact-1'],

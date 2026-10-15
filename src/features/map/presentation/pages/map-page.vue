@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import type { Map as MapLibreMap } from 'maplibre-gl'
+import type { Map as MapLibreMap, Point } from 'maplibre-gl'
 import type { StageContext } from '@/features/onboarding/presentation/composables/use-onboarding-tour'
 import type { TourSurface } from '@/features/onboarding/presentation/onboarding-steps'
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
+import { LngLatBounds } from 'maplibre-gl'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -14,6 +15,8 @@ import FeedbackSheet from '@/core/components/feedback-sheet.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useScrollLock } from '@/core/composables/use-scroll-lock'
 import { sheetInset } from '@/core/composables/use-sheet-inset'
+import { useSnackbar } from '@/core/composables/use-snackbar'
+import { isOnline } from '@/core/offline/use-online-status'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { spanDayKeys } from '@/features/calendar/domain/calendar-dates'
 import ContactsListSheet from '@/features/contacts/presentation/components/contacts-list-sheet.vue'
@@ -27,9 +30,11 @@ import OfflineRegionDraw from '@/features/map/presentation/components/offline-re
 import OfflineRegionOutline from '@/features/map/presentation/components/offline-region-outline.vue'
 import TourActionBar from '@/features/map/presentation/components/tour-action-bar.vue'
 import TourenbuddyMap from '@/features/map/presentation/components/tourenbuddy-map.vue'
+import TrailCard from '@/features/map/presentation/components/trail-card.vue'
 import { computeBarState } from '@/features/map/presentation/composables/compute-bar-state'
-import { frameTour } from '@/features/map/presentation/composables/frame-tour'
+import { frameBounds, frameTour, isBoundsVisible } from '@/features/map/presentation/composables/frame-tour'
 import { useInboxNavigation } from '@/features/map/presentation/composables/use-inbox-navigation'
+import { TRAIL_LOOKUP_MIN_ZOOM, useTrailLookup } from '@/features/map/presentation/composables/use-trail-lookup'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import InboxOverlay from '@/features/notifications/presentation/components/inbox-overlay.vue'
 import { useInboxStore } from '@/features/notifications/presentation/stores/inbox-store'
@@ -63,8 +68,9 @@ type OverlayName
     | 'inbox'
     | 'offline-manage'
     | 'offline-download'
+    | 'trail-info'
 
-const { t } = useI18n({ useScope: 'global' })
+const { t, locale } = useI18n({ useScope: 'global' })
 const router = useRouter()
 
 const mapStore = useMapStore()
@@ -79,7 +85,7 @@ const notificationsStore = useNotificationsStore()
 const inboxStore = useInboxStore()
 const isDesktop = useIsDesktop()
 
-const { isPickingLocation, isDrawingRegion, selectedTourId } = storeToRefs(mapStore)
+const { isPickingLocation, isDrawingRegion, selectedTourId, activeOverlays, trailCard } = storeToRefs(mapStore)
 const { tours, friendTours } = storeToRefs(toursStore)
 const { isAuthenticated } = storeToRefs(authStore)
 const { reopenSignal } = storeToRefs(onboardingTourStore)
@@ -249,9 +255,9 @@ function closeOverlay() {
 // via `ctx.spotlight(selector, hintKey)`, which waits for the control to settle.
 async function stageTourSurface(surface: TourSurface, ctx: StageContext, from: TourSurface | null) {
   // The speed-dial menu, open with nothing expanded. Reuses an open menu
-  // (folding the base-map panel back in) instead of replaying the FAB.
+  // (folding the map layers panel back in) instead of replaying the FAB.
   async function showMenu() {
-    if (from === 'menu' || from === 'base-map-panel') {
+    if (from === 'menu' || from === 'map-layers-panel') {
       mapOverlayRef.value?.openMenu()
       return
     }
@@ -303,10 +309,10 @@ async function stageTourSurface(surface: TourSurface, ctx: StageContext, from: T
     case 'menu':
       await showMenu()
       break
-    case 'base-map-panel':
+    case 'map-layers-panel':
       await showMenu()
-      await ctx.spotlight('[data-tour="menu-base-map"]', 'onboarding.tour.nav.baseMap')
-      mapOverlayRef.value?.openBaseMap()
+      await ctx.spotlight('[data-tour="menu-map-layers"]', 'onboarding.tour.nav.mapLayers')
+      mapOverlayRef.value?.openMapLayers()
       break
   }
   await nextTick()
@@ -748,13 +754,89 @@ function handleEndPointChange(point: { lng: number, lat: number } | null) {
   mapStore.setPreviewEnd(draftIfChanged(point, selectedTour.value?.endPoint ?? null))
 }
 
-function handleMapBackgroundClick() {
+// --- Ski route lookup --------------------------------------------------------
+const trailSnackbar = useSnackbar()
+const trailSnackbarInfo = ref(false)
+function showTrailSnackbar(message: string, info: boolean) {
+  trailSnackbarInfo.value = info
+  trailSnackbar.show(message)
+}
+const trailLookup = useTrailLookup({
+  map: () => mapInstance.value,
+  locale: () => locale.value,
+  onError: () => showTrailSnackbar(t('map.trail.lookupError'), false),
+})
+
+// Keep the clickable routes in step with the view: loaded while the ski overlay is
+// on, online and zoomed in far enough; dropped otherwise (their markers with them).
+function syncClickableTrails() {
+  const map = mapInstance.value
+  if (map && activeOverlays.value.includes('ski') && isOnline.value && map.getZoom() >= TRAIL_LOOKUP_MIN_ZOOM)
+    void trailLookup.refresh()
+  else
+    trailLookup.clear()
+}
+watch(trailLookup.trails, trails => mapStore.setClickableTrails(trails))
+watch([activeOverlays, isOnline, mapInstance], syncClickableTrails)
+watch(mapInstance, m => m?.on('moveend', syncClickableTrails))
+
+// The trail card is the one sheet *about* the map, so a tap re-looks-up; every
+// other sheet keeps "tap map = close".
+async function handleMapBackgroundClick({ point }: { point: Point }) {
   // Suppress while location picker or region-draw is active — map panning passes
   // through the overlay and would otherwise deselect the current tour.
   if (isPickingLocation.value || isDrawingRegion.value)
     return
-  closeOverlay()
+  const map = mapInstance.value
+  const otherSheet = activeOverlay.value !== null && activeOverlay.value !== 'trail-info'
+  if (otherSheet || !map || !activeOverlays.value.includes('ski') || !isOnline.value) {
+    closeOverlay()
+    return
+  }
+  if (map.getZoom() < TRAIL_LOOKUP_MIN_ZOOM) {
+    showTrailSnackbar(t('map.trail.zoomIn'), true)
+    closeOverlay()
+    return
+  }
+  const hits = await trailLookup.lookup(point)
+  // null: load failed or superseded (map unchanged). Another sheet opened meanwhile wins.
+  if (!hits || (activeOverlay.value !== null && activeOverlay.value !== 'trail-info'))
+    return
+  if (hits.candidates.length === 0) {
+    closeOverlay()
+    return
+  }
+  mapStore.showTrails(hits.candidates, hits.more)
+  openOverlay('trail-info')
 }
+
+// One rule for every way out of the card: close, tour selection, any other sheet.
+watch(activeOverlay, (name) => {
+  if (name !== 'trail-info')
+    mapStore.clearTrails()
+})
+
+// Frame what the card highlights (all candidates, or the chosen route) beside the
+// sheet/drawer — only when it isn't already fully visible there.
+watch(() => [trailCard.value?.candidates, trailCard.value?.selectedId], async () => {
+  if (!trailCard.value)
+    return
+  await nextTick()
+  if (!isDesktop.value)
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+  const card = trailCard.value
+  const map = mapInstance.value
+  if (!card || !map)
+    return
+  const bounds = new LngLatBounds()
+  for (const trail of card.candidates) {
+    if (!card.selectedId || trail.id === card.selectedId)
+      trail.lines.forEach(line => line.forEach(c => bounds.extend(c)))
+  }
+  const covered = isDesktop.value ? { right: SIDE_DRAWER_WIDTH } : { bottom: sheetInset.value }
+  if (!bounds.isEmpty() && !isBoundsVisible(map, bounds, covered))
+    frameBounds(map, bounds, covered)
+})
 
 // --- Offline maps ------------------------------------------------------------
 // Flow: speed-dial → manage sheet → {draw a region | whole map} → download sheet.
@@ -901,6 +983,10 @@ function handleDialogClose() {
     </Teleport>
 
     <ErrorSnackbar :message="inboxSnackbar.snackbar.value.message" :visible="inboxSnackbar.snackbar.value.visible" @dismiss="inboxSnackbar.dismiss" />
+    <ErrorSnackbar
+      :message="trailSnackbar.snackbar.value.message" :visible="trailSnackbar.snackbar.value.visible"
+      :info="trailSnackbarInfo" @dismiss="trailSnackbar.dismiss"
+    />
 
     <TourenbuddyMap ref="mapRef" @tour-clicked="handleTourClicked" @map-background-click="handleMapBackgroundClick" />
 
@@ -984,6 +1070,9 @@ function handleDialogClose() {
         <OfflineDownloadSheet
           :bbox="offlineBbox" @close="handleOfflineDownloadDone" @done="handleOfflineDownloadDone"
         />
+      </div>
+      <div v-else-if="activeOverlay === 'trail-info' && trailCard" key="trail-info" class="sheet-host">
+        <TrailCard @close="closeOverlay" />
       </div>
       <div v-else-if="showTourCreationDialog" key="tour-creation" class="sheet-host">
         <TourCreationDialog

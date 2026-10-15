@@ -362,7 +362,7 @@ describe('useOnboardingTour — staging spotlights', () => {
     tour.next()
     await flush()
 
-    expect(opts.stage.mock.calls.map(c => [c[0], c[2]])).toEqual([
+    expect(vi.mocked(opts.stage).mock.calls.map(c => [c[0], c[2]])).toEqual([
       ['profile', null],
       ['contacts', 'profile'], // `from` lets the host take the short path
     ])
@@ -379,7 +379,7 @@ describe('useOnboardingTour — staging spotlights', () => {
     await flush()
 
     expect(opts.stage).toHaveBeenCalledTimes(2)
-    expect(opts.stage.mock.calls[1][2]).toBeNull()
+    expect(vi.mocked(opts.stage).mock.calls[1][2]).toBeNull()
   })
 
   it('should not let a finished tour\'s delayed destroy tear down a tour started right after', async () => {

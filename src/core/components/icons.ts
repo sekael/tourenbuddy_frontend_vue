@@ -49,6 +49,7 @@ import IconImageOutline from '~icons/material-symbols/image-outline'
 import IconInfoOutline from '~icons/material-symbols/info-outline'
 import IconLandscapeOutline from '~icons/material-symbols/landscape-outline'
 import IconLanguage from '~icons/material-symbols/language'
+import IconLayersOutline from '~icons/material-symbols/layers-outline'
 import IconLink from '~icons/material-symbols/link'
 import IconLocalFloristOutline from '~icons/material-symbols/local-florist-outline'
 import IconLocationOnOutline from '~icons/material-symbols/location-on-outline'
@@ -60,6 +61,7 @@ import IconMenu from '~icons/material-symbols/menu'
 import IconMyLocationOutline from '~icons/material-symbols/my-location-outline'
 import IconNordicWalking from '~icons/material-symbols/nordic-walking'
 import IconNotificationsOutline from '~icons/material-symbols/notifications-outline'
+import IconOpenInNew from '~icons/material-symbols/open-in-new'
 import IconParaglidingOutline from '~icons/material-symbols/paragliding-outline'
 import IconPersonAddOutline from '~icons/material-symbols/person-add-outline'
 import IconPersonOutline from '~icons/material-symbols/person-outline'
@@ -163,6 +165,7 @@ export const iconRegistry: Record<string, Component> = {
   info: IconInfoOutline,
   landscape: IconLandscapeOutline,
   language: IconLanguage,
+  layers: IconLayersOutline,
   link: IconLink,
   local_florist: IconLocalFloristOutline,
   location_on: IconLocationOnOutline,
@@ -173,6 +176,7 @@ export const iconRegistry: Record<string, Component> = {
   menu: IconMenu,
   my_location: IconMyLocationOutline,
   nordic_walking: IconNordicWalking,
+  open_in_new: IconOpenInNew,
   notifications: IconNotificationsOutline,
   paragliding: IconParaglidingOutline,
   person: IconPersonOutline,

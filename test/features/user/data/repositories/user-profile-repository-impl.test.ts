@@ -52,6 +52,7 @@ describe('userProfileRepositoryImpl.upsertProfile', () => {
       onboardingTourLastStep: 0,
       calendarTourShowOnFirstOpen: true,
       calendarFeatureNoticeShowAtSignIn: false,
+      updatedAt: null,
     })
 
     expect(mockUpsert).toHaveBeenCalledWith(
@@ -73,6 +74,7 @@ describe('userProfileRepositoryImpl.upsertProfile', () => {
       onboardingTourLastStep: 0,
       calendarTourShowOnFirstOpen: true,
       calendarFeatureNoticeShowAtSignIn: false,
+      updatedAt: null,
     })
 
     expect(mockUpsert).toHaveBeenCalledWith(
@@ -94,6 +96,7 @@ describe('userProfileRepositoryImpl.upsertProfile', () => {
       onboardingTourLastStep: 0,
       calendarTourShowOnFirstOpen: true,
       calendarFeatureNoticeShowAtSignIn: true,
+      updatedAt: null,
     })
 
     expect(mockUpsert).toHaveBeenCalledWith(

@@ -88,7 +88,8 @@ describe('useToursMarkerLayer — setup', () => {
     const { useToursMarkerLayer } = await import(
       '@/features/map/presentation/components/tours-marker-layer'
     )
-    const map = makeStubMap() as unknown as import('maplibre-gl').Map
+    const stub = makeStubMap()
+    const map = stub as unknown as import('maplibre-gl').Map
     const layer = useToursMarkerLayer(map, vi.fn(), () => 'Cluster of N tours')
     await expect(layer.setup()).resolves.not.toThrow()
   })
@@ -97,7 +98,8 @@ describe('useToursMarkerLayer — setup', () => {
     const { useToursMarkerLayer } = await import(
       '@/features/map/presentation/components/tours-marker-layer'
     )
-    const map = makeStubMap() as unknown as import('maplibre-gl').Map
+    const stub = makeStubMap()
+    const map = stub as unknown as import('maplibre-gl').Map
     const layer = useToursMarkerLayer(map, vi.fn(), () => 'Cluster of N tours')
     await layer.setup()
     expect(() => layer.cleanup()).not.toThrow()
@@ -107,7 +109,8 @@ describe('useToursMarkerLayer — setup', () => {
     const { useToursMarkerLayer } = await import(
       '@/features/map/presentation/components/tours-marker-layer'
     )
-    const map = makeStubMap() as unknown as import('maplibre-gl').Map
+    const stub = makeStubMap()
+    const map = stub as unknown as import('maplibre-gl').Map
     const layer = useToursMarkerLayer(map, vi.fn(), () => 'Cluster of N tours')
     await layer.setup()
     layer.updateTours([], 'tour-123')
@@ -121,7 +124,8 @@ describe('useToursMarkerLayer — setup', () => {
     const { useToursMarkerLayer } = await import(
       '@/features/map/presentation/components/tours-marker-layer'
     )
-    const map = makeStubMap() as unknown as import('maplibre-gl').Map
+    const stub = makeStubMap()
+    const map = stub as unknown as import('maplibre-gl').Map
     const layer = useToursMarkerLayer(map, vi.fn(), () => 'Cluster')
     await layer.setup()
 
@@ -140,13 +144,14 @@ describe('useToursMarkerLayer — setup', () => {
     const { useToursMarkerLayer } = await import(
       '@/features/map/presentation/components/tours-marker-layer'
     )
-    const map = makeStubMap() as unknown as import('maplibre-gl').Map
+    const stub = makeStubMap()
+    const map = stub as unknown as import('maplibre-gl').Map
     const layer = useToursMarkerLayer(map, vi.fn(), () => 'Cluster')
     await layer.setup()
 
-    ;(map as ReturnType<typeof makeStubMap>).emit('move')
-    ;(map as ReturnType<typeof makeStubMap>).emit('moveend')
-    ;(map as ReturnType<typeof makeStubMap>).emit('idle')
+    stub.emit('move')
+    stub.emit('moveend')
+    stub.emit('idle')
 
     // querySourceFeatures must never be called with the cluster filter
     const calls = (map.querySourceFeatures as ReturnType<typeof vi.fn>).mock.calls
@@ -163,7 +168,8 @@ describe('useToursMarkerLayer — setup', () => {
     const { useToursMarkerLayer } = await import(
       '@/features/map/presentation/components/tours-marker-layer'
     )
-    const map = makeStubMap() as unknown as import('maplibre-gl').Map
+    const stub = makeStubMap()
+    const map = stub as unknown as import('maplibre-gl').Map
     const layer = useToursMarkerLayer(map, vi.fn(), () => 'Cluster')
     await layer.setup()
 
@@ -196,12 +202,13 @@ describe('useToursMarkerLayer — reduced motion gate', () => {
     const { useToursMarkerLayer } = await import(
       '@/features/map/presentation/components/tours-marker-layer'
     )
-    const map = makeStubMap() as unknown as import('maplibre-gl').Map
+    const stub = makeStubMap()
+    const map = stub as unknown as import('maplibre-gl').Map
     const layer = useToursMarkerLayer(map, vi.fn(), () => 'Cluster of N tours')
     await layer.setup()
 
     const rafSpy = vi.spyOn(window, 'requestAnimationFrame')
-    ;(map as ReturnType<typeof makeStubMap>).emit('zoomend')
+    stub.emit('zoomend')
 
     await new Promise(r => setTimeout(r, 10))
 

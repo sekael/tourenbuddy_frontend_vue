@@ -4,6 +4,7 @@ import {
   friendTourIdsShadowedByOwned,
   ownedTourIdsShadowedByFriends,
 } from '@/features/tours/domain/collision'
+import { TOUR_FILL } from '../../../fixtures/tour-fill'
 
 // Sertig (~46.73, 9.86). ~120m north is outside the 100m radius; ~50m is inside.
 const GOAL = { lng: 9.86, lat: 46.73 }
@@ -12,6 +13,7 @@ const FAR = { lng: 9.86, lat: 46.732 } // ~220m north
 
 function friendTour(overrides: Partial<Tour>): Tour {
   return {
+    ...TOUR_FILL,
     id: 'f1',
     userId: 'owner',
     plannedDate: null,

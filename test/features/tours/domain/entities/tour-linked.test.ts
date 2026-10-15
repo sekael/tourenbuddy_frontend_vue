@@ -1,9 +1,11 @@
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import { describe, expect, it } from 'vitest'
 import { toursToGeoJson } from '@/features/tours/domain/entities/tour'
+import { TOUR_FILL } from '../../../../fixtures/tour-fill'
 
 function makeTour(id: string): Tour {
   return {
+    ...TOUR_FILL,
     id,
     userId: 'u',
     plannedDate: null,

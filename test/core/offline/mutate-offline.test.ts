@@ -19,7 +19,7 @@ vi.mock('@/core/offline/data-cache-db', async (importOriginal) => {
       if (!sabotage.enabled)
         return db
       const realTransaction = db.transaction.bind(db)
-      // @ts-expect-error — override for the abort simulation only.
+      // Override for the abort simulation only.
       db.transaction = (...args: Parameters<IDBDatabase['transaction']>) => {
         const tx = realTransaction(...args)
         const realObjectStore = tx.objectStore.bind(tx)

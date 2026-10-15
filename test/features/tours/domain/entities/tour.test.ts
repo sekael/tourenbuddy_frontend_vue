@@ -1,8 +1,10 @@
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import { describe, expect, it } from 'vitest'
 import { toursToGeoJson, tourToGeoJsonFeature } from '@/features/tours/domain/entities/tour'
+import { TOUR_FILL } from '../../../../fixtures/tour-fill'
 
 const baseTour: Tour = {
+  ...TOUR_FILL,
   id: 'tour-1',
   userId: 'user-1',
   plannedDate: null,
