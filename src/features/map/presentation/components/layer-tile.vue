@@ -3,7 +3,7 @@ import BaseIcon from '@/core/components/base-icon.vue'
 
 // A preview tile in the map layers panel. The caller sets the ARIA role/state
 // (radio + aria-checked, or toggle + aria-pressed); `selected` drives the visuals.
-const props = defineProps<{ label: string, thumbnail: string, selected: boolean, disabled?: boolean }>()
+const props = defineProps<{ label: string, thumbnail: string, icon?: string, selected: boolean, disabled?: boolean }>()
 const emit = defineEmits<{ select: [] }>()
 </script>
 
@@ -14,6 +14,9 @@ const emit = defineEmits<{ select: [] }>()
   >
     <span class="thumb">
       <img :src="props.thumbnail" alt="" width="72" height="72">
+      <span v-if="props.icon" class="chip" aria-hidden="true">
+        <BaseIcon :name="props.icon" size="xs" />
+      </span>
       <Transition name="badge">
         <span v-if="props.selected" class="badge" aria-hidden="true">
           <BaseIcon name="check" size="xs" />
@@ -30,7 +33,7 @@ const emit = defineEmits<{ select: [] }>()
   flex-direction: column;
   align-items: center;
   gap: var(--spacing-xxs);
-  width: calc(var(--tile-size, 72px) + var(--spacing-sm));
+  width: 80px;
   padding: 0;
   border: none;
   background: none;
@@ -52,8 +55,8 @@ const emit = defineEmits<{ select: [] }>()
 .thumb {
   position: relative;
   display: block;
-  width: var(--tile-size, 72px);
-  height: var(--tile-size, 72px);
+  width: 72px;
+  height: 72px;
   border-radius: var(--radius-md);
   outline: 2px solid transparent;
   outline-offset: 2px;
@@ -92,6 +95,21 @@ const emit = defineEmits<{ select: [] }>()
   background-color: var(--color-accent);
   color: var(--white);
   border: 2px solid var(--color-fab-surface);
+}
+
+.chip {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background-color: var(--color-fab-surface);
+  color: var(--color-fab-on-surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .badge-enter-active {

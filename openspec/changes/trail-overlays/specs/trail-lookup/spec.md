@@ -9,14 +9,53 @@ symbology.
 
 ## ADDED Requirements
 
-### Requirement: Tap identifies ski routes
+### Requirement: Clickable ski routes are marked
 
-When the ski-route overlay is on, the device is online and the map is at zoom 11 or closer, a map tap that hits no tour marker SHALL look up ski routes within the tap tolerance: 24 screen pixels for touch (coarse pointer), 10 for a mouse. The lookup SHALL NOT query hiking trails. Taps SHALL NOT trigger a lookup while picking a location, drawing an offline region, or offline.
+With the ski-route overlay on, online, at zoom 12 or closer, every ski route in view that carries route information SHALL be marked with a soft halo along its line and markers along the route that never overlap one another; routes without information SHALL NOT be marked. Routes SHALL load once per settled view, not again within the loaded area, and SHALL be dropped when the overlay is off, below zoom 12, or offline.
 
-#### Scenario: Tap on a ski route
+#### Scenario: Marked routes
 
-- **WHEN** the ski-route overlay is on at zoom 13 and the user taps a ski route on the bare map
-- **THEN** the app SHALL look up ski routes at the tap point and SHALL NOT query hiking trails
+- **WHEN** the ski-route overlay is on at zoom 13
+- **THEN** every ski route with route information in view SHALL show a halo and a marker, and routes without information SHALL look as on the plain overlay
+
+#### Scenario: Routes sharing a stretch
+
+- **WHEN** several marked routes run along the same stretch (e.g. leaving the same hut)
+- **THEN** their markers SHALL NOT overlap there, and each route SHALL still show a marker where its line is visible on its own
+
+#### Scenario: Panning inside the loaded area
+
+- **WHEN** the user pans within the area already loaded
+- **THEN** no new request SHALL be made
+
+### Requirement: Marked routes show their difficulty
+
+A marked route's marker SHALL show its difficulty (SAC scale with `+`/`-`, in the UI language's notation). Marker and halo SHALL be colored by difficulty from blue (L) to purple (SS) and darker beyond, grey when the route has no difficulty.
+
+#### Scenario: Difficulty on the marker
+
+- **WHEN** a marked route has difficulty `ZS+` and the UI is German
+- **THEN** its marker SHALL read `ZS+` and marker and halo SHALL take the ZS+ color, between the ZS and S colors
+- **AND WHEN** the UI is English, the same route's marker SHALL read `AD+` in the same color
+
+#### Scenario: No difficulty
+
+- **WHEN** a marked route has no difficulty
+- **THEN** its marker SHALL be grey and show no difficulty
+
+### Requirement: Tap opens marked ski routes
+
+A map tap that hits no tour marker SHALL find the marked routes within the tap tolerance: 24 screen pixels for touch (coarse pointer), 10 for a mouse. Only marked routes SHALL be found. The lookup SHALL NOT query hiking trails. Taps SHALL NOT look up routes while picking a location, drawing an offline region, or offline.
+
+#### Scenario: Tap on a marked route
+
+- **WHEN** the ski-route overlay is on at zoom 13 and the user taps a marked ski route
+- **THEN** its card SHALL open
+
+#### Scenario: Tap on a route without information
+
+- **WHEN** the user taps a ski route that is not marked
+- **THEN** no card SHALL open
 
 #### Scenario: Only hiking trails on
 
@@ -35,12 +74,12 @@ When the ski-route overlay is on, the device is online and the map is at zoom 11
 
 #### Scenario: Thumb-sized tolerance
 
-- **WHEN** on a touch device the user taps 20 px beside a ski route
+- **WHEN** on a touch device the user taps 20 px beside a marked ski route
 - **THEN** the route SHALL be found
 
 ### Requirement: Zoomed-out taps ask the user to zoom in
 
-Below zoom 11, a tap that would otherwise look up ski routes SHALL NOT query and SHALL show a localized "Zoom in to see route details" snackbar.
+Below zoom 12, a tap that would otherwise look up ski routes SHALL NOT query and SHALL show a localized "Zoom in to see route details" snackbar.
 
 #### Scenario: Tap at country zoom
 
@@ -82,12 +121,12 @@ When a lookup finds exactly one route, the card SHALL open on its details. When 
 
 #### Scenario: More than eight routes
 
-- **WHEN** a lookup finds 12 routes
+- **WHEN** a tap finds 12 routes
 - **THEN** the list SHALL show the 8 nearest and a "+4 more — zoom in" note
 
 #### Scenario: Miss
 
-- **WHEN** the lookup finds no route
+- **WHEN** the tap finds no marked route
 - **THEN** no highlight and no card SHALL appear, and nothing else on the map SHALL change
 
 ### Requirement: Selected route is highlighted
@@ -125,12 +164,12 @@ The trail card SHALL open as a bottom sheet on mobile and a side drawer on deskt
 
 #### Scenario: Card opens with final content
 
-- **WHEN** a lookup resolves with a route
+- **WHEN** a tap finds a route
 - **THEN** the card SHALL open already showing its details or list, with no placeholder text that later changes
 
 ### Requirement: Ski route details
 
-For a ski route with route information the card SHALL show, where present: route name, target and its altitude, difficulty, ascent time, ascent and descent in metres, and a link to the route in the SAC tour portal. Text and link SHALL use the UI language when Swisstopo provides it, else the untranslated original. Missing fields SHALL be omitted. A route without information SHALL show "Ski route" and a "No route information available" note.
+The card SHALL show, where present: route name, target and its altitude, difficulty, ascent time, ascent and descent in metres, and a link to the route in the SAC tour portal. Text and link SHALL use the UI language when Swisstopo provides it, else the untranslated original. Missing fields SHALL be omitted.
 
 #### Scenario: Route with full information
 
@@ -142,28 +181,23 @@ For a ski route with route information the card SHALL show, where present: route
 - **WHEN** the UI language is English and the route has only a German name
 - **THEN** the card SHALL show the German name
 
-#### Scenario: Route without information
-
-- **WHEN** the selected ski route has no route information
-- **THEN** the card SHALL show "Ski route" with the "No route information available" note and no empty fields
-
 ### Requirement: Lookup failures and stale results
 
-A failed lookup (network error, non-OK response, or a response that fails validation) SHALL show a localized error snackbar and leave the map unchanged. A newer tap SHALL supersede a pending lookup: the older result SHALL never be shown.
+When loading the routes for the view fails (network error, non-OK response, or a response that fails validation), a tap SHALL show a localized error snackbar and leave the map unchanged. A load for a newer view SHALL supersede a pending one: the older result SHALL never be applied.
 
 #### Scenario: Network error
 
 - **WHEN** the lookup request fails
 - **THEN** a localized "Couldn't load route info" snackbar SHALL appear and no card SHALL open
 
-#### Scenario: Two quick taps
+#### Scenario: Pan during a load
 
-- **WHEN** the user taps route A and then route B before A's lookup resolves
-- **THEN** only route B SHALL be shown, even if A's response arrives last
+- **WHEN** the user pans to a new area before the previous area's routes have loaded
+- **THEN** only the new area's routes SHALL be marked, even if the older response arrives last
 
 ### Requirement: Trail data includes full line geometry
 
-Every route returned by a lookup SHALL carry its identity (overlay and feature id), its attributes, and its complete line geometry as one or more WGS84 longitude/latitude polylines, whether Swisstopo delivers a single line or a multi-line. This geometry SHALL be the one used for highlighting, distance ordering and framing.
+Every loaded route SHALL carry its identity (overlay and feature id), its attributes, and its complete line geometry as one or more WGS84 longitude/latitude polylines, whether Swisstopo delivers a single line or a multi-line. This geometry SHALL be the one used for marking, highlighting, distance ordering and framing.
 
 #### Scenario: Multi-line ski route
 

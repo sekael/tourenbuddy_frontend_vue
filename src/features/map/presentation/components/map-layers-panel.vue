@@ -11,19 +11,17 @@ const props = defineProps<{ currentStyleIndex: number, activeOverlays: TrailOver
 const emit = defineEmits<{ selectStyle: [index: number], toggleOverlay: [id: TrailOverlayId] }>()
 const { t } = useI18n({ useScope: 'global' })
 
-// The item that opened the panel goes inert: hand focus to the current base map
-// (or the first overlay offline, when the base tiles are disabled).
+// The panel replaces the menu: hand focus to the current base map (or the first
+// overlay offline, when the base tiles are disabled).
 const panelEl = ref<HTMLElement | null>(null)
 onMounted(() => panelEl.value?.querySelector<HTMLElement>('button:not(:disabled)')?.focus())
 
-// Radio-group keys: arrows move the choice (and focus) within the base maps. Stops
-// here so the speed-dial menu's own arrow handling doesn't move focus away.
+// Radio-group keys: arrows move the choice within the base maps.
 function onBaseKeydown(e: KeyboardEvent) {
   const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key]
   if (!step)
     return
   e.preventDefault()
-  e.stopPropagation()
   const n = SWISSTOPO_STYLES.length
   const next = (props.currentStyleIndex + step + n) % n
   emit('selectStyle', next)
@@ -56,7 +54,7 @@ function onBaseKeydown(e: KeyboardEvent) {
         <LayerTile
           v-for="overlay in TRAIL_OVERLAYS" :key="overlay.id"
           :aria-pressed="props.activeOverlays.includes(overlay.id)" :label="t(overlay.labelKey)"
-          :thumbnail="overlay.thumbnail" :selected="props.activeOverlays.includes(overlay.id)"
+          :thumbnail="overlay.thumbnail" :icon="overlay.icon" :selected="props.activeOverlays.includes(overlay.id)"
           @select="emit('toggleOverlay', overlay.id)"
         />
       </div>
@@ -74,6 +72,7 @@ function onBaseKeydown(e: KeyboardEvent) {
   /* The speed-dial overlay passes taps through; the card itself must catch them
      so a tap between tiles doesn't close the menu. */
   pointer-events: auto;
+  max-width: calc(100vw - 2 * var(--spacing-lg));
   animation: panel-unfold var(--motion-duration-medium) var(--motion-ease-emphasized) backwards;
 }
 
@@ -98,19 +97,10 @@ function onBaseKeydown(e: KeyboardEvent) {
   gap: var(--spacing-sm);
 }
 
-/* Phones: the panel unfolds left of the "Map layers" pill, which leaves ~185px.
-   Smaller tiles and padding keep both columns on screen. */
-@media (max-width: 480px) {
-  .panel {
-    --tile-size: 60px;
-    padding: var(--spacing-sm);
-  }
-}
-
 @keyframes panel-unfold {
   from {
     opacity: 0;
-    transform: translateX(var(--motion-offset)) scale(0.96);
+    transform: translateY(var(--motion-offset)) scale(0.96);
   }
 }
 

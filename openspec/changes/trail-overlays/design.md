@@ -94,49 +94,63 @@ and syncing it via `user_profile` would cost a migration plus offline-queue plum
 picking / drawing                      → return                      (unchanged)
 activeOverlay not in {null, trail-info} → closeOverlay()             (unchanged)
 ski overlay off || offline             → closeOverlay()             (no-op if nothing open)
-zoom < 11                              → snackbar "zoom in"; closeOverlay()
-else                                   → trailLookup.lookup(point, lngLat)   (hit: open/replace card; miss: close card)
+zoom < 12                              → snackbar "zoom in"; closeOverlay()
+else                                   → trailLookup.lookup(point)   (hit: open/replace card; miss: close card)
 ```
 
 The trail card is the one sheet whose content is *about* the map, so tapping the map changes it. Every other
 sheet keeps the "tap map = close" habit. The picking branch is where future snapping hooks in.
 
-### D5 — Lookup: service, ordering, supersede
+### D5 — Clickable routes: viewport load, local taps
 
-- **Tolerance:** `matchMedia('(pointer: coarse)')` → 24 px, otherwise 10 px. A fingertip is about 40 CSS px, so
-  10 px misses on phones. The same value is both the query tolerance and the "on the tap" rule: every
-  returned route is a candidate. That leaves one knob, not two.
-- **Service** `features/map/data/services/swisstopo-trail-service.ts`:
-  `identifySkiRoutes({ lngLat, bounds, size, tolerance, lang, signal }): Promise<Trail[]>`. Params:
-  `geometryType=esriGeometryPoint`, `geometry=lng,lat`, `sr=4326`, `mapExtent` = current bounds,
-  `imageDisplay=<w>,<h>,96`, `tolerance`, `layers=all:ch.swisstopo-karto.skitouren`,
-  `geometryFormat=geojson`, `returnGeometry=true`. The real viewport makes `tolerance` mean screen pixels.
-  A Zod schema validates the response. The mapper normalizes `LineString | MultiLineString` →
-  `lines: LngLat[][]`, resolves localized fields (`x_<lang> ?? original`; `de-CH → de`) and maps
-  `target_name == null` → `route: null`. Timeout 5 s, matching the name service.
+*Revised after first local checks:* only routes with route info are clickable, and they are visibly marked,
+so what the map marks is exactly what a tap can open.
+
+- **Viewport load** `use-trail-lookup.ts`: with the ski overlay on, online and zoom ≥ 12, `refresh()` runs on
+  `moveend` and loads every ski route crossing the viewport (identify envelope). No request while the view
+  stays inside the loaded extent. A newer view aborts the pending load and a stale result is never applied
+  (checked against the owning `AbortController`). Routes with `route: null` are dropped. The set is cleared
+  when the overlay goes off, below z12 or offline. It is mirrored into `map-store.clickableTrails` for the map.
+- **Why z12, not z11:** identify can't filter by attribute (`target_name` isn't queryable) and responds
+  uncompressed with all four languages: ≈350 KB per phone viewport at z12, ≈660 KB (capped at 201 routes)
+  at z11. Measured 2026-10-15.
+- **Taps resolve locally**, against the loaded set, with no request per tap: project vertices (`map.project`),
+  `nearestOnPolylines`, keep routes ≤ tolerance (`(pointer: coarse)` → 24 px, else 10), nearest-first, max 8 +
+  remainder. A tap during a pending load awaits it; a failed load shows `map.trail.lookupError` on tap only.
+- **Service** `identifySkiRoutes({ bounds, size, locale, signal })`: `esriGeometryEnvelope`, `tolerance=0`,
+  `geometryFormat=geojson`, Zod-validated, 10 s timeout (a viewport is larger than a point query). The
+  mapper normalizes `LineString | MultiLineString` → `lines: LngLat[][]`, localizes (`x_<lang> ?? original`;
+  `de-CH → de`) and maps `target_name == null` → `route: null`.
+- **Marking** (`trail-layers.ts`, `ski-badge.ts`): a blurred halo line under the ski raster (the route reads
+  as the same blue line, glowing) and difficulty badges placed along each route (`symbol-placement: line`,
+  ~220 px apart) with label collision: routes sharing an approach show one badge there instead of a stack,
+  and each route still gets badges on its own stretch. Above the highlight, below GPX/tour markers. The badge is a pill in the difficulty color with a skier glyph and
+  the difficulty, white ring, soft shadow; canvas-drawn on demand (`styleimagemissing`), keyed by color +
+  label. Halo and badge share one color per SAC grade, sky (L) → blue → indigo → violet → purple (SS) →
+  deep purple (AS, EX), modifiers between stops; no difficulty = stone grey (`#78716C`, as a tour with no
+  activity type), a round badge with just the skier. `domain/ski-difficulty.ts` grades both scales
+  Swisstopo localizes to (German `L…EX` in `_de`, French `F…EX` in `_en/_fr/_it`), `+`/`-` included, so
+  the badge shows the same string as the card.
 - **Entity** `features/map/domain/entities/trail.ts`, framework-free:
-  `{ overlay: 'ski', id: string, lines: LngLat[][], route: SkiRouteInfo | null }`. `overlay` stays a field so
-  hiking can join as a union member when snapping needs it.
+  `{ overlay: 'ski', id: string, lines: LngLat[][], route: SkiRouteInfo | null }`.
 - **Ordering** `features/map/domain/nearest-point.ts`: pure planar `nearestOnPolylines(p, lines)` →
-  `{ distance, point, lineIndex, segmentIndex, t }`. The composable projects vertices to screen px
-  (`map.project`), sorts candidates by distance and keeps the first 8, remembering the total for "+N more".
-  Coordinate-agnostic on purpose: snapping a drawn vertex is the same call.
-- **Composable** `use-trail-lookup.ts`: `AbortController` + request counter. Each tap aborts the previous
-  request, and a result applies only if its counter is still the latest (an abort can lose the race against
-  an already-parsed body). Non-abort errors → `map.trail.lookupError` snackbar.
+  `{ distance, point, lineIndex, segmentIndex, t }`. Coordinate-agnostic on purpose: snapping a drawn vertex
+  is the same call.
 
 ### D6 — Groundwork boundaries for snapping
 
 Built now and reused unchanged: the `Trail` entity with polylines, `nearestOnPolylines`, the registry, and
-the highlight source pattern. Snapping will add an envelope variant of the service (verified: identify
-accepts `esriGeometryEnvelope` and returns full geometries for both layers), a hiking `Trail` member, a
-graph builder and a routing step. All are additive. No repository interface now: there is one implementation.
+the highlight source pattern, and the envelope service (verified for both layers). Snapping will add a
+hiking `Trail` member, a graph builder and a routing step. All are additive. No repository interface now: there is one implementation.
 
 ### D7 — Map layers panel UI
 
-`map-layers-panel.vue` replaces `map-base-map-panel.vue` in the speed dial's unfolded slot (entry renamed
-`base-map` → `map-layers`, icon `layers` newly registered in `icons.ts`, **always enabled**). A glass card,
-`--radius-lg`, two titled sections. `layer-tile.vue`:
+`map-layers-panel.vue` replaces `map-base-map-panel.vue` (entry renamed `base-map` → `map-layers`, icon
+`layers` newly registered in `icons.ts`, **always enabled**). *Revised after first local checks:* the panel
+takes the speed-dial menu's place, bottom-right right above the trigger, instead of unfolding beside the
+menu item. Beside the item it was cut off on phones and out of right-thumb reach; the menu is unusable while
+the panel is open anyway. The trigger (✕) closes it. A glass card, `--radius-lg`, two titled sections,
+`max-width` = viewport minus margins. `layer-tile.vue`:
 
 - 72×72 thumbnail (`--radius-md`), label underneath, `<button>`.
 - Selected: 2 px accent ring with offset, plus a check badge popping in at the top-right. Unselected tiles are

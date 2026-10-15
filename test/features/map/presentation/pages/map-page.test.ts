@@ -115,6 +115,7 @@ function mountMapPage(initialState = {}, stubOverrides: Record<string, unknown> 
 describe('mapPage', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+    localStorage.clear()
   })
 
   describe('map background click dismissal', () => {
@@ -178,7 +179,9 @@ describe('mapPage', () => {
 
   describe('ski route taps', () => {
     const skiOn = { map: { activeOverlays: ['ski'] } }
-    const trail = { overlay: 'ski', id: 'r1', lines: [[[8.4, 46.8], [8.41, 46.81]]], route: null }
+    const route = { name: null, targetName: 'Peak', targetAltitude: null, difficulty: null, ascentTime: null, ascentM: null, descentM: null, sacUrl: null }
+    // fakeMap.project puts every vertex at (0, 0): a tap there hits, one far away misses.
+    const trail = { overlay: 'ski', id: 'r1', lines: [[[8.4, 46.8], [8.41, 46.81]]], route }
 
     beforeEach(() => {
       fakeMap.zoom = 13
@@ -187,7 +190,7 @@ describe('mapPage', () => {
     })
 
     it('should ask to zoom in without a lookup below the lookup zoom', async () => {
-      fakeMap.zoom = 9
+      fakeMap.zoom = 11
       const wrapper = mountMapPage(skiOn)
 
       await wrapper.findComponent({ name: 'TourenbuddyMap' }).vm.$emit('mapBackgroundClick', TAP)
@@ -200,12 +203,13 @@ describe('mapPage', () => {
     it('should only close a tour sheet, without a lookup', async () => {
       const wrapper = mountMapPage(skiOn)
       wrapper.vm.activeOverlay = 'feedback'
-      await nextTick()
+      await flushPromises()
+      const loads = vi.mocked(identifySkiRoutes).mock.calls.length
 
       await wrapper.findComponent({ name: 'TourenbuddyMap' }).vm.$emit('mapBackgroundClick', TAP)
       await flushPromises()
 
-      expect(identifySkiRoutes).not.toHaveBeenCalled()
+      expect(identifySkiRoutes).toHaveBeenCalledTimes(loads)
       expect(wrapper.vm.activeOverlay).toBeNull()
     })
 
@@ -214,11 +218,11 @@ describe('mapPage', () => {
       const wrapper = mountMapPage(skiOn, { TrailCard: { template: '<div data-testid="trail-card" />' } })
       const map = wrapper.findComponent({ name: 'TourenbuddyMap' })
 
-      await map.vm.$emit('mapBackgroundClick', TAP)
+      await map.vm.$emit('mapBackgroundClick', { ...TAP, point: { x: 0, y: 0 } })
       await flushPromises()
       expect(wrapper.vm.activeOverlay).toBe('trail-info')
 
-      await map.vm.$emit('mapBackgroundClick', TAP)
+      await map.vm.$emit('mapBackgroundClick', { ...TAP, point: { x: 300, y: 300 } })
       await flushPromises()
       expect(wrapper.vm.activeOverlay).toBeNull()
     })

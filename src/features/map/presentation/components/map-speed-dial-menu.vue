@@ -13,9 +13,7 @@ export interface SpeedDialMenuItem {
   tooltip?: string
 }
 
-// `expanded`: the item whose options unfold beside it (default slot). The rest of the
-// menu stays in place but inert, so a tap on it lands on the backdrop and closes all.
-const props = defineProps<{ items: SpeedDialMenuItem[], expanded?: string | null }>()
+const props = defineProps<{ items: SpeedDialMenuItem[] }>()
 const emit = defineEmits<{ select: [id: string] }>()
 
 const menuEl = ref<HTMLElement | null>(null)
@@ -28,7 +26,7 @@ async function focusFirst() {
 
 function onKeydown(e: KeyboardEvent) {
   const btns = Array.from(
-    menuEl.value?.querySelectorAll<HTMLButtonElement>('button:not(:disabled, [inert])') ?? [],
+    menuEl.value?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? [],
   )
   const idx = btns.indexOf(document.activeElement as HTMLButtonElement)
 
@@ -70,7 +68,6 @@ defineExpose({ focusFirst })
       v-for="(item, idx) in props.items"
       :key="item.id"
       class="item-slot"
-      :class="{ 'item-slot--expanded': item.id === props.expanded }"
       :style="{ '--i': idx, '--ri': props.items.length - 1 - idx }"
     >
       <SpeedDialItem
@@ -78,8 +75,6 @@ defineExpose({ focusFirst })
         :label="item.label"
         :disabled="item.disabled"
         :tooltip="item.tooltip"
-        :inert="!!props.expanded || undefined"
-        :aria-expanded="item.id === props.expanded || undefined"
         :data-tour="`menu-${item.id}`"
         @select="select(item.id)"
       >
@@ -90,7 +85,6 @@ defineExpose({ focusFirst })
           <span class="dot" data-testid="menu-dot" />
         </template>
       </SpeedDialItem>
-      <slot v-if="item.id === props.expanded" />
     </div>
   </div>
 </template>
@@ -103,26 +97,9 @@ defineExpose({ focusFirst })
   gap: var(--spacing-xs);
 }
 
-/* Containing block for the options that unfold beside the item */
 .item-slot {
   position: relative;
   display: flex;
-}
-
-/* The options overflow this slot by design. driver.js clips the parent of a
-   spotlit element (`overflow: hidden !important`), which would hide them during
-   the guided tour's map layers step. */
-.item-slot--expanded {
-  z-index: 1;
-  overflow: visible !important;
-}
-
-.item-slot--expanded > :deep(.item-row) {
-  background-color: var(--color-fab-glass-strong);
-}
-
-.menu:has(.item-slot--expanded) .item-slot:not(.item-slot--expanded) > :deep(.item-row) {
-  opacity: 0.45;
 }
 
 @media (orientation: landscape) and (max-height: 500px) {

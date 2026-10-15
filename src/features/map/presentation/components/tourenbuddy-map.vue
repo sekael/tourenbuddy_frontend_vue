@@ -41,6 +41,7 @@ const {
   previewEnd,
   activeOverlays,
   trailCard,
+  clickableTrails,
 } = storeToRefs(mapStore)
 const { groupIdByTourId } = storeToRefs(tourLinksStore)
 
@@ -129,7 +130,7 @@ onMounted(() => {
   mapInstance.on('load', async () => {
     // First: the overlay stack must sit below everything added after it.
     trailLayers = useTrailLayers(mapInstance!)
-    trailLayers.setup(activeOverlays.value, trailCard.value)
+    trailLayers.setup(trailLayerState())
 
     markerLayer = useToursMarkerLayer(
       mapInstance!,
@@ -195,6 +196,11 @@ watch(detailMarkers, (markers) => {
 
 watch(activeOverlays, ids => trailLayers?.setVisible(ids))
 watch(trailCard, card => trailLayers?.setHighlight(card))
+watch(clickableTrails, trails => trailLayers?.setClickable(trails))
+
+function trailLayerState() {
+  return { active: activeOverlays.value, clickable: clickableTrails.value, card: trailCard.value }
+}
 
 // Watch for map style changes
 watch(currentStyleIndex, (index) => {
@@ -205,7 +211,7 @@ watch(currentStyleIndex, (index) => {
     markerLayer?.cleanup()
     mapInstance.setStyle(style.style)
     mapInstance.once('style.load', async () => {
-      trailLayers?.setup(activeOverlays.value, trailCard.value)
+      trailLayers?.setup(trailLayerState())
       await markerLayer?.setup()
       markerLayer?.updateTours(renderedTours.value, selectedTourId.value, linkedTourIds.value)
       markerLayer?.updatePreview(previewGoal.value, previewTourType.value)

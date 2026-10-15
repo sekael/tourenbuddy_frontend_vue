@@ -8,10 +8,8 @@ function feature(geometry: unknown, properties: Record<string, unknown> = NO_INF
 }
 
 const params = {
-  lngLat: { lng: 8.4, lat: 46.8 },
   bounds: [8, 46, 9, 47] as [number, number, number, number],
   size: { width: 400, height: 800 },
-  tolerance: 24,
   locale: 'de-CH',
   signal: new AbortController().signal,
 }

@@ -330,13 +330,10 @@ describe('mapActionOverlay', () => {
       isOnline.value = true
     })
 
-    it('should unfold beside the map layers item while the rest of the menu stays, inert', async () => {
+    it('should take the menu\'s place above the trigger', async () => {
       const wrapper = await openPanel()
-      const slot = wrapper.find('[data-tour="menu-map-layers"]').element.parentElement!
-      expect(slot.querySelector('[data-tour="map-layers"]')).not.toBeNull()
-      const items = wrapper.findAll('#speed-dial-menu > .item-slot > [role="menuitem"]')
-      expect(items.length).toBeGreaterThan(1)
-      expect(items.every(i => i.attributes('inert') !== undefined)).toBe(true)
+      expect(wrapper.find('[data-tour="map-layers"]').exists()).toBe(true)
+      expect(wrapper.find('#speed-dial-menu').exists()).toBe(false)
     })
 
     it('should collapse the whole menu once a base map is chosen', async () => {
@@ -357,8 +354,11 @@ describe('mapActionOverlay', () => {
 
     it('should disable base maps offline but keep overlay toggles and the entry usable', async () => {
       isOnline.value = false
-      const wrapper = await openPanel()
-      expect(wrapper.find('[data-tour="menu-map-layers"]').attributes('disabled')).toBeUndefined()
+      const wrapper = mountOverlay()
+      await wrapper.find('[aria-haspopup="menu"]').trigger('click')
+      const entry = wrapper.find('[data-tour="menu-map-layers"]')
+      expect(entry.attributes('disabled')).toBeUndefined()
+      await entry.trigger('click')
       expect(wrapper.findAll('[role="radio"]').every(r => r.attributes('disabled') !== undefined)).toBe(true)
       expect(wrapper.findAll('[aria-pressed]').every(r => r.attributes('disabled') === undefined)).toBe(true)
       expect(wrapper.text()).toContain('map.layers.needsConnection')

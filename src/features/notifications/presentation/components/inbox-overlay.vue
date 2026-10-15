@@ -145,7 +145,14 @@ onMounted(() => {
   padding-top: var(--spacing-sm);
   border-top: 1px solid var(--divider-color);
 }
+/* Question on its own line, then two equal buttons: never wraps into a ragged row. */
+.clear--confirm {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
 .clear-question {
+  grid-column: 1 / -1;
+  text-align: center;
   font-size: var(--font-size-sm);
   color: var(--color-on-surface-variant);
 }

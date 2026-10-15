@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { LngLat, Map as MapLibreMap, Point } from 'maplibre-gl'
+import type { Map as MapLibreMap, Point } from 'maplibre-gl'
 import type { StageContext } from '@/features/onboarding/presentation/composables/use-onboarding-tour'
 import type { TourSurface } from '@/features/onboarding/presentation/onboarding-steps'
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
@@ -767,9 +767,22 @@ const trailLookup = useTrailLookup({
   onError: () => showTrailSnackbar(t('map.trail.lookupError'), false),
 })
 
+// Keep the clickable routes in step with the view: loaded while the ski overlay is
+// on, online and zoomed in far enough; dropped otherwise (their markers with them).
+function syncClickableTrails() {
+  const map = mapInstance.value
+  if (map && activeOverlays.value.includes('ski') && isOnline.value && map.getZoom() >= TRAIL_LOOKUP_MIN_ZOOM)
+    void trailLookup.refresh()
+  else
+    trailLookup.clear()
+}
+watch(trailLookup.trails, trails => mapStore.setClickableTrails(trails))
+watch([activeOverlays, isOnline, mapInstance], syncClickableTrails)
+watch(mapInstance, m => m?.on('moveend', syncClickableTrails))
+
 // The trail card is the one sheet *about* the map, so a tap re-looks-up; every
 // other sheet keeps "tap map = close".
-async function handleMapBackgroundClick({ point, lngLat }: { point: Point, lngLat: LngLat }) {
+async function handleMapBackgroundClick({ point }: { point: Point }) {
   // Suppress while location picker or region-draw is active — map panning passes
   // through the overlay and would otherwise deselect the current tour.
   if (isPickingLocation.value || isDrawingRegion.value)
@@ -777,18 +790,16 @@ async function handleMapBackgroundClick({ point, lngLat }: { point: Point, lngLa
   const map = mapInstance.value
   const otherSheet = activeOverlay.value !== null && activeOverlay.value !== 'trail-info'
   if (otherSheet || !map || !activeOverlays.value.includes('ski') || !isOnline.value) {
-    trailLookup.cancel()
     closeOverlay()
     return
   }
   if (map.getZoom() < TRAIL_LOOKUP_MIN_ZOOM) {
-    trailLookup.cancel()
     showTrailSnackbar(t('map.trail.zoomIn'), true)
     closeOverlay()
     return
   }
-  const hits = await trailLookup.lookup(point, lngLat)
-  // null: superseded or failed (map unchanged). Another sheet opened meanwhile wins.
+  const hits = await trailLookup.lookup(point)
+  // null: load failed or superseded (map unchanged). Another sheet opened meanwhile wins.
   if (!hits || (activeOverlay.value !== null && activeOverlay.value !== 'trail-info'))
     return
   if (hits.candidates.length === 0) {

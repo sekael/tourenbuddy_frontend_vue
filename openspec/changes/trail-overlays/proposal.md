@@ -13,12 +13,13 @@ trails" feature.
 - New **trail overlays**: Swisstopo hiking trails (`ch.swisstopo.swisstlm3d-wanderwege`) and ski routes
   (`ch.swisstopo-karto.skitouren`) rendered as WMTS raster overlays on either base map, beneath all tour
   markers and GPX tracks. Any combination can be on, and overlays survive a base-map switch.
-- The speed-dial entry "Change base map" becomes **"Map layers"**: a panel with a "Base map" section (single
-  choice) and an "Overlays" section (independent toggles), both as preview tiles with a clear selected
-  state. The entry stays usable offline: only the base-map section is disabled there.
+- The speed-dial entry "Change base map" becomes **"Map layers"**: a panel that takes the menu's place right
+  above the trigger (thumb reach), with a "Base map" section (single choice) and an "Overlays" section
+  (independent toggles), both as preview tiles with a clear selected state. The entry stays usable offline: only the base-map section is disabled there.
 - The overlay selection **persists per device**. The base-map choice stays unpersisted.
-- **Ski route lookup**: from zoom 11, with the ski overlay on, tapping near a ski route (thumb-sized
-  tolerance) identifies it via the Swisstopo `identify` API. One hit opens its details, several open a
+- **Ski route lookup**: from zoom 12, with the ski overlay on, the ski routes in view load once per settled
+  view via the Swisstopo `identify` API; routes carrying route info are marked (halo + marker) and only
+  those are tappable (thumb-sized tolerance, resolved locally). One hit opens its details, several open a
   nearest-first list (max 8). Routes are highlighted, and the map frames them if needed. The card is a bottom
   sheet on mobile and a side drawer on desktop. Zoomed-out taps prompt "zoom in". Hiking trails are
   display-only.

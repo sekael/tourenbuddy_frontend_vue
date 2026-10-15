@@ -2,7 +2,8 @@ import type { LngLat, SkiRouteInfo, Trail } from '@/features/map/domain/entities
 import { z } from 'zod'
 import { TRAIL_OVERLAYS } from '@/features/map/data/trail-overlays'
 
-const TIMEOUT_MS = 5000
+// A whole viewport is a few hundred KB; give slow mountain connections room.
+const TIMEOUT_MS = 10000
 const SKI_LAYER = TRAIL_OVERLAYS.find(o => o.id === 'ski')!.layerBodId
 
 const position = z.tuple([z.number(), z.number()]).rest(z.number())
@@ -67,30 +68,29 @@ export function mapSkiRoute(feature: Feature, lang: string): Trail {
 }
 
 export interface IdentifyParams {
-  lngLat: { lng: number, lat: number }
-  /** Current viewport as [west, south, east, north]: makes `tolerance` mean screen pixels. */
+  /** Viewport as [west, south, east, north]. */
   bounds: [number, number, number, number]
   size: { width: number, height: number }
-  tolerance: number
   /** UI locale, e.g. `de-CH` or `en`. */
   locale: string
   signal: AbortSignal
 }
 
 /**
- * Ski routes within `tolerance` screen px of the tap, with full geometry, via the
- * GeoAdmin identify API. Rejects on network/HTTP/validation failure, timeout and abort.
+ * Every ski route crossing the viewport, with full geometry, via the GeoAdmin
+ * identify API. Rejects on network/HTTP/validation failure, timeout and abort.
  */
 export async function identifySkiRoutes(params: IdentifyParams): Promise<Trail[]> {
-  const { lngLat, bounds, size, tolerance, locale, signal } = params
+  const { bounds, size, locale, signal } = params
   const lang = locale.split('-')[0]!
+  const extent = bounds.join(',')
   const query = new URLSearchParams({
-    geometryType: 'esriGeometryPoint',
-    geometry: `${lngLat.lng},${lngLat.lat}`,
+    geometryType: 'esriGeometryEnvelope',
+    geometry: extent,
     sr: '4326',
-    mapExtent: bounds.join(','),
+    mapExtent: extent,
     imageDisplay: `${Math.round(size.width)},${Math.round(size.height)},96`,
-    tolerance: String(tolerance),
+    tolerance: '0',
     layers: `all:${SKI_LAYER}`,
     geometryFormat: 'geojson',
     returnGeometry: 'true',

@@ -9,6 +9,8 @@ export interface TrailOverlay {
   maxzoom: number
   labelKey: string
   thumbnail: string
+  /** BaseIcon name on the panel tile, so the overlay reads without decoding map colors. */
+  icon: string
   /** Whether a map tap looks up features of this overlay. */
   identifiable: boolean
 }
@@ -21,6 +23,7 @@ export const TRAIL_OVERLAYS: TrailOverlay[] = [
     maxzoom: 18,
     labelKey: 'map.layers.overlays.hiking',
     thumbnail: '/map-layers/hiking.png',
+    icon: 'hiking',
     identifiable: false,
   },
   {
@@ -29,6 +32,7 @@ export const TRAIL_OVERLAYS: TrailOverlay[] = [
     maxzoom: 17,
     labelKey: 'map.layers.overlays.ski',
     thumbnail: '/map-layers/ski.png',
+    icon: 'downhill_skiing',
     identifiable: true,
   },
 ]

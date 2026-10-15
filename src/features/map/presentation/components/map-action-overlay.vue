@@ -95,25 +95,22 @@ defineExpose({ isOpen, closeMenu, openMenu, openMapLayers })
       </button>
     </BaseTooltip>
 
-    <!-- The layers panel unfolds beside "Map layers"; the menu stays open but
-         inert behind it, and everything closes together. -->
-    <Transition name="dial">
+    <!-- The layers panel takes the menu's place, right above the trigger: within
+         thumb reach, full width on phones. The trigger closes either. -->
+    <Transition name="dial" mode="out-in">
       <MapSpeedDialMenu
-        v-if="isOpen"
+        v-if="view === 'menu'"
         ref="menuRef"
         :items="menuItems"
-        :expanded="view === 'map-layers' ? 'map-layers' : null"
         @select="onMenuSelect"
-      >
-        <MapLayersPanel
-          v-if="view === 'map-layers'"
-          class="unfolded"
-          :current-style-index="currentStyleIndex"
-          :active-overlays="activeOverlays"
-          @select-style="selectStyle"
-          @toggle-overlay="mapStore.toggleOverlay"
-        />
-      </MapSpeedDialMenu>
+      />
+      <MapLayersPanel
+        v-else-if="view === 'map-layers'"
+        :current-style-index="currentStyleIndex"
+        :active-overlays="activeOverlays"
+        @select-style="selectStyle"
+        @toggle-overlay="mapStore.toggleOverlay"
+      />
     </Transition>
 
     <SpeedDialTrigger
@@ -142,7 +139,7 @@ defineExpose({ isOpen, closeMenu, openMenu, openMapLayers })
   align-items: flex-end;
   z-index: 15;
   /* Only the controls and the backdrop take taps: a tap anywhere else — gaps,
-     inert menu items behind the layers panel — lands on the backdrop (open)
+     the space beside the layers panel — lands on the backdrop (open)
      or the map (closed). */
   pointer-events: none;
 }
@@ -191,8 +188,8 @@ defineExpose({ isOpen, closeMenu, openMenu, openMapLayers })
 }
 
 /* Expanding menus unfold from where they were opened: the speed-dial items rise
-   from the trigger one after another, nearest first; the layers panel slides out
-   of "Map layers". Closing is one quiet fade. The items animate
+   from the trigger one after another, nearest first; the layers panel rises in
+   their place. Closing is one quiet fade. The items animate
    on mount (they mount only when a menu opens) rather than under
    `dial-enter-active`: the Transition root has no transition of its own, so Vue
    would drop that class after one frame and cut the animation short. */
@@ -216,28 +213,12 @@ defineExpose({ isOpen, closeMenu, openMenu, openMapLayers })
   }
 }
 
-/* Options column beside the item that opened it, centred on it */
-.unfolded {
-  position: absolute;
-  top: 50%;
-  right: calc(100% + var(--spacing-sm));
-  translate: 0 -50%;
-}
-
 :deep(.trigger--overlay-active .fab) {
   opacity: 0.45;
   cursor: default;
 }
 
 @media (orientation: landscape) and (max-height: 500px) {
-  /* On the arc the next item sits below-left: grow the options upward from the
-     item's centre so they clear it. */
-  .unfolded {
-    top: auto;
-    bottom: 50%;
-    translate: none;
-  }
-
   /* Menu fans as a quarter-circle arc around the trigger so it doesn't overlap
      the bottom-center tour action pill. Trigger stays at bottom-right. */
   .overlay {

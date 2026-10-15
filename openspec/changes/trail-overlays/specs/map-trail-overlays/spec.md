@@ -28,7 +28,7 @@ The map SHALL offer two overlays sourced from Swisstopo WMTS: "Hiking trails" (`
 
 ### Requirement: Overlay draw order
 
-Overlays SHALL render above the base map and below all app content: GPX tracks, the trail highlight, and every tour marker (goal, cluster, preview, start/end). When both overlays are on, ski routes SHALL render above hiking trails.
+Overlays SHALL render above the base map and below all app content: GPX tracks, the trail highlight, clickable-route markers, and every tour marker (goal, cluster, preview, start/end). When both overlays are on, ski routes SHALL render above hiking trails.
 
 #### Scenario: Markers stay on top
 
@@ -51,12 +51,17 @@ Switching the base map SHALL NOT change which overlays are on. After the new bas
 
 ### Requirement: Map layers panel
 
-The speed-dial menu SHALL offer a "Map layers" entry that unfolds a panel with a "Base map" section (single choice) and an "Overlays" section (one independent toggle per overlay). Every option SHALL show a bundled preview image (overlay previews drawn over the base-map preview) and its name. Chosen options SHALL show a distinct selected state (accent outline and check badge). Toggling an overlay SHALL keep the panel open; choosing a base map SHALL close it.
+The speed-dial menu SHALL offer a "Map layers" entry that opens a panel in the menu's place, right above the menu trigger, with a "Base map" section (single choice) and an "Overlays" section (one toggle per overlay). Every option SHALL show a bundled preview image and its name. Chosen options SHALL show an accent outline and check badge. Toggling an overlay SHALL keep the panel open; choosing a base map SHALL close it.
 
 #### Scenario: Open the layers panel
 
 - **WHEN** the user taps "Map layers" in the speed-dial menu
-- **THEN** the layers panel SHALL unfold showing the "Base map" and "Overlays" sections, with the current base map and active overlays marked as selected
+- **THEN** the layers panel SHALL replace the menu above the trigger, showing the "Base map" and "Overlays" sections with the current base map and active overlays marked as selected
+
+#### Scenario: Reachable on a phone
+
+- **WHEN** the panel opens on a 390 px wide screen
+- **THEN** every option SHALL be fully on screen in the lower right, within reach of the right thumb
 
 #### Scenario: Toggle overlays in one visit
 

@@ -894,7 +894,7 @@
       },
       "mapLayers": {
         "title": "Kartenebenen",
-        "body": "Wähle eine Grundkarte und blende Wanderwege oder Skitouren darüber ein, in beliebiger Kombination. Schalte Skitouren ein und tippe auf eine, um Details zu sehen."
+        "body": "Wähle eine Grundkarte und blende Wanderwege oder Skitouren darüber ein, in beliebiger Kombination. Mit Skitouren tippst du auf eine markierte Route, um Details zu sehen."
       },
       "welcome": {
         "title": "Willkommen bei TourenBuddy",
