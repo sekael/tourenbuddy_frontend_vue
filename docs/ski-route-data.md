@@ -2,6 +2,7 @@
 
 Runbook for the app's own copy of the Swisstopo ski-route dataset (#326, OpenSpec change
 `self-hosted-ski-routes`). Read this when the data job fails or when ski routes look stale.
+How the data is stored and served (formats, headers, caching): `docs/ski-route-hosting.md`.
 
 ## What runs where
 

@@ -80,7 +80,9 @@ export function pagesHeaders(): string {
     '/ski-routes/*',
     '  Cache-Control: public, max-age=31536000, immutable',
     '/ski-routes/*.pbf',
-    '  Content-Type: application/vnd.mapbox-vector-tile',
+    // Cloudflare leaves application/vnd.mapbox-vector-tile uncompressed (measured); x-protobuf is the
+    // other common tile type. MapLibre ignores the content type either way.
+    '  Content-Type: application/x-protobuf',
     '',
   ].join('\n')
 }

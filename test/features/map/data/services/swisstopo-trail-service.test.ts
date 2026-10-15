@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { identifySkiRoutes, mapSkiRoute } from '@/features/map/data/services/swisstopo-trail-service'
+import { fetchSkiRoute, mapSkiRoute, SkiRouteNotFoundError } from '@/features/map/data/services/swisstopo-trail-service'
 
 const NO_INFO = { target_name: null, name: 'Keine Routeninfo verfügbar', name_en: 'No route information available' }
 
@@ -7,12 +7,7 @@ function feature(geometry: unknown, properties: Record<string, unknown> = NO_INF
   return { id: '{abc}', geometry, properties } as Parameters<typeof mapSkiRoute>[0]
 }
 
-const params = {
-  bounds: [8, 46, 9, 47] as [number, number, number, number],
-  size: { width: 400, height: 800 },
-  locale: 'de-CH',
-  signal: new AbortController().signal,
-}
+const params = { url: 'https://data.test/ski-routes/v1/routes/1.json', locale: 'de-CH', signal: new AbortController().signal }
 
 describe('mapSkiRoute', () => {
   it('should keep every part of a MultiLineString as its own line, dropping altitude', () => {
@@ -45,16 +40,30 @@ describe('mapSkiRoute', () => {
   })
 })
 
-describe('identifySkiRoutes', () => {
+describe('fetchSkiRoute', () => {
   afterEach(() => vi.unstubAllGlobals())
 
-  it('should reject a response that fails validation', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ results: [{ id: 1, geometry: { type: 'Point', coordinates: [8, 46] }, properties: {} }] }))))
-    await expect(identifySkiRoutes(params)).rejects.toThrow()
+  it('should reject a route file that fails validation', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: 1, geometry: { type: 'Point', coordinates: [8, 46] }, properties: {} }))))
+    await expect(fetchSkiRoute(params)).rejects.toThrow()
   })
 
   it('should reject a non-OK response', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 500 })))
-    await expect(identifySkiRoutes(params)).rejects.toThrow('500')
+    await expect(fetchSkiRoute(params)).rejects.toThrow('500')
+  })
+
+  it('should reject a missing route file as not found, distinct from other failures', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 404 })))
+    await expect(fetchSkiRoute(params)).rejects.toBeInstanceOf(SkiRouteNotFoundError)
+  })
+
+  it('should reject when the caller aborts', async () => {
+    vi.stubGlobal('fetch', vi.fn((_url: string, init: RequestInit) => new Promise((_, reject) =>
+      init.signal!.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError'))))))
+    const controller = new AbortController()
+    const pending = fetchSkiRoute({ ...params, signal: controller.signal })
+    controller.abort()
+    await expect(pending).rejects.toThrow('Aborted')
   })
 })

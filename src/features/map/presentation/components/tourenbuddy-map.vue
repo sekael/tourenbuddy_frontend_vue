@@ -23,7 +23,7 @@ const emit = defineEmits<{
   mapBackgroundClick: [tap: { point: Point, lngLat: LngLat }]
 }>()
 
-const { t } = useI18n({ useScope: 'global' })
+const { t, locale } = useI18n({ useScope: 'global' })
 
 const mapContainer = ref<HTMLDivElement | null>(null)
 let mapInstance: MapLibreMap | null = null
@@ -41,7 +41,6 @@ const {
   previewEnd,
   activeOverlays,
   trailCard,
-  clickableTrails,
 } = storeToRefs(mapStore)
 const { groupIdByTourId } = storeToRefs(tourLinksStore)
 
@@ -196,10 +195,12 @@ watch(detailMarkers, (markers) => {
 
 watch(activeOverlays, ids => trailLayers?.setVisible(ids))
 watch(trailCard, card => trailLayers?.setHighlight(card))
-watch(clickableTrails, trails => trailLayers?.setClickable(trails))
+/** Swisstopo's difficulty fields are per language: `de-CH` → `de`. */
+const badgeLang = computed(() => locale.value.split('-')[0]!)
+watch(badgeLang, lang => trailLayers?.setLang(lang))
 
 function trailLayerState() {
-  return { active: activeOverlays.value, clickable: clickableTrails.value, card: trailCard.value }
+  return { active: activeOverlays.value, lang: badgeLang.value, card: trailCard.value }
 }
 
 // Watch for map style changes

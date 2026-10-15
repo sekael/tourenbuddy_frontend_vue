@@ -726,7 +726,7 @@
       "backToList": "Skitouren",
       "openSac": "Im SAC-Tourenportal öffnen",
       "noInfo": "Keine Routeninformationen verfügbar",
-      "zoomIn": "Hineinzoomen, um Routendetails zu sehen",
+      "offline": "Für Routendetails braucht es eine Verbindung",
       "lookupError": "Routeninfo konnte nicht geladen werden"
     },
     "cluster": {

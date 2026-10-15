@@ -4,7 +4,7 @@ import BaseIcon from '@/core/components/base-icon.vue'
 const props = defineProps<{
   message: string
   visible: boolean
-  /** A neutral hint (e.g. "zoom in") instead of an error. */
+  /** A neutral hint (e.g. "needs a connection") instead of an error. */
   info?: boolean
 }>()
 

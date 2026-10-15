@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   enumerateAssetUrls,
+  enumerateSkiTiles,
   enumerateTiles,
   estimateBytes,
   orphanTileUrls,
@@ -78,7 +79,29 @@ describe('orphanTileUrls', () => {
 
   it('purges every tile when no region survives', () => {
     const target = region('a', [7.70, 45.90, 7.80, 46.00])
-    expect(orphanTileUrls(target, [])).toEqual(enumerateTiles(target.bbox, 12, 12))
+    expect(orphanTileUrls(target, [])).toEqual([...enumerateTiles(target.bbox, 12, 12), ...enumerateSkiTiles(target.bbox, 12, 12)])
+  })
+
+  it('keeps ski-route tiles shared with a surviving overlapping region', () => {
+    const target = region('a', [7.70, 45.90, 7.80, 46.00])
+    const survivor = region('b', [7.75, 45.95, 7.85, 46.05])
+    const kept = new Set(enumerateSkiTiles(survivor.bbox, 12, 12))
+    expect(orphanTileUrls(target, [survivor]).some(u => kept.has(u))).toBe(false)
+  })
+})
+
+describe('enumerateSkiTiles', () => {
+  it('should only cover the dataset zooms 11–13, whatever the region depth', () => {
+    const zooms = new Set(enumerateSkiTiles(bbox, 0, 14).map(u => u.match(/\/(\d+)\/\d+\/\d+\.pbf$/)![1]))
+    expect([...zooms]).toEqual(['11', '12', '13'])
+  })
+
+  it('should yield nothing for a region that stops above zoom 11', () => {
+    expect(enumerateSkiTiles(bbox, 0, 10)).toEqual([])
+  })
+
+  it('should key tiles without the dataset version by default', () => {
+    expect(enumerateSkiTiles(bbox, 11, 11)[0]).toMatch(/\/ski-routes\/11\/\d+\/\d+\.pbf$/)
   })
 })
 

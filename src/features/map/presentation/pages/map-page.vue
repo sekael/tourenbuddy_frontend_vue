@@ -31,10 +31,11 @@ import OfflineRegionOutline from '@/features/map/presentation/components/offline
 import TourActionBar from '@/features/map/presentation/components/tour-action-bar.vue'
 import TourenbuddyMap from '@/features/map/presentation/components/tourenbuddy-map.vue'
 import TrailCard from '@/features/map/presentation/components/trail-card.vue'
+import { TRAIL_LOOKUP_MIN_ZOOM } from '@/features/map/presentation/components/trail-layers'
 import { computeBarState } from '@/features/map/presentation/composables/compute-bar-state'
 import { frameBounds, frameTour, isBoundsVisible } from '@/features/map/presentation/composables/frame-tour'
 import { useInboxNavigation } from '@/features/map/presentation/composables/use-inbox-navigation'
-import { TRAIL_LOOKUP_MIN_ZOOM, useTrailLookup } from '@/features/map/presentation/composables/use-trail-lookup'
+import { useTrailLookup } from '@/features/map/presentation/composables/use-trail-lookup'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import InboxOverlay from '@/features/notifications/presentation/components/inbox-overlay.vue'
 import { useInboxStore } from '@/features/notifications/presentation/stores/inbox-store'
@@ -767,18 +768,11 @@ const trailLookup = useTrailLookup({
   onError: () => showTrailSnackbar(t('map.trail.lookupError'), false),
 })
 
-// Keep the clickable routes in step with the view: loaded while the ski overlay is
-// on, online and zoomed in far enough; dropped otherwise (their markers with them).
-function syncClickableTrails() {
-  const map = mapInstance.value
-  if (map && activeOverlays.value.includes('ski') && isOnline.value && map.getZoom() >= TRAIL_LOOKUP_MIN_ZOOM)
-    void trailLookup.refresh()
-  else
-    trailLookup.clear()
-}
-watch(trailLookup.trails, trails => mapStore.setClickableTrails(trails))
-watch([activeOverlays, isOnline, mapInstance], syncClickableTrails)
-watch(mapInstance, m => m?.on('moveend', syncClickableTrails))
+// A ski tile failing without HTTP status while online = the dataset moved on (see useTrailLookup).
+watch(mapInstance, m => m?.on('error', (e) => {
+  if (isOnline.value)
+    trailLookup.onMapError(e)
+}))
 
 // The trail card is the one sheet *about* the map, so a tap re-looks-up; every
 // other sheet keeps "tap map = close".
@@ -789,12 +783,15 @@ async function handleMapBackgroundClick({ point }: { point: Point }) {
     return
   const map = mapInstance.value
   const otherSheet = activeOverlay.value !== null && activeOverlay.value !== 'trail-info'
-  if (otherSheet || !map || !activeOverlays.value.includes('ski') || !isOnline.value) {
+  // Below the marking zoom nothing looks tappable, so a tap is a plain map tap.
+  if (otherSheet || !map || !activeOverlays.value.includes('ski') || map.getZoom() < TRAIL_LOOKUP_MIN_ZOOM) {
     closeOverlay()
     return
   }
-  if (map.getZoom() < TRAIL_LOOKUP_MIN_ZOOM) {
-    showTrailSnackbar(t('map.trail.zoomIn'), true)
+  // Offline the routes still render (downloaded or cached tiles) but their details can't load.
+  if (!isOnline.value) {
+    if (trailLookup.hitTest(point).ids.length > 0)
+      showTrailSnackbar(t('map.trail.offline'), true)
     closeOverlay()
     return
   }

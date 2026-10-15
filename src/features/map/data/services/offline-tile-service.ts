@@ -1,5 +1,6 @@
 import type { OfflineRegion } from './offline-region-store'
 import { useLogger } from '@/core/logging/use-logger'
+import { SKI_ROUTES_TILEJSON } from '@/features/map/data/trail-overlays'
 import { BASE_STYLE_URL, normalizeTileUrl, OFFLINE_MAP_CACHE } from './offline-map-cache'
 import { getAllRegions, putRegion } from './offline-region-store'
 
@@ -52,6 +53,16 @@ function loadAvgTileBytes(): number {
 }
 
 let avgTileBytes = loadAvgTileBytes()
+/**
+ * Self-hosted ski-route tiles (docs/ski-route-hosting.md): z11–z13 only, sparse (most
+ * coordinates 404 = no route), ≈1–5 KB each. Keyed version-less in the offline cache
+ * (`normalizeTileUrl`), downloaded from the current version's template.
+ */
+const SKI_MIN_ZOOM = 11
+const SKI_MAX_ZOOM = 13
+const SKI_TILE_BYTES = 5_000
+const SKI_TILE_KEY_TEMPLATE = SKI_ROUTES_TILEJSON.replace(/\.json$/, '/{z}/{x}/{y}.pbf')
+
 /** Fixed allowance for style.json + sprites + glyph PBFs. */
 const ASSET_ALLOWANCE = 3_000_000
 
@@ -167,14 +178,45 @@ export function enumerateAssetUrls(style: StyleJson): string[] {
   return urls
 }
 
+/**
+ * Ski-route tile URLs for a region, from a `{z}/{x}/{y}` template: the version-less
+ * key template by default (cache bookkeeping), the manifest's versioned one to download.
+ */
+export function enumerateSkiTiles(
+  bbox: [number, number, number, number],
+  minZoom: number,
+  maxZoom: number,
+  template = SKI_TILE_KEY_TEMPLATE,
+): string[] {
+  const urls: string[] = []
+  for (let zoom = Math.max(minZoom, SKI_MIN_ZOOM); zoom <= Math.min(maxZoom, SKI_MAX_ZOOM); zoom++) {
+    const { minX, maxX, minY, maxY } = tileRange(bbox, zoom)
+    for (let x = minX; x <= maxX; x++) {
+      for (let y = minY; y <= maxY; y++)
+        urls.push(template.replace('{z}', String(zoom)).replace('{x}', String(x)).replace('{y}', String(y)))
+    }
+  }
+  return urls
+}
+
+/** Every tile cache key a region owns: base map + ski routes. */
+function regionTileKeys(r: Pick<OfflineRegion, 'bbox' | 'minZoom' | 'maxZoom'>): string[] {
+  return [...enumerateTiles(r.bbox, r.minZoom, r.maxZoom), ...enumerateSkiTiles(r.bbox, r.minZoom, r.maxZoom)]
+}
+
 /** Estimated download size for a region — tile count × avg + fixed asset allowance. */
 export function estimateBytes(
   bbox: [number, number, number, number],
   minZoom: number,
   maxZoom: number,
 ): number {
+  let skiTiles = 0
+  for (let zoom = Math.max(minZoom, SKI_MIN_ZOOM); zoom <= Math.min(maxZoom, SKI_MAX_ZOOM); zoom++) {
+    const { minX, maxX, minY, maxY } = tileRange(bbox, zoom)
+    skiTiles += (maxX - minX + 1) * (maxY - minY + 1)
+  }
   return Math.round(
-    (countTiles(bbox, minZoom, maxZoom) * avgTileBytes + ASSET_ALLOWANCE) * ESTIMATE_SAFETY,
+    (countTiles(bbox, minZoom, maxZoom) * avgTileBytes + skiTiles * SKI_TILE_BYTES + ASSET_ALLOWANCE) * ESTIMATE_SAFETY,
   )
 }
 
@@ -187,12 +229,8 @@ export function orphanTileUrls(
   target: OfflineRegion,
   survivors: OfflineRegion[],
 ): string[] {
-  const keep = new Set(
-    survivors.flatMap(r => enumerateTiles(r.bbox, r.minZoom, r.maxZoom)),
-  )
-  return enumerateTiles(target.bbox, target.minZoom, target.maxZoom).filter(
-    u => !keep.has(u),
-  )
+  const keep = new Set(survivors.flatMap(regionTileKeys))
+  return regionTileKeys(target).filter(u => !keep.has(u))
 }
 
 function lon2x(lon: number, zoom: number) {
@@ -265,13 +303,44 @@ async function fetchWithRetry(url: string, signal?: AbortSignal, tries = 3): Pro
   }
 }
 
+/** Stores under the canonical key (`normalizeTileUrl`), which the SW looks up. */
 async function fetchAndStore(url: string, cache: Cache, signal?: AbortSignal): Promise<number> {
   const res = await fetchWithRetry(url, signal)
   if (res.status === 404 || res.status === 204)
     return 0
   const body = await res.arrayBuffer()
-  await cache.put(url, new Response(body, { headers: res.headers }))
+  await cache.put(normalizeTileUrl(url), new Response(body, { headers: res.headers }))
   return body.byteLength
+}
+
+/**
+ * The region's ski-route tiles from the current dataset version, clipped to the
+ * dataset's bounds. A data host that can't be reached skips only the ski routes;
+ * the base map download never fails because of them.
+ */
+async function skiTileUrls(
+  region: Pick<OfflineRegion, 'bbox' | 'minZoom' | 'maxZoom'>,
+  signal?: AbortSignal,
+): Promise<string[]> {
+  try {
+    const res = await fetch(SKI_ROUTES_TILEJSON, { signal })
+    if (!res.ok)
+      throw new Error(`manifest ${res.status}`)
+    const { tiles, bounds } = await res.json() as { tiles: string[], bounds?: [number, number, number, number] }
+    const [w, s, e, n] = region.bbox
+    const clipped: [number, number, number, number] = bounds
+      ? [Math.max(w, bounds[0]), Math.max(s, bounds[1]), Math.min(e, bounds[2]), Math.min(n, bounds[3])]
+      : region.bbox
+    if (clipped[0] > clipped[2] || clipped[1] > clipped[3])
+      return []
+    return enumerateSkiTiles(clipped, region.minZoom, region.maxZoom, tiles[0])
+  }
+  catch (err) {
+    if (signal?.aborted)
+      throw err
+    logger.warn('Ski-route manifest unavailable — region downloads without ski routes', err)
+    return []
+  }
 }
 
 async function assertHeadroom(projected: number): Promise<void> {
@@ -315,7 +384,7 @@ export async function downloadRegion(
   const style = await fetchStyle(signal)
   const tileUrls = enumerateTiles(region.bbox, region.minZoom, region.maxZoom)
   const assetUrls = enumerateAssetUrls(style)
-  const all = [...assetUrls, ...tileUrls]
+  const all = [...assetUrls, ...tileUrls, ...await skiTileUrls(region, signal)]
 
   await assertHeadroom(estimateBytes(region.bbox, region.minZoom, region.maxZoom))
 
@@ -328,7 +397,7 @@ export async function downloadRegion(
     await runPool(all, async (url) => {
       const n = await fetchAndStore(url, cache, signal)
       if (n > 0) {
-        written.push(url)
+        written.push(normalizeTileUrl(url))
         bytes += n
         if (url.includes('/tiles/')) {
           tileBytes += n
@@ -399,14 +468,12 @@ export async function deleteRegion(id: string): Promise<void> {
  */
 export async function sweepOrphanTiles(): Promise<void> {
   const regions = await getAllRegions()
-  const keep = new Set(
-    regions.flatMap(r => enumerateTiles(r.bbox, r.minZoom, r.maxZoom)),
-  )
+  const keep = new Set(regions.flatMap(regionTileKeys))
   const cache = await caches.open(OFFLINE_MAP_CACHE)
   const keys = await cache.keys()
   await Promise.all(keys.map(async (req) => {
     const url = normalizeTileUrl(req.url)
-    if (url.includes('/tiles/ch.swisstopo.') && !keep.has(url))
+    if ((url.includes('/tiles/ch.swisstopo.') || (url.endsWith('.pbf') && url.includes('/ski-routes/'))) && !keep.has(url))
       await cache.delete(req)
   }))
 }

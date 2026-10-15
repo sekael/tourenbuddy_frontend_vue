@@ -726,7 +726,7 @@
       "backToList": "Ski routes",
       "openSac": "Open in SAC route portal",
       "noInfo": "No route information available",
-      "zoomIn": "Zoom in to see route details",
+      "offline": "Route details need a connection",
       "lookupError": "Couldn't load route info"
     },
     "cluster": {

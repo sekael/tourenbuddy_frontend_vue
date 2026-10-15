@@ -23,5 +23,9 @@ export const BASE_STYLE_URL
  * `base.vt` from `relief.vt`, so only the host digit is stripped.
  */
 export function normalizeTileUrl(url: string): string {
-  return url.replace(/(https:\/\/vectortiles)\d(\.geo\.admin\.ch)/, '$1$2')
+  return url
+    .replace(/(https:\/\/vectortiles)\d(\.geo\.admin\.ch)/, '$1$2')
+    // Self-hosted ski-route tiles: drop the dataset version, so a region downloaded
+    // before a yearly refresh still answers the new version's URLs (z/x/y are stable).
+    .replace(/(\/ski-routes\/)[^/]+\/(\d+\/\d+\/\d+\.pbf)$/, '$1$2')
 }

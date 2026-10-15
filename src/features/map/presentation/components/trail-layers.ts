@@ -1,12 +1,19 @@
 import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl'
 import type { TrailOverlayId } from '@/features/map/data/trail-overlays'
 import type { Trail } from '@/features/map/domain/entities/trail'
-import { TRAIL_OVERLAYS, wmtsTileUrl } from '@/features/map/data/trail-overlays'
-import { skiDifficultyGrade } from '@/features/map/domain/ski-difficulty'
-import { gradeColor, registerSkiBadges, skiBadgeId } from './ski-badge'
+import { SKI_ROUTES_TILEJSON, TRAIL_OVERLAYS, wmtsTileUrl } from '@/features/map/data/trail-overlays'
+import { gradeColorExpression, registerSkiBadges, skiBadgeImage } from './ski-badge'
 
-const CLICKABLE_SOURCE_ID = 'trail-clickable'
-const CLICKABLE_HALO_LAYER_ID = 'trail-clickable-halo'
+/**
+ * Ski routes are marked (halo + badges) and tappable from this zoom. Below it the
+ * WMTS raster still draws every route; the self-hosted tiles start here (z11–z13).
+ */
+export const TRAIL_LOOKUP_MIN_ZOOM = 11
+/** Vector source of the self-hosted ski-route tiles; source-layer `routes`. */
+export const SKI_ROUTES_SOURCE_ID = 'trail-clickable'
+export const SKI_ROUTES_SOURCE_LAYER = 'routes'
+/** The halo is the tap target: every marked route has one along its whole line. */
+export const CLICKABLE_HALO_LAYER_ID = 'trail-clickable-halo'
 const CLICKABLE_MARKER_LAYER_ID = 'trail-clickable-marker'
 const HIGHLIGHT_SOURCE_ID = 'trail-highlight'
 const FAINT_LAYER_ID = 'trail-highlight-faint'
@@ -22,8 +29,8 @@ interface CardState { candidates: Trail[], selectedId: string | null }
 
 export interface TrailLayerState {
   active: TrailOverlayId[]
-  /** Ski routes a tap can open (they carry route info). */
-  clickable: Trail[]
+  /** UI language (de/fr/it/en): which difficulty notation the badges show. */
+  lang: string
   card: CardState | null
 }
 
@@ -57,17 +64,21 @@ export function useTrailLayers(map: MapLibreMap) {
     })
   }
 
-  function setup({ active, clickable, card }: TrailLayerState) {
+  function setup({ active, lang, card }: TrailLayerState) {
     const line = { 'line-join': 'round', 'line-cap': 'round' } as const
+    const ski = active.includes('ski') ? 'visible' : 'none'
 
     addOverlay('hiking', active)
-    map.addSource(CLICKABLE_SOURCE_ID, { type: 'geojson', data: clickableGeoJson(clickable) })
+    // Only routes with route info are in these tiles, so everything here is marked.
+    map.addSource(SKI_ROUTES_SOURCE_ID, { type: 'vector', url: SKI_ROUTES_TILEJSON })
     map.addLayer({
-      id: CLICKABLE_HALO_LAYER_ID,
-      type: 'line',
-      source: CLICKABLE_SOURCE_ID,
-      layout: line,
-      paint: { 'line-color': ['get', 'color'], 'line-width': 10, 'line-opacity': 0.5, 'line-blur': 2 },
+      'id': CLICKABLE_HALO_LAYER_ID,
+      'type': 'line',
+      'source': SKI_ROUTES_SOURCE_ID,
+      'source-layer': SKI_ROUTES_SOURCE_LAYER,
+      'minzoom': TRAIL_LOOKUP_MIN_ZOOM,
+      'layout': { ...line, visibility: ski },
+      'paint': { 'line-color': gradeColorExpression(), 'line-width': 10, 'line-opacity': 0.5, 'line-blur': 2 },
     })
     addOverlay('ski', active)
 
@@ -97,11 +108,14 @@ export function useTrailLayers(map: MapLibreMap) {
       paint: { 'line-color': HIGHLIGHT_COLOR, 'line-width': 4 },
     })
     map.addLayer({
-      id: CLICKABLE_MARKER_LAYER_ID,
-      type: 'symbol',
-      source: CLICKABLE_SOURCE_ID,
-      layout: {
-        'icon-image': ['get', 'badge'],
+      'id': CLICKABLE_MARKER_LAYER_ID,
+      'type': 'symbol',
+      'source': SKI_ROUTES_SOURCE_ID,
+      'source-layer': SKI_ROUTES_SOURCE_LAYER,
+      'minzoom': TRAIL_LOOKUP_MIN_ZOOM,
+      'layout': {
+        'visibility': ski,
+        'icon-image': skiBadgeImage(lang),
         // Badges repeat along each route and collide like labels: routes sharing an
         // approach (several tours from one hut) show one badge there, not a stack,
         // and each route still gets badges on its own stretch. The halo marks the
@@ -119,34 +133,22 @@ export function useTrailLayers(map: MapLibreMap) {
       if (map.getLayer(layerId(overlay.id)))
         map.setLayoutProperty(layerId(overlay.id), 'visibility', active.includes(overlay.id) ? 'visible' : 'none')
     }
+    for (const id of [CLICKABLE_HALO_LAYER_ID, CLICKABLE_MARKER_LAYER_ID]) {
+      if (map.getLayer(id))
+        map.setLayoutProperty(id, 'visibility', active.includes('ski') ? 'visible' : 'none')
+    }
   }
 
-  function setClickable(trails: Trail[]) {
-    map.getSource<GeoJSONSource>(CLICKABLE_SOURCE_ID)?.setData(clickableGeoJson(trails))
+  function setLang(lang: string) {
+    if (map.getLayer(CLICKABLE_MARKER_LAYER_ID))
+      map.setLayoutProperty(CLICKABLE_MARKER_LAYER_ID, 'icon-image', skiBadgeImage(lang))
   }
 
   function setHighlight(card: CardState | null) {
     map.getSource<GeoJSONSource>(HIGHLIGHT_SOURCE_ID)?.setData(highlightGeoJson(card))
   }
 
-  return { setup, setVisible, setClickable, setHighlight }
-}
-
-/** Each clickable route's lines in its difficulty color, with its badge id. */
-function clickableGeoJson(trails: Trail[]): GeoJSON.FeatureCollection {
-  return {
-    type: 'FeatureCollection',
-    features: trails.map((trail) => {
-      const difficulty = trail.route?.difficulty ?? null
-      const grade = skiDifficultyGrade(difficulty)
-      const color = gradeColor(grade)
-      return {
-        type: 'Feature',
-        properties: { color, badge: skiBadgeId(grade === null ? '' : difficulty!, color) },
-        geometry: { type: 'MultiLineString', coordinates: trail.lines },
-      }
-    }),
-  }
+  return { setup, setVisible, setLang, setHighlight }
 }
 
 /** List view: every candidate faint. Detail view: only the chosen route, fully highlighted. */
