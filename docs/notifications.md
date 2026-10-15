@@ -121,7 +121,9 @@ template with `action` `availability_weekly` / `tour_reminder`.
 ### Release notes — type `release_notes` (inbox only)
 
 Recorded by the client calling `record_release_note(note_id, since)` once per app start; a
-per-user marker (`user_release_note_state`) keeps it once-only. Never dispatched.
+per-user marker (`user_release_note_state`) keeps it once-only and records a note only when it is
+newer than the marker, ordered by (`since`, id). So an older build on the same database (prod next
+to a PR preview, a device not yet updated) never re-records its older note. Never dispatched.
 
 ### Blocking
 

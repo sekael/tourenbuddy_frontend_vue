@@ -29,4 +29,9 @@ describe('release notes registry', () => {
       }
     }
   })
+
+  it('should append notes in (since, id) order, because the RPC only records a newer note', () => {
+    const keys = RELEASE_NOTES.map(n => `${n.since} ${n.id}`)
+    expect(keys).toEqual(keys.toSorted())
+  })
 })
