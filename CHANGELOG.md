@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.47.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.46.0...tourenbuddy-frontend-v0.47.0) (2026-10-16)
+
+
+### Features
+
+* Calendar sync save feedback ([#342](https://github.com/sekael/tourenbuddy_frontend_vue/issues/342)) ([8b4e1bb](https://github.com/sekael/tourenbuddy_frontend_vue/commit/8b4e1bbc73f0114988dcd42f62fc14ec306fdafb))
+* Fit selected tour ([#333](https://github.com/sekael/tourenbuddy_frontend_vue/issues/333)) ([e85ecf7](https://github.com/sekael/tourenbuddy_frontend_vue/commit/e85ecf785b786de5704c0f88997c034bc16e81d8))
+* Primary contact method switch ([#336](https://github.com/sekael/tourenbuddy_frontend_vue/issues/336)) ([a8e97de](https://github.com/sekael/tourenbuddy_frontend_vue/commit/a8e97de7f0d8ce22e4cc4faed4216919ca6c4dda))
+* **tours:** Keep list sheet height while searching and reset search/filters on close ([#322](https://github.com/sekael/tourenbuddy_frontend_vue/issues/322)) ([#343](https://github.com/sekael/tourenbuddy_frontend_vue/issues/343)) ([e103f23](https://github.com/sekael/tourenbuddy_frontend_vue/commit/e103f2317e15bf3d3f4f700bedcdb8c6b92c4e0a))
+
 ## [0.46.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.45.0...tourenbuddy-frontend-v0.46.0) (2026-10-16)
 
 
