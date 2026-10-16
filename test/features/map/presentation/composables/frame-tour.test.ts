@@ -1,6 +1,7 @@
 import type { Map as MaplibreMap } from 'maplibre-gl'
+import { LngLatBounds } from 'maplibre-gl'
 import { describe, expect, it, vi } from 'vitest'
-import { frameTour, TOUR_ZOOM } from '@/features/map/presentation/composables/frame-tour'
+import { frameBounds, frameTour, ROUTE_ZOOM, TOUR_ZOOM } from '@/features/map/presentation/composables/frame-tour'
 
 const goal = { lng: 9.7, lat: 46.6 }
 const start = { lng: 9.6, lat: 46.5 }
@@ -49,5 +50,13 @@ describe('frameTour', () => {
     map.cameraForBounds.mockReturnValue(undefined as never)
     frameTour(map as unknown as MaplibreMap, { goal, startPoint: start, endPoint: null }, { bottom: 5000 })
     expect(map.flyTo).toHaveBeenCalledWith(expect.objectContaining({ center: [goal.lng, goal.lat], zoom: TOUR_ZOOM }))
+  })
+
+  it('should frame up to a raised max zoom but fall back no closer than the tour zoom', () => {
+    const map = fakeMap()
+    map.cameraForBounds.mockReturnValue(undefined as never)
+    frameBounds(map as unknown as MaplibreMap, new LngLatBounds([start.lng, start.lat], [end.lng, end.lat]), {}, { maxZoom: ROUTE_ZOOM })
+    expect((map.cameraForBounds.mock.calls[0] as unknown as [unknown, { maxZoom: number }])[1].maxZoom).toBe(ROUTE_ZOOM)
+    expect(map.flyTo).toHaveBeenCalledWith(expect.objectContaining({ zoom: TOUR_ZOOM }))
   })
 })

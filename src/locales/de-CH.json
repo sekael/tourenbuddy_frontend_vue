@@ -720,8 +720,8 @@
     "trail": {
       "skiRoute": "Skitour",
       "listTitle": "{count} Skitouren",
-      "target": "{name} · {altitude} m",
-      "metres": "{value} m",
+      "target": "{name} · {altitude}m",
+      "metres": "{value}m",
       "more": "+{count} weitere – hineinzoomen",
       "backToList": "Skitouren",
       "openSac": "Im SAC-Tourenportal öffnen",

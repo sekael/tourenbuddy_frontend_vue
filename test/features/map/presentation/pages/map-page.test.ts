@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick, ref } from 'vue'
 import { isOnline } from '@/core/offline/use-online-status'
 import { fetchSkiRoute } from '@/features/map/data/services/swisstopo-trail-service'
+import { ROUTE_ZOOM } from '@/features/map/presentation/composables/frame-tour'
 import MapPage from '@/features/map/presentation/pages/map-page.vue'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
@@ -279,6 +280,54 @@ describe('mapPage', () => {
       await map.vm.$emit('mapBackgroundClick', tapAt(300))
       await flushPromises()
       expect(wrapper.vm.activeOverlay).toBeNull()
+    })
+
+    describe('framing the trail card highlight', () => {
+      const other = { ...trail, id: 'r2', lines: [[[8.5, 46.9], [8.51, 46.91]]] }
+      const list = { candidates: [trail, other], more: 0, selectedId: null }
+
+      // Every vertex projects into the map area beside the card, so the whole highlight counts as visible.
+      function mountVisible() {
+        vi.spyOn(fakeMap, 'project').mockReturnValue({ x: 200, y: 300 })
+        vi.spyOn(fakeMap, 'getContainer').mockReturnValue({ clientWidth: 1200, clientHeight: 800, getBoundingClientRect: () => ({ width: 1200, height: 800 }) })
+        fakeMap.flyTo.mockClear()
+        mountMapPage(skiOn, { TrailCard: { template: '<div />' } })
+        return useMapStore()
+      }
+
+      async function show(mapStore: ReturnType<typeof useMapStore>, card: object) {
+        mapStore.trailCard = card as never
+        await flushPromises()
+      }
+
+      it('should fly to a route chosen from the list even when it is already fully visible', async () => {
+        const mapStore = mountVisible()
+        const camera = vi.spyOn(fakeMap, 'cameraForBounds')
+        await show(mapStore, list)
+
+        await show(mapStore, { ...list, selectedId: 'r2' })
+
+        const [bounds, options] = camera.mock.calls[0] as unknown as [{ toArray: () => number[][] }, { maxZoom: number }]
+        expect(bounds.toArray()).toEqual(other.lines[0])
+        expect(options.maxZoom).toBe(ROUTE_ZOOM)
+        expect(fakeMap.flyTo).toHaveBeenCalledOnce()
+      })
+
+      it('should not move the camera when a lookup opens a single visible route', async () => {
+        await show(mountVisible(), { candidates: [trail], more: 0, selectedId: 'r1' })
+
+        expect(fakeMap.flyTo).not.toHaveBeenCalled()
+      })
+
+      it('should not move the camera when going back to a visible list', async () => {
+        const mapStore = mountVisible()
+        await show(mapStore, { ...list, selectedId: 'r2' })
+        fakeMap.flyTo.mockClear()
+
+        await show(mapStore, list)
+
+        expect(fakeMap.flyTo).not.toHaveBeenCalled()
+      })
     })
   })
 

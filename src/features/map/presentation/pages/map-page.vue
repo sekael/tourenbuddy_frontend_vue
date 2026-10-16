@@ -33,7 +33,7 @@ import TourenbuddyMap from '@/features/map/presentation/components/tourenbuddy-m
 import TrailCard from '@/features/map/presentation/components/trail-card.vue'
 import { TRAIL_LOOKUP_MIN_ZOOM } from '@/features/map/presentation/components/trail-layers'
 import { computeBarState } from '@/features/map/presentation/composables/compute-bar-state'
-import { frameBounds, frameTour, isBoundsVisible } from '@/features/map/presentation/composables/frame-tour'
+import { frameBounds, frameTour, isBoundsVisible, ROUTE_ZOOM } from '@/features/map/presentation/composables/frame-tour'
 import { useInboxNavigation } from '@/features/map/presentation/composables/use-inbox-navigation'
 import { useTrailLookup } from '@/features/map/presentation/composables/use-trail-lookup'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
@@ -814,7 +814,8 @@ watch(activeOverlay, (name) => {
 })
 
 // Frame what the card highlights (all candidates, or the chosen route) beside the
-// sheet/drawer — only when it isn't already fully visible there.
+// sheet/drawer — only when it isn't already fully visible there. A route chosen from
+// the list is always framed, to fill that area.
 watch(() => [trailCard.value?.candidates, trailCard.value?.selectedId], async () => {
   if (!trailCard.value)
     return
@@ -831,7 +832,14 @@ watch(() => [trailCard.value?.candidates, trailCard.value?.selectedId], async ()
       trail.lines.forEach(line => line.forEach(c => bounds.extend(c)))
   }
   const covered = isDesktop.value ? { right: SIDE_DRAWER_WIDTH } : { bottom: sheetInset.value }
-  if (!bounds.isEmpty() && !isBoundsVisible(map, bounds, covered))
+  // Read after the waits: a back tap meanwhile turns this into a list frame.
+  // A lone lookup hit opens straight on its details, so a choice needs several.
+  const chosenFromList = !!card.selectedId && card.candidates.length > 1
+  if (bounds.isEmpty())
+    return
+  if (chosenFromList)
+    frameBounds(map, bounds, covered, { maxZoom: ROUTE_ZOOM })
+  else if (!isBoundsVisible(map, bounds, covered))
     frameBounds(map, bounds, covered)
 })
 

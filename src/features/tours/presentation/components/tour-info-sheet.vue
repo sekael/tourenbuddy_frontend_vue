@@ -746,7 +746,7 @@ const coordinates = computed(
 const formattedElevation = computed(() => {
   if (props.tour.elevation == null)
     return null
-  return `${new Intl.NumberFormat(locale.value, { maximumFractionDigits: 0 }).format(props.tour.elevation)} m`
+  return `${new Intl.NumberFormat(locale.value, { maximumFractionDigits: 0 }).format(props.tour.elevation)}m`
 })
 
 const startPointText = computed(() => {
@@ -957,7 +957,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
                 <span v-if="tour.startPointName" class="fact-value">{{ tour.startPointName }}</span>
                 <span v-else class="fact-value coords">{{ startPointText }}</span>
                 <span v-if="tour.startPointName && tour.startPointElevation != null" class="fact-sub">
-                  {{ tour.startPointElevation }} m
+                  {{ tour.startPointElevation }}m
                 </span>
               </div>
               <div class="fact">
@@ -971,7 +971,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
                   <span v-if="tour.endPointName" class="fact-value">{{ tour.endPointName }}</span>
                   <span v-else class="fact-value coords">{{ endPointText }}</span>
                   <span v-if="tour.endPointName && tour.endPointElevation != null" class="fact-sub">
-                    {{ tour.endPointElevation }} m
+                    {{ tour.endPointElevation }}m
                   </span>
                 </template>
               </div>
