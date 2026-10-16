@@ -84,7 +84,7 @@ onUnmounted(() => (error.value = null))
             @relabel="label => store.relabelFeed(feed.id, label)"
           />
         </ul>
-        <BaseButton v-if="hasFeeds" variant="secondary" size="sm" :disabled="syncing" @click="store.sync">
+        <BaseButton v-if="hasFeeds" variant="secondary" :disabled="syncing" @click="store.sync">
           <BaseIcon name="sync_alt" />
           {{ syncing ? t('calendar.sync.syncing') : t('calendar.sync.syncNow') }}
         </BaseButton>
@@ -93,7 +93,7 @@ onUnmounted(() => (error.value = null))
           <input v-model="newUrl" class="input" type="url" inputmode="url" required :placeholder="t('calendar.sync.urlPlaceholder')" :aria-label="t('calendar.sync.urlPlaceholder')">
           <CalendarFeedHelp />
           <input v-model="newLabel" class="input" maxlength="60" :placeholder="t('calendar.sync.labelPlaceholder')" :aria-label="t('calendar.sync.labelPlaceholder')">
-          <BaseButton type="submit" size="sm" :disabled="syncing">
+          <BaseButton type="submit" :disabled="syncing">
             {{ t('calendar.sync.addFeed') }}
           </BaseButton>
         </form>
@@ -117,14 +117,15 @@ onUnmounted(() => (error.value = null))
           <input v-model="coreEnd" class="input" type="time" required>
         </label>
         <label class="field">{{ t('calendar.sync.minFree') }}
-          <select v-model.number="minFree" class="input">
-            <option v-for="m in MIN_FREE_OPTIONS" :key="m" :value="m">{{ t('calendar.sync.hours', { n: m / 60 }) }}</option>
-          </select>
+          <span class="select-wrap">
+            <select v-model.number="minFree" class="input select">
+              <option v-for="m in MIN_FREE_OPTIONS" :key="m" :value="m">{{ t('calendar.sync.hours', { n: m / 60 }) }}</option>
+            </select>
+            <BaseIcon name="expand_more" class="select-chevron" />
+          </span>
         </label>
         <BaseButton
           type="submit"
-          variant="secondary"
-          size="sm"
           class="save-window"
           :class="{ 'save-window--saved': saved && !dirty }"
           :disabled="!dirty || saving || syncing"
@@ -197,6 +198,8 @@ onUnmounted(() => (error.value = null))
   border: 1.5px solid var(--color-outline-variant);
   border-radius: var(--input-radius);
   font: inherit;
+  /* `font: inherit` would take the 14px label size; fields stay >= 16px (iOS focus zoom). */
+  font-size: max(1rem, 1em);
   color: var(--color-on-surface);
   background-color: var(--input-bg);
 }
@@ -206,6 +209,35 @@ onUnmounted(() => (error.value = null))
   outline: none;
   background-color: var(--input-bg-focus);
   box-shadow: var(--input-focus-ring);
+}
+
+/* The native select arrow sits at a fixed inset that padding can't move, so it
+   hugged the border; draw our own chevron at the same inset as the time inputs' clock. */
+.select-wrap {
+  position: relative;
+  display: flex;
+}
+
+.select {
+  flex: 1;
+  appearance: none;
+  padding-right: calc(var(--spacing-sm) + var(--icon-size-md) + var(--spacing-xs));
+}
+
+.select-chevron {
+  position: absolute;
+  top: 50%;
+  right: var(--spacing-sm);
+  translate: 0 -50%;
+  pointer-events: none;
+  color: var(--color-on-surface-variant);
+}
+
+/* Every labelled button on the page (incl. the outbound feed) is exactly as tall as
+   the fields it sits beside, with or without an icon. */
+.calendar-sync :deep(.base-button) {
+  min-height: 48px;
+  padding-block: 0;
 }
 
 .group > :deep(.base-button),
