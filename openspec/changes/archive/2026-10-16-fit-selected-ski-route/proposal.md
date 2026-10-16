@@ -18,7 +18,7 @@ _None._
 
 ### Modified Capabilities
 
-- `trail-lookup`: "Trail card placement and framing" gains the always-frame rule for a route chosen from the list.
+- `trail-lookup`: adds "Route chosen from the list fills the map"; "Trail card placement and framing" exempts a just-chosen route from its move-only-if-hidden rule and gains the back-to-list scenario.
 
 ## Impact
 
