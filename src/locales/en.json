@@ -720,8 +720,8 @@
     "trail": {
       "skiRoute": "Ski route",
       "listTitle": "{count} ski routes",
-      "target": "{name} · {altitude} m",
-      "metres": "{value} m",
+      "target": "{name} · {altitude}m",
+      "metres": "{value}m",
       "more": "+{count} more — zoom in",
       "backToList": "Ski routes",
       "openSac": "Open in SAC route portal",

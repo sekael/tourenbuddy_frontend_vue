@@ -115,7 +115,7 @@ function formatValue(value: unknown, isSuggested = false): string {
   if ('lng' in obj && 'lat' in obj) {
     const coords = `${Number(obj.lat).toFixed(4)}°N, ${Number(obj.lng).toFixed(4)}°E`
     const name = typeof obj.name === 'string' && obj.name ? `${obj.name} · ` : ''
-    const elevation = obj.elevation != null ? ` · ${obj.elevation} m` : ''
+    const elevation = obj.elevation != null ? ` · ${obj.elevation}m` : ''
     return `${name}${coords}${elevation}`
   }
 
