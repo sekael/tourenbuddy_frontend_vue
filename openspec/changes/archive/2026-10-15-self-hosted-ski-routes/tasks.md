@@ -40,8 +40,8 @@
 ## 6. Finalize PR 2 (app)
 
 - [x] 6.1 Run `npx eslint . --fix`, then `npx eslint` (zero warnings), `npm run type-check` and `npm run test`; all pass
-- [ ] 6.2 Prompt the user to commit with a ready-to-copy conventional commit message (e.g. `feat(map): serve ski routes from self-hosted vector tiles`)
-- [ ] 6.3 Prompt the user to push and open PR 2 referencing #326 (PR 1's data must be live)
+- [x] 6.2 Prompt the user to commit with a ready-to-copy conventional commit message (e.g. `feat(map): serve ski routes from self-hosted vector tiles`)
+- [x] 6.3 Prompt the user to push and open PR 2 referencing #326 (PR 1's data must be live)
 
 ## Workflow follow-up
 
