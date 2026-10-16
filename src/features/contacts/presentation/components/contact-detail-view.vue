@@ -728,163 +728,167 @@ defineExpose({
       <!-- Phone methods: ordered primary-first with star selector. The remove
            confirmation (friendship-/pending-linked phone) expands inline below
            the affected row. Non-phone methods never reach confirm. -->
-      <template v-for="method in orderedPhones" :key="method.id">
-        <div class="method-row">
-          <!-- Primary star: interactive in edit mode, inert in view mode -->
-          <button
-            v-if="mode === 'edit'"
-            type="button"
-            class="primary-star"
-            :class="{ 'primary-star--selected': method.isPrimary }"
-            @click="setPrimaryPhone(method)"
+      <!-- Slow FLIP move so a newly promoted phone visibly travels to the top. -->
+      <TransitionGroup name="phone" tag="div" class="phone-methods">
+        <div v-for="method in orderedPhones" :key="method.id" class="phone-method">
+          <div
+            class="method-row"
+            :class="{ 'method-row--primary': method.isPrimary && orderedPhones.length > 1 }"
           >
-            <BaseTooltip
-              :text="method.isPrimary
-                ? t('contacts.detailView.primaryPhoneTooltip')
-                : t('contacts.detailView.setAsPrimaryTooltip')"
-            >
-              <BaseIcon :name="method.isPrimary ? 'star_filled' : 'star'" />
-            </BaseTooltip>
-          </button>
-          <span
-            v-else
-            class="primary-star"
-            :class="{ 'primary-star--selected': method.isPrimary }"
-          >
-            <BaseIcon :name="method.isPrimary ? 'star_filled' : 'star'" />
-          </span>
-
-          <div class="method-type-badge">
-            <BaseIcon name="phone" />
-          </div>
-
-          <!-- View mode: read-only -->
-          <div v-if="mode === 'view'" class="method-fields method-fields--view">
-            <span class="view-value">{{ methodDisplayValue(method) }}</span>
-            <span v-if="method.label" class="view-label-sm">{{ method.label }}</span>
-          </div>
-
-          <!-- Edit mode: inputs -->
-          <div v-else class="method-fields">
-            <p v-if="!method.isValid" class="invalid-phone-hint">
-              <BaseIcon name="warning" class="warn-icon" />
-              {{ t('contacts.detailView.invalidPhoneHint') }}
-            </p>
-            <input
-              :value="getPhoneFormatter(method).formatted.value"
-              class="input input-sm"
-              :class="{ 'input--warning': !method.isValid }"
-              type="tel"
-              :placeholder="t('contacts.detailView.phonePlaceholder')"
-              @input="getPhoneFormatter(method).onInput"
-            >
-            <input
-              v-model="getMethodEdit(method).label"
-              class="input input-sm"
-              type="text"
-              :placeholder="t('contacts.detailView.labelPlaceholder')"
-            >
-            <p v-if="getMethodEdit(method).error" class="error-text">
-              {{ getMethodEdit(method).error }}
-            </p>
-          </div>
-
-          <div v-if="mode === 'edit'" class="method-actions">
-            <BaseIconButton
-              name="delete"
-              :label="t('contacts.detailView.removeBtn')"
-              size="sm"
-              tone="danger"
-              data-testid="remove-method-btn"
-              :disabled="methodDeleteConfirm?.methodId === method.id"
-              @click="requestRemoveMethod(method)"
-            />
-          </div>
-        </div>
-
-        <div v-if="methodDeleteConfirm?.methodId === method.id" class="method-delete-confirm">
-          <p class="delete-confirm-text">
-            {{ t('contacts.detailView.removeMethodConfirm') }}
-          </p>
-          <p
-            v-if="methodDeleteConfirm.hasFriendship && methodDeleteConfirm.hasPending"
-            class="delete-friend-warning"
-          >
-            <BaseIcon name="warning" class="warn-icon" />
-            {{ t('contacts.detailView.removeMethodFriendAndPendingWarning') }}
-          </p>
-          <p v-else-if="methodDeleteConfirm.hasFriendship" class="delete-friend-warning">
-            <BaseIcon name="warning" class="warn-icon" />
-            {{ t('contacts.detailView.removeMethodFriendWarning') }}
-          </p>
-          <p v-else-if="methodDeleteConfirm.hasPending" class="delete-friend-warning">
-            <BaseIcon name="warning" class="warn-icon" />
-            {{ t('contacts.detailView.removeMethodPendingWarning') }}
-          </p>
-          <div class="delete-actions">
-            <BaseButton type="button" variant="secondary" size="sm" :disabled="isRemovingMethod" @click="methodDeleteConfirm = null">
-              {{ t('contacts.detailView.cancelBtn') }}
-            </BaseButton>
-            <BaseButton type="button" variant="danger" size="sm" :disabled="isRemovingMethod" @click="confirmRemoveMethod">
-              {{ isRemovingMethod ? t('contacts.detailView.removingMethodBtn') : t('contacts.detailView.removeBtn') }}
-            </BaseButton>
-          </div>
-        </div>
-
-        <div v-if="methodEditDuplicate?.methodId === method.id" class="duplicate-disclaimer">
-          <p class="duplicate-title">
-            <BaseIcon name="warning" class="warn-icon" />
-            {{ t('contacts.shared.duplicateTitle') }}
-          </p>
-          <p class="duplicate-text">
-            {{
-              methodEditDuplicate.contact === 'generic'
-                ? t('contacts.shared.duplicateGenericText')
-                : t('contacts.shared.duplicateText', { name: resolveContactName(methodEditDuplicate.contact) })
-            }}
-          </p>
-          <div class="duplicate-actions">
-            <BaseButton type="button" variant="secondary" size="sm" @click="discardMethodEditDuplicate">
-              {{ t('contacts.shared.discardBtn') }}
-            </BaseButton>
-            <BaseButton
-              v-if="methodEditDuplicate.contact !== 'generic'"
+            <!-- Primary star: only a non-primary phone in edit mode is a button -->
+            <button
+              v-if="mode === 'edit' && !method.isPrimary"
               type="button"
-              variant="primary"
-              size="sm"
-              @click="editMethodDuplicateConflict"
+              class="primary-star"
+              @click="setPrimaryPhone(method)"
             >
-              {{ t('contacts.shared.editExistingBtn') }}
-            </BaseButton>
-          </div>
-        </div>
+              <BaseTooltip :text="t('contacts.detailView.setAsPrimaryTooltip')">
+                <BaseIcon name="star" />
+              </BaseTooltip>
+            </button>
+            <span
+              v-else
+              class="primary-star"
+              :class="{ 'primary-star--selected': method.isPrimary }"
+            >
+              <BaseTooltip v-if="method.isPrimary" :text="t('contacts.detailView.primaryPhoneTooltip')">
+                <BaseIcon name="star_filled" />
+              </BaseTooltip>
+              <BaseIcon v-else name="star" />
+            </span>
 
-        <div v-if="methodEvictConfirm?.methodId === method.id" class="method-delete-confirm">
-          <p
-            v-if="methodEvictConfirm.hasFriendship && methodEvictConfirm.hasPending"
-            class="delete-friend-warning"
-          >
-            <BaseIcon name="warning" class="warn-icon" />
-            {{ t('contacts.detailView.editEvictFriendAndPendingWarning') }}
-          </p>
-          <p v-else-if="methodEvictConfirm.hasFriendship" class="delete-friend-warning">
-            <BaseIcon name="warning" class="warn-icon" />
-            {{ t('contacts.detailView.editEvictFriendWarning') }}
-          </p>
-          <p v-else-if="methodEvictConfirm.hasPending" class="delete-friend-warning">
-            <BaseIcon name="warning" class="warn-icon" />
-            {{ t('contacts.detailView.editEvictPendingWarning') }}
-          </p>
-          <div class="delete-actions">
-            <BaseButton type="button" variant="secondary" size="sm" @click="cancelMethodEvict">
-              {{ t('contacts.detailView.cancelBtn') }}
-            </BaseButton>
-            <BaseButton type="button" variant="primary" size="sm" @click="confirmMethodEvict">
-              {{ t('contacts.detailView.confirmSaveBtn') }}
-            </BaseButton>
+            <div class="method-type-badge">
+              <BaseIcon name="phone" />
+            </div>
+
+            <!-- View mode: read-only -->
+            <div v-if="mode === 'view'" class="method-fields method-fields--view">
+              <span class="view-value">{{ methodDisplayValue(method) }}</span>
+              <span v-if="method.label" class="view-label-sm">{{ method.label }}</span>
+            </div>
+
+            <!-- Edit mode: inputs -->
+            <div v-else class="method-fields">
+              <p v-if="!method.isValid" class="invalid-phone-hint">
+                <BaseIcon name="warning" class="warn-icon" />
+                {{ t('contacts.detailView.invalidPhoneHint') }}
+              </p>
+              <input
+                :value="getPhoneFormatter(method).formatted.value"
+                class="input input-sm"
+                :class="{ 'input--warning': !method.isValid }"
+                type="tel"
+                :placeholder="t('contacts.detailView.phonePlaceholder')"
+                @input="getPhoneFormatter(method).onInput"
+              >
+              <input
+                v-model="getMethodEdit(method).label"
+                class="input input-sm"
+                type="text"
+                :placeholder="t('contacts.detailView.labelPlaceholder')"
+              >
+              <p v-if="getMethodEdit(method).error" class="error-text">
+                {{ getMethodEdit(method).error }}
+              </p>
+            </div>
+
+            <div v-if="mode === 'edit'" class="method-actions">
+              <BaseIconButton
+                name="delete"
+                :label="t('contacts.detailView.removeBtn')"
+                size="sm"
+                tone="danger"
+                data-testid="remove-method-btn"
+                :disabled="methodDeleteConfirm?.methodId === method.id"
+                @click="requestRemoveMethod(method)"
+              />
+            </div>
+          </div>
+
+          <div v-if="methodDeleteConfirm?.methodId === method.id" class="method-delete-confirm">
+            <p class="delete-confirm-text">
+              {{ t('contacts.detailView.removeMethodConfirm') }}
+            </p>
+            <p
+              v-if="methodDeleteConfirm.hasFriendship && methodDeleteConfirm.hasPending"
+              class="delete-friend-warning"
+            >
+              <BaseIcon name="warning" class="warn-icon" />
+              {{ t('contacts.detailView.removeMethodFriendAndPendingWarning') }}
+            </p>
+            <p v-else-if="methodDeleteConfirm.hasFriendship" class="delete-friend-warning">
+              <BaseIcon name="warning" class="warn-icon" />
+              {{ t('contacts.detailView.removeMethodFriendWarning') }}
+            </p>
+            <p v-else-if="methodDeleteConfirm.hasPending" class="delete-friend-warning">
+              <BaseIcon name="warning" class="warn-icon" />
+              {{ t('contacts.detailView.removeMethodPendingWarning') }}
+            </p>
+            <div class="delete-actions">
+              <BaseButton type="button" variant="secondary" size="sm" :disabled="isRemovingMethod" @click="methodDeleteConfirm = null">
+                {{ t('contacts.detailView.cancelBtn') }}
+              </BaseButton>
+              <BaseButton type="button" variant="danger" size="sm" :disabled="isRemovingMethod" @click="confirmRemoveMethod">
+                {{ isRemovingMethod ? t('contacts.detailView.removingMethodBtn') : t('contacts.detailView.removeBtn') }}
+              </BaseButton>
+            </div>
+          </div>
+
+          <div v-if="methodEditDuplicate?.methodId === method.id" class="duplicate-disclaimer">
+            <p class="duplicate-title">
+              <BaseIcon name="warning" class="warn-icon" />
+              {{ t('contacts.shared.duplicateTitle') }}
+            </p>
+            <p class="duplicate-text">
+              {{
+                methodEditDuplicate.contact === 'generic'
+                  ? t('contacts.shared.duplicateGenericText')
+                  : t('contacts.shared.duplicateText', { name: resolveContactName(methodEditDuplicate.contact) })
+              }}
+            </p>
+            <div class="duplicate-actions">
+              <BaseButton type="button" variant="secondary" size="sm" @click="discardMethodEditDuplicate">
+                {{ t('contacts.shared.discardBtn') }}
+              </BaseButton>
+              <BaseButton
+                v-if="methodEditDuplicate.contact !== 'generic'"
+                type="button"
+                variant="primary"
+                size="sm"
+                @click="editMethodDuplicateConflict"
+              >
+                {{ t('contacts.shared.editExistingBtn') }}
+              </BaseButton>
+            </div>
+          </div>
+
+          <div v-if="methodEvictConfirm?.methodId === method.id" class="method-delete-confirm">
+            <p
+              v-if="methodEvictConfirm.hasFriendship && methodEvictConfirm.hasPending"
+              class="delete-friend-warning"
+            >
+              <BaseIcon name="warning" class="warn-icon" />
+              {{ t('contacts.detailView.editEvictFriendAndPendingWarning') }}
+            </p>
+            <p v-else-if="methodEvictConfirm.hasFriendship" class="delete-friend-warning">
+              <BaseIcon name="warning" class="warn-icon" />
+              {{ t('contacts.detailView.editEvictFriendWarning') }}
+            </p>
+            <p v-else-if="methodEvictConfirm.hasPending" class="delete-friend-warning">
+              <BaseIcon name="warning" class="warn-icon" />
+              {{ t('contacts.detailView.editEvictPendingWarning') }}
+            </p>
+            <div class="delete-actions">
+              <BaseButton type="button" variant="secondary" size="sm" @click="cancelMethodEvict">
+                {{ t('contacts.detailView.cancelBtn') }}
+              </BaseButton>
+              <BaseButton type="button" variant="primary" size="sm" @click="confirmMethodEvict">
+                {{ t('contacts.detailView.confirmSaveBtn') }}
+              </BaseButton>
+            </div>
           </div>
         </div>
-      </template>
+      </TransitionGroup>
 
       <!-- Non-phone methods (email etc.) -->
       <div
@@ -1299,10 +1303,42 @@ defineExpose({
   color: var(--color-on-surface-variant);
 }
 
+.phone-methods,
+.phone-method {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+/* Deliberately slower than the UI default so the eye can follow a promoted
+   phone to the top (issue #320). */
+.phone-move {
+  transition: transform calc(var(--motion-duration-long) * 1.5) var(--motion-ease-emphasized);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phone-move {
+    transition: none;
+  }
+}
+
 .method-row {
   display: flex;
   align-items: flex-start;
   gap: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  transition:
+    background-color var(--motion-duration-long) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-long) var(--motion-ease-standard);
+}
+
+/* Highlight drawn with box-shadow rings outside the box, so rows never shift. */
+.method-row--primary {
+  --primary-tint: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  background-color: var(--primary-tint);
+  box-shadow:
+    0 0 0 var(--spacing-xxs) var(--primary-tint),
+    0 0 0 calc(var(--spacing-xxs) + 1.5px) var(--color-primary);
 }
 
 .primary-star {

@@ -50,6 +50,14 @@ const mockContact = {
   ],
 }
 
+const contactWithTwoPhones = {
+  ...mockContact,
+  contactMethods: [
+    { id: 'm-1', contactId: 'c-1', methodType: 'phone' as const, value: '+41 79 111 22 33', label: null, isPrimary: true, isValid: true },
+    { id: 'm-2', contactId: 'c-1', methodType: 'phone' as const, value: '+41 44 222 33 44', label: null, isPrimary: false, isValid: true },
+  ],
+}
+
 function mountDetail(contact: Contact = mockContact, linkedFriendUserId: string | null = null) {
   return mount(ContactDetailView, {
     props: { contact, linkedFriendUserId },
@@ -113,11 +121,17 @@ describe('contactDetailView', () => {
       expect(star.element.tagName.toLowerCase()).toBe('span')
     })
 
-    it('should make primary-phone star interactive in edit mode', async () => {
-      const wrapper = mountDetail()
+    it('should keep the primary star inert and only offer non-primary stars in edit mode', async () => {
+      const wrapper = mountDetail(contactWithTwoPhones)
       await enterEditMode(wrapper)
-      const star = wrapper.find('.primary-star')
-      expect(star.element.tagName.toLowerCase()).toBe('button')
+      const stars = wrapper.findAll('.primary-star')
+      expect(stars.map(s => s.element.tagName.toLowerCase())).toEqual(['span', 'button'])
+    })
+
+    it('should highlight only the primary row, and only when there are several phones', () => {
+      const rows = mountDetail(contactWithTwoPhones).findAll('.phone-method .method-row')
+      expect(rows.map(r => r.classes('method-row--primary'))).toEqual([true, false])
+      expect(mountDetail().find('.method-row--primary').exists()).toBe(false)
     })
   })
 
@@ -229,39 +243,23 @@ describe('contactDetailView', () => {
     })
 
     it('should call setPrimaryPhoneOnContact in edit mode when non-primary star clicked', async () => {
-      const contactWithTwoPhones = {
-        ...mockContact,
-        contactMethods: [
-          { id: 'm-1', contactId: 'c-1', methodType: 'phone' as const, value: '+41 79 111 22 33', label: null, isPrimary: true, isValid: true },
-          { id: 'm-2', contactId: 'c-1', methodType: 'phone' as const, value: '+41 44 222 33 44', label: null, isPrimary: false, isValid: true },
-        ],
-      }
       const wrapper = mountDetail(contactWithTwoPhones)
       const store = useContactsStore()
       vi.mocked(store.setPrimaryPhoneOnContact).mockResolvedValue(undefined as never)
 
       await enterEditMode(wrapper)
-      const stars = wrapper.findAll('button.primary-star')
-      await stars[1]!.trigger('click')
+      await wrapper.find('button.primary-star').trigger('click')
 
       expect(store.setPrimaryPhoneOnContact).toHaveBeenCalledWith('c-1', 'm-2')
     })
 
     it('should show error when setPrimaryPhoneOnContact fails in edit mode', async () => {
-      const contactWithTwoPhones = {
-        ...mockContact,
-        contactMethods: [
-          { id: 'm-1', contactId: 'c-1', methodType: 'phone' as const, value: '+41 79 111 22 33', label: null, isPrimary: true, isValid: true },
-          { id: 'm-2', contactId: 'c-1', methodType: 'phone' as const, value: '+41 44 222 33 44', label: null, isPrimary: false, isValid: true },
-        ],
-      }
       const wrapper = mountDetail(contactWithTwoPhones)
       const store = useContactsStore()
       vi.mocked(store.setPrimaryPhoneOnContact).mockRejectedValue(new Error('RPC failed'))
 
       await enterEditMode(wrapper)
-      const stars = wrapper.findAll('button.primary-star')
-      await stars[1]!.trigger('click')
+      await wrapper.find('button.primary-star').trigger('click')
       await flushPromises()
 
       expect(wrapper.find('.error-text').exists()).toBe(true)
