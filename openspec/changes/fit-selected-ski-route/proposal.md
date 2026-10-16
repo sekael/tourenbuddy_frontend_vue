@@ -22,6 +22,6 @@ _None._
 
 ## Impact
 
-- `src/features/map/presentation/composables/frame-tour.ts` (`frameBounds` takes an optional max zoom)
+- `src/features/map/presentation/composables/frame-tour.ts` (`frameBounds` takes an options object with a per-call max zoom; `ROUTE_ZOOM`)
 - `src/features/map/presentation/pages/map-page.vue` (trail framing watcher)
 - Tests under `test/features/map/`

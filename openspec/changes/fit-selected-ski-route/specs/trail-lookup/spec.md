@@ -13,13 +13,14 @@ The trail card SHALL open as a bottom sheet on mobile and a side drawer on deskt
 
 #### Scenario: Route already visible
 
-- **WHEN** the card opens and the whole route is already visible beside it
+- **WHEN** a lookup opens the card on a single route that is already fully visible beside it
 - **THEN** the camera SHALL NOT move
 
 #### Scenario: Route chosen from the list
 
 - **WHEN** the card lists several routes and the user chooses one
 - **THEN** the map SHALL fly so the chosen route is centred beside the card and fills that area with nothing cut off, even if it was already fully visible
+- **AND** a route larger than that area SHALL make the map zoom out until it fits
 
 #### Scenario: Short route chosen from the list
 

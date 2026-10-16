@@ -38,12 +38,12 @@ export function frameBounds(
   map: MaplibreMap,
   bounds: LngLatBounds,
   covered: Partial<PaddingOptions>,
-  fallbackCenter: LngLatLike = bounds.getCenter(),
-  maxZoom = TOUR_ZOOM,
+  { fallbackCenter = bounds.getCenter(), maxZoom = TOUR_ZOOM }: { fallbackCenter?: LngLatLike, maxZoom?: number } = {},
 ) {
   const camera = map.cameraForBounds(bounds, { padding: paddingBeside(covered), maxZoom, bearing: map.getBearing() })
-  // No room left to frame in (tiny viewport): just centre on the fallback.
-  map.flyTo({ ...(camera ?? { center: fallbackCenter, zoom: maxZoom }), duration: 1000 })
+  // No room left to frame in (tiny viewport): just centre on the fallback, no closer
+  // than a tour's zoom, so a long route isn't cut down to its middle.
+  map.flyTo({ ...(camera ?? { center: fallbackCenter, zoom: Math.min(maxZoom, TOUR_ZOOM) }), duration: 1000 })
 }
 
 /**
@@ -60,5 +60,5 @@ export function frameTour(
     if (p)
       bounds.extend([p.lng, p.lat])
   }
-  frameBounds(map, bounds, covered, [tour.goal.lng, tour.goal.lat])
+  frameBounds(map, bounds, covered, { fallbackCenter: [tour.goal.lng, tour.goal.lat] })
 }

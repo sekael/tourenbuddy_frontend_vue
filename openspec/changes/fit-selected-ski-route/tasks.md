@@ -6,8 +6,8 @@
 
 ## 2. Framing
 
-- [x] 2.1 Add optional `maxZoom` (default `TOUR_ZOOM`) to `frameBounds` and export `ROUTE_ZOOM = 15` in `frame-tour.ts`; unit test the cap is passed through
-- [x] 2.2 In the `map-page.vue` trail framing watcher, always frame (skip `isBoundsVisible`) with `ROUTE_ZOOM` when a route is chosen from the list (same candidates, `selectedId` null → id); page test that a pick flies even when the route is visible and back-to-list does not
+- [x] 2.1 Give `frameBounds` in `frame-tour.ts` an options object `{ fallbackCenter?, maxZoom? }` (max zoom default `TOUR_ZOOM`, no-room fallback no closer than `TOUR_ZOOM`) and export `ROUTE_ZOOM = 15`; verify with a unit test in `test/features/map/presentation/composables/frame-tour.test.ts`
+- [x] 2.2 In the `map-page.vue` trail framing watcher, always frame with `ROUTE_ZOOM` (skip `isBoundsVisible`) when a route is chosen from the list (selected and more than one candidate, read after the settle waits); verify with page tests that a choice flies even when visible while a single visible lookup hit and going back to a visible list do not
 
 ## 3. Finalize
 

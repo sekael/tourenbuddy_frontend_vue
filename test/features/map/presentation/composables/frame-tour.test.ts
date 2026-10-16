@@ -52,11 +52,11 @@ describe('frameTour', () => {
     expect(map.flyTo).toHaveBeenCalledWith(expect.objectContaining({ center: [goal.lng, goal.lat], zoom: TOUR_ZOOM }))
   })
 
-  it('should cap the zoom at the given max instead of the tour zoom', () => {
+  it('should frame up to a raised max zoom but fall back no closer than the tour zoom', () => {
     const map = fakeMap()
     map.cameraForBounds.mockReturnValue(undefined as never)
-    frameBounds(map as unknown as MaplibreMap, new LngLatBounds([start.lng, start.lat], [end.lng, end.lat]), {}, undefined, ROUTE_ZOOM)
+    frameBounds(map as unknown as MaplibreMap, new LngLatBounds([start.lng, start.lat], [end.lng, end.lat]), {}, { maxZoom: ROUTE_ZOOM })
     expect((map.cameraForBounds.mock.calls[0] as unknown as [unknown, { maxZoom: number }])[1].maxZoom).toBe(ROUTE_ZOOM)
-    expect(map.flyTo).toHaveBeenCalledWith(expect.objectContaining({ zoom: ROUTE_ZOOM }))
+    expect(map.flyTo).toHaveBeenCalledWith(expect.objectContaining({ zoom: TOUR_ZOOM }))
   })
 })
