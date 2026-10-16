@@ -65,7 +65,12 @@ curl -s https://tourenbuddy-data.pages.dev/ski-routes.json | jq '{version, count
 curl -sI -H 'Origin: https://touringbuddy.pages.dev' \
   "https://tourenbuddy-data.pages.dev/ski-routes/<version>/13/4285/2884.pbf" | grep -i 'access-control\|content-type\|cache-control'
 curl -s "https://tourenbuddy-data.pages.dev/ski-routes/<version>/routes/1020.json" | jq '.properties.target_name'
+# Tile compression: with Accept-Encoding the transfer must be clearly smaller (curl counts wire bytes)
+T="https://tourenbuddy-data.pages.dev/ski-routes/<version>/11/1068/724.pbf"
+curl -s -o /dev/null -w '%{size_download}\n' -H 'Accept-Encoding: br, gzip' "$T"; curl -s -o /dev/null -w '%{size_download}\n' "$T"
 ```
+
+- 2026-10-16 (forced run after #330): tiles compressed, 3,610 B vs 8,154 B for z11 tile `11/1068/724`.
 
 After a version change, an old-version URL must answer `302` **with** `Access-Control-Allow-Origin`.
 Without that header, browsers block the redirect cross-origin, and the app's manifest reload (design
