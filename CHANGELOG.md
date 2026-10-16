@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.46.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.45.0...tourenbuddy-frontend-v0.46.0) (2026-10-16)
+
+
+### Features
+
+* Ski routes app ([#330](https://github.com/sekael/tourenbuddy_frontend_vue/issues/330)) ([c65880e](https://github.com/sekael/tourenbuddy_frontend_vue/commit/c65880eebbea387b827e0bf86a776315e24e24ca))
+
 ## [0.45.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.44.1...tourenbuddy-frontend-v0.45.0) (2026-10-15)
 
 
