@@ -115,6 +115,8 @@
       "minFree": "Free block of at least",
       "hours": "{n} h",
       "saveWindow": "Save",
+      "savingWindow": "Saving…",
+      "savedWindow": "Saved",
       "outboundTitle": "Your tours in your calendar",
       "outboundHint": "Subscribe to this link in your calendar app to see your planned tours. Anyone with the link can see your tours, so don't share it.",
       "copy": "Copy",

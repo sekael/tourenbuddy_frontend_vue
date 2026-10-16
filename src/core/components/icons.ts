@@ -35,6 +35,7 @@ import IconEcoOutline from '~icons/material-symbols/eco-outline'
 import IconEditOutline from '~icons/material-symbols/edit-outline'
 import IconEventAvailableOutline from '~icons/material-symbols/event-available-outline'
 import IconExpandLess from '~icons/material-symbols/expand-less'
+import IconExpandMore from '~icons/material-symbols/expand-more'
 import IconExploreOutline from '~icons/material-symbols/explore-outline'
 import IconFeedbackOutline from '~icons/material-symbols/feedback-outline'
 import IconFilterHdr from '~icons/material-symbols/filter-hdr'
@@ -152,6 +153,7 @@ export const iconRegistry: Record<string, Component> = {
   edit: IconEditOutline,
   event_available: IconEventAvailableOutline,
   expand_less: IconExpandLess,
+  expand_more: IconExpandMore,
   explore: IconExploreOutline,
   feedback: IconFeedbackOutline,
   flag: IconFlagOutline,

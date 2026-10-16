@@ -115,6 +115,8 @@
       "minFree": "Freier Block von mindestens",
       "hours": "{n} h",
       "saveWindow": "Speichern",
+      "savingWindow": "Speichere…",
+      "savedWindow": "Gespeichert",
       "outboundTitle": "Deine Touren in deinem Kalender",
       "outboundHint": "Abonniere diesen Link in deiner Kalender-App, um deine geplanten Touren zu sehen. Wer den Link kennt, sieht deine Touren – teile ihn nicht.",
       "copy": "Kopieren",

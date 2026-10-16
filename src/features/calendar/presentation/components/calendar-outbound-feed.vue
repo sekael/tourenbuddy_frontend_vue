@@ -38,17 +38,17 @@ async function regenerate() {
     </p>
     <div class="url-row">
       <input class="url" :value="outboundUrl" readonly :aria-label="t('calendar.sync.outboundTitle')" @focus="($event.target as HTMLInputElement).select()">
-      <BaseButton variant="secondary" size="sm" @click="copy">
+      <BaseButton variant="secondary" @click="copy">
         <BaseIcon name="content_copy" />
         {{ copied ? t('calendar.sync.copied') : t('calendar.sync.copy') }}
       </BaseButton>
     </div>
     <div v-if="confirming" class="confirm" role="alert">
       <span>{{ t('calendar.sync.regenerateConfirm') }}</span>
-      <BaseButton variant="secondary" size="sm" @click="confirming = false">
+      <BaseButton variant="secondary" @click="confirming = false">
         {{ t('calendar.availability.cancel') }}
       </BaseButton>
-      <BaseButton variant="danger" size="sm" @click="regenerate">
+      <BaseButton variant="danger" @click="regenerate">
         {{ t('calendar.sync.regenerate') }}
       </BaseButton>
     </div>
@@ -56,7 +56,7 @@ async function regenerate() {
       <p class="hint">
         {{ t('calendar.sync.regenerateHint') }}
       </p>
-      <BaseButton variant="secondary" size="sm" class="regenerate" @click="confirming = true">
+      <BaseButton variant="secondary" class="regenerate" @click="confirming = true">
         <BaseIcon name="replay" />
         {{ t('calendar.sync.regenerate') }}
       </BaseButton>
@@ -97,11 +97,11 @@ async function regenerate() {
   min-width: 0;
   padding: var(--spacing-sm);
   border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--radius-sm);
+  border-radius: var(--input-radius);
   font: inherit;
-  font-size: var(--font-size-sm);
+  font-size: max(1rem, 1em);
   color: var(--color-on-surface);
-  background-color: var(--color-background);
+  background-color: var(--input-bg);
 }
 
 .regenerate {
