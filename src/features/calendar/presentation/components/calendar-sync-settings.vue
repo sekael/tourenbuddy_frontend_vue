@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
@@ -38,8 +38,24 @@ async function add() {
   }
 }
 
-function saveWindow() {
-  store.saveSettings({ coreStart: coreStart.value, coreEnd: coreEnd.value, minFreeMinutes: minFree.value })
+// Save only when the form differs from the backend; confirm in place once applied.
+const dirty = computed(() => !!settings.value && (
+  coreStart.value !== settings.value.coreStart
+  || coreEnd.value !== settings.value.coreEnd
+  || minFree.value !== settings.value.minFreeMinutes
+))
+const saving = ref(false)
+const saved = ref(false)
+watch(dirty, d => d && (saved.value = false))
+
+async function saveWindow() {
+  saving.value = true
+  try {
+    saved.value = await store.saveSettings({ coreStart: coreStart.value, coreEnd: coreEnd.value, minFreeMinutes: minFree.value })
+  }
+  finally {
+    saving.value = false
+  }
 }
 
 onMounted(store.load)
@@ -105,8 +121,19 @@ onUnmounted(() => (error.value = null))
             <option v-for="m in MIN_FREE_OPTIONS" :key="m" :value="m">{{ t('calendar.sync.hours', { n: m / 60 }) }}</option>
           </select>
         </label>
-        <BaseButton type="submit" variant="secondary" size="sm" :disabled="syncing">
-          {{ t('calendar.sync.saveWindow') }}
+        <BaseButton
+          type="submit"
+          variant="secondary"
+          size="sm"
+          class="save-window"
+          :class="{ 'save-window--saved': saved && !dirty }"
+          :disabled="!dirty || saving || syncing"
+        >
+          <span role="status">
+            <template v-if="saving">{{ t('calendar.sync.savingWindow') }}</template>
+            <template v-else-if="saved && !dirty"><BaseIcon name="check" /> {{ t('calendar.sync.savedWindow') }}</template>
+            <template v-else>{{ t('calendar.sync.saveWindow') }}</template>
+          </span>
         </BaseButton>
       </form>
 
@@ -184,6 +211,20 @@ onUnmounted(() => (error.value = null))
 .group > :deep(.base-button),
 .add-form :deep(.base-button) {
   align-self: flex-start;
+}
+
+/* Success state stays legible although the button is disabled (nothing left to save). */
+.save-window.save-window--saved:disabled {
+  opacity: 1;
+  color: var(--color-success-text);
+  border-color: var(--color-success);
+  background-color: color-mix(in srgb, var(--color-success) 12%, transparent);
+}
+
+.save-window span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xxs);
 }
 
 .loading-placeholder {
