@@ -15,6 +15,7 @@ import { DuplicateContactAcrossContactsError } from '@/core/exceptions'
 import { normalizePhone } from '@/core/utils/phone-normalize'
 import { orderedPhoneMethods } from '@/features/contacts/core/utils/order-phone-methods'
 import { formatPhoneDisplay, resolveContactName } from '@/features/contacts/domain/entities/contact'
+import { PRIMARY_FADE_MS, PRIMARY_MOVE_MS, usePrimarySwitchSequence } from '@/features/contacts/presentation/composables/use-primary-switch-sequence'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import BlockConfirmDialog from '@/features/friendships/presentation/components/block-confirm-dialog.vue'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
@@ -87,7 +88,21 @@ async function handleBlockConfirm(reportReason: string | null) {
   }
 }
 
-const orderedPhones = computed(() => orderedPhoneMethods(props.contact))
+// Staged primary switch: the clicked phone is the target at once (the old highlight
+// fades out while the save runs) and stays it until the store catches up; a failed
+// save drops it, so the same sequence plays back to the old primary.
+const pendingPrimaryId = ref<string | null>(null)
+const storePrimaryId = computed(() =>
+  props.contact.contactMethods.find(m => m.methodType === 'phone' && m.isPrimary)?.id ?? null)
+watch(storePrimaryId, (id) => {
+  if (id === pendingPrimaryId.value)
+    pendingPrimaryId.value = null
+})
+const { orderId: primaryOrderId, highlightId: primaryHighlightId }
+  = usePrimarySwitchSequence(computed(() => pendingPrimaryId.value ?? storePrimaryId.value))
+const orderedPhones = computed(() => orderedPhoneMethods(props.contact, primaryOrderId.value))
+const isShownPrimary = (method: ContactMethod) => method.id === primaryHighlightId.value
+const primarySequenceStyle = { '--phone-fade': `${PRIMARY_FADE_MS}ms`, '--phone-move': `${PRIMARY_MOVE_MS}ms` }
 const setPrimaryError = ref<string | null>(null)
 
 const linkedMethodIds = computed<Set<string>>(() => {
@@ -406,13 +421,15 @@ async function confirmRemoveMethod() {
 }
 
 async function setPrimaryPhone(method: ContactMethod) {
-  if (method.isPrimary)
+  if (method.isPrimary || pendingPrimaryId.value)
     return
   setPrimaryError.value = null
+  pendingPrimaryId.value = method.id
   try {
     await store.setPrimaryPhoneOnContact(props.contact.id, method.id)
   }
   catch (err) {
+    pendingPrimaryId.value = null
     setPrimaryError.value = err instanceof Error ? err.message : 'Failed to update primary phone'
   }
 }
@@ -729,15 +746,15 @@ defineExpose({
            confirmation (friendship-/pending-linked phone) expands inline below
            the affected row. Non-phone methods never reach confirm. -->
       <!-- Slow FLIP move so a newly promoted phone visibly travels to the top. -->
-      <TransitionGroup name="phone" tag="div" class="phone-methods">
+      <TransitionGroup name="phone" tag="div" class="phone-methods" :style="primarySequenceStyle">
         <div v-for="method in orderedPhones" :key="method.id" class="phone-method">
           <div
             class="method-row"
-            :class="{ 'method-row--primary': method.isPrimary && orderedPhones.length > 1 }"
+            :class="{ 'method-row--primary': isShownPrimary(method) && orderedPhones.length > 1 }"
           >
             <!-- Primary star: only a non-primary phone in edit mode is a button -->
             <button
-              v-if="mode === 'edit' && !method.isPrimary"
+              v-if="mode === 'edit' && !isShownPrimary(method)"
               type="button"
               class="primary-star"
               @click="setPrimaryPhone(method)"
@@ -749,9 +766,9 @@ defineExpose({
             <span
               v-else
               class="primary-star"
-              :class="{ 'primary-star--selected': method.isPrimary }"
+              :class="{ 'primary-star--selected': isShownPrimary(method) }"
             >
-              <BaseTooltip v-if="method.isPrimary" :text="t('contacts.detailView.primaryPhoneTooltip')">
+              <BaseTooltip v-if="isShownPrimary(method)" :text="t('contacts.detailView.primaryPhoneTooltip')">
                 <BaseIcon name="star_filled" />
               </BaseTooltip>
               <BaseIcon v-else name="star" />
@@ -1310,10 +1327,15 @@ defineExpose({
   gap: var(--spacing-sm);
 }
 
-/* Deliberately slower than the UI default so the eye can follow a promoted
-   phone to the top (issue #320). */
+/* Deliberately slow so the eye can follow a promoted phone to the top (#320).
+   Durations come from use-primary-switch-sequence, which times the steps in JS. */
 .phone-move {
-  transition: transform calc(var(--motion-duration-long) * 1.5) var(--motion-ease-emphasized);
+  transition: transform var(--phone-move) var(--motion-ease-emphasized);
+}
+
+/* The promoted phone (now first) crosses over the one it displaces. */
+.phone-move:first-child {
+  z-index: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1327,18 +1349,22 @@ defineExpose({
   align-items: flex-start;
   gap: var(--spacing-sm);
   border-radius: var(--radius-sm);
+  outline: 1px solid transparent;
+  outline-offset: var(--spacing-xxs);
   transition:
-    background-color var(--motion-duration-long) var(--motion-ease-standard),
-    box-shadow var(--motion-duration-long) var(--motion-ease-standard);
+    background-color var(--phone-fade, var(--motion-duration-medium)) var(--motion-ease-standard),
+    box-shadow var(--phone-fade, var(--motion-duration-medium)) var(--motion-ease-standard),
+    outline-color var(--phone-fade, var(--motion-duration-medium)) var(--motion-ease-standard);
 }
 
-/* Highlight drawn with box-shadow rings outside the box, so rows never shift. */
+/* Soft highlight drawn outside the box (spread tint + offset hairline), so rows
+   never shift. A separate outline, not a second shadow ring: a ring under the
+   translucent tint would show through it as one thick band. */
 .method-row--primary {
-  --primary-tint: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  --primary-tint: color-mix(in srgb, var(--color-primary) 6%, transparent);
   background-color: var(--primary-tint);
-  box-shadow:
-    0 0 0 var(--spacing-xxs) var(--primary-tint),
-    0 0 0 calc(var(--spacing-xxs) + 1.5px) var(--color-primary);
+  box-shadow: 0 0 0 var(--spacing-xxs) var(--primary-tint);
+  outline-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
 }
 
 .primary-star {

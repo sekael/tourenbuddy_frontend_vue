@@ -253,6 +253,20 @@ describe('contactDetailView', () => {
       expect(store.setPrimaryPhoneOnContact).toHaveBeenCalledWith('c-1', 'm-2')
     })
 
+    it('should start fading the old highlight on click, before a slow save returns', async () => {
+      const wrapper = mountDetail(contactWithTwoPhones)
+      const store = useContactsStore()
+      vi.mocked(store.setPrimaryPhoneOnContact).mockReturnValue(new Promise(() => {}))
+
+      await enterEditMode(wrapper)
+      await wrapper.find('button.primary-star').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.find('.method-row--primary').exists()).toBe(false)
+      // Rows only reorder after the fade-out.
+      expect(wrapper.findAll('.phone-method input[type=tel]').map(i => (i.element as HTMLInputElement).value)[0]).toContain('111')
+    })
+
     it('should show error when setPrimaryPhoneOnContact fails in edit mode', async () => {
       const wrapper = mountDetail(contactWithTwoPhones)
       const store = useContactsStore()

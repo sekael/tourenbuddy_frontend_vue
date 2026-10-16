@@ -4,17 +4,27 @@
 
 ### Requirement: Visible primary phone switch
 
-When the user makes another phone primary in the contact detail view, the phone list SHALL animate the reorder so the new primary visibly travels to the top of the list, instead of jumping instantly. Users who request reduced motion SHALL see the reorder without the movement animation.
+When the user makes another phone primary in the contact detail view, the switch SHALL play as three sequential steps: the previous primary's highlight fades out, the rows reorder with a visible eased movement that brings the new primary to the top, then the new primary's highlight fades in. The sequence SHALL start on the tap, without waiting for the save. Users who request reduced motion SHALL see the switch at once.
 
-#### Scenario: Promoting a phone animates the reorder
+#### Scenario: Promoting a phone plays the staged switch
 
 - **WHEN** a contact has two or more phones and the user taps the star of a non-primary phone in edit mode
-- **THEN** that phone SHALL move to the top of the phone list with a visible, eased movement, and the previous primary SHALL move down
+- **THEN** the previous primary's highlight SHALL fade out first, then that phone SHALL move to the top while the previous primary moves down, and only then SHALL its highlight fade in
+
+#### Scenario: Slow save
+
+- **WHEN** the save takes longer than the fade-out
+- **THEN** the sequence SHALL still proceed from the tap, not wait for the save
+
+#### Scenario: Failed save
+
+- **WHEN** the save fails after the sequence started
+- **THEN** the list SHALL play the same sequence back to the previous primary and show the error
 
 #### Scenario: Reduced motion
 
 - **WHEN** the user's system requests reduced motion and a phone is made primary
-- **THEN** the list SHALL reorder without the movement animation
+- **THEN** the highlight and order SHALL switch at once, without fades or movement
 
 ### Requirement: Primary phone is highlighted and not re-selectable
 

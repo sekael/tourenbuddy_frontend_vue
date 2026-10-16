@@ -10,11 +10,16 @@
 - [x] 2.2 Highlight the primary phone row when the contact has >1 phone; verify with a component test
 - [x] 2.3 Render the primary star as inert `<span>` in edit mode; update/add component tests in `contact-detail-view.test.ts` and verify `npm run test` passes
 
-## 3. Finalize
+## 3. Review feedback
 
-- [x] 3.1 Run `npx eslint --fix` on touched files, `npx eslint`, `npm run type-check`, `npm run test`; all pass
-- [ ] 3.2 Prompt user to commit with a ready-to-copy conventional commit message
-- [ ] 3.3 Prompt user to push and open a PR
+- [x] 3.1 Soften the primary highlight (lighter tint, 1px 30% outline instead of the solid ring); verify visually in the running app
+- [x] 3.2 Stage the switch (fade out → move → fade in) via `usePrimarySwitchSequence`, starting on tap and reverting on a failed save; verify `use-primary-switch-sequence.test.ts` and the detail-view tests pass
+
+## 4. Finalize
+
+- [x] 4.1 Run `npx eslint --fix` on touched files, `npx eslint`, `npm run type-check`, `npm run test`; all pass
+- [ ] 4.2 Prompt user to commit with a ready-to-copy conventional commit message
+- [ ] 4.3 Prompt user to push and open a PR
 
 ## Workflow follow-up
 
