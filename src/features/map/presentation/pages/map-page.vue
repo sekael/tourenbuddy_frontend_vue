@@ -51,6 +51,7 @@ import { isSameGoal } from '@/features/tours/domain/distance'
 import TourCreationDialog from '@/features/tours/presentation/components/tour-creation-dialog.vue'
 import TourInfoSheet from '@/features/tours/presentation/components/tour-info-sheet.vue'
 import TourListSheet from '@/features/tours/presentation/components/tour-list-sheet.vue'
+import { resetTourFilters } from '@/features/tours/presentation/composables/use-tour-filters'
 import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 import { useTourSuggestionsStore } from '@/features/tours/presentation/stores/tour-suggestions-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
@@ -492,6 +493,12 @@ function handleOpenFriendRequests() {
   editContactId.value = null
   openOverlay('friend-requests')
 }
+
+// Leaving the tour list resets its search + filters; a tour opened from it is still "in" it.
+watch(activeOverlay, (name) => {
+  if (name !== 'tours' && name !== 'tour')
+    resetTourFilters()
+})
 
 // Keep activeOverlay in sync when selectedTourId is mutated externally
 watch(selectedTourId, (id) => {

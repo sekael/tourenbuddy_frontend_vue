@@ -68,6 +68,23 @@ watch(activeTourTab, (next) => {
   }
 })
 
+function clearFilterState({ filters }: ReturnType<typeof createFilterState>) {
+  filters.partnerIds = new Set()
+  filters.tourTypes = new Set()
+  filters.seasons = new Set()
+  filters.dateRange.from = null
+  filters.dateRange.to = null
+  filters.completion = 'all'
+}
+
+/** Clears search + filters on every tab (leaving the list); the active tab is kept. */
+export function resetTourFilters() {
+  for (const state of Object.values(tabStates)) {
+    state.searchQuery.value = ''
+    clearFilterState(state)
+  }
+}
+
 export function useActiveTourTab() {
   return activeTourTab
 }
@@ -181,12 +198,7 @@ export function useTourFilters(tab: TourTab = 'owned') {
   })
 
   function clearFilters() {
-    filters.partnerIds = new Set()
-    filters.tourTypes = new Set()
-    filters.seasons = new Set()
-    filters.dateRange.from = null
-    filters.dateRange.to = null
-    filters.completion = 'all'
+    clearFilterState(tabStates[tab])
   }
 
   function clearAll() {

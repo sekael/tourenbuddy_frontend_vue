@@ -1,7 +1,13 @@
 import { createTestingPinia } from '@pinia/testing'
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ref } from 'vue'
+import BottomSheet from '@/core/components/bottom-sheet.vue'
 import TourListSheet from '@/features/tours/presentation/components/tour-list-sheet.vue'
+
+// Desktop by default (happy-dom matchMedia); the sheet-height test flips to mobile.
+const isDesktop = ref(true)
+vi.mock('@/core/composables/use-is-desktop', () => ({ useIsDesktop: () => isDesktop }))
 
 const mockTours = [
   {
@@ -113,6 +119,20 @@ describe('tourListSheet', () => {
       const wrapper = mountSheet({ tours: [] })
       expect(wrapper.find('.empty-state').exists()).toBe(true)
       expect(wrapper.find('.empty-state').text()).toContain('tours.list.emptyTitle')
+    })
+  })
+
+  describe('sheet height while searching', () => {
+    it('should hold the sheet height only while a search query is active', async () => {
+      isDesktop.value = false
+      const wrapper = mountSheet()
+      const sheet = () => wrapper.findComponent(BottomSheet)
+      expect(sheet().props('holdHeight')).toBe(false)
+      await wrapper.find('.search-input').setValue('alp')
+      expect(sheet().props('holdHeight')).toBe(true)
+      await wrapper.find('.search-input').setValue('   ')
+      expect(sheet().props('holdHeight')).toBe(false)
+      isDesktop.value = true
     })
   })
 

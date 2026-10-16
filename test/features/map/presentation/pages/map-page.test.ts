@@ -9,6 +9,7 @@ import { fetchSkiRoute } from '@/features/map/data/services/swisstopo-trail-serv
 import { ROUTE_ZOOM } from '@/features/map/presentation/composables/frame-tour'
 import MapPage from '@/features/map/presentation/pages/map-page.vue'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
+import { useTourFilters } from '@/features/tours/presentation/composables/use-tour-filters'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
@@ -207,6 +208,27 @@ describe('mapPage', () => {
 
       expect(mapStore.selectTour).not.toHaveBeenCalledWith(null)
       expect(wrapper.find('[data-testid="feedback-sheet"]').exists()).toBe(false)
+    })
+  })
+
+  describe('tour list search + filter reset', () => {
+    it('should keep search + filters through a tour opened from the list, and reset once the list is left', async () => {
+      const wrapper = mountMapPage({}, { TourListSheet: true })
+      const owned = useTourFilters('owned')
+      owned.searchQuery.value = 'piz'
+      owned.filters.completion = 'open'
+
+      for (const name of ['tours', 'tour', 'tours']) {
+        wrapper.vm.activeOverlay = name
+        await nextTick()
+      }
+      expect(owned.searchQuery.value).toBe('piz')
+      expect(owned.filters.completion).toBe('open')
+
+      wrapper.vm.activeOverlay = 'contacts'
+      await nextTick()
+      expect(owned.searchQuery.value).toBe('')
+      expect(owned.filters.completion).toBe('all')
     })
   })
 

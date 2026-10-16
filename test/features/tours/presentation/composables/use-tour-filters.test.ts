@@ -4,7 +4,7 @@ import { setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
-import { useTourFilters } from '@/features/tours/presentation/composables/use-tour-filters'
+import { resetTourFilters, useActiveTourTab, useTourFilters } from '@/features/tours/presentation/composables/use-tour-filters'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import { TOUR_FILL } from '../../../../fixtures/tour-fill'
 
@@ -63,6 +63,26 @@ describe('useTourFilters', () => {
     })) as any
     return useTourFilters()
   }
+
+  describe('resetTourFilters', () => {
+    it('should clear search and filters on both tabs but keep the active tab', () => {
+      const owned = useTourFilters('owned')
+      const friends = useTourFilters('friends')
+      const tab = useActiveTourTab()
+      tab.value = 'friends'
+      owned.searchQuery.value = 'piz'
+      owned.filters.seasons = new Set(['winter'])
+      friends.filters.dateRange.from = new Date('2024-01-01')
+      friends.filters.completion = 'done'
+
+      resetTourFilters()
+
+      expect([owned.searchQuery.value, friends.searchQuery.value]).toEqual(['', ''])
+      expect(owned.activeFilterCount.value + friends.activeFilterCount.value).toBe(0)
+      expect(tab.value).toBe('friends')
+      tab.value = 'owned'
+    })
+  })
 
   describe('search', () => {
     it('should return all tours when query is empty', () => {
