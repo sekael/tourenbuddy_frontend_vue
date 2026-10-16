@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick, ref } from 'vue'
 import { isOnline } from '@/core/offline/use-online-status'
 import { fetchSkiRoute } from '@/features/map/data/services/swisstopo-trail-service'
+import { ROUTE_ZOOM } from '@/features/map/presentation/composables/frame-tour'
 import MapPage from '@/features/map/presentation/pages/map-page.vue'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
@@ -279,6 +280,47 @@ describe('mapPage', () => {
       await map.vm.$emit('mapBackgroundClick', tapAt(300))
       await flushPromises()
       expect(wrapper.vm.activeOverlay).toBeNull()
+    })
+
+    describe('framing a route chosen from the list', () => {
+      const other = { ...trail, id: 'r2', lines: [[[8.5, 46.9], [8.51, 46.91]]] }
+      const settle = () => new Promise(resolve => setTimeout(resolve, 50))
+
+      // Every vertex projects left of the drawer, so the whole highlight counts as visible.
+      async function listShown() {
+        vi.spyOn(fakeMap, 'project').mockReturnValue({ x: 200, y: 300 })
+        vi.spyOn(fakeMap, 'getContainer').mockReturnValue({ clientWidth: 1200, clientHeight: 800, getBoundingClientRect: () => ({ width: 1200, height: 800 }) })
+        mountMapPage(skiOn, { TrailCard: { template: '<div />' } })
+        const mapStore = useMapStore()
+        mapStore.trailCard = { candidates: [trail, other], more: 0, selectedId: null } as never
+        await settle()
+        fakeMap.flyTo.mockClear()
+        return mapStore
+      }
+
+      it('should fly to the chosen route even when it is already fully visible', async () => {
+        const mapStore = await listShown()
+
+        mapStore.trailCard = { ...mapStore.trailCard!, selectedId: 'r2' }
+        await settle()
+
+        expect(fakeMap.flyTo).toHaveBeenCalledWith(expect.objectContaining({
+          center: expect.objectContaining({ lng: expect.closeTo(8.505), lat: expect.closeTo(46.905) }),
+          zoom: ROUTE_ZOOM,
+        }))
+      })
+
+      it('should not move the camera when going back to a visible list', async () => {
+        const mapStore = await listShown()
+        mapStore.trailCard = { ...mapStore.trailCard!, selectedId: 'r2' }
+        await settle()
+        fakeMap.flyTo.mockClear()
+
+        mapStore.trailCard = { ...mapStore.trailCard!, selectedId: null }
+        await settle()
+
+        expect(fakeMap.flyTo).not.toHaveBeenCalled()
+      })
     })
   })
 

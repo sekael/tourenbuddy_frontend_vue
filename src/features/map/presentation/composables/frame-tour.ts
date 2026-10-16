@@ -4,6 +4,8 @@ import { LngLatBounds } from 'maplibre-gl'
 
 /** A lone goal's zoom — and the ceiling when framing several points, so close ones look the same. */
 export const TOUR_ZOOM = 12
+/** Ceiling for framing a chosen ski route: short routes fill the map, a near-point one stays readable. */
+export const ROUTE_ZOOM = 15
 /** Room around the framed points for the markers themselves (more on top: notch / status bar). */
 const MARGIN = { top: 64, right: 48, bottom: 48, left: 48 }
 
@@ -29,7 +31,7 @@ export function isBoundsVisible(map: MaplibreMap, bounds: LngLatBounds, covered:
 
 /**
  * Fly so `bounds` fills the map area left visible beside `covered` (the sheet or
- * drawer), zooming in no further than `TOUR_ZOOM`. Padding is passed per call and never
+ * drawer), zooming in no further than `maxZoom`. Padding is passed per call and never
  * set on the map: `fitBounds`-style framing adds the map's persistent padding on top.
  */
 export function frameBounds(
@@ -37,10 +39,11 @@ export function frameBounds(
   bounds: LngLatBounds,
   covered: Partial<PaddingOptions>,
   fallbackCenter: LngLatLike = bounds.getCenter(),
+  maxZoom = TOUR_ZOOM,
 ) {
-  const camera = map.cameraForBounds(bounds, { padding: paddingBeside(covered), maxZoom: TOUR_ZOOM, bearing: map.getBearing() })
+  const camera = map.cameraForBounds(bounds, { padding: paddingBeside(covered), maxZoom, bearing: map.getBearing() })
   // No room left to frame in (tiny viewport): just centre on the fallback.
-  map.flyTo({ ...(camera ?? { center: fallbackCenter, zoom: TOUR_ZOOM }), duration: 1000 })
+  map.flyTo({ ...(camera ?? { center: fallbackCenter, zoom: maxZoom }), duration: 1000 })
 }
 
 /**

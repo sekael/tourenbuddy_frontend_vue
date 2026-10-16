@@ -33,7 +33,7 @@ import TourenbuddyMap from '@/features/map/presentation/components/tourenbuddy-m
 import TrailCard from '@/features/map/presentation/components/trail-card.vue'
 import { TRAIL_LOOKUP_MIN_ZOOM } from '@/features/map/presentation/components/trail-layers'
 import { computeBarState } from '@/features/map/presentation/composables/compute-bar-state'
-import { frameBounds, frameTour, isBoundsVisible } from '@/features/map/presentation/composables/frame-tour'
+import { frameBounds, frameTour, isBoundsVisible, ROUTE_ZOOM } from '@/features/map/presentation/composables/frame-tour'
 import { useInboxNavigation } from '@/features/map/presentation/composables/use-inbox-navigation'
 import { useTrailLookup } from '@/features/map/presentation/composables/use-trail-lookup'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
@@ -814,10 +814,12 @@ watch(activeOverlay, (name) => {
 })
 
 // Frame what the card highlights (all candidates, or the chosen route) beside the
-// sheet/drawer — only when it isn't already fully visible there.
-watch(() => [trailCard.value?.candidates, trailCard.value?.selectedId], async () => {
+// sheet/drawer — only when it isn't already fully visible there. A route chosen from
+// the list (same candidates, new selection) is always framed to fill that area.
+watch(() => [trailCard.value?.candidates, trailCard.value?.selectedId] as const, async ([candidates, selectedId], [prevCandidates]) => {
   if (!trailCard.value)
     return
+  const picked = !!selectedId && candidates === prevCandidates
   await nextTick()
   if (!isDesktop.value)
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
@@ -831,7 +833,11 @@ watch(() => [trailCard.value?.candidates, trailCard.value?.selectedId], async ()
       trail.lines.forEach(line => line.forEach(c => bounds.extend(c)))
   }
   const covered = isDesktop.value ? { right: SIDE_DRAWER_WIDTH } : { bottom: sheetInset.value }
-  if (!bounds.isEmpty() && !isBoundsVisible(map, bounds, covered))
+  if (bounds.isEmpty())
+    return
+  if (picked)
+    frameBounds(map, bounds, covered, undefined, ROUTE_ZOOM)
+  else if (!isBoundsVisible(map, bounds, covered))
     frameBounds(map, bounds, covered)
 })
 
