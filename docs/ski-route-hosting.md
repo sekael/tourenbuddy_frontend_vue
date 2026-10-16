@@ -136,10 +136,10 @@ writes.
 - **CORS.** The app runs on `touringbuddy.pages.dev` (and preview subdomains), the data on
   `tourenbuddy-data.pages.dev`. Without `Access-Control-Allow-Origin` the browser would block MapLibre's
   and the app's `fetch`es.
-- **Compression.** Cloudflare compresses JSON (manifest, route files) with Brotli automatically. Tiles
-  were served uncompressed as `application/vnd.mapbox-vector-tile` (measured 2026-10-15: 8.4 KB raw vs
-  4.6 KB gzip for a dense z11 tile). The type is now `application/x-protobuf`; whether Cloudflare
-  compresses that is checked with the next deploy (runbook → Verifying a deploy).
+- **Compression.** Cloudflare compresses JSON (manifest, route files) with Brotli automatically, and
+  tiles too, but only because of the `Content-Type` above: as `application/vnd.mapbox-vector-tile` they
+  were served uncompressed. Measured 2026-10-16 on a dense z11 tile: 3,610 B compressed vs 8,154 B
+  uncompressed (−56%). Keep `application/x-protobuf`; check with the runbook (Verifying a deploy).
 
 ### `_redirects`
 
