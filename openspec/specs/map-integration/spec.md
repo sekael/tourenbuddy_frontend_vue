@@ -306,43 +306,6 @@ surface SHALL NOT reach the map.
 - **THEN** picking SHALL end
 - **AND** the previously suspended surface SHALL be restored to full interactive state with the target field unchanged, and all other in-progress form values SHALL be preserved
 
-### Requirement: Map action overlay with FABs
-
-The map page SHALL display entries in the bottom-right speed dial, in this order: feedback, base map style picker, offline maps, user profile, contacts, and the notification inbox (nearest the trigger, carrying the inbox badge — see `notification-inbox`). Profile shows a dot when an app update is available; contacts shows a dot while incoming friend requests are pending. The previously top-level Tours and Add-tour FABs SHALL NOT be part of the speed dial — they are owned by the persistent bottom-center tour action bar. The speed-dial trigger SHALL be disabled while any overlay is active (`activeOverlay !== null`).
-
-#### Scenario: Style picker button
-
-- **WHEN** the user clicks the style picker entry in the speed-dial menu
-- **THEN** the menu SHALL stay open with its other entries dimmed and inert
-- **AND** the available map styles SHALL unfold beside the style picker entry, the active one checked
-- **AND** choosing a style, or tapping anywhere outside the styles, SHALL close the whole menu
-
-#### Scenario: User profile button
-
-- **WHEN** the user clicks the profile entry in the speed-dial menu
-- **THEN** the user profile sheet SHALL open
-
-#### Scenario: Contacts button
-
-- **WHEN** the user clicks the contacts entry in the speed-dial menu
-- **THEN** the contacts list sheet SHALL open
-
-#### Scenario: Speed-dial does not expose Tours or Add tour
-
-- **WHEN** the user opens the speed-dial menu
-- **THEN** the menu SHALL NOT contain a Tours entry or an Add-tour entry
-
-#### Scenario: Speed-dial trigger hidden during location picking
-
-- **WHEN** `mapStore.isPickingLocation === true`
-- **THEN** the speed-dial trigger and its menu SHALL be hidden (existing behaviour)
-
-#### Scenario: Speed-dial trigger disabled when an overlay is open
-
-- **WHEN** any overlay is active (`activeOverlay !== null`) and `mapStore.isPickingLocation === false`
-- **THEN** the speed-dial trigger SHALL render in a disabled state
-- **AND** clicking it SHALL NOT open the menu
-
 ### Requirement: Map store manages map state
 
 A Pinia store (`useMapStore`) SHALL manage map-related state: `isPickingLocation`, `currentStyleIndex`, `selectedTourId`.
@@ -385,7 +348,7 @@ A Pinia store (`useMapStore`) SHALL manage map-related state: `isPickingLocation
 
 ### Requirement: Map action overlay icons
 
-Each speed-dial entry SHALL show its label followed by a Material Symbols icon: `feedback` for feedback, `map` for the base map picker, `download_for_offline` for offline maps, `account_circle` for profile, `group` for contacts, and `notifications` for the inbox. Every entry, the trigger, and the compass SHALL wear the shared map-control glass surface (semi-transparent brand fill with backdrop blur) for visual separation from map content.
+Each speed-dial entry SHALL show its label followed by a Material Symbols icon: `feedback` for feedback, `layers` for map layers, `download_for_offline` for offline maps, `account_circle` for profile, `group` for contacts, and `notifications` for the inbox. Every entry, the trigger, and the compass SHALL wear the shared map-control glass surface (semi-transparent brand fill with backdrop blur) for visual separation from map content.
 
 #### Scenario: FABs display Material Symbols
 
@@ -396,15 +359,6 @@ Each speed-dial entry SHALL show its label followed by a Material Symbols icon: 
 
 - **WHEN** the map action overlay is visible over map content
 - **THEN** entry backgrounds are semi-transparent with a blur effect
-
-### Requirement: Base map picker styling
-
-The base map options SHALL render as the same glass pills as the speed-dial entries (label, then icon). The active style SHALL show a check icon and the stronger glass fill; the others show the `map` icon.
-
-#### Scenario: Map picker dropdown renders with glass effect
-
-- **WHEN** the user opens the base map options
-- **THEN** each option is a glass pill with white label and icon over a semi-transparent blurred background, and exactly the active style is checked
 
 ### Requirement: Location picker button styling
 
@@ -760,3 +714,51 @@ canvas or on any scroll region inside an overlay.
 
 - **WHEN** the map route is mounted and an overlay's content overflows its scroll region
 - **THEN** that content SHALL scroll by touch and by wheel within the overlay
+
+### Requirement: Speed dial excludes Tours and Add tour
+
+The previously top-level Tours and Add-tour FABs SHALL NOT be part of the speed dial — they are owned by the persistent bottom-center tour action bar.
+
+#### Scenario: Speed-dial does not expose Tours or Add tour
+
+- **WHEN** the user opens the speed-dial menu
+- **THEN** the menu SHALL NOT contain a Tours entry or an Add-tour entry
+
+### Requirement: Speed-dial trigger disabled while an overlay is active
+
+While any overlay is active (`activeOverlay !== null`), the speed-dial trigger SHALL render in a disabled state, and tapping it SHALL close the active overlay instead of opening the menu, as "Single active top-level interaction" in `tour-action-bar` specifies.
+
+#### Scenario: Speed-dial trigger hidden during location picking
+
+- **WHEN** `mapStore.isPickingLocation === true`
+- **THEN** the speed-dial trigger and its menu SHALL be hidden (existing behaviour)
+
+#### Scenario: Speed-dial trigger hidden while drawing an offline region
+
+- **WHEN** the user is drawing a region to download as an offline map
+- **THEN** the speed-dial trigger and its menu SHALL be hidden
+
+#### Scenario: Speed-dial trigger disabled when an overlay is open
+
+- **WHEN** any overlay is active (`activeOverlay !== null`) and `mapStore.isPickingLocation === false`
+- **THEN** the speed-dial trigger SHALL render in a disabled state
+- **AND** tapping it SHALL close the active overlay without opening the menu
+
+### Requirement: Speed-dial menu entries and order
+
+The map page SHALL display entries in the bottom-right speed dial, in this order: feedback, map layers, offline maps, user profile, contacts, and the notification inbox (nearest the trigger, carrying the inbox badge — see `notification-inbox`). Profile shows a dot when an app update is available; contacts shows a dot while incoming friend requests are pending.
+
+#### Scenario: Map layers entry
+
+- **WHEN** the user clicks the "Map layers" entry in the speed-dial menu
+- **THEN** the map layers panel SHALL replace the menu above the trigger (see "Map layers panel" in `map-trail-overlays`)
+
+#### Scenario: User profile button
+
+- **WHEN** the user clicks the profile entry in the speed-dial menu
+- **THEN** the user profile sheet SHALL open
+
+#### Scenario: Contacts button
+
+- **WHEN** the user clicks the contacts entry in the speed-dial menu
+- **THEN** the contacts list sheet SHALL open
