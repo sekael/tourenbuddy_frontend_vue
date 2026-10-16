@@ -18,8 +18,8 @@
 ## 4. Finalize
 
 - [x] 4.1 Run `npx eslint --fix` on touched files, `npx eslint`, `npm run type-check`, `npm run test`; all pass
-- [ ] 4.2 Prompt user to commit with a ready-to-copy conventional commit message
-- [ ] 4.3 Prompt user to push and open a PR
+- [x] 4.2 Prompt user to commit with a ready-to-copy conventional commit message
+- [x] 4.3 Prompt user to push and open a PR
 
 ## Workflow follow-up
 

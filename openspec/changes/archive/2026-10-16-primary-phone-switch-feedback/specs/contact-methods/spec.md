@@ -19,7 +19,7 @@ When the user makes another phone primary in the contact detail view, the switch
 #### Scenario: Failed save
 
 - **WHEN** the save fails after the sequence started
-- **THEN** the list SHALL play the same sequence back to the previous primary and show the error
+- **THEN** the list SHALL return to the previous primary through the same staged steps, skipping the movement if the rows have not moved yet, and SHALL show the error
 
 #### Scenario: Reduced motion
 
@@ -28,7 +28,7 @@ When the user makes another phone primary in the contact detail view, the switch
 
 ### Requirement: Primary phone is highlighted and not re-selectable
 
-With more than one phone, the contact detail view SHALL visually highlight the primary phone row beyond its filled star. The primary phone SHALL NOT offer a "set as primary" action in any mode; only non-primary phones SHALL.
+With more than one phone, the contact detail view SHALL visually highlight the primary phone row beyond its filled star. The primary phone SHALL NOT offer a "set as primary" action in any mode; only non-primary phones SHALL. While a switch's save is pending, further taps on any star SHALL be ignored.
 
 #### Scenario: Primary row highlighted
 
@@ -42,5 +42,10 @@ With more than one phone, the contact detail view SHALL visually highlight the p
 
 #### Scenario: Primary star inert in edit mode
 
-- **WHEN** the detail view is in edit mode
+- **WHEN** the detail view is in edit mode and no switch is in progress
 - **THEN** the primary phone's star SHALL be non-interactive, and every non-primary phone's star SHALL be a button that makes it primary
+
+#### Scenario: Taps during a pending switch
+
+- **WHEN** the user taps a star while a previous switch's save is still pending
+- **THEN** no second switch SHALL start

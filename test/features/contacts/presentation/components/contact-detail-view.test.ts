@@ -267,6 +267,26 @@ describe('contactDetailView', () => {
       expect(wrapper.findAll('.phone-method input[type=tel]').map(i => (i.element as HTMLInputElement).value)[0]).toContain('111')
     })
 
+    it('should ignore star taps while a switch is still saving', async () => {
+      const wrapper = mountDetail({
+        ...contactWithTwoPhones,
+        contactMethods: [
+          ...contactWithTwoPhones.contactMethods,
+          { id: 'm-3', contactId: 'c-1', methodType: 'phone' as const, value: '+41 31 333 44 55', label: null, isPrimary: false, isValid: true },
+        ],
+      })
+      const store = useContactsStore()
+      vi.mocked(store.setPrimaryPhoneOnContact).mockReturnValue(new Promise(() => {}))
+
+      await enterEditMode(wrapper)
+      const [toM2, toM3] = wrapper.findAll('button.primary-star')
+      await toM2!.trigger('click')
+      await toM3!.trigger('click')
+
+      expect(store.setPrimaryPhoneOnContact).toHaveBeenCalledTimes(1)
+      expect(store.setPrimaryPhoneOnContact).toHaveBeenCalledWith('c-1', 'm-2')
+    })
+
     it('should show error when setPrimaryPhoneOnContact fails in edit mode', async () => {
       const wrapper = mountDetail(contactWithTwoPhones)
       const store = useContactsStore()
