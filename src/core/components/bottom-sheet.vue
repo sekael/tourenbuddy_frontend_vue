@@ -28,6 +28,12 @@ const props = defineProps<{
    * the map — the tour list and tour detail.
    */
   resizable?: boolean
+  /**
+   * With `fitContent`: never shrink to shorter content while set (growing, drags
+   * and snaps still apply); refits once released. Keeps search results from
+   * sinking behind the on-screen keyboard as a query narrows the list.
+   */
+  holdHeight?: boolean
 }>()
 
 const emit = defineEmits<{ close: [], back: [] }>()
@@ -62,13 +68,12 @@ const draggable = computed(() => !props.fitContent
 
 const snaps = computed<Snap[]>(() => draggable.value ? SNAP_ORDER : ['default'])
 
-function snapHeightPx(snap: Snap): number {
+// Unmeasurable natural height (e.g. not laid out yet): fall back to the opening cap.
+function snapHeightPx(snap: Snap, natural = naturalHeight.value || expandedHeight.value): number {
   if (snap === 'peek')
     return peekHeight.value
   if (!props.fitContent)
     return snap === 'expanded' ? expandedHeight.value : defaultHeight.value
-  // Unmeasurable (e.g. not laid out yet): fall back to the opening cap.
-  const natural = naturalHeight.value || expandedHeight.value
   const [opening, full] = props.resizable
     ? [defaultHeight.value, expandedHeight.value]
     : [expandedHeight.value, fullHeight.value]
@@ -135,10 +140,14 @@ function measureNaturalHeight() {
 function refit() {
   if (props.collapsed || isDragging.value)
     return
+  // Only a height fitted to measured content is worth holding (not the fallback).
+  const held = naturalHeight.value ? currentHeight.value : 0
   naturalHeight.value = measureNaturalHeight()
   if (props.fitContent) {
     // Content shrank so the handle goes away: back to the one resting height.
     applySnap(snaps.value.includes(lastSnap.value) ? lastSnap.value : 'default')
+    if (props.holdHeight && lastSnap.value !== 'peek')
+      currentHeight.value = Math.min(Math.max(held, currentHeight.value), snapHeightPx(lastSnap.value, Infinity))
     return
   }
   if (lastSnap.value === 'peek')
@@ -148,6 +157,8 @@ function refit() {
   currentHeight.value = opening
   lastSnap.value = nearestSnap(opening, 'up')
 }
+
+watch(() => props.holdHeight, held => !held && refit())
 
 // The handle comes and goes with `draggable`; peek includes it.
 watch(draggable, async () => {

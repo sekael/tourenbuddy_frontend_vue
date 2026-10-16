@@ -298,6 +298,26 @@ describe('bottomSheet', () => {
       expect(wrapper.find('.drag-handle').exists()).toBe(false)
     })
 
+    it('should not shrink while held, still grow, and refit once released', async () => {
+      const wrapper = mount(BottomSheet, { props: { title: 'Test', fitContent: true, resizable: true, holdHeight: true } })
+      const body = wrapper.find('.content-body').element
+      const setContent = async (h: number) => {
+        Object.defineProperty(body, 'offsetHeight', { value: h, configurable: true })
+        notify()
+        await flushPromises()
+      }
+      await setContent(300)
+      await setContent(100)
+      expect(sheetHeight(wrapper)).toBe(300)
+      await setContent(350)
+      expect(sheetHeight(wrapper)).toBe(350)
+      await setContent(1200)
+      expect(sheetHeight(wrapper)).toBe(400)
+      await setContent(100)
+      await wrapper.setProps({ holdHeight: false })
+      expect(sheetHeight(wrapper)).toBe(100)
+    })
+
     it('should stay at peek when content changes after the user dragged it down', async () => {
       const { wrapper, setContent } = await mountWithContent(1200)
       await wrapper.find('.drag-handle').trigger('keydown', { key: 'End' })

@@ -149,6 +149,7 @@ function handleRowClick(tourId: string) {
     :title="t('tours.list.title')"
     :fit-content="!isDesktop"
     :resizable="!isDesktop"
+    :hold-height="!isDesktop && (!!searchQuery.trim() || activeFilterCount > 0)"
     @close="emit('close')"
   >
     <template #header-actions>
