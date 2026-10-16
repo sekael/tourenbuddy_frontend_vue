@@ -70,9 +70,9 @@ Each published dataset SHALL live under its own version path, announced by a man
 
 ### Requirement: Attribution
 
-Wherever the app shows published ski-route data, it SHALL credit `©swisstopo`.
+Wherever the app shows published ski-route data, it SHALL credit swisstopo with exactly the text the base map uses, `© swisstopo`, so the map shows the credit once.
 
 #### Scenario: Routes on the map
 
 - **WHEN** ski routes from the dataset are shown on the map
-- **THEN** the map attribution SHALL include `©swisstopo`
+- **THEN** the map attribution SHALL include `© swisstopo` exactly once

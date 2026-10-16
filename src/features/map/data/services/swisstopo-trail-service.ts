@@ -1,10 +1,8 @@
 import type { LngLat, SkiRouteInfo, Trail } from '@/features/map/domain/entities/trail'
 import { z } from 'zod'
-import { TRAIL_OVERLAYS } from '@/features/map/data/trail-overlays'
 
-// A whole viewport is a few hundred KB; give slow mountain connections room.
-const TIMEOUT_MS = 10000
-const SKI_LAYER = TRAIL_OVERLAYS.find(o => o.id === 'ski')!.layerBodId
+// One route file is a few KB; still give slow mountain connections room.
+const TIMEOUT_MS = 8000
 
 const position = z.tuple([z.number(), z.number()]).rest(z.number())
 // Swisstopo mixes numbers and numeric strings ("780") across these fields.
@@ -19,8 +17,6 @@ const featureSchema = z.object({
   ]),
   properties: z.record(z.string(), z.unknown()),
 })
-
-const responseSchema = z.object({ results: z.array(featureSchema) })
 
 const propsSchema = z.object({
   target_name: str,
@@ -67,48 +63,35 @@ export function mapSkiRoute(feature: Feature, lang: string): Trail {
   return { overlay: 'ski', id: String(feature.id), lines, route }
 }
 
-export interface IdentifyParams {
-  /** Viewport as [west, south, east, north]. */
-  bounds: [number, number, number, number]
-  size: { width: number, height: number }
+export interface FetchRouteParams {
+  /** The route file URL (derived from the loaded TileJSON, so it matches the tiles' version). */
+  url: string
   /** UI locale, e.g. `de-CH` or `en`. */
   locale: string
   signal: AbortSignal
 }
 
-/**
- * Every ski route crossing the viewport, with full geometry, via the GeoAdmin
- * identify API. Rejects on network/HTTP/validation failure, timeout and abort.
- */
-export async function identifySkiRoutes(params: IdentifyParams): Promise<Trail[]> {
-  const { bounds, size, locale, signal } = params
-  const lang = locale.split('-')[0]!
-  const extent = bounds.join(',')
-  const query = new URLSearchParams({
-    geometryType: 'esriGeometryEnvelope',
-    geometry: extent,
-    sr: '4326',
-    mapExtent: extent,
-    imageDisplay: `${Math.round(size.width)},${Math.round(size.height)},96`,
-    tolerance: '0',
-    layers: `all:${SKI_LAYER}`,
-    geometryFormat: 'geojson',
-    returnGeometry: 'true',
-    lang,
-  })
+/** The route file doesn't exist: the dataset moved to a new version, or the route was removed. */
+export class SkiRouteNotFoundError extends Error {}
 
+/**
+ * One ski route with its complete geometry, from the self-hosted dataset
+ * (docs/ski-route-hosting.md). Rejects on network/HTTP/validation failure, timeout
+ * and abort; a 404 rejects with `SkiRouteNotFoundError`.
+ */
+export async function fetchSkiRoute({ url, locale, signal }: FetchRouteParams): Promise<Trail> {
   // ponytail: manual link instead of AbortSignal.any (iOS < 17.4 lacks it).
   const controller = new AbortController()
   const abort = () => controller.abort()
   signal.addEventListener('abort', abort)
   const timer = setTimeout(abort, TIMEOUT_MS)
   try {
-    const url = `https://api3.geo.admin.ch/rest/services/api/MapServer/identify?${query}`
     const response = await fetch(url, { signal: controller.signal })
+    if (response.status === 404)
+      throw new SkiRouteNotFoundError(url)
     if (!response.ok)
-      throw new Error(`Swisstopo identify HTTP ${response.status}`)
-    const { results } = responseSchema.parse(await response.json())
-    return results.map(f => mapSkiRoute(f, lang))
+      throw new Error(`Ski route HTTP ${response.status}`)
+    return mapSkiRoute(featureSchema.parse(await response.json()), locale.split('-')[0]!)
   }
   finally {
     clearTimeout(timer)

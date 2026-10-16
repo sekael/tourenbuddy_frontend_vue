@@ -32,6 +32,12 @@ window.addEventListener('vite:preloadError', () => {
   window.location.reload()
 })
 
+// No page zoom (see global.css → Touch). iOS Safari doesn't honor `touch-action` for
+// pinch, but zooms through its own gesture events; MapLibre reads raw touches, so
+// cancelling these leaves the map's pinch-zoom intact.
+for (const type of ['gesturestart', 'gesturechange'])
+  document.addEventListener(type, e => e.preventDefault())
+
 async function bootstrap() {
   const app = createApp(App)
   const pinia = createPinia()

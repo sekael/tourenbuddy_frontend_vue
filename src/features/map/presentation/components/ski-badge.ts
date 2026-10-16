@@ -1,4 +1,5 @@
-import type { Map as MapLibreMap } from 'maplibre-gl'
+import type { ExpressionSpecification, Map as MapLibreMap } from 'maplibre-gl'
+import { skiDifficultyGrade } from '@/features/map/domain/ski-difficulty'
 
 // Difficulty ramp, one stop per SAC grade (Tailwind -500/-600/-800/-950) so the
 // common WS/ZS/S routes differ at a glance: sky (L) → purple (SS) → deep purple (EX).
@@ -28,9 +29,22 @@ export function gradeColor(grade: number | null): string {
   return i === GRADE_COLORS.length - 1 ? GRADE_COLORS[i]! : mix(GRADE_COLORS[i]!, GRADE_COLORS[i + 1]!, pos - i)
 }
 
-/** MapLibre image id of a badge; drawn on first use by `registerSkiBadges`. */
-export function skiBadgeId(label: string, color: string): string {
-  return `${PREFIX}${color}|${label}`
+/**
+ * `gradeColor` as a MapLibre expression over a feature's numeric `grade` property:
+ * the same stops, mixed linearly in RGB like `mix`. Missing grade → grey.
+ */
+export function gradeColorExpression(): ExpressionSpecification {
+  const stops = GRADE_COLORS.flatMap((color, i) => [1 + i * 3, color])
+  return ['case', ['==', ['typeof', ['get', 'grade']], 'number'], ['interpolate', ['linear'], ['get', 'grade'], ...stops], NO_DIFFICULTY_COLOR]
+}
+
+/**
+ * MapLibre image id of a feature's badge, from its difficulty label in the UI
+ * language (`lang`: de/fr/it/en), falling back to German like `mapSkiRoute`.
+ * Drawn on first use by `registerSkiBadges`.
+ */
+export function skiBadgeImage(lang: string): ExpressionSpecification {
+  return ['concat', PREFIX, ['coalesce', ['get', `difficulty_${lang}`], ['get', 'difficulty_de'], '']]
 }
 
 /**
@@ -91,7 +105,11 @@ export function registerSkiBadges(map: MapLibreMap) {
   map.on('styleimagemissing', ({ id }: { id: string }) => {
     if (!id.startsWith(PREFIX) || map.hasImage(id))
       return
-    const [color, label] = id.slice(PREFIX.length).split('|') as [string, string]
+    const raw = id.slice(PREFIX.length)
+    const grade = skiDifficultyGrade(raw || null)
+    // Unknown difficulty text → a plain grey badge, as without a difficulty.
+    const label = grade === null ? '' : raw
+    const color = gradeColor(grade)
     const ratio = Math.max(2, Math.ceil(window.devicePixelRatio || 1))
     map.addImage(id, drawBadge(label, color, ratio), { pixelRatio: ratio })
   })

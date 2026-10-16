@@ -50,7 +50,14 @@ function create(): PwaUpdate {
   }
 
   if ('serviceWorker' in navigator) {
+    // The first install claims an uncontrolled page (sw.ts `clients.claim`), which also fires
+    // controllerchange. That isn't an update: reloading would wipe what the user typed.
+    let controlled = !!navigator.serviceWorker.controller
     navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!controlled) {
+        controlled = true
+        return
+      }
       // Hidden windows that saw the waiting update are reloaded by vite-plugin-pwa itself.
       if (document.visibilityState === 'visible')
         reload()

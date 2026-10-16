@@ -2,7 +2,7 @@ import type { TrailOverlayId } from '@/features/map/data/trail-overlays'
 import type { Trail } from '@/features/map/domain/entities/trail'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import { defineStore } from 'pinia'
-import { ref, shallowRef, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { z } from 'zod'
 import { TRAIL_OVERLAYS } from '@/features/map/data/trail-overlays'
 
@@ -71,8 +71,6 @@ export const useMapStore = defineStore('map', () => {
   /** Visible trail overlays, kept in draw order; persisted per device. */
   const activeOverlays = ref<TrailOverlayId[]>(readStoredOverlays())
   const trailCard = ref<TrailCard | null>(null)
-  /** Ski routes in view that carry route info: marked on the map, and tappable. */
-  const clickableTrails = shallowRef<Trail[]>([])
 
   watch(activeOverlays, (ids) => {
     try {
@@ -102,10 +100,6 @@ export const useMapStore = defineStore('map', () => {
 
   function clearTrails() {
     trailCard.value = null
-  }
-
-  function setClickableTrails(trails: Trail[]) {
-    clickableTrails.value = trails
   }
 
   function setPendingIntent(intent: PendingIntent) {
@@ -163,12 +157,10 @@ export const useMapStore = defineStore('map', () => {
     pendingIntent,
     activeOverlays,
     trailCard,
-    clickableTrails,
     toggleOverlay,
     showTrails,
     selectTrail,
     clearTrails,
-    setClickableTrails,
     setPendingIntent,
     consumePendingIntent,
     setPickingLocation,

@@ -2,10 +2,10 @@
 import { ExpirationPlugin } from 'workbox-expiration'
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching'
 import { NavigationRoute, registerRoute } from 'workbox-routing'
-import { CacheFirst, NetworkOnly, StaleWhileRevalidate } from 'workbox-strategies'
+import { CacheFirst, NetworkFirst, NetworkOnly, StaleWhileRevalidate } from 'workbox-strategies'
 import { OFFLINE_MAP_CACHE } from './features/map/data/services/offline-map-cache'
 import { pickTileResponse } from './features/map/data/services/pick-tile-response'
-import { TRAIL_OVERLAYS } from './features/map/data/trail-overlays'
+import { SKI_ROUTES_TILEJSON, TRAIL_OVERLAYS } from './features/map/data/trail-overlays'
 
 declare const self: ServiceWorkerGlobalScope
 
@@ -75,6 +75,32 @@ registerRoute(
     cacheName: 'swisstopo-trail-overlays',
     plugins: [new ExpirationPlugin({ maxEntries: 1500, maxAgeSeconds: 60 * 60 * 24 * 30 })],
   }),
+)
+
+// Self-hosted ski-route dataset (docs/ski-route-hosting.md). The manifest is the only
+// changing file: network-first, last copy offline. Tiles and route files sit under a
+// versioned path and never change: cache-first, own cache. Downloaded region tiles win.
+const SKI_DATA_ORIGIN = new URL(SKI_ROUTES_TILEJSON).origin
+const skiRouteData = new CacheFirst({
+  cacheName: 'ski-route-data',
+  plugins: [new ExpirationPlugin({ maxEntries: 3000, maxAgeSeconds: 60 * 60 * 24 * 30 })],
+})
+registerRoute(
+  ({ url }) => url.href === SKI_ROUTES_TILEJSON,
+  new NetworkFirst({ cacheName: 'ski-route-manifest', networkTimeoutSeconds: 3 }),
+)
+registerRoute(
+  ({ url }) => url.origin === SKI_DATA_ORIGIN && url.pathname.endsWith('.pbf'),
+  options =>
+    pickTileResponse(options.request, {
+      cacheMatch: async url =>
+        (await caches.open(OFFLINE_MAP_CACHE)).match(url, { ignoreVary: true }),
+      swrHandler: () => skiRouteData.handle(options) as Promise<Response>,
+    }),
+)
+registerRoute(
+  ({ url }) => url.origin === SKI_DATA_ORIGIN && /\/routes\/[^/]+\.json$/.test(url.pathname),
+  skiRouteData,
 )
 
 // Swisstopo WMTS raster tiles (Classic base map)

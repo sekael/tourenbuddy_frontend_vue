@@ -3,7 +3,7 @@ import BaseIcon from '@/core/components/base-icon.vue'
 
 // A preview tile in the map layers panel. The caller sets the ARIA role/state
 // (radio + aria-checked, or toggle + aria-pressed); `selected` drives the visuals.
-const props = defineProps<{ label: string, thumbnail: string, icon?: string, selected: boolean, disabled?: boolean }>()
+const props = defineProps<{ label: string, thumbnail: string, icon?: string, iconColor?: string, selected: boolean, disabled?: boolean }>()
 const emit = defineEmits<{ select: [] }>()
 </script>
 
@@ -14,7 +14,7 @@ const emit = defineEmits<{ select: [] }>()
   >
     <span class="thumb">
       <img :src="props.thumbnail" alt="" width="72" height="72">
-      <span v-if="props.icon" class="chip" aria-hidden="true">
+      <span v-if="props.icon" class="chip" :style="{ backgroundColor: props.iconColor }" aria-hidden="true">
         <BaseIcon :name="props.icon" size="xs" />
       </span>
       <Transition name="badge">

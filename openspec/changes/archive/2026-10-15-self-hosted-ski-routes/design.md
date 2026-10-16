@@ -159,7 +159,7 @@ Route-file URLs are built from the loaded source's TileJSON template (`map.getSo
 `{z}/{x}/{y}.pbf` replaced by `routes/<id>.json`), so tiles and route files never mix versions.
 
 `map-page.vue` tap routing: the `zoom < 12 → snackbar` branch becomes `zoom < 11 → closeOverlay()`. Offline: the same rendered-feature hit test runs (tiles render offline), and a hit shows
-`map.trail.offline` ("Route details need a connection.", error tone, matching `tours.suggestions.offline`-style
+`map.trail.offline` ("Route details need a connection.", neutral `info` tone (`role="status"`: a state, not a failure), matching `tours.suggestions.offline`-style
 copy) instead of fetching; a miss closes overlays as today. The
 `info` tone of `ErrorSnackbar` and `map.trail.zoomIn` lose their only caller and are removed. 
 
@@ -180,7 +180,8 @@ the base map.
 
 These are registered before the generic routes:
 
-- `ski-routes.json` → `NetworkFirst` (3 s network timeout) in `ski-route-data`.
+- `ski-routes.json` → `NetworkFirst` (3 s network timeout) in its own `ski-route-manifest` cache, so the
+  `ski-route-data` expiration never evicts it.
 - `/ski-routes/*` tiles → offline cache first (version-less key), else `CacheFirst` in `ski-route-data`.
 - Route files → `CacheFirst` in `ski-route-data`.
 - `ExpirationPlugin` with 3000 entries and 30 days. Old-version entries age out on their own.

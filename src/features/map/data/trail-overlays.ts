@@ -11,6 +11,8 @@ export interface TrailOverlay {
   thumbnail: string
   /** BaseIcon name on the panel tile, so the overlay reads without decoding map colors. */
   icon: string
+  /** Chip background behind the icon, in the overlay's map color (default: the panel blue). */
+  iconColor?: string
   /** Whether a map tap looks up features of this overlay. */
   identifiable: boolean
 }
@@ -24,6 +26,7 @@ export const TRAIL_OVERLAYS: TrailOverlay[] = [
     labelKey: 'map.layers.overlays.hiking',
     thumbnail: '/map-layers/hiking.png',
     icon: 'hiking',
+    iconColor: 'var(--red-600)',
     identifiable: false,
   },
   {
@@ -40,3 +43,10 @@ export const TRAIL_OVERLAYS: TrailOverlay[] = [
 export function wmtsTileUrl(layerBodId: string): string {
   return `https://wmts.geo.admin.ch/1.0.0/${layerBodId}/default/current/3857/{z}/{x}/{y}.png`
 }
+
+/**
+ * Self-hosted ski-route dataset (TileJSON): vector tiles to mark and hit-test routes, plus one
+ * full-geometry file per route. Published by `.github/workflows/ski-route-data.yml`; see
+ * docs/ski-route-hosting.md.
+ */
+export const SKI_ROUTES_TILEJSON = 'https://tourenbuddy-data.pages.dev/ski-routes.json'

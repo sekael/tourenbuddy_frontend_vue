@@ -15,6 +15,8 @@ The app SHALL ship a web manifest (`TourenBuddy`, `display: standalone`, `start_
 The service worker SHALL apply these runtime strategies:
 - Swisstopo vector tiles (`vectortiles*.geo.admin.ch`): explicitly downloaded offline-map entries first (see `offline-map`), otherwise stale-while-revalidate in `swisstopo-tiles` (500 entries, 30 days).
 - Swisstopo trail-overlay WMTS tiles (`ch.swisstopo.swisstlm3d-wanderwege`, `ch.swisstopo-karto.skitouren`): cache-first in a dedicated `swisstopo-trail-overlays` cache (1500 entries, 30 days) — a cached tile SHALL be served without any network request until it expires.
+- Ski-route dataset manifest (see `ski-route-dataset`): network-first, falling back to the last cached copy when offline.
+- Ski-route dataset tiles and route files: explicitly downloaded offline-map entries first (tiles only), otherwise cache-first in a dedicated `ski-route-data` cache (3000 entries, 30 days) — versioned paths never change content, so a cached entry SHALL be served without any network request until it expires.
 - Other Swisstopo WMTS raster tiles: stale-while-revalidate (500 entries, 30 days).
 - GPX objects in Supabase Storage: stale-while-revalidate (100 entries, 30 days).
 - Tour attachment objects: network-only — signed URLs are short-lived and SHALL NOT be cached by the service worker.
@@ -31,6 +33,14 @@ The service worker SHALL apply these runtime strategies:
 #### Scenario: Overlay tiles do not evict Classic tiles
 - **WHEN** the user pans with overlays on
 - **THEN** overlay tiles SHALL be stored only in `swisstopo-trail-overlays` and SHALL NOT count toward the Classic WMTS cache's entry limit
+
+#### Scenario: Ski-route manifest picks up a new version online
+- **WHEN** a new ski-route dataset version is published and the app starts online
+- **THEN** the service worker SHALL fetch the manifest from the network and the map SHALL request the new version's tiles
+
+#### Scenario: Ski-route manifest offline
+- **WHEN** the app starts offline after the manifest was fetched before
+- **THEN** the cached manifest SHALL be served and the ski-route source SHALL load from cached tiles
 
 ### Requirement: Service worker push handler
 The service worker SHALL handle `push` events by displaying a notification with the title and body provided by the Worker payload.

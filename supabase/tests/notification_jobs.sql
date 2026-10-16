@@ -15,7 +15,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(32);
+select plan(34);
 
 delete from public.notifications;
 delete from public.user_availability;
@@ -203,6 +203,8 @@ select ok(not public.record_release_note('note-a', current_date - 1), '4b second
 delete from public.notifications where type = 'release_notes';
 select ok(not public.record_release_note('note-a', current_date - 1), '4c deleted entry stays deleted');
 select ok(public.record_release_note('note-b', current_date - 1), '4d a different note records');
+select ok(not public.record_release_note('note-a', current_date - 1), '4d2 an older note after a newer one records nothing');
+select ok(not public.record_release_note('note-z', current_date - 2), '4d3 an earlier-dated note records nothing');
 select ok(not public.record_release_note('note-c', current_date - 31), '4e account newer than the note gets none');
 select throws_ok(
   $$select public.record_release_note('Bad Id!', current_date)$$,

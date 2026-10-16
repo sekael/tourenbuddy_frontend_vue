@@ -5,7 +5,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick, ref } from 'vue'
 import { isOnline } from '@/core/offline/use-online-status'
-import { identifySkiRoutes } from '@/features/map/data/services/swisstopo-trail-service'
+import { fetchSkiRoute } from '@/features/map/data/services/swisstopo-trail-service'
 import MapPage from '@/features/map/presentation/pages/map-page.vue'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
@@ -15,7 +15,8 @@ vi.mock('@/features/tours/data/services/swisstopo-elevation-service', () => ({
   getElevation: vi.fn().mockResolvedValue(1234),
 }))
 vi.mock('@/features/map/data/services/swisstopo-trail-service', () => ({
-  identifySkiRoutes: vi.fn().mockResolvedValue([]),
+  fetchSkiRoute: vi.fn(),
+  SkiRouteNotFoundError: class extends Error {},
 }))
 vi.mock('@/features/tours/data/services/swisstopo-name-service', () => ({
   suggestTourName: vi.fn().mockResolvedValue('Mocked Peak'),
@@ -38,6 +39,12 @@ const fakeMap = {
   getBounds: () => ({ getWest: () => 8, getSouth: () => 46, getEast: () => 9, getNorth: () => 47 }),
   getContainer: () => ({ clientWidth: 400, clientHeight: 800, getBoundingClientRect: () => ({ width: 400, height: 800 }) }),
   project: () => ({ x: 0, y: 0 }),
+  // One rendered ski route piece at screen (0, 0): a tap box containing it hits, others miss.
+  getLayer: () => ({}),
+  getSource: () => ({ tiles: ['https://data.test/ski-routes/v1/{z}/{x}/{y}.pbf'], setUrl: vi.fn() }),
+  queryRenderedFeatures: ([[x0, y0], [x1, y1]]: [number, number][]) => x0 <= 0 && x1 >= 0 && y0 <= 0 && y1 >= 0
+    ? [{ properties: { id: 'r1' }, geometry: { type: 'LineString', coordinates: [[8.4, 46.8], [8.41, 46.81]] } }]
+    : [],
   getBearing: () => 0,
   cameraForBounds: () => undefined,
   flyTo: vi.fn(),
@@ -211,43 +218,65 @@ describe('mapPage', () => {
     beforeEach(() => {
       fakeMap.zoom = 13
       isOnline.value = true
-      vi.mocked(identifySkiRoutes).mockReset().mockResolvedValue([])
+      vi.mocked(fetchSkiRoute).mockReset().mockResolvedValue(trail as never)
     })
 
-    it('should ask to zoom in without a lookup below the lookup zoom', async () => {
-      fakeMap.zoom = 11
+    const tapAt = (x: number) => ({ ...TAP, point: { x, y: x } })
+
+    it('should treat a tap below the marking zoom as a plain map tap, without lookup or message', async () => {
+      fakeMap.zoom = 10.5
       const wrapper = mountMapPage(skiOn)
 
-      await wrapper.findComponent({ name: 'TourenbuddyMap' }).vm.$emit('mapBackgroundClick', TAP)
+      await wrapper.findComponent({ name: 'TourenbuddyMap' }).vm.$emit('mapBackgroundClick', tapAt(0))
       await flushPromises()
 
-      expect(identifySkiRoutes).not.toHaveBeenCalled()
-      expect(wrapper.find('[role="status"]').text()).toBe('map.trail.zoomIn')
+      expect(fetchSkiRoute).not.toHaveBeenCalled()
+      expect(wrapper.find('[role="status"]').exists()).toBe(false)
+      expect(wrapper.vm.activeOverlay).toBeNull()
+    })
+
+    it('should explain an offline tap on a marked route instead of loading it', async () => {
+      isOnline.value = false
+      const wrapper = mountMapPage(skiOn)
+
+      await wrapper.findComponent({ name: 'TourenbuddyMap' }).vm.$emit('mapBackgroundClick', tapAt(0))
+      await flushPromises()
+
+      expect(fetchSkiRoute).not.toHaveBeenCalled()
+      expect(wrapper.find('[role="status"]').text()).toBe('map.trail.offline')
+    })
+
+    it('should stay silent on an offline tap beside the routes', async () => {
+      isOnline.value = false
+      const wrapper = mountMapPage(skiOn)
+
+      await wrapper.findComponent({ name: 'TourenbuddyMap' }).vm.$emit('mapBackgroundClick', tapAt(300))
+      await flushPromises()
+
+      expect(wrapper.find('[role="status"]').exists()).toBe(false)
     })
 
     it('should only close a tour sheet, without a lookup', async () => {
       const wrapper = mountMapPage(skiOn)
       wrapper.vm.activeOverlay = 'feedback'
       await flushPromises()
-      const loads = vi.mocked(identifySkiRoutes).mock.calls.length
 
-      await wrapper.findComponent({ name: 'TourenbuddyMap' }).vm.$emit('mapBackgroundClick', TAP)
+      await wrapper.findComponent({ name: 'TourenbuddyMap' }).vm.$emit('mapBackgroundClick', tapAt(0))
       await flushPromises()
 
-      expect(identifySkiRoutes).toHaveBeenCalledTimes(loads)
+      expect(fetchSkiRoute).not.toHaveBeenCalled()
       expect(wrapper.vm.activeOverlay).toBeNull()
     })
 
     it('should close an open trail card when the next tap misses', async () => {
-      vi.mocked(identifySkiRoutes).mockResolvedValueOnce([trail as never])
       const wrapper = mountMapPage(skiOn, { TrailCard: { template: '<div data-testid="trail-card" />' } })
       const map = wrapper.findComponent({ name: 'TourenbuddyMap' })
 
-      await map.vm.$emit('mapBackgroundClick', { ...TAP, point: { x: 0, y: 0 } })
+      await map.vm.$emit('mapBackgroundClick', tapAt(0))
       await flushPromises()
       expect(wrapper.vm.activeOverlay).toBe('trail-info')
 
-      await map.vm.$emit('mapBackgroundClick', { ...TAP, point: { x: 300, y: 300 } })
+      await map.vm.$emit('mapBackgroundClick', tapAt(300))
       await flushPromises()
       expect(wrapper.vm.activeOverlay).toBeNull()
     })

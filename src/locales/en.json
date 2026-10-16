@@ -726,7 +726,7 @@
       "backToList": "Ski routes",
       "openSac": "Open in SAC route portal",
       "noInfo": "No route information available",
-      "zoomIn": "Zoom in to see route details",
+      "offline": "Route details need a connection",
       "lookupError": "Couldn't load route info"
     },
     "cluster": {
@@ -894,7 +894,7 @@
       },
       "mapLayers": {
         "title": "Map layers",
-        "body": "Pick a base map and add hiking trails or ski routes on top, in any combination. With ski routes on, tap a marked route for its details."
+        "body": "Pick a base map and add hiking trails or ski routes on top, in any combination. With ski routes on, zoom in until the routes show difficulty badges, then tap one for its details."
       },
       "welcome": {
         "title": "Welcome to TourenBuddy",
@@ -1086,6 +1086,24 @@
         "reminders": {
           "title": "Reminder five days ahead",
           "body": "Everyone on a planned tour gets a nudge five days before — time to check conditions, gear and partners."
+        }
+      }
+    },
+    "2026-10-trail-overlays": {
+      "title": "Hiking trails and ski routes on the map",
+      "intro": "Switzerland’s marked trail network, right on your map. Switch it on under Map layers in the menu.",
+      "features": {
+        "hiking": {
+          "title": "Hiking trails",
+          "body": "All official hiking, mountain and alpine trails on top of any base map, in any combination with ski routes."
+        },
+        "ski": {
+          "title": "Ski routes with difficulty",
+          "body": "The SAC ski-touring routes. Zoom in and every route gets a badge with its difficulty, coloured from easy to extreme."
+        },
+        "details": {
+          "title": "Route details with one tap",
+          "body": "Tap a marked route for summit, ascent time, elevation gain and difficulty, plus a link to the SAC route portal. Where routes overlap, pick one from the list."
         }
       }
     }

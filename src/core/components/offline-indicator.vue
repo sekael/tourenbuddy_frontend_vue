@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { sessionUnverified } from '@/core/auth/session-trust'
 import BaseIcon from '@/core/components/base-icon.vue'
 import ErrorSnackbar from '@/core/components/error-snackbar.vue'
+import { useSnackbarSlot } from '@/core/composables/use-snackbar'
 import { offlineBlockedAt, offlineWriteError } from '@/core/offline/mutate'
 import { isOnline } from '@/core/offline/use-online-status'
 
@@ -25,10 +26,13 @@ const degraded = computed(() => !isOnline.value || sessionUnverified.value)
 // `immediate` matters for the unverified session: it's true from the first render on a
 // cold start, so there is no transition to catch.
 const explainVisible = ref(false)
+// These transient messages share the app-wide snackbar spot: a newer one replaces them.
+const claimExplain = useSnackbarSlot(() => explainVisible.value = false)
 let explainTimer: ReturnType<typeof setTimeout> | null = null
 watch(degraded, (isDegraded) => {
   if (!isDegraded)
     return
+  claimExplain()
   explainVisible.value = true
   if (explainTimer)
     clearTimeout(explainTimer)
@@ -39,8 +43,10 @@ watch(degraded, (isDegraded) => {
 
 // Blocked-action notice (a mutation attempted while offline).
 const noticeVisible = ref(false)
+const claimNotice = useSnackbarSlot(() => noticeVisible.value = false)
 let noticeTimer: ReturnType<typeof setTimeout> | null = null
 watch(offlineBlockedAt, () => {
+  claimNotice()
   noticeVisible.value = true
   if (noticeTimer)
     clearTimeout(noticeTimer)
@@ -52,12 +58,14 @@ watch(offlineBlockedAt, () => {
 // Offline-write failure (IndexedDB unavailable / full / unserializable value). The `mutate`
 // seam swallows the raw error into `offlineWriteError` (an i18n key); surface it understandably.
 const writeErrorVisible = ref(false)
+const claimWriteError = useSnackbarSlot(() => writeErrorVisible.value = false)
 let writeErrorTimer: ReturnType<typeof setTimeout> | null = null
 watch(offlineWriteError, (key) => {
   if (!key) {
     writeErrorVisible.value = false
     return
   }
+  claimWriteError()
   writeErrorVisible.value = true
   if (writeErrorTimer)
     clearTimeout(writeErrorTimer)

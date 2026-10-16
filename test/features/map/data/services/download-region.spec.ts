@@ -51,6 +51,40 @@ beforeEach(() => {
 })
 afterEach(() => vi.unstubAllGlobals())
 
+describe('downloadRegion — ski routes', () => {
+  const SKI_REGION = { ...REGION, minZoom: 11, maxZoom: 11 }
+
+  function stubFetch(manifest: Response) {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      const u = String(url)
+      if (u.endsWith('ski-routes.json'))
+        return manifest
+      if (u.endsWith('style.json'))
+        return new Response(STYLE, { status: 200 })
+      return new Response(new ArrayBuffer(16), { status: 200 })
+    }))
+  }
+
+  it('should still download the base map when the ski-route manifest is unreachable', async () => {
+    stubStorage(1e12)
+    stubFetch(new Response('', { status: 503 }))
+
+    await downloadRegion(SKI_REGION)
+    expect(putRegion).toHaveBeenCalledOnce()
+    expect(put.mock.calls.some(([key]) => String(key).includes('/ski-routes/'))).toBe(false)
+  })
+
+  it('should store ski-route tiles under their version-less key', async () => {
+    stubStorage(1e12)
+    stubFetch(new Response(JSON.stringify({ tiles: ['https://tourenbuddy-data.pages.dev/ski-routes/v9/{z}/{x}/{y}.pbf'] })))
+
+    await downloadRegion(SKI_REGION)
+    const skiKeys = put.mock.calls.map(([key]) => String(key)).filter(k => k.includes('/ski-routes/'))
+    expect(skiKeys.length).toBeGreaterThan(0)
+    expect(skiKeys.every(k => /\/ski-routes\/11\/\d+\/\d+\.pbf$/.test(k))).toBe(true)
+  })
+})
+
 describe('downloadRegion — failure paths', () => {
   it('aborts before any write when the estimate exceeds quota headroom, leaving no record', async () => {
     stubStorage(1_000_000) // headroom ~900 KB < ~3 MB asset allowance
