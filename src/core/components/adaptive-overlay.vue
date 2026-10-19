@@ -36,6 +36,7 @@ const isDesktop = useIsDesktop()
     :title="props.title"
     :aria-label="props.ariaLabel"
     :show-back="props.showBack"
+    :collapsed="props.collapsed"
     @close="emit('close')"
     @back="emit('back')"
   >

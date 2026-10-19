@@ -52,11 +52,11 @@ const isDesktop = useIsDesktop()
 
 const isPicking = computed(() => isPickingLocation.value)
 
-// On mobile, the creation form takes a full-screen page — except while a
-// location pick is active, where it collapses to reveal the map. `embedded`
-// hides the in-form action row (the page top bar provides Save/Cancel).
-const showAsPage = computed(() => !isPicking.value)
-const embedded = computed(() => !isDesktop.value && showAsPage.value)
+// On mobile, the creation form takes a full-screen page; a location pick collapses
+// that page in place (never swaps it for a sheet, which would remount the form and
+// drop unsaved edits, #337). `embedded` hides the in-form action row (the page top
+// bar provides Save/Cancel).
+const embedded = computed(() => !isDesktop.value)
 const formRef = ref<{ cancel: () => void, submitBlocked: boolean } | null>(null)
 
 function handleClose() {
@@ -102,7 +102,7 @@ function handlePickPoint(type: 'start' | 'end' | 'goal') {
   <AdaptiveOverlay
     :title="title"
     :collapsed="isPicking"
-    :page="showAsPage"
+    page
     @close="handleClose"
   >
     <TourForm

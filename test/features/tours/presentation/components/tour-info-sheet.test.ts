@@ -231,6 +231,35 @@ describe('tourInfoSheet', () => {
       expect(sheet).toBeDefined()
     })
 
+    it('should keep the mobile edit page and form mounted across a location pick (#337)', async () => {
+      const realMatchMedia = window.matchMedia
+      window.matchMedia = vi.fn().mockReturnValue({
+        matches: false,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }) as unknown as typeof window.matchMedia
+      const PageStub = { ...BottomSheetStub, name: 'FullScreenPage' }
+      const wrapper = mount(TourInfoSheet, {
+        props: { tour: mockTour },
+        global: {
+          plugins: [createTestingPinia({
+            createSpy: vi.fn,
+            initialState: { auth: { currentUser: { id: 'user-1' } }, map: { isPickingLocation: false } },
+          })],
+          stubs: { FullScreenPage: PageStub, BottomSheet: BottomSheetStub, TourForm: TourFormStub, TourAttachmentsStrip: true },
+        },
+      })
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
+      const formUid = wrapper.findComponent(TourFormStub).vm.$.uid
+      const { useMapStore } = await import('@/features/map/presentation/stores/map-store')
+      useMapStore().isPickingLocation = true
+      await nextTick()
+
+      expect(wrapper.findComponent(PageStub).props('collapsed')).toBe(true)
+      expect(wrapper.findComponent(TourFormStub).vm.$.uid).toBe(formUid)
+      window.matchMedia = realMatchMedia
+    })
+
     it('should not call updateTour when edit submit fires while picker is active', async () => {
       const wrapper = mountSheet({}, 'user-1', [], { isPickingLocation: true })
       const { useToursStore } = await import('@/features/tours/presentation/stores/tours-store')

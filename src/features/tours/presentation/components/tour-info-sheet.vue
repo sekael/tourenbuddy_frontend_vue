@@ -562,10 +562,11 @@ const sheetCollapsed = computed(
   () => isPicking.value && (mode.value === 'edit' || mode.value === 'suggest'),
 )
 
-// On mobile, an active edit takes a full-screen page (no map, no drag) — except
-// while a location pick is active, where the sheet collapses to reveal the map.
+// On mobile, an active edit takes a full-screen page (no map, no drag). A location
+// pick collapses the page in place via `sheetCollapsed` — swapping to the sheet
+// would remount TourForm and drop unsaved edits (#337).
 const editAsPage = computed(
-  () => !isDesktop.value && (mode.value === 'edit' || mode.value === 'suggest') && !isPicking.value,
+  () => !isDesktop.value && (mode.value === 'edit' || mode.value === 'suggest'),
 )
 const editFormRef = ref<{ cancel: () => void, submitBlocked: boolean } | null>(null)
 

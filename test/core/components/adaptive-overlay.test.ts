@@ -1,5 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h, ref } from 'vue'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import DialogWindow from '@/core/components/dialog-window.vue'
@@ -107,5 +108,46 @@ describe('adaptiveOverlay', () => {
       const wrapper = mount(AdaptiveOverlay, { props: { title: 'Test' } })
       expect(wrapper.find('.bottom-sheet [aria-label="core.drawer.close"]').exists()).toBe(true)
     })
+  })
+})
+
+describe('adaptiveOverlay page collapse (#337)', () => {
+  beforeEach(() => {
+    mockMatchMedia(false)
+  })
+
+  it('should keep slot state when a mobile page collapses and expands again', async () => {
+    let mounts = 0
+    const Stateful = defineComponent({
+      setup() {
+        mounts++
+        const count = ref(0)
+        return () => h('button', { class: 'stateful', onClick: () => count.value++ }, String(count.value))
+      },
+    })
+    const wrapper = mount(AdaptiveOverlay, {
+      props: { title: 'Test', page: true },
+      slots: { default: () => h(Stateful) },
+      attachTo: document.body,
+    })
+    await document.querySelector<HTMLElement>('.stateful')!.click()
+    await wrapper.setProps({ collapsed: true })
+    await wrapper.setProps({ collapsed: false })
+
+    expect(mounts).toBe(1)
+    expect(document.querySelector('.stateful')!.textContent).toBe('1')
+    wrapper.unmount()
+  })
+
+  it('should hide the close control and page action while collapsed', () => {
+    const wrapper = mount(AdaptiveOverlay, {
+      props: { title: 'Test', page: true, collapsed: true },
+      slots: { 'page-action': '<button class="save">Save</button>' },
+      attachTo: document.body,
+    })
+    expect(document.querySelector('.full-screen-page--collapsed')).not.toBeNull()
+    expect(document.querySelector('.full-screen-page [aria-label="core.drawer.close"]')).toBeNull()
+    expect(document.querySelector('.full-screen-page .save')).toBeNull()
+    wrapper.unmount()
   })
 })
