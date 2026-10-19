@@ -4,7 +4,7 @@
 
 ### Requirement: Tour detail reads at a glance
 
-The tour detail view SHALL open with a compact hero line led by the tour's goal: the activity badge, the goal elevation as the headline number, the planned date, the owner for friend tours, and the goal coordinates beneath; the tour name stays the sheet title. For the owner, the completion and visibility toggles SHALL sit as icon toggles at the end of the hero line. Below the hero, facts SHALL render as dense icon-led rows without section headings and without per-fact cards, ordered by relevance: activity type, start, end, partners, seasons, description, equipment, notes. Start and end SHALL carry a short visible inline label ("Start", "End") because their icons alone are ambiguous; type, partners, seasons and the free texts SHALL be identified by their icon, and every row SHALL expose an accessible label. Rows for empty fields SHALL be omitted. The view SHALL be tinted with the tour's activity colour (the map marker colour): badge, row icons, season chips and partner avatars. A completed tour SHALL show a check stamp on the badge (and a "Completed" pill for friends viewing it); a private tour SHALL show a lock stamp. Partners SHALL render as avatar pills.
+The tour detail view SHALL open with a compact hero line led by the tour's goal: the activity badge, the goal elevation as the headline number, the planned date, the owner for friend tours, and the goal coordinates beneath; the tour name stays the sheet title. For the owner, the completion and visibility toggles SHALL stay a row of labelled buttons directly below the hero. Below the hero, facts SHALL render as dense icon-led rows without section headings and without per-fact cards, ordered by relevance: activity type, start, end, partners, seasons, description, equipment, notes. Start and end SHALL carry a short visible inline label ("Start", "End") because their icons alone are ambiguous; type, partners, seasons and the free texts SHALL be identified by their icon, and every row SHALL expose an accessible label. Rows for empty fields SHALL be omitted. The view SHALL be tinted with the tour's activity colour (the map marker colour): badge, row icons, season chips and partner avatars. A completed tour SHALL show a check stamp on the badge (and a "Completed" pill for friends viewing it); a private tour SHALL show a lock stamp. Partners SHALL render as avatar pills.
 
 #### Scenario: Reading a tour on a phone
 
@@ -17,23 +17,22 @@ The tour detail view SHALL open with a compact hero line led by the tour's goal:
 - **THEN** the hero headline SHALL show the goal elevation, not the activity type
 - **AND** "Ski Tour" SHALL appear as the first fact row with the ski-tour icon
 
-#### Scenario: Owner toggles in the hero
+#### Scenario: Owner toggles below the hero
 
 - **WHEN** the owner opens their tour
-- **THEN** completion and visibility SHALL be icon toggles in the hero line, each with an accessible label and pressed state
-- **AND** no separate row of labelled toggle buttons SHALL be shown
+- **THEN** completion and visibility SHALL be labelled toggle buttons in one row directly below the hero, each exposing a pressed state
+- **AND** the hero line SHALL hold only the headline
 
 #### Scenario: Long date range on a narrow phone
 
 - **WHEN** a multi-day tour spanning two months is opened on a 360 px wide screen by its owner
-- **THEN** the hero SHALL keep the badge, goal elevation and both toggles on its first line
+- **THEN** the hero SHALL keep the badge and goal elevation on its first line
 - **AND** the date range SHALL appear on the second line with abbreviated month names, together with the goal coordinates, wrapping there if needed
-- **AND** the toggles SHALL sit at the same position as on a tour with a short date
 
 #### Scenario: Friend tour hero
 
 - **WHEN** a user opens a friend's tour
-- **THEN** the hero SHALL show no toggles and SHALL show the owner on a line beneath the date and coordinates
+- **THEN** no owner toggles SHALL be shown and the hero SHALL show the owner on a line beneath the date and coordinates
 
 #### Scenario: Goal without elevation
 

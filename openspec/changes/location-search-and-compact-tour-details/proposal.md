@@ -10,7 +10,7 @@ splitboard tours also show a walking-with-poles glyph that reads as hiking, not 
 ## What Changes
 
 - **Location search in the picker (#339):** while picking any location (tour goal, start, end —
-  in creation and in edit mode) a search field sits at the top of the map. Typing queries the
+  in creation and in edit mode) a search field docks at the bottom of the screen, above Cancel/Confirm. Typing queries the
   free Swisstopo GeoAdmin location search (summits, places, huts, addresses, postcodes); choosing
   a result flies the map there so the crosshair sits on it. The user can still pan to fine-tune
   before confirming, exactly as today.
@@ -21,8 +21,8 @@ splitboard tours also show a walking-with-poles glyph that reads as hiking, not 
 - **Compact tour detail (#340):**
   - Hero line leads with the **goal**: type badge, goal elevation as the headline, planned date,
     goal coordinates beneath; the tour name stays the sheet title.
-  - Owner completion/visibility toggles become **icon toggles in the hero** (replacing the
-    full-width labelled button row).
+  - Owner completion/visibility toggles stay the **labelled button row**, directly below the
+    hero (icon-only toggles in the hero were tried and read as unclear).
   - The activity type moves into a **wrapped fact strip** together with start and end.
   - Partners, seasons, description, equipment and notes render as **icon-led rows** — no
     section headings and no per-fact cards.
@@ -43,7 +43,7 @@ splitboard tours also show a walking-with-poles glyph that reads as hiking, not 
 - `design-system`: "Tour detail reads at a glance" is rewritten for the compact goal-first
   layout; "Material Symbols icon font" allows in-repo custom glyphs for subjects the Material set
   lacks.
-- `tour-info-extended`: "Completion toggle control" moves to an icon toggle in the hero (the
+- `tour-info-extended`: "Completion toggle control" describes the owner toggles row below the hero (the
   current text still describes a long-gone bottom-right action row).
 
 ## Impact

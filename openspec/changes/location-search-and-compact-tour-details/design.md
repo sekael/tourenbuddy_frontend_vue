@@ -75,6 +75,18 @@ The input itself is the tour list's `search-row` extracted to `core/components/s
 *Alternative:* separate `location-search.vue` component — rejected for now; picker is 87 lines,
 search adds ~100. Extract if it crosses the ~150-line convention by more than a little.
 
+### D4b — One bottom dock for results, field and actions
+Results, field and Cancel/Confirm stack in one fixed dock at the bottom centre (all breakpoints):
+thumb reach on phones, and the top stays free for the collapsed overlay header (desktop dialog
+bar top-centre, drawer top-right). The dock spans from the visible top to its bottom offset and
+stacks its children at the bottom, so a long list scrolls instead of running off-screen. iOS and
+Android Chrome shrink only the *visual* viewport for the keyboard, so `useVisualViewportInsets`
+(`core/composables`) reports the hidden bottom (`innerHeight − vv.height − vv.offsetTop`, < 50 px
+ignored as chrome jitter, 0 while pinch-zoomed) and the iOS pan offset; while a keyboard is up
+the dock rides on it and drops the actions. Field: frosted pill with our own clear button.
+*Alternative:* top field on desktop, bottom on mobile — rejected: two layouts, and the desktop
+top is already taken by the collapsed dialog/drawer header.
+
 ### D5 — Name handoff on the existing `confirm` event
 `confirm` payload becomes `{ lng, lat, name?: string }`. The picker sets `name` only when
 `lastChosen` is within 50 m of the crosshair (`LngLat.distanceTo`, built into MapLibre). In
@@ -87,13 +99,14 @@ feature falls back to the radius lookup.
 ### D6 — Compact detail: one new presentational component
 View-mode facts move into `features/tours/presentation/components/tour-fact-rows.vue`
 (props: `tour`, `startPointText`, `endPointText`, flags; a `partners` slot keeps the
-contact-chip events in the sheet). The hero stays in the sheet as a fixed two-line block: line 1 badge + goal elevation headline +
-toggles (end-aligned, never wrap); line 2 muted `date · coords` (wraps freely); friend tours add
+contact-chip events in the sheet). The hero stays in the sheet as a fixed two-line block: line 1 badge + goal elevation headline;
+line 2 muted `date · coords` (wraps freely); friend tours add
 an owner line. The hero date uses `month: 'short'` in `formatRange` so a cross-month span fits
 (still locale range formatting, so "Planned date renders as a span" holds). No elevation → the
-date moves to line 1 with the two owner toggles as
-`BaseIconButton`s (`aria-pressed`, `aria-label`). Section headings, `fact-grid`, `detail-card`
-and the owner-toggles row are deleted with their styles. The hero card's success ring and
+date moves to line 1. The owner-toggles row (labelled tonal buttons, `aria-pressed`) stays
+directly below the hero: icon toggles in the hero line were tried, and a bare circle / lock
+did not read as "complete the tour" / "make private". Section headings, `fact-grid` and
+`detail-card` are deleted with their styles. The hero card's success ring and
 dashed private edge go too — the badge stamps carry the state.
 *Why extract:* shrinks the 1700-line sheet, makes the fact ordering testable in isolation.
 

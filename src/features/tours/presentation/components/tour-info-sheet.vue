@@ -7,7 +7,6 @@ import { v4 as uuidv4 } from 'uuid'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
-import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import FullScreenPage from '@/core/components/full-screen-page.vue'
@@ -815,8 +814,8 @@ const formattedElevation = computed(() => {
         <LinkRequestBanner v-for="req in linkPendingRequests" :key="req.id" :request="req" />
         <CollisionNotice v-if="isOwner" :own-tour-id="tour.id" />
 
-        <!-- Hero: led by the goal. Line 1 elevation (or date) + owner toggles, which never
-             move; line 2 date · coordinates, wrapping freely; friend tours add the owner. -->
+        <!-- Hero: led by the goal. Line 1 elevation (or date); line 2 date · coordinates,
+             wrapping freely; friend tours add the owner. -->
         <div class="hero">
           <span class="hero-badge">
             <BaseIcon :name="tour.tourType ? TOUR_TYPE_ICONS[tour.tourType] : 'location_on'" size="lg" />
@@ -833,26 +832,13 @@ const formattedElevation = computed(() => {
             </Transition>
           </span>
           <div class="hero-text">
-            <div v-if="formattedElevation || formattedDate || isOwner" class="hero-line">
+            <div v-if="formattedElevation || formattedDate" class="hero-line">
               <span v-if="formattedElevation" class="hero-headline">
                 <BaseIcon name="landscape" size="sm" class="hero-headline-icon" />
                 <span class="visually-hidden">{{ t('tours.infoSheet.iconTooltipElevation') }}</span>
                 {{ formattedElevation }}
               </span>
               <span v-else-if="formattedDate" class="hero-headline hero-headline--date">{{ formattedDate }}</span>
-              <div v-if="isOwner" class="hero-toggles">
-                <BaseIconButton
-                  class="completion-toggle" :class="{ 'completion-toggle--done': tour.completed }"
-                  :name="tour.completed ? 'check_circle' : 'radio_button_unchecked'"
-                  :label="t('tours.infoSheet.completedBtn')" :aria-pressed="tour.completed" @click="toggleCompleted"
-                />
-                <BaseIconButton
-                  class="visibility-toggle" :class="{ 'visibility-toggle--private': tour.visibility === 'private' }"
-                  :name="tour.visibility === 'private' ? 'lock' : 'group'"
-                  :label="t('tours.infoSheet.privateToggle')" :aria-pressed="tour.visibility === 'private'"
-                  @click="toggleVisibility"
-                />
-              </div>
             </div>
             <!-- Date and coordinates as separate items: a wrap leaves no dangling separator. -->
             <span class="hero-meta">
@@ -870,6 +856,37 @@ const formattedElevation = computed(() => {
               {{ t('tours.infoSheet.completedBtn') }}
             </span>
           </div>
+        </div>
+
+        <!-- Owner toggles: completion + visibility -->
+        <div v-if="isOwner" class="owner-toggles">
+          <button
+            type="button" class="completion-toggle action-btn"
+            :class="{ 'completion-toggle--done': tour.completed }" :aria-pressed="tour.completed"
+            @click="toggleCompleted"
+          >
+            <BaseIcon v-if="tour.completed" name="check_circle" />
+            <BaseIcon v-else name="radio_button_unchecked" />
+            {{
+              tour.completed
+                ? t('tours.infoSheet.completedBtn')
+                : t('tours.infoSheet.completeTourBtn')
+            }}
+          </button>
+
+          <!-- Visibility toggle -->
+          <button
+            type="button" class="visibility-toggle action-btn"
+            :class="{ 'visibility-toggle--private': tour.visibility === 'private' }"
+            :aria-pressed="tour.visibility === 'private'" @click="toggleVisibility"
+          >
+            <BaseIcon :name="tour.visibility === 'private' ? 'lock' : 'group'" />
+            {{
+              tour.visibility === 'private'
+                ? t('tours.infoSheet.visibilityMakeFriends')
+                : t('tours.infoSheet.visibilityMakePrivate')
+            }}
+          </button>
         </div>
 
         <TourFactRows :tour="tour">
@@ -1123,16 +1140,47 @@ const formattedElevation = computed(() => {
   color: var(--color-error);
 }
 
-/* Pressed toggles keep their old tints: success for done, error tone for private.
-   Two classes outrank BaseIconButton's own colours. */
-.hero-toggles .completion-toggle--done {
-  color: var(--color-success-text);
-  background-color: color-mix(in srgb, var(--color-success) 12%, var(--color-background));
+/* Owner toggles: a compact row — each pill keeps its natural width and they wrap
+   rather than squeezing a label onto two lines. Both rest in the tonal container;
+   only the non-default state (completed / private) takes its own tint. */
+.owner-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
 }
 
-.hero-toggles .visibility-toggle--private {
-  color: var(--color-error-text);
+.owner-toggles > .action-btn {
+  flex: 1 1 auto;
+}
+
+.completion-toggle--done {
+  background-color: color-mix(in srgb, var(--color-success) 12%, var(--color-background));
+  color: var(--color-success-text);
+}
+
+@media (hover: hover) {
+  .completion-toggle--done:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-success) 20%, var(--color-background));
+  }
+}
+
+.completion-toggle--done:active:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-success) 20%, var(--color-background));
+}
+
+.visibility-toggle--private {
   background-color: var(--color-error-container);
+  color: var(--color-error-text);
+}
+
+@media (hover: hover) {
+  .visibility-toggle--private:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-error) 20%, var(--color-background));
+  }
+}
+
+.visibility-toggle--private:active:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-error) 20%, var(--color-background));
 }
 
 /* Same line box as the resolved owner text, so the swap causes no reflow. Fill derives
@@ -1235,13 +1283,11 @@ const formattedElevation = computed(() => {
   min-width: 0;
 }
 
-/* Line 1 never wraps: the toggles hold their place whatever the headline is. */
 .hero-line {
   align-self: stretch;
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  min-height: 40px;
 }
 
 .hero-headline {
@@ -1262,13 +1308,6 @@ const formattedElevation = computed(() => {
 
 .hero-headline-icon {
   color: var(--type-tint);
-}
-
-.hero-toggles {
-  display: flex;
-  gap: var(--spacing-xxs);
-  margin-left: auto;
-  flex-shrink: 0;
 }
 
 .hero-meta {

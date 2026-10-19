@@ -9,12 +9,19 @@ place's name for the picked point instead of hunting for it by panning.
 
 ### Requirement: Search field in every location pick
 
-While the location picker is active and the device is online, the map SHALL show a search field above the map content. It SHALL be available for every pick: tour goal, start point and end point, during tour creation and while editing a tour.
+While the location picker is active and the device is online, the map SHALL show a search field above the map content, docked at the bottom of the screen directly above the Cancel/Confirm actions, so it stays in thumb reach on phones and never covers the collapsed overlay header at the top. Results SHALL open upward from the field. It SHALL be available for every pick: tour goal, start point and end point, during tour creation and while editing a tour.
 
 #### Scenario: Picking a tour goal
 
 - **WHEN** the user starts adding a tour and the crosshair appears
-- **THEN** a search field SHALL be visible at the top of the map
+- **THEN** a search field SHALL be visible at the bottom of the screen, above Cancel/Confirm
+- **AND** the collapsed overlay header (e.g. "Tour goal") SHALL stay fully visible
+
+#### Scenario: Typing with the on-screen keyboard
+
+- **WHEN** the search field is focused on a phone and the on-screen keyboard is open
+- **THEN** the field SHALL sit directly above the keyboard, with Cancel/Confirm hidden until the keyboard closes
+- **AND** the result list SHALL stay within the visible area above the field, scrolling if it does not fit
 
 #### Scenario: Picking a start point in edit mode
 

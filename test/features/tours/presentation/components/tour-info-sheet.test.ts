@@ -526,14 +526,13 @@ describe('tourInfoSheet', () => {
       expect(wrapper.find('.hero-meta').text()).toBe('46.8000°N, 8.2000°E')
     })
 
-    it('should name the toggles by state and expose on/off as pressed', () => {
-      const wrapper = mountSheet({ completed: true, visibility: 'friends' })
-      const done = wrapper.find('.completion-toggle')
-      const priv = wrapper.find('.visibility-toggle')
-      expect(done.attributes('aria-label')).toContain('completedBtn')
-      expect(done.attributes('aria-pressed')).toBe('true')
-      expect(priv.attributes('aria-label')).toContain('privateToggle')
-      expect(priv.attributes('aria-pressed')).toBe('false')
+    it('should keep the owner toggles out of the hero, as the labelled row below it', () => {
+      const wrapper = mountSheet({ completed: false, visibility: 'private' })
+      expect(wrapper.find('.hero .completion-toggle').exists()).toBe(false)
+      const row = wrapper.find('.owner-toggles')
+      expect(row.find('.completion-toggle').text()).toBe('tours.infoSheet.completeTourBtn')
+      expect(row.find('.visibility-toggle').text()).toBe('tours.infoSheet.visibilityMakeFriends')
+      expect(row.find('.visibility-toggle').attributes('aria-pressed')).toBe('true')
     })
 
     it('should not keep an empty first line for a friend viewing a tour without elevation or date', () => {
@@ -544,7 +543,7 @@ describe('tourInfoSheet', () => {
 
     it('should show a friend the owner instead of toggles', () => {
       const wrapper = mountSheet({ isFriendTour: true }, 'user-2')
-      expect(wrapper.find('.hero-toggles').exists()).toBe(false)
+      expect(wrapper.find('.owner-toggles').exists()).toBe(false)
       expect(wrapper.find('.hero').findAll('.hero-meta')).toHaveLength(2)
     })
 

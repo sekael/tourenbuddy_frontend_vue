@@ -519,6 +519,9 @@
       "unnamedTour": "Unnamed tour",
       "createdByLabel": "Created by {name}",
       "completedBtn": "Completed",
+      "completeTourBtn": "Complete Tour",
+      "visibilityMakeFriends": "Make tour visible to friends",
+      "visibilityMakePrivate": "Make tour private",
       "roundTrip": "Round trip",
       "oneWayToGoalIndicator": "One-way to goal",
       "gpxTrackAvailable": "Track available",
@@ -542,8 +545,7 @@
       "iconTooltipPartners": "Partners",
       "downloadGpxBtn": "Download GPX",
       "startShort": "Start",
-      "endShort": "End",
-      "privateToggle": "Private"
+      "endShort": "End"
     },
     "filters": {
       "partnerLabel": "Partner",
@@ -587,6 +589,7 @@
       "search": {
         "placeholder": "Search summit, place or address",
         "label": "Search location",
+        "clear": "Clear search",
         "noResults": "No places found",
         "error": "Search unavailable. Pan the map to pick the spot instead.",
         "origin": {

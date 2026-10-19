@@ -519,6 +519,9 @@
       "unnamedTour": "Unbenannte Tour",
       "createdByLabel": "Erstellt von {name}",
       "completedBtn": "Abgeschlossen",
+      "completeTourBtn": "Tour abschliessen",
+      "visibilityMakeFriends": "Tour für Freunde sichtbar machen",
+      "visibilityMakePrivate": "Tour privat machen",
       "roundTrip": "Rundtour",
       "oneWayToGoalIndicator": "Einfache Tour zum Ziel",
       "gpxTrackAvailable": "Track verfügbar",
@@ -542,8 +545,7 @@
       "iconTooltipPartners": "Tourenpartner",
       "downloadGpxBtn": "GPX herunterladen",
       "startShort": "Start",
-      "endShort": "Ende",
-      "privateToggle": "Privat"
+      "endShort": "Ende"
     },
     "filters": {
       "partnerLabel": "Partner",
@@ -587,6 +589,7 @@
       "search": {
         "placeholder": "Gipfel, Ort oder Adresse suchen",
         "label": "Ort suchen",
+        "clear": "Suche leeren",
         "noResults": "Keine Orte gefunden",
         "error": "Suche nicht verfügbar. Verschiebe die Karte, um den Ort zu wählen.",
         "origin": {

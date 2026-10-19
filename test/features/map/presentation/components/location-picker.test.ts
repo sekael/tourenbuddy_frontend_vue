@@ -250,4 +250,54 @@ describe('locationPicker', () => {
       expect(wrapper.emitted('confirm')![0]![0]).not.toHaveProperty('name')
     })
   })
+
+  describe('dock', () => {
+    // happy-dom has no visualViewport; innerHeight is 768.
+    function stubViewport(init: { height: number, offsetTop?: number, scale?: number }) {
+      const vv = Object.assign(new EventTarget(), { offsetTop: 0, scale: 1, ...init })
+      vi.stubGlobal('visualViewport', vv)
+      return vv
+    }
+    afterEach(() => vi.unstubAllGlobals())
+
+    it('should ride on the on-screen keyboard without the actions, and bring them back once it closes', async () => {
+      const vv = stubViewport({ height: 468 })
+      const { wrapper } = mountPicker()
+      const dock = wrapper.find('.dock')
+      expect(dock.classes()).toContain('dock--keyboard')
+      expect(dock.attributes('style')).toContain('--keyboard-inset: 300px')
+      expect(wrapper.find('.actions').attributes('style')).toContain('display: none')
+
+      vv.height = 768
+      vv.dispatchEvent(new Event('resize'))
+      await flushPromises()
+      expect(dock.classes()).not.toContain('dock--keyboard')
+      expect(wrapper.find('.actions').attributes('style') ?? '').not.toContain('display: none')
+    })
+
+    it('should not mistake browser-chrome jitter or a pinch zoom for a keyboard', () => {
+      stubViewport({ height: 740 })
+      expect(mountPicker().wrapper.find('.dock').classes()).not.toContain('dock--keyboard')
+      stubViewport({ height: 384, scale: 2 })
+      expect(mountPicker().wrapper.find('.dock').classes()).not.toContain('dock--keyboard')
+    })
+
+    it('should clear the field and keep it focused for the next query', async () => {
+      const wrapper = mount(LocationPicker, {
+        props: { map: makeMapStub() as never },
+        global: { plugins: [createTestingPinia({ createSpy: vi.fn })] },
+        attachTo: document.body,
+      })
+      const clear = () => wrapper.find('button[aria-label="tours.picker.search.clear"]')
+      expect(clear().exists()).toBe(false)
+
+      await type(wrapper, 'Piz')
+      await clear().trigger('click')
+      const input = wrapper.find('.search-input').element as HTMLInputElement
+      expect(input.value).toBe('')
+      expect(document.activeElement).toBe(input)
+      expect(clear().exists()).toBe(false)
+      wrapper.unmount()
+    })
+  })
 })

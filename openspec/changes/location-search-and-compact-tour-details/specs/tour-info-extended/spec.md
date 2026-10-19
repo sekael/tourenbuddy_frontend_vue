@@ -4,13 +4,13 @@
 
 ### Requirement: Completion toggle control
 
-The tour info sheet SHALL display the completion toggle as an icon toggle at the end of the hero line, next to the visibility toggle. The control SHALL show a filled check-circle when the tour is completed and an empty circle when not, expose its state as a pressed state, and carry a fixed accessible label naming the state it toggles ("Completed") — the pressed state, not a changing label, tells whether it is on. Activation SHALL invoke the tours store `setCompleted` action instantly — no confirmation dialog — for both mark and unmark directions.
+The tour info sheet SHALL display the completion toggle as a labelled tonal button in the owner toggles row directly below the hero, beside the visibility toggle. Not completed, it SHALL show an empty circle and the action label "Complete Tour"; completed, a check-circle on a success tint and the label "Completed". It SHALL expose its state as a pressed state. Activation SHALL invoke the tours store `setCompleted` action instantly — no confirmation dialog — for both mark and unmark directions.
 
 #### Scenario: Toggle shown for tour owner
 
 - **WHEN** the info sheet is opened by the tour's owner
-- **THEN** the completion toggle control SHALL be visible as an icon toggle in the hero line beside the visibility toggle
-- **AND** its visual state SHALL reflect the tour's current `completed` field (filled check-circle if true, empty circle if false)
+- **THEN** the completion toggle control SHALL be visible in the owner toggles row below the hero, beside the visibility toggle
+- **AND** its visual state SHALL reflect the tour's current `completed` field (check-circle on a success tint if true, empty circle if false)
 
 #### Scenario: Toggle hidden or disabled for non-owner
 
@@ -34,9 +34,3 @@ The tour info sheet SHALL display the completion toggle as an icon toggle at the
 - **WHEN** `setCompleted` fails and rolls back
 - **THEN** the toggle control SHALL reflect the original state
 - **AND** the error SHALL be surfaced via the existing snackbar/error presentation pattern
-
-#### Scenario: Toggle is identifiable without a visible text label
-
-- **WHEN** a screen reader focuses the completion toggle of a completed tour
-- **THEN** it SHALL announce "Completed" as a pressed toggle button
-- **AND** after unmarking, the same label SHALL be announced as not pressed

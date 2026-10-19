@@ -20,7 +20,7 @@ const emit = defineEmits<{
 const query = defineModel<string>({ required: true })
 const input = useTemplateRef<HTMLInputElement>('input')
 
-defineExpose({ blur: () => input.value?.blur() })
+defineExpose({ blur: () => input.value?.blur(), focus: () => input.value?.focus() })
 </script>
 
 <template>

@@ -3,18 +3,20 @@ import type { Map as MapLibreMap } from 'maplibre-gl'
 import type { LocationResult } from '@/features/map/data/services/swisstopo-search-service'
 import { usePreferredReducedMotion, watchDebounced } from '@vueuse/core'
 import { LngLat } from 'maplibre-gl'
-import { onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
+import BaseIconButton from '@/core/components/base-icon-button.vue'
 import Crosshair from '@/core/components/crosshair.vue'
 import SearchInput from '@/core/components/search-input.vue'
+import { useVisualViewportInsets } from '@/core/composables/use-visual-viewport-insets'
 import { isOnline } from '@/core/offline/use-online-status'
 import { rankResults, searchLocations } from '@/features/map/data/services/swisstopo-search-service'
 import LocationSearchResults from './location-search-results.vue'
 
 const props = defineProps<{
   map: MapLibreMap | null
-  /** Pixels to offset the Cancel/Continue buttons from the bottom of the viewport. */
+  /** Pixels to offset the dock (search field + Cancel/Continue) from the bottom of the viewport. */
   actionsBottom?: number
 }>()
 
@@ -36,6 +38,19 @@ const results = ref<LocationResult[]>([])
 const searchFailed = ref(false)
 const listOpen = ref(false)
 const chosen = ref<LocationResult | null>(null)
+
+/**
+ * Results, search field and actions share one bottom dock: in thumb reach on phones, and
+ * clear of the collapsed overlay header at the top. While the on-screen keyboard is up the
+ * dock rides on it and drops the actions; the visible top bounds the result list.
+ */
+const viewport = useVisualViewportInsets()
+const keyboardUp = computed(() => viewport.bottom.value > 0)
+const dockStyle = computed(() => ({
+  '--dock-bottom': props.actionsBottom != null ? `${props.actionsBottom}px` : undefined,
+  '--keyboard-inset': `${viewport.bottom.value}px`,
+  '--viewport-top': `${viewport.top.value}px`,
+}))
 
 /**
  * Returns the geographic coordinates at the visual center of the map canvas —
@@ -104,6 +119,11 @@ function closeList() {
   searchInput.value?.blur()
 }
 
+function clearQuery() {
+  query.value = ''
+  searchInput.value?.focus()
+}
+
 function choose(result: LocationResult | undefined) {
   if (!result || !props.map)
     return
@@ -142,25 +162,27 @@ function handleConfirm() {
   <div class="location-picker">
     <Crosshair />
 
-    <div v-if="isOnline" class="search">
+    <div class="dock" :class="{ 'dock--keyboard': keyboardUp }" :style="dockStyle">
+      <Transition name="results">
+        <LocationSearchResults v-if="isOnline && listOpen" :results="results" :failed="searchFailed" @choose="choose" />
+      </Transition>
+
       <SearchInput
-        ref="searchInput" v-model="query" class="search-field"
+        v-if="isOnline" ref="searchInput" v-model="query" class="search-field"
         :placeholder="t('tours.picker.search.placeholder')" :label="t('tours.picker.search.label')"
         @enter="choose(results[0])" @escape="closeList"
-      />
-      <LocationSearchResults v-if="listOpen" :results="results" :failed="searchFailed" @choose="choose" />
-    </div>
+      >
+        <BaseIconButton v-if="query" name="close" size="sm" :label="t('tours.picker.search.clear')" @click="clearQuery" />
+      </SearchInput>
 
-    <div
-      class="actions"
-      :style="props.actionsBottom != null ? { bottom: `${props.actionsBottom}px` } : undefined"
-    >
-      <BaseButton variant="secondary" class="on-map" @click="emit('cancel')">
-        {{ t('tours.picker.cancelBtn') }}
-      </BaseButton>
-      <BaseButton variant="primary" data-testid="picker-confirm" @click="handleConfirm">
-        {{ t('tours.picker.confirmBtn') }}
-      </BaseButton>
+      <div v-show="!keyboardUp" class="actions">
+        <BaseButton variant="secondary" class="on-map" @click="emit('cancel')">
+          {{ t('tours.picker.cancelBtn') }}
+        </BaseButton>
+        <BaseButton variant="primary" data-testid="picker-confirm" @click="handleConfirm">
+          {{ t('tours.picker.confirmBtn') }}
+        </BaseButton>
+      </div>
     </div>
   </div>
 </template>
@@ -173,33 +195,91 @@ function handleConfirm() {
   z-index: 200;
 }
 
-/* Fixed like the actions, so it clears the status bar / notch in a standalone PWA. */
-.search {
+/* Fixed, so it stays above Android system nav and Brave bottom chrome and clears the notch
+   in a standalone PWA (parent .location-picker is absolute inside page-root 100lvh). Spans
+   from the visible top down to its offset and stacks at the bottom, so a long result list
+   scrolls instead of running off-screen. */
+.dock {
   position: fixed;
-  top: calc(var(--spacing-md) + var(--safe-top));
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(420px, calc(100% - 2 * var(--spacing-md)));
+  top: calc(var(--viewport-top) + var(--safe-top) + var(--spacing-md));
+  bottom: var(--dock-bottom, calc(var(--spacing-lg) + var(--safe-bottom)));
+  left: 0;
+  right: 0;
+  width: min(440px, calc(100% - 2 * var(--spacing-md)));
+  margin-inline: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
-  pointer-events: all;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  pointer-events: none;
+  /* Above the crosshair (z 15): results that reach the map centre must hide the reticle. */
+  z-index: 16;
+  transition: bottom var(--motion-duration-medium) var(--motion-ease-emphasized);
 }
 
+.dock > * {
+  pointer-events: auto;
+}
+
+.dock--keyboard {
+  bottom: calc(var(--keyboard-inset) + var(--spacing-sm));
+}
+
+/* Floating pill over the map: frosted and lifted, brand ring while typing. */
 .search-field {
-  box-shadow: var(--shadow-md);
+  flex-shrink: 0;
+  min-height: 52px;
+  padding: var(--spacing-xxs) var(--spacing-xs) var(--spacing-xxs) var(--spacing-md);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 70%, transparent);
+  border-radius: var(--radius-pill);
+  background-color: color-mix(in srgb, var(--color-background) 86%, transparent);
+  backdrop-filter: blur(16px) saturate(1.6);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  box-shadow: var(--shadow-lg);
+  transition:
+    border-color var(--motion-duration-short) var(--motion-ease-standard),
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-short) var(--motion-ease-standard);
+}
+
+.search-field:focus-within {
+  border-color: var(--color-primary);
+  background-color: var(--color-background);
+  box-shadow: var(--shadow-lg), var(--input-focus-ring);
+}
+
+.search-field :deep(.search-icon) {
+  color: var(--color-primary);
+}
+
+.search-field :deep(.search-input) {
+  align-self: stretch;
+}
+
+/* Our own clear button instead of the browser's (absent in Firefox, dated elsewhere). */
+.search-field :deep(.search-input::-webkit-search-cancel-button) {
+  display: none;
+}
+
+.results-enter-active,
+.results-leave-active {
+  transform-origin: bottom center;
+  transition:
+    opacity var(--motion-duration-short) var(--motion-ease-standard),
+    transform var(--motion-duration-medium) var(--motion-ease-emphasized);
+}
+
+.results-enter-from,
+.results-leave-to {
+  opacity: 0;
+  transform: translateY(var(--motion-offset)) scale(0.98);
 }
 
 .actions {
-  /* fixed so actions stay above Android system nav and Brave bottom chrome
-     (parent .location-picker is absolute inside page-root 100lvh). */
-  position: fixed;
-  bottom: calc(var(--spacing-lg) + var(--safe-bottom));
-  left: 50%;
-  transform: translateX(-50%);
+  flex-shrink: 0;
+  align-self: center;
   display: flex;
   gap: var(--spacing-md);
-  pointer-events: all;
 }
 
 /* Tonal secondary needs a lift to stand off bright terrain */
