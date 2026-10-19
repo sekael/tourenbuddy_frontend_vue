@@ -15,12 +15,18 @@ import { useExitAnimation } from '@/core/composables/use-exit-animation'
  * Motion: rises in on mount; on unmount (switching back to the sheet, or closing)
  * it fades out over whatever replaced it — a fade-through, so going sheet ⇄ page
  * never hard-cuts.
+ *
+ * Collapsed (a location pick needs the map): shrinks in place to a title-only bar
+ * at the bottom, like a collapsed bottom sheet. The page is never swapped for a
+ * sheet here — that would remount the slot and drop unsaved form state (#337).
  */
 defineProps<{
   title?: string
   ariaLabel?: string
   /** Show a back arrow instead of the close (×) as the top-left cancel control. */
   showBack?: boolean
+  /** Title-only bottom bar; slot content stays mounted (hidden + inert). */
+  collapsed?: boolean
 }>()
 
 const emit = defineEmits<{ close: [], back: [] }>()
@@ -48,6 +54,7 @@ useExitAnimation(pageRef, token => ({
     <div
       ref="pageRef"
       class="full-screen-page"
+      :class="{ 'full-screen-page--collapsed': collapsed }"
       role="dialog"
       aria-modal="true"
       :aria-labelledby="title ? titleId : undefined"
@@ -55,6 +62,7 @@ useExitAnimation(pageRef, token => ({
     >
       <header class="page-bar">
         <BaseIconButton
+          v-if="!collapsed"
           :name="showBack ? 'arrow_back' : 'close'"
           variant="tonal"
           size="sm"
@@ -65,12 +73,12 @@ useExitAnimation(pageRef, token => ({
           {{ title }}
         </h2>
         <div v-else class="title-spacer" />
-        <div class="page-action">
+        <div v-if="!collapsed" class="page-action">
           <slot name="page-action" />
         </div>
       </header>
 
-      <div class="content">
+      <div v-show="!collapsed" class="content" :inert="collapsed || undefined" :aria-hidden="collapsed || undefined">
         <slot />
       </div>
     </div>
@@ -90,6 +98,19 @@ useExitAnimation(pageRef, token => ({
   z-index: 60;
   pointer-events: auto;
   animation: page-in var(--motion-duration-medium) var(--motion-ease-emphasized) both;
+}
+
+/* Same spot and size as `.bottom-sheet--collapsed`, so the location picker's
+   bottom offset still clears it. Same animation-name: toggling doesn't replay it. */
+.full-screen-page--collapsed {
+  inset: auto 0 0;
+  height: auto;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: var(--shadow-lg);
+}
+
+.full-screen-page--collapsed .page-bar {
+  padding: var(--spacing-md);
 }
 
 @keyframes page-in {

@@ -189,7 +189,10 @@ This replaces any keyboard-inset / visual-viewport height math on the bottom she
 #### Scenario: A pick that needs the map collapses instead of paging
 
 - **WHEN** an edit/create flow needs the map (e.g. picking a location)
-- **THEN** the surface SHALL fall back to the collapsed bottom sheet so the map stays visible, rather than the full-screen page
+- **THEN** the full-screen page SHALL collapse in place to a title-only bar anchored at the bottom of the screen, like a collapsed bottom sheet, so the map stays visible
+- **AND** the page SHALL NOT be replaced by a bottom sheet, so the form and every unsaved value in it survive the pick
+- **AND** the collapsed bar SHALL hide the cancel control and the primary action
+- **AND** when the pick ends the page SHALL expand back to full screen with the form as the user left it
 
 #### Scenario: Desktop is unaffected
 

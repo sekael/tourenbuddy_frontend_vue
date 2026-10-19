@@ -6,8 +6,8 @@ import TourCreationDialog from '@/features/tours/presentation/components/tour-cr
 const AdaptiveOverlayStub = {
   name: 'AdaptiveOverlay',
   template:
-    '<div :data-collapsed="collapsed ? \'true\' : \'false\'" :data-title="title"><slot /></div>',
-  props: ['title', 'collapsed', 'ariaLabel'],
+    '<div :data-collapsed="collapsed ? \'true\' : \'false\'" :data-page="page ? \'true\' : \'false\'" :data-title="title"><slot /></div>',
+  props: ['title', 'collapsed', 'ariaLabel', 'page'],
   emits: ['close'],
 }
 const TourFormStub = {
@@ -50,6 +50,11 @@ describe('tourCreationDialog', () => {
     const wrapper = mountDialog({ isPickingLocation: true })
     expect(wrapper.element.getAttribute('data-collapsed')).toBe('true')
     expect(wrapper.find('[data-testid="tour-form"]').attributes('data-disabled')).toBe('true')
+  })
+
+  it('stays in page mode while picking so the form is not remounted (#337)', () => {
+    const wrapper = mountDialog({ isPickingLocation: true })
+    expect(wrapper.element.getAttribute('data-page')).toBe('true')
   })
 
   it('does not emit confirm while picker is active', async () => {
