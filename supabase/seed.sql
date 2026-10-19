@@ -4,13 +4,15 @@
 -- Runs automatically on `supabase db reset` (configured via [db.seed] in
 -- config.toml). NEVER pushed to production by `supabase db push`.
 --
--- Five test users with verified phone numbers so friendship features work:
+-- Six test users with verified phone numbers so friendship features work:
 --   Patrick (patrick@tourenbuddy.ch / +41790000001) — friends with Jakob; friends with Selim
 --   Jakob   (jakob@tourenbuddy.ch   / +41790000002) — friends with Patrick
 --   Reni    (reni@tourenbuddy.ch    / +41790000003) — pending friend req → Patrick; pending friend req → Selim
 --   Selim   (selim@tourenbuddy.ch   / +41790000004) — no profile name set; friends with Patrick;
 --                                                    pending friend req → Anna; pending incoming from Reni
 --   Anna    (anna@tourenbuddy.ch    / +41790000005) — pending incoming from Selim
+--   Lena    (lena@tourenbuddy.ch    / +41790000006) — friends with Patrick; owns the tour
+--                                                    detail showcase (see end of file)
 --
 -- The Selim/Anna/Reni triplet exercises friendship+request cleanup paths:
 --   • deleting Selim's "Patrick" contact (or its phone) → removes Selim↔Patrick friendship
@@ -23,6 +25,7 @@
 --   ...02 Gfroren Hora — Patrick, partner Jakob (Jakob sees full detail)
 --   ...03 Piz Ela      — JAKOB, partner Patrick (Patrick's friend tour; the one to test
 --                        suggestions on, since only a marked partner may suggest)
+--   ...10–14          — LENA, one per tour-detail display variant (see end of file)
 --
 -- Login locally via OTP code "123456" (see [auth.sms.test_otp] and
 -- [auth.email.test_otp] in supabase/config.toml).
@@ -247,4 +250,165 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.tour_partners (tour_id, contact_id) VALUES
   ('cccccccc-0000-0000-0000-000000000003',
    'aaaaaaaa-0000-0000-0000-000000000002')
+ON CONFLICT DO NOTHING;
+
+-- =============================================================================
+-- Tour detail showcase (change: location-search-and-compact-tour-details)
+-- -----------------------------------------------------------------------------
+-- Lena (lena@tourenbuddy.ch / +41790000006) owns one tour per display variant of the
+-- tour detail view. Log in as Lena for the OWNER view (icon toggles, stamps), as
+-- Patrick for the FRIEND view of the same tours (owner line, "Completed" pill,
+-- "+N more" partners). Check each in the mobile bottom sheet and the desktop drawer.
+--
+--   ...10 Piz Palü …     everything: splitboarding (new icon), date range across two
+--                        months, distinct named start/end, 3 partners (Patrick + two
+--                        unregistered contacts → "+2 more" for Patrick), all texts,
+--                        URL in description, long name for title wrapping
+--   ...11 Schwarzhorn    skitour (new icon), NO elevation (date leads the hero),
+--                        start/end as coordinates only, partner Patrick
+--   ...12 Pischahorn     legacy minimum: name + goal only (no type/elevation/date) →
+--                        badge + coordinates; Patrick sees it gated (not a partner)
+--   ...13 Piz Kesch      completed AND private (both stamps), round trip, notes only;
+--                        invisible to Patrick
+--   ...14 Sentischhorn   completed, past same-month range, partner Patrick + one
+--                        unregistered → Patrick sees "Completed" pill + "+1 more"
+--
+-- Kept apart from Patrick/Jakob/Selim on purpose so the pgTAP suites stay valid:
+--   • Lena is friends with Patrick only → Jakob still sees exactly Patrick's 2 tours
+--     (friend_tour_visibility_rls 4.3a).
+--   • Lena never has availability rows → never part of a weekly summary
+--     (notification_jobs 2.x).
+--   • Dates are relative to current_date and never current_date + 5 → no reminders
+--     (notification_jobs 3e). ...10's range always starts ~1 month out and spans a
+--     month boundary.
+-- =============================================================================
+
+INSERT INTO auth.users (
+  id, instance_id, aud, role,
+  email, encrypted_password, email_confirmed_at,
+  phone, phone_confirmed_at,
+  raw_app_meta_data, raw_user_meta_data,
+  created_at, updated_at,
+  confirmation_token, recovery_token, email_change_token_new, email_change
+) VALUES
+  ('66666666-6666-6666-6666-666666666666',
+   '00000000-0000-0000-0000-000000000000',
+   'authenticated', 'authenticated',
+   'lena@tourenbuddy.ch',
+   crypt('test-password-123', gen_salt('bf')),
+   now(),
+   '41790000006', now(),
+   '{"provider":"email","providers":["email","phone"]}'::jsonb,
+   '{"first_name":"Lena","last_name":"Tester"}'::jsonb,
+   now(), now(), '', '', '', '')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO auth.identities (
+  provider_id, user_id, identity_data, provider,
+  last_sign_in_at, created_at, updated_at
+) VALUES
+  ('66666666-6666-6666-6666-666666666666',
+   '66666666-6666-6666-6666-666666666666',
+   jsonb_build_object('sub','66666666-6666-6666-6666-666666666666','email','lena@tourenbuddy.ch','email_verified',true,'phone_verified',true),
+   'email', now(), now(), now())
+ON CONFLICT (provider, provider_id) DO NOTHING;
+
+INSERT INTO public.user_profile (id, first_name, last_name, locale)
+VALUES ('66666666-6666-6666-6666-666666666666', 'Lena', 'Tester', 'de-CH')
+ON CONFLICT (id) DO NOTHING;
+
+-- Lena's partners: Patrick (registered → resolves to his name for him), Marco (phone of
+-- no registered user) and Sandra (no phone) → both unresolved, i.e. "+N more" pills.
+-- Patrick gets a contact for Lena so the friendship has its usual mutual contacts.
+INSERT INTO public.contacts (id, first_name, last_name, display_name, user_id) VALUES
+  ('aaaaaaaa-0000-0000-0000-000000000010', 'Patrick', 'Tester', 'Patrick Tester',
+   '66666666-6666-6666-6666-666666666666'),
+  ('aaaaaaaa-0000-0000-0000-000000000011', 'Marco', 'Bergführer', 'Marco Bergführer',
+   '66666666-6666-6666-6666-666666666666'),
+  ('aaaaaaaa-0000-0000-0000-000000000012', 'Sandra', 'Beispiel', 'Sandra Beispiel',
+   '66666666-6666-6666-6666-666666666666'),
+  ('aaaaaaaa-0000-0000-0000-000000000013', 'Lena', 'Tester', 'Lena Tester',
+   '11111111-1111-1111-1111-111111111111')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.contact_methods (contact_id, method_type, value, is_primary) VALUES
+  ('aaaaaaaa-0000-0000-0000-000000000010', 'phone', '+41790000001', true),
+  ('aaaaaaaa-0000-0000-0000-000000000011', 'phone', '+41790000099', true),
+  ('aaaaaaaa-0000-0000-0000-000000000013', 'phone', '+41790000006', true)
+ON CONFLICT (contact_id, method_type, value) DO NOTHING;
+
+INSERT INTO public.friendships (request_user_id, response_user_id, created_at)
+VALUES ('66666666-6666-6666-6666-666666666666', '11111111-1111-1111-1111-111111111111', now())
+ON CONFLICT DO NOTHING;
+
+-- Points as (lng, lat) so they stay readable; values are approximate.
+INSERT INTO public.tours (
+  id, user_id, name, tour_type, elevation, planned_date, end_date, visibility, completed,
+  goal, start_point, start_point_name, start_point_elevation,
+  end_point, end_point_name, end_point_elevation,
+  seasons, description, equipment, notes
+) VALUES
+  ('cccccccc-0000-0000-0000-000000000010', '66666666-6666-6666-6666-666666666666',
+   'Piz Palü Ostgipfel über den Fortezzagrat mit Abfahrt nach Morteratsch',
+   'splitboarding', 3882,
+   (date_trunc('month', current_date) + interval '2 months')::date - 2,
+   (date_trunc('month', current_date) + interval '2 months')::date + 1,
+   'friends', false,
+   extensions.st_setsrid(extensions.st_makepoint(9.9614, 46.3779), 4326)::extensions.geography,
+   extensions.st_setsrid(extensions.st_makepoint(9.9706, 46.4120), 4326)::extensions.geography,
+   'Diavolezza', 2973,
+   extensions.st_setsrid(extensions.st_makepoint(9.9369, 46.4594), 4326)::extensions.geography,
+   'Morteratsch', 1896,
+   '{winter,spring}',
+   'Mit der ersten Bahn auf die Diavolezza, über den Persgletscher zum Fortezzagrat und weiter zum Ostgipfel. Abfahrt über den Morteratschgletscher, je nach Verhältnissen mit Abstecher zur Bovalhütte. Verhältnisse vorher prüfen: https://www.slf.ch/de/lawinenbulletin-und-schneesituation/ und Routenbeschreibung im SAC-Tourenportal https://www.sac-cas.ch/de/huetten-und-touren/sac-tourenportal/',
+   'Splitboard, Felle, Harscheisen, Steigeisen, Pickel, Gurt, Seil 30 m, 2 Eisschrauben, LVS/Schaufel/Sonde',
+   'Treffpunkt 07:15 Talstation Diavolezza. Zug ab Pontresina 06:52. Rückfahrt ab Morteratsch stündlich.'),
+  ('cccccccc-0000-0000-0000-000000000011', '66666666-6666-6666-6666-666666666666',
+   'Schwarzhorn', 'skitour', NULL,
+   current_date + 21, NULL,
+   'friends', false,
+   extensions.st_setsrid(extensions.st_makepoint(9.9403, 46.7343), 4326)::extensions.geography,
+   extensions.st_setsrid(extensions.st_makepoint(9.9472, 46.7497), 4326)::extensions.geography,
+   NULL, NULL,
+   extensions.st_setsrid(extensions.st_makepoint(9.9100, 46.7709), 4326)::extensions.geography,
+   NULL, NULL,
+   '{winter}', NULL, NULL, NULL),
+  ('cccccccc-0000-0000-0000-000000000012', '66666666-6666-6666-6666-666666666666',
+   'Pischahorn', NULL, NULL,
+   NULL, NULL,
+   'friends', false,
+   extensions.st_setsrid(extensions.st_makepoint(9.9306, 46.8131), 4326)::extensions.geography,
+   NULL, NULL, NULL,
+   NULL, NULL, NULL,
+   NULL, NULL, NULL, NULL),
+  ('cccccccc-0000-0000-0000-000000000013', '66666666-6666-6666-6666-666666666666',
+   'Piz Kesch', 'mountaineering', 3418,
+   current_date - 30, NULL,
+   'private', true,
+   extensions.st_setsrid(extensions.st_makepoint(9.8727, 46.6213), 4326)::extensions.geography,
+   extensions.st_setsrid(extensions.st_makepoint(9.8650, 46.6383), 4326)::extensions.geography,
+   'Chamanna digl Kesch', 2632,
+   extensions.st_setsrid(extensions.st_makepoint(9.8650, 46.6383), 4326)::extensions.geography,
+   'Chamanna digl Kesch', 2632,
+   '{summer}', NULL, NULL,
+   'Porchabella-Gletscher stark ausgeapert, Randkluft beim Einstieg offen.'),
+  ('cccccccc-0000-0000-0000-000000000014', '66666666-6666-6666-6666-666666666666',
+   'Sentischhorn', 'ski-mountaineering', 2827,
+   current_date - 60, current_date - 59,
+   'friends', true,
+   extensions.st_setsrid(extensions.st_makepoint(9.9087, 46.7186), 4326)::extensions.geography,
+   extensions.st_setsrid(extensions.st_makepoint(9.9375, 46.7114), 4326)::extensions.geography,
+   'Dürrboden', 2007,
+   extensions.st_setsrid(extensions.st_makepoint(9.8936, 46.7578), 4326)::extensions.geography,
+   'Teufi', 1702,
+   '{winter}', 'Übernachtung im Berghaus Dürrboden.', NULL, NULL)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.tour_partners (tour_id, contact_id) VALUES
+  ('cccccccc-0000-0000-0000-000000000010', 'aaaaaaaa-0000-0000-0000-000000000010'),
+  ('cccccccc-0000-0000-0000-000000000010', 'aaaaaaaa-0000-0000-0000-000000000011'),
+  ('cccccccc-0000-0000-0000-000000000010', 'aaaaaaaa-0000-0000-0000-000000000012'),
+  ('cccccccc-0000-0000-0000-000000000011', 'aaaaaaaa-0000-0000-0000-000000000010'),
+  ('cccccccc-0000-0000-0000-000000000014', 'aaaaaaaa-0000-0000-0000-000000000010'),
+  ('cccccccc-0000-0000-0000-000000000014', 'aaaaaaaa-0000-0000-0000-000000000011')
 ON CONFLICT DO NOTHING;

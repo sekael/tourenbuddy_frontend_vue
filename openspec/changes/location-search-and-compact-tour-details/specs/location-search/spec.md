@@ -1,0 +1,176 @@
+# Spec Delta
+
+## Purpose
+
+Lets users find a place by name while picking a map location, jump the map there, and keep the
+place's name for the picked point instead of hunting for it by panning.
+
+## ADDED Requirements
+
+### Requirement: Search field in every location pick
+
+While the location picker is active and the device is online, the map SHALL show a search field above the map content. It SHALL be available for every pick: tour goal, start point and end point, during tour creation and while editing a tour.
+
+#### Scenario: Picking a tour goal
+
+- **WHEN** the user starts adding a tour and the crosshair appears
+- **THEN** a search field SHALL be visible at the top of the map
+
+#### Scenario: Picking a start point in edit mode
+
+- **WHEN** the owner re-picks the start point of an existing tour
+- **THEN** the same search field SHALL be visible
+
+#### Scenario: Picker closed
+
+- **WHEN** the picker is confirmed or cancelled
+- **THEN** the search field and any result list SHALL disappear
+
+### Requirement: Location search results
+
+The search SHALL query Swiss place names, summits, huts, localities, postcodes and addresses once the trimmed input has at least 2 characters, after a short typing pause. Each result SHALL show its name as plain text plus its kind and region. Only the latest query's results SHALL be shown.
+
+#### Scenario: Searching a summit
+
+- **WHEN** the user types "Piz Bernina"
+- **THEN** a result list SHALL show "Piz Bernina" with its kind (summit) and region
+
+#### Scenario: Input too short
+
+- **WHEN** the trimmed input has fewer than 2 characters
+- **THEN** no request SHALL be sent and no result list SHALL be shown
+
+#### Scenario: Superseded query
+
+- **WHEN** the user keeps typing while an earlier query is still in flight
+- **THEN** the earlier query's results SHALL never replace the newer ones
+
+#### Scenario: Duplicate names near the current view come first
+
+- **WHEN** the map is zoomed in to at least regional level (zoom 9 or closer) near Leukerbad and the user searches "Schwarzhorn"
+- **THEN** among results named "Schwarzhorn", the one nearest the map centre SHALL be listed first
+- **AND** results with other names SHALL keep the search service's order
+- **AND** no result SHALL be hidden because of the current view
+
+#### Scenario: Overview keeps the service order
+
+- **WHEN** the map is zoomed out further than regional level (below zoom 9)
+- **THEN** results SHALL be listed in the search service's order
+
+#### Scenario: Nearby duplicate beyond the first page
+
+- **WHEN** more same-named places exist than the list shows
+- **THEN** the nearest one SHALL still be listed, because ranking happens over a larger candidate set than the visible list (up to 30 candidates, 8 shown)
+
+#### Scenario: Markup in source labels
+
+- **WHEN** a result's source label contains HTML markup
+- **THEN** it SHALL render as text only, never as markup
+
+#### Scenario: No matches
+
+- **WHEN** the query returns no results
+- **THEN** the list SHALL show a localized "no places found" message
+
+#### Scenario: Request fails
+
+- **WHEN** the search request fails or times out
+- **THEN** the list SHALL show a localized error message and the picker SHALL keep working
+
+### Requirement: Choosing a result moves the crosshair onto it
+
+Choosing a result SHALL move the map so the crosshair sits on the result's location at a zoom suited to the result kind, and SHALL close the result list. The picker SHALL stay open, so the user can still pan to adjust before confirming.
+
+#### Scenario: Result chosen
+
+- **WHEN** the user chooses "Piz Bernina"
+- **THEN** the map SHALL move so the crosshair is on Piz Bernina
+- **AND** the result list SHALL close and the Cancel/Continue actions SHALL stay available
+
+#### Scenario: The crosshair is the marker
+
+- **WHEN** the user chooses a result
+- **THEN** no additional pin SHALL be placed; the crosshair marks the location to be confirmed
+
+#### Scenario: Re-picking with search keeps the current marker
+
+- **WHEN** the user re-picks the goal of a draft or existing tour and chooses a search result
+- **THEN** the current goal marker SHALL stay visible at its old position until the new pick is confirmed
+- **AND** cancelling the pick SHALL leave it where it was
+
+#### Scenario: Adjusting after a jump
+
+- **WHEN** the user pans the map after choosing a result and then confirms
+- **THEN** the confirmed location SHALL be the crosshair position, not the result's location
+
+### Requirement: Search field interaction
+
+The search field SHALL get out of the way of the map once the user acts on the map or a result: choosing a result, touching or panning the map, or pressing Escape SHALL close the result list and dismiss the on-screen keyboard. Enter SHALL choose the first result. Clearing the field SHALL also forget the last chosen result.
+
+#### Scenario: Keyboard drops after choosing
+
+- **WHEN** the user chooses a result on a phone
+- **THEN** the result list SHALL close, the on-screen keyboard SHALL be dismissed, and the field SHALL keep the chosen name
+
+#### Scenario: Touching the map
+
+- **WHEN** the result list is open and the user touches or pans the map
+- **THEN** the list SHALL close and the keyboard SHALL be dismissed without moving to any result
+
+#### Scenario: Enter picks the first result
+
+- **WHEN** results are listed and the user presses Enter
+- **THEN** the first result SHALL be chosen as if tapped
+
+#### Scenario: Escape closes the list only
+
+- **WHEN** the result list is open and the user presses Escape
+- **THEN** the list SHALL close and the picker SHALL stay open
+
+#### Scenario: Clearing forgets the chosen result
+
+- **WHEN** the user chooses a result, clears the field, and confirms without a new choice
+- **THEN** the name SHALL come from the nearby-name lookup
+
+### Requirement: Search result names the picked point
+
+When the user confirms within 50 m of the last chosen result, that result's name SHALL be used as the suggested name of the picked point (the tour name for a goal, the start or end point name otherwise) instead of the nearby-name lookup. Elevation lookup SHALL run unchanged.
+
+#### Scenario: Confirm on the result
+
+- **WHEN** the user chooses "Piz Bernina" and confirms without panning
+- **THEN** the tour creation form SHALL be prefilled with the name "Piz Bernina"
+
+#### Scenario: Confirm after moving away
+
+- **WHEN** the user chooses a result, pans more than 50 m away, then confirms
+- **THEN** the name SHALL come from the existing nearby-name lookup
+
+#### Scenario: Start point from search
+
+- **WHEN** the user picks a start point by choosing the result "Pontresina" and confirms without panning
+- **THEN** the start point name SHALL be "Pontresina"
+
+### Requirement: Re-picking keeps a name the user typed
+
+During tour creation, a goal re-pick SHALL replace the tour name with the new suggestion only while the name field is empty or still holds the last automatically filled name. A name the user typed SHALL be kept.
+
+#### Scenario: User typed their own name
+
+- **WHEN** the user types "Bernina Traverse", re-picks the goal and chooses the result "Piz Bernina"
+- **THEN** the tour name SHALL remain "Bernina Traverse"
+
+#### Scenario: Name still auto-filled
+
+- **WHEN** the name field still holds the previous suggestion and the user re-picks the goal onto "Piz Palü"
+- **THEN** the tour name SHALL become "Piz Palü"
+
+### Requirement: Search is unavailable offline
+
+The search field SHALL be hidden while the device is offline; location picking by panning SHALL keep working.
+
+#### Scenario: Going offline while picking
+
+- **WHEN** the device goes offline while the picker is open
+- **THEN** the search field and any result list SHALL be hidden
+- **AND** the crosshair and Cancel/Continue actions SHALL remain usable
