@@ -3,6 +3,7 @@ import type { Map as MapLibreMap, Point } from 'maplibre-gl'
 import type { StageContext } from '@/features/onboarding/presentation/composables/use-onboarding-tour'
 import type { TourSurface } from '@/features/onboarding/presentation/onboarding-steps'
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
+import type { PointPick } from '@/features/tours/presentation/composables/use-swisstopo-fill'
 import { LngLatBounds } from 'maplibre-gl'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -45,8 +46,6 @@ import OnboardingWelcome from '@/features/onboarding/presentation/components/onb
 import { useOnboardingTour } from '@/features/onboarding/presentation/composables/use-onboarding-tour'
 import { ONBOARDING_STEPS } from '@/features/onboarding/presentation/onboarding-steps'
 import { useOnboardingTourStore } from '@/features/onboarding/presentation/stores/onboarding-tour-store'
-import { getElevation } from '@/features/tours/data/services/swisstopo-elevation-service'
-import { suggestTourName } from '@/features/tours/data/services/swisstopo-name-service'
 import { isSameGoal } from '@/features/tours/domain/distance'
 import TourCreationDialog from '@/features/tours/presentation/components/tour-creation-dialog.vue'
 import TourInfoSheet from '@/features/tours/presentation/components/tour-info-sheet.vue'
@@ -58,7 +57,7 @@ import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import UserProfileSheet from '@/features/user/presentation/components/user-profile-sheet.vue'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
-type PickPointType = 'goal' | 'start' | 'end'
+type PickPointType = PointPick['type']
 type OverlayName
   = | 'feedback'
     | 'profile'
@@ -155,17 +154,8 @@ const addTourTooltip = computed(() =>
   isAuthenticated.value ? undefined : t('map.overlay.signInToAddToursTooltip'),
 )
 
-// Pre-fill values for the creation dialog (from Swisstopo lookups & secondary picks)
-const dialogInitialElevation = ref<number | null>(null)
-const dialogInitialName = ref<string | null>(null)
-const dialogInitialStartPoint = ref<{ lng: number, lat: number } | null>(null)
-const dialogInitialEndPoint = ref<{ lng: number, lat: number } | null>(null)
-const dialogInitialStartPointMeta = ref<{ name: string | null, elevation: number | null } | null>(
-  null,
-)
-const dialogInitialEndPointMeta = ref<{ name: string | null, elevation: number | null } | null>(
-  null,
-)
+// The latest pick for the creation form, which looks up the point's name and elevation itself.
+const dialogPick = ref<PointPick | null>(null)
 
 // Derived reactively from store so it updates immediately when tours are mutated.
 // Search friend tours too — a friend marker (partner tours) can be selected on the map.
@@ -194,21 +184,11 @@ const tourDetailOriginDay = ref<string | null>(null)
 const editContactId = ref<string | null>(null)
 
 // Prop-based handoff to info sheet after a location pick in edit mode
-const editPickedPoint = ref<{
-  type: 'start' | 'end' | 'goal'
-  location: { lng: number, lat: number }
-  elevation?: number | null
-  suggestedName?: string | null
-} | null>(null)
+const editPickedPoint = ref<PointPick | null>(null)
 
 function resetTourCreationState() {
   pendingLocation.value = null
-  dialogInitialElevation.value = null
-  dialogInitialName.value = null
-  dialogInitialStartPoint.value = null
-  dialogInitialEndPoint.value = null
-  dialogInitialStartPointMeta.value = null
-  dialogInitialEndPointMeta.value = null
+  dialogPick.value = null
   pendingPickType.value = 'goal'
   // Drop the draft marker on every cancel/dismiss path (closeOverlay, openOverlay
   // switching away). The save path re-asserts it afterwards so it survives the round-trip.
@@ -608,53 +588,31 @@ function handleTourClicked(tourId: string) {
   openOverlay('tour')
 }
 
-async function handleLocationConfirmed({ name: searchName, ...location }: { lng: number, lat: number, name?: string }) {
+function handleLocationConfirmed({ name, ...location }: { lng: number, lat: number, name?: string }) {
   mapStore.setPickingLocation(false)
-  // A place chosen in the picker's search names the point; otherwise look one up nearby.
-  const lookupName = () => searchName ?? suggestTourName(location)
+  // The form fills in the point's name and elevation as Swisstopo answers — nothing waits here.
+  // A place chosen in the picker's search brings its own name.
+  const pick = (type: PickPointType): PointPick => ({ type, location, name })
 
   // Pick triggered from the info sheet edit mode — route result back via prop
   if (isPickingForEdit.value) {
     const pickType = pendingPickType.value as PickPointType
     isPickingForEdit.value = false
     pendingPickType.value = 'goal'
-    if (pickType === 'goal') {
-      // Tentative goal as a lighter-tone preview marker until edit mode closes,
-      // color is already held by previewTourType, so no changes needed here.
+    // Tentative goal as a lighter-tone preview marker until edit mode closes,
+    // color is already held by previewTourType, so no changes needed here.
+    if (pickType === 'goal')
       mapStore.setPreviewGoal(location)
-      // Run Swisstopo lookups in parallel (same as creation flow)
-      const [elevation, suggestedName] = await Promise.all([
-        getElevation(location),
-        lookupName(),
-      ])
-      editPickedPoint.value = { type: 'goal', location, elevation, suggestedName }
-    }
-    else {
-      const [elevation, suggestedName] = await Promise.all([
-        getElevation(location),
-        lookupName(),
-      ])
-      editPickedPoint.value = { type: pickType, location, elevation, suggestedName }
-    }
+    editPickedPoint.value = pick(pickType)
     return
   }
 
-  // Immediately hide the pill bar for the entire tour-creation flow — prevents
-  // flickering during the async Swisstopo lookups between pick and dialog open.
+  // Hide the pill bar for the entire tour-creation flow, without `openOverlay`'s teardown
+  // of whatever was open before.
   activeOverlay.value = 'tour-creation'
 
-  if (pendingPickType.value === 'start') {
-    dialogInitialStartPoint.value = location
-    const [elevation, name] = await Promise.all([getElevation(location), lookupName()])
-    dialogInitialStartPointMeta.value = { name, elevation }
-    openOverlay('tour-creation')
-    return
-  }
-
-  if (pendingPickType.value === 'end') {
-    dialogInitialEndPoint.value = location
-    const [elevation, name] = await Promise.all([getElevation(location), lookupName()])
-    dialogInitialEndPointMeta.value = { name, elevation }
+  if (pendingPickType.value === 'start' || pendingPickType.value === 'end') {
+    dialogPick.value = pick(pendingPickType.value)
     openOverlay('tour-creation')
     return
   }
@@ -665,25 +623,18 @@ async function handleLocationConfirmed({ name: searchName, ...location }: { lng:
       pendingLocation.value = location
       // Move the single draft marker to the re-picked goal (no second marker).
       mapStore.setPreviewGoal(location)
-      const [elevation, name] = await Promise.all([
-        getElevation(location),
-        lookupName(),
-      ])
-      dialogInitialElevation.value = elevation
-      dialogInitialName.value = name
+      dialogPick.value = pick('goal')
     }
     pendingPickType.value = 'goal'
     openOverlay('tour-creation')
     return
   }
 
-  // Initial goal pick: fire Swisstopo lookups in parallel before showing dialog
+  // Initial goal pick
   pendingLocation.value = location
   // Show the draft marker immediately; type is neutral until the form picks one.
   mapStore.setPreviewGoal(location)
-  const [elevation, name] = await Promise.all([getElevation(location), lookupName()])
-  dialogInitialElevation.value = elevation
-  dialogInitialName.value = name
+  dialogPick.value = pick('goal')
   openOverlay('tour-creation')
 }
 
@@ -1090,10 +1041,7 @@ function handleDialogClose() {
       </div>
       <div v-else-if="showTourCreationDialog" key="tour-creation" class="sheet-host">
         <TourCreationDialog
-          :initial-elevation="dialogInitialElevation" :initial-name="dialogInitialName"
-          :initial-start-point="dialogInitialStartPoint" :initial-end-point="dialogInitialEndPoint"
-          :initial-start-point-meta="dialogInitialStartPointMeta" :initial-end-point-meta="dialogInitialEndPointMeta"
-          :initial-goal="pendingLocation" :active-pick-type="pendingPickType"
+          :pick="dialogPick" :initial-goal="pendingLocation" :active-pick-type="pendingPickType"
           @confirm="(d, r, tid, did) => handleTourCreated(d, r, tid, did)" @close="handleDialogClose"
           @pick-point="handlePickPoint" @tour-type-change="mapStore.setPreviewTourType($event)"
           @start-point-change="handleStartPointChange" @end-point-change="handleEndPointChange"

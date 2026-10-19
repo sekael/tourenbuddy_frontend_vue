@@ -40,8 +40,7 @@ const TourFormStub = {
     'allowGoalEdit',
     'currentGoal',
     'initialDraft',
-    'initialStartPoint',
-    'initialEndPoint',
+    'pick',
     'disabled',
   ],
   emits: ['submit', 'cancel', 'pickPoint'],
@@ -215,6 +214,23 @@ describe('tourInfoSheet', () => {
       )
       // Back to view mode
       expect(wrapper.find('[data-testid="tour-form"]').exists()).toBe(false)
+    })
+
+    it('should relay a pick to the form, and not replay it in the next edit session', async () => {
+      const wrapper = mountSheet()
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
+      const pick = { type: 'goal', location: { lng: 9.9, lat: 46.4 }, name: 'Piz Palü' }
+      await wrapper.setProps({ editPickedPoint: pick })
+
+      const form = () => wrapper.findComponent({ name: 'TourForm' })
+      expect(form().props('pick')).toEqual(pick)
+      expect(form().props('currentGoal')).toEqual(pick.location)
+      expect(wrapper.emitted('pointConsumed')).toHaveLength(1)
+
+      // The form looks up a pick on mount, so a stale one would refill a fresh session.
+      await wrapper.find('[data-testid="stub-cancel"]').trigger('click')
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
+      expect(form().props('pick')).toBeNull()
     })
 
     it('should collapse sheet and disable form while location picker is active', async () => {

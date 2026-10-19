@@ -30,6 +30,10 @@ splitboard tours also show a walking-with-poles glyph that reads as hiking, not 
   a matching splitboarder for `splitboarding` — replace `nordic_walking` everywhere the tour type
   icon appears (type picker, list, detail, calendar). Bundled as in-repo SVGs through the existing
   icon registry; still no CDN or icon font.
+- **Swisstopo lookups no longer block (regression fix):** the tour form opens right after a
+  pick; name and elevation fill in independently, each field showing a spinner while Swisstopo
+  answers and a "enter manually" placeholder when it does not (10 s timeout, was 5 s). Typing
+  in a field cancels its lookup, and a late answer never replaces what the user typed.
 
 ## Capabilities
 
@@ -45,6 +49,10 @@ splitboard tours also show a walking-with-poles glyph that reads as hiking, not 
   lacks.
 - `tour-info-extended`: "Completion toggle control" describes the owner toggles row below the hero (the
   current text still describes a long-gone bottom-right action row).
+- `elevation-lookup`, `name-suggestion`: 10 s timeout and caller cancellation; auto-fill
+  happens in the open form, per field, with loading/failed states and typed values protected.
+- `tour-form-extended`: start/end point metadata is looked up by the form, not fetched before
+  it opens.
 
 ## Impact
 
@@ -52,7 +60,9 @@ splitboard tours also show a walking-with-poles glyph that reads as hiking, not 
   new `features/map/data/services/swisstopo-search-service.ts`, `map-page.vue` (name prefill
   handoff), `features/tours/presentation/components/tour-info-sheet.vue` (template + styles),
   `features/tours/data/models/tour-type.ts`, `core/components/icons.ts`, `vite.config.ts`
-  (custom icon collection), new `src/assets/icons/*.svg`, both locale files.
+  (custom icon collection), `tour-form.vue` + `tour-creation-dialog.vue` (`pick` prop), new
+  `features/tours/presentation/composables/use-swisstopo-fill.ts`, both Swisstopo services
+  (`signal`, 10 s), new `src/assets/icons/*.svg`, both locale files.
 - **External API:** `api3.geo.admin.ch/rest/services/api/SearchServer` (free, no key, CORS
   enabled) — same host as the existing height/identify calls.
 - **No** DB, Worker, or dependency changes. Guided tour targets unaffected.

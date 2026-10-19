@@ -2,6 +2,7 @@
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
+import type { PointPick } from '@/features/tours/presentation/composables/use-swisstopo-fill'
 import { storeToRefs } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
@@ -50,12 +51,7 @@ import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 const props = defineProps<{
   tour: Tour
   /** Set by map-page after a location pick triggered from this sheet. Reset to null via pointConsumed. */
-  editPickedPoint?: {
-    type: 'start' | 'end' | 'goal'
-    location: { lng: number, lat: number }
-    elevation?: number | null
-    suggestedName?: string | null
-  } | null
+  editPickedPoint?: PointPick | null
   /** Desktop only: show a back button pointing to the tours list. */
   showBack?: boolean
   /** Which pick type is active — drives the collapsed header label in edit mode. */
@@ -104,27 +100,16 @@ const mode = ref<'view' | 'edit' | 'suggest' | 'review' | 'history'>('view')
 /** IDs of attachments that existed when edit mode was entered — used for cancel rollback. */
 const editBaseAttachmentIds = ref<Set<string>>(new Set())
 
-// Pending goal/points during edit — updated reactively via editPickedPoint prop
+// Pending goal during edit, and the latest pick for the form (it looks up name + elevation)
 const pendingGoal = ref<{ lng: number, lat: number }>({ ...props.tour.goal })
-const pendingStartPoint = ref<{ lng: number, lat: number } | null>(null)
-const pendingEndPoint = ref<{ lng: number, lat: number } | null>(null)
-// Elevation/name updated from Swisstopo after a goal re-pick in edit mode
-const pendingElevation = ref<number | null>(null)
-const pendingSuggestedName = ref<string | null>(null)
-const pendingStartPointMeta = ref<{ name: string | null, elevation: number | null } | null>(null)
-const pendingEndPointMeta = ref<{ name: string | null, elevation: number | null } | null>(null)
+const pendingPick = ref<PointPick | null>(null)
 
 function enterEditMode() {
   // Clean slate: any prior offline-write error is dismissed so it never resurfaces on the
   // next edit (it re-appears only if THIS edit fails again).
   clearOfflineWriteError()
   pendingGoal.value = { ...props.tour.goal }
-  pendingStartPoint.value = null
-  pendingEndPoint.value = null
-  pendingElevation.value = null
-  pendingSuggestedName.value = null
-  pendingStartPointMeta.value = null
-  pendingEndPointMeta.value = null
+  pendingPick.value = null
   // Snapshot attachment IDs before edit so cancel can rollback newly added ones
   editBaseAttachmentIds.value = new Set(
     (attachmentsStore.attachmentsByTour[props.tour.id] ?? []).map(a => a.id),
@@ -158,25 +143,9 @@ watch(
   (pick) => {
     if (!pick)
       return
-    if (pick.type === 'goal') {
+    if (pick.type === 'goal')
       pendingGoal.value = pick.location
-      pendingElevation.value = pick.elevation ?? null
-      pendingSuggestedName.value = pick.suggestedName ?? null
-    }
-    else if (pick.type === 'start') {
-      pendingStartPoint.value = pick.location
-      pendingStartPointMeta.value = {
-        name: pick.suggestedName ?? null,
-        elevation: pick.elevation ?? null,
-      }
-    }
-    else {
-      pendingEndPoint.value = pick.location
-      pendingEndPointMeta.value = {
-        name: pick.suggestedName ?? null,
-        elevation: pick.elevation ?? null,
-      }
-    }
+    pendingPick.value = pick
     emit('pointConsumed')
   },
 )
@@ -243,16 +212,12 @@ function enterSuggestMode(batchId?: string) {
   clearOfflineWriteError()
   const pending = batchId ? myPendingSuggestions.value.filter(s => s.batchId === batchId) : []
   suggestBatchId.value = batchId ?? uuidv4()
-  suggestSeedDraft.value = seedDraftFromPending(props.tour, pending)
-
+  const seed = seedDraftFromPending(props.tour, pending)
   const goal = pendingGoalFrom(pending)
+  // A proposed goal carries its elevation; it seeds the field when the tour has none.
+  suggestSeedDraft.value = { ...seed, elevation: seed.elevation ?? goal?.elevation ?? null }
   pendingGoal.value = goal ? { lng: goal.lng, lat: goal.lat } : { ...props.tour.goal }
-  pendingElevation.value = goal?.elevation ?? null
-  pendingStartPoint.value = null
-  pendingEndPoint.value = null
-  pendingSuggestedName.value = null
-  pendingStartPointMeta.value = null
-  pendingEndPointMeta.value = null
+  pendingPick.value = null
 
   // The partner needs the owner's attachments loaded to propose a removal against them.
   void attachmentsStore.load(props.tour.id)
@@ -759,10 +724,7 @@ const formattedElevation = computed(() => {
       <TourForm
         ref="editFormRef" form-id="tour-edit-form" :embedded="editAsPage"
         :submit-label="t('tours.infoSheet.saveLabel')" :allow-goal-edit="true" :current-goal="pendingGoal"
-        :initial-draft="tour" :tour-id="tour.id" :initial-elevation="pendingElevation"
-        :initial-name="pendingSuggestedName" :initial-start-point="pendingStartPoint"
-        :initial-end-point="pendingEndPoint" :initial-start-point-meta="pendingStartPointMeta"
-        :initial-end-point-meta="pendingEndPointMeta" :disabled="isPicking"
+        :initial-draft="tour" :tour-id="tour.id" :pick="pendingPick" :disabled="isPicking"
         @submit="(d, r) => handleEditSubmit(d, r)" @cancel="cancelEdit" @pick-point="emit('pickPoint', $event)"
         @tour-type-change="emit('tourTypeChange', $event)"
         @start-point-change="emit('startPointChange', $event)"
@@ -778,10 +740,7 @@ const formattedElevation = computed(() => {
       <TourForm
         ref="editFormRef" form-id="tour-suggest-form" mode="suggest" :embedded="editAsPage"
         :submit-label="t('tours.suggestions.submitBtn')" :allow-goal-edit="true" :current-goal="pendingGoal"
-        :initial-draft="suggestSeedDraft" :tour-id="tour.id" :initial-elevation="pendingElevation"
-        :initial-name="pendingSuggestedName" :initial-start-point="pendingStartPoint"
-        :initial-end-point="pendingEndPoint" :initial-start-point-meta="pendingStartPointMeta"
-        :initial-end-point-meta="pendingEndPointMeta" :disabled="isPicking"
+        :initial-draft="suggestSeedDraft" :tour-id="tour.id" :pick="pendingPick" :disabled="isPicking"
         @submit="handleSuggestSubmit" @cancel="cancelSuggest" @pick-point="emit('pickPoint', $event)"
         @tour-type-change="emit('tourTypeChange', $event)"
         @start-point-change="emit('startPointChange', $event)"

@@ -90,8 +90,8 @@ top is already taken by the collapsed dialog/drawer header.
 ### D5 — Name handoff on the existing `confirm` event
 `confirm` payload becomes `{ lng, lat, name?: string }`. The picker sets `name` only when
 `lastChosen` is within 50 m of the crosshair (`LngLat.distanceTo`, built into MapLibre). In
-`map-page.vue`, every name-lookup site (`goal` initial, goal re-pick, start, end, edit
-pick) uses `location.name ?? await suggestTourName(location)`; elevation lookup is unchanged.
+`map-page.vue` passes it on with the pick; the form uses it instead of the nearby lookup
+(D8).
 *Why 50 m:* survives accidental touch drift on mobile, but any deliberate pan to a different
 feature falls back to the radius lookup.
 *Alternative:* a separate `nameHint` store field — rejected: more state, same effect.
@@ -118,8 +118,32 @@ registered in `icons.ts` as `ski_touring` / `splitboarding`; `TOUR_TYPE_ICONS` p
 `skitour`/`splitboarding` at them. Same bundling, tree-shaking and offline precache as all icons.
 *Alternative:* a second Iconify set (`mdi`) — rejected, no suitable glyph exists (checked).
 
+### D8 — The form looks up name and elevation, each field on its own
+Found while testing: Swisstopo's height service answered in 1–13 s or failed (502/503), and
+`map-page.vue` awaited `Promise.all([getElevation, suggestTourName])` before opening the
+dialog, so a slow height also held back the fast name. Now `map-page.vue` and the info sheet
+pass only a `pick` (`{ type, location, name? }`, a new object per pick) to `TourForm`, which
+opens at once and runs one lookup per field through `useSwisstopoFill(field)`:
+- **Loading:** the field is emptied (its old value described the previous point), a spinner
+  sits in its end edge and the placeholder reads "Loading from Swisstopo…".
+- **Answer:** fills the field. **No answer** (timeout, error, nothing nearby, outside CH):
+  empty field, placeholder "Not available from Swisstopo – enter manually".
+- **Typed values win:** an `input` event marks the field as the user's and aborts its request
+  (`AbortController`, same stale check as the search: `controller !== own`). A pick skips a
+  field that holds a typed value. Seeded values (edit mode) and values the form filled
+  itself still follow the next pick, as names already did.
+- Removing a start/end point, a newer pick and unmount abort the request too.
+- Both services take an optional caller `signal` (linked by hand, iOS < 17.4 lacks
+  `AbortSignal.any`), stay silent on a caller abort, and wait 10 s instead of 5 s.
+*Why typing, not focus, cancels:* focusing (tab, tap to read) adds no user data; an answer
+landing 200 ms later still saves typing.
+*Alternative:* keep the fetch in `map-page.vue` and pass status props + a cancel event down
+through dialog and sheet — rejected: six props × two paths for state only the form needs.
+
 ## Risks / Trade-offs
 
+- [Saving while the elevation is still loading] → the tour saves without it; the request is
+  aborted with the form. Accepted: the user chose not to wait, and can edit it in later.
 - [GeoAdmin search unavailable or slow] → 5 s timeout, error message in the list; picking by
   panning keeps working.
 - [Search result kinds are German source terms ("Alpiner Gipfel")] → shown as data, not UI copy;

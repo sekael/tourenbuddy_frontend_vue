@@ -36,12 +36,19 @@
 - [x] 5.4 Add/adjust i18n keys (Start/End inline labels, toggle aria-labels) in both locales; verify `npm run check:locales` passes
 - [x] 5.5 Keep the owner-toggles row (labelled tonal buttons below the hero, as before this change) after user review: hero icon toggles and a checkbox chip did not read as "complete"/"make private"; restore `completeTourBtn`/`visibilityMake*` keys and `radio_button_unchecked`; verify info-sheet tests and screenshots
 
-## 6. Finalize
+## 6. Non-blocking Swisstopo lookups (D8)
 
-- [x] 6.1 Run `npx eslint . --fix`, then `npx eslint` with zero warnings, `npm run type-check` and `npm run test`; verify all pass
-- [ ] 6.2 After `supabase db reset`, walk the app once (as Lena and as Patrick): add a tour via search (goal + start), edit a tour's end via search, toggle complete/private in the hero, go offline in the picker; verify each matches the specs
-- [ ] 6.3 Prompt the user to commit with a ready-to-copy message, e.g. `feat(tours): location search in picker and compact tour details (#339, #340)`
-- [ ] 6.4 Prompt the user to push and open a PR titled with the highest-impact type (`feat(tours): …`), body referencing `Closes #339` and `Closes #340`
+- [x] 6.1 Both services take an optional caller `signal` (manual link), return `null` silently on a caller abort, and time out after 10 s; verify service tests (caller abort, nothing settles before 10 s)
+- [x] 6.2 Add `useSwisstopoFill(field)` (loading/failed status, abort on `input`, typed value skipped by later picks, stale check) and a `pick` prop on `TourForm` replacing `initialName`/`initialElevation`/`initialStartPoint`/`initialEndPoint`/`initial*PointMeta`; the six name/elevation inputs show the spinner and status placeholder; removing a start/end point aborts its lookups; verify `tour-form` tests (name fills while elevation loads, typing cancels and wins, re-pick skips typed field, failure placeholder, superseded pick, search name, seeded form looks nothing up, removed point) and that each guard fails a mutation
+- [x] 6.3 `map-page.vue` and `tour-info-sheet.vue` hand over `{ type, location, name? }` and open the form without awaiting; suggest mode seeds a proposed goal's elevation through the seed draft; verify map-page and info-sheet tests
+- [x] 6.4 Add `tours.form.swisstopo.loading` / `.failed` to both locales; verify `npm run check:locales`
+
+## 7. Finalize
+
+- [x] 7.1 Run `npx eslint . --fix`, then `npx eslint` with zero warnings, `npm run type-check` and `npm run test`; verify all pass
+- [ ] 7.2 After `supabase db reset`, walk the app once (as Lena and as Patrick): add a tour via search (goal + start), edit a tour's end via search, toggle complete/private in the owner toggles row, go offline in the picker; with Swisstopo throttled (devtools), check the spinner and the manual-entry placeholder in name and elevation, and that typing during a load keeps the typed value; verify each matches the specs
+- [ ] 7.3 Prompt the user to commit with a ready-to-copy message, e.g. `feat(tours): location search in picker and compact tour details (#339, #340)`
+- [ ] 7.4 Prompt the user to push and open a PR titled with the highest-impact type (`feat(tours): …`), body referencing `Closes #339` and `Closes #340`
 
 ## Workflow follow-up
 

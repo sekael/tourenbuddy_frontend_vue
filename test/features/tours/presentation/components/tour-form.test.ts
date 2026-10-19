@@ -24,6 +24,13 @@ vi.mock('@/features/tours/data/services/gpx-parser', async (importOriginal) => {
   return { ...actual, parseGpxFile: vi.fn() }
 })
 
+const { mockGetElevation, mockSuggestTourName } = vi.hoisted(() => ({
+  mockGetElevation: vi.fn(),
+  mockSuggestTourName: vi.fn(),
+}))
+vi.mock('@/features/tours/data/services/swisstopo-elevation-service', () => ({ getElevation: mockGetElevation }))
+vi.mock('@/features/tours/data/services/swisstopo-name-service', () => ({ suggestTourName: mockSuggestTourName }))
+
 vi.mock('@/features/auth/presentation/stores/auth-store', () => ({
   useAuthStore: vi.fn().mockReturnValue({ currentUser: { id: 'user-abc' } }),
 }))
@@ -90,8 +97,8 @@ describe('tourForm', () => {
   describe('end-point row conditional rendering', () => {
     it('shows "Add end point" button and hides point inputs when endPoint is null', () => {
       // End-point section only renders once a start point exists.
-      const wrapper = mountForm({ initialStartPoint: { lng: 7.8, lat: 46.5 } })
-      // No initialEndPoint → end-point row collapsed to "Add" button
+      const wrapper = mountForm({ initialDraft: { startPoint: { lng: 7.8, lat: 46.5 } } })
+      // No end point → end-point row collapsed to "Add" button
       const addBtn = wrapper.findAll('button').filter(b => b.text().includes('addEndPointBtn'))
       expect(addBtn.length).toBeGreaterThan(0)
       // Only the start point shows coordinates; end point is still the "Add" prompt.
@@ -99,10 +106,9 @@ describe('tourForm', () => {
       expect(coords.length).toBe(1)
     })
 
-    it('reveals end-point row when initialEndPoint is provided', () => {
+    it('reveals end-point row when an end point is set', () => {
       const wrapper = mountForm({
-        initialStartPoint: { lng: 7.8, lat: 46.5 },
-        initialEndPoint: { lng: 7.9, lat: 46.5 },
+        initialDraft: { startPoint: { lng: 7.8, lat: 46.5 }, endPoint: { lng: 7.9, lat: 46.5 } },
       })
       // "Add end point" button should not be present
       const addBtn = wrapper.findAll('button').filter(b => b.text().includes('addEndPointBtn'))
@@ -116,9 +122,12 @@ describe('tourForm', () => {
   describe('clearing end point also clears metadata', () => {
     it('should include null endPointName and endPointElevation in draft when end point is removed', async () => {
       const wrapper = mountForm({
-        initialStartPoint: { lng: 7.8, lat: 46.5 },
-        initialEndPoint: { lng: 7.9, lat: 46.5 },
-        initialEndPointMeta: { name: 'Murren', elevation: 1638 },
+        initialDraft: {
+          startPoint: { lng: 7.8, lat: 46.5 },
+          endPoint: { lng: 7.9, lat: 46.5 },
+          endPointName: 'Murren',
+          endPointElevation: 1638,
+        },
       })
       // Remove the end point
       const removeBtn = wrapper.find('[data-testid="remove-end-btn"]')
@@ -403,42 +412,137 @@ describe('tourForm', () => {
     })
   })
 
-  describe('initialName prop reactivity', () => {
-    it('updates name field when initialName prop changes to a non-null value', async () => {
-      const wrapper = mountForm({ initialName: 'Original' })
-      await wrapper.setProps({ initialName: 'Updated Name' })
-      await nextTick()
-      const nameInput = wrapper.find('#tf-tourName').element as HTMLInputElement
-      expect(nameInput.value).toBe('Updated Name')
+  describe('swisstopo lookups', () => {
+    const GOAL = { lng: 9.9, lat: 46.4 }
+    const OTHER = { lng: 9.95, lat: 46.41 }
+    const goalPick = (location = GOAL, name?: string) => ({ type: 'goal', location, name })
+    const value = (wrapper: ReturnType<typeof mountForm>, id: string) =>
+      (wrapper.find(`#${id}`).element as HTMLInputElement).value
+
+    /** A lookup the test resolves by hand; `signal` is what the form handed the service. */
+    function pending<T>(mock: typeof mockGetElevation) {
+      const call = { resolve: (_: T) => {}, signal: undefined as AbortSignal | undefined }
+      mock.mockImplementationOnce((_coords: unknown, signal: AbortSignal) => {
+        call.signal = signal
+        return new Promise<T>(resolve => (call.resolve = resolve))
+      })
+      return call
+    }
+
+    beforeEach(() => {
+      mockGetElevation.mockReset().mockResolvedValue(null)
+      mockSuggestTourName.mockReset().mockResolvedValue(null)
     })
 
-    it('does not overwrite name when initialName prop changes to null', async () => {
-      const wrapper = mountForm({ initialName: 'Keep Me' })
-      await wrapper.setProps({ initialName: null })
-      await nextTick()
-      const nameInput = wrapper.find('#tf-tourName').element as HTMLInputElement
-      expect(nameInput.value).toBe('Keep Me')
+    it('fills the name while the elevation is still loading, with a spinner and message in the elevation field', async () => {
+      mockSuggestTourName.mockResolvedValue('Piz Palü')
+      const elevation = pending<number | null>(mockGetElevation)
+      const wrapper = mountForm({ currentGoal: GOAL, pick: goalPick() })
+      await flushPromises()
+
+      expect(value(wrapper, 'tf-tourName')).toBe('Piz Palü')
+      expect(wrapper.find('#tf-elevation').attributes('placeholder')).toBe('tours.form.swisstopo.loading')
+      expect(wrapper.findAll('.lookup-spinner')).toHaveLength(1)
+
+      elevation.resolve(3905)
+      await flushPromises()
+      expect(value(wrapper, 'tf-elevation')).toBe('3905')
+      expect(wrapper.find('.lookup-spinner').exists()).toBe(false)
     })
 
-    it('keeps a name the user typed when a re-pick suggests another', async () => {
-      const wrapper = mountForm({ initialName: 'Piz Palü' })
+    it('cancels the request and keeps the typed value when the user types before Swisstopo answers', async () => {
+      const elevation = pending<number | null>(mockGetElevation)
+      const wrapper = mountForm({ currentGoal: GOAL, pick: goalPick() })
+      await flushPromises()
+
+      await wrapper.find('#tf-elevation').setValue('3000')
+      expect(elevation.signal?.aborted).toBe(true)
+      expect(wrapper.find('#tf-elevation').attributes('placeholder')).toBe('tours.form.elevationPlaceholder')
+
+      elevation.resolve(3905)
+      await flushPromises()
+      expect(value(wrapper, 'tf-elevation')).toBe('3000')
+    })
+
+    it('skips a typed field on a re-pick: no request, no spinner, value kept', async () => {
+      const wrapper = mountForm({ currentGoal: GOAL, pick: goalPick() })
+      await flushPromises()
       await wrapper.find('#tf-tourName').setValue('Bernina Traverse')
-      await wrapper.setProps({ initialName: 'Piz Bernina' })
-      expect((wrapper.find('#tf-tourName').element as HTMLInputElement).value).toBe('Bernina Traverse')
+      mockSuggestTourName.mockClear()
+
+      await wrapper.setProps({ pick: goalPick(OTHER) })
+      await flushPromises()
+      expect(mockSuggestTourName).not.toHaveBeenCalled()
+      expect(value(wrapper, 'tf-tourName')).toBe('Bernina Traverse')
+      expect(mockGetElevation).toHaveBeenLastCalledWith(OTHER, expect.any(AbortSignal))
     })
 
-    it('keeps replacing a name that is still the last suggestion', async () => {
-      const wrapper = mountForm({ initialName: 'Piz Palü' })
-      await wrapper.setProps({ initialName: 'Piz Bernina' })
-      await wrapper.setProps({ initialName: 'Piz Morteratsch' })
-      expect((wrapper.find('#tf-tourName').element as HTMLInputElement).value).toBe('Piz Morteratsch')
-    })
+    it('replaces a value it filled itself on a re-pick, and fills a field the user emptied', async () => {
+      mockSuggestTourName.mockResolvedValueOnce('Piz Palü').mockResolvedValueOnce('Piz Bernina')
+      const wrapper = mountForm({ currentGoal: GOAL, pick: goalPick() })
+      await flushPromises()
+      await wrapper.setProps({ pick: goalPick(OTHER) })
+      await flushPromises()
+      expect(value(wrapper, 'tf-tourName')).toBe('Piz Bernina')
 
-    it('fills a field the user emptied', async () => {
-      const wrapper = mountForm({ initialName: 'Piz Palü' })
       await wrapper.find('#tf-tourName').setValue('  ')
-      await wrapper.setProps({ initialName: 'Piz Bernina' })
-      expect((wrapper.find('#tf-tourName').element as HTMLInputElement).value).toBe('Piz Bernina')
+      mockSuggestTourName.mockResolvedValueOnce('Piz Morteratsch')
+      await wrapper.setProps({ pick: goalPick(GOAL) })
+      await flushPromises()
+      expect(value(wrapper, 'tf-tourName')).toBe('Piz Morteratsch')
+    })
+
+    it('leaves the field empty with the manual-entry placeholder when Swisstopo fails or times out', async () => {
+      const wrapper = mountForm({ currentGoal: GOAL, pick: goalPick() })
+      await flushPromises()
+      for (const id of ['tf-tourName', 'tf-elevation']) {
+        expect(value(wrapper, id)).toBe('')
+        expect(wrapper.find(`#${id}`).attributes('placeholder')).toBe('tours.form.swisstopo.failed')
+      }
+      expect(wrapper.find('.lookup-spinner').exists()).toBe(false)
+    })
+
+    it('drops the answer of a superseded pick', async () => {
+      const first = pending<number | null>(mockGetElevation)
+      const wrapper = mountForm({ currentGoal: GOAL, pick: goalPick() })
+      mockGetElevation.mockResolvedValueOnce(4049)
+      await wrapper.setProps({ pick: goalPick(OTHER) })
+      await flushPromises()
+      expect(first.signal?.aborted).toBe(true)
+
+      first.resolve(3905)
+      await flushPromises()
+      expect(value(wrapper, 'tf-elevation')).toBe('4049')
+    })
+
+    it('names the point after the picker search result without a nearby lookup', async () => {
+      const wrapper = mountForm({ currentGoal: GOAL, pick: goalPick(GOAL, 'Piz Palü') })
+      await flushPromises()
+      expect(mockSuggestTourName).not.toHaveBeenCalled()
+      expect(value(wrapper, 'tf-tourName')).toBe('Piz Palü')
+    })
+
+    it('looks nothing up for a form seeded from a saved tour', async () => {
+      const wrapper = mountForm({ initialDraft: { name: 'Saved', elevation: 2000 } })
+      await flushPromises()
+      expect(mockSuggestTourName).not.toHaveBeenCalled()
+      expect(mockGetElevation).not.toHaveBeenCalled()
+      expect(value(wrapper, 'tf-tourName')).toBe('Saved')
+    })
+
+    it('cancels a removed start point\'s lookups so a late answer is never saved', async () => {
+      const name = pending<string | null>(mockSuggestTourName)
+      const wrapper = mountForm({ pick: { type: 'start', location: GOAL } })
+      await flushPromises()
+      await wrapper.find('[data-testid="remove-start-btn"]').trigger('click')
+      expect(name.signal?.aborted).toBe(true)
+
+      name.resolve('Bernina Hospiz')
+      await flushPromises()
+      await wrapper.find('#tf-tourName').setValue('Tour')
+      await wrapper.find('form').trigger('submit.prevent')
+      const draft = (wrapper.emitted('submit')![0] as unknown[])[0] as Record<string, unknown>
+      expect(draft.startPointName).toBeNull()
     })
   })
 
@@ -497,7 +601,7 @@ describe('tourForm — suggest mode attachment cap (D10)', () => {
 
   function mountSuggest(existing: number) {
     return mount(TourForm, {
-      props: { submitLabel: 'Suggest', mode: 'suggest', tourId: 't1', initialName: 'Tour' },
+      props: { submitLabel: 'Suggest', mode: 'suggest', tourId: 't1', initialDraft: { name: 'Tour' } },
       global: {
         // Real actions: `stage` is the guard under test, and toggling a removal has to
         // move the picker's remaining slots for real.

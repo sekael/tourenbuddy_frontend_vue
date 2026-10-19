@@ -506,7 +506,11 @@
       "gpxUploadFailed": "Upload failed. Try again.",
       "gpxRetry": "Retry",
       "gpxExistingTrack": "Existing track",
-      "attachmentsSectionLabel": "Attachments"
+      "attachmentsSectionLabel": "Attachments",
+      "swisstopo": {
+        "loading": "Loading value…",
+        "failed": "Not available - enter manually"
+      }
     },
     "creation": {
       "title": "New Tour",

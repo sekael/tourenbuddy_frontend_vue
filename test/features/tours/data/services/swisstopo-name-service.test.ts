@@ -5,6 +5,13 @@ function makeIdentifyResponse(results: object[]): Response {
   return new Response(JSON.stringify({ results }), { status: 200 })
 }
 
+/** A fetch that only settles when its signal aborts — a Swisstopo that never answers. */
+function hangingFetch() {
+  vi.mocked(fetch).mockImplementationOnce((_url, init) => new Promise((_resolve, reject) => {
+    init!.signal!.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
+  }))
+}
+
 describe('suggestTourName', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn())
@@ -121,5 +128,12 @@ describe('suggestTourName', () => {
     expect(url).toContain('sr=2056')
     expect(url).toContain('swissnames3d')
     expect(url).toContain('geometry=')
+  })
+  it('should abort the request and return null when the caller stops waiting', async () => {
+    hangingFetch()
+    const caller = new AbortController()
+    const result = suggestTourName({ lng: 8.0, lat: 46.5 }, caller.signal)
+    caller.abort()
+    expect(await result).toBeNull()
   })
 })

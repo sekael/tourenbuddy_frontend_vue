@@ -4,6 +4,7 @@ import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Visibility } from '@/features/tours/data/models/visibility'
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
+import type { PointPick, SwisstopoFill } from '@/features/tours/presentation/composables/use-swisstopo-fill'
 import { storeToRefs } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
 import { computed, ref, watch } from 'vue'
@@ -31,8 +32,11 @@ import {
   parseGpxFile,
 } from '@/features/tours/data/services/gpx-parser'
 import { gpxStorageKey, removeGpx, uploadGpx, uploadGpxToKey } from '@/features/tours/data/services/gpx-storage-service'
+import { getElevation } from '@/features/tours/data/services/swisstopo-elevation-service'
+import { suggestTourName } from '@/features/tours/data/services/swisstopo-name-service'
 import TourAttachmentsPicker from '@/features/tours/presentation/components/tour-attachments-picker.vue'
 import UploadTile from '@/features/tours/presentation/components/upload-tile.vue'
+import { useSwisstopoFill } from '@/features/tours/presentation/composables/use-swisstopo-fill'
 import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 
 const props = defineProps<{
@@ -44,18 +48,11 @@ const props = defineProps<{
   currentGoal?: { lng: number, lat: number } | null
   /** Seeds all editable fields (edit mode). */
   initialDraft?: TourDraft | null
-  /** Prop-updates from parent after elevation lookup (create mode). */
-  initialElevation?: number | null
-  /** Prop-updates from parent after name suggestion (create mode). */
-  initialName?: string | null
-  /** Prop-updates from parent after start-point pick. */
-  initialStartPoint?: { lng: number, lat: number } | null
-  /** Prop-updates from parent after end-point pick. */
-  initialEndPoint?: { lng: number, lat: number } | null
-  /** Metadata (name + elevation) fetched after start-point pick. */
-  initialStartPointMeta?: { name: string | null, elevation: number | null } | null
-  /** Metadata (name + elevation) fetched after end-point pick. */
-  initialEndPointMeta?: { name: string | null, elevation: number | null } | null
+  /**
+   * The latest confirmed location pick — a new object per pick. Sets the start/end point
+   * (the goal comes in through `currentGoal`) and looks up that point's name and elevation.
+   */
+  pick?: PointPick | null
   /** When true, disable all inputs and buttons — used while location picker is active. */
   disabled?: boolean
   /** Tour ID — only required in edit mode; used by the attachments picker. */
@@ -71,7 +68,7 @@ const props = defineProps<{
   /**
    * `suggest` composes a proposal on a FRIEND's tour (change: tour-suggestions) instead of
    * editing one. The form itself is unchanged — the same inputs, the same point pickers,
-   * the same Swisstopo lookups through the parent — but the controls that are not
+   * the same Swisstopo lookups — but the controls that are not
    * suggestable are hidden (design D2: visibility is the privacy control itself,
    * completion is the owner's assertion about their own day, and the partner set lives in
    * the owner's contact namespace), blobs go to the suggester's staging prefix (D9), and
@@ -106,7 +103,7 @@ const contactsStore = useContactsStore()
 const { contacts } = storeToRefs(contactsStore)
 
 // ── Internal form state ──────────────────────────────────────────────────────
-const tourName = ref(props.initialDraft?.name ?? props.initialName ?? '')
+const tourName = ref(props.initialDraft?.name ?? '')
 const plannedDate = ref(
   props.initialDraft?.plannedDate ? props.initialDraft.plannedDate.toISOString().split('T')[0] : '',
 )
@@ -126,41 +123,18 @@ watch(plannedDate, (value) => {
 const selectedPartnerIds = ref<Set<string>>(new Set(props.initialDraft?.partnerIds ?? []))
 const visibility = ref<Visibility>(props.initialDraft?.visibility ?? DEFAULT_VISIBILITY)
 const selectedTourType = ref<TourType | null>(props.initialDraft?.tourType ?? null)
-const elevation = ref<string>(
-  props.initialDraft?.elevation != null
-    ? String(props.initialDraft.elevation)
-    : props.initialElevation != null
-      ? String(props.initialElevation)
-      : '',
-)
-const elevationAutoFilled = ref(props.initialElevation != null)
+const elevation = ref(props.initialDraft?.elevation != null ? String(props.initialDraft.elevation) : '')
 const description = ref(props.initialDraft?.description ?? '')
 const selectedSeasons = ref<Set<Season>>(new Set(props.initialDraft?.seasons ?? []))
-const startPoint = ref<{ lng: number, lat: number } | null>(
-  props.initialDraft?.startPoint ?? props.initialStartPoint ?? null,
+const startPoint = ref(props.initialDraft?.startPoint ?? null)
+const endPoint = ref(props.initialDraft?.endPoint ?? null)
+const startPointName = ref(props.initialDraft?.startPointName ?? '')
+const startPointElevation = ref(
+  props.initialDraft?.startPointElevation != null ? String(props.initialDraft.startPointElevation) : '',
 )
-const endPoint = ref<{ lng: number, lat: number } | null>(
-  props.initialDraft?.endPoint ?? props.initialEndPoint ?? null,
-)
-const startPointName = ref<string>(
-  props.initialDraft?.startPointName ?? props.initialStartPointMeta?.name ?? '',
-)
-const startPointElevation = ref<string>(
-  props.initialDraft?.startPointElevation != null
-    ? String(props.initialDraft.startPointElevation)
-    : props.initialStartPointMeta?.elevation != null
-      ? String(props.initialStartPointMeta.elevation)
-      : '',
-)
-const endPointName = ref<string>(
-  props.initialDraft?.endPointName ?? props.initialEndPointMeta?.name ?? '',
-)
-const endPointElevation = ref<string>(
-  props.initialDraft?.endPointElevation != null
-    ? String(props.initialDraft.endPointElevation)
-    : props.initialEndPointMeta?.elevation != null
-      ? String(props.initialEndPointMeta.elevation)
-      : '',
+const endPointName = ref(props.initialDraft?.endPointName ?? '')
+const endPointElevation = ref(
+  props.initialDraft?.endPointElevation != null ? String(props.initialDraft.endPointElevation) : '',
 )
 const equipment = ref(props.initialDraft?.equipment ?? '')
 const notes = ref(props.initialDraft?.notes ?? '')
@@ -339,64 +313,42 @@ watch(
   { immediate: true },
 )
 
-// Sync individual prop updates from parent (create mode post-pick callbacks).
+// ── Swisstopo lookups ────────────────────────────────────────────────────────
+// Name and elevation fill in independently as each answer lands — the form never waits.
+const goalName = useSwisstopoFill(tourName)
+const goalElevation = useSwisstopoFill(elevation)
+const startName = useSwisstopoFill(startPointName)
+const startElevation = useSwisstopoFill(startPointElevation)
+const endName = useSwisstopoFill(endPointName)
+const endElevation = useSwisstopoFill(endPointElevation)
+const fills = {
+  goal: [goalName, goalElevation],
+  start: [startName, startElevation],
+  end: [endName, endElevation],
+} as const
+
 watch(
-  () => props.initialElevation,
-  (val) => {
-    if (val != null) {
-      elevation.value = String(val)
-      elevationAutoFilled.value = true
-    }
-  },
-)
-// A re-pick replaces the name only while it is empty or still the one the form started
-// with / last filled in itself — a name the user typed survives.
-let autoName = tourName.value
-watch(
-  () => props.initialName,
-  (val) => {
-    if (val == null || (tourName.value.trim() && tourName.value !== autoName))
+  () => props.pick,
+  (pick) => {
+    if (!pick)
       return
-    tourName.value = val
-    autoName = val
+    if (pick.type === 'start')
+      startPoint.value = pick.location
+    else if (pick.type === 'end')
+      endPoint.value = pick.location
+    const [nameFill, elevationFill] = fills[pick.type]
+    // A place chosen in the picker's search names the point; otherwise look one up nearby.
+    void nameFill.fill(async signal => pick.name ?? suggestTourName(pick.location, signal))
+    void elevationFill.fill(signal => getElevation(pick.location, signal))
   },
+  { immediate: true },
 )
-watch(
-  () => props.initialStartPoint,
-  (val) => {
-    if (val)
-      startPoint.value = val
-  },
-)
-watch(
-  () => props.initialStartPointMeta,
-  (val) => {
-    if (val) {
-      if (val.name != null)
-        startPointName.value = val.name
-      if (val.elevation != null)
-        startPointElevation.value = String(val.elevation)
-    }
-  },
-)
-watch(
-  () => props.initialEndPoint,
-  (val) => {
-    if (val)
-      endPoint.value = val
-  },
-)
-watch(
-  () => props.initialEndPointMeta,
-  (val) => {
-    if (val) {
-      if (val.name != null)
-        endPointName.value = val.name
-      if (val.elevation != null)
-        endPointElevation.value = String(val.elevation)
-    }
-  },
-)
+
+function lookupPlaceholder(fill: SwisstopoFill, placeholder: string) {
+  if (fill.status === 'loading')
+    return t('tours.form.swisstopo.loading')
+  return fill.status === 'failed' ? t('tours.form.swisstopo.failed') : placeholder
+}
 
 // Surface the live activity type so the map can tint the draft preview marker.
 watch(selectedTourType, type => emit('tourTypeChange', type), { immediate: true })
@@ -595,6 +547,8 @@ function openGpxPicker() {
 }
 
 function handleRemoveStart() {
+  for (const fill of [startName, startElevation, endName, endElevation])
+    fill.cancel()
   startPoint.value = null
   startPointName.value = ''
   startPointElevation.value = ''
@@ -604,6 +558,8 @@ function handleRemoveStart() {
 }
 
 function handleRemoveEnd() {
+  endName.cancel()
+  endElevation.cancel()
   endPoint.value = null
   endPointName.value = ''
   endPointElevation.value = ''
@@ -704,18 +660,22 @@ defineExpose({ cancel: handleCancel, submitBlocked })
 
           <div class="field">
             <label class="label" for="tf-tourName">{{ t('tours.form.nameLabel') }} <span class="required-mark">*</span></label>
-            <input
-              id="tf-tourName"
-              v-model="tourName"
-              class="input"
-              :class="{ 'input--error': nameError }"
-              type="text"
-              maxlength="100"
-              :placeholder="t('tours.form.namePlaceholder')"
-              aria-required="true"
-              :aria-invalid="nameError"
-              @input="nameError = false"
-            >
+            <div class="lookup">
+              <input
+                id="tf-tourName"
+                v-model="tourName"
+                class="input"
+                :class="{ 'input--error': nameError }"
+                type="text"
+                maxlength="100"
+                :placeholder="lookupPlaceholder(goalName, t('tours.form.namePlaceholder'))"
+                aria-required="true"
+                :aria-invalid="nameError"
+                :aria-busy="goalName.status === 'loading'"
+                @input="nameError = false; goalName.input()"
+              >
+              <span v-if="goalName.status === 'loading'" class="lookup-spinner" aria-hidden="true" />
+            </div>
             <p v-if="nameError" class="field-error">
               {{ t('tours.form.nameRequired') }}
             </p>
@@ -742,16 +702,20 @@ defineExpose({ cancel: handleCancel, submitBlocked })
             </div>
             <div class="field">
               <label class="label" for="tf-elevation">{{ t('tours.form.elevationLabel') }}</label>
-              <input
-                id="tf-elevation"
-                v-model="elevation"
-                class="input"
-                type="number"
-                min="0"
-                max="9000"
-                :placeholder="t('tours.form.elevationPlaceholder')"
-                @input="elevationAutoFilled = false"
-              >
+              <div class="lookup">
+                <input
+                  id="tf-elevation"
+                  v-model="elevation"
+                  class="input"
+                  type="number"
+                  min="0"
+                  max="9000"
+                  :placeholder="lookupPlaceholder(goalElevation, t('tours.form.elevationPlaceholder'))"
+                  :aria-busy="goalElevation.status === 'loading'"
+                  @input="goalElevation.input()"
+                >
+                <span v-if="goalElevation.status === 'loading'" class="lookup-spinner" aria-hidden="true" />
+              </div>
             </div>
           </div>
 
@@ -784,28 +748,38 @@ defineExpose({ cancel: handleCancel, submitBlocked })
                 <label class="label" for="tf-start-name">{{
                   t('tours.form.pointNameLabel')
                 }}</label>
-                <input
-                  id="tf-start-name"
-                  v-model="startPointName"
-                  class="input"
-                  type="text"
-                  maxlength="100"
-                  :placeholder="t('tours.form.namePlaceholder')"
-                >
+                <div class="lookup">
+                  <input
+                    id="tf-start-name"
+                    v-model="startPointName"
+                    class="input"
+                    type="text"
+                    maxlength="100"
+                    :placeholder="lookupPlaceholder(startName, t('tours.form.namePlaceholder'))"
+                    :aria-busy="startName.status === 'loading'"
+                    @input="startName.input()"
+                  >
+                  <span v-if="startName.status === 'loading'" class="lookup-spinner" aria-hidden="true" />
+                </div>
               </div>
               <div class="field">
                 <label class="label" for="tf-start-elevation">{{
                   t('tours.form.elevationLabel')
                 }}</label>
-                <input
-                  id="tf-start-elevation"
-                  v-model="startPointElevation"
-                  class="input"
-                  type="number"
-                  min="0"
-                  max="9000"
-                  :placeholder="t('tours.form.elevationPlaceholder')"
-                >
+                <div class="lookup">
+                  <input
+                    id="tf-start-elevation"
+                    v-model="startPointElevation"
+                    class="input"
+                    type="number"
+                    min="0"
+                    max="9000"
+                    :placeholder="lookupPlaceholder(startElevation, t('tours.form.elevationPlaceholder'))"
+                    :aria-busy="startElevation.status === 'loading'"
+                    @input="startElevation.input()"
+                  >
+                  <span v-if="startElevation.status === 'loading'" class="lookup-spinner" aria-hidden="true" />
+                </div>
               </div>
             </template>
           </div>
@@ -834,28 +808,38 @@ defineExpose({ cancel: handleCancel, submitBlocked })
               </div>
               <div class="field">
                 <label class="label" for="tf-end-name">{{ t('tours.form.pointNameLabel') }}</label>
-                <input
-                  id="tf-end-name"
-                  v-model="endPointName"
-                  class="input"
-                  type="text"
-                  maxlength="100"
-                  :placeholder="t('tours.form.namePlaceholder')"
-                >
+                <div class="lookup">
+                  <input
+                    id="tf-end-name"
+                    v-model="endPointName"
+                    class="input"
+                    type="text"
+                    maxlength="100"
+                    :placeholder="lookupPlaceholder(endName, t('tours.form.namePlaceholder'))"
+                    :aria-busy="endName.status === 'loading'"
+                    @input="endName.input()"
+                  >
+                  <span v-if="endName.status === 'loading'" class="lookup-spinner" aria-hidden="true" />
+                </div>
               </div>
               <div class="field">
                 <label class="label" for="tf-end-elevation">{{
                   t('tours.form.elevationLabel')
                 }}</label>
-                <input
-                  id="tf-end-elevation"
-                  v-model="endPointElevation"
-                  class="input"
-                  type="number"
-                  min="0"
-                  max="9000"
-                  :placeholder="t('tours.form.elevationPlaceholder')"
-                >
+                <div class="lookup">
+                  <input
+                    id="tf-end-elevation"
+                    v-model="endPointElevation"
+                    class="input"
+                    type="number"
+                    min="0"
+                    max="9000"
+                    :placeholder="lookupPlaceholder(endElevation, t('tours.form.elevationPlaceholder'))"
+                    :aria-busy="endElevation.status === 'loading'"
+                    @input="endElevation.input()"
+                  >
+                  <span v-if="endElevation.status === 'loading'" class="lookup-spinner" aria-hidden="true" />
+                </div>
               </div>
             </template>
             <template v-else>
@@ -1364,6 +1348,37 @@ defineExpose({ cancel: handleCancel, submitBlocked })
 
 .input--error:focus {
   border-color: var(--color-error);
+}
+
+/* A field Swisstopo is filling: spinner inside its end edge, placeholder says why it is empty. */
+.lookup {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.lookup:has(.lookup-spinner) .input {
+  padding-inline-end: calc(var(--spacing-md) * 2 + 16px);
+}
+
+.lookup-spinner {
+  position: absolute;
+  inset-inline-end: var(--spacing-md);
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  margin-top: -8px;
+  border: 2px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: lookup-spin 0.8s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes lookup-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .required-mark {
