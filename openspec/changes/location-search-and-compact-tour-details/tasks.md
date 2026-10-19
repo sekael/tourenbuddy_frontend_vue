@@ -6,37 +6,37 @@
 
 ## 2. Location search service (D1–D3)
 
-- [ ] 2.1 Add `src/features/map/data/services/swisstopo-search-service.ts`: `searchLocations(query, lang, signal)` calling GeoAdmin `SearchServer` (origins `gazetteer,zipcode,gg25,address`, `sr=4326`, `limit=30`, 5 s timeout), Zod-validated response, `DOMParser` label split into `name`/`kind`/`region`, origin→zoom table; verify by type-check
-- [ ] 2.2 Add pure `rankResults(results, center, zoom)` (D3b: duplicate-name groups nearest-first from z9, API order otherwise, cap 8); verify with tests in 2.3
-- [ ] 2.3 Add `test/features/map/data/services/swisstopo-search-service.test.ts` covering: label with entities/markup → plain text, malformed entries dropped, non-OK response and abort → error/empty handling, unknown origin → default zoom, ranking: duplicates reordered only at z ≥ 9, distinct names never reordered, nearby duplicate beyond position 8 surfaces; verify `npx vitest run test/features/map/data/services/swisstopo-search-service.test.ts` passes
+- [x] 2.1 Add `src/features/map/data/services/swisstopo-search-service.ts`: `searchLocations(query, lang, signal)` calling GeoAdmin `SearchServer` (origins `gazetteer,zipcode,gg25,address`, `sr=4326`, `limit=30`, 5 s timeout), Zod-validated response, `DOMParser` label split into `name`/`kind`/`region`, origin→zoom table; verify by type-check
+- [x] 2.2 Add pure `rankResults(results, center, zoom)` (D3b: duplicate-name groups nearest-first from z9, API order otherwise, cap 8); verify with tests in 2.3
+- [x] 2.3 Add `test/features/map/data/services/swisstopo-search-service.test.ts` covering: label with entities/markup → plain text, malformed entries dropped, non-OK response and abort → error/empty handling, unknown origin → default zoom, ranking: duplicates reordered only at z ≥ 9, distinct names never reordered, nearby duplicate beyond position 8 surfaces; verify `npx vitest run test/features/map/data/services/swisstopo-search-service.test.ts` passes
 
 ## 3. Search in the location picker (D4, D5)
 
-- [ ] 3.0 Extract the tour list `search-row` into `src/core/components/search-input.vue` (v-model, clear, `enter`/`escape` emits) and switch `tour-list-sheet.vue` to it; verify the existing tour-list-sheet tests still pass and the list search looks unchanged
+- [x] 3.0 Extract the tour list `search-row` into `src/core/components/search-input.vue` (v-model, clear, `enter`/`escape` emits) and switch `tour-list-sheet.vue` to it; verify the existing tour-list-sheet tests still pass and the list search looks unchanged
 - [ ] 3.1 Extend `location-picker.vue` with the search field + result list (debounced ≥ 2 chars, abort superseded requests — **gap for the user: query/debounce/abort/stale-response logic, `TODO(me)` marker; aborted requests must not surface as errors**, empty/error states, hidden when `isOnline` is false); choosing a result moves the camera with zero padding (`flyTo`, `jumpTo` under reduced motion) and closes the list; verify manually that the crosshair lands on the chosen summit
-- [ ] 3.2 Emit `confirm({ lng, lat, name? })`, setting `name` only when the last chosen result is within 50 m of the crosshair; verify via test 3.4
-- [ ] 3.3 In `map-page.vue`, use `location.name ?? await suggestTourName(location)` at every name-lookup site (initial goal, goal re-pick, start, end, edit pick); verify creating a tour via search prefills the name
-- [ ] 3.4 In `tour-form.vue`, make the `initialName` watcher overwrite only when the name is empty or equals the last auto-filled value; verify with a `tour-form` test (typed name survives re-pick, auto name is replaced)
-- [ ] 3.5 Extend `test/features/map/presentation/components/location-picker.test.ts`: < 2 chars sends no request, stale response ignored, offline hides the field, Enter chooses first result, map touch / Escape close the list without moving, clearing forgets the chosen result, choosing a result leaves `previewGoal` untouched, confirm after > 50 m pan omits `name`, confirm on result includes it; verify the file passes
-- [ ] 3.6 Add i18n keys (search placeholder, no results, error, field aria-label) to `en.json` and `de-CH.json`; verify `npm run check:locales` passes
+- [x] 3.2 Emit `confirm({ lng, lat, name? })`, setting `name` only when the last chosen result is within 50 m of the crosshair; verify via test 3.4
+- [x] 3.3 In `map-page.vue`, use `location.name ?? await suggestTourName(location)` at every name-lookup site (initial goal, goal re-pick, start, end, edit pick); verify creating a tour via search prefills the name
+- [x] 3.4 In `tour-form.vue`, make the `initialName` watcher overwrite only when the name is empty or equals the last auto-filled value; verify with a `tour-form` test (typed name survives re-pick, auto name is replaced)
+- [x] 3.5 Extend `test/features/map/presentation/components/location-picker.test.ts`: < 2 chars sends no request, stale response ignored, offline hides the field, Enter chooses first result, map touch / Escape close the list without moving, clearing forgets the chosen result, choosing a result leaves `previewGoal` untouched, confirm after > 50 m pan omits `name`, confirm on result includes it; verify the file passes
+- [x] 3.6 Add i18n keys (search placeholder, no results, error, field aria-label) to `en.json` and `de-CH.json`; verify `npm run check:locales` passes
 
 ## 4. Ski-touring icons (D7)
 
-- [ ] 4.1 Add `customCollections` (`FileSystemIconLoader('./src/assets/icons')`) to `vite.config.ts`; draw `src/assets/icons/ski-touring.svg` and `splitboarding.svg` (24×24, `currentColor`); verify `npm run build` resolves `~icons/tb/*`
+- [x] 4.1 Add `customCollections` (`FileSystemIconLoader('./src/assets/icons')`) to `vite.config.ts`; draw `src/assets/icons/ski-touring.svg` and `splitboarding.svg` (24×24, `currentColor`); verify `npm run build` resolves `~icons/tb/*`
 - [ ] 4.2 Register both in `src/core/components/icons.ts`, point `TOUR_TYPE_ICONS.skitour`/`.splitboarding` at them; verify a screenshot of both next to `downhill_skiing`/`snowboarding` at sm/md/lg and get user sign-off
-- [ ] 4.3 Update the icon how-to in `.claude/conventions.md` (Fonts & icons) with the custom-glyph path; verify the documented import path matches 4.1
+- [x] 4.3 Update the icon how-to in `.claude/conventions.md` (Fonts & icons) with the custom-glyph path; verify the documented import path matches 4.1
 
 ## 5. Compact tour detail (D6)
 
 - [x] 5.0 Seed one tour per detail-view variant in `supabase/seed.sql` (user Lena, tours `…10`–`…14`; owner view as Lena, friend view as Patrick); verified in a rolled-back transaction: rows readable through `tours_view` / `friend_tours_view` as intended, block idempotent, all pgTAP suites green on a pristine seed with and without it
-- [ ] 5.1 Create `tour-fact-rows.vue` (type, Start, End, `partners` slot, seasons, description with links, equipment, notes; inline "Start"/"End" labels, `aria-label` per row, empty rows omitted); verify with a new `test/features/tours/presentation/components/tour-fact-rows.test.ts` covering minimal tour (type only), one-way and round-trip end, no-label text rows
-- [ ] 5.2 Rewrite the hero in `tour-info-sheet.vue` as the two-line block (D6): line 1 badge + goal elevation headline + toggles, line 2 `date · coords` with `month: 'short'` range, owner line for friend tours, date moves up when elevation is missing; completion/visibility as `BaseIconButton` toggles with `aria-pressed` + action `aria-label`; delete the owner-toggles row, section headings, `fact-grid`, `detail-card` and their styles; verify desktop drawer and mobile sheet visually against every seeded showcase tour (5.0)
-- [ ] 5.3 Update `test/features/tours/presentation/components/tour-info-sheet.test.ts` selectors; add cases for the toggle's accessible label/pressed state, setCompleted rollback, missing-elevation fallback and friend-tour owner line; verify the file passes
-- [ ] 5.4 Add/adjust i18n keys (Start/End inline labels, toggle aria-labels) in both locales; verify `npm run check:locales` passes
+- [x] 5.1 Create `tour-fact-rows.vue` (type, Start, End, `partners` slot, seasons, description with links, equipment, notes; inline "Start"/"End" labels, `aria-label` per row, empty rows omitted); verify with a new `test/features/tours/presentation/components/tour-fact-rows.test.ts` covering minimal tour (type only), one-way and round-trip end, no-label text rows
+- [x] 5.2 Rewrite the hero in `tour-info-sheet.vue` as the two-line block (D6): line 1 badge + goal elevation headline + toggles, line 2 `date · coords` with `month: 'short'` range, owner line for friend tours, date moves up when elevation is missing; completion/visibility as `BaseIconButton` toggles with `aria-pressed` + a fixed state `aria-label` ("Completed", "Private"); delete the owner-toggles row, section headings, `fact-grid`, `detail-card` and their styles; verify desktop drawer and mobile sheet visually against every seeded showcase tour (5.0)
+- [x] 5.3 Update `test/features/tours/presentation/components/tour-info-sheet.test.ts` selectors; add cases for the toggle's accessible label/pressed state (rollback is covered in `tours-store.test.ts`), missing-elevation fallback and friend-tour owner line; verify the file passes
+- [x] 5.4 Add/adjust i18n keys (Start/End inline labels, toggle aria-labels) in both locales; verify `npm run check:locales` passes
 
 ## 6. Finalize
 
-- [ ] 6.1 Run `npx eslint . --fix`, then `npx eslint` with zero warnings, `npm run type-check` and `npm run test`; verify all pass
+- [x] 6.1 Run `npx eslint . --fix`, then `npx eslint` with zero warnings, `npm run type-check` and `npm run test`; verify all pass
 - [ ] 6.2 After `supabase db reset`, walk the app once (as Lena and as Patrick): add a tour via search (goal + start), edit a tour's end via search, toggle complete/private in the hero, go offline in the picker; verify each matches the specs
 - [ ] 6.3 Prompt the user to commit with a ready-to-copy message, e.g. `feat(tours): location search in picker and compact tour details (#339, #340)`
 - [ ] 6.4 Prompt the user to push and open a PR titled with the highest-impact type (`feat(tours): …`), body referencing `Closes #339` and `Closes #340`

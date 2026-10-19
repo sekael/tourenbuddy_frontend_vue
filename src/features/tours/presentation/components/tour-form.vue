@@ -349,11 +349,16 @@ watch(
     }
   },
 )
+// A re-pick replaces the name only while it is empty or still the one the form started
+// with / last filled in itself — a name the user typed survives.
+let autoName = tourName.value
 watch(
   () => props.initialName,
   (val) => {
-    if (val != null)
-      tourName.value = val
+    if (val == null || (tourName.value.trim() && tourName.value !== autoName))
+      return
+    tourName.value = val
+    autoName = val
   },
 )
 watch(

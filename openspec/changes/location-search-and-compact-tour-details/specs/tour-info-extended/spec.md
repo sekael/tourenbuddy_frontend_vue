@@ -4,7 +4,7 @@
 
 ### Requirement: Completion toggle control
 
-The tour info sheet SHALL display the completion toggle as an icon toggle at the end of the hero line, next to the visibility toggle. The control SHALL show a filled check-circle when the tour is completed and an empty circle when not, expose its state as a pressed state, and carry an accessible label that names the action. Activation SHALL invoke the tours store `setCompleted` action instantly — no confirmation dialog — for both mark and unmark directions.
+The tour info sheet SHALL display the completion toggle as an icon toggle at the end of the hero line, next to the visibility toggle. The control SHALL show a filled check-circle when the tour is completed and an empty circle when not, expose its state as a pressed state, and carry a fixed accessible label naming the state it toggles ("Completed") — the pressed state, not a changing label, tells whether it is on. Activation SHALL invoke the tours store `setCompleted` action instantly — no confirmation dialog — for both mark and unmark directions.
 
 #### Scenario: Toggle shown for tour owner
 
@@ -37,5 +37,6 @@ The tour info sheet SHALL display the completion toggle as an icon toggle at the
 
 #### Scenario: Toggle is identifiable without a visible text label
 
-- **WHEN** a screen reader focuses the completion toggle
-- **THEN** it SHALL announce "Mark as completed" (or "Mark as not completed" when completed) and its pressed state
+- **WHEN** a screen reader focuses the completion toggle of a completed tour
+- **THEN** it SHALL announce "Completed" as a pressed toggle button
+- **AND** after unmarking, the same label SHALL be announced as not pressed

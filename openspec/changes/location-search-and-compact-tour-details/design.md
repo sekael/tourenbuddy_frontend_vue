@@ -101,7 +101,7 @@ dashed private edge go too — the badge stamps carry the state.
 `vite.config.ts`: `Icons({ compiler: 'vue3', customCollections: { tb: FileSystemIconLoader('./src/assets/icons') } })`.
 Two 24×24 `viewBox` SVGs (`ski-touring.svg`, `splitboarding.svg`, `fill="currentColor"`,
 optical weight matched to Material Outlined 400) imported as `~icons/tb/ski-touring` and
-registered in `icons.ts` as `ski_touring` / `splitboarding_uphill`; `TOUR_TYPE_ICONS` points
+registered in `icons.ts` as `ski_touring` / `splitboarding`; `TOUR_TYPE_ICONS` points
 `skitour`/`splitboarding` at them. Same bundling, tree-shaking and offline precache as all icons.
 *Alternative:* a second Iconify set (`mdi`) — rejected, no suitable glyph exists (checked).
 

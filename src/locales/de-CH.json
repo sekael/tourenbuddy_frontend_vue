@@ -519,9 +519,6 @@
       "unnamedTour": "Unbenannte Tour",
       "createdByLabel": "Erstellt von {name}",
       "completedBtn": "Abgeschlossen",
-      "completeTourBtn": "Tour abschliessen",
-      "visibilityMakePrivate": "Tour privat machen",
-      "visibilityMakeFriends": "Tour für Freunde sichtbar machen",
       "roundTrip": "Rundtour",
       "oneWayToGoalIndicator": "Einfache Tour zum Ziel",
       "gpxTrackAvailable": "Track verfügbar",
@@ -536,22 +533,17 @@
       "deleteFailed": "Löschen fehlgeschlagen",
       "backToTours": "Touren",
       "saveLabel": "Speichern",
-      "iconTooltipOwner": "Tourbesitzer",
       "iconTooltipType": "Aktivitätstyp",
-      "iconTooltipDate": "Geplantes Datum",
-      "iconTooltipGoal": "Ziel",
       "iconTooltipElevation": "Höhe",
-      "iconTooltipStartPoint": "Startpunkt",
-      "iconTooltipEndPoint": "Endpunkt",
       "iconTooltipSeasons": "Saison",
       "iconTooltipDescription": "Beschreibung",
       "iconTooltipEquipment": "Ausrüstung",
       "iconTooltipNotes": "Notizen",
-      "iconTooltipGpxTrack": "GPX-Track",
       "iconTooltipPartners": "Tourenpartner",
       "downloadGpxBtn": "GPX herunterladen",
-      "sectionRoute": "Route",
-      "sectionDetails": "Details"
+      "startShort": "Start",
+      "endShort": "Ende",
+      "privateToggle": "Privat"
     },
     "filters": {
       "partnerLabel": "Partner",
@@ -591,7 +583,19 @@
       "confirmBtn": "Bestätigen",
       "goalTitle": "Tourenziel",
       "startTitle": "Startpunkt",
-      "endTitle": "Endpunkt"
+      "endTitle": "Endpunkt",
+      "search": {
+        "placeholder": "Gipfel, Ort oder Adresse suchen",
+        "label": "Ort suchen",
+        "noResults": "Keine Orte gefunden",
+        "error": "Suche nicht verfügbar. Verschiebe die Karte, um den Ort zu wählen.",
+        "origin": {
+          "gazetteer": "Ort",
+          "zipcode": "Postleitzahl",
+          "gg25": "Gemeinde",
+          "address": "Adresse"
+        }
+      }
     },
     "attachments": {
       "add": "Datei hinzufügen",

@@ -11,6 +11,7 @@ import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
+import SearchInput from '@/core/components/search-input.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
@@ -237,14 +238,7 @@ function handleRowClick(tourId: string) {
           </button>
         </div>
 
-        <div class="search-row">
-          <BaseIcon name="search" class="search-icon" />
-          <input
-            v-model="searchQuery"
-            type="search"
-            class="search-input"
-            :placeholder="t('tours.list.searchPlaceholder')"
-          >
+        <SearchInput v-model="searchQuery" :placeholder="t('tours.list.searchPlaceholder')">
           <BaseButton
             ref="filtersTriggerRef"
             variant="secondary"
@@ -258,7 +252,7 @@ function handleRowClick(tourId: string) {
             {{ t('tours.list.filtersBtn') }}
             <span v-if="activeFilterCount > 0" class="filter-badge">{{ activeFilterCount }}</span>
           </BaseButton>
-        </div>
+        </SearchInput>
       </div>
 
       <!-- `min-height: 0` lets this shrink inside the flex column instead of pushing
@@ -379,34 +373,6 @@ function handleRowClick(tourId: string) {
 .tab-swap-leave-to {
   opacity: 0;
   transform: translateX(calc(var(--swap-dir) * -1 * var(--motion-offset)));
-}
-
-/* Search and the filters trigger share one row. No `flex-wrap`: wrapping onto a
-   second line would hand back the vertical space this merge exists to reclaim, so
-   the input shrinks instead. */
-.search-row {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border: 1.5px solid var(--color-outline-variant);
-  border-radius: var(--input-radius);
-  background-color: var(--input-bg);
-}
-
-.search-icon {
-  color: var(--color-on-surface-variant);
-  flex-shrink: 0;
-}
-
-.search-input {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: var(--font-size-base);
-  color: var(--color-on-surface);
 }
 
 /* Visual styling comes from BaseButton (secondary); only layout lives here. */

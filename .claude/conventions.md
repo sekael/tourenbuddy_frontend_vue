@@ -43,6 +43,8 @@ IMPORTANT: The app ships **all** fonts and icons in its own bundle. There is **n
 
 **To add a new icon:** add one import + one entry to `src/core/components/icons.ts`, mapping the internal underscore name to `~icons/material-symbols/<kebab-name>` (append `-outline` for the unfilled variant to match the design; glyph-only icons like `add`/`close` ship a single variant). Then use `<BaseIcon name="internal_name" />`. A name not in the registry renders nothing — never rely on an unregistered name.
 
+**When Material has no fitting glyph** (e.g. `ski_touring`, `splitboarding`): add a 24×24 `viewBox` SVG with `fill`/`stroke="currentColor"` to `src/assets/icons/<kebab-name>.svg`, built from Material shapes so weight and style match, and register it from `~icons/tb/<kebab-name>` like any other icon. The `tb` collection is declared in both `vite.config.ts` and `vitest.config.ts` — keep them in sync.
+
 **To add a new font weight:** `npm i @fontsource/inter` already provides all static weights — import `@fontsource/inter/<weight>.css` in `src/main.ts` and confirm the emitted woff2 is covered by the `injectManifest` `woff2` glob so it precaches.
 
 ## Supabase / Database

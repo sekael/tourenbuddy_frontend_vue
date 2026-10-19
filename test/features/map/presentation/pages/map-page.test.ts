@@ -674,6 +674,39 @@ describe('mapPage', () => {
     })
   })
 
+  describe('name from the picker search', () => {
+    const POINT = { lng: 9.908, lat: 46.382 }
+
+    async function confirmFromSearch(pickType: 'goal' | 'start') {
+      const { suggestTourName } = await import('@/features/tours/data/services/swisstopo-name-service')
+      vi.mocked(suggestTourName).mockClear()
+      const wrapper = mountMapPage()
+      wrapper.vm.pendingPickType = pickType
+      useMapStore().$patch({ isPickingLocation: true })
+      await wrapper.vm.$nextTick()
+      await wrapper.vm.handleLocationConfirmed({ ...POINT, name: 'Piz Bernina' })
+      return { wrapper, suggestTourName }
+    }
+
+    it('should name a new goal after the search result without the nearby lookup', async () => {
+      const { wrapper, suggestTourName } = await confirmFromSearch('goal')
+      expect(suggestTourName).not.toHaveBeenCalled()
+      expect(wrapper.vm.dialogInitialName).toBe('Piz Bernina')
+    })
+
+    it('should keep the search name out of the stored point and draft marker', async () => {
+      const { wrapper } = await confirmFromSearch('goal')
+      expect(wrapper.vm.pendingLocation).toEqual(POINT)
+      expect(useMapStore().setPreviewGoal).toHaveBeenCalledWith(POINT)
+    })
+
+    it('should name a start point after the search result', async () => {
+      const { wrapper, suggestTourName } = await confirmFromSearch('start')
+      expect(suggestTourName).not.toHaveBeenCalled()
+      expect(wrapper.vm.dialogInitialStartPointMeta?.name).toBe('Piz Bernina')
+    })
+  })
+
   describe('draft marker clear lifecycle', () => {
     const GOAL = { lng: 8.2, lat: 46.8 }
     const DRAFT = { tourType: 'hiking' } as never

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
 import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite'
 import vue from '@vitejs/plugin-vue'
+import { FileSystemIconLoader } from 'unplugin-icons/loaders'
 import Icons from 'unplugin-icons/vite'
 import VueRouter from 'unplugin-vue-router/vite'
 import { defineConfig } from 'vite'
@@ -21,7 +22,8 @@ export default defineConfig({
     // Bundled, tree-shaken SVG icons (Material Symbols via Iconify). Each
     // `~icons/material-symbols/<name>` import resolves to a Vue3 component at
     // build time — no runtime icon font, no CDN. See src/core/components/icons.ts.
-    Icons({ compiler: 'vue3' }),
+    // Glyphs Material lacks live in src/assets/icons as `~icons/tb/<file-name>`.
+    Icons({ compiler: 'vue3', customCollections: { tb: FileSystemIconLoader('./src/assets/icons') } }),
     VueI18nPlugin({
       include: [fileURLToPath(new URL('./src/locales/**', import.meta.url))],
       compositionOnly: true,

@@ -60,7 +60,6 @@ import IconMailOutline from '~icons/material-symbols/mail-outline'
 import IconMapOutline from '~icons/material-symbols/map-outline'
 import IconMenu from '~icons/material-symbols/menu'
 import IconMyLocationOutline from '~icons/material-symbols/my-location-outline'
-import IconNordicWalking from '~icons/material-symbols/nordic-walking'
 import IconNotificationsOutline from '~icons/material-symbols/notifications-outline'
 import IconOpenInNew from '~icons/material-symbols/open-in-new'
 import IconParaglidingOutline from '~icons/material-symbols/paragliding-outline'
@@ -90,6 +89,8 @@ import IconUploadFileOutline from '~icons/material-symbols/upload-file-outline'
 import IconVerifiedOutline from '~icons/material-symbols/verified-outline'
 import IconWarningOutline from '~icons/material-symbols/warning-outline'
 import IconWbSunnyOutline from '~icons/material-symbols/wb-sunny-outline'
+import IconSkiTouring from '~icons/tb/ski-touring'
+import IconSplitboarding from '~icons/tb/splitboarding'
 
 /**
  * Central icon registry: internal name → bundled SVG component.
@@ -111,7 +112,8 @@ import IconWbSunnyOutline from '~icons/material-symbols/wb-sunny-outline'
  *
  * To ADD an icon: add one import + one entry mapping `internal_name` to
  * `~icons/material-symbols/<kebab-name>` (append `-outline` for the unfilled
- * variant). See `.claude/conventions.md` → Styling.
+ * variant). A glyph Material lacks goes into `src/assets/icons/<name>.svg` and is
+ * imported as `~icons/tb/<name>` (e.g. `ski_touring`). See `.claude/conventions.md` → Styling.
  */
 export const iconRegistry: Record<string, Component> = {
   // Filled star for the "primary method" selected state (was CSS FILL 1).
@@ -177,7 +179,6 @@ export const iconRegistry: Record<string, Component> = {
   map: IconMapOutline,
   menu: IconMenu,
   my_location: IconMyLocationOutline,
-  nordic_walking: IconNordicWalking,
   open_in_new: IconOpenInNew,
   notifications: IconNotificationsOutline,
   paragliding: IconParaglidingOutline,
@@ -194,7 +195,9 @@ export const iconRegistry: Record<string, Component> = {
   schedule: IconScheduleOutline,
   search: IconSearch,
   search_off: IconSearchOff,
+  ski_touring: IconSkiTouring,
   snowboarding: IconSnowboarding,
+  splitboarding: IconSplitboarding,
   sports_score: IconSportsScore,
   sprint: IconSprint,
   star: IconStarOutline,

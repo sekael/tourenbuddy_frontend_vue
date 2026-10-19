@@ -608,8 +608,10 @@ function handleTourClicked(tourId: string) {
   openOverlay('tour')
 }
 
-async function handleLocationConfirmed(location: { lng: number, lat: number }) {
+async function handleLocationConfirmed({ name: searchName, ...location }: { lng: number, lat: number, name?: string }) {
   mapStore.setPickingLocation(false)
+  // A place chosen in the picker's search names the point; otherwise look one up nearby.
+  const lookupName = () => searchName ?? suggestTourName(location)
 
   // Pick triggered from the info sheet edit mode — route result back via prop
   if (isPickingForEdit.value) {
@@ -623,14 +625,14 @@ async function handleLocationConfirmed(location: { lng: number, lat: number }) {
       // Run Swisstopo lookups in parallel (same as creation flow)
       const [elevation, suggestedName] = await Promise.all([
         getElevation(location),
-        suggestTourName(location),
+        lookupName(),
       ])
       editPickedPoint.value = { type: 'goal', location, elevation, suggestedName }
     }
     else {
       const [elevation, suggestedName] = await Promise.all([
         getElevation(location),
-        suggestTourName(location),
+        lookupName(),
       ])
       editPickedPoint.value = { type: pickType, location, elevation, suggestedName }
     }
@@ -643,7 +645,7 @@ async function handleLocationConfirmed(location: { lng: number, lat: number }) {
 
   if (pendingPickType.value === 'start') {
     dialogInitialStartPoint.value = location
-    const [elevation, name] = await Promise.all([getElevation(location), suggestTourName(location)])
+    const [elevation, name] = await Promise.all([getElevation(location), lookupName()])
     dialogInitialStartPointMeta.value = { name, elevation }
     openOverlay('tour-creation')
     return
@@ -651,7 +653,7 @@ async function handleLocationConfirmed(location: { lng: number, lat: number }) {
 
   if (pendingPickType.value === 'end') {
     dialogInitialEndPoint.value = location
-    const [elevation, name] = await Promise.all([getElevation(location), suggestTourName(location)])
+    const [elevation, name] = await Promise.all([getElevation(location), lookupName()])
     dialogInitialEndPointMeta.value = { name, elevation }
     openOverlay('tour-creation')
     return
@@ -665,7 +667,7 @@ async function handleLocationConfirmed(location: { lng: number, lat: number }) {
       mapStore.setPreviewGoal(location)
       const [elevation, name] = await Promise.all([
         getElevation(location),
-        suggestTourName(location),
+        lookupName(),
       ])
       dialogInitialElevation.value = elevation
       dialogInitialName.value = name
@@ -679,7 +681,7 @@ async function handleLocationConfirmed(location: { lng: number, lat: number }) {
   pendingLocation.value = location
   // Show the draft marker immediately; type is neutral until the form picks one.
   mapStore.setPreviewGoal(location)
-  const [elevation, name] = await Promise.all([getElevation(location), suggestTourName(location)])
+  const [elevation, name] = await Promise.all([getElevation(location), lookupName()])
   dialogInitialElevation.value = elevation
   dialogInitialName.value = name
   openOverlay('tour-creation')

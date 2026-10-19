@@ -419,6 +419,27 @@ describe('tourForm', () => {
       const nameInput = wrapper.find('#tf-tourName').element as HTMLInputElement
       expect(nameInput.value).toBe('Keep Me')
     })
+
+    it('keeps a name the user typed when a re-pick suggests another', async () => {
+      const wrapper = mountForm({ initialName: 'Piz Palü' })
+      await wrapper.find('#tf-tourName').setValue('Bernina Traverse')
+      await wrapper.setProps({ initialName: 'Piz Bernina' })
+      expect((wrapper.find('#tf-tourName').element as HTMLInputElement).value).toBe('Bernina Traverse')
+    })
+
+    it('keeps replacing a name that is still the last suggestion', async () => {
+      const wrapper = mountForm({ initialName: 'Piz Palü' })
+      await wrapper.setProps({ initialName: 'Piz Bernina' })
+      await wrapper.setProps({ initialName: 'Piz Morteratsch' })
+      expect((wrapper.find('#tf-tourName').element as HTMLInputElement).value).toBe('Piz Morteratsch')
+    })
+
+    it('fills a field the user emptied', async () => {
+      const wrapper = mountForm({ initialName: 'Piz Palü' })
+      await wrapper.find('#tf-tourName').setValue('  ')
+      await wrapper.setProps({ initialName: 'Piz Bernina' })
+      expect((wrapper.find('#tf-tourName').element as HTMLInputElement).value).toBe('Piz Bernina')
+    })
   })
 
   describe('end date (multi-day span)', () => {

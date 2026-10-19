@@ -2,6 +2,7 @@ import type { Plugin } from 'vite'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
 import vue from '@vitejs/plugin-vue'
+import { FileSystemIconLoader } from 'unplugin-icons/loaders'
 import Icons from 'unplugin-icons/vite'
 import { defineConfig } from 'vitest/config'
 
@@ -29,7 +30,8 @@ const appVersion: string = JSON.parse(readFileSync(new URL('./package.json', imp
 
 export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(appVersion) },
-  plugins: [vue(), Icons({ compiler: 'vue3' }), virtualPwaRegisterStub()],
+  // Same custom collection as vite.config.ts, so `~icons/tb/*` resolves in tests too.
+  plugins: [vue(), Icons({ compiler: 'vue3', customCollections: { tb: FileSystemIconLoader('./src/assets/icons') } }), virtualPwaRegisterStub()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

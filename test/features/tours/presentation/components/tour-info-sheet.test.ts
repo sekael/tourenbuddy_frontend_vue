@@ -503,8 +503,49 @@ describe('tourInfoSheet', () => {
 
     it('should stamp a completed private tour with both states', () => {
       const wrapper = mountSheet({ completed: true, visibility: 'private' })
-      expect(wrapper.find('.hero--completed.hero--private').exists()).toBe(true)
       expect(wrapper.find('.hero-badge').findAll('.hero-stamp')).toHaveLength(2)
+    })
+
+    it('should lead with the goal elevation and list the activity type as the first fact', () => {
+      const wrapper = mountSheet({ tourType: 'skitour', elevation: 2747 })
+      expect(wrapper.find('.hero-headline').text()).toContain('2')
+      expect(wrapper.find('.hero-headline').text()).not.toContain('skitour')
+      expect(wrapper.find('[data-fact]').attributes('data-fact')).toBe('type')
+    })
+
+    it('should move the date up when the goal has no elevation, with no placeholder', () => {
+      const wrapper = mountSheet({ elevation: null, plannedDate: new Date(2026, 7, 25) })
+      expect(wrapper.find('.hero-headline').text()).toContain('25')
+      expect(wrapper.find('.hero-meta').text()).not.toContain('25')
+      expect(wrapper.find('.hero-meta').text()).toContain('46.8000°N')
+    })
+
+    it('should show only the coordinates when neither elevation nor date exist', () => {
+      const wrapper = mountSheet({ elevation: null, plannedDate: null })
+      expect(wrapper.find('.hero-headline').exists()).toBe(false)
+      expect(wrapper.find('.hero-meta').text()).toBe('46.8000°N, 8.2000°E')
+    })
+
+    it('should name the toggles by state and expose on/off as pressed', () => {
+      const wrapper = mountSheet({ completed: true, visibility: 'friends' })
+      const done = wrapper.find('.completion-toggle')
+      const priv = wrapper.find('.visibility-toggle')
+      expect(done.attributes('aria-label')).toContain('completedBtn')
+      expect(done.attributes('aria-pressed')).toBe('true')
+      expect(priv.attributes('aria-label')).toContain('privateToggle')
+      expect(priv.attributes('aria-pressed')).toBe('false')
+    })
+
+    it('should not keep an empty first line for a friend viewing a tour without elevation or date', () => {
+      const wrapper = mountSheet({ isFriendTour: true, elevation: null, plannedDate: null }, 'user-2')
+      expect(wrapper.find('.hero-line').exists()).toBe(false)
+      expect(wrapper.find('.hero-meta').text()).toBe('46.8000°N, 8.2000°E')
+    })
+
+    it('should show a friend the owner instead of toggles', () => {
+      const wrapper = mountSheet({ isFriendTour: true }, 'user-2')
+      expect(wrapper.find('.hero-toggles').exists()).toBe(false)
+      expect(wrapper.find('.hero').findAll('.hero-meta')).toHaveLength(2)
     })
 
     it('should spell out completion only for a friend viewing the tour', () => {
