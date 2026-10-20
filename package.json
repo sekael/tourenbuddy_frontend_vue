@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "vite",
+    "dev:phone": "vite --host --mode phone",
     "build": "vue-tsc -b --noEmit && vite build",
     "preview": "vite preview",
     "type-check": "vue-tsc -b --noEmit",

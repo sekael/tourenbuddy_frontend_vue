@@ -11,7 +11,16 @@ import { VitePWA } from 'vite-plugin-pwa'
 // Shown in the profile; release-please bumps package.json before every deploy build.
 const appVersion: string = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version
 
-export default defineConfig({
+// `npm run dev:phone` (README → Test on your phone): a LAN IP is no secure context, but the app
+// needs one (crypto.randomUUID, service worker), and an HTTPS page may not call
+// http://<LAN-IP>:54321 — so HTTPS from mkcert files, with local Supabase proxied same-origin.
+function phoneServer() {
+  const proxy = Object.fromEntries(['/rest/v1', '/auth/v1', '/storage/v1', '/realtime/v1'].map(path =>
+    [path, { target: 'http://127.0.0.1:54321', changeOrigin: true, ws: path === '/realtime/v1' }]))
+  return { https: { cert: readFileSync('.certs/cert.pem'), key: readFileSync('.certs/key.pem') }, proxy }
+}
+
+export default defineConfig(({ mode }) => ({
   define: { __APP_VERSION__: JSON.stringify(appVersion) },
   plugins: [
     VueRouter({
@@ -77,4 +86,5 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
-})
+  server: mode === 'phone' ? phoneServer() : undefined,
+}))

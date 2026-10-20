@@ -70,6 +70,61 @@ App at `http://localhost:5173`, talking to local Supabase.
 
 **Stop stack:** `supabase stop`. **View logs:** `supabase logs <service>` (e.g. `auth`).
 
+### 5. Test on your phone (same network)
+
+`npm run dev -- --host` alone is not enough:
+
+- The phone opens `http://<LAN-IP>:5173`, which browsers do not treat as a secure context, so `crypto.randomUUID` is missing (saving a tour or contact fails) and the service worker never registers.
+- `127.0.0.1:54321` from `.env.local` points at the phone itself, not at your Mac's Supabase.
+
+`npm run dev:phone` fixes both. It serves the app over HTTPS on your LAN IP, and the dev server forwards `/rest`, `/auth`, `/storage` and `/realtime` to the local Supabase stack, so the phone only needs one address it trusts.
+
+**One-time setup** (macOS; on other systems install [mkcert](https://github.com/FiloSottile/mkcert) your way):
+
+1. Install mkcert and create its local certificate authority (the Mac trusts it automatically):
+
+   ```bash
+   brew install mkcert
+   mkcert -install
+   ```
+
+2. Find your Mac's LAN IP (Wi-Fi): `ipconfig getifaddr en0`.
+3. Create the dev server certificate for that IP (`.certs/` is gitignored):
+
+   ```bash
+   mkdir -p .certs
+   mkcert -cert-file .certs/cert.pem -key-file .certs/key.pem <LAN-IP> localhost
+   ```
+
+4. Make the phone trust the mkcert authority. The file is `rootCA.pem` in the folder printed by `mkcert -CAROOT`.
+   - **iPhone:** AirDrop `rootCA.pem` to the phone, then Settings → _Profile Downloaded_ → Install. Afterwards turn on full trust under Settings → General → About → Certificate Trust Settings.
+   - **Android:** copy `rootCA.pem` to the phone, then Settings → Security → Encryption & credentials → Install a certificate → CA certificate (menu names vary by vendor). Chrome trusts user-installed authorities.
+
+   > **Keep `rootCA-key.pem` private.** It sits in the same folder, and anyone holding it can issue certificates your phone trusts for any website. Never copy it to the phone or anywhere else, and remove the profile/certificate from the phone when you no longer need it.
+
+5. Create `.env.phone.local` (gitignored). It is layered over `.env.local`, which still supplies the anon key:
+
+   ```env
+   VITE_SUPABASE_URL=https://<LAN-IP>:5173
+   ```
+
+**Each time:**
+
+```bash
+supabase start      # if not already running
+npm run dev:phone
+```
+
+Open the **Network** URL Vite prints (`https://<LAN-IP>:5173`) on the phone. It should load without a certificate warning; a warning means step 4 is missing. Sign in as usual; the OTP email lands in Mailpit on your Mac (`http://127.0.0.1:54324`).
+
+**Troubleshooting:**
+
+- `ENOENT … .certs/cert.pem`: you skipped step 3.
+- The page does not load: the phone and the Mac must be on the same network (guest Wi-Fi often isolates devices). Also allow incoming connections for `node` if macOS asks.
+- Your LAN IP changed (new network, new DHCP lease): redo step 3 and update `.env.phone.local`.
+
+Only port 5173 must be reachable from the phone; Supabase keeps listening on your Mac as before.
+
 ---
 
 ## Auth email & SMS — local delivery modes
