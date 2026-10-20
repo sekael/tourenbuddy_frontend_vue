@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import type { LocationResult } from '@/features/map/data/services/swisstopo-search-service'
-import { usePreferredReducedMotion, watchDebounced } from '@vueuse/core'
+import { useFocusWithin, usePreferredReducedMotion, watchDebounced } from '@vueuse/core'
 import { LngLat } from 'maplibre-gl'
 import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -9,7 +9,8 @@ import BaseButton from '@/core/components/base-button.vue'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
 import Crosshair from '@/core/components/crosshair.vue'
 import SearchInput from '@/core/components/search-input.vue'
-import { useVisualViewportInsets } from '@/core/composables/use-visual-viewport-insets'
+import { useIsTouch } from '@/core/composables/use-is-touch'
+import { useVisualViewportTop } from '@/core/composables/use-visual-viewport-top'
 import { isOnline } from '@/core/offline/use-online-status'
 import { rankResults, searchLocations } from '@/features/map/data/services/swisstopo-search-service'
 import LocationSearchResults from './location-search-results.vue'
@@ -41,15 +42,19 @@ const chosen = ref<LocationResult | null>(null)
 
 /**
  * Results, search field and actions share one bottom dock: in thumb reach on phones, and
- * clear of the collapsed overlay header at the top. While the on-screen keyboard is up the
- * dock rides on it and drops the actions; the visible top bounds the result list.
+ * clear of the collapsed overlay header at the top. While the user searches on a touch
+ * screen (field focused or list open) the field moves to the visible top with the results
+ * below it and the actions hidden: the keyboard covers the bottom, and the top is the one
+ * edge every mobile browser reports right. Staying in that layout while the list is open
+ * keeps a result in place for the tap that blurs the field.
  */
-const viewport = useVisualViewportInsets()
-const keyboardUp = computed(() => viewport.bottom.value > 0)
+const isTouch = useIsTouch()
+const { focused } = useFocusWithin(computed(() => searchInput.value?.$el as HTMLElement | undefined))
+const searching = computed(() => isTouch.value && (focused.value || listOpen.value))
+const viewportTop = useVisualViewportTop()
 const dockStyle = computed(() => ({
   '--dock-bottom': props.actionsBottom != null ? `${props.actionsBottom}px` : undefined,
-  '--keyboard-inset': `${viewport.bottom.value}px`,
-  '--viewport-top': `${viewport.top.value}px`,
+  '--viewport-top': `${viewportTop.value}px`,
 }))
 
 /**
@@ -162,7 +167,7 @@ function handleConfirm() {
   <div class="location-picker">
     <Crosshair />
 
-    <div class="dock" :class="{ 'dock--keyboard': keyboardUp }" :style="dockStyle">
+    <div class="dock" :class="{ 'dock--searching': searching }" :style="dockStyle">
       <Transition name="results">
         <LocationSearchResults v-if="isOnline && listOpen" :results="results" :failed="searchFailed" @choose="choose" />
       </Transition>
@@ -172,10 +177,11 @@ function handleConfirm() {
         :placeholder="t('tours.picker.search.placeholder')" :label="t('tours.picker.search.label')"
         @enter="choose(results[0])" @escape="closeList"
       >
-        <BaseIconButton v-if="query" name="close" size="sm" :label="t('tours.picker.search.clear')" @click="clearQuery" />
+        <!-- mousedown.prevent: the tap must not blur the field, or the dock would flip under the finger. -->
+        <BaseIconButton v-if="query" name="close" size="sm" :label="t('tours.picker.search.clear')" @mousedown.prevent @click="clearQuery" />
       </SearchInput>
 
-      <div v-show="!keyboardUp" class="actions">
+      <div v-show="!searching" class="actions">
         <BaseButton variant="secondary" class="on-map" @click="emit('cancel')">
           {{ t('tours.picker.cancelBtn') }}
         </BaseButton>
@@ -221,8 +227,11 @@ function handleConfirm() {
   pointer-events: auto;
 }
 
-.dock--keyboard {
-  bottom: calc(var(--keyboard-inset) + var(--spacing-sm));
+/* Searching on a touch screen: field at the visible top, results open downward, so the
+   field and the best results stay clear of the keyboard wherever the browser puts it. */
+.dock--searching {
+  bottom: auto;
+  flex-direction: column-reverse;
 }
 
 /* Floating pill over the map: frosted and lifted, brand ring while typing. */
@@ -273,6 +282,21 @@ function handleConfirm() {
 .results-leave-to {
   opacity: 0;
   transform: translateY(var(--motion-offset)) scale(0.98);
+}
+
+.dock--searching .results-enter-active {
+  transform-origin: top center;
+}
+
+.dock--searching .results-enter-from {
+  transform: translateY(calc(-1 * var(--motion-offset))) scale(0.98);
+}
+
+/* The dock flips back to the bottom as the list closes; fading out there would flash. */
+@media (hover: none) {
+  .results-leave-active {
+    transition: none;
+  }
 }
 
 .actions {

@@ -252,34 +252,68 @@ describe('locationPicker', () => {
   })
 
   describe('dock', () => {
-    // happy-dom has no visualViewport; innerHeight is 768.
+    // happy-dom has no visualViewport and no matchMedia.
     function stubViewport(init: { height: number, offsetTop?: number, scale?: number }) {
-      const vv = Object.assign(new EventTarget(), { offsetTop: 0, scale: 1, ...init })
-      vi.stubGlobal('visualViewport', vv)
-      return vv
+      vi.stubGlobal('visualViewport', Object.assign(new EventTarget(), { offsetTop: 0, scale: 1, ...init }))
+    }
+    function stubTouch(touch: boolean) {
+      vi.stubGlobal('matchMedia', (query: string) =>
+        Object.assign(new EventTarget(), { matches: touch && query === '(hover: none)', media: query }))
+    }
+    // happy-dom's focus() fires no focusin, so report focus moves the way a browser does.
+    const focusField = (el: Element, type: 'focusin' | 'focusout') => el.dispatchEvent(new FocusEvent(type, { bubbles: true }))
+    // The focus listener attaches once the field's ref is set, a tick after mounting.
+    async function mountAttached() {
+      const map = makeMapStub()
+      const wrapper = mount(LocationPicker, {
+        props: { map: map as never },
+        global: { plugins: [createTestingPinia({ createSpy: vi.fn })] },
+        attachTo: document.body,
+      })
+      await flushPromises()
+      return { wrapper, map }
     }
     afterEach(() => vi.unstubAllGlobals())
 
-    it('should ride on the on-screen keyboard without the actions, and bring them back once it closes', async () => {
-      const vv = stubViewport({ height: 468 })
-      const { wrapper } = mountPicker()
+    it('should search from the visible top on a touch screen, and stay there while the list is open', async () => {
+      stubTouch(true)
+      search.mockResolvedValue([bernina])
+      const { wrapper, map } = await mountAttached()
       const dock = wrapper.find('.dock')
-      expect(dock.classes()).toContain('dock--keyboard')
-      expect(dock.attributes('style')).toContain('--keyboard-inset: 300px')
+      const input = wrapper.find('.search-input').element
+      focusField(input, 'focusin')
+      await flushPromises()
+      expect(dock.classes()).toContain('dock--searching')
       expect(wrapper.find('.actions').attributes('style')).toContain('display: none')
 
-      vv.height = 768
-      vv.dispatchEvent(new Event('resize'))
+      // The tap on a result blurs the field first; the list must not move under the finger.
+      await type(wrapper, 'Piz')
+      focusField(input, 'focusout')
       await flushPromises()
-      expect(dock.classes()).not.toContain('dock--keyboard')
+      expect(dock.classes()).toContain('dock--searching')
+
+      map.fire('touchstart')
+      await flushPromises()
+      expect(dock.classes()).not.toContain('dock--searching')
       expect(wrapper.find('.actions').attributes('style') ?? '').not.toContain('display: none')
+      wrapper.unmount()
     })
 
-    it('should not mistake browser-chrome jitter or a pinch zoom for a keyboard', () => {
-      stubViewport({ height: 740 })
-      expect(mountPicker().wrapper.find('.dock').classes()).not.toContain('dock--keyboard')
-      stubViewport({ height: 384, scale: 2 })
-      expect(mountPicker().wrapper.find('.dock').classes()).not.toContain('dock--keyboard')
+    it('should keep the bottom dock and the actions on a mouse-driven screen', async () => {
+      stubTouch(false)
+      const { wrapper } = await mountAttached()
+      focusField(wrapper.find('.search-input').element, 'focusin')
+      await flushPromises()
+      expect(wrapper.find('.dock').classes()).not.toContain('dock--searching')
+      expect(wrapper.find('.actions').attributes('style') ?? '').not.toContain('display: none')
+      wrapper.unmount()
+    })
+
+    it('should follow the iOS pan of the visible area, but not while pinch-zoomed', () => {
+      stubViewport({ height: 468, offsetTop: 120 })
+      expect(mountPicker().wrapper.find('.dock').attributes('style')).toContain('--viewport-top: 120px')
+      stubViewport({ height: 384, offsetTop: 120, scale: 2 })
+      expect(mountPicker().wrapper.find('.dock').attributes('style')).toContain('--viewport-top: 0px')
     })
 
     it('should clear the field and keep it focused for the next query', async () => {
@@ -292,6 +326,10 @@ describe('locationPicker', () => {
       expect(clear().exists()).toBe(false)
 
       await type(wrapper, 'Piz')
+      // Pressing it must not blur the field, or the dock would flip away mid-tap.
+      const press = new MouseEvent('mousedown', { cancelable: true })
+      clear().element.dispatchEvent(press)
+      expect(press.defaultPrevented).toBe(true)
       await clear().trigger('click')
       const input = wrapper.find('.search-input').element as HTMLInputElement
       expect(input.value).toBe('')

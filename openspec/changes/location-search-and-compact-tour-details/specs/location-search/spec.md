@@ -9,7 +9,7 @@ place's name for the picked point instead of hunting for it by panning.
 
 ### Requirement: Search field in every location pick
 
-While the location picker is active and the device is online, the map SHALL show a search field above the map content, docked at the bottom of the screen directly above the Cancel/Confirm actions, so it stays in thumb reach on phones and never covers the collapsed overlay header at the top. Results SHALL open upward from the field. It SHALL be available for every pick: tour goal, start point and end point, during tour creation and while editing a tour.
+While the location picker is active and the device is online, the map SHALL show a search field above the map content, docked at the bottom of the screen directly above the Cancel/Confirm actions, so it stays in thumb reach on phones and never covers the collapsed overlay header at the top. Results SHALL open from the field. It SHALL be available for every pick: tour goal, start point and end point, during tour creation and while editing a tour.
 
 #### Scenario: Picking a tour goal
 
@@ -19,9 +19,15 @@ While the location picker is active and the device is online, the map SHALL show
 
 #### Scenario: Typing with the on-screen keyboard
 
-- **WHEN** the search field is focused on a phone and the on-screen keyboard is open
-- **THEN** the field SHALL sit directly above the keyboard, with Cancel/Confirm hidden until the keyboard closes
-- **AND** the result list SHALL stay within the visible area above the field, scrolling if it does not fit
+- **WHEN** the search field is focused on a touch screen
+- **THEN** the field SHALL sit at the top of the visible area with the results below it, and Cancel/Confirm SHALL be hidden
+- **AND** the layout SHALL stay so until the result list closes (a result is chosen, the map is touched, or Escape), even when the keyboard is dismissed first
+- **AND** it SHALL NOT depend on the reported keyboard height, which iOS browsers report inconsistently
+
+#### Scenario: Searching with a mouse
+
+- **WHEN** the search field is focused on a device with a hover-capable pointer
+- **THEN** the field SHALL stay in the bottom dock above Cancel/Confirm, with results opening upward
 
 #### Scenario: Picking a start point in edit mode
 

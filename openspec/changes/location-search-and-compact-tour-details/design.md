@@ -83,11 +83,19 @@ search adds ~100. Extract if it crosses the ~150-line convention by more than a 
 Results, field and Cancel/Confirm stack in one fixed dock at the bottom centre (all breakpoints):
 thumb reach on phones, and the top stays free for the collapsed overlay header (desktop dialog
 bar top-centre, drawer top-right). The dock spans from the visible top to its bottom offset and
-stacks its children at the bottom, so a long list scrolls instead of running off-screen. iOS and
-Android Chrome shrink only the *visual* viewport for the keyboard, so `useVisualViewportInsets`
-(`core/composables`) reports the hidden bottom (`innerHeight − vv.height − vv.offsetTop`, < 50 px
-ignored as chrome jitter, 0 while pinch-zoomed) and the iOS pan offset; while a keyboard is up
-the dock rides on it and drops the actions. Field: frosted pill with our own clear button.
+stacks its children at the bottom, so a long list scrolls instead of running off-screen. While
+the user searches on a touch screen (`(hover: none)`, field focused or list open) the dock flips:
+field at the visible top, results below it, actions hidden. Field: frosted pill with our own
+clear button, which keeps the field focused when pressed so the dock never flips mid-tap.
+*Why not ride on the keyboard:* the first version lifted the dock by the keyboard height
+(`innerHeight − vv.height − vv.offsetTop`). On phones (2026-10-20) iOS Safari now shrinks
+`innerHeight` with the keyboard, so nothing was detected and the actions plus sheet peek left
+~140 px of results; Brave iOS resizes the layout viewport as well (brave-browser#54999) and
+reported the visible area ~230 px short, stranding the field mid-map. Only the visible top was
+right in both, so `useVisualViewportTop` (`core/composables`) keeps just the iOS pan offset
+(0 while pinch-zoomed). Staying flipped while the list is open means a blur on the way to a
+result tap never moves the result. ponytail: the list keeps `min(50dvh, 360px)`; where `dvh`
+ignores the keyboard (older iOS) its last rows may sit under the keys until "Done".
 *Alternative:* top field on desktop, bottom on mobile — rejected: two layouts, and the desktop
 top is already taken by the collapsed dialog/drawer header.
 

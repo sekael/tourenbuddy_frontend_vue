@@ -19,7 +19,7 @@
 - [x] 3.4 In `tour-form.vue`, make the `initialName` watcher overwrite only when the name is empty or equals the last auto-filled value; verify with a `tour-form` test (typed name survives re-pick, auto name is replaced)
 - [x] 3.5 Extend `test/features/map/presentation/components/location-picker.test.ts`: < 2 chars sends no request, stale response ignored, offline hides the field, Enter chooses first result, map touch / Escape close the list without moving, clearing forgets the chosen result, choosing a result leaves `previewGoal` untouched, confirm after > 50 m pan omits `name`, confirm on result includes it; verify the file passes
 - [x] 3.6 Add i18n keys (search placeholder, no results, error, field aria-label) to `en.json` and `de-CH.json`; verify `npm run check:locales` passes
-- [x] 3.7 Bottom dock (D4b): results, frosted pill field with clear button and Cancel/Confirm in one fixed bottom dock; `useVisualViewportInsets` lifts it onto the on-screen keyboard and hides the actions meanwhile; verify picker tests (keyboard, jitter/zoom, clear) and screenshots on desktop (header uncovered), mobile, mobile with simulated keyboard
+- [x] 3.7 Bottom dock (D4b): results, frosted pill field with clear button and Cancel/Confirm in one fixed bottom dock; `useVisualViewportInsets` lifts it onto the on-screen keyboard and hides the actions meanwhile (replaced in 7.7); verify picker tests (keyboard, jitter/zoom, clear) and screenshots on desktop (header uncovered), mobile, mobile with simulated keyboard
 
 ## 4. Ski-touring icons (D7)
 
@@ -43,7 +43,7 @@
 - [x] 6.3 `map-page.vue` and `tour-info-sheet.vue` hand over `{ type, location, name? }` and open the form without awaiting; suggest mode seeds a proposed goal's elevation through the seed draft; verify map-page and info-sheet tests
 - [x] 6.4 Add `tours.form.swisstopo.loading` / `.failed` to both locales; verify `npm run check:locales`
 
-## 7. Follow-ups: grouped detail, new icons, German search kinds (D2, D6, D7)
+## 7. Follow-ups: grouped detail, new icons, German search kinds, mobile search (D2, D4b, D6, D7)
 
 - [x] 7.1 `TourFactRows` renders activity / route (with a `route` slot for the GPX download) / partners / free-text groups, each omitted when empty and led by a divider; the sheet gives the attachments strip (single root) and the suggestions the same divider; verify `tour-fact-rows` (empty groups left out, GPX in the route group) and info-sheet tests
 - [x] 7.2 Add `climbing.svg` (climber under an overhang) and `mountaineering.svg` (Temaki scrambling pictogram, CC0), register both and point `TOUR_TYPE_ICONS` at them; verify `tour-type` test (every type icon is registered) and a side-by-side render with the other type icons
@@ -51,6 +51,7 @@
 - [x] 7.4 Add `ski-mountaineering.svg` (the mountaineering figure with skis A-framed on the pack), register it in place of `terrain` (no other user) and point `TOUR_TYPE_ICONS` at it; verify `tour-type` test and a side-by-side render
 - [x] 7.5 Replace the equipment row's `backpack` with `ice-axe.svg` (registered as `ice_axe`; `backpack` had no other user); verify `tour-fact-rows` (every row icon registered) and a render next to the other row icons
 - [x] 7.6 Restore umlauts in German search kinds (`restoreUmlauts`, D2; "Gebaeude" → "Gebäude", "Quelle" kept, English untouched); verify `swisstopo-search-service` test
+- [x] 7.7 Searching on a touch screen moves the field to the visible top with results below and hides the actions until the list closes, instead of riding on the measured keyboard (D4b; iOS Safari and Brave misreport it); `useVisualViewportInsets` becomes `useVisualViewportTop`; the clear button keeps focus; verify picker tests (touch flip held while the list is open, mouse keeps the bottom dock, pan offset/zoom, clear keeps focus — each guard fails a mutation) and a headless phone walk with a fake keyboard and Brave-like viewport numbers
 
 ## 8. Finalize
 
