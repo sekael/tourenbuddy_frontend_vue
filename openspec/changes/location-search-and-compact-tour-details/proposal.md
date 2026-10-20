@@ -30,6 +30,9 @@ splitboard tours also show a walking-with-poles glyph that reads as hiking, not 
   a matching splitboarder for `splitboarding` — replace `nordic_walking` everywhere the tour type
   icon appears (type picker, list, detail, calendar). Bundled as in-repo SVGs through the existing
   icon registry; still no CDN or icon font.
+- **Grouped detail and two more activity glyphs:** the detail facts form groups (activity,
+  route with the GPX download, partners, free texts, attachments, suggestions) split by thin
+  dividers; climbing and mountaineering get their own glyphs instead of the shared landscape.
 - **Swisstopo lookups no longer block (regression fix):** the tour form opens right after a
   pick; name and elevation fill in independently, each field showing a spinner while Swisstopo
   answers and a "enter manually" placeholder when it does not (10 s timeout, was 5 s). Typing

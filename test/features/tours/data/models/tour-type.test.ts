@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { iconRegistry } from '@/core/components/icons'
 import {
   TOUR_TYPE_COLORS,
+  TOUR_TYPE_ICONS,
   TOUR_TYPE_PREVIEW_COLORS,
   TOUR_TYPE_VALUES,
 } from '@/features/tours/data/models/tour-type'
@@ -18,5 +20,11 @@ describe('tour type colors', () => {
       expect(TOUR_TYPE_PREVIEW_COLORS[type]).toBeDefined()
       expect(TOUR_TYPE_PREVIEW_COLORS[type]).toMatch(/^#[\dA-F]{6}$/i)
     }
+  })
+
+  // An unregistered name renders nothing, silently — a typo would blank the type badge.
+  it('should resolve every TOUR_TYPE_ICONS name in the icon registry', () => {
+    for (const type of TOUR_TYPE_VALUES)
+      expect(iconRegistry[TOUR_TYPE_ICONS[type]], type).toBeDefined()
   })
 })

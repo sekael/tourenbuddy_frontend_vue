@@ -25,6 +25,9 @@ function mountRows(overrides: Partial<Tour> = {}, slots: Record<string, string> 
 }
 
 const facts = (w: ReturnType<typeof mountRows>) => w.findAll('[data-fact]').map(r => r.attributes('data-fact'))
+function groups(w: ReturnType<typeof mountRows>) {
+  return w.findAll('.fact-group').map(g => g.findAll('[data-fact]').map(r => r.attributes('data-fact')))
+}
 
 describe('tourFactRows', () => {
   it('should render nothing but the type row for a tour with only a type', () => {
@@ -65,6 +68,11 @@ describe('tourFactRows', () => {
       expect(row.find('.row-label').exists()).toBe(false)
       expect(row.find('.visually-hidden').exists()).toBe(true)
     }
+  })
+
+  it('should leave out empty groups, even when only seasons or only the GPX download fill one', () => {
+    const w = mountRows({ seasons: ['winter'], notes: 'Early' }, { route: '<button>GPX</button>' })
+    expect(groups(w)).toEqual([['seasons'], ['track'], ['notes']])
   })
 
   it('should render the partners row only when partners are slotted in', () => {

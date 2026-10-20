@@ -8,9 +8,10 @@ import { TOUR_TYPE_I18N_KEYS, TOUR_TYPE_ICONS } from '@/features/tours/data/mode
 
 /**
  * A tour's facts as dense icon-led rows, no headings or cards (spec: design-system →
- * "Tour detail reads at a glance"). Start and End carry a short visible label — their
- * icons alone are ambiguous; every other row is named for assistive tech only.
- * Partners come in through a slot so the sheet keeps its contact-menu wiring.
+ * "Tour detail reads at a glance"), grouped by what belongs together: activity, route,
+ * partners, free texts — a divider above each group. Start and End carry a short visible
+ * label — their icons alone are ambiguous; every other row is named for assistive tech only.
+ * Partners and the route's GPX download come in through slots so the sheet keeps the wiring.
  */
 const props = defineProps<{ tour: Tour }>()
 
@@ -61,90 +62,109 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 </script>
 
 <template>
-  <ul class="fact-rows">
-    <li v-if="tour.tourType" class="fact-row" data-fact="type">
-      <BaseIcon :name="TOUR_TYPE_ICONS[tour.tourType]" size="sm" class="row-icon" />
-      <span class="visually-hidden">{{ t('tours.infoSheet.iconTooltipType') }}</span>
-      <span class="row-value">{{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[tour.tourType]}` as any) }}</span>
-    </li>
+  <div class="fact-rows">
+    <ul v-if="tour.tourType || tour.seasons?.length" class="fact-group">
+      <li v-if="tour.tourType" class="fact-row" data-fact="type">
+        <BaseIcon :name="TOUR_TYPE_ICONS[tour.tourType]" size="sm" class="row-icon" />
+        <span class="visually-hidden">{{ t('tours.infoSheet.iconTooltipType') }}</span>
+        <span class="row-value">{{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[tour.tourType]}` as any) }}</span>
+      </li>
 
-    <template v-if="startPointText">
-      <li class="fact-row" data-fact="start">
-        <BaseIcon name="home" size="sm" class="row-icon" />
-        <span class="row-value">
-          <span class="row-label">{{ t('tours.infoSheet.startShort') }}</span>
-          <span :class="{ coords: !tour.startPointName }">{{ tour.startPointName ?? startPointText }}</span>
-          <span v-if="tour.startPointName && tour.startPointElevation != null" class="row-sub">{{ tour.startPointElevation }}m</span>
+      <!-- Each season chip carries its own icon, so the chips take the icon column too. -->
+      <li v-if="tour.seasons?.length" class="fact-row fact-row--wide" data-fact="seasons">
+        <span class="visually-hidden">{{ t('tours.infoSheet.iconTooltipSeasons') }}</span>
+        <span v-for="season in tour.seasons" :key="season" class="season-tag">
+          <BaseIcon :name="SEASON_ICONS[season]" size="sm" />
+          {{ t(`tours.season.${season}` as any) }}
         </span>
       </li>
-      <li class="fact-row" data-fact="end">
-        <BaseIcon :name="isOneWayToGoal ? 'directions' : 'flag'" size="sm" class="row-icon" />
-        <span class="row-value">
-          <span class="row-label">{{ t('tours.infoSheet.endShort') }}</span>
-          <span :class="{ coords: endValue === endPointText }">{{ endValue }}</span>
-          <span v-if="endElevation != null" class="row-sub">{{ endElevation }}m</span>
-        </span>
+    </ul>
+
+    <ul v-if="startPointText || $slots.route" class="fact-group">
+      <template v-if="startPointText">
+        <li class="fact-row" data-fact="start">
+          <BaseIcon name="home" size="sm" class="row-icon" />
+          <span class="row-value">
+            <span class="row-label">{{ t('tours.infoSheet.startShort') }}</span>
+            <span :class="{ coords: !tour.startPointName }">{{ tour.startPointName ?? startPointText }}</span>
+            <span v-if="tour.startPointName && tour.startPointElevation != null" class="row-sub">{{ tour.startPointElevation }}m</span>
+          </span>
+        </li>
+        <li class="fact-row" data-fact="end">
+          <BaseIcon :name="isOneWayToGoal ? 'directions' : 'flag'" size="sm" class="row-icon" />
+          <span class="row-value">
+            <span class="row-label">{{ t('tours.infoSheet.endShort') }}</span>
+            <span :class="{ coords: endValue === endPointText }">{{ endValue }}</span>
+            <span v-if="endElevation != null" class="row-sub">{{ endElevation }}m</span>
+          </span>
+        </li>
+      </template>
+      <!-- The route's own file (GPX); the sheet owns the download. -->
+      <li v-if="$slots.route" data-fact="track">
+        <slot name="route" />
       </li>
-    </template>
+    </ul>
 
-    <li v-if="$slots.partners" class="fact-row" data-fact="partners">
-      <BaseIcon name="group" size="sm" class="row-icon" />
-      <span class="visually-hidden">{{ t('tours.infoSheet.iconTooltipPartners') }}</span>
-      <div class="row-value">
-        <slot name="partners" />
-      </div>
-    </li>
+    <ul v-if="$slots.partners" class="fact-group">
+      <li class="fact-row" data-fact="partners">
+        <BaseIcon name="group" size="sm" class="row-icon" />
+        <span class="visually-hidden">{{ t('tours.infoSheet.iconTooltipPartners') }}</span>
+        <div class="row-value">
+          <slot name="partners" />
+        </div>
+      </li>
+    </ul>
 
-    <!-- Each season chip carries its own icon, so the chips take the icon column too. -->
-    <li v-if="tour.seasons?.length" class="fact-row fact-row--wide" data-fact="seasons">
-      <span class="visually-hidden">{{ t('tours.infoSheet.iconTooltipSeasons') }}</span>
-      <span v-for="season in tour.seasons" :key="season" class="season-tag">
-        <BaseIcon :name="SEASON_ICONS[season]" size="sm" />
-        {{ t(`tours.season.${season}` as any) }}
-      </span>
-    </li>
-
-    <li v-if="tour.description" class="fact-row" data-fact="description">
-      <BaseIcon name="description" size="sm" class="row-icon" />
-      <span class="visually-hidden">{{ t('tours.infoSheet.iconTooltipDescription') }}</span>
-      <p class="row-value body-text">
-        <template v-for="(segment, i) in linkifyText(tour.description)" :key="i">
-          <a
-            v-if="segment.url" :href="segment.url" target="_blank" rel="noopener noreferrer"
-            class="description-link"
-          >{{ segment.text }}</a>
-          <template v-else>
-            {{ segment.text }}
+    <ul v-if="tour.description || tour.equipment || tour.notes" class="fact-group">
+      <li v-if="tour.description" class="fact-row" data-fact="description">
+        <BaseIcon name="description" size="sm" class="row-icon" />
+        <span class="visually-hidden">{{ t('tours.infoSheet.iconTooltipDescription') }}</span>
+        <p class="row-value body-text">
+          <template v-for="(segment, i) in linkifyText(tour.description)" :key="i">
+            <a
+              v-if="segment.url" :href="segment.url" target="_blank" rel="noopener noreferrer"
+              class="description-link"
+            >{{ segment.text }}</a>
+            <template v-else>
+              {{ segment.text }}
+            </template>
           </template>
-        </template>
-      </p>
-    </li>
+        </p>
+      </li>
 
-    <li v-if="tour.equipment" class="fact-row" data-fact="equipment">
-      <BaseIcon name="backpack" size="sm" class="row-icon" />
-      <span class="visually-hidden">{{ t('tours.infoSheet.iconTooltipEquipment') }}</span>
-      <p class="row-value body-text">
-        {{ tour.equipment }}
-      </p>
-    </li>
+      <li v-if="tour.equipment" class="fact-row" data-fact="equipment">
+        <BaseIcon name="backpack" size="sm" class="row-icon" />
+        <span class="visually-hidden">{{ t('tours.infoSheet.iconTooltipEquipment') }}</span>
+        <p class="row-value body-text">
+          {{ tour.equipment }}
+        </p>
+      </li>
 
-    <li v-if="tour.notes" class="fact-row" data-fact="notes">
-      <BaseIcon name="sticky_note_2" size="sm" class="row-icon" />
-      <span class="visually-hidden">{{ t('tours.infoSheet.iconTooltipNotes') }}</span>
-      <p class="row-value body-text">
-        {{ tour.notes }}
-      </p>
-    </li>
-  </ul>
+      <li v-if="tour.notes" class="fact-row" data-fact="notes">
+        <BaseIcon name="sticky_note_2" size="sm" class="row-icon" />
+        <span class="visually-hidden">{{ t('tours.infoSheet.iconTooltipNotes') }}</span>
+        <p class="row-value body-text">
+          {{ tour.notes }}
+        </p>
+      </li>
+    </ul>
+  </div>
 </template>
 
 <style scoped>
+/* The groups sit in the sheet's column (its gap spaces them); a divider leads each one,
+   since they always follow the hero. */
 .fact-rows {
+  display: contents;
+}
+
+.fact-group {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
   margin: 0;
-  padding: 0;
+  padding: var(--spacing-md) 0 0;
+  border-top: 1px solid var(--divider-color);
   list-style: none;
 }
 

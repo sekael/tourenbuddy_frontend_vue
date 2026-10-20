@@ -54,8 +54,8 @@ export const TOUR_TYPE_ICONS: Record<TourType, string> = {
   'ski-mountaineering': 'terrain',
   'paragliding': 'paragliding',
   'hiking': 'hiking',
-  'mountaineering': 'landscape',
-  'climbing': 'landscape',
+  'mountaineering': 'mountaineering',
+  'climbing': 'climbing',
   'mountain-biking': 'directions_bike',
   'trailrunning': 'sprint',
 }

@@ -89,6 +89,8 @@ import IconUploadFileOutline from '~icons/material-symbols/upload-file-outline'
 import IconVerifiedOutline from '~icons/material-symbols/verified-outline'
 import IconWarningOutline from '~icons/material-symbols/warning-outline'
 import IconWbSunnyOutline from '~icons/material-symbols/wb-sunny-outline'
+import IconClimbing from '~icons/tb/climbing'
+import IconMountaineering from '~icons/tb/mountaineering'
 import IconSkiTouring from '~icons/tb/ski-touring'
 import IconSplitboarding from '~icons/tb/splitboarding'
 
@@ -139,6 +141,7 @@ export const iconRegistry: Record<string, Component> = {
   check_circle: IconCheckCircleOutline,
   chevron_left: IconChevronLeft,
   chevron_right: IconChevronRight,
+  climbing: IconClimbing,
   close: IconClose,
   cloud_off: IconCloudOffOutline,
   contacts: IconContactsOutline,
@@ -178,6 +181,7 @@ export const iconRegistry: Record<string, Component> = {
   mail: IconMailOutline,
   map: IconMapOutline,
   menu: IconMenu,
+  mountaineering: IconMountaineering,
   my_location: IconMyLocationOutline,
   open_in_new: IconOpenInNew,
   notifications: IconNotificationsOutline,

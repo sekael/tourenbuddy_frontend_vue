@@ -109,6 +109,13 @@ did not read as "complete the tour" / "make private". Section headings, `fact-gr
 `detail-card` are deleted with their styles. The hero card's success ring and
 dashed private edge go too — the badge stamps carry the state.
 *Why extract:* shrinks the 1700-line sheet, makes the fact ordering testable in isolation.
+*Groups (follow-up):* the rows render as `<ul class="fact-group">` blocks — activity (type,
+seasons), route (start, end, GPX via a `route` slot, like partners), partners, free texts — each
+omitted when empty and led by a `--divider-color` rule; the component root is
+`display: contents`, so the groups share the sheet's column gap. The sheet gives the
+attachments strip (now one root, so the class lands) and the suggestions block the same divider.
+Dividers stay content-width: the suggestions block's full-bleed margins had lost their border
+already and are removed. Section headings stay out — the icons name the rows.
 
 ### D7 — Custom icons via unplugin-icons `customCollections`
 `vite.config.ts`: `Icons({ compiler: 'vue3', customCollections: { tb: FileSystemIconLoader('./src/assets/icons') } })`.
@@ -117,6 +124,13 @@ optical weight matched to Material Outlined 400) imported as `~icons/tb/ski-tour
 registered in `icons.ts` as `ski_touring` / `splitboarding`; `TOUR_TYPE_ICONS` points
 `skitour`/`splitboarding` at them. Same bundling, tree-shaking and offline precache as all icons.
 *Alternative:* a second Iconify set (`mdi`) — rejected, no suitable glyph exists (checked).
+*Climbing and mountaineering (follow-up):* both shared Material's generic `landscape`.
+`mountaineering.svg` is Temaki's `climbing` pictogram (CC0, the classic hiker scrambling up a
+rock step); `climbing.svg` is drawn here — a climber under an overhang with a chalk bag — both
+after user-supplied references. Rejected: Material `mountain_flag` (an outline landscape among
+solid figures), a hiker with pole or ice axe (read as hiking), CC-BY sets (`game-icons`, they
+need in-app credit). `tour-type.test.ts` checks every `TOUR_TYPE_ICONS` name is registered, since
+an unknown name renders nothing.
 
 ### D8 — The form looks up name and elevation, each field on its own
 Found while testing: Swisstopo's height service answered in 1–13 s or failed (502/503), and
@@ -142,6 +156,13 @@ through dialog and sheet — rejected: six props × two paths for state only the
 
 ## Risks / Trade-offs
 
+- [Swisstopo height service down or overloaded] → checked 2026-10-19: the request is
+  well-formed (documented `height?easting&northing&sr=2056`; decimals accepted; the same URL
+  returns 200 while the backend is up). Over 4 min, 3 of 40 fresh points answered; the rest
+  were 503 "no available server" (their ingress with no healthy backend), 502 or no answer in
+  12 s. `profile.json` fails the same way, so it is no fallback. CloudFront caches an error for
+  ~1–10 s, so an immediate retry of the same URL gets the same error. The form degrades to the
+  manual-entry placeholder (D8); nothing to fix on our side.
 - [Saving while the elevation is still loading] → the tour saves without it; the request is
   aborted with the form. Accepted: the user chose not to wait, and can edit it in later.
 - [GeoAdmin search unavailable or slow] → 5 s timeout, error message in the list; picking by

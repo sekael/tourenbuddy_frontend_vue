@@ -849,6 +849,12 @@ const formattedElevation = computed(() => {
         </div>
 
         <TourFactRows :tour="tour">
+          <template v-if="tour.gpxFilepath" #route>
+            <BaseButton variant="secondary" size="sm" class="gpx-download-btn" @click="handleDownloadGpx">
+              <BaseIcon name="route" />
+              {{ t('tours.infoSheet.downloadGpxBtn') }}
+            </BaseButton>
+          </template>
           <!-- Own tour: contact chips with the action menu; friend's tour: read-only names. -->
           <template
             v-if="partners.length > 0 || (tour.isFriendTour && (friendPartnerNames.length > 0 || unresolvedPartnerCount > 0))"
@@ -874,19 +880,14 @@ const formattedElevation = computed(() => {
           </template>
         </TourFactRows>
 
-        <!-- Files -->
-        <BaseButton v-if="tour.gpxFilepath" variant="secondary" size="sm" class="gpx-download-btn" @click="handleDownloadGpx">
-          <BaseIcon name="route" />
-          {{ t('tours.infoSheet.downloadGpxBtn') }}
-        </BaseButton>
-        <TourAttachmentsStrip :tour-id="tour.id" @open-viewer="openViewer" />
+        <TourAttachmentsStrip :tour-id="tour.id" class="group" @open-viewer="openViewer" />
 
         <!--
           Suggestions live at the BOTTOM (owner review workload, or the partner's own
           proposal, D15): they are actions on the tour, not facts about it, so they belong
           after the detail rows rather than crowding the header.
         -->
-        <div v-if="isOwner || canSuggest" class="suggestion-actions">
+        <div v-if="isOwner || canSuggest" class="suggestion-actions group">
           <button
             v-if="isOwner && pendingSuggestionCount > 0" type="button" class="action-btn suggestion-entry"
             data-testid="review-suggestions-btn" @click="mode = 'review'"
@@ -1046,18 +1047,11 @@ const formattedElevation = computed(() => {
   transform: scale(var(--press-scale));
 }
 
-/* The divider spans the full surface: negative margins cancel the host's inline padding
-   (published by the drawer/sheet as --surface-pad-*), then the padding is re-applied
-   inside so the buttons stay aligned with the detail rows above. */
 .suggestion-actions {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--spacing-xs);
-  margin-top: var(--spacing-xs);
-  margin-left: calc(-1 * var(--surface-pad-left, 0px));
-  margin-right: calc(-1 * var(--surface-pad-right, 0px));
-  padding: var(--spacing-sm) var(--surface-pad-right, 0px) 0 var(--surface-pad-left, 0px);
 }
 
 @media (hover: hover) {
@@ -1289,6 +1283,12 @@ const formattedElevation = computed(() => {
   font-weight: var(--font-weight-medium);
   background-color: color-mix(in srgb, var(--color-success) 12%, var(--color-background));
   color: var(--color-success-text);
+}
+
+/* Groups below the fact rows (attachments, suggestions) get the fact groups' divider. */
+.group {
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--divider-color);
 }
 
 /* BaseButton (secondary) provides the look; keep the 44px touch target. */
