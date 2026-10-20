@@ -6,7 +6,7 @@ Suggest a tour name based on the selected map location using Swisstopo reverse-g
 
 ### Requirement: Name suggestion service
 
-A service (`suggestTourName` in `swisstopo-name-service.ts`) SHALL query the Swisstopo GeoAdmin identify API on the `ch.swisstopo.swissnames3d` layer, in LV95 coordinates, for named features near the given point: first within 50 m, then within 500 m when nothing is found. Results SHALL be ranked by feature-type priority (`objektart`) and the best match's `name` (or HTML-stripped `label`) returned.
+A service (`suggestTourName` in `swisstopo-name-service.ts`) SHALL query the Swisstopo GeoAdmin identify API on the `ch.swisstopo.swissnames3d` layer, in LV95 coordinates, for named features near the given point: first within 50 m, then within 500 m when nothing is found. Results SHALL be ranked by feature-type priority (`objektart`) and the best match's `name` (or HTML-stripped `label`) returned. The caller MAY pass an `AbortSignal` to stop waiting.
 
 #### Scenario: Named feature found
 
@@ -20,12 +20,22 @@ A service (`suggestTourName` in `swisstopo-name-service.ts`) SHALL query the Swi
 
 #### Scenario: API timeout or error
 
-- **WHEN** the identify API does not respond within 5 seconds or returns an error
+- **WHEN** the identify API does not respond within 10 seconds or returns an error
 - **THEN** the service SHALL return `null` and log it
+
+#### Scenario: Caller stops waiting
+
+- **WHEN** the signal passed to `suggestTourName(coords, signal)` aborts before the API answers
+- **THEN** the request SHALL be aborted and the service SHALL return `null` without logging
 
 ### Requirement: Name auto-suggestion on location confirm
 
-After the user confirms a map location, a name suggestion SHALL be fetched and offered as a pre-filled value in the name field.
+After the user confirms a map location, the tour form SHALL open at once and look up a name for that point's name field on its own, independently of the elevation lookup. A name chosen in the picker's search SHALL be used instead of the lookup.
+
+#### Scenario: Name loading
+
+- **WHEN** the name lookup for a picked point is still running
+- **THEN** the name field SHALL be empty, show a spinner inside the field, and read "Loading from Swisstopo…" (or its localized equivalent) as its placeholder
 
 #### Scenario: Name suggested and accepted
 
@@ -39,5 +49,16 @@ After the user confirms a map location, a name suggestion SHALL be fetched and o
 
 #### Scenario: No suggestion available
 
-- **WHEN** no name suggestion is returned
-- **THEN** the name field SHALL remain empty for manual entry
+- **WHEN** no name suggestion is returned (nothing nearby, timeout, API error)
+- **THEN** the name field SHALL stay empty with the placeholder "Not available from Swisstopo – enter manually" (or its localized equivalent)
+
+#### Scenario: User types while the lookup runs
+
+- **WHEN** the user types in the name field before the lookup answers
+- **THEN** the spinner SHALL disappear, the request SHALL be aborted, and no later answer SHALL replace the typed name
+
+#### Scenario: Re-pick keeps a typed name
+
+- **WHEN** the user has typed a name and then re-picks the point
+- **THEN** no name lookup SHALL run for that field and the typed name SHALL stay
+- **AND** a name the form filled itself or was opened with SHALL be replaced by the new point's name
