@@ -2,7 +2,7 @@ import { useLogger } from '@/core/logging/use-logger'
 import { wgs84ToLv95 } from '@/core/utils/wgs84-to-lv95'
 
 const logger = useLogger('SwisstopoName')
-const TIMEOUT_MS = 5000
+const TIMEOUT_MS = 10_000
 
 /**
  * Objektart priority for swissNAMES3D features.
@@ -93,16 +93,19 @@ async function identifyAt(
  * 2. If empty, fall back to 500 m.
  * 3. Sort results by Objektart priority and return the name of the best match.
  *
- * Returns null if nothing is found or the API is unavailable.
+ * Returns null if nothing is found, the API is unavailable, or `signal` aborts.
  */
-export async function suggestTourName(coords: {
-  lng: number
-  lat: number
-}): Promise<string | null> {
+export async function suggestTourName(
+  coords: { lng: number, lat: number },
+  signal?: AbortSignal,
+): Promise<string | null> {
   const { easting, northing } = wgs84ToLv95(coords.lng, coords.lat)
 
+  // ponytail: manual link instead of AbortSignal.any (iOS < 17.4 lacks it).
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS)
+  const abort = () => controller.abort()
+  signal?.addEventListener('abort', abort)
+  const timeoutId = setTimeout(abort, TIMEOUT_MS)
 
   try {
     let results = await identifyAt(easting, northing, 50, controller.signal)
@@ -142,6 +145,9 @@ export async function suggestTourName(coords: {
     return label || null
   }
   catch (err) {
+    // The caller stopped waiting (field typed into, point re-picked): nothing to report.
+    if (signal?.aborted)
+      return null
     if (err instanceof DOMException && err.name === 'AbortError') {
       logger.warn('Swisstopo identify API timed out')
     }
@@ -152,5 +158,6 @@ export async function suggestTourName(coords: {
   }
   finally {
     clearTimeout(timeoutId)
+    signal?.removeEventListener('abort', abort)
   }
 }

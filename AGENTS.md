@@ -45,6 +45,7 @@ topo map (Swisstopo), link contacts, and pick planned dates.
 
 ```bash
 npm run dev          # dev server
+npm run dev:phone    # HTTPS on the LAN + Supabase proxy, for phone testing (README → Setup 5)
 npm run test         # all tests
 npm run type-check
 npx eslint . --fix   # after changes

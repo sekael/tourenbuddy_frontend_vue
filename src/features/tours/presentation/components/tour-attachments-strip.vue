@@ -110,32 +110,35 @@ function openAt(index: number) {
 </script>
 
 <template>
-  <div v-if="pending.length" class="strip__uploads">
-    <TourAttachmentUploadRow v-for="entry in pending" :key="entry.id" :entry="entry" />
-  </div>
-  <div v-if="attachments.length" class="strip">
-    <button
-      v-for="(att, index) in attachments"
-      :key="att.id"
-      type="button"
-      class="strip__item"
-      @click="openAt(index)"
-    >
-      <div class="strip__thumb">
-        <img
-          v-if="thumbnailUrls[att.id]"
-          :src="thumbnailUrls[att.id]"
-          :alt="att.originalFilename"
-          class="strip__img"
-        >
-        <BaseIcon
-          v-else
-          :name="att.mimeType === 'application/pdf' ? 'picture_as_pdf' : 'image'"
-          class="strip__pdf-icon"
-        />
-      </div>
-      <span class="strip__label">{{ att.originalFilename }}</span>
-    </button>
+  <!-- One root, so a class from the sheet (its group divider) lands on it. -->
+  <div v-if="pending.length || attachments.length">
+    <div v-if="pending.length" class="strip__uploads">
+      <TourAttachmentUploadRow v-for="entry in pending" :key="entry.id" :entry="entry" />
+    </div>
+    <div v-if="attachments.length" class="strip">
+      <button
+        v-for="(att, index) in attachments"
+        :key="att.id"
+        type="button"
+        class="strip__item"
+        @click="openAt(index)"
+      >
+        <div class="strip__thumb">
+          <img
+            v-if="thumbnailUrls[att.id]"
+            :src="thumbnailUrls[att.id]"
+            :alt="att.originalFilename"
+            class="strip__img"
+          >
+          <BaseIcon
+            v-else
+            :name="att.mimeType === 'application/pdf' ? 'picture_as_pdf' : 'image'"
+            class="strip__pdf-icon"
+          />
+        </div>
+        <span class="strip__label">{{ att.originalFilename }}</span>
+      </button>
+    </div>
   </div>
 </template>
 

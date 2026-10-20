@@ -1,9 +1,10 @@
 import type { VueWrapper } from '@vue/test-utils'
 import type { ComponentPublicInstance } from 'vue'
+import type { PointPick } from '@/features/tours/presentation/composables/use-swisstopo-fill'
 import { createTestingPinia } from '@pinia/testing'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { nextTick, ref } from 'vue'
+import { defineComponent, nextTick, ref } from 'vue'
 import { isOnline } from '@/core/offline/use-online-status'
 import { fetchSkiRoute } from '@/features/map/data/services/swisstopo-trail-service'
 import { ROUTE_ZOOM } from '@/features/map/presentation/composables/frame-tour'
@@ -86,7 +87,7 @@ const ContactsListSheetStub = {
 const TourCreationDialogStub = {
   name: 'TourCreationDialog',
   template: '<div data-testid="tour-creation-dialog" />',
-  props: ['initialElevation', 'initialName', 'initialStartPoint', 'initialEndPoint', 'initialGoal'],
+  props: ['pick', 'initialGoal'],
   emits: ['confirm', 'close', 'pick-point'],
 }
 
@@ -107,14 +108,13 @@ interface MapPageInternals {
   activeOverlay: string | null
   pendingLocation: { lng: number, lat: number } | null
   pendingPickType: 'goal' | 'start' | 'end'
-  dialogInitialName: string | null
-  dialogInitialElevation: number | null
+  dialogPick: PointPick | null
   tourDetailOrigin: 'list' | 'cal-seasons' | 'cal-planned' | null
   tourDetailOriginDay: string | null
   showCalendarFeatureNotice: boolean
   onboardingTour: { startTour: (step: number) => void, finish: () => void }
   openOverlay: (name: string) => void
-  handleLocationConfirmed: (location: { lng: number, lat: number }) => Promise<void>
+  handleLocationConfirmed: (location: { lng: number, lat: number, name?: string }) => void
   handleTourCreated: (...args: unknown[]) => Promise<void>
   handleDialogClose: () => void
   dismissCalendarFeatureNotice: () => void
@@ -600,60 +600,36 @@ describe('mapPage', () => {
     // ~100m away from GOAL in LV95
     const NEW_GOAL = { lng: 8.2015, lat: 46.8009 }
 
-    it('same-goal confirm: does not call elevation/name services and keeps existing values', async () => {
-      const { getElevation }
-        = await import('@/features/tours/data/services/swisstopo-elevation-service')
-      const { suggestTourName }
-        = await import('@/features/tours/data/services/swisstopo-name-service')
-      vi.mocked(getElevation).mockResolvedValue(1234)
-      vi.mocked(suggestTourName).mockResolvedValue('Mocked Peak')
-
+    function mountCreating() {
       const wrapper = mountMapPage()
       wrapper.vm.activeOverlay = 'tour-creation'
       wrapper.vm.pendingLocation = { ...GOAL }
-      wrapper.vm.dialogInitialElevation = 999
-      wrapper.vm.dialogInitialName = 'Original'
+      wrapper.vm.dialogPick = { type: 'goal', location: { ...GOAL } }
       wrapper.vm.pendingPickType = 'goal'
-      const mapStore = useMapStore()
-      mapStore.$patch({ isPickingLocation: true })
+      useMapStore().$patch({ isPickingLocation: true })
+      return wrapper
+    }
+
+    it('same-goal confirm: hands the form no new pick, so nothing is looked up again', async () => {
+      const wrapper = mountCreating()
+      const before = wrapper.vm.dialogPick
       await wrapper.vm.$nextTick()
 
-      await wrapper.vm.handleLocationConfirmed({ ...GOAL })
-      await wrapper.vm.$nextTick()
+      wrapper.vm.handleLocationConfirmed({ ...GOAL })
 
-      expect(getElevation).not.toHaveBeenCalled()
-      expect(suggestTourName).not.toHaveBeenCalled()
-      expect(wrapper.vm.dialogInitialElevation).toBe(999)
-      expect(wrapper.vm.dialogInitialName).toBe('Original')
+      expect(wrapper.vm.dialogPick).toBe(before)
       expect(wrapper.vm.activeOverlay).toBe('tour-creation')
     })
 
-    it('different-goal confirm: calls services and updates pendingLocation/elevation/name', async () => {
-      const { getElevation }
-        = await import('@/features/tours/data/services/swisstopo-elevation-service')
-      const { suggestTourName }
-        = await import('@/features/tours/data/services/swisstopo-name-service')
-      vi.mocked(getElevation).mockResolvedValue(1234)
-      vi.mocked(suggestTourName).mockResolvedValue('Mocked Peak')
-
-      const wrapper = mountMapPage()
-      wrapper.vm.activeOverlay = 'tour-creation'
-      wrapper.vm.pendingLocation = { ...GOAL }
-      wrapper.vm.dialogInitialElevation = 999
-      wrapper.vm.dialogInitialName = 'Original'
-      wrapper.vm.pendingPickType = 'goal'
-      const mapStore = useMapStore()
-      mapStore.$patch({ isPickingLocation: true })
+    it('different-goal confirm: hands the form the new goal at once, without waiting on Swisstopo', async () => {
+      const wrapper = mountCreating()
       await wrapper.vm.$nextTick()
 
-      await wrapper.vm.handleLocationConfirmed(NEW_GOAL)
-      await wrapper.vm.$nextTick()
+      // Synchronous: the dialog must not wait for any lookup.
+      wrapper.vm.handleLocationConfirmed(NEW_GOAL)
 
-      expect(getElevation).toHaveBeenCalledWith(NEW_GOAL)
-      expect(suggestTourName).toHaveBeenCalledWith(NEW_GOAL)
       expect(wrapper.vm.pendingLocation).toEqual(NEW_GOAL)
-      expect(wrapper.vm.dialogInitialElevation).toBe(1234)
-      expect(wrapper.vm.dialogInitialName).toBe('Mocked Peak')
+      expect(wrapper.vm.dialogPick).toEqual({ type: 'goal', location: NEW_GOAL, name: undefined })
       expect(wrapper.vm.activeOverlay).toBe('tour-creation')
     })
 
@@ -666,11 +642,66 @@ describe('mapPage', () => {
       mapStore.$patch({ isPickingLocation: true })
       await wrapper.vm.$nextTick()
 
-      await wrapper.vm.handleLocationConfirmed(NEW_GOAL)
+      wrapper.vm.handleLocationConfirmed(NEW_GOAL)
       await wrapper.vm.$nextTick()
 
       // Single preview-goal setter → inherently one marker that moves, not a second one.
       expect(mapStore.setPreviewGoal).toHaveBeenCalledWith(NEW_GOAL)
+    })
+  })
+
+  describe('sheet while the picker searches', () => {
+    it('should hide the collapsed overlay without unmounting it, and never once the pick or the page is gone', async () => {
+      const LocationPickerStub = defineComponent({ name: 'LocationPicker', emits: ['searching'], template: '<div />' })
+      const wrapper = mountMapPage({}, { LocationPicker: LocationPickerStub })
+      wrapper.vm.activeOverlay = 'tour-creation'
+      useMapStore().$patch({ isPickingLocation: true })
+      await wrapper.vm.$nextTick()
+
+      const flagged = () => document.documentElement.classList.contains('picker-searching')
+      wrapper.findComponent(LocationPickerStub).vm.$emit('searching', true)
+      await wrapper.vm.$nextTick()
+      expect(flagged()).toBe(true)
+      expect(wrapper.findComponent(TourCreationDialogStub).exists()).toBe(true)
+
+      useMapStore().$patch({ isPickingLocation: false })
+      await wrapper.vm.$nextTick()
+      expect(flagged()).toBe(false)
+
+      useMapStore().$patch({ isPickingLocation: true })
+      await wrapper.vm.$nextTick()
+      expect(flagged()).toBe(true)
+      wrapper.unmount()
+      expect(flagged()).toBe(false)
+    })
+  })
+
+  describe('name from the picker search', () => {
+    const POINT = { lng: 9.908, lat: 46.382 }
+
+    async function confirmFromSearch(pickType: 'goal' | 'start') {
+      const wrapper = mountMapPage()
+      wrapper.vm.pendingPickType = pickType
+      useMapStore().$patch({ isPickingLocation: true })
+      await wrapper.vm.$nextTick()
+      wrapper.vm.handleLocationConfirmed({ ...POINT, name: 'Piz Bernina' })
+      return { wrapper }
+    }
+
+    it('should hand the search result name to the form with a new goal', async () => {
+      const { wrapper } = await confirmFromSearch('goal')
+      expect(wrapper.vm.dialogPick).toEqual({ type: 'goal', location: POINT, name: 'Piz Bernina' })
+    })
+
+    it('should keep the search name out of the stored point and draft marker', async () => {
+      const { wrapper } = await confirmFromSearch('goal')
+      expect(wrapper.vm.pendingLocation).toEqual(POINT)
+      expect(useMapStore().setPreviewGoal).toHaveBeenCalledWith(POINT)
+    })
+
+    it('should hand the search result name to the form with a start point', async () => {
+      const { wrapper } = await confirmFromSearch('start')
+      expect(wrapper.vm.dialogPick).toEqual({ type: 'start', location: POINT, name: 'Piz Bernina' })
     })
   })
 

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
 import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite'
 import vue from '@vitejs/plugin-vue'
+import { FileSystemIconLoader } from 'unplugin-icons/loaders'
 import Icons from 'unplugin-icons/vite'
 import VueRouter from 'unplugin-vue-router/vite'
 import { defineConfig } from 'vite'
@@ -10,7 +11,16 @@ import { VitePWA } from 'vite-plugin-pwa'
 // Shown in the profile; release-please bumps package.json before every deploy build.
 const appVersion: string = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version
 
-export default defineConfig({
+// `npm run dev:phone` (README → Test on your phone): a LAN IP is no secure context, but the app
+// needs one (crypto.randomUUID, service worker), and an HTTPS page may not call
+// http://<LAN-IP>:54321 — so HTTPS from mkcert files, with local Supabase proxied same-origin.
+function phoneServer() {
+  const proxy = Object.fromEntries(['/rest/v1', '/auth/v1', '/storage/v1', '/realtime/v1'].map(path =>
+    [path, { target: 'http://127.0.0.1:54321', changeOrigin: true, ws: path === '/realtime/v1' }]))
+  return { https: { cert: readFileSync('.certs/cert.pem'), key: readFileSync('.certs/key.pem') }, proxy }
+}
+
+export default defineConfig(({ mode }) => ({
   define: { __APP_VERSION__: JSON.stringify(appVersion) },
   plugins: [
     VueRouter({
@@ -21,7 +31,8 @@ export default defineConfig({
     // Bundled, tree-shaken SVG icons (Material Symbols via Iconify). Each
     // `~icons/material-symbols/<name>` import resolves to a Vue3 component at
     // build time — no runtime icon font, no CDN. See src/core/components/icons.ts.
-    Icons({ compiler: 'vue3' }),
+    // Glyphs Material lacks live in src/assets/icons as `~icons/tb/<file-name>`.
+    Icons({ compiler: 'vue3', customCollections: { tb: FileSystemIconLoader('./src/assets/icons') } }),
     VueI18nPlugin({
       include: [fileURLToPath(new URL('./src/locales/**', import.meta.url))],
       compositionOnly: true,
@@ -75,4 +86,5 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
-})
+  server: mode === 'phone' ? phoneServer() : undefined,
+}))

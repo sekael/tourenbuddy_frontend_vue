@@ -14,6 +14,8 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+# mkcert certificate for `npm run dev:phone` (README → Test on your phone)
+.certs/
 
 # Editor directories and files
 .vscode/extensions.json

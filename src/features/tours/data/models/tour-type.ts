@@ -49,13 +49,13 @@ export const TOUR_TYPE_LABELS: Record<TourType, string> = {
 export const TOUR_TYPE_ICONS: Record<TourType, string> = {
   'skiing': 'downhill_skiing',
   'snowboarding': 'snowboarding',
-  'skitour': 'nordic_walking',
-  'splitboarding': 'nordic_walking',
-  'ski-mountaineering': 'terrain',
+  'skitour': 'ski_touring',
+  'splitboarding': 'splitboarding',
+  'ski-mountaineering': 'ski_mountaineering',
   'paragliding': 'paragliding',
   'hiking': 'hiking',
-  'mountaineering': 'landscape',
-  'climbing': 'landscape',
+  'mountaineering': 'mountaineering',
+  'climbing': 'climbing',
   'mountain-biking': 'directions_bike',
   'trailrunning': 'sprint',
 }

@@ -7,7 +7,6 @@ import IconArrowBack from '~icons/material-symbols/arrow-back'
 import IconArrowForward from '~icons/material-symbols/arrow-forward'
 import IconAttachFile from '~icons/material-symbols/attach-file'
 import IconAutoAwesomeOutline from '~icons/material-symbols/auto-awesome-outline'
-import IconBackpackOutline from '~icons/material-symbols/backpack-outline'
 import IconBadgeOutline from '~icons/material-symbols/badge-outline'
 import IconBlockOutline from '~icons/material-symbols/block-outline'
 import IconBrokenImageOutline from '~icons/material-symbols/broken-image-outline'
@@ -38,7 +37,6 @@ import IconExpandLess from '~icons/material-symbols/expand-less'
 import IconExpandMore from '~icons/material-symbols/expand-more'
 import IconExploreOutline from '~icons/material-symbols/explore-outline'
 import IconFeedbackOutline from '~icons/material-symbols/feedback-outline'
-import IconFilterHdr from '~icons/material-symbols/filter-hdr'
 import IconFlagOutline from '~icons/material-symbols/flag-outline'
 import IconGroupOutline from '~icons/material-symbols/group-outline'
 import IconHardwareOutline from '~icons/material-symbols/hardware-outline'
@@ -60,7 +58,6 @@ import IconMailOutline from '~icons/material-symbols/mail-outline'
 import IconMapOutline from '~icons/material-symbols/map-outline'
 import IconMenu from '~icons/material-symbols/menu'
 import IconMyLocationOutline from '~icons/material-symbols/my-location-outline'
-import IconNordicWalking from '~icons/material-symbols/nordic-walking'
 import IconNotificationsOutline from '~icons/material-symbols/notifications-outline'
 import IconOpenInNew from '~icons/material-symbols/open-in-new'
 import IconParaglidingOutline from '~icons/material-symbols/paragliding-outline'
@@ -90,6 +87,12 @@ import IconUploadFileOutline from '~icons/material-symbols/upload-file-outline'
 import IconVerifiedOutline from '~icons/material-symbols/verified-outline'
 import IconWarningOutline from '~icons/material-symbols/warning-outline'
 import IconWbSunnyOutline from '~icons/material-symbols/wb-sunny-outline'
+import IconClimbing from '~icons/tb/climbing'
+import IconIceAxe from '~icons/tb/ice-axe'
+import IconMountaineering from '~icons/tb/mountaineering'
+import IconSkiMountaineering from '~icons/tb/ski-mountaineering'
+import IconSkiTouring from '~icons/tb/ski-touring'
+import IconSplitboarding from '~icons/tb/splitboarding'
 
 /**
  * Central icon registry: internal name → bundled SVG component.
@@ -111,11 +114,11 @@ import IconWbSunnyOutline from '~icons/material-symbols/wb-sunny-outline'
  *
  * To ADD an icon: add one import + one entry mapping `internal_name` to
  * `~icons/material-symbols/<kebab-name>` (append `-outline` for the unfilled
- * variant). See `.claude/conventions.md` → Styling.
+ * variant). A glyph Material lacks goes into `src/assets/icons/<name>.svg` and is
+ * imported as `~icons/tb/<name>` (e.g. `ski_touring`). See `.claude/conventions.md` → Styling.
  */
 export const iconRegistry: Record<string, Component> = {
   // Filled star for the "primary method" selected state (was CSS FILL 1).
-  // Iconify has no `terrain`; `filter_hdr` is Material's identical mountains glyph.
   // Material Symbols draws remove_circle_outline and do_not_disturb_on as the
   // same glyph; Iconify only ships the latter name.
   ac_unit: IconAcUnit,
@@ -126,7 +129,6 @@ export const iconRegistry: Record<string, Component> = {
   arrow_forward: IconArrowForward,
   attach_file: IconAttachFile,
   auto_awesome: IconAutoAwesomeOutline,
-  backpack: IconBackpackOutline,
   badge: IconBadgeOutline,
   block: IconBlockOutline,
   broken_image: IconBrokenImageOutline,
@@ -137,6 +139,7 @@ export const iconRegistry: Record<string, Component> = {
   check_circle: IconCheckCircleOutline,
   chevron_left: IconChevronLeft,
   chevron_right: IconChevronRight,
+  climbing: IconClimbing,
   close: IconClose,
   cloud_off: IconCloudOffOutline,
   contacts: IconContactsOutline,
@@ -163,6 +166,7 @@ export const iconRegistry: Record<string, Component> = {
   history: IconHistory,
   hiking: IconHiking,
   home: IconHomeOutline,
+  ice_axe: IconIceAxe,
   image: IconImageOutline,
   info: IconInfoOutline,
   landscape: IconLandscapeOutline,
@@ -176,8 +180,8 @@ export const iconRegistry: Record<string, Component> = {
   mail: IconMailOutline,
   map: IconMapOutline,
   menu: IconMenu,
+  mountaineering: IconMountaineering,
   my_location: IconMyLocationOutline,
-  nordic_walking: IconNordicWalking,
   open_in_new: IconOpenInNew,
   notifications: IconNotificationsOutline,
   paragliding: IconParaglidingOutline,
@@ -194,14 +198,16 @@ export const iconRegistry: Record<string, Component> = {
   schedule: IconScheduleOutline,
   search: IconSearch,
   search_off: IconSearchOff,
+  ski_mountaineering: IconSkiMountaineering,
+  ski_touring: IconSkiTouring,
   snowboarding: IconSnowboarding,
+  splitboarding: IconSplitboarding,
   sports_score: IconSportsScore,
   sprint: IconSprint,
   star: IconStarOutline,
   star_filled: IconStar,
   sticky_note_2: IconStickyNote2Outline,
   sync_alt: IconSyncAlt,
-  terrain: IconFilterHdr,
   tour: IconTourOutline,
   trip_origin: IconTripOrigin,
   tune: IconTune,

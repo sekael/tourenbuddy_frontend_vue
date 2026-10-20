@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { Season } from '@/features/tours/data/models/season'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
+import type { PointPick } from '@/features/tours/presentation/composables/use-swisstopo-fill'
 import { storeToRefs } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
@@ -29,12 +29,13 @@ import LinkEditWarningDialog from '@/features/tour-links/presentation/components
 import LinkRequestBanner from '@/features/tour-links/presentation/components/link-request-banner.vue'
 import LinkedWithSection from '@/features/tour-links/presentation/components/linked-with-section.vue'
 import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
-import { TOUR_TYPE_COLORS, TOUR_TYPE_I18N_KEYS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
+import { TOUR_TYPE_COLORS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
 import { downloadOriginal } from '@/features/tours/data/services/gpx-storage-service'
 import { COLLISION_RADIUS_M } from '@/features/tours/domain/collision'
 import { isSameGoal } from '@/features/tours/domain/distance'
 import TourAttachmentViewer from '@/features/tours/presentation/components/tour-attachment-viewer.vue'
 import TourAttachmentsStrip from '@/features/tours/presentation/components/tour-attachments-strip.vue'
+import TourFactRows from '@/features/tours/presentation/components/tour-fact-rows.vue'
 import TourForm from '@/features/tours/presentation/components/tour-form.vue'
 import TourSuggestionHistorySheet from '@/features/tours/presentation/components/tour-suggestion-history-sheet.vue'
 import TourSuggestionReviewSheet from '@/features/tours/presentation/components/tour-suggestion-review-sheet.vue'
@@ -50,12 +51,7 @@ import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 const props = defineProps<{
   tour: Tour
   /** Set by map-page after a location pick triggered from this sheet. Reset to null via pointConsumed. */
-  editPickedPoint?: {
-    type: 'start' | 'end' | 'goal'
-    location: { lng: number, lat: number }
-    elevation?: number | null
-    suggestedName?: string | null
-  } | null
+  editPickedPoint?: PointPick | null
   /** Desktop only: show a back button pointing to the tours list. */
   showBack?: boolean
   /** Which pick type is active — drives the collapsed header label in edit mode. */
@@ -104,27 +100,16 @@ const mode = ref<'view' | 'edit' | 'suggest' | 'review' | 'history'>('view')
 /** IDs of attachments that existed when edit mode was entered — used for cancel rollback. */
 const editBaseAttachmentIds = ref<Set<string>>(new Set())
 
-// Pending goal/points during edit — updated reactively via editPickedPoint prop
+// Pending goal during edit, and the latest pick for the form (it looks up name + elevation)
 const pendingGoal = ref<{ lng: number, lat: number }>({ ...props.tour.goal })
-const pendingStartPoint = ref<{ lng: number, lat: number } | null>(null)
-const pendingEndPoint = ref<{ lng: number, lat: number } | null>(null)
-// Elevation/name updated from Swisstopo after a goal re-pick in edit mode
-const pendingElevation = ref<number | null>(null)
-const pendingSuggestedName = ref<string | null>(null)
-const pendingStartPointMeta = ref<{ name: string | null, elevation: number | null } | null>(null)
-const pendingEndPointMeta = ref<{ name: string | null, elevation: number | null } | null>(null)
+const pendingPick = ref<PointPick | null>(null)
 
 function enterEditMode() {
   // Clean slate: any prior offline-write error is dismissed so it never resurfaces on the
   // next edit (it re-appears only if THIS edit fails again).
   clearOfflineWriteError()
   pendingGoal.value = { ...props.tour.goal }
-  pendingStartPoint.value = null
-  pendingEndPoint.value = null
-  pendingElevation.value = null
-  pendingSuggestedName.value = null
-  pendingStartPointMeta.value = null
-  pendingEndPointMeta.value = null
+  pendingPick.value = null
   // Snapshot attachment IDs before edit so cancel can rollback newly added ones
   editBaseAttachmentIds.value = new Set(
     (attachmentsStore.attachmentsByTour[props.tour.id] ?? []).map(a => a.id),
@@ -158,25 +143,9 @@ watch(
   (pick) => {
     if (!pick)
       return
-    if (pick.type === 'goal') {
+    if (pick.type === 'goal')
       pendingGoal.value = pick.location
-      pendingElevation.value = pick.elevation ?? null
-      pendingSuggestedName.value = pick.suggestedName ?? null
-    }
-    else if (pick.type === 'start') {
-      pendingStartPoint.value = pick.location
-      pendingStartPointMeta.value = {
-        name: pick.suggestedName ?? null,
-        elevation: pick.elevation ?? null,
-      }
-    }
-    else {
-      pendingEndPoint.value = pick.location
-      pendingEndPointMeta.value = {
-        name: pick.suggestedName ?? null,
-        elevation: pick.elevation ?? null,
-      }
-    }
+    pendingPick.value = pick
     emit('pointConsumed')
   },
 )
@@ -243,16 +212,12 @@ function enterSuggestMode(batchId?: string) {
   clearOfflineWriteError()
   const pending = batchId ? myPendingSuggestions.value.filter(s => s.batchId === batchId) : []
   suggestBatchId.value = batchId ?? uuidv4()
-  suggestSeedDraft.value = seedDraftFromPending(props.tour, pending)
-
+  const seed = seedDraftFromPending(props.tour, pending)
   const goal = pendingGoalFrom(pending)
+  // A proposed goal carries its elevation; it seeds the field when the tour has none.
+  suggestSeedDraft.value = { ...seed, elevation: seed.elevation ?? goal?.elevation ?? null }
   pendingGoal.value = goal ? { lng: goal.lng, lat: goal.lat } : { ...props.tour.goal }
-  pendingElevation.value = goal?.elevation ?? null
-  pendingStartPoint.value = null
-  pendingEndPoint.value = null
-  pendingSuggestedName.value = null
-  pendingStartPointMeta.value = null
-  pendingEndPointMeta.value = null
+  pendingPick.value = null
 
   // The partner needs the owner's attachments loaded to propose a removal against them.
   void attachmentsStore.load(props.tour.id)
@@ -635,13 +600,6 @@ const typeTint = computed(() =>
   props.tour.tourType ? { '--type-tint': TOUR_TYPE_COLORS[props.tour.tourType] } : undefined,
 )
 
-const SEASON_ICONS: Record<Season, string> = {
-  winter: 'ac_unit',
-  spring: 'local_florist',
-  summer: 'wb_sunny',
-  autumn: 'eco',
-}
-
 function initialOf(name: string) {
   return name.trim().charAt(0).toUpperCase()
 }
@@ -650,9 +608,10 @@ const formattedDate = computed(() => {
   const start = props.tour.plannedDate
   if (!start)
     return null
+  // Abbreviated month: a cross-month span still fits the hero's second line on a phone.
   const fmt = new Intl.DateTimeFormat(locale.value, {
     year: 'numeric',
-    month: 'long',
+    month: 'short',
     day: 'numeric',
   })
   // formatRange collapses the shared parts per locale ("25.–27. August 2026" / "August
@@ -749,52 +708,6 @@ const formattedElevation = computed(() => {
     return null
   return `${new Intl.NumberFormat(locale.value, { maximumFractionDigits: 0 }).format(props.tour.elevation)}m`
 })
-
-const startPointText = computed(() => {
-  if (!props.tour.startPoint)
-    return null
-  return `${props.tour.startPoint.lat.toFixed(4)}°N, ${props.tour.startPoint.lng.toFixed(4)}°E`
-})
-
-const endPointText = computed(() => {
-  if (!props.tour.endPoint)
-    return null
-  return `${props.tour.endPoint.lat.toFixed(4)}°N, ${props.tour.endPoint.lng.toFixed(4)}°E`
-})
-
-const isRoundTrip = computed(() => {
-  const s = props.tour.startPoint
-  const e = props.tour.endPoint
-  if (!s)
-    return false
-  if (!e)
-    return false
-  return s.lng === e.lng && s.lat === e.lat
-})
-
-const isOneWayToGoal = computed(() => {
-  return !!props.tour.startPoint && !props.tour.endPoint
-})
-
-/** Auto-link URLs in plain text: returns array of segments {text, url?}. */
-function linkifyText(text: string): Array<{ text: string, url?: string }> {
-  const urlPattern = /https?:\/\/[^\s<>[\]{}|\\^`"]+/g
-  const segments: Array<{ text: string, url?: string }> = []
-  let lastIndex = 0
-  for (let match = urlPattern.exec(text); match !== null; match = urlPattern.exec(text)) {
-    if (match.index > lastIndex) {
-      segments.push({ text: text.slice(lastIndex, match.index) })
-    }
-    segments.push({ text: match[0], url: match[0] })
-    lastIndex = match.index + match[0].length
-  }
-
-  if (lastIndex < text.length) {
-    segments.push({ text: text.slice(lastIndex) })
-  }
-
-  return segments.length > 0 ? segments : [{ text }]
-}
 </script>
 
 <template>
@@ -811,10 +724,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
       <TourForm
         ref="editFormRef" form-id="tour-edit-form" :embedded="editAsPage"
         :submit-label="t('tours.infoSheet.saveLabel')" :allow-goal-edit="true" :current-goal="pendingGoal"
-        :initial-draft="tour" :tour-id="tour.id" :initial-elevation="pendingElevation"
-        :initial-name="pendingSuggestedName" :initial-start-point="pendingStartPoint"
-        :initial-end-point="pendingEndPoint" :initial-start-point-meta="pendingStartPointMeta"
-        :initial-end-point-meta="pendingEndPointMeta" :disabled="isPicking"
+        :initial-draft="tour" :tour-id="tour.id" :pick="pendingPick" :disabled="isPicking"
         @submit="(d, r) => handleEditSubmit(d, r)" @cancel="cancelEdit" @pick-point="emit('pickPoint', $event)"
         @tour-type-change="emit('tourTypeChange', $event)"
         @start-point-change="emit('startPointChange', $event)"
@@ -830,10 +740,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
       <TourForm
         ref="editFormRef" form-id="tour-suggest-form" mode="suggest" :embedded="editAsPage"
         :submit-label="t('tours.suggestions.submitBtn')" :allow-goal-edit="true" :current-goal="pendingGoal"
-        :initial-draft="suggestSeedDraft" :tour-id="tour.id" :initial-elevation="pendingElevation"
-        :initial-name="pendingSuggestedName" :initial-start-point="pendingStartPoint"
-        :initial-end-point="pendingEndPoint" :initial-start-point-meta="pendingStartPointMeta"
-        :initial-end-point-meta="pendingEndPointMeta" :disabled="isPicking"
+        :initial-draft="suggestSeedDraft" :tour-id="tour.id" :pick="pendingPick" :disabled="isPicking"
         @submit="handleSuggestSubmit" @cancel="cancelSuggest" @pick-point="emit('pickPoint', $event)"
         @tour-type-change="emit('tourTypeChange', $event)"
         @start-point-change="emit('startPointChange', $event)"
@@ -866,14 +773,12 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         <LinkRequestBanner v-for="req in linkPendingRequests" :key="req.id" :request="req" />
         <CollisionNotice v-if="isOwner" :own-tour-id="tour.id" />
 
-        <!-- Header card: what kind of tour, when, and (friend tours) whose -->
-        <div
-          class="hero"
-          :class="{ 'hero--completed': tour.completed, 'hero--private': tour.visibility === 'private' }"
-        >
+        <!-- Hero: led by the goal. Line 1 elevation (or date); line 2 date · coordinates,
+             wrapping freely; friend tours add the owner. -->
+        <div class="hero">
           <span class="hero-badge">
             <BaseIcon :name="tour.tourType ? TOUR_TYPE_ICONS[tour.tourType] : 'location_on'" size="lg" />
-            <!-- State stamps on the badge: they pop in when the owner flips the toggle below. -->
+            <!-- State stamps on the badge: they pop in when the owner flips a toggle. -->
             <Transition name="stamp">
               <span v-if="tour.completed" class="hero-stamp hero-stamp--done" aria-hidden="true">
                 <BaseIcon name="check" size="sm" />
@@ -886,10 +791,18 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
             </Transition>
           </span>
           <div class="hero-text">
-            <span v-if="tour.tourType" class="hero-type">{{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[tour.tourType]}` as any) }}</span>
-            <span v-if="formattedDate" class="hero-meta">
-              <BaseIcon name="calendar_today" size="sm" />
-              {{ formattedDate }}
+            <div v-if="formattedElevation || formattedDate" class="hero-line">
+              <span v-if="formattedElevation" class="hero-headline">
+                <BaseIcon name="landscape" size="sm" class="hero-headline-icon" />
+                <span class="visually-hidden">{{ t('tours.infoSheet.iconTooltipElevation') }}</span>
+                {{ formattedElevation }}
+              </span>
+              <span v-else-if="formattedDate" class="hero-headline hero-headline--date">{{ formattedDate }}</span>
+            </div>
+            <!-- Date and coordinates as separate items: a wrap leaves no dangling separator. -->
+            <span class="hero-meta">
+              <span v-if="formattedElevation && formattedDate">{{ formattedDate }}</span>
+              <span class="coords">{{ coordinates }}</span>
             </span>
             <span v-if="tour.isFriendTour" class="hero-meta">
               <BaseIcon name="person" size="sm" />
@@ -935,145 +848,46 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
           </button>
         </div>
 
-        <!-- Route: the goal (elevation as the headline number), start and finish -->
-        <section class="facts-section">
-          <h3 class="section-heading">
-            {{ t('tours.infoSheet.sectionRoute') }}
-          </h3>
-          <div class="fact-grid">
-            <div class="fact fact--goal">
-              <span class="fact-label">
-                <BaseIcon name="location_on" size="sm" />
-                {{ t('tours.infoSheet.iconTooltipGoal') }}
-              </span>
-              <span v-if="formattedElevation" class="fact-value fact-value--headline">{{ formattedElevation }}</span>
-              <span class="fact-sub coords">{{ coordinates }}</span>
+        <TourFactRows :tour="tour">
+          <template v-if="tour.gpxFilepath" #route>
+            <BaseButton variant="secondary" size="sm" class="gpx-download-btn" @click="handleDownloadGpx">
+              <BaseIcon name="route" />
+              {{ t('tours.infoSheet.downloadGpxBtn') }}
+            </BaseButton>
+          </template>
+          <!-- Own tour: contact chips with the action menu; friend's tour: read-only names. -->
+          <template
+            v-if="partners.length > 0 || (tour.isFriendTour && (friendPartnerNames.length > 0 || unresolvedPartnerCount > 0))"
+            #partners
+          >
+            <!-- Pills with an initial avatar in the tour's colour (drawn from `data-initial`). -->
+            <div v-if="partners.length > 0" class="partner-chips">
+              <ContactChip
+                v-for="partner in partners" :key="partner.id" :contact="partner" :selected="false"
+                mode="action" class="partner-pill" :data-initial="initialOf(resolveContactName(partner))"
+                @open="openContactMenu"
+              />
             </div>
-            <template v-if="startPointText">
-              <div class="fact">
-                <span class="fact-label">
-                  <BaseIcon name="home" size="sm" />
-                  {{ t('tours.infoSheet.iconTooltipStartPoint') }}
-                </span>
-                <span v-if="tour.startPointName" class="fact-value">{{ tour.startPointName }}</span>
-                <span v-else class="fact-value coords">{{ startPointText }}</span>
-                <span v-if="tour.startPointName && tour.startPointElevation != null" class="fact-sub">
-                  {{ tour.startPointElevation }}m
-                </span>
-              </div>
-              <div class="fact">
-                <span class="fact-label">
-                  <BaseIcon :name="isOneWayToGoal ? 'directions' : 'flag'" size="sm" />
-                  {{ t('tours.infoSheet.iconTooltipEndPoint') }}
-                </span>
-                <span v-if="isOneWayToGoal" class="fact-value">{{ t('tours.infoSheet.oneWayToGoalIndicator') }}</span>
-                <span v-else-if="isRoundTrip" class="fact-value">{{ t('tours.infoSheet.roundTrip') }}</span>
-                <template v-else>
-                  <span v-if="tour.endPointName" class="fact-value">{{ tour.endPointName }}</span>
-                  <span v-else class="fact-value coords">{{ endPointText }}</span>
-                  <span v-if="tour.endPointName && tour.endPointElevation != null" class="fact-sub">
-                    {{ tour.endPointElevation }}m
-                  </span>
-                </template>
-              </div>
-            </template>
-          </div>
-        </section>
-
-        <!-- Partners (own tour: contact chips; friend's tour: read-only names) -->
-        <section
-          v-if="partners.length > 0 || (tour.isFriendTour && (friendPartnerNames.length > 0 || unresolvedPartnerCount > 0))"
-          class="facts-section"
-        >
-          <h3 class="section-heading">
-            {{ t('tours.infoSheet.iconTooltipPartners') }}
-            <span class="section-count">{{ partners.length || friendPartnerNames.length + unresolvedPartnerCount }}</span>
-          </h3>
-          <!-- Pills with an initial avatar in the tour's colour (drawn from `data-initial`). -->
-          <div v-if="partners.length > 0" class="partner-chips">
-            <ContactChip
-              v-for="partner in partners" :key="partner.id" :contact="partner" :selected="false"
-              mode="action" class="partner-pill" :data-initial="initialOf(resolveContactName(partner))"
-              @open="openContactMenu"
-            />
-          </div>
-          <div v-else class="partner-chips">
-            <span
-              v-for="(name, i) in friendPartnerNames" :key="i" class="friend-partner-chip partner-pill"
-              :data-initial="initialOf(name)"
-            >{{ name }}</span>
-            <span v-if="unresolvedPartnerCount > 0" class="friend-partner-chip friend-partner-chip--more">
-              {{ t('tours.infoSheet.morePartners', { count: unresolvedPartnerCount }) }}
-            </span>
-          </div>
-        </section>
-
-        <!-- Details: seasons and the free texts, each under its own label -->
-        <section
-          v-if="tour.seasons?.length || tour.description || tour.equipment || tour.notes"
-          class="facts-section"
-        >
-          <h3 class="section-heading">
-            {{ t('tours.infoSheet.sectionDetails') }}
-          </h3>
-          <div class="detail-card">
-            <div v-if="tour.seasons?.length" class="season-tags" :aria-label="t('tours.infoSheet.iconTooltipSeasons')">
-              <span v-for="season in tour.seasons" :key="season" class="season-tag">
-                <BaseIcon :name="SEASON_ICONS[season]" size="sm" />
-                {{ t(`tours.season.${season}` as any) }}
+            <div v-else class="partner-chips">
+              <span
+                v-for="(name, i) in friendPartnerNames" :key="i" class="friend-partner-chip partner-pill"
+                :data-initial="initialOf(name)"
+              >{{ name }}</span>
+              <span v-if="unresolvedPartnerCount > 0" class="friend-partner-chip friend-partner-chip--more">
+                {{ t('tours.infoSheet.morePartners', { count: unresolvedPartnerCount }) }}
               </span>
             </div>
-            <div v-if="tour.description" class="detail-item">
-              <span class="detail-icon"><BaseIcon name="description" size="sm" /></span>
-              <div class="detail-text">
-                <span class="fact-label">{{ t('tours.infoSheet.iconTooltipDescription') }}</span>
-                <p class="body-text">
-                  <template v-for="(segment, i) in linkifyText(tour.description)" :key="i">
-                    <a
-                      v-if="segment.url" :href="segment.url" target="_blank" rel="noopener noreferrer"
-                      class="description-link"
-                    >{{ segment.text }}</a>
-                    <template v-else>
-                      {{ segment.text }}
-                    </template>
-                  </template>
-                </p>
-              </div>
-            </div>
-            <div v-if="tour.equipment" class="detail-item">
-              <span class="detail-icon"><BaseIcon name="backpack" size="sm" /></span>
-              <div class="detail-text">
-                <span class="fact-label">{{ t('tours.infoSheet.iconTooltipEquipment') }}</span>
-                <p class="body-text">
-                  {{ tour.equipment }}
-                </p>
-              </div>
-            </div>
-            <div v-if="tour.notes" class="detail-item">
-              <span class="detail-icon"><BaseIcon name="sticky_note_2" size="sm" /></span>
-              <div class="detail-text">
-                <span class="fact-label">{{ t('tours.infoSheet.iconTooltipNotes') }}</span>
-                <p class="body-text">
-                  {{ tour.notes }}
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
+          </template>
+        </TourFactRows>
 
-        <!-- Files -->
-        <BaseButton v-if="tour.gpxFilepath" variant="secondary" size="sm" class="gpx-download-btn" @click="handleDownloadGpx">
-          <BaseIcon name="route" />
-          {{ t('tours.infoSheet.downloadGpxBtn') }}
-        </BaseButton>
-        <TourAttachmentsStrip :tour-id="tour.id" @open-viewer="openViewer" />
+        <TourAttachmentsStrip :tour-id="tour.id" class="group" @open-viewer="openViewer" />
 
         <!--
           Suggestions live at the BOTTOM (owner review workload, or the partner's own
           proposal, D15): they are actions on the tour, not facts about it, so they belong
           after the detail rows rather than crowding the header.
         -->
-        <div v-if="isOwner || canSuggest" class="suggestion-actions">
+        <div v-if="isOwner || canSuggest" class="suggestion-actions group">
           <button
             v-if="isOwner && pendingSuggestionCount > 0" type="button" class="action-btn suggestion-entry"
             data-testid="review-suggestions-btn" @click="mode = 'review'"
@@ -1233,18 +1047,11 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   transform: scale(var(--press-scale));
 }
 
-/* The divider spans the full surface: negative margins cancel the host's inline padding
-   (published by the drawer/sheet as --surface-pad-*), then the padding is re-applied
-   inside so the buttons stay aligned with the detail rows above. */
 .suggestion-actions {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--spacing-xs);
-  margin-top: var(--spacing-xs);
-  margin-left: calc(-1 * var(--surface-pad-left, 0px));
-  margin-right: calc(-1 * var(--surface-pad-right, 0px));
-  padding: var(--spacing-sm) var(--surface-pad-right, 0px) 0 var(--surface-pad-left, 0px);
 }
 
 @media (hover: hover) {
@@ -1255,19 +1062,6 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
 .action-btn:active:not(:disabled) {
   background-color: var(--color-secondary-container-hover);
-}
-
-/* Owner toggles: a compact row — each pill keeps its natural width and they wrap
-   rather than squeezing a label onto two lines. Both rest in the tonal container;
-   only the non-default state (completed / private) takes its own tint. */
-.owner-toggles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-xs);
-}
-
-.owner-toggles > .action-btn {
-  flex: 1 1 auto;
 }
 
 .action-btn:disabled {
@@ -1297,6 +1091,19 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 .delete-error {
   font-size: var(--font-size-sm);
   color: var(--color-error);
+}
+
+/* Owner toggles: a compact row — each pill keeps its natural width and they wrap
+   rather than squeezing a label onto two lines. Both rest in the tonal container;
+   only the non-default state (completed / private) takes its own tint. */
+.owner-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.owner-toggles > .action-btn {
+  flex: 1 1 auto;
 }
 
 .completion-toggle--done {
@@ -1359,36 +1166,11 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Header card ── */
-/* Washed in the activity colour; completed adds a success ring, private a dashed edge
-   (only you see it). Both states also stamp the badge, so they read at a glance. */
+/* ── Hero: badge + two text lines, no card ── */
 .hero {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--spacing-md);
-  padding: var(--spacing-md);
-  border-radius: var(--card-radius);
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--type-tint) 16%, var(--color-background)),
-    color-mix(in srgb, var(--type-tint) 4%, var(--color-background))
-  );
-  box-shadow: inset 0 0 0 0 transparent;
-  transition: box-shadow var(--motion-duration-medium) var(--motion-ease-emphasized);
-}
-
-.hero--completed {
-  box-shadow: inset 0 0 0 2px var(--color-success);
-}
-
-.hero--private {
-  outline: 1.5px dashed var(--color-outline);
-  outline-offset: -1.5px;
-}
-
-/* Both: the dashes step inside the ring rather than overprinting it. */
-.hero--completed.hero--private {
-  outline-offset: -6px;
 }
 
 .hero-badge {
@@ -1396,8 +1178,8 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   border-radius: var(--radius-pill);
   background-color: var(--type-tint);
   color: var(--color-on-primary);
@@ -1446,6 +1228,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 }
 
 .hero-text {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -1453,17 +1236,38 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   min-width: 0;
 }
 
-.hero-type {
-  font-size: var(--font-size-lg);
+.hero-line {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.hero-headline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xxs);
+  min-width: 0;
+  font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-on-surface);
   letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-on-surface);
+}
+
+.hero-headline--date {
+  font-size: var(--font-size-lg);
+}
+
+.hero-headline-icon {
+  color: var(--type-tint);
 }
 
 .hero-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--spacing-xs);
+  column-gap: var(--spacing-sm);
   font-size: var(--font-size-sm);
   color: var(--color-on-surface-variant);
 }
@@ -1481,171 +1285,10 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   color: var(--color-success-text);
 }
 
-/* ── Sections: heading, then facts as label-over-value ── */
-.facts-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.section-heading {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  font-size: var(--heading-section-size);
-  font-weight: var(--heading-section-weight);
-  letter-spacing: var(--heading-section-tracking);
-  color: var(--heading-section-color);
-}
-
-.fact-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--spacing-sm);
-}
-
-.fact {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xxs);
-  min-width: 0;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--card-radius);
-  background-color: var(--color-surface-variant);
-}
-
-/* The goal spans the row in the activity colour: its elevation is the headline number. */
-.fact--goal {
-  grid-column: 1 / -1;
-  background-color: color-mix(in srgb, var(--type-tint) 10%, var(--color-background));
-}
-
-.fact-label .base-icon {
-  color: var(--type-tint);
-}
-
-.fact-label {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xxs);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-on-surface-variant);
-}
-
-.fact-value {
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-on-surface);
-  /* Break long words at syllables with a hyphen (in the page language), and mid-word
-     only when no hyphenation point exists — never "Schreckhornhütt|e". */
-  overflow-wrap: break-word;
-  -webkit-hyphens: auto;
-  hyphens: auto;
-}
-
-.fact-value--headline {
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: -0.02em;
-  line-height: var(--line-height-tight);
-  font-variant-numeric: tabular-nums;
-}
-
-.fact-sub {
-  font-size: var(--font-size-sm);
-  color: var(--color-on-surface-variant);
-}
-
-/* Details: one card; each text gets an icon tile, rows split by hairlines. */
-.detail-card {
-  display: flex;
-  flex-direction: column;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--card-radius);
-  background-color: var(--color-surface-variant);
-}
-
-.detail-card > * {
-  padding-block: var(--spacing-sm);
-}
-
-.detail-card > * + * {
-  border-top: 1px solid var(--color-outline-variant);
-}
-
-.detail-item {
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1fr);
-  gap: var(--spacing-sm);
-}
-
-.detail-icon {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-md);
-  background-color: color-mix(in srgb, var(--type-tint) 14%, var(--color-background));
-  color: var(--type-tint);
-}
-
-.detail-text {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xxs);
-}
-
-.section-count {
-  min-width: 20px;
-  padding: 0 6px;
-  border-radius: var(--radius-pill);
-  font-size: var(--font-size-xs);
-  line-height: 20px;
-  text-align: center;
-  background-color: color-mix(in srgb, var(--type-tint) 14%, var(--color-background));
-  color: var(--type-tint);
-}
-
-/* Free text: full contrast and a relaxed line height for comfortable reading. */
-.body-text {
-  font-size: var(--font-size-base);
-  line-height: var(--line-height-relaxed);
-  color: var(--color-on-surface);
-  white-space: pre-wrap;
-  /* Break long words at syllables with a hyphen (in the page language), and mid-word
-     only when no hyphenation point exists — never "Schreckhornhütt|e". */
-  overflow-wrap: break-word;
-  -webkit-hyphens: auto;
-  hyphens: auto;
-}
-
-.season-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-xs);
-}
-
-.season-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xxs);
-  padding: 2px var(--spacing-sm);
-  border-radius: var(--chip-radius);
-  font-size: var(--font-size-sm);
-  background-color: var(--color-background);
-  color: var(--color-on-surface);
-  font-weight: var(--font-weight-medium);
-}
-
-.season-tag .base-icon {
-  color: var(--type-tint);
-}
-
-.description-link {
-  color: var(--color-primary);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+/* Groups below the fact rows (attachments, suggestions) get the fact groups' divider. */
+.group {
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--divider-color);
 }
 
 /* BaseButton (secondary) provides the look; keep the 44px touch target. */

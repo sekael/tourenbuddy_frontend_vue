@@ -40,8 +40,7 @@ const TourFormStub = {
     'allowGoalEdit',
     'currentGoal',
     'initialDraft',
-    'initialStartPoint',
-    'initialEndPoint',
+    'pick',
     'disabled',
   ],
   emits: ['submit', 'cancel', 'pickPoint'],
@@ -215,6 +214,23 @@ describe('tourInfoSheet', () => {
       )
       // Back to view mode
       expect(wrapper.find('[data-testid="tour-form"]').exists()).toBe(false)
+    })
+
+    it('should relay a pick to the form, and not replay it in the next edit session', async () => {
+      const wrapper = mountSheet()
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
+      const pick = { type: 'goal', location: { lng: 9.9, lat: 46.4 }, name: 'Piz Palü' }
+      await wrapper.setProps({ editPickedPoint: pick })
+
+      const form = () => wrapper.findComponent({ name: 'TourForm' })
+      expect(form().props('pick')).toEqual(pick)
+      expect(form().props('currentGoal')).toEqual(pick.location)
+      expect(wrapper.emitted('pointConsumed')).toHaveLength(1)
+
+      // The form looks up a pick on mount, so a stale one would refill a fresh session.
+      await wrapper.find('[data-testid="stub-cancel"]').trigger('click')
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
+      expect(form().props('pick')).toBeNull()
     })
 
     it('should collapse sheet and disable form while location picker is active', async () => {
@@ -503,8 +519,48 @@ describe('tourInfoSheet', () => {
 
     it('should stamp a completed private tour with both states', () => {
       const wrapper = mountSheet({ completed: true, visibility: 'private' })
-      expect(wrapper.find('.hero--completed.hero--private').exists()).toBe(true)
       expect(wrapper.find('.hero-badge').findAll('.hero-stamp')).toHaveLength(2)
+    })
+
+    it('should lead with the goal elevation and list the activity type as the first fact', () => {
+      const wrapper = mountSheet({ tourType: 'skitour', elevation: 2747 })
+      expect(wrapper.find('.hero-headline').text()).toContain('2')
+      expect(wrapper.find('.hero-headline').text()).not.toContain('skitour')
+      expect(wrapper.find('[data-fact]').attributes('data-fact')).toBe('type')
+    })
+
+    it('should move the date up when the goal has no elevation, with no placeholder', () => {
+      const wrapper = mountSheet({ elevation: null, plannedDate: new Date(2026, 7, 25) })
+      expect(wrapper.find('.hero-headline').text()).toContain('25')
+      expect(wrapper.find('.hero-meta').text()).not.toContain('25')
+      expect(wrapper.find('.hero-meta').text()).toContain('46.8000°N')
+    })
+
+    it('should show only the coordinates when neither elevation nor date exist', () => {
+      const wrapper = mountSheet({ elevation: null, plannedDate: null })
+      expect(wrapper.find('.hero-headline').exists()).toBe(false)
+      expect(wrapper.find('.hero-meta').text()).toBe('46.8000°N, 8.2000°E')
+    })
+
+    it('should keep the owner toggles out of the hero, as the labelled row below it', () => {
+      const wrapper = mountSheet({ completed: false, visibility: 'private' })
+      expect(wrapper.find('.hero .completion-toggle').exists()).toBe(false)
+      const row = wrapper.find('.owner-toggles')
+      expect(row.find('.completion-toggle').text()).toBe('tours.infoSheet.completeTourBtn')
+      expect(row.find('.visibility-toggle').text()).toBe('tours.infoSheet.visibilityMakeFriends')
+      expect(row.find('.visibility-toggle').attributes('aria-pressed')).toBe('true')
+    })
+
+    it('should not keep an empty first line for a friend viewing a tour without elevation or date', () => {
+      const wrapper = mountSheet({ isFriendTour: true, elevation: null, plannedDate: null }, 'user-2')
+      expect(wrapper.find('.hero-line').exists()).toBe(false)
+      expect(wrapper.find('.hero-meta').text()).toBe('46.8000°N, 8.2000°E')
+    })
+
+    it('should show a friend the owner instead of toggles', () => {
+      const wrapper = mountSheet({ isFriendTour: true }, 'user-2')
+      expect(wrapper.find('.owner-toggles').exists()).toBe(false)
+      expect(wrapper.find('.hero').findAll('.hero-meta')).toHaveLength(2)
     })
 
     it('should spell out completion only for a friend viewing the tour', () => {

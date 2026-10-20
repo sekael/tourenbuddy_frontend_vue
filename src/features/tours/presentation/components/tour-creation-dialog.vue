@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
+import type { PointPick } from '@/features/tours/presentation/composables/use-swisstopo-fill'
 import { storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -12,20 +13,10 @@ import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import TourForm from '@/features/tours/presentation/components/tour-form.vue'
 
 const props = defineProps<{
-  /** Pre-filled elevation from Swisstopo lookup. */
-  initialElevation?: number | null
-  /** Pre-filled name suggestion from Swisstopo. */
-  initialName?: string | null
-  /** Pre-filled start point from secondary location pick. */
-  initialStartPoint?: { lng: number, lat: number } | null
-  /** Pre-filled end point from secondary location pick. */
-  initialEndPoint?: { lng: number, lat: number } | null
+  /** The latest location pick; the form looks up its name and elevation. */
+  pick?: PointPick | null
   /** The goal location picked before the dialog opened (required for display). */
   initialGoal?: { lng: number, lat: number } | null
-  /** Metadata fetched after start-point pick: name + elevation. */
-  initialStartPointMeta?: { name: string | null, elevation: number | null } | null
-  /** Metadata fetched after end-point pick: name + elevation. */
-  initialEndPointMeta?: { name: string | null, elevation: number | null } | null
   /** Which pick is currently active — drives the collapsed header label. */
   activePickType?: 'goal' | 'start' | 'end' | null
 }>()
@@ -112,12 +103,7 @@ function handlePickPoint(type: 'start' | 'end' | 'goal') {
       :submit-label="t('tours.creation.saveBtn')"
       :allow-goal-edit="true"
       :current-goal="initialGoal ?? null"
-      :initial-elevation="initialElevation"
-      :initial-name="initialName"
-      :initial-start-point="initialStartPoint"
-      :initial-end-point="initialEndPoint"
-      :initial-start-point-meta="initialStartPointMeta"
-      :initial-end-point-meta="initialEndPointMeta"
+      :pick="pick"
       :disabled="isPicking"
       @submit="(d, r, tid, did) => handleSubmit(d, r, tid, did)"
       @cancel="emit('close')"
