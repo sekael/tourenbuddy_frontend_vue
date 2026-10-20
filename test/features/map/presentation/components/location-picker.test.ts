@@ -22,6 +22,7 @@ function makeMapStub(overrides: Record<string, unknown> = {}) {
     getZoom: vi.fn(() => 8),
     flyTo: vi.fn(),
     jumpTo: vi.fn(),
+    isEasing: vi.fn(() => true),
     on: vi.fn((event: string, fn: () => void) => handlers.set(event, fn)),
     off: vi.fn(),
     fire: (event: string) => handlers.get(event)?.(),
@@ -207,6 +208,24 @@ describe('locationPicker', () => {
       expect(map.flyTo).not.toHaveBeenCalled()
     })
 
+    it('should re-aim a running flight when the map resizes (keyboard closing), until the user takes the map', async () => {
+      search.mockResolvedValueOnce([bernina])
+      const { wrapper, map } = mountPicker()
+      await type(wrapper, 'Piz')
+      await wrapper.find('.search-result').trigger('click')
+
+      map.fire('resize')
+      expect(map.flyTo).toHaveBeenCalledTimes(2)
+      expect(map.flyTo.mock.calls[1]![0]).toEqual(map.flyTo.mock.calls[0]![0])
+
+      map.isEasing.mockReturnValue(false)
+      map.fire('resize')
+      map.isEasing.mockReturnValue(true)
+      map.fire('touchstart')
+      map.fire('resize')
+      expect(map.flyTo).toHaveBeenCalledTimes(2)
+    })
+
     it('should close the list on Escape and keep the picker open', async () => {
       search.mockResolvedValueOnce([bernina])
       const { wrapper } = mountPicker()
@@ -296,6 +315,8 @@ describe('locationPicker', () => {
       await flushPromises()
       expect(dock.classes()).not.toContain('dock--searching')
       expect(wrapper.find('.actions').attributes('style') ?? '').not.toContain('display: none')
+      // The page hides its collapsed sheet meanwhile.
+      expect(wrapper.emitted('searching')).toEqual([[false], [true], [false]])
       wrapper.unmount()
     })
 

@@ -52,6 +52,7 @@
 - [x] 7.5 Replace the equipment row's `backpack` with `ice-axe.svg` (registered as `ice_axe`; `backpack` had no other user); verify `tour-fact-rows` (every row icon registered) and a render next to the other row icons
 - [x] 7.6 Restore umlauts in German search kinds (`restoreUmlauts`, D2; "Gebaeude" → "Gebäude", "Quelle" kept, English untouched); verify `swisstopo-search-service` test
 - [x] 7.7 Searching on a touch screen moves the field to the visible top with results below and hides the actions until the list closes, instead of riding on the measured keyboard (D4b; iOS Safari and Brave misreport it); `useVisualViewportInsets` becomes `useVisualViewportTop`; the clear button keeps focus; verify picker tests (touch flip held while the list is open, mouse keeps the bottom dock, pan offset/zoom, clear keeps focus — each guard fails a mutation) and a headless phone walk with a fake keyboard and Brave-like viewport numbers
+- [x] 7.8 Hide the collapsed overlay of the pick while searching on a touch screen (picker emits `searching`, map page toggles `html.picker-searching`, `--collapsed` overlays get `visibility: hidden`), and re-issue the flight to a chosen result on a map `resize` mid-flight (D4b); verify picker tests (re-aim until the map is touched, `searching` emits), map-page test (switch follows the pick, cleared on unmount), each guard fails a mutation, and a headless phone walk that grows the page mid-flight (lands at 0 px vs 168 px off without the re-aim)
 
 ## 8. Finalize
 

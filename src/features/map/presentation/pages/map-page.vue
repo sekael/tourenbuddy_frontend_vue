@@ -87,6 +87,12 @@ const inboxStore = useInboxStore()
 const isDesktop = useIsDesktop()
 
 const { isPickingLocation, isDrawingRegion, selectedTourId, activeOverlays, trailCard } = storeToRefs(mapStore)
+/** The picker reports a touch-screen search; read only while picking, so a stale value never hides a sheet. */
+const pickerSearching = ref(false)
+// The collapsed overlay ("Tour goal") then only takes room from the keyboard and results. On
+// phones it is teleported to <body>, so the switch lives on <html> (like `scroll-locked`).
+watch(() => isPickingLocation.value && pickerSearching.value, on => document.documentElement.classList.toggle('picker-searching', on))
+onUnmounted(() => document.documentElement.classList.remove('picker-searching'))
 const { tours, friendTours } = storeToRefs(toursStore)
 const { isAuthenticated } = storeToRefs(authStore)
 const { reopenSignal } = storeToRefs(onboardingTourStore)
@@ -973,7 +979,7 @@ function handleDialogClose() {
     <LocationPicker
       v-if="isPickingLocation" :map="mapInstance"
       :actions-bottom="!isDesktop && (isPickingForEdit || showTourCreationDialog) ? 80 : undefined"
-      @confirm="handleLocationConfirmed" @cancel="handleLocationCancelled"
+      @confirm="handleLocationConfirmed" @cancel="handleLocationCancelled" @searching="pickerSearching = $event"
     />
 
     <OfflineRegionDraw
@@ -1072,6 +1078,14 @@ function handleDialogClose() {
    outside this subtree, so they stay live and tap-to-advance keeps working.
    `pointer-events:none` blocks taps reaching the map+sheets; `touch-action:none`
    kills any residual touch-pan/scroll gesture. */
+/* Hidden, not unmounted: the collapsed form keeps what was typed. */
+:global(
+  html.picker-searching
+    :is(.full-screen-page--collapsed, .bottom-sheet--collapsed, .dialog-card--collapsed, .side-drawer--collapsed)
+) {
+  visibility: hidden;
+}
+
 .map-page--tour-locked {
   pointer-events: none;
   touch-action: none;

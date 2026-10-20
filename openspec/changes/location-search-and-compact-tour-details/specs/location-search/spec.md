@@ -23,6 +23,7 @@ While the location picker is active and the device is online, the map SHALL show
 - **THEN** the field SHALL sit at the top of the visible area with the results below it, and Cancel/Confirm SHALL be hidden
 - **AND** the layout SHALL stay so until the result list closes (a result is chosen, the map is touched, or Escape), even when the keyboard is dismissed first
 - **AND** it SHALL NOT depend on the reported keyboard height, which iOS browsers report inconsistently
+- **AND** the collapsed overlay of the pick (e.g. "Tour goal") SHALL be hidden meanwhile, without losing what was entered in it, and SHALL return when the search ends
 
 #### Scenario: Searching with a mouse
 
@@ -105,6 +106,12 @@ Choosing a result SHALL move the map so the crosshair sits on the result's locat
 - **WHEN** the user chooses "Piz Bernina"
 - **THEN** the map SHALL move so the crosshair is on Piz Bernina
 - **AND** the result list SHALL close and the Cancel/Continue actions SHALL stay available
+
+#### Scenario: Map resizes while moving to the result
+
+- **WHEN** the user chooses a result on a phone and the closing on-screen keyboard resizes the map while it moves
+- **THEN** the map SHALL still come to rest with the crosshair on the result
+- **AND** touching the map during the move SHALL leave the camera to the user
 
 #### Scenario: The crosshair is the marker
 

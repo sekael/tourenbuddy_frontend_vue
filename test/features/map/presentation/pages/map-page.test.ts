@@ -4,7 +4,7 @@ import type { PointPick } from '@/features/tours/presentation/composables/use-sw
 import { createTestingPinia } from '@pinia/testing'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { nextTick, ref } from 'vue'
+import { defineComponent, nextTick, ref } from 'vue'
 import { isOnline } from '@/core/offline/use-online-status'
 import { fetchSkiRoute } from '@/features/map/data/services/swisstopo-trail-service'
 import { ROUTE_ZOOM } from '@/features/map/presentation/composables/frame-tour'
@@ -647,6 +647,32 @@ describe('mapPage', () => {
 
       // Single preview-goal setter → inherently one marker that moves, not a second one.
       expect(mapStore.setPreviewGoal).toHaveBeenCalledWith(NEW_GOAL)
+    })
+  })
+
+  describe('sheet while the picker searches', () => {
+    it('should hide the collapsed overlay without unmounting it, and never once the pick or the page is gone', async () => {
+      const LocationPickerStub = defineComponent({ name: 'LocationPicker', emits: ['searching'], template: '<div />' })
+      const wrapper = mountMapPage({}, { LocationPicker: LocationPickerStub })
+      wrapper.vm.activeOverlay = 'tour-creation'
+      useMapStore().$patch({ isPickingLocation: true })
+      await wrapper.vm.$nextTick()
+
+      const flagged = () => document.documentElement.classList.contains('picker-searching')
+      wrapper.findComponent(LocationPickerStub).vm.$emit('searching', true)
+      await wrapper.vm.$nextTick()
+      expect(flagged()).toBe(true)
+      expect(wrapper.findComponent(TourCreationDialogStub).exists()).toBe(true)
+
+      useMapStore().$patch({ isPickingLocation: false })
+      await wrapper.vm.$nextTick()
+      expect(flagged()).toBe(false)
+
+      useMapStore().$patch({ isPickingLocation: true })
+      await wrapper.vm.$nextTick()
+      expect(flagged()).toBe(true)
+      wrapper.unmount()
+      expect(flagged()).toBe(false)
     })
   })
 

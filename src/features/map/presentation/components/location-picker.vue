@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Map as MapLibreMap } from 'maplibre-gl'
+import type { FlyToOptions, Map as MapLibreMap } from 'maplibre-gl'
 import type { LocationResult } from '@/features/map/data/services/swisstopo-search-service'
 import { useFocusWithin, usePreferredReducedMotion, watchDebounced } from '@vueuse/core'
 import { LngLat } from 'maplibre-gl'
@@ -25,6 +25,8 @@ const emit = defineEmits<{
   /** `name` only when the crosshair still sits on the last chosen search result. */
   confirm: [location: { lng: number, lat: number, name?: string }]
   cancel: []
+  /** True while the user searches on a touch screen: the page hides its collapsed sheet. */
+  searching: [active: boolean]
 }>()
 
 /** A confirm this close to the chosen result keeps the result's name (touch drift). */
@@ -51,6 +53,7 @@ const chosen = ref<LocationResult | null>(null)
 const isTouch = useIsTouch()
 const { focused } = useFocusWithin(computed(() => searchInput.value?.$el as HTMLElement | undefined))
 const searching = computed(() => isTouch.value && (focused.value || listOpen.value))
+watch(searching, active => emit('searching', active), { immediate: true })
 const viewportTop = useVisualViewportTop()
 const dockStyle = computed(() => ({
   '--dock-bottom': props.actionsBottom != null ? `${props.actionsBottom}px` : undefined,
@@ -129,6 +132,24 @@ function clearQuery() {
   searchInput.value?.focus()
 }
 
+/**
+ * The flight to the last chosen result. MapLibre aims a flight at the canvas centre it
+ * measured at take-off, and the tap that chose the result also closes the on-screen keyboard,
+ * which resizes the map mid-flight on phones: the result would land off the crosshair. So a
+ * resize during that flight re-issues it (from where the camera is), until the user takes the map.
+ */
+let flight: FlyToOptions | null = null
+
+function reaim() {
+  if (flight && props.map?.isEasing())
+    props.map.flyTo(flight)
+}
+
+function releaseMap() {
+  flight = null
+  closeList()
+}
+
 function choose(result: LocationResult | undefined) {
   if (!result || !props.map)
     return
@@ -137,21 +158,28 @@ function choose(result: LocationResult | undefined) {
   closeList()
   // Zero padding: a framed tour leaves padding set, which would park the result off-crosshair.
   const camera = { center: [result.lng, result.lat] as [number, number], zoom: result.zoom, padding: { top: 0, right: 0, bottom: 0, left: 0 } }
-  if (reducedMotion.value === 'reduce')
+  if (reducedMotion.value === 'reduce') {
     props.map.jumpTo(camera)
-  else
-    props.map.flyTo(camera)
+    return
+  }
+  flight = camera
+  props.map.flyTo(camera)
 }
 
-// Touching, dragging or zooming the map hands focus back to the map.
+// Touching, dragging or zooming the map hands focus (and the camera) back to the map.
 const MAP_INPUT_EVENTS = ['mousedown', 'touchstart', 'wheel'] as const
 watch(() => props.map, (map, previous) => {
   for (const event of MAP_INPUT_EVENTS) {
-    previous?.off(event, closeList)
-    map?.on(event, closeList)
+    previous?.off(event, releaseMap)
+    map?.on(event, releaseMap)
   }
+  previous?.off('resize', reaim)
+  map?.on('resize', reaim)
 }, { immediate: true })
-onBeforeUnmount(() => MAP_INPUT_EVENTS.forEach(event => props.map?.off(event, closeList)))
+onBeforeUnmount(() => {
+  MAP_INPUT_EVENTS.forEach(event => props.map?.off(event, releaseMap))
+  props.map?.off('resize', reaim)
+})
 
 function handleConfirm() {
   if (!props.map)

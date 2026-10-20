@@ -96,6 +96,16 @@ right in both, so `useVisualViewportTop` (`core/composables`) keeps just the iOS
 (0 while pinch-zoomed). Staying flipped while the list is open means a blur on the way to a
 result tap never moves the result. ponytail: the list keeps `min(50dvh, 360px)`; where `dvh`
 ignores the keyboard (older iOS) its last rows may sit under the keys until "Done".
+While searching, the collapsed overlay of the pick ("Tour goal") is hidden too: it only took
+room from the keyboard and results. The picker emits `searching`; the map page sets
+`html.picker-searching` (read only while picking) and hides every `--collapsed` overlay with
+`visibility: hidden` — not unmounted, so the form keeps its input. On `<html>` because the phone
+overlay is teleported to `<body>`. No replacement hint: the user started this pick a moment ago.
+*Landing on the crosshair:* MapLibre's `flyTo` aims at the canvas centre measured at take-off.
+The tap on a result also closes the keyboard; where that resizes the page (Brave, iOS Safari,
+PWA) the map grows mid-flight and the result landed above the crosshair by half the growth
+(headless: 168 px for a 336 px keyboard, 0 with the fix). A map `resize` during that flight
+re-issues it from the current camera; any touch on the map drops it.
 *Alternative:* top field on desktop, bottom on mobile — rejected: two layouts, and the desktop
 top is already taken by the collapsed dialog/drawer header.
 
