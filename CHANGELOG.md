@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.48.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.47.0...tourenbuddy-frontend-v0.48.0) (2026-10-20)
+
+
+### Features
+
+* Location search tour details ([#347](https://github.com/sekael/tourenbuddy_frontend_vue/issues/347)) ([ff3159d](https://github.com/sekael/tourenbuddy_frontend_vue/commit/ff3159dffe766618555627c2ba258ac1092a4896))
+
+
+### Bug Fixes
+
+* **tours:** Keep unsaved form edits across a location pick on mobile ([#337](https://github.com/sekael/tourenbuddy_frontend_vue/issues/337)) ([#344](https://github.com/sekael/tourenbuddy_frontend_vue/issues/344)) ([26940ef](https://github.com/sekael/tourenbuddy_frontend_vue/commit/26940ef24557f640cdb709f34c853c0cce076e62))
+
 ## [0.47.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.46.0...tourenbuddy-frontend-v0.47.0) (2026-10-16)
 
 
