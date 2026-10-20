@@ -43,16 +43,17 @@
 - [x] 6.3 `map-page.vue` and `tour-info-sheet.vue` hand over `{ type, location, name? }` and open the form without awaiting; suggest mode seeds a proposed goal's elevation through the seed draft; verify map-page and info-sheet tests
 - [x] 6.4 Add `tours.form.swisstopo.loading` / `.failed` to both locales; verify `npm run check:locales`
 
-## 7. Grouped detail and climbing/mountaineering icons (D6, D7 follow-ups)
+## 7. Grouped detail and climbing/mountaineering/ski-mountaineering icons (D6, D7 follow-ups)
 
 - [x] 7.1 `TourFactRows` renders activity / route (with a `route` slot for the GPX download) / partners / free-text groups, each omitted when empty and led by a divider; the sheet gives the attachments strip (single root) and the suggestions the same divider; verify `tour-fact-rows` (empty groups left out, GPX in the route group) and info-sheet tests
 - [x] 7.2 Add `climbing.svg` (climber under an overhang) and `mountaineering.svg` (Temaki scrambling pictogram, CC0), register both and point `TOUR_TYPE_ICONS` at them; verify `tour-type` test (every type icon is registered) and a side-by-side render with the other type icons
 - [x] 7.3 Probe the Swisstopo height API for the 503s and record the finding under Risks
+- [x] 7.4 Add `ski-mountaineering.svg` (the mountaineering figure with skis A-framed on the pack), register it in place of `terrain` (no other user) and point `TOUR_TYPE_ICONS` at it; verify `tour-type` test and a side-by-side render
 
 ## 8. Finalize
 
 - [x] 8.1 Run `npx eslint . --fix`, then `npx eslint` with zero warnings, `npm run type-check` and `npm run test`; verify all pass
-- [ ] 8.2 After `supabase db reset`, walk the app once (as Lena and as Patrick): add a tour via search (goal + start), edit a tour's end via search, toggle complete/private in the owner toggles row, go offline in the picker; with Swisstopo throttled (devtools), check the spinner and the manual-entry placeholder in name and elevation, and that typing during a load keeps the typed value; check the grouped detail and the climbing/mountaineering icons in the type picker; verify each matches the specs
+- [ ] 8.2 After `supabase db reset`, walk the app once (as Lena and as Patrick): add a tour via search (goal + start), edit a tour's end via search, toggle complete/private in the owner toggles row, go offline in the picker; with Swisstopo throttled (devtools), check the spinner and the manual-entry placeholder in name and elevation, and that typing during a load keeps the typed value; check the grouped detail and the climbing/mountaineering/ski-mountaineering icons in the type picker; verify each matches the specs
 - [ ] 8.3 Prompt the user to commit with a ready-to-copy message, e.g. `feat(tours): location search in picker and compact tour details (#339, #340)`
 - [ ] 8.4 Prompt the user to push and open a PR titled with the highest-impact type (`feat(tours): …`), body referencing `Closes #339` and `Closes #340`
 

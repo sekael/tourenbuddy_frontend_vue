@@ -82,8 +82,8 @@ The system SHALL render icons as bundled SVGs (using the Material Symbols Outlin
 - **AND** neither SHALL show the walking/hiking glyph
 - **AND** both SHALL render offline, without any network request
 
-#### Scenario: Climbing and mountaineering have their own glyphs
+#### Scenario: Climbing and mountaineering types have their own glyphs
 
-- **WHEN** a climbing or a mountaineering tour is shown anywhere the tour type icon appears
-- **THEN** a climbing tour SHALL show a climber on a rock overhang and a mountaineering tour a figure scrambling up a rock step
-- **AND** the two SHALL differ from each other and from the hiking glyph, and neither SHALL show the generic landscape glyph
+- **WHEN** a climbing, a mountaineering or a ski-mountaineering tour is shown anywhere the tour type icon appears
+- **THEN** a climbing tour SHALL show a climber on a rock overhang, a mountaineering tour a figure scrambling up a rock step, and a ski-mountaineering tour that figure with skis strapped to its pack
+- **AND** the three SHALL differ from each other and from the hiking and ski-touring glyphs, and none SHALL show a generic landscape or mountains glyph

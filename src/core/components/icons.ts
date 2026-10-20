@@ -38,7 +38,6 @@ import IconExpandLess from '~icons/material-symbols/expand-less'
 import IconExpandMore from '~icons/material-symbols/expand-more'
 import IconExploreOutline from '~icons/material-symbols/explore-outline'
 import IconFeedbackOutline from '~icons/material-symbols/feedback-outline'
-import IconFilterHdr from '~icons/material-symbols/filter-hdr'
 import IconFlagOutline from '~icons/material-symbols/flag-outline'
 import IconGroupOutline from '~icons/material-symbols/group-outline'
 import IconHardwareOutline from '~icons/material-symbols/hardware-outline'
@@ -91,6 +90,7 @@ import IconWarningOutline from '~icons/material-symbols/warning-outline'
 import IconWbSunnyOutline from '~icons/material-symbols/wb-sunny-outline'
 import IconClimbing from '~icons/tb/climbing'
 import IconMountaineering from '~icons/tb/mountaineering'
+import IconSkiMountaineering from '~icons/tb/ski-mountaineering'
 import IconSkiTouring from '~icons/tb/ski-touring'
 import IconSplitboarding from '~icons/tb/splitboarding'
 
@@ -119,7 +119,6 @@ import IconSplitboarding from '~icons/tb/splitboarding'
  */
 export const iconRegistry: Record<string, Component> = {
   // Filled star for the "primary method" selected state (was CSS FILL 1).
-  // Iconify has no `terrain`; `filter_hdr` is Material's identical mountains glyph.
   // Material Symbols draws remove_circle_outline and do_not_disturb_on as the
   // same glyph; Iconify only ships the latter name.
   ac_unit: IconAcUnit,
@@ -199,6 +198,7 @@ export const iconRegistry: Record<string, Component> = {
   schedule: IconScheduleOutline,
   search: IconSearch,
   search_off: IconSearchOff,
+  ski_mountaineering: IconSkiMountaineering,
   ski_touring: IconSkiTouring,
   snowboarding: IconSnowboarding,
   splitboarding: IconSplitboarding,
@@ -208,7 +208,6 @@ export const iconRegistry: Record<string, Component> = {
   star_filled: IconStar,
   sticky_note_2: IconStickyNote2Outline,
   sync_alt: IconSyncAlt,
-  terrain: IconFilterHdr,
   tour: IconTourOutline,
   trip_origin: IconTripOrigin,
   tune: IconTune,

@@ -32,7 +32,8 @@ splitboard tours also show a walking-with-poles glyph that reads as hiking, not 
   icon registry; still no CDN or icon font.
 - **Grouped detail and two more activity glyphs:** the detail facts form groups (activity,
   route with the GPX download, partners, free texts, attachments, suggestions) split by thin
-  dividers; climbing and mountaineering get their own glyphs instead of the shared landscape.
+  dividers; climbing, mountaineering and ski mountaineering get their own glyphs instead of the
+  landscape / mountains placeholders.
 - **Swisstopo lookups no longer block (regression fix):** the tour form opens right after a
   pick; name and elevation fill in independently, each field showing a spinner while Swisstopo
   answers and a "enter manually" placeholder when it does not (10 s timeout, was 5 s). Typing

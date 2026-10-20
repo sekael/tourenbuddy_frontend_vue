@@ -26,7 +26,6 @@
 **Non-Goals:**
 - Offline search / caching search results (search hidden offline).
 - Search outside the picker (e.g. a general map search bar).
-- Revisiting icons of other tour types (ski-mountaineering, mountaineering, climbing).
 - Changing the edit-mode form layout.
 
 ## Decisions
@@ -129,8 +128,12 @@ registered in `icons.ts` as `ski_touring` / `splitboarding`; `TOUR_TYPE_ICONS` p
 rock step); `climbing.svg` is drawn here — a climber under an overhang with a chalk bag — both
 after user-supplied references. Rejected: Material `mountain_flag` (an outline landscape among
 solid figures), a hiker with pole or ice axe (read as hiking), CC-BY sets (`game-icons`, they
-need in-app credit). `tour-type.test.ts` checks every `TOUR_TYPE_ICONS` name is registered, since
-an unknown name renders nothing.
+need in-app credit). *Ski mountaineering (follow-up):* Material's mountains (`terrain`) becomes
+`ski-mountaineering.svg` — the mountaineering figure, scaled down, with two skis A-framed on the
+pack: mountaineering plus skis, distinct from the ski-touring figure that stands on a ski.
+`terrain` had no other user and leaves the registry. Rejected: Pinhead's skier carrying skis on
+the shoulder (CC0; reads as a resort skier walking to the lift). `tour-type.test.ts` checks
+every `TOUR_TYPE_ICONS` name is registered, since an unknown name renders nothing.
 
 ### D8 — The form looks up name and elevation, each field on its own
 Found while testing: Swisstopo's height service answered in 1–13 s or failed (502/503), and
