@@ -69,6 +69,21 @@ export function parseLabel(label: string): Pick<LocationResult, 'name' | 'kind' 
   return { name, kind, region }
 }
 
+const UMLAUTS: Record<string, string> = { ae: 'ä', oe: 'ö', ue: 'ü' }
+
+/**
+ * GeoAdmin spells most German kinds without umlauts ("Gebaeude", "Huegel"; names keep
+ * theirs). "ue" after q, a or e is a real "ue" (Quelle, Mauer, Feuer).
+ * ponytail: a rule, not a dictionary; a real "ue" after a consonant ("Duell") would
+ * become "ü" — no swissNAMES3D kind has one.
+ */
+export function restoreUmlauts(text: string): string {
+  return text.replace(/(?<![qae])ue|ae|oe/gi, (m) => {
+    const u = UMLAUTS[m.toLowerCase()]!
+    return m[0] === m[0]!.toUpperCase() ? u.toUpperCase() : u
+  })
+}
+
 /**
  * Searches Swiss place names, summits, huts, localities, postcodes and addresses
  * (GeoAdmin SearchServer). Malformed entries are dropped. Rejects on HTTP/validation
@@ -108,6 +123,8 @@ export async function searchLocations(query: string, lang: string, signal: Abort
       const parts = parseLabel(label)
       if (!parts.name)
         return []
+      if (parts.kind && params.get('lang') === 'de')
+        parts.kind = restoreUmlauts(parts.kind)
       return [{ ...parts, origin, lng: lon, lat, zoom: ORIGIN_ZOOM[origin] ?? DEFAULT_ZOOM }]
     })
   }

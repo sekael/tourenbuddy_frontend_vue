@@ -42,6 +42,12 @@ The search SHALL query Swiss place names, summits, huts, localities, postcodes a
 - **WHEN** the user types "Piz Bernina"
 - **THEN** a result list SHALL show "Piz Bernina" with its kind (summit) and region
 
+#### Scenario: Kinds are spelled properly in German
+
+- **WHEN** the app language is German and the user searches "Chamanna da Tschierva"
+- **THEN** the hut's kind SHALL read "Gebäude", not the service's transliterated "Gebaeude"
+- **AND** a real "ue" ("Quelle") and the result names SHALL stay as the service spells them
+
 #### Scenario: Input too short
 
 - **WHEN** the trimmed input has fewer than 2 characters

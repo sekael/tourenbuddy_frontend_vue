@@ -45,6 +45,18 @@ describe('searchLocations', () => {
     expect(results.map(r => r.name)).toEqual(['Piz Ela'])
   })
 
+  it('should restore umlauts in German kinds only, keeping real "ue" and names as given', async () => {
+    const kinds = ['Gebaeude', 'Uebrige Bahnen', 'Oeffentliches Parkareal', 'Quelle', 'Feuerstelle']
+    const body = { results: kinds.map(k => ({ attrs: { label: `<i>${k}</i> <b>Uetliberg</b>`, lat: 46.6, lon: 9.7, origin: 'gazetteer' } })) }
+    respond(body)
+    const de = await searchLocations('x', 'de-CH', new AbortController().signal)
+    expect(de.map(r => r.kind)).toEqual(['Gebäude', 'Übrige Bahnen', 'Öffentliches Parkareal', 'Quelle', 'Feuerstelle'])
+    expect(de[0]!.name).toBe('Uetliberg')
+    respond(body)
+    const en = await searchLocations('x', 'en', new AbortController().signal)
+    expect(en.map(r => r.kind)).toEqual(kinds)
+  })
+
   it('should use the default zoom for an unknown origin', async () => {
     respond({ results: [{ attrs: { label: '<b>Somewhere</b>', lat: 46.6, lon: 9.7, origin: 'parcel' } }] })
     const [r] = await searchLocations('Some', 'en', new AbortController().signal)

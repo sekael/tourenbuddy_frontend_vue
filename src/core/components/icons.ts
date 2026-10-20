@@ -7,7 +7,6 @@ import IconArrowBack from '~icons/material-symbols/arrow-back'
 import IconArrowForward from '~icons/material-symbols/arrow-forward'
 import IconAttachFile from '~icons/material-symbols/attach-file'
 import IconAutoAwesomeOutline from '~icons/material-symbols/auto-awesome-outline'
-import IconBackpackOutline from '~icons/material-symbols/backpack-outline'
 import IconBadgeOutline from '~icons/material-symbols/badge-outline'
 import IconBlockOutline from '~icons/material-symbols/block-outline'
 import IconBrokenImageOutline from '~icons/material-symbols/broken-image-outline'
@@ -89,6 +88,7 @@ import IconVerifiedOutline from '~icons/material-symbols/verified-outline'
 import IconWarningOutline from '~icons/material-symbols/warning-outline'
 import IconWbSunnyOutline from '~icons/material-symbols/wb-sunny-outline'
 import IconClimbing from '~icons/tb/climbing'
+import IconIceAxe from '~icons/tb/ice-axe'
 import IconMountaineering from '~icons/tb/mountaineering'
 import IconSkiMountaineering from '~icons/tb/ski-mountaineering'
 import IconSkiTouring from '~icons/tb/ski-touring'
@@ -129,7 +129,6 @@ export const iconRegistry: Record<string, Component> = {
   arrow_forward: IconArrowForward,
   attach_file: IconAttachFile,
   auto_awesome: IconAutoAwesomeOutline,
-  backpack: IconBackpackOutline,
   badge: IconBadgeOutline,
   block: IconBlockOutline,
   broken_image: IconBrokenImageOutline,
@@ -167,6 +166,7 @@ export const iconRegistry: Record<string, Component> = {
   history: IconHistory,
   hiking: IconHiking,
   home: IconHomeOutline,
+  ice_axe: IconIceAxe,
   image: IconImageOutline,
   info: IconInfoOutline,
   landscape: IconLandscapeOutline,

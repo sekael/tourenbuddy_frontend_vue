@@ -133,7 +133,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
       </li>
 
       <li v-if="tour.equipment" class="fact-row" data-fact="equipment">
-        <BaseIcon name="backpack" size="sm" class="row-icon" />
+        <BaseIcon name="ice_axe" size="sm" class="row-icon" />
         <span class="visually-hidden">{{ t('tours.infoSheet.iconTooltipEquipment') }}</span>
         <p class="row-value body-text">
           {{ tour.equipment }}

@@ -2,6 +2,7 @@ import type { Tour } from '@/features/tours/domain/entities/tour'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import BaseIcon from '@/core/components/base-icon.vue'
+import { iconRegistry } from '@/core/components/icons'
 import TourFactRows from '@/features/tours/presentation/components/tour-fact-rows.vue'
 
 const START = { lng: 7.9, lat: 46.6 }
@@ -73,6 +74,13 @@ describe('tourFactRows', () => {
   it('should leave out empty groups, even when only seasons or only the GPX download fill one', () => {
     const w = mountRows({ seasons: ['winter'], notes: 'Early' }, { route: '<button>GPX</button>' })
     expect(groups(w)).toEqual([['seasons'], ['track'], ['notes']])
+  })
+
+  it('should only use registered icons, since an unknown name renders nothing', () => {
+    const w = mountRows({ tourType: 'climbing', startPoint: START, seasons: ['winter'], description: 'x', equipment: 'Rope', notes: 'y' }, { partners: '<span>Anna</span>' })
+    const names = w.findAllComponents(BaseIcon).map(i => i.props('name'))
+    expect(names).toContain('ice_axe')
+    expect(names.filter(n => !(n in iconRegistry))).toEqual([])
   })
 
   it('should render the partners row only when partners are slotted in', () => {

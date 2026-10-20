@@ -82,6 +82,12 @@ The system SHALL render icons as bundled SVGs (using the Material Symbols Outlin
 - **AND** neither SHALL show the walking/hiking glyph
 - **AND** both SHALL render offline, without any network request
 
+#### Scenario: Equipment reads as gear by its icon
+
+- **WHEN** a tour with equipment is shown in the detail view
+- **THEN** the equipment row SHALL lead with an ice axe glyph, a subject the Material set lacks
+- **AND** it SHALL NOT use a generic backpack, box or tools glyph
+
 #### Scenario: Climbing and mountaineering types have their own glyphs
 
 - **WHEN** a climbing, a mountaineering or a ski-mountaineering tour is shown anywhere the tour type icon appears

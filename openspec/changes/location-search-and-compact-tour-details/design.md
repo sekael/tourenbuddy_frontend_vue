@@ -45,6 +45,11 @@ toponymy than swissNAMES3D; GeoAdmin is the same source as our map and name look
 `name` = text of `<b>`, `kind` = text of `<i>`, `region` = remaining text, all through
 `DOMParser().parseFromString(label, 'text/html')` → `textContent`. Decodes entities
 (`&amp;`), executes nothing, and Vue renders the strings as text.
+With `lang=de` GeoAdmin transliterates most kinds ("Gebaeude", "Huegel", "Oeffentliches";
+names and regions keep their umlauts, `lang=en` returns "Building"), so `restoreUmlauts` turns
+`ae/oe/ue` back into umlauts in German kinds, except "ue" after q, a or e (Quelle, Mauer).
+Checked against the kinds of ~60 live queries. *Alternative:* an objectclass → i18n map —
+rejected for now, the service already localizes and the map would trail swissNAMES3D.
 *Alternative:* regex strip — rejected: misses entities and is brittle on nested tags.
 
 ### D3 — Zoom by origin, not the API's `zoomlevel`
@@ -134,6 +139,12 @@ pack: mountaineering plus skis, distinct from the ski-touring figure that stands
 `terrain` had no other user and leaves the registry. Rejected: Pinhead's skier carrying skis on
 the shoulder (CC0; reads as a resort skier walking to the lift). `tour-type.test.ts` checks
 every `TOUR_TYPE_ICONS` name is registered, since an unknown name renders nothing.
+*Equipment row (follow-up):* the free texts are named by their icon alone, and `backpack` did not
+say "gear" (it also repeats the packs on the mountaineering glyphs). `ice-axe.svg` (tilted pick,
+adze and spiked shaft, fitted to Material's 20-unit live area) replaces it; `backpack` had no
+other user. Rejected: carabiners (`mdi`, `iconoven`, `energy-icons`; a "?", "G" or paperclip at
+18 px), a rope coil (a spiral), Material `checklist` (says "list"), `construction` / `handyman`
+(say "repair"). `tour-fact-rows.test.ts` checks every row icon is registered.
 
 ### D8 — The form looks up name and elevation, each field on its own
 Found while testing: Swisstopo's height service answered in 1–13 s or failed (502/503), and
@@ -170,8 +181,9 @@ through dialog and sheet — rejected: six props × two paths for state only the
   aborted with the form. Accepted: the user chose not to wait, and can edit it in later.
 - [GeoAdmin search unavailable or slow] → 5 s timeout, error message in the list; picking by
   panning keeps working.
-- [Search result kinds are German source terms ("Alpiner Gipfel")] → shown as data, not UI copy;
-  acceptable for a Swiss-only map. Localize via an origin/objectclass map later if users ask.
+- [Search result kinds come from the service ("Alpiner Gipfel", "Building")] → shown as data,
+  not UI copy; GeoAdmin localizes them per `lang`. A German kind with a real "ue" after a
+  consonant would gain a wrong "ü" (D2) — none exists today.
 - [Jump with `padding: 0` resets padding that `frameTour` set] → every later framing call passes
   its own padding already; confirm reads `unproject`, so nothing depends on stale padding.
 - [Hand-drawn glyphs look off next to Material icons] → render both at sm/md/lg next to
