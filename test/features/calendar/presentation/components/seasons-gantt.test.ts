@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import SeasonsGantt from '@/features/calendar/presentation/components/seasons-gantt.vue'
 
 function tour(id: string, name: string, seasons: string[] | null, extra: object = {}) {
-  return { id, name, seasons, tourType: 'hiking', ...extra } as any
+  return { id, name, seasons, tourTypes: ['hiking'], ...extra } as any
 }
 
 function mountGantt(tours: any[], friendTours: any[] = []) {

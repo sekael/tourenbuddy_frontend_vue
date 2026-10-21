@@ -32,9 +32,11 @@ const displayName = computed(() => props.tour.name ?? t('tours.infoSheet.unnamed
 // The activity type IS the row's identity at a glance — same icon+color language the
 // map markers and calendar already speak. A typeless tour keeps the neutral primary tint
 // via the CSS default, so the null case needs no template branch.
-const avatarIcon = computed(() => (props.tour.tourType ? TOUR_TYPE_ICONS[props.tour.tourType] : 'tour'))
+// A multi-activity tour shows its primary (first) type.
+const primaryType = computed(() => props.tour.tourTypes[0] ?? null)
+const avatarIcon = computed(() => (primaryType.value ? TOUR_TYPE_ICONS[primaryType.value] : 'tour'))
 const avatarTint = computed(() =>
-  props.tour.tourType ? { '--avatar-tint': TOUR_TYPE_COLORS[props.tour.tourType] } : undefined,
+  primaryType.value ? { '--avatar-tint': TOUR_TYPE_COLORS[primaryType.value] } : undefined,
 )
 
 // Friend tours: the owner is named by the viewer's OWN contact for them, gated so the

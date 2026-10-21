@@ -16,7 +16,7 @@ interface LngLat {
 export interface DetailMarker {
   pointKind: DetailPointKind
   lngLat: LngLat
-  tourType: TourType | null
+  tourTypes: TourType[]
   draft: boolean
 }
 
@@ -32,8 +32,8 @@ interface PointInput {
 }
 
 export interface TourDetailMarkersInput {
-  /** Type driving marker color; null → neutral fallback (handled by the layer). */
-  tourType: TourType | null
+  /** Types driving marker color; empty → neutral fallback (handled by the layer). */
+  tourTypes: TourType[]
   start: PointInput
   end: PointInput
 }
@@ -69,9 +69,9 @@ export function tourDetailMarkers(input: TourDetailMarkersInput): DetailMarker[]
   ): DetailMarker[] {
     const out: DetailMarker[] = []
     if (start !== null)
-      out.push({ pointKind: 'start', lngLat: start, tourType: input.tourType, draft })
+      out.push({ pointKind: 'start', lngLat: start, tourTypes: input.tourTypes, draft })
     if (end !== null && anchor !== null && !isSameGoal(end, anchor))
-      out.push({ pointKind: 'end', lngLat: end, tourType: input.tourType, draft })
+      out.push({ pointKind: 'end', lngLat: end, tourTypes: input.tourTypes, draft })
     return out
   }
 

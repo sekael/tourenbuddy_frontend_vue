@@ -29,7 +29,7 @@ export function makeDemoChips(t: Translate): {
     goal: { lng: 8.0, lat: 46.8 },
     name: t('calendar.tour.demo.tourName'),
     partnerIds: [],
-    tourType: 'skitour',
+    tourTypes: ['skitour'],
     elevation: null,
     gpxFilepath: null,
     description: null,
@@ -46,6 +46,7 @@ export function makeDemoChips(t: Translate): {
     visibility: 'friends',
     isFriendTour: false,
     updatedAt: null, // demo chip is never persisted — no LWW baseline to carry
+    outing: null,
   }
   return {
     entries: [{ tour, isFriend: false, dayIndex: 1, dayCount: 1 }],

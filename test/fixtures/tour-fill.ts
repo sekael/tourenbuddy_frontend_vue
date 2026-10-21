@@ -14,5 +14,6 @@ export const TOUR_FILL = {
   ...DRAFT_FILL,
   visibility: 'friends' as const,
   updatedAt: null,
+  outing: null,
   isFriendTour: false,
 }

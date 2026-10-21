@@ -20,7 +20,7 @@ function makeTour(overrides: Record<string, unknown> = {}) {
     plannedDate: null,
     goal: { lng: 8.5, lat: 47.5 },
     partnerIds: [],
-    tourType: 'hiking',
+    tourTypes: ['hiking'],
     elevation: null,
     gpxFilepath: null,
     description: null,
@@ -46,7 +46,7 @@ function mountRow(tour: ReturnType<typeof makeTour>) {
 
 describe('tourListRow', () => {
   it('renders the generic tour icon for a typeless tour, never a letter', () => {
-    const wrapper = mountRow(makeTour({ tourType: null, name: null }))
+    const wrapper = mountRow(makeTour({ tourTypes: [], name: null }))
 
     expect(wrapper.find('.tour-avatar [data-icon="tour"]').exists()).toBe(true)
     // The old letter avatar rendered '?' for an unnamed tour — an identity that isn't one.
@@ -55,7 +55,7 @@ describe('tourListRow', () => {
   })
 
   it('tints the avatar per activity type', () => {
-    const wrapper = mountRow(makeTour({ tourType: 'skiing' }))
+    const wrapper = mountRow(makeTour({ tourTypes: ['skiing'] }))
 
     expect(wrapper.find('.tour-avatar [data-icon="downhill_skiing"]').exists()).toBe(true)
     expect(wrapper.find('.tour-avatar').attributes('style')).toContain('--avatar-tint')

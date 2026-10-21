@@ -39,6 +39,16 @@ export const RELEASE_NOTES: readonly ReleaseNote[] = [
       { key: 'details', icon: 'info' },
     ],
   },
+  {
+    id: '2026-10-multi-activity-search',
+    since: '2026-10-20',
+    features: [
+      { key: 'outings', icon: 'timeline' },
+      { key: 'activities', icon: 'ski_touring' },
+      { key: 'search', icon: 'search' },
+      { key: 'details', icon: 'info' },
+    ],
+  },
 ]
 
 export function currentReleaseNote(notes: readonly ReleaseNote[] = RELEASE_NOTES): ReleaseNote | null {

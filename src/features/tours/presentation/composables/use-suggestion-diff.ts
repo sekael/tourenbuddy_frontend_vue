@@ -59,7 +59,7 @@ export function seedDraftFromPending(
         draft.endDate = obj.endDate ? new Date(String(obj.endDate)) : null
         break
       case 'tour_type':
-        draft.tourType = value as TourDraft['tourType']
+        draft.tourTypes = (value ?? []) as TourDraft['tourTypes']
         break
       case 'elevation':
         draft.elevation = value as number | null
@@ -177,8 +177,9 @@ export function buildSuggestionItems(
     })
   }
 
-  if (original.tourType !== draft.tourType)
-    push('tour_type', draft.tourType)
+  // The whole list is the value (both sides in canonical order): accepting replaces it.
+  if (original.tourTypes.join() !== draft.tourTypes.join())
+    push('tour_type', draft.tourTypes)
 
   // The goal and its elevation decide each other. A moved goal carries the freshly
   // looked-up elevation and suppresses the standalone field — otherwise "accept the new

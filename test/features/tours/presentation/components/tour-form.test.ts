@@ -61,6 +61,24 @@ async function pickFile(wrapper: ReturnType<typeof mountForm>, file: File) {
 }
 
 describe('tourForm', () => {
+  describe('seeded create (#338)', () => {
+    /** The `draftId` a submit carries — non-empty only when the form creates (staging attachments). */
+    async function submittedDraftId(props: Record<string, unknown>) {
+      const wrapper = mountForm(props)
+      await wrapper.find('#tf-tourName').setValue('Hut to summit')
+      await wrapper.find('form').trigger('submit.prevent')
+      return (wrapper.emitted('submit')![0] as unknown[])[3]
+    }
+
+    it('should still create when seeded without a tour id', async () => {
+      expect(await submittedDraftId({ initialDraft: { tourTypes: ['skitour'] } })).not.toBe('')
+    })
+
+    it('should edit when given a tour id', async () => {
+      expect(await submittedDraftId({ initialDraft: { tourTypes: ['skitour'] }, tourId: 't1' })).toBe('')
+    })
+  })
+
   describe('disabled prop', () => {
     it('renders the fieldset disabled so nested inputs and buttons are inert', () => {
       const wrapper = mountForm({ disabled: true })
@@ -119,6 +137,33 @@ describe('tourForm', () => {
     })
   })
 
+  describe('activity chips (multi-select)', () => {
+    async function submitTypes(wrapper: ReturnType<typeof mountForm>) {
+      await wrapper.find('#tf-tourName').setValue('My Tour')
+      await wrapper.find('form').trigger('submit.prevent')
+      return ((wrapper.emitted('submit')![0] as unknown[])[0] as { tourTypes: string[] }).tourTypes
+    }
+
+    it('saves several activities in chip order, not tap order', async () => {
+      const wrapper = mountForm()
+      await wrapper.find('[data-type="hiking"]').trigger('click')
+      await wrapper.find('[data-type="skitour"]').trigger('click')
+      expect(await submitTypes(wrapper)).toEqual(['skitour', 'hiking'])
+    })
+
+    it('deselecting one activity keeps the others', async () => {
+      const wrapper = mountForm({ initialDraft: { tourTypes: ['skitour', 'hiking'] } })
+      await wrapper.find('[data-type="skitour"]').trigger('click')
+      expect(await submitTypes(wrapper)).toEqual(['hiking'])
+    })
+
+    it('surfaces an emptied selection as [] (neutral preview), not null', async () => {
+      const wrapper = mountForm({ initialDraft: { tourTypes: ['hiking'] } })
+      await wrapper.find('[data-type="hiking"]').trigger('click')
+      expect(wrapper.emitted('tourTypesChange')!.at(-1)).toEqual([[]])
+    })
+  })
+
   describe('clearing end point also clears metadata', () => {
     it('should include null endPointName and endPointElevation in draft when end point is removed', async () => {
       const wrapper = mountForm({
@@ -163,7 +208,7 @@ describe('tourForm', () => {
           name: 'Test',
           plannedDate: null,
           partnerIds: [],
-          tourType: null,
+          tourTypes: [],
           elevation: null,
           gpxFilepath: 'tour-abc.gpx',
           description: null,
@@ -188,7 +233,7 @@ describe('tourForm', () => {
           name: 'Test',
           plannedDate: null,
           partnerIds: [],
-          tourType: null,
+          tourTypes: [],
           elevation: null,
           gpxFilepath: 'tour-abc.gpx',
           description: null,

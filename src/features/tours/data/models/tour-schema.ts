@@ -14,6 +14,28 @@ const partnerNameSchema = z.object({
 
 export type PartnerName = z.infer<typeof partnerNameSchema>
 
+/** A tour's place in an outing (#338): the outing's id and name, and the segment's order key. */
+const outingSchema = z.object({
+  id: z.string(),
+  name: z.string().nullable(),
+  position: z.number().int(),
+})
+
+export type TourOuting = z.infer<typeof outingSchema>
+
+/** Outing columns shared by both views; arrive null for a standalone tour. */
+const outingColumns = {
+  outing_id: z.string().nullable().default(null),
+  outing_name: z.string().nullable().default(null),
+  outing_position: z.number().int().nullable().default(null),
+}
+
+function outingFromRow(row: { outing_id: string | null, outing_name: string | null, outing_position: number | null }) {
+  return row.outing_id != null && row.outing_position != null
+    ? { id: row.outing_id, name: row.outing_name, position: row.outing_position }
+    : null
+}
+
 /** Raw shape from Supabase `tours_view` (snake_case). */
 export const tourRowSchema = z
   .object({
@@ -25,7 +47,7 @@ export const tourRowSchema = z
     lat: z.number(),
     name: z.string().nullable(),
     partner_ids: z.array(z.string()).default([]),
-    tour_type: tourTypeSchema.nullable().default(null),
+    tour_types: z.array(tourTypeSchema).default([]),
     elevation: z.number().nullable().default(null),
     gpx_filepath: z.string().nullable().default(null),
     description: z.string().nullable().default(null),
@@ -43,6 +65,7 @@ export const tourRowSchema = z
     completed: z.boolean().default(false),
     visibility: visibilitySchema.default('friends'),
     updated_at: z.string().nullable().default(null),
+    ...outingColumns,
   })
   .transform(row => ({
     id: row.id,
@@ -52,7 +75,7 @@ export const tourRowSchema = z
     goal: { lng: row.lon, lat: row.lat },
     name: row.name,
     partnerIds: row.partner_ids,
-    tourType: row.tour_type,
+    tourTypes: row.tour_types,
     elevation: row.elevation,
     gpxFilepath: row.gpx_filepath,
     description: row.description,
@@ -72,6 +95,7 @@ export const tourRowSchema = z
     completed: row.completed,
     visibility: row.visibility,
     updatedAt: row.updated_at,
+    outing: outingFromRow(row),
     isFriendTour: false,
   }))
 
@@ -95,7 +119,8 @@ export const tourSchema = z.object({
   goal: pointSchema,
   name: z.string().nullable(),
   partnerIds: z.array(z.string()),
-  tourType: tourTypeSchema.nullable(),
+  /** Activity types in `TOUR_TYPE_VALUES` order; empty = untyped. The first is the primary type. */
+  tourTypes: z.array(tourTypeSchema),
   elevation: z.number().nullable(),
   gpxFilepath: z.string().nullable(),
   description: z.string().nullable(),
@@ -112,6 +137,11 @@ export const tourSchema = z.object({
   visibility: visibilitySchema,
   /** Server-stamped last-write time (ISO); the LWW baseline for offline-write-sync (DC5). Null for friend tours. */
   updatedAt: z.string().nullable().default(null),
+  /**
+   * Outing membership (#338); null = standalone. A snapshot cached before #338 hydrates with the
+   * key absent — every reader branches on truthiness, and `cachedLoad` refetches it away.
+   */
+  outing: outingSchema.nullable().default(null),
   /** True when this tour belongs to a friend (read via friend_tours_view), not the viewer. */
   isFriendTour: z.boolean().default(false),
   /** Friend-tour only: whether the viewer is a marked partner (drives detail gating). */
@@ -136,7 +166,7 @@ export const friendTourRowSchema = z
     lon: z.number(),
     lat: z.number(),
     name: z.string().nullable(),
-    tour_type: tourTypeSchema.nullable().default(null),
+    tour_types: z.array(tourTypeSchema).default([]),
     elevation: z.number().nullable().default(null),
     gpx_filepath: z.string().nullable().default(null),
     description: z.string().nullable().default(null),
@@ -156,6 +186,7 @@ export const friendTourRowSchema = z
     partner_names: z.array(partnerNameSchema).default([]),
     unresolved_partner_count: z.number().int().nonnegative().default(0),
     visibility: visibilitySchema.default('friends'),
+    ...outingColumns,
   })
   .transform(row => ({
     id: row.id,
@@ -165,7 +196,7 @@ export const friendTourRowSchema = z
     goal: { lng: row.lon, lat: row.lat },
     name: row.name,
     partnerIds: [] as string[],
-    tourType: row.tour_type,
+    tourTypes: row.tour_types,
     elevation: row.elevation,
     gpxFilepath: row.gpx_filepath,
     description: row.description,
@@ -185,6 +216,7 @@ export const friendTourRowSchema = z
     completed: row.completed,
     visibility: row.visibility,
     updatedAt: null, // friend tours are read-only — never queued, no LWW baseline
+    outing: outingFromRow(row),
     isFriendTour: true,
     isPartner: row.is_partner,
     partnerNames: row.partner_names,

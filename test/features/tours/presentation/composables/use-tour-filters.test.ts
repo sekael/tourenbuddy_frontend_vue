@@ -17,7 +17,7 @@ const baseTour: Tour = {
   endDate: null,
   goal: { lng: 8.5, lat: 47.5 },
   partnerIds: [],
-  tourType: 'hiking',
+  tourTypes: ['hiking'],
   elevation: 1500,
   gpxFilepath: null,
   description: null,
@@ -223,25 +223,32 @@ describe('useTourFilters', () => {
   })
 
   describe('activity-type filter', () => {
-    it('should include tour matching tourType', () => {
-      const tours = [makeTour({ id: '1', tourType: 'hiking' })]
+    it('should include tour matching its type', () => {
+      const tours = [makeTour({ id: '1', tourTypes: ['hiking'] })]
       const { filteredTours, filters } = setup(tours)
       filters.tourTypes = new Set(['hiking'])
       expect(filteredTours.value).toHaveLength(1)
     })
 
-    it('should exclude tour with different tourType', () => {
-      const tours = [makeTour({ id: '1', tourType: 'skiing' })]
+    it('should exclude tour with a different type', () => {
+      const tours = [makeTour({ id: '1', tourTypes: ['skiing'] })]
       const { filteredTours, filters } = setup(tours)
       filters.tourTypes = new Set(['hiking'])
       expect(filteredTours.value).toHaveLength(0)
     })
 
-    it('should exclude tour with null tourType when filter is active', () => {
-      const tours = [makeTour({ id: '1', tourType: null })]
+    it('should exclude an untyped tour when filter is active', () => {
+      const tours = [makeTour({ id: '1', tourTypes: [] })]
       const { filteredTours, filters } = setup(tours)
       filters.tourTypes = new Set(['hiking'])
       expect(filteredTours.value).toHaveLength(0)
+    })
+
+    it('should include a multi-activity tour when any of its types is selected', () => {
+      const tours = [makeTour({ id: '1', tourTypes: ['skitour', 'hiking'] })]
+      const { filteredTours, filters } = setup(tours)
+      filters.tourTypes = new Set(['hiking'])
+      expect(filteredTours.value).toHaveLength(1)
     })
   })
 
@@ -420,8 +427,8 @@ describe('useTourFilters', () => {
   describe('combined search and filters', () => {
     it('should apply both search and filters together', () => {
       const tours = [
-        makeTour({ id: '1', name: 'Alpine Hike', tourType: 'hiking', completed: false }),
-        makeTour({ id: '2', name: 'Alpine Ski', tourType: 'skiing', completed: false }),
+        makeTour({ id: '1', name: 'Alpine Hike', tourTypes: ['hiking'], completed: false }),
+        makeTour({ id: '2', name: 'Alpine Ski', tourTypes: ['skiing'], completed: false }),
       ]
       const { filteredTours, searchQuery, filters } = setup(tours)
       searchQuery.value = 'alpine'
@@ -459,7 +466,7 @@ describe('useTourFilters', () => {
 
   describe('clearAll', () => {
     it('should reset search and all filters', () => {
-      const tours = [makeTour({ id: '1', name: 'Hike', tourType: 'hiking' })]
+      const tours = [makeTour({ id: '1', name: 'Hike', tourTypes: ['hiking'] })]
       const { filteredTours, searchQuery, filters, activeFilterCount, clearAll } = setup(tours)
       searchQuery.value = 'xyz'
       filters.tourTypes = new Set(['skiing'])
@@ -474,7 +481,7 @@ describe('useTourFilters', () => {
 
   describe('clearFilters', () => {
     it('should reset every facet but keep the search query', () => {
-      const tours = [makeTour({ id: '1', name: 'Hike', tourType: 'hiking' })]
+      const tours = [makeTour({ id: '1', name: 'Hike', tourTypes: ['hiking'] })]
       const { searchQuery, filters, activeFilterCount, clearFilters } = setup(tours)
       searchQuery.value = 'hike'
       filters.partnerIds = new Set(['c-1'])

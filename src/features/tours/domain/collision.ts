@@ -1,3 +1,4 @@
+import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import { isSameGoal } from '@/features/tours/domain/distance'
 
@@ -7,6 +8,14 @@ import { isSameGoal } from '@/features/tours/domain/distance'
  * SQL functions (see migration `bump_tour_link_radius_to_200m`).
  */
 export const COLLISION_RADIUS_M = 200
+
+/**
+ * Same objective needs at least one activity in common — the client mirror of `&&` in
+ * `fn_collision_predicate`. An untyped tour shares nothing, not even with another untyped one.
+ */
+export function sharesActivity(a: readonly TourType[], b: readonly TourType[]): boolean {
+  return a.some(t => b.includes(t))
+}
 
 /**
  * Ids of friend tours that collide (within COLLISION_RADIUS_M) with any owned tour. The map

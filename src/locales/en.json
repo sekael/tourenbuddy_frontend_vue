@@ -478,7 +478,7 @@
       "visibilityPrivate": "Private",
       "visibilityFriendsHint": "Friends can see this tour. Partners you mark see full details.",
       "visibilityPrivateHint": "Only you can see this tour — hidden from everyone, including marked partners.",
-      "activityLabel": "Activity Type",
+      "activityLabel": "Activities",
       "seasonLabel": "Season",
       "gpxTooLarge": "File too large (max 2 MB)",
       "gpxInvalid": "Invalid GPX file",
@@ -690,6 +690,29 @@
       "gpxExisting": "Existing GPX track",
       "anAttachment": "An attachment",
       "byYou": "Suggested by you"
+    },
+    "outing": {
+      "segmentCount": "{count} segment | {count} segments",
+      "segmentOf": "Segment {n} of {count}",
+      "segmentsHeader": "Segments",
+      "addSegment": "Add segment",
+      "addTitle": "Add a segment",
+      "addNew": "New segment on the map",
+      "addNewHint": "Pick its goal — it starts where the last segment ends.",
+      "addExistingHeader": "Or add one of your tours",
+      "addExistingEmpty": "No other tours to add.",
+      "edit": "Edit",
+      "done": "Done",
+      "nameLabel": "Outing name",
+      "namePlaceholder": "e.g. Haute Route",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "remove": "Remove from outing",
+      "previous": "Previous segment",
+      "next": "Next segment",
+      "openOverview": "Show the whole outing",
+      "backToOuting": "Back to outing",
+      "saveFailed": "Couldn't update the outing. Please try again."
     }
   },
   "map": {
@@ -1117,6 +1140,28 @@
         "details": {
           "title": "Route details with one tap",
           "body": "Tap a marked route for summit, ascent time, elevation gain and difficulty, plus a link to the SAC route portal. Where routes overlap, pick one from the list."
+        }
+      }
+    },
+    "2026-10-multi-activity-search": {
+      "title": "Multi-day tours, several activities per tour, and place search",
+      "intro": "Plan the whole endeavour, however you get up — and find it on the map faster.",
+      "features": {
+        "outings": {
+          "title": "Tours in segments",
+          "body": "Valley to hut, hut to summit — or hike up and fly down: add a segment to any tour and they become one outing. Tap a segment on the map to see the whole route with numbered markers and every track, then step through the segments one by one."
+        },
+        "activities": {
+          "title": "More than one activity per tour",
+          "body": "Pick every activity a tour can be done as — a ski tour in winter and a hike in summer, or a climb with a flight down. The marker and the GPX track show all their colours, and the activity filter finds the tour under each of them."
+        },
+        "search": {
+          "title": "Search while picking a point",
+          "body": "Placing a goal, start or end point? Type a summit, hut, place or address and the map jumps there. Confirm without moving and the place's name fills in for you."
+        },
+        "details": {
+          "title": "Tour details at a glance",
+          "body": "The detail view leads with the goal and its elevation and lists everything else as compact rows. Ski tours and splitboard tours now have their own icons."
         }
       }
     }

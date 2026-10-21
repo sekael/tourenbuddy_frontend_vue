@@ -1,7 +1,15 @@
+import type { TourOuting } from '@/features/tours/data/models/tour-schema'
 import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 import type { ToursRepository } from '@/features/tours/domain/repositories/tours-repository'
 import { supabase } from '@/core/utils/supabase'
 import { friendTourRowSchema, tourRowSchema } from '@/features/tours/data/models/tour-schema'
+
+/** `p_outing` (design D12): null keeps the membership, `{}` = standalone, object = segment. */
+function outingParam(outing: TourOuting | null | undefined) {
+  if (outing === undefined)
+    return null
+  return outing ? { id: outing.id, name: outing.name, position: outing.position } : {}
+}
 
 export class ToursRepositoryImpl implements ToursRepository {
   async listToursForUser(userId: string): Promise<Tour[]> {
@@ -34,7 +42,7 @@ export class ToursRepositoryImpl implements ToursRepository {
       p_name: draft.name ?? null,
       p_goal: `POINT(${goal.lng} ${goal.lat})`,
       p_partner_ids: draft.partnerIds,
-      p_tour_type: draft.tourType ?? null,
+      p_tour_types: draft.tourTypes,
       p_elevation: draft.elevation ?? null,
       p_gpx_filepath: draft.gpxFilepath ?? null,
       p_description: draft.description ?? null,
@@ -52,6 +60,7 @@ export class ToursRepositoryImpl implements ToursRepository {
       p_visibility: draft.visibility ?? null,
       p_completed: draft.completed ?? null,
       p_end_date: draft.endDate?.toISOString().split('T')[0] ?? null,
+      p_outing: outingParam(draft.outing),
     })
 
     if (error)
@@ -69,7 +78,7 @@ export class ToursRepositoryImpl implements ToursRepository {
       p_name: draft.name ?? null,
       p_goal: `POINT(${goal.lng} ${goal.lat})`,
       p_partner_ids: draft.partnerIds,
-      p_tour_type: draft.tourType ?? null,
+      p_tour_types: draft.tourTypes,
       p_elevation: draft.elevation ?? null,
       p_gpx_filepath: draft.gpxFilepath ?? null,
       p_description: draft.description ?? null,
@@ -87,6 +96,7 @@ export class ToursRepositoryImpl implements ToursRepository {
       p_visibility: draft.visibility ?? null,
       p_completed: draft.completed ?? null,
       p_end_date: draft.endDate?.toISOString().split('T')[0] ?? null,
+      p_outing: outingParam(draft.outing),
     })
 
     if (error)

@@ -34,7 +34,7 @@ import TourenbuddyMap from '@/features/map/presentation/components/tourenbuddy-m
 import TrailCard from '@/features/map/presentation/components/trail-card.vue'
 import { TRAIL_LOOKUP_MIN_ZOOM } from '@/features/map/presentation/components/trail-layers'
 import { computeBarState } from '@/features/map/presentation/composables/compute-bar-state'
-import { frameBounds, frameTour, isBoundsVisible, ROUTE_ZOOM } from '@/features/map/presentation/composables/frame-tour'
+import { frameBounds, frameTours, isBoundsVisible, ROUTE_ZOOM } from '@/features/map/presentation/composables/frame-tour'
 import { useInboxNavigation } from '@/features/map/presentation/composables/use-inbox-navigation'
 import { useTrailLookup } from '@/features/map/presentation/composables/use-trail-lookup'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
@@ -47,6 +47,8 @@ import { useOnboardingTour } from '@/features/onboarding/presentation/composable
 import { ONBOARDING_STEPS } from '@/features/onboarding/presentation/onboarding-steps'
 import { useOnboardingTourStore } from '@/features/onboarding/presentation/stores/onboarding-tour-store'
 import { isSameGoal } from '@/features/tours/domain/distance'
+import { nextSegmentSeed, outingKey, outingSegments } from '@/features/tours/domain/outing'
+import OutingOverviewSheet from '@/features/tours/presentation/components/outing-overview-sheet.vue'
 import TourCreationDialog from '@/features/tours/presentation/components/tour-creation-dialog.vue'
 import TourInfoSheet from '@/features/tours/presentation/components/tour-info-sheet.vue'
 import TourListSheet from '@/features/tours/presentation/components/tour-list-sheet.vue'
@@ -64,6 +66,7 @@ type OverlayName
     | 'contacts'
     | 'tours'
     | 'tour'
+    | 'outing'
     | 'tour-creation'
     | 'friend-requests'
     | 'inbox'
@@ -86,7 +89,7 @@ const notificationsStore = useNotificationsStore()
 const inboxStore = useInboxStore()
 const isDesktop = useIsDesktop()
 
-const { isPickingLocation, isDrawingRegion, selectedTourId, activeOverlays, trailCard } = storeToRefs(mapStore)
+const { isPickingLocation, isDrawingRegion, selectedTourId, selectedOutingKey, activeOverlays, trailCard } = storeToRefs(mapStore)
 /** The picker reports a touch-screen search; read only while picking, so a stale value never hides a sheet. */
 const pickerSearching = ref(false)
 // The collapsed overlay ("Tour goal") then only takes room from the keyboard and results. On
@@ -173,6 +176,16 @@ const selectedTour = computed(
 )
 const sheetContainerRef = ref<HTMLElement | null>(null)
 
+// ── Outings (#338, design D15) ───────────────────────────────────────────────
+const allTours = computed(() => [...tours.value, ...friendTours.value])
+/** Segments of the outing whose overview is open (empty once it dissolves). */
+const selectedOutingSegments = computed(() => outingSegments(allTours.value, selectedOutingKey.value))
+/** Where the open overview was entered from — `list` offers a back to the tour list. */
+const outingOrigin = ref<'list' | null>(null)
+/** A new segment being created: the creation form's seed and the tour it continues (D17). */
+const segmentSeed = ref<TourDraft | null>(null)
+const segmentAnchorId = ref<string | null>(null)
+
 // Whether the current location pick was triggered from the info sheet edit mode
 const isPickingForEdit = ref(false)
 
@@ -182,7 +195,7 @@ const pendingFlyTo = ref(false)
 // Where the currently-open tour detail was entered from — drives the info
 // sheet's back button target. `list` returns to the tours overlay; `cal-*`
 // returns to the calendar route on the matching view; `null` = no back offered.
-const tourDetailOrigin = ref<'list' | 'cal-seasons' | 'cal-planned' | null>(null)
+const tourDetailOrigin = ref<'list' | 'outing' | 'cal-seasons' | 'cal-planned' | null>(null)
 // `cal-planned` only: the day cell the detail was opened from (a span covers several).
 const tourDetailOriginDay = ref<string | null>(null)
 
@@ -196,10 +209,12 @@ function resetTourCreationState() {
   pendingLocation.value = null
   dialogPick.value = null
   pendingPickType.value = 'goal'
+  segmentSeed.value = null
+  segmentAnchorId.value = null
   // Drop the draft marker on every cancel/dismiss path (closeOverlay, openOverlay
   // switching away). The save path re-asserts it afterwards so it survives the round-trip.
   mapStore.setPreviewGoal(null)
-  mapStore.setPreviewTourType(null)
+  mapStore.setPreviewTourTypes(null)
   mapStore.setPreviewStart(null)
   mapStore.setPreviewEnd(null)
 }
@@ -214,6 +229,11 @@ function openOverlay(name: OverlayName) {
     tourDetailOrigin.value = null
     tourDetailOriginDay.value = null
   }
+  // Overview → segment keeps the outing's origin for the way back.
+  if (activeOverlay.value === 'outing' && name !== 'outing' && name !== 'tour') {
+    mapStore.selectOuting(null)
+    outingOrigin.value = null
+  }
   if (activeOverlay.value === 'tour-creation' && name !== 'tour-creation') {
     resetTourCreationState()
   }
@@ -227,6 +247,11 @@ function closeOverlay() {
     clearTourPreview()
     tourDetailOrigin.value = null
     tourDetailOriginDay.value = null
+    outingOrigin.value = null
+  }
+  if (activeOverlay.value === 'outing') {
+    mapStore.selectOuting(null)
+    outingOrigin.value = null
   }
   if (activeOverlay.value === 'tour-creation') {
     resetTourCreationState()
@@ -415,6 +440,12 @@ function handleTourSelectedFromList(tourId: string) {
 }
 
 function handleTourInfoBack() {
+  // A segment opened from its outing's overview goes back there.
+  const key = selectedTour.value && outingKey(selectedTour.value)
+  if (tourDetailOrigin.value === 'outing' && key) {
+    openOuting(key, outingOrigin.value)
+    return
+  }
   const origin = tourDetailOrigin.value
   // Return to the day the detail was opened from — for a multi-day tour that is not its
   // start day. Validated against the tour's LIVE span (read before we clear the
@@ -443,6 +474,48 @@ function handleTourInfoBack() {
     return
   }
   activeOverlay.value = 'tours'
+}
+
+function openOuting(key: string, origin: 'list' | null) {
+  clearTourPreview()
+  tourDetailOrigin.value = null
+  tourDetailOriginDay.value = null
+  outingOrigin.value = origin
+  // The selectedOutingKey watch swaps the sheet in.
+  mapStore.selectOuting(key)
+}
+
+/** The navigator's outing link: the overview inherits the list origin the segment had. */
+function handleInfoSheetOpenOuting(key: string) {
+  const fromList = tourDetailOrigin.value === 'list' || (tourDetailOrigin.value === 'outing' && outingOrigin.value === 'list')
+  openOuting(key, fromList ? 'list' : null)
+}
+
+function handleOpenSegment(tourId: string) {
+  tourDetailOrigin.value = 'outing'
+  tourDetailOriginDay.value = null
+  mapStore.selectTour(tourId)
+}
+
+function handleOutingBack() {
+  mapStore.selectOuting(null)
+  outingOrigin.value = null
+  activeOverlay.value = 'tours'
+}
+
+/**
+ * "New segment on the map" (D17): pick the goal like a new tour, with the form seeded from the
+ * outing's last segment (or the standalone anchor). The outing itself is minted on save.
+ */
+function handleAddSegment(anchorId: string) {
+  const anchor = tours.value.find(t => t.id === anchorId)
+  if (!anchor)
+    return
+  const prev = outingSegments(tours.value, outingKey(anchor)).at(-1) ?? anchor
+  closeOverlay()
+  segmentSeed.value = nextSegmentSeed(prev)
+  segmentAnchorId.value = anchorId
+  mapStore.setPickingLocation(true)
 }
 
 function handleEditContact(contactId: string) {
@@ -480,20 +553,34 @@ function handleOpenFriendRequests() {
   openOverlay('friend-requests')
 }
 
-// Leaving the tour list resets its search + filters; a tour opened from it is still "in" it.
+// Leaving the tour list resets its search + filters; a tour or outing opened from it is still "in" it.
 watch(activeOverlay, (name) => {
-  if (name !== 'tours' && name !== 'tour')
+  if (name !== 'tours' && name !== 'tour' && name !== 'outing')
     resetTourFilters()
 })
 
-// Keep activeOverlay in sync when selectedTourId is mutated externally
+// Keep activeOverlay in sync when selectedTourId is mutated externally. A segment → overview
+// switch clears the tour too; the outing watch below takes over then.
 watch(selectedTourId, (id) => {
   if (id) {
     activeOverlay.value = 'tour'
   }
-  else if (activeOverlay.value === 'tour') {
+  else if (activeOverlay.value === 'tour' && !selectedOutingKey.value) {
     activeOverlay.value = null
   }
+})
+
+watch(selectedOutingKey, (key) => {
+  if (key)
+    activeOverlay.value = 'outing'
+  else if (activeOverlay.value === 'outing' && !selectedTourId.value)
+    activeOverlay.value = null
+})
+
+// Close the overview when its outing dissolves or its segments are deleted.
+watch(selectedOutingSegments, (segments) => {
+  if (selectedOutingKey.value && segments.length === 0)
+    mapStore.selectOuting(null)
 })
 
 // Deselect when a realtime refetch removes the selected tour from the list
@@ -540,8 +627,9 @@ onMounted(async () => {
 // ponytail: mirrors `.side-drawer { width }` — measure it if the drawer ever resizes.
 const SIDE_DRAWER_WIDTH = 400
 
+/** Frame the open tour, or every segment of the open outing. */
 async function flyToSelectedTour() {
-  if (!selectedTour.value)
+  if (!selectedTour.value && selectedOutingSegments.value.length === 0)
     return
   await nextTick()
   // On mobile the sheet is inside a Transition mode="out-in" container — if the previous
@@ -556,9 +644,10 @@ async function flyToSelectedTour() {
   if (!isDesktop.value)
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
   const map = mapInstance.value
-  if (!map || !selectedTour.value)
+  const framed = selectedTour.value ? [selectedTour.value] : selectedOutingSegments.value
+  if (!map || framed.length === 0)
     return
-  frameTour(map, selectedTour.value, isDesktop.value ? { right: SIDE_DRAWER_WIDTH } : { bottom: sheetInset.value })
+  frameTours(map, framed, isDesktop.value ? { right: SIDE_DRAWER_WIDTH } : { bottom: sheetInset.value })
 }
 
 watch(sheetContainerRef, async (el) => {
@@ -566,8 +655,8 @@ watch(sheetContainerRef, async (el) => {
     await flyToSelectedTour()
 })
 
-watch(selectedTourId, async (id) => {
-  if (id)
+watch([selectedTourId, selectedOutingKey], async ([id, key]) => {
+  if (id || key)
     await flyToSelectedTour()
 })
 
@@ -590,6 +679,17 @@ function handleResetBearing() {
 }
 
 function handleTourClicked(tourId: string) {
+  const tour = allTours.value.find(t => t.id === tourId)
+  const key = tour ? outingKey(tour) : null
+  const focused = selectedOutingKey.value ?? (selectedTour.value ? outingKey(selectedTour.value) : null)
+  // A segment of an outing not open yet shows the whole outing first (D15); inside the open
+  // outing, a tap opens that segment.
+  if (key && key !== focused && outingSegments(allTours.value, key).length > 0) {
+    openOuting(key, null)
+    return
+  }
+  if (key && key === selectedOutingKey.value)
+    tourDetailOrigin.value = 'outing'
   mapStore.selectTour(tourId)
   openOverlay('tour')
 }
@@ -606,7 +706,7 @@ function handleLocationConfirmed({ name, ...location }: { lng: number, lat: numb
     isPickingForEdit.value = false
     pendingPickType.value = 'goal'
     // Tentative goal as a lighter-tone preview marker until edit mode closes,
-    // color is already held by previewTourType, so no changes needed here.
+    // color is already held by previewTourTypes, so no changes needed here.
     if (pickType === 'goal')
       mapStore.setPreviewGoal(location)
     editPickedPoint.value = pick(pickType)
@@ -652,6 +752,11 @@ function handleLocationCancelled() {
     pendingPickType.value = 'goal'
     return
   }
+  // An abandoned new segment's goal pick drops its seed with it.
+  if (pendingLocation.value === null) {
+    segmentSeed.value = null
+    segmentAnchorId.value = null
+  }
   // Re-open dialog if we were picking a secondary point for creation
   if (
     pendingPickType.value === 'start'
@@ -691,11 +796,11 @@ async function handleEditModeChange(editing: boolean) {
 // Tear down every preview overlay tied to a viewed/edited tour: the tentative
 // goal, its draft type tint, and the draft start/end points. Called on close,
 // back, overlay-switch and edit-exit so nothing leaks into the next selection.
-// A stale previewTourType in particular would mis-color the next tour's
+// A stale previewTourTypes in particular would mis-color the next tour's
 // start/end markers, since they read it as a draft override.
 function clearTourPreview() {
   mapStore.setPreviewGoal(null)
-  mapStore.setPreviewTourType(null)
+  mapStore.setPreviewTourTypes(null)
   mapStore.setPreviewStart(null)
   mapStore.setPreviewEnd(null)
 }
@@ -874,14 +979,15 @@ async function handleTourCreated(
 ) {
   if (!pendingLocation.value)
     return
-  // Capture goal before closeOverlay resets state
+  // Capture goal (and a new segment's anchor) before closeOverlay resets state
   const goal = pendingLocation.value
+  const anchorId = segmentAnchorId.value
   closeOverlay()
   // closeOverlay() cleared the draft via resetTourCreationState; re-assert it so the
   // colored draft survives the create round-trip until performCreate swaps in the real marker.
   mapStore.setPreviewGoal(goal)
-  mapStore.setPreviewTourType(draft.tourType)
-  await performCreate(draft, goal, preUploadedTourId, draftId)
+  mapStore.setPreviewTourTypes(draft.tourTypes)
+  await performCreate(draft, goal, preUploadedTourId, draftId, anchorId)
 }
 
 async function performCreate(
@@ -889,11 +995,19 @@ async function performCreate(
   goal: { lng: number, lat: number },
   preUploadedTourId: string | null,
   draftId: string,
+  anchorId: string | null,
 ) {
   // Keep the re-asserted draft marker on screen through the round-trip; clear it in
   // `finally` so the real marker replaces it on success and no draft lingers on failure.
   try {
-    const newId = await toursStore.createTourFromDraft(draft, goal, preUploadedTourId)
+    // A new segment: the anchor joins (or mints) the outing first, then the tour is created
+    // into it after the last segment — so a cancelled form never leaves a one-segment outing.
+    const outing = anchorId ? await toursStore.ensureOuting(anchorId) : null
+    const newId = await toursStore.createTourFromDraft(
+      outing ? { ...draft, outing: toursStore.nextInOuting(outing) } : draft,
+      goal,
+      preUploadedTourId,
+    )
     if (newId) {
       mapStore.selectTour(newId)
       // The bytes are already in Storage (pre-uploaded on pick, design D5) — this only
@@ -1001,11 +1115,22 @@ function handleDialogClose() {
       <div v-if="selectedTour && activeOverlay === 'tour'" key="tour" ref="sheetContainerRef" class="sheet-host">
         <TourInfoSheet
           :tour="selectedTour" :edit-picked-point="editPickedPoint" :show-back="tourDetailOrigin !== null"
+          :back-text="tourDetailOrigin === 'outing' ? t('tours.outing.backToOuting') : undefined"
           :active-pick-type="isPickingForEdit ? pendingPickType : null" @close="closeOverlay" @back="handleTourInfoBack"
           @pick-point="(t: 'start' | 'end' | 'goal') => handleInfoSheetPickPoint(t)"
           @point-consumed="handlePointConsumed" @edit-mode-change="handleEditModeChange"
-          @edit-contact="handleEditContact" @tour-type-change="mapStore.setPreviewTourType($event)"
+          @edit-contact="handleEditContact" @tour-types-change="mapStore.setPreviewTourTypes($event)"
           @start-point-change="handleStartPointChange" @end-point-change="handleEndPointChange"
+          @open-outing="handleInfoSheetOpenOuting" @add-segment="handleAddSegment"
+        />
+      </div>
+      <div
+        v-else-if="selectedOutingKey && activeOverlay === 'outing'" key="outing" ref="sheetContainerRef"
+        class="sheet-host"
+      >
+        <OutingOverviewSheet
+          :outing-key="selectedOutingKey" :show-back="outingOrigin === 'list'" @close="closeOverlay"
+          @back="handleOutingBack" @open-segment="handleOpenSegment" @add-segment-new="handleAddSegment"
         />
       </div>
       <div v-else-if="showFeedbackSheet" key="feedback" class="sheet-host">
@@ -1029,6 +1154,7 @@ function handleDialogClose() {
       <div v-else-if="showToursList" key="tours" class="sheet-host">
         <TourListSheet
           @close="closeOverlay" @select-tour="handleTourSelectedFromList"
+          @select-outing="openOuting($event, 'list')"
           @add-tour="handleListSheetAddTour"
         />
       </div>
@@ -1047,9 +1173,9 @@ function handleDialogClose() {
       </div>
       <div v-else-if="showTourCreationDialog" key="tour-creation" class="sheet-host">
         <TourCreationDialog
-          :pick="dialogPick" :initial-goal="pendingLocation" :active-pick-type="pendingPickType"
+          :pick="dialogPick" :initial-goal="pendingLocation" :active-pick-type="pendingPickType" :seed="segmentSeed"
           @confirm="(d, r, tid, did) => handleTourCreated(d, r, tid, did)" @close="handleDialogClose"
-          @pick-point="handlePickPoint" @tour-type-change="mapStore.setPreviewTourType($event)"
+          @pick-point="handlePickPoint" @tour-types-change="mapStore.setPreviewTourTypes($event)"
           @start-point-change="handleStartPointChange" @end-point-change="handleEndPointChange"
         />
       </div>

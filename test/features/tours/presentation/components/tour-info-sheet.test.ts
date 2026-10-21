@@ -49,7 +49,7 @@ const TourFormStub = {
       name: 'Edited Tour',
       plannedDate: null,
       partnerIds: [],
-      tourType: null,
+      tourTypes: [],
       elevation: null,
       gpxFilepath: null,
       description: null,
@@ -88,7 +88,7 @@ const mockTour = {
   plannedDate: null,
   goal: { lng: 8.2, lat: 46.8 },
   partnerIds: [],
-  tourType: null,
+  tourTypes: [],
   elevation: null,
   gpxFilepath: null,
   description: null,
@@ -163,6 +163,21 @@ describe('tourInfoSheet', () => {
     it('renders a single date when the tour has no end date', () => {
       const wrapper = mountSheet({ plannedDate: new Date(2026, 7, 25), endDate: null })
       expect(wrapper.text()).not.toContain('27')
+    })
+  })
+
+  describe('add segment (#338)', () => {
+    it('should swap the body for the add-segment view and hand a new goal pick to the page', async () => {
+      const wrapper = mountSheet()
+      await wrapper.find('[data-testid="add-segment-btn"]').trigger('click')
+      expect(wrapper.find('[data-testid="edit-btn"]').exists()).toBe(false)
+      await wrapper.find('[data-testid="add-segment-new"]').trigger('click')
+      expect(wrapper.emitted('addSegment')).toEqual([[mockTour.id]])
+    })
+
+    it('should not offer it on a friend\'s tour', () => {
+      const wrapper = mountSheet({}, 'someone-else')
+      expect(wrapper.find('[data-testid="add-segment-btn"]').exists()).toBe(false)
     })
   })
 
@@ -513,7 +528,7 @@ describe('tourInfoSheet', () => {
 
   describe('header card state', () => {
     it('should tint the view with the tour type colour, not the default primary', () => {
-      const wrapper = mountSheet({ tourType: 'paragliding' })
+      const wrapper = mountSheet({ tourTypes: ['paragliding'] })
       expect(wrapper.find('.details').attributes('style')).toContain('--type-tint: #D97706')
     })
 
@@ -523,7 +538,7 @@ describe('tourInfoSheet', () => {
     })
 
     it('should lead with the goal elevation and list the activity type as the first fact', () => {
-      const wrapper = mountSheet({ tourType: 'skitour', elevation: 2747 })
+      const wrapper = mountSheet({ tourTypes: ['skitour'], elevation: 2747 })
       expect(wrapper.find('.hero-headline').text()).toContain('2')
       expect(wrapper.find('.hero-headline').text()).not.toContain('skitour')
       expect(wrapper.find('[data-fact]').attributes('data-fact')).toBe('type')

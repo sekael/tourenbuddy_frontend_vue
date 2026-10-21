@@ -1,4 +1,3 @@
-import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Tour } from '@/features/tours/domain/entities/tour'
 
 export const CLUSTER_RADIUS = 50
@@ -7,7 +6,6 @@ export interface LeafNode {
   kind: 'leaf'
   id: string
   coord: [number, number]
-  tourType: TourType | null
 }
 
 export interface InternalNode {
@@ -74,7 +72,6 @@ export function buildClusterTree(tours: Tour[], radiusPx: number = CLUSTER_RADIU
     kind: 'leaf' as const,
     id: t.id,
     coord: [t.goal.lng, t.goal.lat] as [number, number],
-    tourType: t.tourType,
   }))
 
   if (nodes.length === 1)

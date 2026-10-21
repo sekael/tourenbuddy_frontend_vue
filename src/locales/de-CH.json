@@ -478,7 +478,7 @@
       "visibilityPrivate": "Privat",
       "visibilityFriendsHint": "Freunde sehen diese Tour. Markierte Partner sehen alle Details.",
       "visibilityPrivateHint": "Nur du siehst diese Tour – verborgen vor allen, auch markierten Partnern.",
-      "activityLabel": "Aktivitätstyp",
+      "activityLabel": "Aktivitäten",
       "seasonLabel": "Saison",
       "gpxTooLarge": "Datei zu gross (max. 2 MB)",
       "gpxInvalid": "Ungültige GPX-Datei",
@@ -690,6 +690,29 @@
       "gpxExisting": "Bestehender GPX-Track",
       "anAttachment": "Ein Anhang",
       "byYou": "Vorgeschlagen von dir"
+    },
+    "outing": {
+      "segmentCount": "{count} Etappe | {count} Etappen",
+      "segmentOf": "Etappe {n} von {count}",
+      "segmentsHeader": "Etappen",
+      "addSegment": "Etappe hinzufügen",
+      "addTitle": "Etappe hinzufügen",
+      "addNew": "Neue Etappe auf der Karte",
+      "addNewHint": "Wähle ihr Ziel – sie beginnt, wo die letzte Etappe endet.",
+      "addExistingHeader": "Oder eine deiner Touren hinzufügen",
+      "addExistingEmpty": "Keine weiteren Touren zum Hinzufügen.",
+      "edit": "Bearbeiten",
+      "done": "Fertig",
+      "nameLabel": "Name der Etappentour",
+      "namePlaceholder": "z. B. Haute Route",
+      "moveUp": "Nach oben",
+      "moveDown": "Nach unten",
+      "remove": "Aus der Etappentour entfernen",
+      "previous": "Vorherige Etappe",
+      "next": "Nächste Etappe",
+      "openOverview": "Ganze Etappentour anzeigen",
+      "backToOuting": "Zurück zur Etappentour",
+      "saveFailed": "Die Etappentour konnte nicht aktualisiert werden. Bitte versuche es nochmals."
     }
   },
   "map": {
@@ -1117,6 +1140,28 @@
         "details": {
           "title": "Routendetails mit einem Tipp",
           "body": "Tippe auf eine markierte Route für Gipfel, Aufstiegszeit, Höhenmeter und Schwierigkeit, samt Link ins SAC-Tourenportal. Wo sich Routen überlagern, wählst du eine aus der Liste."
+        }
+      }
+    },
+    "2026-10-multi-activity-search": {
+      "title": "Etappentouren, mehrere Aktivitäten pro Tour und Ortssuche",
+      "intro": "Plane das ganze Vorhaben, egal wie du hinaufkommst – und finde es schneller auf der Karte.",
+      "features": {
+        "outings": {
+          "title": "Touren in Etappen",
+          "body": "Vom Tal zur Hütte, von der Hütte auf den Gipfel – oder zu Fuss hinauf und fliegend hinunter: Füge einer Tour eine Etappe hinzu, und sie werden zu einer Etappentour. Tippe auf der Karte auf eine Etappe, um die ganze Route mit nummerierten Markern und allen Tracks zu sehen, und gehe danach Etappe für Etappe durch."
+        },
+        "activities": {
+          "title": "Mehr als eine Aktivität pro Tour",
+          "body": "Wähle jede Aktivität, als die eine Tour möglich ist – im Winter als Skitour und im Sommer als Wanderung, oder Klettern mit Flug ins Tal. Marker und GPX-Track zeigen alle ihre Farben, und der Aktivitätsfilter findet die Tour unter jeder davon."
+        },
+        "search": {
+          "title": "Suchen beim Setzen eines Punkts",
+          "body": "Setzt du Ziel, Start oder Endpunkt? Tippe einen Gipfel, eine Hütte, einen Ort oder eine Adresse ein, und die Karte springt dorthin. Bestätigst du ohne zu verschieben, wird der Name des Orts übernommen."
+        },
+        "details": {
+          "title": "Tourdetails auf einen Blick",
+          "body": "Die Detailansicht beginnt mit dem Ziel und seiner Höhe und zeigt alles Weitere in kompakten Zeilen. Skitouren und Splitboardtouren haben jetzt eigene Icons."
         }
       }
     }

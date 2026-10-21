@@ -110,3 +110,15 @@ describe('tourRowSchema completed field', () => {
     expect(result.completed).toBe(false)
   })
 })
+
+describe('outing columns (#338)', () => {
+  it('should map the outing columns to a membership', () => {
+    const row = { ...baseRow, outing_id: 'o1', outing_name: null, outing_position: 0 }
+    expect(tourRowSchema.parse(row).outing).toEqual({ id: 'o1', name: null, position: 0 })
+    expect(friendTourRowSchema.parse(row).outing).toEqual({ id: 'o1', name: null, position: 0 })
+  })
+
+  it('should read a row without outing columns as standalone', () => {
+    expect(tourRowSchema.parse(baseRow).outing).toBeNull()
+  })
+})

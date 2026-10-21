@@ -1,62 +1,67 @@
-import type { PaletteMap } from '@/features/map/presentation/components/pie-marker'
 import { describe, expect, it } from 'vitest'
-import { buildSlices } from '@/features/map/presentation/components/pie-marker'
+import {
+  addTourWeight,
+  buildSlices,
+  cssFill,
+  FALLBACK_COLOR,
+  pieImageColors,
+  pieImageId,
+  tourColors,
+} from '@/features/map/presentation/components/pie-marker'
+import { TOUR_TYPE_COLORS } from '@/features/tours/data/models/tour-type'
 
-const PALETTE: PaletteMap = {
-  'skiing': '#1565C0',
-  'snowboarding': '#1565C0',
-  'skitour': '#1565C0',
-  'splitboarding': '#1565C0',
-  'ski-mountaineering': '#1565C0',
-  'paragliding': '#D97706',
-  'hiking': '#DC2626',
-  'mountaineering': '#DC2626',
-  'climbing': '#DC2626',
-  'mountain-biking': '#DC2626',
-  'trailrunning': '#DC2626',
-}
+const BLUE = TOUR_TYPE_COLORS.skitour
+const RED = TOUR_TYPE_COLORS.hiking
 
 describe('buildSlices', () => {
   it('should return empty array when total is 0', () => {
-    const counts = { skiing: 0, hiking: 0 }
-    expect(buildSlices(counts, 0, PALETTE)).toEqual([])
+    expect(buildSlices({ [BLUE]: 0, [RED]: 0 }, 0)).toEqual([])
   })
 
-  it('should return empty array when all counts are 0 even with positive total', () => {
-    const counts = { skiing: 0 }
-    expect(buildSlices(counts, 0, PALETTE)).toEqual([])
+  it('should return a single full-circle path for one colour', () => {
+    const slices = buildSlices({ [RED]: 3 }, 3)
+    expect(slices).toEqual([{ path: expect.stringContaining('a'), color: RED }])
   })
 
-  it('should return a single full-circle path for single type', () => {
-    const counts = { hiking: 3 }
-    const slices = buildSlices(counts, 3, PALETTE)
-    expect(slices).toHaveLength(1)
-    expect(slices[0]!.color).toBe('#DC2626')
-    // Full circle uses arc notation not straight path
-    expect(slices[0]!.path).toContain('a')
+  it('should return one slice per colour with fractional weights', () => {
+    expect(buildSlices({ [BLUE]: 1.5, [RED]: 0.5 }, 2).map(s => s.color)).toEqual([BLUE, RED])
+  })
+})
+
+describe('tourColors', () => {
+  it('should fall back to neutral for an untyped tour', () => {
+    expect(tourColors([], TOUR_TYPE_COLORS)).toEqual([FALLBACK_COLOR])
   })
 
-  it('should return two slices for two equal types summing to 360°', () => {
-    const counts = { skiing: 2, hiking: 2 }
-    const slices = buildSlices(counts, 4, PALETTE)
-    expect(slices).toHaveLength(2)
-    // Each slice is 180° (half circle)
-    for (const slice of slices) {
-      expect(slice.path).toBeTruthy()
-    }
+  it('should count types sharing a colour once', () => {
+    expect(tourColors(['skitour', 'splitboarding'], TOUR_TYPE_COLORS)).toEqual([BLUE])
+  })
+})
+
+describe('addTourWeight', () => {
+  it('should weigh a two-colour tour half per colour so a mixed cluster stays per-tour', () => {
+    const counts = {}
+    addTourWeight(counts, [BLUE])
+    addTourWeight(counts, [BLUE, RED])
+    expect(counts).toEqual({ [BLUE]: 1.5, [RED]: 0.5 })
+  })
+})
+
+describe('split marker ids and fills', () => {
+  it('should not split a single colour', () => {
+    expect(pieImageId([BLUE])).toBeNull()
+    expect(cssFill([BLUE])).toBe(BLUE)
   })
 
-  it('should return three slices for three unequal types', () => {
-    const counts = { skiing: 1, hiking: 2, paragliding: 1 }
-    const slices = buildSlices(counts, 4, PALETTE)
-    expect(slices).toHaveLength(3)
-    // Angles should be proportional: 90°, 180°, 90°
+  it('should round-trip the colours through the image id', () => {
+    expect(pieImageColors(pieImageId([BLUE, RED])!)).toEqual([BLUE, RED])
   })
 
-  it('should assign fallback color for unknown type not in palette', () => {
-    const counts: Record<string, number> = { unknown: 2 }
-    const slices = buildSlices(counts, 2, PALETTE)
-    expect(slices).toHaveLength(1)
-    expect(slices[0]!.color).toBe('#78716C')
+  it('should ignore image ids it does not own', () => {
+    expect(pieImageColors('tour-check-icon')).toBeNull()
+  })
+
+  it('should split an HTML dot into equal conic slices', () => {
+    expect(cssFill([BLUE, RED])).toBe(`conic-gradient(${BLUE} 0% 50%, ${RED} 50% 100%)`)
   })
 })

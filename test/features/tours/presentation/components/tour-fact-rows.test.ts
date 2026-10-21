@@ -9,7 +9,7 @@ const START = { lng: 7.9, lat: 46.6 }
 
 function mountRows(overrides: Partial<Tour> = {}, slots: Record<string, string> = {}) {
   const tour = {
-    tourType: null,
+    tourTypes: [],
     startPoint: null,
     endPoint: null,
     startPointName: null,
@@ -32,7 +32,7 @@ function groups(w: ReturnType<typeof mountRows>) {
 
 describe('tourFactRows', () => {
   it('should render nothing but the type row for a tour with only a type', () => {
-    expect(facts(mountRows({ tourType: 'skitour' }))).toEqual(['type'])
+    expect(facts(mountRows({ tourTypes: ['skitour'] }))).toEqual(['type'])
   })
 
   it('should render no rows at all for a legacy tour without type', () => {
@@ -77,14 +77,14 @@ describe('tourFactRows', () => {
   })
 
   it('should only use registered icons, since an unknown name renders nothing', () => {
-    const w = mountRows({ tourType: 'climbing', startPoint: START, seasons: ['winter'], description: 'x', equipment: 'Rope', notes: 'y' }, { partners: '<span>Anna</span>' })
+    const w = mountRows({ tourTypes: ['climbing'], startPoint: START, seasons: ['winter'], description: 'x', equipment: 'Rope', notes: 'y' }, { partners: '<span>Anna</span>' })
     const names = w.findAllComponents(BaseIcon).map(i => i.props('name'))
     expect(names).toContain('ice_axe')
     expect(names.filter(n => !(n in iconRegistry))).toEqual([])
   })
 
   it('should render the partners row only when partners are slotted in', () => {
-    expect(facts(mountRows({ tourType: 'hiking' }))).not.toContain('partners')
+    expect(facts(mountRows({ tourTypes: ['hiking'] }))).not.toContain('partners')
     expect(facts(mountRows({}, { partners: '<span>Anna</span>' }))).toEqual(['partners'])
   })
 

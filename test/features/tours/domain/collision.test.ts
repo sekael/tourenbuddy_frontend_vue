@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   friendTourIdsShadowedByOwned,
   ownedTourIdsShadowedByFriends,
+  sharesActivity,
 } from '@/features/tours/domain/collision'
 import { TOUR_FILL } from '../../../fixtures/tour-fill'
 
@@ -20,7 +21,7 @@ function friendTour(overrides: Partial<Tour>): Tour {
     goal: GOAL,
     name: 'Shared',
     partnerIds: [],
-    tourType: null,
+    tourTypes: [],
     elevation: null,
     gpxFilepath: null,
     description: null,
@@ -72,5 +73,20 @@ describe('ownedTourIdsShadowedByFriends', () => {
   it('returns an empty set when no friend tours are given', () => {
     const owned = [friendTour({ id: 'o1', isFriendTour: false, goal: GOAL })]
     expect(ownedTourIdsShadowedByFriends(owned, []).size).toBe(0)
+  })
+})
+
+describe('sharesActivity', () => {
+  it('matches when one of several activities is shared', () => {
+    expect(sharesActivity(['skitour', 'hiking'], ['hiking'])).toBe(true)
+  })
+
+  it('does not match disjoint activities', () => {
+    expect(sharesActivity(['skitour'], ['hiking', 'climbing'])).toBe(false)
+  })
+
+  it('never matches an untyped tour, not even another untyped one', () => {
+    expect(sharesActivity([], [])).toBe(false)
+    expect(sharesActivity([], ['hiking'])).toBe(false)
   })
 })

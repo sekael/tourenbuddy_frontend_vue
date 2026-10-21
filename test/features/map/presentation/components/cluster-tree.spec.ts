@@ -19,7 +19,7 @@ function makeTour(id: string, lng: number, lat: number): Tour {
     goal: { lng, lat },
     name: null,
     partnerIds: [],
-    tourType: null,
+    tourTypes: [],
     elevation: null,
     gpxFilepath: null,
     description: null,

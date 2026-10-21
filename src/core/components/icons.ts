@@ -3,8 +3,11 @@ import IconAcUnit from '~icons/material-symbols/ac-unit'
 import IconAccountCircleOutline from '~icons/material-symbols/account-circle-outline'
 import IconAdd from '~icons/material-symbols/add'
 import IconAddLocationAltOutline from '~icons/material-symbols/add-location-alt-outline'
+import IconAddRoad from '~icons/material-symbols/add-road'
 import IconArrowBack from '~icons/material-symbols/arrow-back'
+import IconArrowDownward from '~icons/material-symbols/arrow-downward'
 import IconArrowForward from '~icons/material-symbols/arrow-forward'
+import IconArrowUpward from '~icons/material-symbols/arrow-upward'
 import IconAttachFile from '~icons/material-symbols/attach-file'
 import IconAutoAwesomeOutline from '~icons/material-symbols/auto-awesome-outline'
 import IconBadgeOutline from '~icons/material-symbols/badge-outline'
@@ -80,6 +83,7 @@ import IconStar from '~icons/material-symbols/star'
 import IconStarOutline from '~icons/material-symbols/star-outline'
 import IconStickyNote2Outline from '~icons/material-symbols/sticky-note-2-outline'
 import IconSyncAlt from '~icons/material-symbols/sync-alt'
+import IconTimeline from '~icons/material-symbols/timeline'
 import IconTourOutline from '~icons/material-symbols/tour-outline'
 import IconTripOrigin from '~icons/material-symbols/trip-origin'
 import IconTune from '~icons/material-symbols/tune'
@@ -125,8 +129,11 @@ export const iconRegistry: Record<string, Component> = {
   account_circle: IconAccountCircleOutline,
   add: IconAdd,
   add_location_alt: IconAddLocationAltOutline,
+  add_road: IconAddRoad,
   arrow_back: IconArrowBack,
+  arrow_downward: IconArrowDownward,
   arrow_forward: IconArrowForward,
+  arrow_upward: IconArrowUpward,
   attach_file: IconAttachFile,
   auto_awesome: IconAutoAwesomeOutline,
   badge: IconBadgeOutline,
@@ -208,6 +215,7 @@ export const iconRegistry: Record<string, Component> = {
   star_filled: IconStar,
   sticky_note_2: IconStickyNote2Outline,
   sync_alt: IconSyncAlt,
+  timeline: IconTimeline,
   tour: IconTourOutline,
   trip_origin: IconTripOrigin,
   tune: IconTune,

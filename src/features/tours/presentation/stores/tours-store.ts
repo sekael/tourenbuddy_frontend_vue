@@ -1,4 +1,5 @@
 import type { WriteQueueEntry } from '@/core/offline/write-queue'
+import type { TourOuting } from '@/features/tours/data/models/tour-schema'
 import type { Visibility } from '@/features/tours/data/models/visibility'
 import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 import { defineStore } from 'pinia'
@@ -18,6 +19,8 @@ import { useContactsStore } from '@/features/contacts/presentation/stores/contac
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { ToursRepositoryImpl } from '@/features/tours/data/repositories/tours-repository-impl'
 import { removeGpx, uploadGpxToKey } from '@/features/tours/data/services/gpx-storage-service'
+import { withTourTypes } from '@/features/tours/domain/entities/tour'
+import { appendedOuting } from '@/features/tours/domain/outing'
 
 const repository = new ToursRepositoryImpl()
 
@@ -142,7 +145,8 @@ export const useToursStore = defineStore('tours', () => {
       await cachedLoad(
         `tours:${userId}`,
         () => repository.listToursForUser(userId),
-        (result) => { tours.value = result },
+        // Cached snapshots skip zod — lift a pre-#335 `tourType` (no-op on fresh data).
+        (result) => { tours.value = result.map(withTourTypes) },
       )
     }
     catch (err) {
@@ -173,7 +177,7 @@ export const useToursStore = defineStore('tours', () => {
         () => repository.listFriendTours(),
         (result) => {
           if (req === friendToursSeq)
-            friendTours.value = result
+            friendTours.value = result.map(withTourTypes)
         },
       )
     }
@@ -199,7 +203,7 @@ export const useToursStore = defineStore('tours', () => {
       goal,
       name: draft.name,
       partnerIds: draft.partnerIds,
-      tourType: draft.tourType,
+      tourTypes: draft.tourTypes,
       elevation: draft.elevation,
       gpxFilepath: draft.gpxFilepath ?? null,
       description: draft.description,
@@ -215,6 +219,8 @@ export const useToursStore = defineStore('tours', () => {
       completed: draft.completed ?? base?.completed ?? false,
       visibility: draft.visibility ?? base?.visibility ?? 'friends',
       updatedAt: base?.updatedAt ?? null,
+      // undefined = keep, like the server does for a null `p_outing` (D12).
+      outing: draft.outing === undefined ? (base?.outing ?? null) : draft.outing,
       isFriendTour: false,
     }
   }
@@ -226,7 +232,7 @@ export const useToursStore = defineStore('tours', () => {
       plannedDate: tour.plannedDate,
       endDate: tour.endDate,
       partnerIds: tour.partnerIds,
-      tourType: tour.tourType,
+      tourTypes: tour.tourTypes,
       elevation: tour.elevation,
       gpxFilepath: tour.gpxFilepath,
       description: tour.description,
@@ -277,7 +283,9 @@ export const useToursStore = defineStore('tours', () => {
    * are emitted by the DB inside that call, so a replay notifies exactly once (no seam).
    */
   async function replayTourWrite(entry: WriteQueueEntry): Promise<void> {
-    const payload = entry.payload as TourWritePayload
+    const raw = entry.payload as TourWritePayload
+    // Queued by a pre-#335 build? Its draft still carries a single `tourType`.
+    const payload = raw.draft ? { ...raw, draft: withTourTypes(raw.draft) } : raw
     if (entry.op === 'delete') {
       await repository.deleteTour(entry.entityId)
       // Mirror the online delete: drop the tour's GPX from Storage so it isn't orphaned.
@@ -434,6 +442,74 @@ export const useToursStore = defineStore('tours', () => {
     return updateTour(tourId, { ...tourToDraft(tour), visibility }, tour.goal)
   }
 
+  // ── Outings (#338) ──────────────────────────────────────────────────────────────
+  // Every outing edit is a full update of the touched segments (D12), so it queues, coalesces
+  // and replays per tour like any other edit. Callers pass the outing's segments in order.
+
+  /** Put one own tour into `outing` (or make it standalone with null). */
+  async function setOuting(tourId: string, outing: TourOuting | null) {
+    const tour = tours.value.find(t => t.id === tourId)
+    if (!tour)
+      return
+    await updateTour(tourId, { ...tourToDraft(tour), outing }, tour.goal)
+  }
+
+  /**
+   * The outing `anchorId` belongs to; a standalone anchor is minted into a new one as segment 1
+   * first (D17) — only called once the new segment is actually being saved.
+   */
+  async function ensureOuting(anchorId: string): Promise<TourOuting | null> {
+    const anchor = tours.value.find(t => t.id === anchorId)
+    if (!anchor)
+      return null
+    if (anchor.outing)
+      return anchor.outing
+    const outing: TourOuting = { id: uuidv4(), name: null, position: 0 }
+    await setOuting(anchorId, outing)
+    return outing
+  }
+
+  /** Membership for a tour appended to `outing` (after its last own segment). */
+  function nextInOuting(outing: TourOuting): TourOuting {
+    return appendedOuting(outing, tours.value.filter(t => t.outing?.id === outing.id))
+  }
+
+  /** Add an existing standalone tour after the last segment of `anchorId`'s outing. */
+  async function addToOuting(anchorId: string, tourId: string) {
+    const outing = await ensureOuting(anchorId)
+    if (outing)
+      await setOuting(tourId, nextInOuting(outing))
+  }
+
+  async function renameOuting(segments: Tour[], name: string) {
+    const trimmed = name.trim() || null
+    for (const s of segments) {
+      if (s.outing && s.outing.name !== trimmed)
+        await setOuting(s.id, { ...s.outing, name: trimmed })
+    }
+  }
+
+  /** Swap segment `index` with its neighbour; renumbers 0…n-1 so stale gaps/ties settle too. */
+  async function moveSegment(segments: Tour[], index: number, direction: -1 | 1) {
+    const target = index + direction
+    if (target < 0 || target >= segments.length)
+      return
+    const order = [...segments]
+    ;[order[index], order[target]] = [order[target]!, order[index]!]
+    for (const [position, s] of order.entries()) {
+      if (s.outing && s.outing.position !== position)
+        await setOuting(s.id, { ...s.outing, position })
+    }
+  }
+
+  /** Take a segment out; a lone remaining segment leaves too, dissolving the outing (D14). */
+  async function removeFromOuting(segments: Tour[], tourId: string) {
+    await setOuting(tourId, null)
+    const rest = segments.filter(s => s.id !== tourId)
+    if (rest.length === 1)
+      await setOuting(rest[0]!.id, null)
+  }
+
   async function deleteTour(id: string) {
     const tour = tours.value.find(t => t.id === id) ?? null
 
@@ -476,6 +552,12 @@ export const useToursStore = defineStore('tours', () => {
     setCompleted,
     setVisibility,
     deleteTour,
+    ensureOuting,
+    nextInOuting,
+    addToOuting,
+    renameOuting,
+    moveSegment,
+    removeFromOuting,
     clear,
   }
 })

@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { TourSuggestion } from '@/features/tours/domain/entities/tour-suggestion'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
+import { TOUR_TYPE_I18N_KEYS } from '@/features/tours/data/models/tour-type'
 import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 
 const props = defineProps<{
@@ -50,8 +52,11 @@ const capBlocked = computed(
  * keys rather than a suggestion-local copy that would drift.
  */
 function localizedEnum(value: unknown): string | null {
-  if (props.suggestion.field === 'tour_type' && typeof value === 'string')
-    return t(`tours.type.${value}`)
+  if (props.suggestion.field === 'tour_type' && Array.isArray(value)) {
+    return value.length
+      ? value.map(v => t(`tours.type.${TOUR_TYPE_I18N_KEYS[v as TourType]}`)).join(', ')
+      : t('tours.suggestions.emptyValue')
+  }
   if (props.suggestion.field === 'seasons' && Array.isArray(value))
     return value.map(s => t(`tours.season.${s}`)).join(', ')
   return null

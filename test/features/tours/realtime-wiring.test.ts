@@ -463,11 +463,11 @@ describe('toursStore — broadcast wiring (friend-tours)', () => {
     const p2 = store.loadFriendTours()
 
     // Later-initiated call resolves first with fresh data; stale call resolves last.
-    resolveSecond([{ id: 'fresh' }])
+    resolveSecond([{ id: 'fresh', tourTypes: [] }])
     await p2
     resolveFirst([])
     await p1
 
-    expect(store.friendTours).toEqual([{ id: 'fresh' }])
+    expect(store.friendTours).toEqual([{ id: 'fresh', tourTypes: [] }])
   })
 })

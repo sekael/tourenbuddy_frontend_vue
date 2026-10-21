@@ -47,18 +47,21 @@ export function frameBounds(
 }
 
 /**
- * Frame the tour's goal, start and end (whichever exist). A lone goal is a zero-size
- * box, so it lands centred at `TOUR_ZOOM`; start = end adds nothing to the box.
+ * Frame the tours' goals, starts and ends (whichever exist) — one tour, or every segment of an
+ * outing (#338). A lone goal is a zero-size box, so it lands centred at `TOUR_ZOOM`.
  */
-export function frameTour(
+export function frameTours(
   map: MaplibreMap,
-  tour: Pick<Tour, 'goal' | 'startPoint' | 'endPoint'>,
+  tours: Pick<Tour, 'goal' | 'startPoint' | 'endPoint'>[],
   covered: Partial<PaddingOptions>,
 ) {
   const bounds = new LngLatBounds()
-  for (const p of [tour.goal, tour.startPoint, tour.endPoint]) {
-    if (p)
-      bounds.extend([p.lng, p.lat])
+  for (const tour of tours) {
+    for (const p of [tour.goal, tour.startPoint, tour.endPoint]) {
+      if (p)
+        bounds.extend([p.lng, p.lat])
+    }
   }
-  frameBounds(map, bounds, covered, { fallbackCenter: [tour.goal.lng, tour.goal.lat] })
+  const first = tours[0]!.goal
+  frameBounds(map, bounds, covered, { fallbackCenter: [first.lng, first.lat] })
 }

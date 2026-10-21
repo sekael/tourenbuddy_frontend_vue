@@ -63,11 +63,11 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
 <template>
   <div class="fact-rows">
-    <ul v-if="tour.tourType || tour.seasons?.length" class="fact-group">
-      <li v-if="tour.tourType" class="fact-row" data-fact="type">
-        <BaseIcon :name="TOUR_TYPE_ICONS[tour.tourType]" size="sm" class="row-icon" />
+    <ul v-if="tour.tourTypes.length || tour.seasons?.length" class="fact-group">
+      <li v-for="type in tour.tourTypes" :key="type" class="fact-row" data-fact="type">
+        <BaseIcon :name="TOUR_TYPE_ICONS[type]" size="sm" class="row-icon" />
         <span class="visually-hidden">{{ t('tours.infoSheet.iconTooltipType') }}</span>
-        <span class="row-value">{{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[tour.tourType]}` as any) }}</span>
+        <span class="row-value">{{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[type]}` as any) }}</span>
       </li>
 
       <!-- Each season chip carries its own icon, so the chips take the icon column too. -->

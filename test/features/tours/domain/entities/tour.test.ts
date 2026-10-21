@@ -1,6 +1,6 @@
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import { describe, expect, it } from 'vitest'
-import { toursToGeoJson, tourToGeoJsonFeature } from '@/features/tours/domain/entities/tour'
+import { toursToGeoJson, tourToGeoJsonFeature, withTourTypes } from '@/features/tours/domain/entities/tour'
 import { TOUR_FILL } from '../../../../fixtures/tour-fill'
 
 const baseTour: Tour = {
@@ -11,7 +11,7 @@ const baseTour: Tour = {
   goal: { lng: 8.2, lat: 46.8 },
   name: 'Rigi',
   partnerIds: [],
-  tourType: 'hiking',
+  tourTypes: ['hiking'],
   elevation: null,
   gpxFilepath: null,
   description: null,
@@ -44,5 +44,33 @@ describe('toursToGeoJson', () => {
     const collection = toursToGeoJson(tours)
     expect(collection.features[0]?.properties?.completed).toBe(false)
     expect(collection.features[1]?.properties?.completed).toBe(true)
+  })
+})
+
+describe('primary type on the map feature', () => {
+  it('should expose the first type of a multi-activity tour', () => {
+    expect(tourToGeoJsonFeature({ ...baseTour, tourTypes: ['skitour', 'hiking'] }).properties?.tourType).toBe('skitour')
+  })
+
+  it('should expose null for an untyped tour', () => {
+    expect(tourToGeoJsonFeature({ ...baseTour, tourTypes: [] }).properties?.tourType).toBeNull()
+  })
+})
+
+describe('withTourTypes (pre-#335 cache / outbox data)', () => {
+  it('should lift a legacy single type into a one-element list', () => {
+    const { tourTypes: _, ...legacy } = baseTour
+    const lifted = withTourTypes({ ...legacy, tourType: 'climbing' } as unknown as Tour)
+    expect(lifted.tourTypes).toEqual(['climbing'])
+    expect(lifted).not.toHaveProperty('tourType')
+  })
+
+  it('should lift a legacy null type into an empty list', () => {
+    const { tourTypes: _, ...legacy } = baseTour
+    expect(withTourTypes({ ...legacy, tourType: null } as unknown as Tour).tourTypes).toEqual([])
+  })
+
+  it('should return current-shape data untouched', () => {
+    expect(withTourTypes(baseTour)).toBe(baseTour)
   })
 })

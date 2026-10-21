@@ -707,7 +707,7 @@ describe('mapPage', () => {
 
   describe('draft marker clear lifecycle', () => {
     const GOAL = { lng: 8.2, lat: 46.8 }
-    const DRAFT = { tourType: 'hiking' } as never
+    const DRAFT = { tourTypes: ['hiking'] } as never
 
     it('clears the draft marker when the creation dialog is cancelled', async () => {
       const wrapper = mountMapPage()
@@ -720,7 +720,7 @@ describe('mapPage', () => {
       await wrapper.vm.$nextTick()
 
       expect(mapStore.setPreviewGoal).toHaveBeenCalledWith(null)
-      expect(mapStore.setPreviewTourType).toHaveBeenCalledWith(null)
+      expect(mapStore.setPreviewTourTypes).toHaveBeenCalledWith(null)
     })
 
     it('clears the draft marker even when the create request fails', async () => {
@@ -737,7 +737,7 @@ describe('mapPage', () => {
 
       // ...but the draft must not be left dangling on the map after a failed save.
       expect(mapStore.setPreviewGoal).toHaveBeenLastCalledWith(null)
-      expect(mapStore.setPreviewTourType).toHaveBeenLastCalledWith(null)
+      expect(mapStore.setPreviewTourTypes).toHaveBeenLastCalledWith(null)
     })
   })
 
@@ -831,5 +831,67 @@ describe('mapPage', () => {
       expect(bar.props('dismissMode')).toBe(true)
       expect(bar.props('toursDisabled')).toBe(true)
     })
+  })
+})
+
+describe('mapPage — outings (#338)', () => {
+  const seg = (id: string, position: number) => ({ ...STUB_TOUR, id, userId: 'me', outing: { id: 'o1', name: null, position } })
+  const segments = [seg('a', 0), seg('b', 1)]
+  const map = (wrapper: VueWrapper) => wrapper.findComponent({ name: 'TourenbuddyMap' })
+
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    localStorage.clear()
+  })
+
+  it('should open the whole outing when a segment marker of a closed outing is tapped', async () => {
+    const wrapper = mountMapPage({ tours: { tours: segments } })
+    await map(wrapper).vm.$emit('tourClicked', 'b')
+    expect(useMapStore().selectOuting).toHaveBeenCalledWith('me/o1')
+    expect(useMapStore().selectTour).not.toHaveBeenCalledWith('b')
+  })
+
+  it('should open a segment tapped inside the open outing and go back to the overview', async () => {
+    const wrapper = mountMapPage({ tours: { tours: segments }, map: { selectedOutingKey: 'me/o1' } })
+    const mapStore = useMapStore()
+    await map(wrapper).vm.$emit('tourClicked', 'b')
+    expect(mapStore.selectTour).toHaveBeenCalledWith('b')
+
+    mapStore.$patch({ selectedTourId: 'b', selectedOutingKey: null })
+    await flushPromises()
+    await wrapper.findComponent({ name: 'TourInfoSheet' }).vm.$emit('back')
+    expect(mapStore.selectOuting).toHaveBeenLastCalledWith('me/o1')
+  })
+
+  it('should mint the outing on save and create the new segment into it', async () => {
+    const wrapper = mountMapPage(
+      { tours: { tours: [{ ...STUB_TOUR, id: 'anchor', userId: 'me', outing: null }] } },
+      {
+        TourCreationDialog: { ...TourCreationDialogStub, props: ['pick', 'initialGoal', 'seed'] },
+        TourInfoSheet: { ...TourInfoSheetStub, emits: ['close', 'back', 'add-segment'] },
+      },
+    )
+    const mapStore = useMapStore()
+    const toursStore = useToursStore()
+    const outing = { id: 'new-outing', name: null, position: 0 }
+    vi.mocked(toursStore.ensureOuting).mockResolvedValue(outing)
+    vi.mocked(toursStore.nextInOuting).mockReturnValue({ ...outing, position: 1 })
+
+    mapStore.$patch({ selectedTourId: 'anchor' })
+    await flushPromises()
+    await wrapper.findComponent({ name: 'TourInfoSheet' }).vm.$emit('add-segment', 'anchor')
+    expect(mapStore.setPickingLocation).toHaveBeenCalledWith(true)
+
+    wrapper.vm.handleLocationConfirmed({ lng: 8.3, lat: 46.9 })
+    await nextTick()
+    expect(wrapper.findComponent({ name: 'TourCreationDialog' }).props('seed')).toMatchObject({ startPoint: STUB_TOUR.goal })
+
+    await wrapper.vm.handleTourCreated({ name: 'Summit', tourTypes: [] }, false, null, '')
+    expect(toursStore.ensureOuting).toHaveBeenCalledWith('anchor')
+    expect(toursStore.createTourFromDraft).toHaveBeenCalledWith(
+      expect.objectContaining({ outing: { ...outing, position: 1 } }),
+      { lng: 8.3, lat: 46.9 },
+      null,
+    )
   })
 })

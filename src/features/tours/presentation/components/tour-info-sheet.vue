@@ -31,8 +31,10 @@ import LinkedWithSection from '@/features/tour-links/presentation/components/lin
 import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
 import { TOUR_TYPE_COLORS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
 import { downloadOriginal } from '@/features/tours/data/services/gpx-storage-service'
-import { COLLISION_RADIUS_M } from '@/features/tours/domain/collision'
+import { COLLISION_RADIUS_M, sharesActivity } from '@/features/tours/domain/collision'
 import { isSameGoal } from '@/features/tours/domain/distance'
+import OutingNavigator from '@/features/tours/presentation/components/outing-navigator.vue'
+import SegmentAddView from '@/features/tours/presentation/components/segment-add-view.vue'
 import TourAttachmentViewer from '@/features/tours/presentation/components/tour-attachment-viewer.vue'
 import TourAttachmentsStrip from '@/features/tours/presentation/components/tour-attachments-strip.vue'
 import TourFactRows from '@/features/tours/presentation/components/tour-fact-rows.vue'
@@ -54,6 +56,8 @@ const props = defineProps<{
   editPickedPoint?: PointPick | null
   /** Desktop only: show a back button pointing to the tours list. */
   showBack?: boolean
+  /** Desktop back label when the back leads elsewhere than the tour list (e.g. the outing). */
+  backText?: string
   /** Which pick type is active — drives the collapsed header label in edit mode. */
   activePickType?: 'goal' | 'start' | 'end' | null
 }>()
@@ -66,9 +70,13 @@ const emit = defineEmits<{
   editModeChange: [editing: boolean]
   /** Fired when the user requests to edit a contact from the action menu. */
   editContact: [contactId: string]
-  tourTypeChange: [tourType: TourType | null]
+  tourTypesChange: [tourTypes: TourType[]]
   startPointChange: [point: { lng: number, lat: number } | null]
   endPointChange: [point: { lng: number, lat: number } | null]
+  /** Open an outing's overview (#338). */
+  openOuting: [outingKey: string]
+  /** Pick a new segment's goal on the map, after this tour's outing (#338). */
+  addSegment: [anchorId: string]
 }>()
 
 const { t, locale } = useI18n({ useScope: 'global' })
@@ -156,7 +164,7 @@ const linkPendingRequests = computed(() => requestsByTourId.value.get(props.tour
 const isLinked = computed(() => groupIdByTourId.value.has(props.tour.id))
 
 // Edit-warning dialog: shown when owner submits an edit that would either evict
-// the tour from its group (tour_type changed, visibility flipped from friends,
+// the tour from its group (no activity left in common, visibility flipped from friends,
 // or goal moved >COLLISION_RADIUS_M from any sibling) OR invalidate the predicate
 // for any pending link request involving this tour. Confirm proceeds with
 // submit; cancel rolls back.
@@ -173,8 +181,11 @@ const editWarningPendingCount = ref(0)
 // "+N weitere" pill. Back returns to the tour details inside the same sheet —
 // no nested overlay (avoids the stacked bottom-sheet broken on mobile).
 const linksView = ref(false)
+// "Add segment" (#338) swaps the body the same way.
+const addSegmentView = ref(false)
 watch(() => props.tour.id, () => {
   linksView.value = false
+  addSegmentView.value = false
 })
 
 function navigateToSibling(siblingId: string) {
@@ -317,22 +328,24 @@ async function handleEditSubmit(draft: TourDraft, gpxRemoved: boolean) {
 /** True if applying the edit to a linked tour would break the group invariant. */
 function wouldEvict(draft: TourDraft, newGoal: { lng: number, lat: number }): boolean {
   const t1 = props.tour
-  if (draft.tourType !== t1.tourType)
-    return true
   const effectiveVisibility = draft.visibility ?? t1.visibility
   if (t1.visibility === 'friends' && effectiveVisibility !== 'friends')
     return true
-  // Goal change: mirror the server-side eviction rule. The DB trigger evicts
-  // iff the new goal sits outside COLLISION_RADIUS_M of ANY sibling. Compute
-  // here so we don't warn the user for tiny nudges that the group would absorb.
+  // Type and goal changes mirror the server-side eviction rule: the DB trigger evicts
+  // iff the edited tour no longer shares an activity with, or sits outside
+  // COLLISION_RADIUS_M of, ANY sibling. Checked per sibling so adding a second activity
+  // or a tiny goal nudge doesn't warn for an edit the group would absorb.
+  const retyped = draft.tourTypes.join() !== t1.tourTypes.join()
   const moved = newGoal.lng !== t1.goal.lng || newGoal.lat !== t1.goal.lat
-  if (!moved)
+  if (!retyped && !moved)
     return false
   for (const sibId of linkSiblings.value) {
     const sib = tours.value.find(t => t.id === sibId) ?? friendTours.value.find(t => t.id === sibId)
     if (!sib)
       continue // sibling out of scope (RLS, friendship gap) — be conservative, skip
-    if (!isSameGoal(newGoal, sib.goal, COLLISION_RADIUS_M))
+    if (retyped && !sharesActivity(draft.tourTypes, sib.tourTypes))
+      return true
+    if (moved && !isSameGoal(newGoal, sib.goal, COLLISION_RADIUS_M))
       return true
   }
   return false
@@ -341,7 +354,7 @@ function wouldEvict(draft: TourDraft, newGoal: { lng: number, lat: number }): bo
 /**
  * Pending requests that would lose the collision predicate after this edit,
  * split by direction (this tour as initiator = outgoing, as target = incoming).
- * Mirror of fn_collision_predicate: same non-null tour_type, both visibility=friends,
+ * Mirror of fn_collision_predicate: an activity in common, both visibility=friends,
  * within COLLISION_RADIUS_M of the counterpart tour's goal.
  */
 function pendingRequestsBrokenBy(
@@ -352,7 +365,6 @@ function pendingRequestsBrokenBy(
   if (linkPendingRequests.value.length === 0)
     return result
   const t1 = props.tour
-  const effectiveType = draft.tourType ?? t1.tourType
   const effectiveVisibility = draft.visibility ?? t1.visibility
 
   for (const req of linkPendingRequests.value) {
@@ -367,7 +379,7 @@ function pendingRequestsBrokenBy(
       // Counterpart out of scope (RLS) — be conservative: assume predicate still holds.
       broken = false
     }
-    else if (effectiveType == null || other.tourType == null || effectiveType !== other.tourType) {
+    else if (!sharesActivity(draft.tourTypes, other.tourTypes)) {
       broken = true
     }
     else if (other.visibility !== 'friends') {
@@ -553,6 +565,8 @@ const sheetTitle = computed(() => {
   }
   if (linksView.value)
     return t('tourLinks.linkedWithHeader')
+  if (addSegmentView.value)
+    return t('tours.outing.addTitle')
   if (mode.value === 'suggest')
     return `${t('tours.suggestions.suggestTitlePrefix')}: ${displayName.value}`
   if (mode.value === 'review')
@@ -565,8 +579,8 @@ const sheetTitle = computed(() => {
 })
 
 const sheetShowBack = computed(() => {
-  // linksView wins on both viewports — its back returns to tour details.
-  if (linksView.value)
+  // linksView / addSegmentView win on both viewports — their back returns to tour details.
+  if (linksView.value || addSegmentView.value)
     return true
   if (mode.value === 'review' || mode.value === 'history')
     return true
@@ -575,16 +589,22 @@ const sheetShowBack = computed(() => {
 const sheetBackLabel = computed(() => {
   if (linksView.value && isDesktop.value)
     return t('tourLinks.linkedWithHeader')
+  if (addSegmentView.value && isDesktop.value)
+    return displayName.value
   // The desktop drawer renders its back button ONLY when a label is set — without this the
   // review/history views would offer nothing but Close, which discards the whole drawer.
   if ((mode.value === 'review' || mode.value === 'history') && isDesktop.value)
     return displayName.value
-  return props.showBack && isDesktop.value ? t('tours.infoSheet.backToTours') : undefined
+  return props.showBack && isDesktop.value ? (props.backText ?? t('tours.infoSheet.backToTours')) : undefined
 })
 
 function handleSheetBack() {
   if (linksView.value) {
     linksView.value = false
+    return
+  }
+  if (addSegmentView.value) {
+    addSegmentView.value = false
     return
   }
   // Review/history are in-sheet views, not routes — back returns to the tour details.
@@ -596,8 +616,9 @@ function handleSheetBack() {
 }
 
 /** The activity colour the tour's map marker and list avatar wear; tints the whole view. */
+const primaryType = computed(() => props.tour.tourTypes[0] ?? null)
 const typeTint = computed(() =>
-  props.tour.tourType ? { '--type-tint': TOUR_TYPE_COLORS[props.tour.tourType] } : undefined,
+  primaryType.value ? { '--type-tint': TOUR_TYPE_COLORS[primaryType.value] } : undefined,
 )
 
 function initialOf(name: string) {
@@ -726,7 +747,7 @@ const formattedElevation = computed(() => {
         :submit-label="t('tours.infoSheet.saveLabel')" :allow-goal-edit="true" :current-goal="pendingGoal"
         :initial-draft="tour" :tour-id="tour.id" :pick="pendingPick" :disabled="isPicking"
         @submit="(d, r) => handleEditSubmit(d, r)" @cancel="cancelEdit" @pick-point="emit('pickPoint', $event)"
-        @tour-type-change="emit('tourTypeChange', $event)"
+        @tour-types-change="emit('tourTypesChange', $event)"
         @start-point-change="emit('startPointChange', $event)"
         @end-point-change="emit('endPointChange', $event)"
       />
@@ -742,7 +763,7 @@ const formattedElevation = computed(() => {
         :submit-label="t('tours.suggestions.submitBtn')" :allow-goal-edit="true" :current-goal="pendingGoal"
         :initial-draft="suggestSeedDraft" :tour-id="tour.id" :pick="pendingPick" :disabled="isPicking"
         @submit="handleSuggestSubmit" @cancel="cancelSuggest" @pick-point="emit('pickPoint', $event)"
-        @tour-type-change="emit('tourTypeChange', $event)"
+        @tour-types-change="emit('tourTypesChange', $event)"
         @start-point-change="emit('startPointChange', $event)"
         @end-point-change="emit('endPointChange', $event)"
       />
@@ -760,6 +781,11 @@ const formattedElevation = computed(() => {
       <TourSuggestionHistorySheet :tour="tour" :mode="isOwner ? 'owner' : 'author'" />
     </template>
 
+    <!-- ── Add a segment (#338) ─────────────────────────────────────────── -->
+    <template v-else-if="addSegmentView">
+      <SegmentAddView :anchor="tour" @pick-new="emit('addSegment', tour.id)" @added="emit('openOuting', $event)" />
+    </template>
+
     <!-- ── Linked-tours full-list mode ─────────────────────────────────── -->
     <template v-else-if="linksView">
       <LinkedWithSection :siblings="linkSiblings" :full-list="true" @open-tour="navigateToSibling" />
@@ -768,6 +794,9 @@ const formattedElevation = computed(() => {
     <!-- ── View mode ───────────────────────────────────────────────────── -->
     <template v-else>
       <div class="details" :style="typeTint">
+        <!-- Segment of an outing: where it sits, the overview and its neighbours (#338). -->
+        <OutingNavigator :tour="tour" @open-outing="emit('openOuting', $event)" />
+
         <!-- Tour link group siblings + pending link requests + collision notice -->
         <LinkedWithSection :siblings="linkSiblings" @open-tour="navigateToSibling" @view-all="linksView = true" />
         <LinkRequestBanner v-for="req in linkPendingRequests" :key="req.id" :request="req" />
@@ -777,7 +806,7 @@ const formattedElevation = computed(() => {
              wrapping freely; friend tours add the owner. -->
         <div class="hero">
           <span class="hero-badge">
-            <BaseIcon :name="tour.tourType ? TOUR_TYPE_ICONS[tour.tourType] : 'location_on'" size="lg" />
+            <BaseIcon :name="primaryType ? TOUR_TYPE_ICONS[primaryType] : 'location_on'" size="lg" />
             <!-- State stamps on the badge: they pop in when the owner flips a toggle. -->
             <Transition name="stamp">
               <span v-if="tour.completed" class="hero-stamp hero-stamp--done" aria-hidden="true">
@@ -943,9 +972,16 @@ const formattedElevation = computed(() => {
       </BaseButton>
     </template>
 
-    <template v-if="mode === 'view' && isOwner && !linksView" #footer>
+    <template v-if="mode === 'view' && isOwner && !linksView && !addSegmentView" #footer>
       <div class="view-actions">
         <div class="edit-delete-row">
+          <BaseButton
+            v-if="deleteState === 'idle'" variant="secondary" size="sm" data-testid="add-segment-btn"
+            @click="addSegmentView = true"
+          >
+            <BaseIcon name="add_road" />
+            {{ t('tours.outing.addSegment') }}
+          </BaseButton>
           <BaseButton v-if="deleteState === 'idle'" variant="secondary" size="sm" data-testid="edit-btn" @click="enterEditMode">
             <BaseIcon name="edit" />
             {{ t('tours.infoSheet.editBtn') }}

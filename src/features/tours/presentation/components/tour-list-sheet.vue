@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Season } from '@/features/tours/data/models/season'
 import type { TourType } from '@/features/tours/data/models/tour-type'
+import type { Tour } from '@/features/tours/domain/entities/tour'
 import type { CompletionFilter } from '@/features/tours/presentation/composables/use-tour-filters'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
@@ -17,12 +18,14 @@ import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import BackfillCollisionsPage from '@/features/tour-links/presentation/pages/backfill-collisions-page.vue'
+import { outingKey, outingSegments } from '@/features/tours/domain/outing'
 import { useActiveTourTab, useTourFilters } from '@/features/tours/presentation/composables/use-tour-filters'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
+import OutingListRow from './outing-list-row.vue'
 import TourFiltersPanel from './tour-filters-panel.vue'
 import TourListRow from './tour-list-row.vue'
 
-const emit = defineEmits<{ close: [], selectTour: [id: string], addTour: [] }>()
+const emit = defineEmits<{ close: [], selectTour: [id: string], selectOuting: [outingKey: string], addTour: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 const router = useRouter()
@@ -49,7 +52,31 @@ const searchQuery = computed({
 const filters = computed(() => active.value.filters)
 const filteredTours = computed(() => active.value.filteredTours.value)
 const activeFilterCount = computed(() => active.value.activeFilterCount.value)
-const sourceCount = computed(() => (activeTab.value === 'friends' ? friendTours.value.length : tours.value.length))
+const source = computed(() => (activeTab.value === 'friends' ? friendTours.value : tours.value))
+const sourceCount = computed(() => source.value.length)
+
+type ListEntry = { kind: 'tour', tour: Tour } | { kind: 'outing', key: string, segments: Tour[] }
+
+/**
+ * Rows after search + filters: an outing's segments fold into one row, placed where its first
+ * matching segment was, and listing all its segments (#338, design D18).
+ */
+const listEntries = computed<ListEntry[]>(() => {
+  const seen = new Set<string>()
+  const entries: ListEntry[] = []
+  for (const tour of filteredTours.value) {
+    const key = outingKey(tour)
+    const segments = outingSegments(source.value, key)
+    if (segments.length === 0) {
+      entries.push({ kind: 'tour', tour })
+    }
+    else if (!seen.has(key!)) {
+      seen.add(key!)
+      entries.push({ kind: 'outing', key: key!, segments })
+    }
+  }
+  return entries
+})
 function clearAll() {
   active.value.clearAll()
 }
@@ -287,12 +314,10 @@ function handleRowClick(tourId: string) {
               </div>
 
               <ul v-else class="tours-list">
-                <TourListRow
-                  v-for="tour in filteredTours"
-                  :key="tour.id"
-                  :tour="tour"
-                  @click="handleRowClick(tour.id)"
-                />
+                <template v-for="entry in listEntries" :key="entry.kind === 'tour' ? entry.tour.id : entry.key">
+                  <TourListRow v-if="entry.kind === 'tour'" :tour="entry.tour" @click="handleRowClick(entry.tour.id)" />
+                  <OutingListRow v-else :segments="entry.segments" @click="emit('selectOuting', entry.key)" />
+                </template>
               </ul>
             </div>
           </Transition>

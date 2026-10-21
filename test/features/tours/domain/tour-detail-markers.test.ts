@@ -11,7 +11,7 @@ const NEAR_START = { lng: 7.00001, lat: 46.0 }
 
 function input(over: Partial<Parameters<typeof tourDetailMarkers>[0]> = {}) {
   return {
-    tourType: 'hiking' as const,
+    tourTypes: ['hiking' as const],
     start: { saved: null, draft: null },
     end: { saved: null, draft: null },
     ...over,

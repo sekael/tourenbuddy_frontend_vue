@@ -46,7 +46,7 @@ const props = defineProps<{
   allowGoalEdit?: boolean
   /** Current goal coordinates, controlled by the parent. */
   currentGoal?: { lng: number, lat: number } | null
-  /** Seeds all editable fields (edit mode). */
+  /** Seeds all editable fields (edit mode, or a new outing segment's create). */
   initialDraft?: TourDraft | null
   /**
    * The latest confirmed location pick — a new object per pick. Sets the start/end point
@@ -88,7 +88,7 @@ const emit = defineEmits<{
   ]
   cancel: []
   pickPoint: [type: 'start' | 'end' | 'goal']
-  tourTypeChange: [tourType: TourType | null]
+  tourTypesChange: [tourTypes: TourType[]]
   startPointChange: [point: { lng: number, lat: number } | null]
   endPointChange: [point: { lng: number, lat: number } | null]
 }>()
@@ -122,7 +122,7 @@ watch(plannedDate, (value) => {
 })
 const selectedPartnerIds = ref<Set<string>>(new Set(props.initialDraft?.partnerIds ?? []))
 const visibility = ref<Visibility>(props.initialDraft?.visibility ?? DEFAULT_VISIBILITY)
-const selectedTourType = ref<TourType | null>(props.initialDraft?.tourType ?? null)
+const selectedTourTypes = ref<TourType[]>(props.initialDraft?.tourTypes ?? [])
 const elevation = ref(props.initialDraft?.elevation != null ? String(props.initialDraft.elevation) : '')
 const description = ref(props.initialDraft?.description ?? '')
 const selectedSeasons = ref<Set<Season>>(new Set(props.initialDraft?.seasons ?? []))
@@ -220,7 +220,9 @@ const attachmentsStore = useTourAttachmentsStore()
  * the staging prefix and turns it into an `attachment_add` item (D3/D9). Staging also
  * gives us the existing picker validation (mime, 10 MB, HEIC) for free.
  */
-const draftId = props.initialDraft && !isSuggest ? null : uuidv4()
+// Keyed on the tour id, not on `initialDraft`: a new outing segment's form is seeded (#338,
+// design D17) yet still creates — and must stage its attachments like any create.
+const draftId = props.tourId && !isSuggest ? null : uuidv4()
 /** Create mode = staging a brand-new tour (suggest mode also has a draftId but no tour of its own). */
 const isCreate = draftId !== null && !isSuggest
 /**
@@ -350,8 +352,8 @@ function lookupPlaceholder(fill: SwisstopoFill, placeholder: string) {
   return fill.status === 'failed' ? t('tours.form.swisstopo.failed') : placeholder
 }
 
-// Surface the live activity type so the map can tint the draft preview marker.
-watch(selectedTourType, type => emit('tourTypeChange', type), { immediate: true })
+// Surface the live activity types so the map can tint the draft preview marker.
+watch(selectedTourTypes, types => emit('tourTypesChange', types), { immediate: true })
 // Surface live start/end coords so the map can draft-preview them. `immediate`
 // seeds the current value (e.g. a point picked before the dialog opened).
 watch(startPoint, point => emit('startPointChange', point), { immediate: true })
@@ -368,8 +370,10 @@ function togglePartner(contactId: string) {
   selectedPartnerIds.value = new Set(selectedPartnerIds.value)
 }
 
+/** Multi-select; the list always follows the chip (= `TOUR_TYPE_VALUES`) order, not tap order. */
 function toggleTourType(type: TourType) {
-  selectedTourType.value = selectedTourType.value === type ? null : type
+  const on = !selectedTourTypes.value.includes(type)
+  selectedTourTypes.value = TOUR_TYPE_VALUES.filter(v => v === type ? on : selectedTourTypes.value.includes(v))
 }
 
 function toggleSeason(season: Season) {
@@ -618,7 +622,7 @@ function handleSubmit() {
     endDate: plannedDate.value && endDate.value ? new Date(endDate.value) : null,
     partnerIds: Array.from(selectedPartnerIds.value),
     visibility: visibility.value,
-    tourType: selectedTourType.value,
+    tourTypes: selectedTourTypes.value,
     elevation: elevation.value ? Number(elevation.value) : null,
     gpxFilepath: effectiveGpxFilepath,
     description: description.value.trim() || null,
@@ -914,7 +918,8 @@ defineExpose({ cancel: handleCancel, submitBlocked })
               :key="type"
               type="button"
               class="type-chip"
-              :class="{ selected: selectedTourType === type }"
+              :data-type="type"
+              :class="{ selected: selectedTourTypes.includes(type) }"
               @click="toggleTourType(type)"
             >
               <BaseIcon :name="TOUR_TYPE_ICONS[type]" class="type-icon" />

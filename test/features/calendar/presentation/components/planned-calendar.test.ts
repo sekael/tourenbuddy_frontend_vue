@@ -26,7 +26,7 @@ function mockMatchMedia(matches: boolean) {
 
 // Only the fields the component reads; cast to satisfy the Tour type.
 function tour(id: string, name: string, plannedDate: Date | null, extra: object = {}) {
-  return { id, name, plannedDate, tourType: 'hiking', ...extra } as any
+  return { id, name, plannedDate, tourTypes: ['hiking'], ...extra } as any
 }
 
 function mountCalendar(tours: any[], friendTours: any[], viewDate = new Date(2024, 5, 1), extraProps: object = {}) {

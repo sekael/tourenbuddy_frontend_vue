@@ -9,7 +9,7 @@ import { useContactsStore } from '@/features/contacts/presentation/stores/contac
 import { resolveFriendName } from '@/features/friendships/domain/resolve-friend-name'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
-import { COLLISION_RADIUS_M } from '@/features/tours/domain/collision'
+import { COLLISION_RADIUS_M, sharesActivity } from '@/features/tours/domain/collision'
 import { isSameGoal } from '@/features/tours/domain/distance'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
@@ -88,7 +88,7 @@ watch(
 const partitioned = computed(() => {
   const own = tours.value.find(t => t.id === props.ownTourId)
   const empty = { linkable: [], blocked: [] } as { linkable: typeof friendTours.value, blocked: typeof friendTours.value }
-  if (!own || own.visibility !== 'friends' || !own.tourType)
+  if (!own || own.visibility !== 'friends' || !own.tourTypes.length)
     return empty
 
   const myGroupId = groupIdByTourId.value.get(props.ownTourId)
@@ -100,7 +100,7 @@ const partitioned = computed(() => {
   const linkable: typeof friendTours.value = []
   const blocked: typeof friendTours.value = []
   for (const f of friendTours.value) {
-    if (f.tourType !== own.tourType)
+    if (!sharesActivity(f.tourTypes, own.tourTypes))
       continue
     // Belt-and-suspenders: friend_tours_view already filters by visibility
     // 'friends' AND an active friendship row; re-check client-side so a

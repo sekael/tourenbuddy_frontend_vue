@@ -101,3 +101,22 @@ export const TOUR_TYPE_PREVIEW_COLORS: Record<TourType, string> = {
   'mountain-biking': '#FCA5A5',
   'trailrunning': '#FCA5A5',
 }
+
+/**
+ * The distinct palette colours of a tour's types, in type order — e.g. skitour + splitboarding
+ * is one blue, skitour + hiking is blue then red. Empty for an untyped tour.
+ */
+export function distinctTypeColors(
+  types: readonly TourType[],
+  palette: Record<TourType, string>,
+): string[] {
+  return [...new Set(types.map(t => palette[t]))]
+}
+
+/** CSS background split like a marker: solid, or equal conic slices from 12 o'clock (map dots, outing badges). */
+export function cssFill(colors: readonly string[]): string {
+  if (colors.length === 1)
+    return colors[0]!
+  const step = 100 / colors.length
+  return `conic-gradient(${colors.map((c, i) => `${c} ${i * step}% ${(i + 1) * step}%`).join(', ')})`
+}

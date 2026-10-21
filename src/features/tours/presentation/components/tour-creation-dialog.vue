@@ -19,6 +19,8 @@ const props = defineProps<{
   initialGoal?: { lng: number, lat: number } | null
   /** Which pick is currently active — drives the collapsed header label. */
   activePickType?: 'goal' | 'start' | 'end' | null
+  /** Prefilled fields — the next segment of an outing (#338). */
+  seed?: TourDraft | null
 }>()
 
 const emit = defineEmits<{
@@ -30,7 +32,7 @@ const emit = defineEmits<{
   ]
   close: []
   pickPoint: [type: 'start' | 'end' | 'goal']
-  tourTypeChange: [tourType: TourType | null]
+  tourTypesChange: [tourTypes: TourType[]]
   startPointChange: [point: { lng: number, lat: number } | null]
   endPointChange: [point: { lng: number, lat: number } | null]
 }>()
@@ -69,7 +71,7 @@ const pickTypeLabel = computed(() => {
   return t('tours.picker.goalTitle')
 })
 
-const title = computed(() => pickTypeLabel.value ?? t('tours.creation.title'))
+const title = computed(() => pickTypeLabel.value ?? (props.seed ? t('tours.outing.addTitle') : t('tours.creation.title')))
 
 function handleSubmit(
   draft: TourDraft,
@@ -103,12 +105,13 @@ function handlePickPoint(type: 'start' | 'end' | 'goal') {
       :submit-label="t('tours.creation.saveBtn')"
       :allow-goal-edit="true"
       :current-goal="initialGoal ?? null"
+      :initial-draft="seed"
       :pick="pick"
       :disabled="isPicking"
       @submit="(d, r, tid, did) => handleSubmit(d, r, tid, did)"
       @cancel="emit('close')"
       @pick-point="handlePickPoint"
-      @tour-type-change="emit('tourTypeChange', $event)"
+      @tour-types-change="emit('tourTypesChange', $event)"
       @start-point-change="emit('startPointChange', $event)"
       @end-point-change="emit('endPointChange', $event)"
     />

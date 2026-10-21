@@ -126,6 +126,9 @@ export function useTourFilters(tab: TourTab = 'owned') {
       return true
     if (tour.name && tour.name.toLowerCase().includes(q))
       return true
+    // A segment surfaces its outing's row, so the outing's name must find it too (#338).
+    if (tour.outing?.name?.toLowerCase().includes(q))
+      return true
     // Friend rows display "by <contact name>", so that name must be searchable — read
     // from the same resolver the row renders from, or search finds a visible field
     // nothing matches.
@@ -148,7 +151,8 @@ export function useTourFilters(tab: TourTab = 'owned') {
     }
 
     if (filters.tourTypes.size > 0) {
-      if (!tour.tourType || !filters.tourTypes.has(tour.tourType))
+      // Any of the tour's activities may match (#335).
+      if (!tour.tourTypes.some(t => filters.tourTypes.has(t)))
         return false
     }
 

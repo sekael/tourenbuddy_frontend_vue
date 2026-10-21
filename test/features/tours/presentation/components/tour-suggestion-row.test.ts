@@ -122,11 +122,20 @@ describe('tourSuggestionRow', () => {
 
   it('never renders a raw enum token — a German reader must not see "climbing"', () => {
     const wrapper = mountRow({
-      suggestion: makeSuggestion({ field: 'tour_type', value: 'climbing', baseValue: 'skitour' }),
+      suggestion: makeSuggestion({ field: 'tour_type', value: ['climbing'], baseValue: ['skitour'] }),
     })
 
     expect(wrapper.find('.value--new').text()).toBe('tours.type.climbing')
     expect(wrapper.find('.value--old').text()).toBe('tours.type.skitour')
+  })
+
+  it('lists every proposed activity through its i18n key, not its token', () => {
+    const wrapper = mountRow({
+      suggestion: makeSuggestion({ field: 'tour_type', value: ['ski-mountaineering', 'climbing'], baseValue: [] }),
+    })
+
+    expect(wrapper.find('.value--new').text()).toBe('tours.type.skiMountaineering, tours.type.climbing')
+    expect(wrapper.find('.value--old').text()).toBe('tours.suggestions.emptyValue')
   })
 
   it('localizes every entry of a seasons list, not just the first', () => {
