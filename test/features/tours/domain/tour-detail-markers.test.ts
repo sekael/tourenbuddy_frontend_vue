@@ -100,8 +100,15 @@ describe('outingDetailMarkers', () => {
     expect(m.map(x => [x.pointKind, x.lngLat, x.tourTypes[0]])).toEqual([['start', A, 'hiking'], ['end', E, 'mountaineering']])
   })
 
-  it('should show no markers when the first segment has no start', () => {
-    expect(outingDetailMarkers([seg({}), seg({ endPoint: E })])).toEqual([])
+  it('should mark both loose ends of a reordered outing, not the hand-over on a goal', () => {
+    // Summit day first (starts at the hut = the other segment's goal), hut walk second.
+    const m = outingDetailMarkers([seg({ startPoint: H, goal: P, endPoint: E }), seg({ startPoint: A })])
+    expect(m.map(x => [x.pointKind, x.lngLat])).toEqual([['end', E], ['start', A]])
+  })
+
+  it('should skip a hand-over between an end and the next start off any goal', () => {
+    const m = outingDetailMarkers([seg({ startPoint: A, endPoint: E }), seg({ startPoint: { ...E }, goal: P })])
+    expect(m.map(x => x.pointKind)).toEqual(['start'])
   })
 
   it('should drop an end back at the start or on the last goal', () => {

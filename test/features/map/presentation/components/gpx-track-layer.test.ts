@@ -3,7 +3,7 @@ import type { Tour } from '@/features/tours/domain/entities/tour'
 import { describe, expect, it, vi } from 'vitest'
 import { loadCachedBlob } from '@/core/offline/blob-cache'
 import { darkenHex } from '@/core/utils/color'
-import { tourConnectors, trackGradient, useGpxTrackLayer } from '@/features/map/presentation/components/gpx-track-layer'
+import { outingGapLines, tourConnectors, trackGradient, useGpxTrackLayer } from '@/features/map/presentation/components/gpx-track-layer'
 import { useGpxCache } from '@/features/map/presentation/composables/use-gpx-cache'
 import { TOUR_TYPE_COLORS, TOUR_TYPE_TRACK_COLORS } from '@/features/tours/data/models/tour-type'
 
@@ -163,5 +163,18 @@ describe('tourConnectors', () => {
       .toEqual(['connector-arrow:#DC2626', 'connector-arrow:#D97706'])
     expect(arrows([])).toEqual(['connector-arrow:#555555'])
     expect(tourConnectors([entry({ endPoint: { ...A } })]).features[0]!.properties!.arrow).toMatch(/^connector-arrow-both:/)
+  })
+})
+
+describe('outingGapLines', () => {
+  const at = (lng: number, lat: number) => ({ lng, lat })
+  const seg = (startPoint: { lng: number, lat: number } | null, goal: { lng: number, lat: number }, endPoint: { lng: number, lat: number } | null = null) =>
+    ({ startPoint, goal, endPoint }) as Tour
+
+  it('should link a finish to the next start only where they do not meet', () => {
+    expect(outingGapLines([seg(at(8, 46), at(8.1, 46.1))]).features).toEqual([])
+    expect(outingGapLines([seg(at(8, 46), at(8.1, 46.1)), seg(at(8.1, 46.1), at(8.2, 46))]).features).toEqual([])
+    const [gap] = outingGapLines([seg(at(8, 46), at(8.1, 46.1), at(8.3, 46.3)), seg(at(8, 46), at(8.2, 46))]).features
+    expect(gap!.geometry.coordinates).toEqual([[8.3, 46.3], [8, 46]])
   })
 })

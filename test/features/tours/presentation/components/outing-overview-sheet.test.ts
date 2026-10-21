@@ -64,17 +64,41 @@ describe('outingOverviewSheet', () => {
     expect(wrapper.emitted('openSegment')).toEqual([['b']])
   })
 
-  it('should move, remove and rename through the store in edit mode', async () => {
+  it('should reorder by drag, remove and rename through the store in edit mode', async () => {
     const wrapper = mountSheet()
     const store = useToursStore()
     await wrapper.find('[data-testid="outing-edit"]').trigger('click')
-    await wrapper.findAll('[data-testid="segment-down"]')[0]!.trigger('click')
-    expect(store.moveSegment).toHaveBeenCalledWith(expect.any(Array), 0, 1)
+    const rows = wrapper.findAll('[data-testid="outing-segment"]')
+    await rows[0]!.trigger('dragstart')
+    await rows[2]!.trigger('drop')
+    expect(store.reorderSegments).toHaveBeenCalledWith(expect.any(Array), 0, 2)
     await wrapper.findAll('[data-testid="segment-remove"]')[2]!.trigger('click')
     expect(store.removeFromOuting).toHaveBeenCalledWith(expect.any(Array), 'c')
     await wrapper.find('[data-testid="outing-name-input"]').setValue('Tour du Mont Blanc')
     await wrapper.find('[data-testid="outing-done"]').trigger('click')
     expect(store.renameOuting).toHaveBeenCalledWith(expect.any(Array), 'Tour du Mont Blanc')
+  })
+
+  it('should dim the dragged card and mark the drop target until the drag ends', async () => {
+    const wrapper = mountSheet()
+    await wrapper.find('[data-testid="outing-edit"]').trigger('click')
+    const rows = () => wrapper.findAll('[data-testid="outing-segment"]')
+    await rows()[0]!.trigger('dragstart')
+    await rows()[2]!.trigger('dragover')
+    expect(rows().map(r => [r.classes('segment--dragging'), r.classes('segment--over')]))
+      .toEqual([[true, false], [false, false], [false, true]])
+    await rows()[0]!.trigger('dragend')
+    expect(wrapper.findAll('.segment--dragging, .segment--over')).toHaveLength(0)
+  })
+
+  it('should flag only a segment that starts away from where the previous one finishes', () => {
+    const wrapper = mountSheet('me/o1', [
+      segment('a', 0),
+      { ...segment('b', 1), startPoint: { lng: 7.5, lat: 46 } },
+      { ...segment('c', 2), startPoint: { lng: 8, lat: 46.5 } },
+    ])
+    const rows = wrapper.findAll('[data-testid="outing-segment"]')
+    expect(rows.map(r => r.find('[data-testid="segment-gap"]').exists())).toEqual([false, false, true])
   })
 
   it('should offer a new segment after the last one', async () => {

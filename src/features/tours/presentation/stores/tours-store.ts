@@ -20,7 +20,7 @@ import { useFriendshipsStore } from '@/features/friendships/presentation/stores/
 import { ToursRepositoryImpl } from '@/features/tours/data/repositories/tours-repository-impl'
 import { removeGpx, uploadGpxToKey } from '@/features/tours/data/services/gpx-storage-service'
 import { withTourTypes } from '@/features/tours/domain/entities/tour'
-import { appendedOuting } from '@/features/tours/domain/outing'
+import { appendedOuting, movedSegment } from '@/features/tours/domain/outing'
 
 const repository = new ToursRepositoryImpl()
 
@@ -489,16 +489,28 @@ export const useToursStore = defineStore('tours', () => {
     }
   }
 
-  /** Swap segment `index` with its neighbour; renumbers 0…n-1 so stale gaps/ties settle too. */
-  async function moveSegment(segments: Tour[], index: number, direction: -1 | 1) {
-    const target = index + direction
-    if (target < 0 || target >= segments.length)
-      return
-    const order = [...segments]
-    ;[order[index], order[target]] = [order[target]!, order[index]!]
-    for (const [position, s] of order.entries()) {
-      if (s.outing && s.outing.position !== position)
-        await setOuting(s.id, { ...s.outing, position })
+  /**
+   * Move segment `from` to `to`; renumbers 0…n-1 so stale gaps/ties settle too. The new order
+   * lands locally in one step (the map redraws once, never a half-renumbered tie), then each
+   * changed position is written. A failed write restores the old order; the realtime refetch
+   * reconciles any write that did land.
+   */
+  async function reorderSegments(segments: Tour[], from: number, to: number) {
+    const order = movedSegment(segments, from, to)
+    const position = new Map(order.map((s, i) => [s.id, i]))
+    const before = tours.value
+    tours.value = tours.value.map(t =>
+      t.outing && position.has(t.id) ? { ...t, outing: { ...t.outing, position: position.get(t.id)! } } : t,
+    )
+    try {
+      for (const [i, s] of order.entries()) {
+        if (s.outing && s.outing.position !== i)
+          await setOuting(s.id, { ...s.outing, position: i })
+      }
+    }
+    catch (err) {
+      tours.value = before
+      throw err
     }
   }
 
@@ -556,7 +568,7 @@ export const useToursStore = defineStore('tours', () => {
     nextInOuting,
     addToOuting,
     renameOuting,
-    moveSegment,
+    reorderSegments,
     removeFromOuting,
     clear,
   }

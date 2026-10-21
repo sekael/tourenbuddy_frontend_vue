@@ -2,8 +2,10 @@ import type { Tour } from '@/features/tours/domain/entities/tour'
 import { describe, expect, it } from 'vitest'
 import {
   appendedOuting,
+  movedSegment,
   nextSegmentSeed,
   outingDisplayName,
+  outingGaps,
   outingKey,
   outingSegments,
   outingSpan,
@@ -112,5 +114,29 @@ describe('nextSegmentSeed', () => {
   it('should start at the goal with a whole-metre elevation when the previous segment has no end point', () => {
     const seed = nextSegmentSeed(segment('a', 0, { name: 'Hut', elevation: 2632.4 }))
     expect(seed).toMatchObject({ startPoint: { lng: 7.5, lat: 46 }, startPointName: 'Hut', startPointElevation: 2632 })
+  })
+})
+
+describe('outingGaps', () => {
+  const A = { lng: 9.8, lat: 46.6 }
+  const H = { lng: 9.86, lat: 46.64 }
+  const E = { lng: 9.95, lat: 46.6 }
+  const pts = (startPoint: typeof A | null, goal: typeof A, endPoint: typeof A | null = null) => ({ startPoint, goal, endPoint })
+
+  it('should flag a segment starting away from the previous finish (end, else goal)', () => {
+    expect(outingGaps([pts(H, E, A), pts(A, H)])).toEqual([])
+    expect(outingGaps([pts(A, H), pts({ ...H }, E)])).toEqual([])
+    expect(outingGaps([pts(H, E, A), pts(E, H)])).toEqual([{ index: 1, from: A, to: E }])
+  })
+
+  it('should not flag a segment without a start', () => {
+    expect(outingGaps([pts(A, H), pts(null, E)])).toEqual([])
+  })
+})
+
+describe('movedSegment', () => {
+  it('should move an item forwards and backwards', () => {
+    expect(movedSegment(['a', 'b', 'c'], 0, 2)).toEqual(['b', 'c', 'a'])
+    expect(movedSegment(['a', 'b', 'c'], 2, 0)).toEqual(['c', 'a', 'b'])
   })
 })

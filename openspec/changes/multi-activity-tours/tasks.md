@@ -52,7 +52,7 @@
 
 - [x] 9.1 `Tour.outing` / `TourDraft.outing` (undefined = keep), row schemas, repository `p_outing` — verify schema + repository tests
 - [x] 9.2 `domain/outing.ts`: key, grouping (owner + id, ≥ 2 segments), order, display name, next position, new-segment seed — verify unit tests
-- [x] 9.3 Tours store: `setOuting`, `ensureOuting`, `addToOuting`, `renameOuting`, `moveSegment`, `removeFromOuting` (dissolve at one; anchor joins first); optimistic apply keeps outing on `undefined` — verify store tests incl. offline queue
+- [x] 9.3 Tours store: `setOuting`, `ensureOuting`, `addToOuting`, `renameOuting`, `reorderSegments`, `removeFromOuting` (dissolve at one; anchor joins first); optimistic apply keeps outing on `undefined` — verify store tests incl. offline queue
 
 ## 10. Outings: map
 
@@ -80,6 +80,7 @@
 
 - [x] 12b.1 Hero badge split per activity (diagonal slices, cropped icons); activity chips in their own colour (detail + form); rest of the detail view neutral — verify component tests
 - [x] 12b.2 GPX bands denser (`9n`); thin start → goal → end connector in the activity marker colours with evenly spaced arrows for tours without a track; outing overview shows the first start and last end; an open segment shows only itself — verify `gpx-track-layer` + `tour-detail-markers` tests
+- [x] 12b.3 Segments as draggable cards (dashed connector between them, amber at a gap; dragged card dims, drop target outlined); drag-handle reorder (one local step, then writes; failure restores); gaps between segments shown as a dashed link, a timeline hint and loose-end markers — verify `outing`, `tours-store`, `outing-overview-sheet`, `gpx-track-layer` tests + walk
 
 ## 13. Finalize
 

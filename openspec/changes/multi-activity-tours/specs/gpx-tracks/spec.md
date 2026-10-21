@@ -81,9 +81,14 @@ The system SHALL draw, for every shown tour WITHOUT a GPX track (the selected to
 
 ### Requirement: Outing overview start and end markers
 
-While an outing's overview is open (no segment selected), the system SHALL show a start marker at the first segment's start and an end marker at the last segment's end, each in its segment's colours. The end marker SHALL be omitted when it coincides with that start or with the last segment's goal.
+While an outing's overview is open (no segment selected), the system SHALL show a start or end marker, in its segment's colours, at every segment start and end that is a loose end of the chain: the first start, the last end, and both sides of a gap. A point SHALL get no marker where the chain hands over (a start on the previous segment's finish, an end on the next segment's start), on any goal, or where a marker already stands.
 
 #### Scenario: Overview of a hut-to-summit outing
 
 - **WHEN** the overview of an outing starting in the valley and ending at a different village is open
 - **THEN** a start marker shows in the valley and an end marker at the village
+
+#### Scenario: Reordered into a gap
+
+- **WHEN** the segments are ordered so that segment 1 ends in one village and segment 2 starts in another
+- **THEN** an end marker shows at the first village and a start marker at the second, with no line ending unmarked

@@ -1,5 +1,6 @@
 import type { TourOuting } from '@/features/tours/data/models/tour-schema'
 import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
+import { isSameGoal } from '@/features/tours/domain/distance'
 
 /**
  * Outings made of segments (#338). An outing is the owner's tours sharing an `outing.id`;
@@ -28,6 +29,36 @@ export function outingSegments(tours: Tour[], key: string | null): Tour[] {
     return []
   const segments = tours.filter(t => outingKey(t) === key).sort(bySegmentOrder)
   return segments.length >= 2 ? segments : []
+}
+
+interface LngLat {
+  lng: number
+  lat: number
+}
+type SegmentPoints = Pick<Tour, 'goal' | 'startPoint' | 'endPoint'>
+
+/** Where a segment finishes: its end, else its goal. */
+export function segmentFinish(segment: SegmentPoints): LngLat {
+  return segment.endPoint ?? segment.goal
+}
+
+/**
+ * Segment `index` starts away from where segment `index - 1` finishes — a reorder or an edit left
+ * the chain broken. Shown, never fixed: a transfer by train or lift is a real outing too.
+ * A segment without a start has no gap (nothing to compare).
+ */
+export function outingGaps(segments: readonly SegmentPoints[]): { index: number, from: LngLat, to: LngLat }[] {
+  return segments.slice(1).flatMap((s, i) => {
+    const from = segmentFinish(segments[i]!)
+    return s.startPoint && !isSameGoal(from, s.startPoint) ? [{ index: i + 1, from, to: s.startPoint }] : []
+  })
+}
+
+/** `segments` with the one at `from` moved to `to`. */
+export function movedSegment<T>(segments: readonly T[], from: number, to: number): T[] {
+  const order = [...segments]
+  order.splice(to, 0, ...order.splice(from, 1))
+  return order
 }
 
 /** The outing's own name, else its first segment's name. */

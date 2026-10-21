@@ -7,6 +7,7 @@ import { distinctTypeColors, TOUR_TYPE_COLORS, TOUR_TYPE_TRACK_COLORS } from '@/
 import { parseGpxFile } from '@/features/tours/data/services/gpx-parser'
 import { getSignedUrl } from '@/features/tours/data/services/gpx-storage-service'
 import { isSameGoal } from '@/features/tours/domain/distance'
+import { outingGaps } from '@/features/tours/domain/outing'
 import { DETAIL_CIRCLE_LAYER_ID, TOUR_LAYER_IDS } from './tours-marker-layer'
 
 const GPX_SOURCE_ID = 'gpx-track'
@@ -50,6 +51,24 @@ const CONNECTOR_WIDTH = 2
 const CONNECTOR_OPACITY = 0.7
 /** Screen distance between arrows along a leg; a shorter leg gets one in its middle. */
 const ARROW_SPACING = 120
+const GAP_SOURCE_ID = 'outing-gap'
+const GAP_LAYER_ID = 'outing-gap-line'
+
+/**
+ * Dashed neutral links where an outing's segment starts away from where the previous one
+ * finishes (`outingGaps`): the chain is broken — a reorder, a moved point, or a transfer.
+ * `tours` is the shown list; only an outing's segments come as more than one.
+ */
+export function outingGapLines(tours: readonly Tour[]): GeoJSON.FeatureCollection<GeoJSON.LineString> {
+  return {
+    type: 'FeatureCollection',
+    features: outingGaps(tours).map(({ from, to }) => ({
+      type: 'Feature',
+      properties: {},
+      geometry: { type: 'LineString', coordinates: [[from.lng, from.lat], [to.lng, to.lat]] },
+    })),
+  }
+}
 
 /** Track colour at `progress` along a line banded by `trackGradient` (held part of a band). */
 function colorAt(colors: readonly string[], progress: number): string {
@@ -201,6 +220,20 @@ export function useGpxTrackLayer(map: MapLibreMap) {
       },
       paint: { 'icon-opacity': CONNECTOR_OPACITY },
     }, beforeId)
+    map.addSource(GAP_SOURCE_ID, { type: 'geojson', data: EMPTY_GEOJSON })
+    // Below the arrows; track slots are inserted above it (also before the arrows).
+    map.addLayer({
+      id: GAP_LAYER_ID,
+      type: 'line',
+      source: GAP_SOURCE_ID,
+      layout: { 'line-cap': 'round' },
+      paint: {
+        'line-color': FALLBACK_TRACK_COLOR,
+        'line-width': 1.5,
+        'line-opacity': CONNECTOR_OPACITY,
+        'line-dasharray': [2, 3],
+      },
+    }, ARROW_LAYER_ID)
   }
 
   /** Parsed track of `tour`: memory cache, else offline-first bytes (cached on first online view). */
@@ -238,6 +271,7 @@ export function useGpxTrackLayer(map: MapLibreMap) {
     const gen = ++generation
     ensureArrows()
     map.getSource<GeoJSONSource>(ARROW_SOURCE_ID)?.setData(tourConnectors(tours))
+    map.getSource<GeoJSONSource>(GAP_SOURCE_ID)?.setData(outingGapLines(tours))
     const shown = tours
       .map(tour => ({ tour, legs: tour.gpxFilepath ? null : tourConnectors([tour]) }))
       .filter(e => e.legs === null || e.legs.features.length > 0)

@@ -120,14 +120,19 @@ segment's tour detail; back from there SHALL return to the overview.
 
 ### Requirement: Manage an outing
 
-The owner SHALL be able to rename the outing, move segments up and down, remove a segment and
+The owner SHALL be able to rename the outing, reorder segments by dragging them by their handle, remove a segment and
 add a segment from the overview. Removing a segment that would leave a single one SHALL dissolve
 the outing. A friend's outing SHALL be read-only.
 
 #### Scenario: Reorder
 
-- **WHEN** the owner moves segment 3 up
-- **THEN** it SHALL become segment 2 and the former segment 2 SHALL become segment 3
+- **WHEN** the owner drags segment 3 onto segment 1
+- **THEN** it SHALL become segment 1, the former segments 1 and 2 SHALL become 2 and 3, and the map SHALL redraw the new order at once
+
+#### Scenario: Segment starting away from the previous finish
+
+- **WHEN** a segment's start is not where the previous segment ends (its end, else its goal)
+- **THEN** the timeline SHALL say so on that segment and the overview map SHALL link the two points with a dashed neutral line, without blocking the order
 
 #### Scenario: Removing from a two-segment outing
 

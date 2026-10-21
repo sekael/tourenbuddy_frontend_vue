@@ -570,8 +570,17 @@ describe('useToursStore: outings (#338)', () => {
     const store = useToursStore()
     store.tours = [seg('a', 0), seg('b', 0), seg('c', 7)]
     // a, b, c → a, c, b: renumbered 0, 1, 2; `a` already sits at 0.
-    await store.moveSegment(store.tours, 2, -1)
+    await store.reorderSegments(store.tours, 2, 1)
     expect(sentOutings()).toEqual({ c: { ...outing, position: 1 }, b: { ...outing, position: 2 } })
+  })
+
+  it('should restore the old order when a reorder write fails', async () => {
+    const store = useToursStore()
+    store.tours = [seg('a', 0), seg('b', 1)]
+    const before = store.tours
+    mockUpdateTour.mockRejectedValueOnce(new Error('boom'))
+    await expect(store.reorderSegments(store.tours, 0, 1)).rejects.toThrow('boom')
+    expect(store.tours).toBe(before)
   })
 
   it('should mint an outing for a standalone anchor and append the added tour after it', async () => {

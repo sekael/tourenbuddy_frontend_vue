@@ -1,5 +1,6 @@
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import { isSameGoal } from '@/features/tours/domain/distance'
+import { segmentFinish } from '@/features/tours/domain/outing'
 
 /** Which point a detail marker represents. The goal is rendered separately. */
 export type DetailPointKind = 'start' | 'end'
@@ -89,18 +90,23 @@ interface SegmentPoints {
 }
 
 /**
- * The whole outing's start/end markers (#338): where its first segment starts and its last one
- * ends, each in its segment's colours. The end is dropped when it coincides with that start (a
- * round outing) or with the last goal (the goal marker already stands there).
+ * The whole outing's start/end markers (#338): every segment start and end that is a loose end of
+ * the chain — so the first start and last end, plus both sides of a gap (`outingGaps`), each in
+ * its segment's colours. A point is skipped where the chain hands over (a start on the previous
+ * segment's finish, an end on the next one's start), on any goal (its marker stands there) and on
+ * a marker already placed (a round outing ends where it began).
  */
 export function outingDetailMarkers(segments: readonly SegmentPoints[]): DetailMarker[] {
-  const first = segments[0]
-  const last = segments.at(-1)
-  if (!first?.startPoint || !last)
-    return []
-  const out: DetailMarker[] = [{ pointKind: 'start', lngLat: first.startPoint, tourTypes: first.tourTypes, draft: false }]
-  const end = last.endPoint
-  if (end && !isSameGoal(end, first.startPoint) && !isSameGoal(end, last.goal))
-    out.push({ pointKind: 'end', lngLat: end, tourTypes: last.tourTypes, draft: false })
+  const out: DetailMarker[] = []
+  const taken = (p: LngLat) =>
+    segments.some(s => isSameGoal(p, s.goal)) || out.some(m => isSameGoal(p, m.lngLat))
+  segments.forEach((s, i) => {
+    const prev = segments[i - 1]
+    const next = segments[i + 1]
+    if (s.startPoint && !(prev && isSameGoal(s.startPoint, segmentFinish(prev))) && !taken(s.startPoint))
+      out.push({ pointKind: 'start', lngLat: s.startPoint, tourTypes: s.tourTypes, draft: false })
+    if (s.endPoint && !(next?.startPoint && isSameGoal(s.endPoint, next.startPoint)) && !taken(s.endPoint))
+      out.push({ pointKind: 'end', lngLat: s.endPoint, tourTypes: s.tourTypes, draft: false })
+  })
   return out
 }

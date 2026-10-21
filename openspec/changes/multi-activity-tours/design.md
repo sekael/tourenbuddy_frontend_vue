@@ -27,7 +27,7 @@ whole outing on the map and in one sheet, step through its segments; manage it (
 reorder, remove) without a new screen; offline and stale clients keep working.
 
 **Non-Goals (#338):** outings across owners (a shared outing with friends — linking stays per
-tour), an outing-level GPX, drag-and-drop reordering, outings in the calendar (segments show
+tour), an outing-level GPX, outings in the calendar (segments show
 there as the tours they are), partner notifications for outing edits.
 
 **Non-Goals:** a user-chosen "main" activity (primary = first in canonical order); per-type
@@ -131,9 +131,14 @@ a meaningful change (no partner notification); the suggestion-void trigger only 
 visibility.
 
 **D13 — Explicit order.** Segments sort by `outing_position`, then id. A new segment appends
-(max + 1); reorder swaps two positions (two writes); gaps are harmless (badges number the
+(max + 1); a drag reorder (the attachments' native drag handles) renumbers 0…n-1, lands
+locally in one step so the map redraws once, then writes each changed position (a failed
+write restores the old order); gaps are harmless (badges number the
 sorted list 1…n). Dates do not order segments: a same-day hike + flight, or an undated plan,
-needs a stable order.
+needs a stable order. A segment starting away from where the previous one finishes (end, else
+goal) is a *gap*: shown — a dashed neutral link on the map, a hint in the timeline, and markers
+on both loose ends — never blocked or auto-fixed, since a train or lift transfer is a real
+outing too.
 
 **D14 — An outing is keyed by owner + id, and needs two segments.** A friend can read an
 outing id and could copy it onto their own tour; keying by `userId/outingId` keeps that tour

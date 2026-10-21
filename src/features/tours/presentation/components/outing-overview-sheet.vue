@@ -154,7 +154,7 @@ function handleAdded() {
         </h4>
         <OutingSegmentTimeline
           :segments="segments" :editing="mode === 'edit'" :busy="busy" @open="emit('openSegment', $event)"
-          @move="(i, dir) => run(() => toursStore.moveSegment(segments, i, dir))"
+          @reorder="(from, to) => run(() => toursStore.reorderSegments(segments, from, to))"
           @remove="id => run(() => toursStore.removeFromOuting(segments, id))"
         />
       </section>
