@@ -95,8 +95,8 @@ Spiderfy leaves and tween dots use a CSS `conic-gradient` for split tours.
 
 **D8 — Track = `line-gradient` on `line-progress`.** `line-gradient` cannot be data-driven,
 so each track gets its own source + layer and its gradient via `setPaintProperty` (sources get
-`lineMetrics: true`); an outing draws several (D16). For n distinct colours the line is cut into `3n` equal bands; each holds
-its colour for 60 % and fades into the next over the remaining 40 %. One colour → a constant
+`lineMetrics: true`); an outing draws several (D16). For n distinct colours the line is cut into `9n` equal bands; each holds
+its colour for 80 % and fades into the next over the remaining 20 %. One colour → a constant
 gradient (identical to today). `ponytail:` fixed band count — bands get long on very long
 tracks; switch to distance-based bands if that reads badly.
 
@@ -147,10 +147,10 @@ the outing's list row opens the overview; a segment row opens the segment's tour
 a navigator (outing name → overview, ‹ › → neighbour). Back from a segment opened in the
 overview returns to it; the overview's own back follows its origin (the list).
 
-**D16 — Map focus.** The focused outing is the overview's or the selected segment's. Its
-segments are pinned out of clustering, wear a white ring and a numbered badge — a canvas image
+**D16 — Map focus.** Only the open overview focuses an outing; an open segment is a plain
+selected tour (its own markers and track only). The overview's segments are pinned out of clustering, wear a white ring and a numbered badge — a canvas image
 drawn on `styleimagemissing` like the pies (raster base styles have no glyphs). Every segment's
-track is drawn; in segment view the others are dimmed. A generation counter drops a track
+track (or connector) is drawn. A generation counter drops a track
 that resolves after the selection moved on. The overview frames all segments' goals, starts
 and ends beside the sheet.
 

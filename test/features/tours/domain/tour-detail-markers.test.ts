@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { tourDetailMarkers } from '@/features/tours/domain/tour-detail-markers'
+import { outingDetailMarkers, tourDetailMarkers } from '@/features/tours/domain/tour-detail-markers'
 
 const START = { lng: 7.0, lat: 46.0 }
 // ~well over 10m from START, so treated as a distinct end point
@@ -85,5 +85,27 @@ describe('tourDetailMarkers', () => {
       input({ start: { saved: null, draft: START }, end: { saved: null, draft: NEAR_START } }),
     )
     expect(roundTrip.map(m => m.pointKind)).toEqual(['start'])
+  })
+})
+
+describe('outingDetailMarkers', () => {
+  const A = { lng: 9.8, lat: 46.6 }
+  const H = { lng: 9.86, lat: 46.64 }
+  const P = { lng: 9.9, lat: 46.62 }
+  const E = { lng: 9.95, lat: 46.6 }
+  const seg = (s: object) => ({ tourTypes: ['hiking'] as const, goal: H, startPoint: null, endPoint: null, ...s }) as never
+
+  it('should start at the first segment and end at the last, in each one\'s colours', () => {
+    const m = outingDetailMarkers([seg({ startPoint: A }), seg({ tourTypes: ['mountaineering'], startPoint: H, goal: P, endPoint: E })])
+    expect(m.map(x => [x.pointKind, x.lngLat, x.tourTypes[0]])).toEqual([['start', A, 'hiking'], ['end', E, 'mountaineering']])
+  })
+
+  it('should show no markers when the first segment has no start', () => {
+    expect(outingDetailMarkers([seg({}), seg({ endPoint: E })])).toEqual([])
+  })
+
+  it('should drop an end back at the start or on the last goal', () => {
+    expect(outingDetailMarkers([seg({ startPoint: A }), seg({ goal: P, endPoint: { ...A } })])).toHaveLength(1)
+    expect(outingDetailMarkers([seg({ startPoint: A }), seg({ goal: P, endPoint: { ...P } })])).toHaveLength(1)
   })
 })

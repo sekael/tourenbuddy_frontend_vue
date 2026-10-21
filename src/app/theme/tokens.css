@@ -7,6 +7,7 @@
 
   /* Palette ramps (Tailwind slate/blue/red/green/amber — only shades in use) */
   --slate-50: #f8fafc;
+  --slate-100: #f1f5f9;
   --slate-200: #e2e8f0;
   --slate-300: #cbd5e1;
   --slate-400: #94a3b8;
@@ -101,6 +102,11 @@
   --color-secondary-container: var(--blue-100);
   --color-secondary-container-hover: var(--blue-200);
   --color-on-secondary-container: var(--blue-900);
+
+  /* Neutral tonal fills: where the activity colours carry meaning (tour detail), so a
+     control or card never reads as an activity. Labels use --color-on-surface. */
+  --color-neutral-container: var(--slate-100);
+  --color-neutral-container-hover: var(--slate-200);
 
   --color-background: var(--white);
   --color-on-background: var(--slate-900);

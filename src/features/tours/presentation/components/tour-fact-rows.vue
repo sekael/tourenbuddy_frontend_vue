@@ -4,7 +4,7 @@ import type { Tour } from '@/features/tours/domain/entities/tour'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/core/components/base-icon.vue'
-import { TOUR_TYPE_I18N_KEYS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
+import { TOUR_TYPE_COLORS, TOUR_TYPE_I18N_KEYS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
 
 /**
  * A tour's facts as dense icon-led rows, no headings or cards (spec: design-system →
@@ -64,16 +64,22 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 <template>
   <div class="fact-rows">
     <ul v-if="tour.tourTypes.length || tour.seasons?.length" class="fact-group">
-      <li v-for="type in tour.tourTypes" :key="type" class="fact-row" data-fact="type">
-        <BaseIcon :name="TOUR_TYPE_ICONS[type]" size="sm" class="row-icon" />
+      <!-- Chips carry their own icons, so they take the icon column too. Activities wear
+           their own colour, seasons stay neutral. -->
+      <li v-if="tour.tourTypes.length" class="fact-row fact-row--wide" data-fact="type">
         <span class="visually-hidden">{{ t('tours.infoSheet.iconTooltipType') }}</span>
-        <span class="row-value">{{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[type]}` as any) }}</span>
+        <span
+          v-for="type in tour.tourTypes" :key="type" class="tag type-tag"
+          :style="{ '--tag-color': TOUR_TYPE_COLORS[type] }"
+        >
+          <BaseIcon :name="TOUR_TYPE_ICONS[type]" size="sm" />
+          {{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[type]}` as any) }}
+        </span>
       </li>
 
-      <!-- Each season chip carries its own icon, so the chips take the icon column too. -->
       <li v-if="tour.seasons?.length" class="fact-row fact-row--wide" data-fact="seasons">
         <span class="visually-hidden">{{ t('tours.infoSheet.iconTooltipSeasons') }}</span>
-        <span v-for="season in tour.seasons" :key="season" class="season-tag">
+        <span v-for="season in tour.seasons" :key="season" class="tag season-tag">
           <BaseIcon :name="SEASON_ICONS[season]" size="sm" />
           {{ t(`tours.season.${season}` as any) }}
         </span>
@@ -184,7 +190,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
 .row-icon {
   margin-top: 2px;
-  color: var(--type-tint);
+  color: var(--color-on-surface-variant);
 }
 
 .row-value {
@@ -225,7 +231,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   hyphens: auto;
 }
 
-.season-tag {
+.tag {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-xxs);
@@ -233,12 +239,25 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   border-radius: var(--chip-radius);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  background-color: color-mix(in srgb, var(--type-tint) 10%, var(--color-background));
+}
+
+.type-tag {
+  background-color: color-mix(in srgb, var(--tag-color) 12%, var(--color-background));
+  /* Darkened for the label: amber at full strength is under 4.5:1 on its own tint. */
+  color: color-mix(in srgb, var(--tag-color) 75%, black);
+}
+
+.type-tag .base-icon {
+  color: var(--tag-color);
+}
+
+.season-tag {
+  background-color: var(--color-neutral-container);
   color: var(--color-on-surface);
 }
 
 .season-tag .base-icon {
-  color: var(--type-tint);
+  color: var(--color-on-surface-variant);
 }
 
 .description-link {

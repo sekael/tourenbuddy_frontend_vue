@@ -527,9 +527,10 @@ describe('tourInfoSheet', () => {
   }
 
   describe('header card state', () => {
-    it('should tint the view with the tour type colour, not the default primary', () => {
-      const wrapper = mountSheet({ tourTypes: ['paragliding'] })
-      expect(wrapper.find('.details').attributes('style')).toContain('--type-tint: #D97706')
+    it('should split the hero badge per activity and leave the rest of the view untinted', () => {
+      const wrapper = mountSheet({ tourTypes: ['paragliding', 'hiking'] })
+      expect(wrapper.find('.hero-badge').findAll('.slice-icon')).toHaveLength(2)
+      expect(wrapper.find('.details').attributes('style')).toBeUndefined()
     })
 
     it('should stamp a completed private tour with both states', () => {

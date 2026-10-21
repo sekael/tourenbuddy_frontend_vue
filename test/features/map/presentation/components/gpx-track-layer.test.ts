@@ -3,7 +3,7 @@ import type { Tour } from '@/features/tours/domain/entities/tour'
 import { describe, expect, it, vi } from 'vitest'
 import { loadCachedBlob } from '@/core/offline/blob-cache'
 import { darkenHex } from '@/core/utils/color'
-import { trackGradient, useGpxTrackLayer } from '@/features/map/presentation/components/gpx-track-layer'
+import { tourConnectors, trackGradient, useGpxTrackLayer } from '@/features/map/presentation/components/gpx-track-layer'
 import { useGpxCache } from '@/features/map/presentation/composables/use-gpx-cache'
 import { TOUR_TYPE_COLORS, TOUR_TYPE_TRACK_COLORS } from '@/features/tours/data/models/tour-type'
 
@@ -78,23 +78,38 @@ describe('useGpxTrackLayer — several tracks (#338)', () => {
       getSource: vi.fn((id: string) => sources[id]),
       addLayer: vi.fn(),
       getLayer: vi.fn(() => null),
+      hasImage: vi.fn(() => false),
+      addImage: vi.fn(),
       setPaintProperty: vi.fn(),
       lastData: (id: string) => sources[id]?.setData.mock.calls.at(-1)?.[0],
     }
   }
 
-  it('should draw one slot per track and dim the segments that are not open', async () => {
+  it('should draw one slot per track', async () => {
     useGpxCache().set('a', track('a'))
     useGpxCache().set('b', track('b'))
     const map = stubMap()
     const layer = useGpxTrackLayer(map as unknown as MapLibreMap)
     layer.setup()
-    await layer.updateTracks([{ tour: tour('a'), dimmed: false }, { tour: tour('b'), dimmed: true }])
+    await layer.updateTracks([tour('a'), tour('b')])
 
     expect(map.lastData('gpx-track-0')).toEqual(track('a'))
     expect(map.lastData('gpx-track-1')).toEqual(track('b'))
-    expect(map.setPaintProperty).toHaveBeenCalledWith('gpx-track-line-1', 'line-opacity', 0.4)
-    expect(map.setPaintProperty).toHaveBeenCalledWith('gpx-track-line-0', 'line-opacity', 0.85)
+    expect(map.setPaintProperty).toHaveBeenCalledWith('gpx-track-line-1', 'line-opacity', 0.85)
+  })
+
+  it('should draw a trackless tour\'s connector in a slot, thinner and lighter than a track', async () => {
+    const map = stubMap()
+    const layer = useGpxTrackLayer(map as unknown as MapLibreMap)
+    layer.setup()
+    const trackless = { id: 'c', gpxFilepath: null, tourTypes: ['hiking'], startPoint: { lng: 8, lat: 46 }, endPoint: null, goal: { lng: 8.1, lat: 46.1 } } as unknown as Tour
+    await layer.updateTracks([trackless])
+
+    expect(map.lastData('gpx-track-0').features).toHaveLength(1)
+    expect(map.setPaintProperty).toHaveBeenCalledWith('gpx-track-line-0', 'line-width', 2)
+    expect(map.setPaintProperty).toHaveBeenCalledWith('gpx-track-line-0', 'line-opacity', 0.7)
+    // Marker palette, not the darker track one.
+    expect(map.setPaintProperty).toHaveBeenCalledWith('gpx-track-line-0', 'line-gradient', trackGradient([TOUR_TYPE_COLORS.hiking]))
   })
 
   it('should not draw a track that finishes loading after the selection moved on', async () => {
@@ -107,11 +122,46 @@ describe('useGpxTrackLayer — several tracks (#338)', () => {
     const layer = useGpxTrackLayer(map as unknown as MapLibreMap)
     layer.setup()
 
-    const slow = layer.updateTracks([{ tour: tour('slow'), dimmed: false }])
+    const slow = layer.updateTracks([tour('slow')])
     await layer.updateTracks([])
     finish(new Blob(['<gpx/>']))
     await slow
 
     expect(map.lastData('gpx-track-0')).toEqual(EMPTY)
+  })
+})
+
+describe('tourConnectors', () => {
+  const A = { lng: 8, lat: 46 }
+  const G = { lng: 8.1, lat: 46.1 }
+  const E = { lng: 8.2, lat: 46 }
+  const entry = (t: Partial<Tour>) => ({ gpxFilepath: null, tourTypes: [], startPoint: A, endPoint: null, goal: G, ...t }) as Tour
+  const legs = (t: Partial<Tour>) => tourConnectors([entry(t)]).features.map(f => [f.geometry.coordinates, (f.properties!.arrow as string).includes('-both')])
+
+  it('should draw nothing for a tour with a GPX track, or with only a goal', () => {
+    expect(tourConnectors([entry({ gpxFilepath: 'u/a.gpx' }), entry({ startPoint: null })]).features).toEqual([])
+  })
+
+  it('should point start → goal → end along two one-way legs', () => {
+    expect(legs({ endPoint: E })).toEqual([[[[8, 46], [8.1, 46.1]], false], [[[8.1, 46.1], [8.2, 46]], false]])
+  })
+
+  it('should draw a round trip as one two-way leg', () => {
+    expect(legs({ endPoint: { ...A } })).toEqual([[[[8, 46], [8.1, 46.1]], true]])
+  })
+
+  it('should drop a leg between coinciding points', () => {
+    expect(legs({ endPoint: { ...G } })).toHaveLength(1)
+  })
+
+  it('should colour the arrow like the band under it, per activity', () => {
+    const arrows = (types: string[]) => tourConnectors([entry({ tourTypes: types as never })]).features.map(f => f.properties!.arrow)
+    expect(arrows(['hiking'])).toEqual(['connector-arrow:#DC2626'])
+    // Each outing segment keeps its own activity, in the marker palette.
+    const segments = [entry({ tourTypes: ['hiking'] }), entry({ tourTypes: ['paragliding'] })]
+    expect(tourConnectors(segments).features.map(f => f.properties!.arrow))
+      .toEqual(['connector-arrow:#DC2626', 'connector-arrow:#D97706'])
+    expect(arrows([])).toEqual(['connector-arrow:#555555'])
+    expect(tourConnectors([entry({ endPoint: { ...A } })]).features[0]!.properties!.arrow).toMatch(/^connector-arrow-both:/)
   })
 })

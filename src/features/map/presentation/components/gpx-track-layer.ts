@@ -3,9 +3,10 @@ import type { Tour } from '@/features/tours/domain/entities/tour'
 import { useLogger } from '@/core/logging/use-logger'
 import { loadCachedBlob } from '@/core/offline/blob-cache'
 import { useGpxCache } from '@/features/map/presentation/composables/use-gpx-cache'
-import { distinctTypeColors, TOUR_TYPE_TRACK_COLORS } from '@/features/tours/data/models/tour-type'
+import { distinctTypeColors, TOUR_TYPE_COLORS, TOUR_TYPE_TRACK_COLORS } from '@/features/tours/data/models/tour-type'
 import { parseGpxFile } from '@/features/tours/data/services/gpx-parser'
 import { getSignedUrl } from '@/features/tours/data/services/gpx-storage-service'
+import { isSameGoal } from '@/features/tours/domain/distance'
 import { DETAIL_CIRCLE_LAYER_ID, TOUR_LAYER_IDS } from './tours-marker-layer'
 
 const GPX_SOURCE_ID = 'gpx-track'
@@ -13,9 +14,9 @@ const GPX_LAYER_ID = 'gpx-track-line'
 const EMPTY_GEOJSON: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] }
 const FALLBACK_TRACK_COLOR = '#555555'
 /** Each colour gets this many bands along the track. */
-const BAND_CYCLES = 3
+const BAND_CYCLES = 9
 /** Share of a band held solid; the rest fades into the next band's colour. */
-const BAND_HOLD = 0.6
+const BAND_HOLD = 0.8
 
 /**
  * `line-gradient` over the track's length (D8). One colour → solid. Several → `BAND_CYCLES`
@@ -43,14 +44,84 @@ export function trackGradient(colors: readonly string[]): ExpressionSpecificatio
   return ['interpolate', ['linear'], ['line-progress'], ...stops] as unknown as ExpressionSpecification
 }
 
-/** One track to draw; `dimmed` = an outing's other segment while one segment is open (D16). */
-export interface TrackEntry {
-  tour: Tour
-  dimmed: boolean
+const ARROW_SOURCE_ID = 'tour-connector'
+const ARROW_LAYER_ID = 'tour-connector-arrow'
+const CONNECTOR_WIDTH = 2
+const CONNECTOR_OPACITY = 0.7
+/** Screen distance between arrows along a leg; a shorter leg gets one in its middle. */
+const ARROW_SPACING = 120
+
+/** Track colour at `progress` along a line banded by `trackGradient` (held part of a band). */
+function colorAt(colors: readonly string[], progress: number): string {
+  if (colors.length <= 1)
+    return colors[0] ?? FALLBACK_TRACK_COLOR
+  const bands = colors.length * BAND_CYCLES
+  return colors[Math.min(bands - 1, Math.floor(progress * bands)) % colors.length]!
+}
+
+const arrowImageId = (color: string, both: boolean) => `connector-arrow${both ? '-both' : ''}:${color}`
+
+/**
+ * Straight legs start → goal → end of a tour WITHOUT a GPX track (its track says it better),
+ * banded in its activity colours like a track — the marker palette, so a segment's connector
+ * matches its markers; `arrow` names the arrow image in the colour under the leg's centre.
+ * ponytail: arrows repeat along a banded leg in that one colour; colour per arrow needs
+ * self-placed point anchors. A round trip (end = start) is one leg with a two-way arrow; a start without
+ * an end is the single leg to the goal; a leg between coinciding points is dropped.
+ */
+export function tourConnectors(tours: readonly Tour[]): GeoJSON.FeatureCollection<GeoJSON.LineString> {
+  const features: GeoJSON.Feature<GeoJSON.LineString>[] = []
+  for (const tour of tours) {
+    const { startPoint: start, endPoint: end, goal } = tour
+    if (tour.gpxFilepath || !start)
+      continue
+    const center = colorAt(distinctTypeColors(tour.tourTypes, TOUR_TYPE_COLORS), 0.5)
+    const leg = (a: { lng: number, lat: number }, b: { lng: number, lat: number }, both: boolean) => {
+      if (!isSameGoal(a, b)) {
+        features.push({
+          type: 'Feature',
+          properties: { arrow: arrowImageId(center, both) },
+          geometry: { type: 'LineString', coordinates: [[a.lng, a.lat], [b.lng, b.lat]] },
+        })
+      }
+    }
+    const roundTrip = !!end && isSameGoal(end, start)
+    leg(start, goal, roundTrip)
+    if (end && !roundTrip)
+      leg(goal, end, false)
+  }
+  return { type: 'FeatureCollection', features }
+}
+
+/** A thin chevron pointing along +x (line direction); `both` adds a mirrored one, well apart. */
+function drawArrow(color: string, both: boolean, pixelRatio: number): ImageData | null {
+  const w = both ? 40 : 10
+  const h = 10
+  const canvas = document.createElement('canvas')
+  canvas.width = w * pixelRatio
+  canvas.height = h * pixelRatio
+  const ctx = canvas.getContext('2d')
+  if (!ctx)
+    return null
+  ctx.scale(pixelRatio, pixelRatio)
+  ctx.strokeStyle = color
+  ctx.lineWidth = 2
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.beginPath()
+  ctx.moveTo(w - 6, 2)
+  ctx.lineTo(w - 2, 5)
+  ctx.lineTo(w - 6, 8)
+  if (both) {
+    ctx.moveTo(6, 2)
+    ctx.lineTo(2, 5)
+    ctx.lineTo(6, 8)
+  }
+  ctx.stroke()
+  return ctx.getImageData(0, 0, canvas.width, canvas.height)
 }
 
 const TRACK_OPACITY = 0.85
-const DIMMED_TRACK_OPACITY = 0.4
 
 export function useGpxTrackLayer(map: MapLibreMap) {
   const logger = useLogger('GpxTrackLayer')
@@ -77,9 +148,6 @@ export function useGpxTrackLayer(map: MapLibreMap) {
     })
     // Sit below the start/end detail markers when present (so markers stay above
     // the track), else below the goal circle layers.
-    const beforeId = map.getLayer(DETAIL_CIRCLE_LAYER_ID)
-      ? DETAIL_CIRCLE_LAYER_ID
-      : TOUR_LAYER_IDS.find(id => map.getLayer(id))
     map.addLayer(
       {
         id: layerId(i),
@@ -95,8 +163,44 @@ export function useGpxTrackLayer(map: MapLibreMap) {
           'line-opacity': TRACK_OPACITY,
         },
       },
-      beforeId,
+      // Under the connector arrows, which sit under the markers.
+      ARROW_LAYER_ID,
     )
+  }
+
+  /** The arrow source + layer, once per style (a style switch drops them); tracks go below. */
+  function ensureArrows() {
+    if (map.getSource(ARROW_SOURCE_ID))
+      return
+    map.addSource(ARROW_SOURCE_ID, { type: 'geojson', data: EMPTY_GEOJSON })
+    const pixelRatio = window.devicePixelRatio || 1
+    for (const color of new Set([...Object.values(TOUR_TYPE_COLORS), FALLBACK_TRACK_COLOR])) {
+      for (const both of [false, true]) {
+        const id = arrowImageId(color, both)
+        const image = map.hasImage(id) ? null : drawArrow(color, both, pixelRatio)
+        if (image)
+          map.addImage(id, image, { pixelRatio })
+      }
+    }
+    // Below the start/end detail markers when present, else below the goal circles.
+    const beforeId = map.getLayer(DETAIL_CIRCLE_LAYER_ID)
+      ? DETAIL_CIRCLE_LAYER_ID
+      : TOUR_LAYER_IDS.find(id => map.getLayer(id))
+    map.addLayer({
+      id: ARROW_LAYER_ID,
+      type: 'symbol',
+      source: ARROW_SOURCE_ID,
+      layout: {
+        // Evenly spaced on screen; `line-center` would centre one per tile-clipped piece.
+        'symbol-placement': 'line',
+        'symbol-spacing': ARROW_SPACING,
+        'icon-image': ['get', 'arrow'],
+        'icon-rotation-alignment': 'map',
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+      paint: { 'icon-opacity': CONNECTOR_OPACITY },
+    }, beforeId)
   }
 
   /** Parsed track of `tour`: memory cache, else offline-first bytes (cached on first online view). */
@@ -126,27 +230,39 @@ export function useGpxTrackLayer(map: MapLibreMap) {
     }
   }
 
-  /** Draw exactly `entries`' tracks (those with a GPX file); every other slot is emptied. */
-  async function updateTracks(entries: TrackEntry[]) {
+  /**
+   * One slot per entry with something to draw: its GPX track, else its connector legs (same
+   * activity gradient, thinner, lighter). Every other slot is emptied.
+   */
+  async function updateTracks(tours: Tour[]) {
     const gen = ++generation
-    const tracks = entries.filter((e): e is TrackEntry & { tour: { gpxFilepath: string } } => !!e.tour.gpxFilepath)
-    while (slots < tracks.length)
+    ensureArrows()
+    map.getSource<GeoJSONSource>(ARROW_SOURCE_ID)?.setData(tourConnectors(tours))
+    const shown = tours
+      .map(tour => ({ tour, legs: tour.gpxFilepath ? null : tourConnectors([tour]) }))
+      .filter(e => e.legs === null || e.legs.features.length > 0)
+    while (slots < shown.length)
       addSlot(slots++)
 
-    for (let i = tracks.length; i < slots; i++)
+    for (let i = shown.length; i < slots; i++)
       map.getSource<GeoJSONSource>(sourceId(i))?.setData(EMPTY_GEOJSON)
 
-    await Promise.all(tracks.map(async ({ tour, dimmed }, i) => {
+    await Promise.all(shown.map(async ({ tour, legs }, i) => {
       const source = map.getSource<GeoJSONSource>(sourceId(i))
       // Recolour BEFORE the data lands so a cached track never flashes the previous tour's colours.
       map.setPaintProperty(layerId(i), 'line-gradient', trackGradient(
-        distinctTypeColors(tour.tourTypes, TOUR_TYPE_TRACK_COLORS),
+        distinctTypeColors(tour.tourTypes, legs ? TOUR_TYPE_COLORS : TOUR_TYPE_TRACK_COLORS),
       ))
-      map.setPaintProperty(layerId(i), 'line-opacity', dimmed ? DIMMED_TRACK_OPACITY : TRACK_OPACITY)
+      map.setPaintProperty(layerId(i), 'line-width', legs ? CONNECTOR_WIDTH : 3)
+      map.setPaintProperty(layerId(i), 'line-opacity', legs ? CONNECTOR_OPACITY : TRACK_OPACITY)
+      if (legs) {
+        source?.setData(legs)
+        return
+      }
       // Empty the slot while loading, so it never shows the track it held before.
       if (!cache.get(tour.id))
         source?.setData(EMPTY_GEOJSON)
-      const geojson = await loadTrack(tour)
+      const geojson = await loadTrack(tour as Tour & { gpxFilepath: string })
       if (gen === generation)
         source?.setData(geojson ?? EMPTY_GEOJSON)
     }))

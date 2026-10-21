@@ -58,7 +58,7 @@
 
 - [x] 10.1 Map store `selectedOutingKey` (exclusive with `selectedTourId`) — verify map-store tests
 - [x] 10.2 Marker layer: focused segments pinned out of clustering, white ring, numbered badge images (D16) — verify marker-layer spec
-- [x] 10.3 GPX layer: one source/layer per track, dimmed non-selected segments, generation guard — verify gpx-track-layer tests
+- [x] 10.3 GPX layer: one source/layer per track, generation guard — verify gpx-track-layer tests
 - [x] 10.4 Overview framing of all segment points — verify in the running app
 
 ## 11. Outings: UI
@@ -75,6 +75,11 @@
 
 - [x] 12.1 `npx eslint . --fix`, `npx eslint`, `npm run type-check`, `npm run test`, `openspec validate --strict`
 - [x] 12.2 Walk the app against the local DB: add a segment to a tour, open the overview from a marker, step through segments, reorder, remove, list row + search; revert walk data
+
+## 12b. Detail colours and map direction
+
+- [x] 12b.1 Hero badge split per activity (diagonal slices, cropped icons); activity chips in their own colour (detail + form); rest of the detail view neutral — verify component tests
+- [x] 12b.2 GPX bands denser (`9n`); thin start → goal → end connector in the activity marker colours with evenly spaced arrows for tours without a track; outing overview shows the first start and last end; an open segment shows only itself — verify `gpx-track-layer` + `tour-detail-markers` tests
 
 ## 13. Finalize
 

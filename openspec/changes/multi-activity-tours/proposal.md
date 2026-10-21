@@ -52,8 +52,8 @@ plan as a whole (its order, its span, its tracks) is invisible.
     outing — name, date span, numbered segment timeline — and frames every segment on the map
     with numbered markers and all tracks. The owner can rename, reorder and remove segments.
   - **Segment view:** a segment opens in the normal tour detail with a navigator (outing
-    name → overview, previous / next segment); the map keeps the other segments visible but
-    dimmed.
+    name → overview, previous / next segment); the map shows that segment like any single
+    tour — only its own markers and track.
   - **List:** the tour list shows one row per outing instead of its segments; search also
     matches the outing name.
 - **Release note** `2026-10-multi-activity-search` announcing outings, multiple activities

@@ -80,3 +80,27 @@ export function tourDetailMarkers(input: TourDetailMarkersInput): DetailMarker[]
     ...tone(input.start.draft, input.end.draft, effectiveStart, true),
   ]
 }
+
+interface SegmentPoints {
+  tourTypes: TourType[]
+  goal: LngLat
+  startPoint: LngLat | null
+  endPoint: LngLat | null
+}
+
+/**
+ * The whole outing's start/end markers (#338): where its first segment starts and its last one
+ * ends, each in its segment's colours. The end is dropped when it coincides with that start (a
+ * round outing) or with the last goal (the goal marker already stands there).
+ */
+export function outingDetailMarkers(segments: readonly SegmentPoints[]): DetailMarker[] {
+  const first = segments[0]
+  const last = segments.at(-1)
+  if (!first?.startPoint || !last)
+    return []
+  const out: DetailMarker[] = [{ pointKind: 'start', lngLat: first.startPoint, tourTypes: first.tourTypes, draft: false }]
+  const end = last.endPoint
+  if (end && !isSameGoal(end, first.startPoint) && !isSameGoal(end, last.goal))
+    out.push({ pointKind: 'end', lngLat: end, tourTypes: last.tourTypes, draft: false })
+  return out
+}

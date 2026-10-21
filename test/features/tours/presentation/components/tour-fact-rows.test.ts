@@ -35,6 +35,11 @@ describe('tourFactRows', () => {
     expect(facts(mountRows({ tourTypes: ['skitour'] }))).toEqual(['type'])
   })
 
+  it('should colour every activity chip with its own type, not the first one\'s', () => {
+    const chips = mountRows({ tourTypes: ['skitour', 'hiking'] }).findAll('.type-tag')
+    expect(chips.map(c => c.attributes('style'))).toEqual(['--tag-color: #1565C0;', '--tag-color: #DC2626;'])
+  })
+
   it('should render no rows at all for a legacy tour without type', () => {
     expect(facts(mountRows())).toEqual([])
   })

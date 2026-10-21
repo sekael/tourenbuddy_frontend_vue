@@ -12,8 +12,8 @@ import {
   friendTourIdsShadowedByOwned,
   ownedTourIdsShadowedByFriends,
 } from '@/features/tours/domain/collision'
-import { outingKey, outingSegments } from '@/features/tours/domain/outing'
-import { tourDetailMarkers } from '@/features/tours/domain/tour-detail-markers'
+import { outingSegments } from '@/features/tours/domain/outing'
+import { outingDetailMarkers, tourDetailMarkers } from '@/features/tours/domain/tour-detail-markers'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import { useGpxTrackLayer } from './gpx-track-layer'
 import { DETAIL_CIRCLE_LAYER_ID, TOUR_LAYER_IDS, useToursMarkerLayer } from './tours-marker-layer'
@@ -102,19 +102,14 @@ const selectedTour = computed(
   () => mapTours.value.find(t => t.id === selectedTourId.value) ?? null,
 )
 
-// The focused outing's segments, in order (#338, D16): the open overview's, or the selected
-// segment's. Empty when nothing of an outing is open — or fewer than two of its segments are on
-// the map.
-const focusSegments = computed(() =>
-  outingSegments(mapTours.value, selectedOutingKey.value ?? (selectedTour.value && outingKey(selectedTour.value))),
-)
+// The open overview's segments, in order (#338, D16). An open segment is a plain tour on the
+// map — only its own markers and track. Empty too when fewer than two segments are on the map.
+const focusSegments = computed(() => outingSegments(mapTours.value, selectedOutingKey.value))
 const focusSegmentIds = computed(() => focusSegments.value.map(t => t.id))
 
-// Every focused segment's track, the ones not open dimmed; else just the selected tour's.
-const trackEntries = computed(() =>
-  focusSegments.value.length > 0
-    ? focusSegments.value.map(tour => ({ tour, dimmed: !!selectedTourId.value && tour.id !== selectedTourId.value }))
-    : selectedTour.value ? [{ tour: selectedTour.value, dimmed: false }] : [],
+// Every overview segment's track or connector; else just the selected tour's.
+const trackTours = computed(() =>
+  focusSegments.value.length > 0 ? focusSegments.value : selectedTour.value ? [selectedTour.value] : [],
 )
 
 // Tours as fed to the marker layer. Identical to `mapTours`, except while a
@@ -135,6 +130,9 @@ const renderedTours = computed(() => {
 // selected tour) the preview refs alone drive them. Empty on the bare map.
 const detailMarkers = computed(() => {
   const tour = selectedTour.value
+  // The outing overview (no segment open): the whole outing's start and end.
+  if (!tour && focusSegments.value.length > 0 && !previewStart.value && !previewEnd.value)
+    return outingDetailMarkers(focusSegments.value)
   return tourDetailMarkers({
     tourTypes: previewTourTypes.value ?? tour?.tourTypes ?? [],
     start: { saved: tour?.startPoint ?? null, draft: previewStart.value },
@@ -179,7 +177,7 @@ onMounted(() => {
 
     gpxLayer = useGpxTrackLayer(mapInstance!)
     gpxLayer.setup()
-    void gpxLayer.updateTracks(trackEntries.value)
+    void gpxLayer.updateTracks(trackTours.value)
 
     mapInstance!.on('click', (e) => {
       // Include the detail circle so tapping a start/end marker is swallowed
@@ -215,7 +213,7 @@ onUnmounted(() => {
 watch([renderedTours, selectedTourId, linkedTourIds, focusSegmentIds], ([newTours, newSelectedId, newLinked, segmentIds]) => {
   markerLayer?.updateTours(newTours, newSelectedId, newLinked as Set<string>, segmentIds)
 })
-watch(trackEntries, entries => void gpxLayer?.updateTracks(entries))
+watch(trackTours, entries => void gpxLayer?.updateTracks(entries))
 
 // Watch for preview goal/type changes (edit or creation) and update the preview marker
 watch([previewGoal, previewTourTypes], ([goal, tourTypes]) => {
@@ -252,7 +250,7 @@ watch(currentStyleIndex, (index) => {
       markerLayer?.updatePreview(previewGoal.value, previewTourTypes.value ?? [])
       markerLayer?.updateDetailMarkers(detailMarkers.value)
       gpxLayer?.setup()
-      void gpxLayer?.updateTracks(trackEntries.value)
+      void gpxLayer?.updateTracks(trackTours.value)
     })
   }
 })

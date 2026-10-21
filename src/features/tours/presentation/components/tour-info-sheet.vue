@@ -29,7 +29,6 @@ import LinkEditWarningDialog from '@/features/tour-links/presentation/components
 import LinkRequestBanner from '@/features/tour-links/presentation/components/link-request-banner.vue'
 import LinkedWithSection from '@/features/tour-links/presentation/components/linked-with-section.vue'
 import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
-import { TOUR_TYPE_COLORS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
 import { downloadOriginal } from '@/features/tours/data/services/gpx-storage-service'
 import { COLLISION_RADIUS_M, sharesActivity } from '@/features/tours/domain/collision'
 import { isSameGoal } from '@/features/tours/domain/distance'
@@ -41,6 +40,7 @@ import TourFactRows from '@/features/tours/presentation/components/tour-fact-row
 import TourForm from '@/features/tours/presentation/components/tour-form.vue'
 import TourSuggestionHistorySheet from '@/features/tours/presentation/components/tour-suggestion-history-sheet.vue'
 import TourSuggestionReviewSheet from '@/features/tours/presentation/components/tour-suggestion-review-sheet.vue'
+import TourTypeBadge from '@/features/tours/presentation/components/tour-type-badge.vue'
 import {
   buildSuggestionItems,
   pendingGoalFrom,
@@ -615,12 +615,6 @@ function handleSheetBack() {
   emit('back')
 }
 
-/** The activity colour the tour's map marker and list avatar wear; tints the whole view. */
-const primaryType = computed(() => props.tour.tourTypes[0] ?? null)
-const typeTint = computed(() =>
-  primaryType.value ? { '--type-tint': TOUR_TYPE_COLORS[primaryType.value] } : undefined,
-)
-
 function initialOf(name: string) {
   return name.trim().charAt(0).toUpperCase()
 }
@@ -793,7 +787,7 @@ const formattedElevation = computed(() => {
 
     <!-- ── View mode ───────────────────────────────────────────────────── -->
     <template v-else>
-      <div class="details" :style="typeTint">
+      <div class="details">
         <!-- Segment of an outing: where it sits, the overview and its neighbours (#338). -->
         <OutingNavigator :tour="tour" @open-outing="emit('openOuting', $event)" />
 
@@ -805,8 +799,7 @@ const formattedElevation = computed(() => {
         <!-- Hero: led by the goal. Line 1 elevation (or date); line 2 date · coordinates,
              wrapping freely; friend tours add the owner. -->
         <div class="hero">
-          <span class="hero-badge">
-            <BaseIcon :name="primaryType ? TOUR_TYPE_ICONS[primaryType] : 'location_on'" size="lg" />
+          <TourTypeBadge :types="tour.tourTypes" class="hero-badge">
             <!-- State stamps on the badge: they pop in when the owner flips a toggle. -->
             <Transition name="stamp">
               <span v-if="tour.completed" class="hero-stamp hero-stamp--done" aria-hidden="true">
@@ -818,7 +811,7 @@ const formattedElevation = computed(() => {
                 <BaseIcon name="lock" size="sm" />
               </span>
             </Transition>
-          </span>
+          </TourTypeBadge>
           <div class="hero-text">
             <div v-if="formattedElevation || formattedDate" class="hero-line">
               <span v-if="formattedElevation" class="hero-headline">
@@ -1038,10 +1031,19 @@ const formattedElevation = computed(() => {
 
 <style scoped>
 /* ── View mode ──────────────────────────────────────────────────────────────── */
-.details {
-  /* Overridden inline with the tour's activity colour; untyped tours stay blue. */
-  --type-tint: var(--color-primary);
+/* The activity colours are the view's only colour (hero badge, activity chips): controls,
+   cards and links inside go neutral, so no blue, red or amber reads as an activity. */
+.details,
+.view-actions {
+  --color-primary: var(--color-inverse-surface);
+  --color-primary-dark: var(--color-on-surface);
+  --color-surface-variant: var(--color-neutral-container);
+  --color-secondary-container: var(--color-neutral-container);
+  --color-secondary-container-hover: var(--color-neutral-container-hover);
+  --color-on-secondary-container: var(--color-on-surface);
+}
 
+.details {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
@@ -1157,19 +1159,20 @@ const formattedElevation = computed(() => {
   background-color: color-mix(in srgb, var(--color-success) 20%, var(--color-background));
 }
 
+/* Private reads as "on" in the neutral scale — red would read as an activity. */
 .visibility-toggle--private {
-  background-color: var(--color-error-container);
-  color: var(--color-error-text);
+  background-color: var(--color-inverse-surface);
+  color: var(--color-on-inverse-surface);
 }
 
 @media (hover: hover) {
   .visibility-toggle--private:hover:not(:disabled) {
-    background-color: color-mix(in srgb, var(--color-error) 20%, var(--color-background));
+    background-color: var(--color-on-surface-variant);
   }
 }
 
 .visibility-toggle--private:active:not(:disabled) {
-  background-color: color-mix(in srgb, var(--color-error) 20%, var(--color-background));
+  background-color: var(--color-on-surface-variant);
 }
 
 /* Same line box as the resolved owner text, so the swap causes no reflow. Fill derives
@@ -1210,15 +1213,9 @@ const formattedElevation = computed(() => {
 }
 
 .hero-badge {
-  position: relative;
   flex-shrink: 0;
-  display: grid;
-  place-items: center;
   width: 48px;
   height: 48px;
-  border-radius: var(--radius-pill);
-  background-color: var(--type-tint);
-  color: var(--color-on-primary);
 }
 
 .hero-stamp {
@@ -1296,7 +1293,7 @@ const formattedElevation = computed(() => {
 }
 
 .hero-headline-icon {
-  color: var(--type-tint);
+  color: var(--color-on-surface-variant);
 }
 
 .hero-meta {
@@ -1350,7 +1347,7 @@ const formattedElevation = computed(() => {
   color: var(--color-on-surface);
 }
 
-/* Avatar pill: initial in the activity colour, like the tour list's avatars. Two
+/* Avatar pill: initial on a neutral disc. Two
    classes so it outranks ContactChip's own scoped `.chip` padding and border. */
 .partner-chips .partner-pill {
   gap: var(--spacing-xs);
@@ -1368,8 +1365,8 @@ const formattedElevation = computed(() => {
   border-radius: var(--radius-pill);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
-  background-color: color-mix(in srgb, var(--type-tint) 18%, var(--color-background));
-  color: var(--type-tint);
+  background-color: var(--color-neutral-container-hover);
+  color: var(--color-on-surface);
 }
 
 .friend-partner-chip--more {

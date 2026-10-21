@@ -21,6 +21,7 @@ import { useContactsStore } from '@/features/contacts/presentation/stores/contac
 import { SEASON_VALUES } from '@/features/tours/data/models/season'
 import { MAX_ATTACHMENTS_PER_TOUR } from '@/features/tours/data/models/tour-attachment'
 import {
+  TOUR_TYPE_COLORS,
   TOUR_TYPE_I18N_KEYS,
   TOUR_TYPE_ICONS,
   TOUR_TYPE_VALUES,
@@ -919,6 +920,7 @@ defineExpose({ cancel: handleCancel, submitBlocked })
               type="button"
               class="type-chip"
               :data-type="type"
+              :style="{ '--chip-type': TOUR_TYPE_COLORS[type] }"
               :class="{ selected: selectedTourTypes.includes(type) }"
               @click="toggleTourType(type)"
             >
@@ -1248,6 +1250,31 @@ defineExpose({ cancel: handleCancel, submitBlocked })
   background-color: var(--chip-selected-bg);
   border-color: var(--chip-selected-border-color);
   color: var(--chip-selected-color);
+}
+
+/* Activity chips wear their own colour in every state: the icon always, the outline on
+   hover, the tint once picked — never the app blue, which would read as skiing. */
+.type-chip[data-type] .type-icon {
+  color: var(--chip-type);
+}
+
+@media (hover: hover) {
+  .type-chip[data-type]:hover {
+    border-color: var(--chip-type);
+    color: var(--chip-color);
+  }
+}
+
+.type-chip[data-type]:active {
+  border-color: var(--chip-type);
+  color: var(--chip-color);
+}
+
+.type-chip[data-type].selected {
+  background-color: color-mix(in srgb, var(--chip-type) 12%, var(--color-background));
+  border-color: var(--chip-type);
+  /* Darkened for the label: amber at full strength is under 4.5:1 on its own tint. */
+  color: color-mix(in srgb, var(--chip-type) 75%, black);
 }
 
 .field-hint {

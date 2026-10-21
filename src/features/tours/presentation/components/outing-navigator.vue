@@ -73,7 +73,7 @@ const next = computed(() => segments.value[index.value + 1] ?? null)
 
 .outing-icon {
   flex-shrink: 0;
-  color: var(--type-tint, var(--color-primary));
+  color: var(--color-on-surface-variant);
 }
 
 .outing-text {

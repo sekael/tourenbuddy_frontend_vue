@@ -52,3 +52,38 @@ The system SHALL fetch and parse a tour's GPX file on demand when the tour is se
 
 - **WHEN** a tour with `gpx_filepath = null` is selected
 - **THEN** the gpx-track layer renders no polyline and no network request is made
+
+## ADDED Requirements
+
+### Requirement: Direction connector for tours without a track
+
+The system SHALL draw, for every shown tour WITHOUT a GPX track (the selected tour, or each segment of a focused outing), a thin, light straight line start → goal → end in the tour's activity marker colours (banded when several), with small arrows evenly spaced on screen along each leg pointing that way. A tour without a start SHALL get no connector.
+
+#### Scenario: Start, goal and distinct end
+
+- **WHEN** a tour without a GPX track and with start, goal and a distinct end is shown
+- **THEN** two thin legs start → goal and goal → end appear, each with evenly spaced one-way arrows, and a leg shorter than the spacing has one arrow in its middle
+
+#### Scenario: Round trip
+
+- **WHEN** the tour's end equals its start
+- **THEN** one leg start ↔ goal appears with a two-way arrow
+
+#### Scenario: Coinciding points
+
+- **WHEN** two consecutive points of the tour coincide
+- **THEN** the leg between them is dropped
+
+#### Scenario: Outing overview with a hike and a flight
+
+- **WHEN** the overview of an outing with a hiking segment followed by a paragliding segment is open
+- **THEN** the first connector is in the hiking colour and the second in the paragliding colour, matching each segment's markers
+
+### Requirement: Outing overview start and end markers
+
+While an outing's overview is open (no segment selected), the system SHALL show a start marker at the first segment's start and an end marker at the last segment's end, each in its segment's colours. The end marker SHALL be omitted when it coincides with that start or with the last segment's goal.
+
+#### Scenario: Overview of a hut-to-summit outing
+
+- **WHEN** the overview of an outing starting in the valley and ending at a different village is open
+- **THEN** a start marker shows in the valley and an end marker at the village

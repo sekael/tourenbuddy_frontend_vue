@@ -157,10 +157,10 @@ select the neighbouring segment and SHALL be disabled at the ends.
 
 ### Requirement: Outing focus on the map
 
-While an outing's overview or one of its segments is open, the map SHALL draw every visible
-segment's goal marker unclustered, with a white ring and a badge carrying its number. In segment
-view the selected segment SHALL keep the selected marker style and its start/end markers.
-Opening the overview SHALL frame the goals, starts and ends of all segments beside the sheet.
+While an outing's overview is open, the map SHALL draw every visible segment's goal marker
+unclustered, with a white ring and a badge carrying its number. An open segment SHALL show as a
+plain selected tour: only its own markers, track or connector. Opening the overview SHALL frame
+the goals, starts and ends of all segments beside the sheet.
 
 #### Scenario: Segments stay apart when zoomed out
 
@@ -169,14 +169,13 @@ Opening the overview SHALL frame the goals, starts and ends of all segments besi
 
 ### Requirement: Outing tracks on the map
 
-While an outing is focused, the map SHALL draw the GPX track of every segment that has one. In
-segment view the other segments' tracks SHALL be dimmed. A track that finishes loading after the
-selection moved on SHALL NOT be drawn.
+While an outing's overview is open, the map SHALL draw the GPX track (or connector) of every
+segment. A track that finishes loading after the selection moved on SHALL NOT be drawn.
 
 #### Scenario: Tracks in segment view
 
 - **WHEN** segment 2 of an outing whose segments all have tracks is open
-- **THEN** all tracks SHALL be drawn, segment 2's at full strength and the others dimmed
+- **THEN** only segment 2's track SHALL be drawn
 
 #### Scenario: Stale track load
 
