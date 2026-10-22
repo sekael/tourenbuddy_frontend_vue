@@ -5,6 +5,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
+import { useFormatter } from '@/core/composables/use-formatter'
 import { TOUR_TYPE_I18N_KEYS } from '@/features/tours/data/models/tour-type'
 import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 
@@ -30,6 +31,7 @@ const emit = defineEmits<{
 }>()
 
 const { t, locale } = useI18n({ useScope: 'global' })
+const { formatElevation } = useFormatter()
 
 const attachmentsStore = useTourAttachmentsStore()
 
@@ -120,7 +122,7 @@ function formatValue(value: unknown, isSuggested = false): string {
   if ('lng' in obj && 'lat' in obj) {
     const coords = `${Number(obj.lat).toFixed(4)}°N, ${Number(obj.lng).toFixed(4)}°E`
     const name = typeof obj.name === 'string' && obj.name ? `${obj.name} · ` : ''
-    const elevation = obj.elevation != null ? ` · ${obj.elevation}m` : ''
+    const elevation = obj.elevation != null ? ` · ${formatElevation.value(Number(obj.elevation))}` : ''
     return `${name}${coords}${elevation}`
   }
 

@@ -104,9 +104,8 @@ point, else its goal, with name and elevation.
 ### Requirement: Outing overview
 
 Selecting an outing (a segment's map marker, or its list row) SHALL open an overview sheet
-titled with the outing's display name, showing its date span, its segment count and a numbered
-timeline of its segments (name, activity, date, elevation). Tapping a segment SHALL open that
-segment's tour detail; back from there SHALL return to the overview.
+titled with the outing's display name, with a header and a numbered timeline of its segments.
+Tapping a segment SHALL open that segment's tour detail; back from there SHALL return to the overview.
 
 #### Scenario: Marker opens the overview
 
@@ -118,9 +117,28 @@ segment's tour detail; back from there SHALL return to the overview.
 - **WHEN** the user taps segment 2 in the overview and then goes back
 - **THEN** segment 2's detail SHALL open, and back SHALL return to the overview
 
+### Requirement: Outing overview reads like a stage plan
+
+The overview header SHALL give the days spanned and the segment count, the date span, the way
+from the first start to the last finish, and the total climb and descent when every segment has
+them. Each timeline card SHALL show the name with the goal height, activity, date, and climb and
+descent; between two segments the timeline SHALL mark the night where the next one starts on a
+later day, at the previous segment's finish.
+
+#### Scenario: Hut night in a two-day outing
+
+- **WHEN** segment 1 (29 Nov) ends at a hut at 2632 m and segment 2 starts there on 30 Nov
+- **THEN** the header SHALL read "2 days · 3 segments" with the totals, and the timeline SHALL mark the night at the hut with its height between segments 1 and 2
+
+#### Scenario: Dates out of order
+
+- **WHEN** segment 2 is dated a day before segment 1
+- **THEN** the timeline SHALL say so between them, without blocking the order or changing a date
+
 ### Requirement: Manage an outing
 
-The owner SHALL be able to rename the outing, reorder segments by dragging them by their handle, remove a segment and
+The owner SHALL be able to rename the outing, reorder segments by dragging them by their handle
+(mouse, pen or finger; arrow keys on a focused handle), remove a segment and
 add a segment from the overview. Removing a segment that would leave a single one SHALL dissolve
 the outing. A friend's outing SHALL be read-only.
 
@@ -132,7 +150,12 @@ the outing. A friend's outing SHALL be read-only.
 #### Scenario: Segment starting away from the previous finish
 
 - **WHEN** a segment's start is not where the previous segment ends (its end, else its goal)
-- **THEN** the timeline SHALL say so on that segment and the overview map SHALL link the two points with a dashed neutral line, without blocking the order
+- **THEN** the timeline SHALL say so on that segment and the overview map SHALL link the two points with a dashed dark line, without blocking the order
+
+#### Scenario: Reorder on a phone
+
+- **WHEN** the owner opens edit mode on a phone and drags a segment's handle with a finger
+- **THEN** the sheet SHALL show the segment cards and the segment SHALL move as with a mouse
 
 #### Scenario: Removing from a two-segment outing
 

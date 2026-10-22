@@ -2,8 +2,11 @@ import type { TourType } from '@/features/tours/data/models/tour-type'
 import { isSameGoal } from '@/features/tours/domain/distance'
 import { segmentFinish } from '@/features/tours/domain/outing'
 
-/** Which point a detail marker represents. The goal is rendered separately. */
-export type DetailPointKind = 'start' | 'end'
+/**
+ * Which point a detail marker represents. The goal is rendered separately. `via` is an outing's
+ * handover away from every goal: one segment ends where the next starts (design D21).
+ */
+export type DetailPointKind = 'start' | 'end' | 'via'
 
 interface LngLat {
   lng: number
@@ -92,9 +95,10 @@ interface SegmentPoints {
 /**
  * The whole outing's start/end markers (#338): every segment start and end that is a loose end of
  * the chain — so the first start and last end, plus both sides of a gap (`outingGaps`), each in
- * its segment's colours. A point is skipped where the chain hands over (a start on the previous
- * segment's finish, an end on the next one's start), on any goal (its marker stands there) and on
- * a marker already placed (a round outing ends where it began).
+ * its segment's colours. Where the chain hands over (a start on the previous segment's finish) the
+ * point is a `via` ring in the next segment's colours, and the previous end is not drawn again.
+ * Nothing is drawn on a goal (its marker stands there) or on a marker already placed (a round
+ * outing ends where it began).
  */
 export function outingDetailMarkers(segments: readonly SegmentPoints[]): DetailMarker[] {
   const out: DetailMarker[] = []
@@ -103,8 +107,10 @@ export function outingDetailMarkers(segments: readonly SegmentPoints[]): DetailM
   segments.forEach((s, i) => {
     const prev = segments[i - 1]
     const next = segments[i + 1]
-    if (s.startPoint && !(prev && isSameGoal(s.startPoint, segmentFinish(prev))) && !taken(s.startPoint))
-      out.push({ pointKind: 'start', lngLat: s.startPoint, tourTypes: s.tourTypes, draft: false })
+    if (s.startPoint && !taken(s.startPoint)) {
+      const handover = !!prev && isSameGoal(s.startPoint, segmentFinish(prev))
+      out.push({ pointKind: handover ? 'via' : 'start', lngLat: s.startPoint, tourTypes: s.tourTypes, draft: false })
+    }
     if (s.endPoint && !(next?.startPoint && isSameGoal(s.endPoint, next.startPoint)) && !taken(s.endPoint))
       out.push({ pointKind: 'end', lngLat: s.endPoint, tourTypes: s.tourTypes, draft: false })
   })

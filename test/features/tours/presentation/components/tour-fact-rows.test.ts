@@ -44,12 +44,12 @@ describe('tourFactRows', () => {
     expect(facts(mountRows())).toEqual([])
   })
 
-  it('should show a one-way tour as such, with the one-way icon and no end elevation', () => {
+  it('should show a one-way tour as ending at the goal, with the goal flag and no end elevation', () => {
     const w = mountRows({ startPoint: START, endPoint: null, endPointElevation: 999 })
     const end = w.find('[data-fact="end"]')
     expect(end.text()).toContain('oneWayToGoalIndicator')
     expect(end.text()).not.toContain('999')
-    expect(end.findComponent(BaseIcon).props('name')).toBe('directions')
+    expect(end.findComponent(BaseIcon).props('name')).toBe('flag')
   })
 
   it('should show a round trip as such even when the end point carries a name', () => {
@@ -98,5 +98,25 @@ describe('tourFactRows', () => {
     const link = w.find('[data-fact="description"] a')
     expect(link.attributes('href')).toBe('https://slf.ch/bulletin')
     expect(link.attributes('rel')).toBe('noopener noreferrer')
+  })
+
+  it('should lead the route with climb and descent, and use the ring for the start', () => {
+    const w = mountRows({
+      elevation: 3079,
+      startPoint: START,
+      startPointName: 'Chamanna digl Kesch',
+      startPointElevation: 2632,
+      endPoint: { lng: 9.81, lat: 46.64 },
+      endPointName: 'Chants',
+      endPointElevation: 1822,
+    })
+    expect(groups(w)[0]).toEqual(['route', 'start', 'end'])
+    expect(w.find('[data-fact="route"]').text()).toMatch(/447\u00A0m.*1257\u00A0m/)
+    expect(w.find('[data-fact="start"]').findComponent(BaseIcon).props('name')).toBe('trip_origin')
+    expect(w.find('[data-fact="end"]').text()).toContain('1822\u00A0m')
+  })
+
+  it('should show no route row when a height is missing', () => {
+    expect(facts(mountRows({ elevation: null, startPoint: START, startPointElevation: 2632 }))).not.toContain('route')
   })
 })

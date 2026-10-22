@@ -1,4 +1,5 @@
 import type { Tour } from '@/features/tours/domain/entities/tour'
+import { haversineMeters } from '@/core/utils/haversine'
 
 export const CLUSTER_RADIUS = 50
 
@@ -28,18 +29,6 @@ export function solveSplitZoom(distMeters: number, latDeg: number, radiusPx: num
   if (distMeters === 0)
     return +Infinity
   return Math.log2((radiusPx * 40075016.686 * Math.cos((latDeg * Math.PI) / 180)) / (256 * distMeters))
-}
-
-export function haversineMeters(a: [number, number], b: [number, number]): number {
-  const R = 6371000
-  const dLat = ((b[1] - a[1]) * Math.PI) / 180
-  const dLng = ((b[0] - a[0]) * Math.PI) / 180
-  const lat1 = (a[1] * Math.PI) / 180
-  const lat2 = (b[1] * Math.PI) / 180
-  const sinDlat2 = Math.sin(dLat / 2)
-  const sinDlng2 = Math.sin(dLng / 2)
-  const aa = sinDlat2 * sinDlat2 + Math.cos(lat1) * Math.cos(lat2) * sinDlng2 * sinDlng2
-  return R * 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa))
 }
 
 function centroidOf(node: TreeNode): [number, number] {

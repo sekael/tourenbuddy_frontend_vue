@@ -627,7 +627,8 @@
       "cancelUpload": "Upload abbrechen",
       "retryUpload": "Upload wiederholen",
       "dismissUpload": "Datei entfernen",
-      "loadFailed": "Die Dateien dieser Tour konnten nicht geladen werden."
+      "loadFailed": "Die Dateien dieser Tour konnten nicht geladen werden.",
+      "reorderHandle": "{name} verschieben"
     },
     "suggestions": {
       "suggestBtn": "Änderungen vorschlagen",
@@ -707,11 +708,20 @@
       "namePlaceholder": "z. B. Haute Route",
       "remove": "Aus der Etappentour entfernen",
       "gapHint": "Beginnt nicht, wo Etappe {n} endet",
+      "dateBeforeHint": "Datum liegt vor Etappe {n}",
       "previous": "Vorherige Etappe",
       "next": "Nächste Etappe",
       "openOverview": "Ganze Etappentour anzeigen",
       "backToOuting": "Zurück zur Etappentour",
-      "saveFailed": "Die Etappentour konnte nicht aktualisiert werden. Bitte versuche es nochmals."
+      "saveFailed": "Die Etappentour konnte nicht aktualisiert werden. Bitte versuche es nochmals.",
+      "dayCount": "{count} Tag | {count} Tage",
+      "night": "Übernachtung",
+      "reorderHandle": "Etappe {n} verschieben"
+    },
+    "route": {
+      "ascent": "Aufstieg",
+      "descent": "Abstieg",
+      "distance": "Distanz"
     }
   },
   "map": {
@@ -756,7 +766,7 @@
       "skiRoute": "Skitour",
       "listTitle": "{count} Skitouren",
       "target": "{name} · {altitude}m",
-      "metres": "{value}m",
+      "metres": "{value}\u00a0m",
       "more": "+{count} weitere – hineinzoomen",
       "backToList": "Skitouren",
       "openSac": "Im SAC-Tourenportal öffnen",

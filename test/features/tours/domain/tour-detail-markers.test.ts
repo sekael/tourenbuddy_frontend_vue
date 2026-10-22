@@ -106,9 +106,13 @@ describe('outingDetailMarkers', () => {
     expect(m.map(x => [x.pointKind, x.lngLat])).toEqual([['end', E], ['start', A]])
   })
 
-  it('should skip a hand-over between an end and the next start off any goal', () => {
-    const m = outingDetailMarkers([seg({ startPoint: A, endPoint: E }), seg({ startPoint: { ...E }, goal: P })])
-    expect(m.map(x => x.pointKind)).toEqual(['start'])
+  it('should mark a hand-over off any goal once, as a via ring in the next segment\'s types', () => {
+    const m = outingDetailMarkers([
+      seg({ startPoint: A, endPoint: E }),
+      seg({ startPoint: { ...E }, goal: P, tourTypes: ['paragliding'] }),
+    ])
+    expect(m.map(x => x.pointKind)).toEqual(['start', 'via'])
+    expect(m[1]).toMatchObject({ lngLat: E, tourTypes: ['paragliding'] })
   })
 
   it('should drop an end back at the start or on the last goal', () => {

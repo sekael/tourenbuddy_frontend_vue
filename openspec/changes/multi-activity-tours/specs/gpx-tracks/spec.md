@@ -92,3 +92,12 @@ While an outing's overview is open (no segment selected), the system SHALL show 
 
 - **WHEN** the segments are ordered so that segment 1 ends in one village and segment 2 starts in another
 - **THEN** an end marker shows at the first village and a start marker at the second, with no line ending unmarked
+
+### Requirement: Outing handover points
+
+While an outing's overview is open, a point where one segment ends and the next starts away from every goal SHALL show a small ring in the next segment's colour, so no line meets in empty map.
+
+#### Scenario: Handover in the valley
+
+- **WHEN** segment 2 ends in a village where segment 3 (a hike-and-fly) starts, and no goal is there
+- **THEN** a small handover ring SHALL show at the village, and no start or end marker

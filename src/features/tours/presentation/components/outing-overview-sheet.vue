@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
@@ -12,9 +12,12 @@ import { useLogger } from '@/core/logging/use-logger'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useFriendDisplayName } from '@/features/friendships/presentation/composables/use-friend-display-name'
 import { cssFill, distinctTypeColors, TOUR_TYPE_COLORS } from '@/features/tours/data/models/tour-type'
-import { outingDisplayName, outingSegments, outingSpan } from '@/features/tours/domain/outing'
+import { outingDisplayName, outingSegments, outingSpan, outingWay, spanDays } from '@/features/tours/domain/outing'
+import { totalMetrics } from '@/features/tours/domain/route-metrics'
 import OutingSegmentTimeline from '@/features/tours/presentation/components/outing-segment-timeline.vue'
+import RouteNumbers from '@/features/tours/presentation/components/route-numbers.vue'
 import SegmentAddView from '@/features/tours/presentation/components/segment-add-view.vue'
+import { useRouteMetrics } from '@/features/tours/presentation/composables/use-route-metrics'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
 /** The whole outing (#338, design D15): its span, its numbered segments, the owner's controls. */
@@ -47,10 +50,20 @@ const name = computed(() => outingDisplayName(segments.value) ?? t('tours.infoSh
 const mode = ref<'view' | 'edit' | 'add'>('view')
 watch(() => props.outingKey, () => (mode.value = 'view'))
 
+const spanDates = computed(() => outingSpan(segments.value))
 const span = computed(() => {
-  const s = outingSpan(segments.value)
+  const s = spanDates.value
   return s ? formatDateRange.value(s.start, s.end, { year: 'numeric', month: 'short', day: 'numeric' }) : null
 })
+/** "2 days · 3 segments" — the days only when the outing spans more than one (D20). */
+const headline = computed(() => {
+  const count = t('tours.outing.segmentCount', { count: segments.value.length })
+  const days = spanDates.value ? spanDays(spanDates.value) : 1
+  return days > 1 ? `${t('tours.outing.dayCount', { count: days })} · ${count}` : count
+})
+const way = computed(() => outingWay(segments.value))
+const metrics = useRouteMetrics(segments)
+const totals = computed(() => totalMetrics(segments.value.map(s => metrics.value.get(s.id)!)))
 const badgeFill = computed(() => {
   const colors = distinctTypeColors(segments.value.flatMap(s => s.tourTypes), TOUR_TYPE_COLORS)
   return colors.length > 0 ? { background: cssFill(colors) } : undefined
@@ -64,10 +77,15 @@ const draftName = ref('')
 const busy = ref(false)
 const error = ref<string | null>(null)
 
+const segmentsEl = ref<HTMLElement | null>(null)
+
 function startEdit() {
   draftName.value = first.value?.outing?.name ?? ''
   error.value = null
   mode.value = 'edit'
+  // A phone sheet shows the header and the name field first; editing is mostly about the stages.
+  if (!isDesktop.value)
+    void nextTick(() => segmentsEl.value?.scrollIntoView?.({ block: 'start', behavior: 'smooth' }))
 }
 
 /** Every outing edit is a few tour writes; one failure message covers them all. */
@@ -113,9 +131,11 @@ function handleAdded() {
 </script>
 
 <template>
+  <!-- Browsing: resizable over the map. Editing or adding fits the content (D23) — at the browse
+       height the cards sat under the footer on a phone. -->
   <component
     :is="isDesktop ? SideDrawer : BottomSheet" v-if="first" :title="title" :fit-content="!isDesktop"
-    :resizable="!isDesktop" :show-back="backVisible || undefined" :back-label="backLabel"
+    :resizable="!isDesktop && mode === 'view'" :show-back="backVisible || undefined" :back-label="backLabel"
     @close="emit('close')" @back="handleBack"
   >
     <SegmentAddView
@@ -127,8 +147,14 @@ function handleAdded() {
       <div class="hero">
         <span class="hero-badge" :style="badgeFill"><BaseIcon name="timeline" size="lg" /></span>
         <div class="hero-text">
-          <span class="hero-headline">{{ t('tours.outing.segmentCount', { count: segments.length }) }}</span>
-          <span v-if="span" class="hero-meta">{{ span }}</span>
+          <span class="hero-headline" data-testid="outing-headline">{{ headline }}</span>
+          <!-- Dates and totals share a line (wrapping on a narrow phone), so the stages start
+               higher in the browse-height sheet. -->
+          <span v-if="span || totals.ascent !== null || totals.descent !== null" class="hero-meta hero-meta--wrap">
+            <span v-if="span">{{ span }}</span>
+            <RouteNumbers :metrics="totals" />
+          </span>
+          <span v-if="way" class="hero-meta" data-testid="outing-way">{{ way.from }} → {{ way.to }}</span>
           <span v-if="first.isFriendTour" class="hero-meta">
             <BaseIcon name="person" size="sm" />
             <template v-if="ownerResolved">{{ t('tours.infoSheet.createdByLabel', { name: ownerName }) }}</template>
@@ -148,12 +174,12 @@ function handleAdded() {
         {{ error }}
       </p>
 
-      <section class="segments">
+      <section ref="segmentsEl" class="segments">
         <h4 class="section-title">
           {{ t('tours.outing.segmentsHeader') }}
         </h4>
         <OutingSegmentTimeline
-          :segments="segments" :editing="mode === 'edit'" :busy="busy" @open="emit('openSegment', $event)"
+          :segments="segments" :metrics="metrics" :editing="mode === 'edit'" :busy="busy" @open="emit('openSegment', $event)"
           @reorder="(from, to) => run(() => toursStore.reorderSegments(segments, from, to))"
           @remove="id => run(() => toursStore.removeFromOuting(segments, id))"
         />
@@ -224,6 +250,11 @@ function handleAdded() {
   gap: var(--spacing-xxs);
   font-size: var(--font-size-sm);
   color: var(--color-on-surface-variant);
+}
+
+.hero-meta--wrap {
+  flex-wrap: wrap;
+  column-gap: var(--spacing-sm);
 }
 
 .name-field {

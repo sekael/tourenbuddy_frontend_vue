@@ -1,11 +1,11 @@
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import { describe, expect, it } from 'vitest'
+import { haversineMeters } from '@/core/utils/haversine'
 import {
   buildClusterTree,
   collectSplitZooms,
   cutForest,
   findCrossings,
-  haversineMeters,
   solveSplitZoom,
 } from '@/features/map/presentation/components/cluster-tree'
 import { TOUR_FILL } from '../../../../fixtures/tour-fill'

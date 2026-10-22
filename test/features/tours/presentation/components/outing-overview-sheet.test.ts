@@ -51,6 +51,13 @@ function mountSheet(outingKey = 'me/o1', tours = [segment('a', 0), segment('b', 
   })
 }
 
+/** happy-dom has no layout: stack the segment rows 100 px apart. */
+function layOut(wrapper: { findAll: (s: string) => { element: Element }[] }) {
+  wrapper.findAll('[data-testid="outing-segment"]').forEach(({ element }, i) => {
+    element.getBoundingClientRect = () => ({ top: i * 100, height: 100 }) as DOMRect
+  })
+}
+
 describe('outingOverviewSheet', () => {
   it('should list the segments in order and open one on tap', async () => {
     const wrapper = mountSheet('me/o1', [segment('c', 2), segment('a', 0), segment('b', 1)])
@@ -64,13 +71,16 @@ describe('outingOverviewSheet', () => {
     expect(wrapper.emitted('openSegment')).toEqual([['b']])
   })
 
-  it('should reorder by drag, remove and rename through the store in edit mode', async () => {
+  it('should reorder by dragging a handle, remove and rename through the store in edit mode', async () => {
     const wrapper = mountSheet()
     const store = useToursStore()
     await wrapper.find('[data-testid="outing-edit"]').trigger('click')
     const rows = wrapper.findAll('[data-testid="outing-segment"]')
-    await rows[0]!.trigger('dragstart')
-    await rows[2]!.trigger('drop')
+    const handle = rows[0]!.find('[data-testid="segment-handle"]')
+    layOut(wrapper)
+    await handle.trigger('pointerdown', { button: 0, clientY: 10 })
+    await handle.trigger('pointermove', { clientY: 260 })
+    await handle.trigger('pointerup')
     expect(store.reorderSegments).toHaveBeenCalledWith(expect.any(Array), 0, 2)
     await wrapper.findAll('[data-testid="segment-remove"]')[2]!.trigger('click')
     expect(store.removeFromOuting).toHaveBeenCalledWith(expect.any(Array), 'c')
@@ -79,16 +89,20 @@ describe('outingOverviewSheet', () => {
     expect(store.renameOuting).toHaveBeenCalledWith(expect.any(Array), 'Tour du Mont Blanc')
   })
 
-  it('should dim the dragged card and mark the drop target until the drag ends', async () => {
+  it('should lift the dragged card with the pointer and mark the drop target until cancelled', async () => {
     const wrapper = mountSheet()
     await wrapper.find('[data-testid="outing-edit"]').trigger('click')
-    const rows = () => wrapper.findAll('[data-testid="outing-segment"]')
-    await rows()[0]!.trigger('dragstart')
-    await rows()[2]!.trigger('dragover')
-    expect(rows().map(r => [r.classes('segment--dragging'), r.classes('segment--over')]))
+    const cards = () => wrapper.findAll('.card')
+    const handle = wrapper.find('[data-testid="segment-handle"]')
+    layOut(wrapper)
+    await handle.trigger('pointerdown', { button: 0, clientY: 10 })
+    await handle.trigger('pointermove', { clientY: 260 })
+    expect(cards().map(c => [c.classes('card--dragging'), c.classes('card--over')]))
       .toEqual([[true, false], [false, false], [false, true]])
-    await rows()[0]!.trigger('dragend')
-    expect(wrapper.findAll('.segment--dragging, .segment--over')).toHaveLength(0)
+    expect(cards()[0]!.attributes('style')).toContain('translateY(250px)')
+    await handle.trigger('pointercancel')
+    expect(wrapper.findAll('.card--dragging, .card--over')).toHaveLength(0)
+    expect(useToursStore().reorderSegments).not.toHaveBeenCalled()
   })
 
   it('should flag only a segment that starts away from where the previous one finishes', () => {
@@ -99,6 +113,43 @@ describe('outingOverviewSheet', () => {
     ])
     const rows = wrapper.findAll('[data-testid="outing-segment"]')
     expect(rows.map(r => r.find('[data-testid="segment-gap"]').exists())).toEqual([false, false, true])
+  })
+
+  it('should read like a stage plan: days, way, totals, the hut night and the valley handover', () => {
+    const at = (lng: number) => ({ lng, lat: 46.6 })
+    const wrapper = mountSheet('me/o1', [
+      { ...segment('a', 0), name: 'Chamanna digl Kesch', elevation: 2632, plannedDate: new Date('2026-11-29'), startPoint: at(9.7), startPointName: 'Bergün', startPointElevation: 1367, goal: at(9.86) },
+      { ...segment('b', 1), name: 'Piz Porchabella', elevation: 3079, plannedDate: new Date('2026-11-30'), startPoint: at(9.86), startPointElevation: 2632, goal: at(9.9), endPoint: at(9.81), endPointName: 'Chants', endPointElevation: 1822 },
+      { ...segment('c', 2), name: 'Muntischè', elevation: 2571, plannedDate: new Date('2026-11-30'), startPoint: at(9.81), startPointElevation: 1822, goal: at(9.88), endPoint: at(9.89), endPointName: 'Bever', endPointElevation: 1707 },
+    ])
+    expect(wrapper.find('[data-testid="outing-headline"]').text()).toBe('tours.outing.dayCount · tours.outing.segmentCount')
+    expect(wrapper.find('[data-testid="outing-way"]').text()).toBe('Bergün → Bever')
+    expect(wrapper.find('.hero [data-testid="route-ascent"]').text()).toContain('2461\u00A0m')
+    expect(wrapper.find('.hero [data-testid="route-descent"]').text()).toContain('2121\u00A0m')
+    const rows = wrapper.findAll('[data-testid="outing-segment"]')
+    expect(rows[1]!.find('[data-testid="segment-night"]').text()).toContain('Chamanna digl Kesch · 2632\u00A0m')
+    expect(rows[2]!.find('[data-testid="segment-night"]').exists()).toBe(false)
+    expect(rows[2]!.find('[data-testid="segment-handover"]').text()).toBe('Chants · 1822\u00A0m')
+  })
+
+  it('should leave out totals and a single-day count it cannot state honestly', () => {
+    const wrapper = mountSheet('me/o1', [
+      { ...segment('a', 0), elevation: 2632, startPoint: { lng: 7.4, lat: 46 }, startPointElevation: 1367, plannedDate: new Date('2026-11-29') },
+      { ...segment('b', 1), elevation: 3079, plannedDate: new Date('2026-11-29') },
+    ])
+    expect(wrapper.find('[data-testid="outing-headline"]').text()).toBe('tours.outing.segmentCount')
+    expect(wrapper.find('.hero [data-testid="route-ascent"]').exists()).toBe(false)
+    expect(wrapper.findAll('[data-testid="route-ascent"]')).toHaveLength(1)
+  })
+
+  it('should say when the order and the dates disagree', () => {
+    const wrapper = mountSheet('me/o1', [
+      { ...segment('a', 0), plannedDate: new Date('2026-11-30') },
+      { ...segment('b', 1), plannedDate: new Date('2026-11-29') },
+    ])
+    const rows = wrapper.findAll('[data-testid="outing-segment"]')
+    expect(rows[1]!.find('[data-testid="segment-early"]').text()).toContain('tours.outing.dateBeforeHint')
+    expect(rows[1]!.find('.link').classes()).toContain('link--warn')
   })
 
   it('should offer a new segment after the last one', async () => {

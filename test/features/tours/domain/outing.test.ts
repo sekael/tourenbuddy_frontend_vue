@@ -4,11 +4,15 @@ import {
   appendedOuting,
   movedSegment,
   nextSegmentSeed,
+  outingDateConflicts,
   outingDisplayName,
   outingGaps,
   outingKey,
+  outingNights,
   outingSegments,
   outingSpan,
+  outingWay,
+  spanDays,
 } from '@/features/tours/domain/outing'
 import { TOUR_FILL } from '../../../fixtures/tour-fill'
 
@@ -138,5 +142,60 @@ describe('movedSegment', () => {
   it('should move an item forwards and backwards', () => {
     expect(movedSegment(['a', 'b', 'c'], 0, 2)).toEqual(['b', 'c', 'a'])
     expect(movedSegment(['a', 'b', 'c'], 2, 0)).toEqual(['c', 'a', 'b'])
+  })
+})
+
+describe('outingNights', () => {
+  const day = (d: string) => new Date(d)
+
+  it('should mark a night only where the next segment starts on a later day', () => {
+    const nights = outingNights([
+      { plannedDate: day('2026-11-29'), endDate: null },
+      { plannedDate: day('2026-11-30'), endDate: null },
+      { plannedDate: day('2026-11-30'), endDate: null },
+    ])
+    expect([...nights]).toEqual([1])
+  })
+
+  it('should count from a multi-day segment\'s last day, and never for undated segments', () => {
+    expect([...outingNights([
+      { plannedDate: day('2026-07-01'), endDate: day('2026-07-02') },
+      { plannedDate: day('2026-07-02'), endDate: null },
+    ])]).toEqual([])
+    expect([...outingNights([{ plannedDate: null, endDate: null }, { plannedDate: day('2026-07-02'), endDate: null }])]).toEqual([])
+  })
+
+  it('should treat a local midnight and a stored UTC midnight as the same day', () => {
+    expect([...outingNights([
+      { plannedDate: new Date('2026-11-29T23:00:00Z'), endDate: null }, // 30 Nov, local midnight in CH
+      { plannedDate: day('2026-11-30'), endDate: null },
+    ])]).toEqual([])
+  })
+})
+
+describe('spanDays', () => {
+  it('should count both the first and the last day', () => {
+    expect(spanDays({ start: new Date('2026-11-29'), end: new Date('2026-11-30') })).toBe(2)
+    expect(spanDays({ start: new Date('2026-11-29'), end: new Date('2026-11-29') })).toBe(1)
+  })
+})
+
+describe('outingWay', () => {
+  it('should run from the first start to the last finish — its end, else its goal', () => {
+    const first = segment('a', 0, { startPointName: 'Bergün', startPoint: { lng: 9.7, lat: 46.6 } })
+    expect(outingWay([first, segment('b', 1, { name: 'Piz Kesch' })])).toEqual({ from: 'Bergün', to: 'Piz Kesch' })
+    expect(outingWay([first, segment('b', 1, { endPoint: { lng: 9.8, lat: 46.5 }, endPointName: 'Bever' })]))
+      .toEqual({ from: 'Bergün', to: 'Bever' })
+  })
+
+  it('should give no way when the first start has no name', () => {
+    expect(outingWay([segment('a', 0), segment('b', 1)])).toBeNull()
+  })
+})
+
+describe('outingDateConflicts', () => {
+  it('should flag a segment dated before the previous one, but not a same-day or undated one', () => {
+    const d = (s: string | null) => ({ plannedDate: s ? new Date(s) : null })
+    expect([...outingDateConflicts([d('2026-11-30'), d('2026-11-29'), d('2026-11-29'), d(null), d('2026-11-01')])]).toEqual([1])
   })
 })

@@ -11,6 +11,7 @@ import IconArrowUpward from '~icons/material-symbols/arrow-upward'
 import IconAttachFile from '~icons/material-symbols/attach-file'
 import IconAutoAwesomeOutline from '~icons/material-symbols/auto-awesome-outline'
 import IconBadgeOutline from '~icons/material-symbols/badge-outline'
+import IconBedOutline from '~icons/material-symbols/bed-outline'
 import IconBlockOutline from '~icons/material-symbols/block-outline'
 import IconBrokenImageOutline from '~icons/material-symbols/broken-image-outline'
 import IconCalendarTodayOutline from '~icons/material-symbols/calendar-today-outline'
@@ -35,6 +36,7 @@ import IconDownloadForOfflineOutline from '~icons/material-symbols/download-for-
 import IconDragIndicator from '~icons/material-symbols/drag-indicator'
 import IconEcoOutline from '~icons/material-symbols/eco-outline'
 import IconEditOutline from '~icons/material-symbols/edit-outline'
+import IconElevationOutline from '~icons/material-symbols/elevation-outline'
 import IconEventAvailableOutline from '~icons/material-symbols/event-available-outline'
 import IconExpandLess from '~icons/material-symbols/expand-less'
 import IconExpandMore from '~icons/material-symbols/expand-more'
@@ -137,6 +139,7 @@ export const iconRegistry: Record<string, Component> = {
   attach_file: IconAttachFile,
   auto_awesome: IconAutoAwesomeOutline,
   badge: IconBadgeOutline,
+  bed: IconBedOutline,
   block: IconBlockOutline,
   broken_image: IconBrokenImageOutline,
   calendar_today: IconCalendarTodayOutline,
@@ -161,6 +164,7 @@ export const iconRegistry: Record<string, Component> = {
   drag_indicator: IconDragIndicator,
   eco: IconEcoOutline,
   edit: IconEditOutline,
+  elevation: IconElevationOutline,
   event_available: IconEventAvailableOutline,
   expand_less: IconExpandLess,
   expand_more: IconExpandMore,

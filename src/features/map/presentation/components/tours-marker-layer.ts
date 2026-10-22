@@ -66,6 +66,8 @@ const END_ICON_ID = 'tour-end-icon'
 
 // Shared with the goal circle so the detail circle can't visually drift from it.
 const MARKER_CIRCLE_RADIUS = 14
+/** A handover ring (D21): small enough to read as a waypoint, not a destination. */
+const VIA_CIRCLE_RADIUS = 6
 const SELECTED_CIRCLE_RADIUS = 18
 const PREVIEW_CIRCLE_RADIUS = 16
 const MARKER_CIRCLE_OPACITY = 0.85
@@ -286,9 +288,10 @@ async function loadWhiteGlyphIcon(map: MapLibreMap, id: string, innerSvg: string
   })
 }
 
-// House glyph (start) and flag glyph (end) — mirror the info sheet's home/flag.
-const START_GLYPH_SVG = '<path d="M12 3 3 10.5V21h6v-6h6v6h6V10.5z" />'
-const END_GLYPH_SVG = '<path d="M6 3h1.8v18H6z" /><path d="M7.8 4h11l-2.6 4 2.6 4h-11z" />'
+// Ring glyph (start) and chequered flag (end) — the form's and the detail rows' `trip_origin` /
+// `sports_score` (design D22). A house would read as a hut on swisstopo maps.
+const START_GLYPH_SVG = '<path d="M8.125 21.213q-1.825-.788-3.187-2.15t-2.15-3.188T2 11.988t.788-3.875t2.15-3.175t3.187-2.15T12.013 2t3.875.788t3.175 2.15t2.15 3.175t.787 3.875t-.787 3.887t-2.15 3.188t-3.175 2.15t-3.875.787t-3.888-.787m8.125-4.963Q18 14.5 18 12t-1.75-4.25T12 6T7.75 7.75T6 12t1.75 4.25T12 18t4.25-1.75" />'
+const END_GLYPH_SVG = '<path d="M9 6h2V4H9zm4 0V4h2v2zm-4 8v-2h2v2zm8-4V8h2v2zm0 4v-2h2v2zm-4 0v-2h2v2zm4-8V4h2v2zm-6 2V6h2v2zM5 20V4h2v2h2v2H7v2h2v2H7v8zm10-8v-2h2v2zm-4 0v-2h2v2zm-2-2V8h2v2zm4 0V8h2v2zm2-2V6h2v2z" />'
 
 function cubicEaseOut(t: number): number {
   return 1 - (1 - t) ** 3
@@ -757,14 +760,18 @@ export function useToursMarkerLayer(
     // Start/end detail markers — inserted BEFORE the goal circle so the goal
     // always stacks on top when they overlap. Circle mirrors the goal's paint
     // constants; the draft tone uses the lighter preview palette.
+    // An outing's handover (`via`) is a small white ring in its next segment's colour (D21).
+    const IS_VIA: ExpressionSpecification = ['==', ['get', 'pointKind'], 'via']
     map.addLayer({
       id: DETAIL_CIRCLE_LAYER_ID,
       type: 'circle',
       source: DETAIL_SOURCE_ID,
       paint: {
-        'circle-radius': MARKER_CIRCLE_RADIUS,
-        'circle-color': unlessSplit(['case', ['get', 'draft'], PREVIEW_COLOR_EXPR, COLOR_EXPR]),
+        'circle-radius': ['case', IS_VIA, VIA_CIRCLE_RADIUS, MARKER_CIRCLE_RADIUS],
+        'circle-color': ['case', IS_VIA, '#ffffff', unlessSplit(['case', ['get', 'draft'], PREVIEW_COLOR_EXPR, COLOR_EXPR])],
         'circle-opacity': MARKER_CIRCLE_OPACITY,
+        'circle-stroke-width': ['case', IS_VIA, 3, 0],
+        'circle-stroke-color': COLOR_EXPR,
       },
     }, LAYER_ID)
     addSplitLayer(map, DETAIL_SPLIT_LAYER_ID, DETAIL_SOURCE_ID, MARKER_CIRCLE_RADIUS, MARKER_CIRCLE_OPACITY, LAYER_ID)
@@ -776,6 +783,7 @@ export function useToursMarkerLayer(
         id: DETAIL_ICON_LAYER_ID,
         type: 'symbol',
         source: DETAIL_SOURCE_ID,
+        filter: ['!=', ['get', 'pointKind'], 'via'],
         layout: {
           'icon-image': ['match', ['get', 'pointKind'], 'end', END_ICON_ID, START_ICON_ID],
           'icon-size': 0.7,
@@ -1000,7 +1008,10 @@ export function useToursMarkerLayer(
           pointKind: m.pointKind,
           tourType: m.tourTypes[0] ?? null,
           draft: m.draft,
-          pieImage: pieImageId(tourColors(m.tourTypes, m.draft ? TOUR_TYPE_PREVIEW_COLORS : TOUR_TYPE_COLORS)),
+          // ponytail: a handover ring takes the primary colour only, no split.
+          pieImage: m.pointKind === 'via'
+            ? null
+            : pieImageId(tourColors(m.tourTypes, m.draft ? TOUR_TYPE_PREVIEW_COLORS : TOUR_TYPE_COLORS)),
         },
       })),
     })

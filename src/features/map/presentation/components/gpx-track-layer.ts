@@ -1,11 +1,8 @@
 import type { ExpressionSpecification, GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl'
 import type { Tour } from '@/features/tours/domain/entities/tour'
-import { useLogger } from '@/core/logging/use-logger'
-import { loadCachedBlob } from '@/core/offline/blob-cache'
-import { useGpxCache } from '@/features/map/presentation/composables/use-gpx-cache'
 import { distinctTypeColors, TOUR_TYPE_COLORS, TOUR_TYPE_TRACK_COLORS } from '@/features/tours/data/models/tour-type'
-import { parseGpxFile } from '@/features/tours/data/services/gpx-parser'
-import { getSignedUrl } from '@/features/tours/data/services/gpx-storage-service'
+import { useGpxCache } from '@/features/tours/data/services/gpx-cache'
+import { gpxTrackKey, loadGpxTrack } from '@/features/tours/data/services/gpx-track-service'
 import { isSameGoal } from '@/features/tours/domain/distance'
 import { outingGaps } from '@/features/tours/domain/outing'
 import { DETAIL_CIRCLE_LAYER_ID, TOUR_LAYER_IDS } from './tours-marker-layer'
@@ -53,9 +50,10 @@ const CONNECTOR_OPACITY = 0.7
 const ARROW_SPACING = 120
 const GAP_SOURCE_ID = 'outing-gap'
 const GAP_LAYER_ID = 'outing-gap-line'
+const GAP_COLOR = '#334155'
 
 /**
- * Dashed neutral links where an outing's segment starts away from where the previous one
+ * Dashed dark links where an outing's segment starts away from where the previous one
  * finishes (`outingGaps`): the chain is broken — a reorder, a moved point, or a transfer.
  * `tours` is the shown list; only an outing's segments come as more than one.
  */
@@ -143,7 +141,6 @@ function drawArrow(color: string, both: boolean, pixelRatio: number): ImageData 
 const TRACK_OPACITY = 0.85
 
 export function useGpxTrackLayer(map: MapLibreMap) {
-  const logger = useLogger('GpxTrackLayer')
   const cache = useGpxCache()
   /** Track slots added to the current style (source + layer `…-<i>`); reset by a style switch. */
   let slots = 0
@@ -228,39 +225,12 @@ export function useGpxTrackLayer(map: MapLibreMap) {
       source: GAP_SOURCE_ID,
       layout: { 'line-cap': 'round' },
       paint: {
-        'line-color': FALLBACK_TRACK_COLOR,
-        'line-width': 1.5,
-        'line-opacity': CONNECTOR_OPACITY,
-        'line-dasharray': [2, 3],
+        // Dark slate, not the timeline's amber: amber is the paragliding colour on the map (D21).
+        'line-color': GAP_COLOR,
+        'line-width': 2,
+        'line-dasharray': [2, 2],
       },
     }, ARROW_LAYER_ID)
-  }
-
-  /** Parsed track of `tour`: memory cache, else offline-first bytes (cached on first online view). */
-  async function loadTrack(tour: Tour & { gpxFilepath: string }): Promise<GeoJSON.FeatureCollection | null> {
-    const cached = cache.get(tour.id)
-    if (cached)
-      return cached
-    try {
-      // undefined ⇒ never cached while online and offline now → no track.
-      const blob = await loadCachedBlob(tour.gpxFilepath, async () => {
-        const signedUrl = await getSignedUrl(tour.gpxFilepath)
-        const response = await fetch(signedUrl)
-        if (!response.ok)
-          throw new Error(`HTTP ${response.status}`)
-        return response.blob()
-      })
-      if (!blob)
-        throw new Error('GPX unavailable offline')
-      const file = new File([blob], `${tour.id}.gpx`, { type: 'application/gpx+xml' })
-      const geojson = await parseGpxFile(file)
-      cache.set(tour.id, geojson)
-      return geojson
-    }
-    catch (err) {
-      logger.error('Failed to load GPX track', err)
-      return null
-    }
   }
 
   /**
@@ -294,9 +264,9 @@ export function useGpxTrackLayer(map: MapLibreMap) {
         return
       }
       // Empty the slot while loading, so it never shows the track it held before.
-      if (!cache.get(tour.id))
+      if (!cache.get(gpxTrackKey(tour)))
         source?.setData(EMPTY_GEOJSON)
-      const geojson = await loadTrack(tour as Tour & { gpxFilepath: string })
+      const geojson = await loadGpxTrack(tour as Tour & { gpxFilepath: string })
       if (gen === generation)
         source?.setData(geojson ?? EMPTY_GEOJSON)
     }))

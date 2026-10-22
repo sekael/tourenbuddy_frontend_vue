@@ -627,7 +627,8 @@
       "cancelUpload": "Cancel upload",
       "retryUpload": "Retry upload",
       "dismissUpload": "Remove file",
-      "loadFailed": "Could not load the files for this tour."
+      "loadFailed": "Could not load the files for this tour.",
+      "reorderHandle": "Move {name}"
     },
     "suggestions": {
       "suggestBtn": "Suggest changes",
@@ -707,11 +708,20 @@
       "namePlaceholder": "e.g. Haute Route",
       "remove": "Remove from outing",
       "gapHint": "Starts away from where segment {n} ends",
+      "dateBeforeHint": "Dated before segment {n}",
       "previous": "Previous segment",
       "next": "Next segment",
       "openOverview": "Show the whole outing",
       "backToOuting": "Back to outing",
-      "saveFailed": "Couldn't update the outing. Please try again."
+      "saveFailed": "Couldn't update the outing. Please try again.",
+      "dayCount": "{count} day | {count} days",
+      "night": "Overnight",
+      "reorderHandle": "Move segment {n}"
+    },
+    "route": {
+      "ascent": "Ascent",
+      "descent": "Descent",
+      "distance": "Distance"
     }
   },
   "map": {
@@ -756,7 +766,7 @@
       "skiRoute": "Ski route",
       "listTitle": "{count} ski routes",
       "target": "{name} · {altitude}m",
-      "metres": "{value}m",
+      "metres": "{value}\u00a0m",
       "more": "+{count} more — zoom in",
       "backToList": "Ski routes",
       "openSac": "Open in SAC route portal",

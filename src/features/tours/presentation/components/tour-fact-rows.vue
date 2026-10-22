@@ -4,18 +4,26 @@ import type { Tour } from '@/features/tours/domain/entities/tour'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/core/components/base-icon.vue'
+import { useFormatter } from '@/core/composables/use-formatter'
 import { TOUR_TYPE_COLORS, TOUR_TYPE_I18N_KEYS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
+import RouteNumbers from '@/features/tours/presentation/components/route-numbers.vue'
+import { useRouteMetrics } from '@/features/tours/presentation/composables/use-route-metrics'
 
 /**
  * A tour's facts as dense icon-led rows, no headings or cards (spec: design-system →
  * "Tour detail reads at a glance"), grouped by what belongs together: activity, route,
- * partners, free texts — a divider above each group. Start and End carry a short visible
+ * partners, free texts — a divider above each group. The route group leads with climb · descent ·
+ * distance (design D19). Start and End carry a short visible
  * label — their icons alone are ambiguous; every other row is named for assistive tech only.
  * Partners and the route's GPX download come in through slots so the sheet keeps the wiring.
  */
 const props = defineProps<{ tour: Tour }>()
 
 const { t } = useI18n({ useScope: 'global' })
+const { formatElevation } = useFormatter()
+const routeMetrics = useRouteMetrics(() => [props.tour])
+const metrics = computed(() => routeMetrics.value.get(props.tour.id)!)
+const hasMetrics = computed(() => Object.values(metrics.value).some(v => v !== null))
 
 const SEASON_ICONS: Record<Season, string> = {
   winter: 'ac_unit',
@@ -86,22 +94,27 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
       </li>
     </ul>
 
-    <ul v-if="startPointText || $slots.route" class="fact-group">
+    <ul v-if="hasMetrics || startPointText || $slots.route" class="fact-group">
+      <li v-if="hasMetrics" class="fact-row" data-fact="route">
+        <BaseIcon name="elevation" size="sm" class="row-icon" />
+        <RouteNumbers class="row-value" :metrics="metrics" />
+      </li>
       <template v-if="startPointText">
         <li class="fact-row" data-fact="start">
-          <BaseIcon name="home" size="sm" class="row-icon" />
+          <!-- The form's point icons (D22): ring = start, flag = goal, chequered flag = end. -->
+          <BaseIcon name="trip_origin" size="sm" class="row-icon" />
           <span class="row-value">
             <span class="row-label">{{ t('tours.infoSheet.startShort') }}</span>
             <span :class="{ coords: !tour.startPointName }">{{ tour.startPointName ?? startPointText }}</span>
-            <span v-if="tour.startPointName && tour.startPointElevation != null" class="row-sub">{{ tour.startPointElevation }}m</span>
+            <span v-if="tour.startPointName && tour.startPointElevation != null" class="row-sub">{{ formatElevation(tour.startPointElevation) }}</span>
           </span>
         </li>
         <li class="fact-row" data-fact="end">
-          <BaseIcon :name="isOneWayToGoal ? 'directions' : 'flag'" size="sm" class="row-icon" />
+          <BaseIcon :name="isOneWayToGoal ? 'flag' : 'sports_score'" size="sm" class="row-icon" />
           <span class="row-value">
             <span class="row-label">{{ t('tours.infoSheet.endShort') }}</span>
             <span :class="{ coords: endValue === endPointText }">{{ endValue }}</span>
-            <span v-if="endElevation != null" class="row-sub">{{ endElevation }}m</span>
+            <span v-if="endElevation != null" class="row-sub">{{ formatElevation(endElevation) }}</span>
           </span>
         </li>
       </template>

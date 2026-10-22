@@ -172,6 +172,46 @@ position of the first match; the row shows when any segment matches. Search also
 outing name. The row's avatar is the conic split of the segments' colours with the outing glyph;
 its subtitle gives the segment count and the date span.
 
+### Planning depth (guide review, 2026-10-22)
+
+**D19 — Route numbers, derived, never typed.** Climb and descent are the numbers a guide plans by
+(SAC states them per stage and sums them). They come from data the tour already holds: a GPX
+track with heights gives distance, climb and descent (horizontal distance; climb and descent
+counted only past a 5 m swing from the last turning point, so recorder noise does not add up);
+otherwise the start → goal → end heights give climb and descent (the goal when the tour ends
+there). No height, no number — never a guess. No walking time: the official Swiss formulas need
+a distance, and pace differs too much between hiking, ski touring and flying. One loader
+(`loadGpxTrack`, tours data service) serves both the map and the numbers from the same caches.
+*Alternative:* typed `elevation_gain` fields — a second source for a fact the points or the track
+already state, rejected.
+
+**D20 — Days and nights from the dates.** The overview counts the days the outing spans, totals
+climb and descent (only when every segment has them — a partial sum misleads), and names the
+way from the first start to the last finish. Between two segments the timeline marks the
+night when the next one starts on a later day than the previous one ends, at the previous
+segment's finish (end, else goal) with its height. A gap and a night can coincide. A segment dated
+before the previous one is flagged like a gap: the order and the dates disagree, and which is
+wrong is the owner's call.
+
+**D21 — Every handover is a point on the map.** Where segment N ends and segment N+1 starts
+away from any goal (the valley at the foot of a hike-and-fly), the overview draws a small white
+ring in segment N+1's colour — like a start marker, it wears the colour of what begins there — so
+the chain never meets in empty map. A gap link is a darker, thicker dashed slate line; not the
+timeline's amber, which on the map is the paragliding colour.
+
+**D22 — One point vocabulary.** Start = ring (`trip_origin`), goal = flag, end = chequered flag
+(`sports_score`) — the form's icons — on the map markers and in the detail rows. The house glyph
+is gone: on swisstopo maps a house is a hut.
+
+**D23 — Reorder by handle with pointer events.** Native HTML drag-and-drop never fires for a finger
+on Android browsers, so segments and attachments reorder through one composable on Pointer
+Events: the handle (a 44 px button, `touch-action: none`) captures the pointer, the row under it
+is the target, release moves; arrow keys move a focused handle. While editing or adding, the
+phone sheet fits its content instead of opening at 40 %.
+
+**D24 — Heights as swisstopo and SAC write them.** `3079 m`: no thousands separator (the map's
+own spot heights), a no-break space before the unit, one `formatElevation` for every height.
+
 ## Risks / Trade-offs
 
 - **Rename is N writes.** A failure midway leaves mixed names; the outing shows the first

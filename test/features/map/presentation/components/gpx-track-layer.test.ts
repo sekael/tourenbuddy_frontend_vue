@@ -4,8 +4,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { loadCachedBlob } from '@/core/offline/blob-cache'
 import { darkenHex } from '@/core/utils/color'
 import { outingGapLines, tourConnectors, trackGradient, useGpxTrackLayer } from '@/features/map/presentation/components/gpx-track-layer'
-import { useGpxCache } from '@/features/map/presentation/composables/use-gpx-cache'
 import { TOUR_TYPE_COLORS, TOUR_TYPE_TRACK_COLORS } from '@/features/tours/data/models/tour-type'
+import { useGpxCache } from '@/features/tours/data/services/gpx-cache'
+import { gpxTrackKey } from '@/features/tours/data/services/gpx-track-service'
 
 vi.mock('@/core/offline/blob-cache', () => ({ loadCachedBlob: vi.fn() }))
 vi.mock('@/features/tours/data/services/gpx-storage-service', () => ({ getSignedUrl: vi.fn() }))
@@ -86,8 +87,8 @@ describe('useGpxTrackLayer — several tracks (#338)', () => {
   }
 
   it('should draw one slot per track', async () => {
-    useGpxCache().set('a', track('a'))
-    useGpxCache().set('b', track('b'))
+    useGpxCache().set(gpxTrackKey(tour('a')), track('a'))
+    useGpxCache().set(gpxTrackKey(tour('b')), track('b'))
     const map = stubMap()
     const layer = useGpxTrackLayer(map as unknown as MapLibreMap)
     layer.setup()

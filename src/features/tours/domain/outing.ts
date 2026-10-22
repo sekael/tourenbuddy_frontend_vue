@@ -75,6 +75,52 @@ export function outingSpan(segments: Tour[]): { start: Date, end: Date } | null 
   return { start: new Date(Math.min(...times)), end: new Date(Math.max(...times)) }
 }
 
+const DAY_MS = 86_400_000
+/** Calendar day number — rounding absorbs a stored UTC midnight vs. a local one. */
+const dayNumber = (d: Date) => Math.round(d.getTime() / DAY_MS)
+
+/** Calendar days from the first to the last day of `span`, both counted. */
+export function spanDays(span: { start: Date, end: Date }): number {
+  return dayNumber(span.end) - dayNumber(span.start) + 1
+}
+
+/**
+ * Indexes of the segments a night precedes (D20): each starts on a later day than the previous
+ * segment's last day. Undated segments never mark a night.
+ */
+export function outingNights(segments: readonly Pick<Tour, 'plannedDate' | 'endDate'>[]): Set<number> {
+  return new Set(segments.flatMap((s, i) => {
+    const prev = segments[i - 1]
+    const prevLast = prev && (prev.endDate ?? prev.plannedDate)
+    return prevLast && s.plannedDate && dayNumber(s.plannedDate) > dayNumber(prevLast) ? [i] : []
+  }))
+}
+
+/**
+ * Indexes of segments dated before the previous segment's first day: the order and the dates
+ * disagree (a reorder, or a date edit). Shown, like a gap — which one is wrong is the owner's call.
+ */
+export function outingDateConflicts(segments: readonly Pick<Tour, 'plannedDate'>[]): Set<number> {
+  return new Set(segments.flatMap((s, i) => {
+    const prev = segments[i - 1]?.plannedDate
+    return prev && s.plannedDate && dayNumber(s.plannedDate) < dayNumber(prev) ? [i] : []
+  }))
+}
+
+/** The named place a segment finishes at, with its height: its end, else its goal. */
+export function segmentFinishPlace(segment: Tour): { name: string | null, elevation: number | null } {
+  return segment.endPoint
+    ? { name: segment.endPointName, elevation: segment.endPointElevation }
+    : { name: segment.name, elevation: segment.elevation }
+}
+
+/** "first start → last finish" by name; null when either is unnamed. */
+export function outingWay(segments: Tour[]): { from: string, to: string } | null {
+  const from = segments[0]?.startPointName
+  const to = segments.length > 0 ? segmentFinishPlace(segments.at(-1)!).name : null
+  return from && to ? { from, to } : null
+}
+
 /** Membership for a tour appended after every segment in `segments` (D13). */
 export function appendedOuting(outing: TourOuting, segments: Pick<Tour, 'outing'>[]): TourOuting {
   const last = Math.max(-1, ...segments.map(s => s.outing?.position ?? -1))

@@ -82,6 +82,16 @@
 - [x] 12b.2 GPX bands denser (`9n`); thin start → goal → end connector in the activity marker colours with evenly spaced arrows for tours without a track; outing overview shows the first start and last end; an open segment shows only itself — verify `gpx-track-layer` + `tour-detail-markers` tests
 - [x] 12b.3 Segments as draggable cards (dashed connector between them, amber at a gap; dragged card dims, drop target outlined); drag-handle reorder (one local step, then writes; failure restores); gaps between segments shown as a dashed link, a timeline hint and loose-end markers — verify `outing`, `tours-store`, `outing-overview-sheet`, `gpx-track-layer` tests + walk
 
+## 12c. Planning depth (guide review)
+
+- [x] 12c.1 `domain/route-metrics.ts`: point climb/descent, track distance/climb/descent with 5 m hysteresis, outing totals and days, night stops (D19, D20), plus dates out of order — verify unit tests incl. missing heights, round trip, flat track, no-ele track
+- [x] 12c.2 `loadGpxTrack` shared by the map layer and `useRouteMetrics` (one cache, deduped loads) — verify `gpx-track-layer` tests
+- [x] 12c.3 Detail route row (climb · descent · distance); overview hero (days · segments, way, totals); segment cards (goal height, climb/descent); night rows between cards (D19, D20) — verify component tests
+- [x] 12c.4 Handover rings and dark dashed gap links on the overview map; ring/chequered-flag glyphs on map and detail rows (D21, D22) — verify `tour-detail-markers` tests + walk
+- [x] 12c.5 `useHandleReorder` (pointer + keyboard, target by row midpoints, edge auto-scroll) for segments and attachments; editing scrolls the stages into view on a phone; overview sheet fits content while editing/adding (D23) — verify composable + component tests and a touch walk
+- [x] 12c.6 `formatElevation` everywhere a height shows (D24) — verify grep for `}m` leftovers
+- [x] 12c.7 Independent review of the result (guide, design and code reviewers), fix what holds up — version-keyed track cache, compact outing header, clearer drop target, warning icons
+
 ## 13. Finalize
 
 - [x] 13.1 Run lint + format (`npx eslint . --fix`) one last time — verify clean `git diff --stat` of formatting only

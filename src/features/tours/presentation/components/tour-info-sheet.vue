@@ -12,6 +12,7 @@ import BaseIcon from '@/core/components/base-icon.vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import FullScreenPage from '@/core/components/full-screen-page.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
+import { useFormatter } from '@/core/composables/use-formatter'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useLogger } from '@/core/logging/use-logger'
 import { clearOfflineWriteError } from '@/core/offline/mutate'
@@ -80,6 +81,7 @@ const emit = defineEmits<{
 }>()
 
 const { t, locale } = useI18n({ useScope: 'global' })
+const { formatElevation } = useFormatter()
 
 const contactsStore = useContactsStore()
 const toursStore = useToursStore()
@@ -718,11 +720,9 @@ const coordinates = computed(
   () => `${props.tour.goal.lat.toFixed(4)}°N, ${props.tour.goal.lng.toFixed(4)}°E`,
 )
 
-const formattedElevation = computed(() => {
-  if (props.tour.elevation == null)
-    return null
-  return `${new Intl.NumberFormat(locale.value, { maximumFractionDigits: 0 }).format(props.tour.elevation)}m`
-})
+const formattedElevation = computed(() =>
+  props.tour.elevation == null ? null : formatElevation.value(props.tour.elevation),
+)
 </script>
 
 <template>
