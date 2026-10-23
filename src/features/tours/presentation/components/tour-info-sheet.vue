@@ -33,6 +33,7 @@ import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tou
 import { downloadOriginal } from '@/features/tours/data/services/gpx-storage-service'
 import { COLLISION_RADIUS_M, sharesActivity } from '@/features/tours/domain/collision'
 import { isSameGoal } from '@/features/tours/domain/distance'
+import { routeOrder } from '@/features/tours/domain/legs'
 import OutingNavigator from '@/features/tours/presentation/components/outing-navigator.vue'
 import SegmentAddView from '@/features/tours/presentation/components/segment-add-view.vue'
 import TourAttachmentViewer from '@/features/tours/presentation/components/tour-attachment-viewer.vue'
@@ -800,7 +801,7 @@ const formattedElevation = computed(() =>
         <!-- Hero: led by the goal. Line 1 elevation (or date); line 2 date · coordinates,
              wrapping freely; friend tours add the owner. -->
         <div class="hero">
-          <TourTypeBadge :types="tour.tourTypes" class="hero-badge">
+          <TourTypeBadge :types="routeOrder(tour)" class="hero-badge">
             <!-- State stamps on the badge: they pop in when the owner flips a toggle. -->
             <Transition name="stamp">
               <span v-if="tour.completed" class="hero-stamp hero-stamp--done" aria-hidden="true">

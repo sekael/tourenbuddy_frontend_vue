@@ -15,10 +15,10 @@ const props = defineProps<{ types: readonly TourType[] }>()
 /** First seam, clockwise from 12 o'clock: two activities split along "/". */
 const START_DEG = -135
 // Glyph size and how far it sits from the centre (share of the radius) by slice count.
-// ponytail: from four slices on the glyphs stop shrinking and crowd — add a "+n" slice if
-// tours with five or more activities show up.
 const ICON_PX = [24, 30, 24, 20]
 const OFFSET = [0, 0.32, 0.45, 0.5]
+/** Five glyphs crowd the disc: past four activities the fourth slice counts the rest ("+3"). */
+const MAX_SLICES = 4
 
 /** A CSS position at `deg` and `r` (% of the disc size) from the centre. */
 function at(deg: number, r: number) {
@@ -26,29 +26,33 @@ function at(deg: number, r: number) {
   return { x: 50 + r * Math.sin(a), y: 50 - r * Math.cos(a) }
 }
 
+const more = computed(() => (props.types.length > MAX_SLICES ? props.types.length - MAX_SLICES + 1 : 0))
+/** The activities drawn, `null` = the "+n" slice. */
+const drawn = computed(() => (more.value ? [...props.types.slice(0, MAX_SLICES - 1), null] : props.types))
+
 const slices = computed(() => {
-  const n = props.types.length
-  const k = Math.min(n, 4) - 1
+  const n = drawn.value.length
+  const k = n - 1
   const step = 360 / n
   // Wedge corners twice the radius out, one at least every 90°, so the straight edges stay
   // outside the disc and its round clip draws the rim.
   const corners = Math.ceil(step / 90)
-  return props.types.map((type, i) => {
+  return drawn.value.map((type, i) => {
     const from = START_DEG + i * step
     const icon = at(from + step / 2, 50 * OFFSET[k]!)
     const arc = Array.from({ length: corners + 1 }, (_, j) => at(from + (j * step) / corners, 100))
     return {
       type,
       style: {
-        background: TOUR_TYPE_COLORS[type],
+        background: type ? TOUR_TYPE_COLORS[type] : undefined,
         clipPath: n > 1 ? `polygon(50% 50%, ${arc.map(p => `${p.x}% ${p.y}%`).join(', ')})` : undefined,
       },
-      iconStyle: { left: `${icon.x}%`, top: `${icon.y}%`, fontSize: `${ICON_PX[k]}px` },
+      iconStyle: { left: `${icon.x}%`, top: `${icon.y}%`, fontSize: type ? `${ICON_PX[k]}px` : undefined },
     }
   })
 })
 const seams = computed(() =>
-  props.types.length > 1 ? props.types.map((_, i) => START_DEG + (i * 360) / props.types.length) : [],
+  drawn.value.length > 1 ? drawn.value.map((_, i) => START_DEG + (i * 360) / drawn.value.length) : [],
 )
 </script>
 
@@ -56,8 +60,9 @@ const seams = computed(() =>
   <span class="type-badge" aria-hidden="true">
     <span class="disc">
       <BaseIcon v-if="!types.length" name="location_on" size="lg" />
-      <span v-for="slice in slices" :key="slice.type" class="slice" :style="slice.style">
-        <BaseIcon :name="TOUR_TYPE_ICONS[slice.type]" class="slice-icon" :style="slice.iconStyle" />
+      <span v-for="slice in slices" :key="slice.type ?? 'more'" class="slice" :style="slice.style">
+        <BaseIcon v-if="slice.type" :name="TOUR_TYPE_ICONS[slice.type]" class="slice-icon" :style="slice.iconStyle" />
+        <span v-else class="slice-icon slice-more" :style="slice.iconStyle">+{{ more }}</span>
       </span>
       <!-- Seams in the card colour keep two same-colour activities (ski tour + splitboard) apart. -->
       <span v-for="deg in seams" :key="deg" class="seam" :style="{ transform: `rotate(${deg}deg)` }" />
@@ -90,6 +95,12 @@ const seams = computed(() =>
 .slice-icon {
   position: absolute;
   transform: translate(-50%, -50%);
+}
+
+.slice-more {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
 }
 
 .seam {

@@ -147,6 +147,7 @@ export function nextSegmentSeed(prev: Tour): TourDraft {
     endDate: null,
     partnerIds: prev.partnerIds,
     tourTypes: prev.tourTypes,
+    legs: prev.legs ?? null,
     elevation: null,
     gpxFilepath: null,
     description: null,

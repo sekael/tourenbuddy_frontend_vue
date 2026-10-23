@@ -54,10 +54,15 @@ const capBlocked = computed(
  * keys rather than a suggestion-local copy that would drift.
  */
 function localizedEnum(value: unknown): string | null {
-  if (props.suggestion.field === 'tour_type' && Array.isArray(value)) {
-    return value.length
-      ? value.map(v => t(`tours.type.${TOUR_TYPE_I18N_KEYS[v as TourType]}`)).join(', ')
-      : t('tours.suggestions.emptyValue')
+  const names = (types: unknown[]) => types.map(v => t(`tours.type.${TOUR_TYPE_I18N_KEYS[v as TourType]}`)).join(', ')
+  if (props.suggestion.field === 'tour_type' && Array.isArray(value))
+    return value.length ? names(value) : t('tours.suggestions.emptyValue')
+  // With legs (activity-legs D6): "↑ Hiking ↓ Paragliding", like the stage cards.
+  if (props.suggestion.field === 'tour_type' && value && typeof value === 'object') {
+    const { types, ascent, descent } = value as { types: unknown[], ascent?: unknown[], descent?: unknown[] }
+    if (ascent && descent)
+      return `↑ ${names(ascent)} ↓ ${names(descent)}`
+    return types.length ? names(types) : t('tours.suggestions.emptyValue')
   }
   if (props.suggestion.field === 'seasons' && Array.isArray(value))
     return value.map(s => t(`tours.season.${s}`)).join(', ')

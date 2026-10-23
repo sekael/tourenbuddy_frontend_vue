@@ -1,3 +1,4 @@
+import type { TourType } from './tour-type'
 import { z } from 'zod'
 import { seasonSchema } from './season'
 import { tourTypeSchema } from './tour-type'
@@ -30,10 +31,16 @@ const outingColumns = {
   outing_position: z.number().int().nullable().default(null),
 }
 
-/** Grade and start time ("HH:MM", the views format it), shared by both views. */
+/** Grade, start time ("HH:MM", the views format it) and the legs, shared by both views. */
 const planColumns = {
   grade: z.string().nullable().default(null),
   start_time: z.string().nullable().default(null),
+  ascent_types: z.array(tourTypeSchema).nullable().default(null),
+  descent_types: z.array(tourTypeSchema).nullable().default(null),
+}
+
+function legsFromRow(row: { ascent_types: TourType[] | null, descent_types: TourType[] | null }) {
+  return row.ascent_types && row.descent_types ? { ascent: row.ascent_types, descent: row.descent_types } : null
 }
 
 function outingFromRow(row: { outing_id: string | null, outing_name: string | null, outing_position: number | null }) {
@@ -105,6 +112,7 @@ export const tourRowSchema = z
     outing: outingFromRow(row),
     grade: row.grade,
     startTime: row.start_time,
+    legs: legsFromRow(row),
     isFriendTour: false,
   }))
 
@@ -158,6 +166,11 @@ export const tourSchema = z.object({
   grade: z.string().nullable().default(null),
   /** Start time "HH:MM" on `plannedDate`; null = none (always null without a date). */
   startTime: z.string().nullable().default(null),
+  /**
+   * Activities per leg (activity-legs): the way up (start → goal) and the way down (goal → end);
+   * null = all of `tourTypes` both ways. A snapshot cached before it existed hydrates without.
+   */
+  legs: z.object({ ascent: z.array(tourTypeSchema), descent: z.array(tourTypeSchema) }).nullable().default(null),
   /** True when this tour belongs to a friend (read via friend_tours_view), not the viewer. */
   isFriendTour: z.boolean().default(false),
   /** Friend-tour only: whether the viewer is a marked partner (drives detail gating). */
@@ -236,6 +249,7 @@ export const friendTourRowSchema = z
     outing: outingFromRow(row),
     grade: row.grade,
     startTime: row.start_time,
+    legs: legsFromRow(row),
     isFriendTour: true,
     isPartner: row.is_partner,
     partnerNames: row.partner_names,

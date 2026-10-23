@@ -221,3 +221,19 @@ describe('toursRepositoryImpl: p_grade / p_start_time (smarter-tour-creation D5)
     expect(mockRpc).toHaveBeenCalledWith('update_tour_full', expect.objectContaining({ p_grade: '', p_start_time: '06:30' }))
   })
 })
+
+describe('toursRepositoryImpl: legs (activity-legs D2)', () => {
+  const repo = new ToursRepositoryImpl()
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockRpc.mockResolvedValue({ data: true, error: null })
+  })
+
+  it('should send null legs for a draft that knows none, and empty ones to unsplit', async () => {
+    await repo.updateTour('id-1', baseDraft, goal)
+    expect(mockRpc).toHaveBeenCalledWith('update_tour_full', expect.objectContaining({ p_ascent_types: null, p_descent_types: null }))
+    await repo.updateTour('id-1', { ...baseDraft, legs: null }, goal)
+    expect(mockRpc).toHaveBeenLastCalledWith('update_tour_full', expect.objectContaining({ p_ascent_types: [], p_descent_types: [] }))
+  })
+})

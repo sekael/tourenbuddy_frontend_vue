@@ -226,6 +226,10 @@ export const useToursStore = defineStore('tours', () => {
       startTime: !draft.plannedDate
         ? null
         : draft.startTime === undefined ? (base?.startTime ?? null) : draft.startTime,
+      // undefined = keep while the activities stay, like the server (activity-legs D2).
+      legs: draft.legs !== undefined
+        ? draft.legs
+        : base?.legs && base.tourTypes.join() === draft.tourTypes.join() ? base.legs : null,
       isFriendTour: false,
     }
   }
@@ -254,6 +258,7 @@ export const useToursStore = defineStore('tours', () => {
       visibility: tour.visibility,
       grade: tour.grade ?? null,
       startTime: tour.startTime ?? null,
+      legs: tour.legs ?? null,
     }
   }
 

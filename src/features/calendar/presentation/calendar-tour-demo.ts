@@ -49,6 +49,7 @@ export function makeDemoChips(t: Translate): {
     outing: null,
     grade: null,
     startTime: null,
+    legs: null,
   }
   return {
     entries: [{ tour, isFriend: false, dayIndex: 1, dayCount: 1 }],

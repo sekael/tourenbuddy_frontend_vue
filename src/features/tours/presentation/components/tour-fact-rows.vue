@@ -6,6 +6,8 @@ import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/core/components/base-icon.vue'
 import { useFormatter } from '@/core/composables/use-formatter'
 import { TOUR_TYPE_COLORS, TOUR_TYPE_I18N_KEYS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
+import { fliesDown, landsByAir } from '@/features/tours/domain/legs'
+import GradeBadge from '@/features/tours/presentation/components/grade-badge.vue'
 import RouteNumbers from '@/features/tours/presentation/components/route-numbers.vue'
 import { useRouteMetrics } from '@/features/tours/presentation/composables/use-route-metrics'
 
@@ -41,9 +43,19 @@ const isRoundTrip = computed(() => {
   return !!s && !!e && s.lng === e.lng && s.lat === e.lat
 })
 
+/** Activities as groups: one for an unsplit tour, the way up and the way down for a split one. */
+const typeGroups = computed(() => {
+  const { legs, tourTypes } = props.tour
+  return legs
+    ? [{ way: 'up' as const, types: legs.ascent }, { way: 'down' as const, types: legs.descent }]
+    : [{ way: null, types: tourTypes }]
+})
+/** A flown way down ends in a landing. */
+const landing = computed(() => landsByAir(props.tour))
+
 const endValue = computed(() => {
   if (isOneWayToGoal.value)
-    return t('tours.infoSheet.oneWayToGoalIndicator')
+    return landing.value ? t('tours.infoSheet.landingOpen') : t('tours.infoSheet.oneWayToGoalIndicator')
   if (isRoundTrip.value)
     return t('tours.infoSheet.roundTrip')
   return props.tour.endPointName ?? endPointText.value
@@ -76,17 +88,21 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
            their own colour, seasons stay neutral. -->
       <li v-if="tour.tourTypes.length || tour.grade" class="fact-row fact-row--wide" data-fact="type">
         <span class="visually-hidden">{{ t('tours.infoSheet.iconTooltipType') }}</span>
-        <span
-          v-for="type in tour.tourTypes" :key="type" class="tag type-tag"
-          :style="{ '--tag-color': TOUR_TYPE_COLORS[type] }"
-        >
-          <BaseIcon :name="TOUR_TYPE_ICONS[type]" size="sm" />
-          {{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[type]}` as any) }}
+        <!-- A split tour: the way up, then the way down, each led by its arrow. -->
+        <span v-for="group in typeGroups" :key="group.way ?? 'all'" class="type-group" :data-leg="group.way">
+          <template v-if="group.way">
+            <BaseIcon :name="group.way === 'up' ? 'arrow_upward' : 'arrow_downward'" size="sm" class="leg-arrow" />
+            <span class="visually-hidden">{{ t(group.way === 'up' ? 'tours.infoSheet.wayUp' : 'tours.infoSheet.wayDown') }}</span>
+          </template>
+          <span
+            v-for="type in group.types" :key="type" class="tag type-tag"
+            :style="{ '--tag-color': TOUR_TYPE_COLORS[type] }"
+          >
+            <BaseIcon :name="TOUR_TYPE_ICONS[type]" size="sm" />
+            {{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[type]}` as any) }}
+          </span>
         </span>
-        <span v-if="tour.grade" class="tag grade-tag" data-testid="tour-grade">
-          <span class="visually-hidden">{{ t('tours.suggestions.fields.grade') }}</span>
-          {{ tour.grade }}
-        </span>
+        <GradeBadge v-if="tour.grade" :grade="tour.grade" />
       </li>
 
       <li v-if="tour.seasons?.length" class="fact-row fact-row--wide" data-fact="seasons">
@@ -101,7 +117,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
     <ul v-if="hasMetrics || startPointText || $slots.route" class="fact-group">
       <li v-if="hasMetrics" class="fact-row" data-fact="route">
         <BaseIcon name="elevation" size="sm" class="row-icon" />
-        <RouteNumbers class="row-value" :metrics="metrics" />
+        <RouteNumbers class="row-value" :metrics="metrics" :flown="fliesDown(tour)" />
       </li>
       <template v-if="startPointText">
         <li class="fact-row" data-fact="start">
@@ -116,7 +132,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         <li class="fact-row" data-fact="end">
           <BaseIcon :name="isOneWayToGoal ? 'flag' : 'sports_score'" size="sm" class="row-icon" />
           <span class="row-value">
-            <span class="row-label">{{ t('tours.infoSheet.endShort') }}</span>
+            <span class="row-label">{{ landing ? t('tours.infoSheet.landingShort') : t('tours.infoSheet.endShort') }}</span>
             <span :class="{ coords: endValue === endPointText }">{{ endValue }}</span>
             <span v-if="endElevation != null" class="row-sub">{{ formatElevation(endElevation) }}</span>
           </span>
@@ -258,6 +274,17 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   font-weight: var(--font-weight-medium);
 }
 
+.type-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.leg-arrow {
+  color: var(--color-on-surface-variant);
+}
+
 .type-tag {
   background-color: color-mix(in srgb, var(--tag-color) 12%, var(--color-background));
   /* Darkened for the label: amber at full strength is under 4.5:1 on its own tint. */
@@ -266,12 +293,6 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
 .type-tag .base-icon {
   color: var(--tag-color);
-}
-
-.grade-tag {
-  border: 1px solid var(--color-outline);
-  color: var(--color-on-surface);
-  font-weight: var(--font-weight-semibold);
 }
 
 .season-tag {

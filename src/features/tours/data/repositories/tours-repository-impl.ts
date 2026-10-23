@@ -16,6 +16,11 @@ function keepOrClear(value: string | null | undefined) {
   return value === undefined ? null : (value ?? '')
 }
 
+/** `p_ascent_types` / `p_descent_types` (activity-legs D2): undefined keeps (null), null clears ({}). */
+function legParam(legs: TourDraft['legs'], leg: 'ascent' | 'descent') {
+  return legs === undefined ? null : (legs?.[leg] ?? [])
+}
+
 export class ToursRepositoryImpl implements ToursRepository {
   async listToursForUser(userId: string): Promise<Tour[]> {
     const { data, error } = await supabase.from('tours_view').select('*').eq('user_id', userId)
@@ -68,6 +73,8 @@ export class ToursRepositoryImpl implements ToursRepository {
       p_outing: outingParam(draft.outing),
       p_grade: keepOrClear(draft.grade),
       p_start_time: keepOrClear(draft.startTime),
+      p_ascent_types: legParam(draft.legs, 'ascent'),
+      p_descent_types: legParam(draft.legs, 'descent'),
     })
 
     if (error)
@@ -106,6 +113,8 @@ export class ToursRepositoryImpl implements ToursRepository {
       p_outing: outingParam(draft.outing),
       p_grade: keepOrClear(draft.grade),
       p_start_time: keepOrClear(draft.startTime),
+      p_ascent_types: legParam(draft.legs, 'ascent'),
+      p_descent_types: legParam(draft.legs, 'descent'),
     })
 
     if (error)

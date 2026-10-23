@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import type { RouteMetrics } from '@/features/tours/domain/route-metrics'
 import { computed } from 'vue'
@@ -6,10 +7,12 @@ import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/core/components/base-icon.vue'
 import { useFormatter } from '@/core/composables/use-formatter'
 import { cssFill, distinctTypeColors, TOUR_TYPE_COLORS, TOUR_TYPE_I18N_KEYS } from '@/features/tours/data/models/tour-type'
+import { fliesDown } from '@/features/tours/domain/legs'
+import GradeBadge from '@/features/tours/presentation/components/grade-badge.vue'
 import RouteNumbers from '@/features/tours/presentation/components/route-numbers.vue'
 
 /**
- * One stage of an outing as a card (#338): number, name with goal height, activity · grade · date, climb
+ * One stage of an outing as a card (#338): number, name with goal height, grade badge + activity · date, climb
  * and descent. While editing it is the unit that is dragged around — by its handle — or removed.
  */
 const props = defineProps<{
@@ -38,9 +41,15 @@ const dotStyle = computed(() => {
   return colors.length > 0 ? { background: cssFill(colors) } : undefined
 })
 
+const names = (types: readonly TourType[]) => types.map(type => t(`tours.type.${TOUR_TYPE_I18N_KEYS[type]}`)).join(', ')
+/** "↑ Hiking ↓ Paragliding" for a split stage (activity-legs D4). */
+const activities = computed(() => {
+  const { legs, tourTypes } = props.segment
+  return legs ? `↑ ${names(legs.ascent)} ↓ ${names(legs.descent)}` : names(tourTypes)
+})
+
 const meta = computed(() => [
-  props.segment.tourTypes.map(type => t(`tours.type.${TOUR_TYPE_I18N_KEYS[type]}`)).join(', ') || null,
-  props.segment.grade,
+  activities.value || null,
   props.segment.plannedDate
     ? formatDate.value(props.segment.plannedDate, { weekday: 'short', day: 'numeric', month: 'short' })
     : null,
@@ -66,8 +75,11 @@ const meta = computed(() => [
           <span class="name">{{ segment.name ?? t('tours.infoSheet.unnamedTour') }}</span>
           <span v-if="segment.elevation != null" class="height">{{ formatElevation(segment.elevation) }}</span>
         </span>
-        <span v-if="meta" class="meta">{{ meta }}</span>
-        <RouteNumbers class="meta" :metrics="metrics" />
+        <span v-if="meta || segment.grade" class="meta">
+          <GradeBadge v-if="segment.grade" :grade="segment.grade" class="meta-grade" />
+          {{ meta }}
+        </span>
+        <RouteNumbers class="meta" :metrics="metrics" :flown="fliesDown(segment)" />
       </span>
       <BaseIcon v-if="!editing" name="chevron_right" class="chevron" />
     </button>
@@ -235,6 +247,10 @@ const meta = computed(() => [
 .meta {
   font-size: var(--font-size-sm);
   color: var(--color-on-surface-variant);
+}
+
+.meta-grade {
+  margin-inline-end: var(--spacing-xxs);
 }
 
 .chevron {

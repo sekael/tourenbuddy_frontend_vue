@@ -24,6 +24,8 @@ const props = defineProps<{
   exclude?: { lng: number, lat: number } | null
   /** The tour being edited — its own points are no history. */
   tourId?: string
+  /** The end is a landing: only earlier landings — the stops around a summit are no landing field. */
+  landing?: boolean
 }>()
 const emit = defineEmits<{ pick: [pick: { location: { lng: number, lat: number }, name: string }] }>()
 
@@ -32,6 +34,8 @@ const MAX = 3
 const SAME_GOAL_M = 300
 /** A suggestion this close to `exclude` is the same place. */
 const SAME_PLACE_M = 100
+/** A stop this close to the goal is no start: the tour would have no way up (an end there is the ride down). */
+const AT_GOAL_M = 500
 
 const { t } = useI18n({ useScope: 'global' })
 const { formatDistance } = useFormatter()
@@ -62,11 +66,11 @@ const history = computed<Suggestion[]>(() => {
 const stops = ref<NearbyStop[]>([])
 let controller: AbortController | null = null
 watch(
-  () => [props.around.lng, props.around.lat, isOnline.value] as const,
-  async ([lng, lat, online]) => {
+  () => [props.around.lng, props.around.lat, isOnline.value, props.landing] as const,
+  async ([lng, lat, online, landing]) => {
     controller?.abort()
     stops.value = []
-    if (!online)
+    if (!online || landing)
       return
     const own = (controller = new AbortController())
     try {
@@ -85,7 +89,7 @@ watch(
 const suggestions = computed<Suggestion[]>(() => {
   const names = new Set(history.value.map(s => s.name))
   const near = stops.value
-    .filter(stop => !names.has(stop.name) && !isExcluded(stop))
+    .filter(stop => !names.has(stop.name) && !isExcluded(stop) && (props.role === 'end' || stop.distance >= AT_GOAL_M))
     .map(stop => ({ kind: 'stop' as const, name: stop.name, location: { lng: stop.lng, lat: stop.lat }, distance: stop.distance }))
   return [...history.value, ...near].slice(0, MAX)
 })

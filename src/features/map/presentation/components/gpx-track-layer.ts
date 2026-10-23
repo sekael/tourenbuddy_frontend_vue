@@ -1,10 +1,12 @@
 import type { ExpressionSpecification, GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl'
+import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import { distinctTypeColors, TOUR_TYPE_COLORS, TOUR_TYPE_TRACK_COLORS } from '@/features/tours/data/models/tour-type'
 import { useGpxCache } from '@/features/tours/data/services/gpx-cache'
 import { gpxTrackKey, loadGpxTrack } from '@/features/tours/data/services/gpx-track-service'
 import { isSameGoal } from '@/features/tours/domain/distance'
 import { outingGaps } from '@/features/tours/domain/outing'
+import { progressNearest } from '@/features/tours/domain/route-metrics'
 import { DETAIL_CIRCLE_LAYER_ID, TOUR_LAYER_IDS } from './tours-marker-layer'
 
 const GPX_SOURCE_ID = 'gpx-track'
@@ -16,27 +18,44 @@ const BAND_CYCLES = 9
 /** Share of a band held solid; the rest fades into the next band's colour. */
 const BAND_HOLD = 0.8
 
+/** Stops banding `colors` over [from, to] of the line: `BAND_CYCLES` rounds per full length. */
+function bandStops(colors: readonly string[], from: number, to: number): (number | string)[] {
+  if (colors.length <= 1) {
+    const color = colors[0] ?? FALLBACK_TRACK_COLOR
+    return [from, color, to, color]
+  }
+  const stops: (number | string)[] = []
+  const bands = colors.length * Math.max(1, Math.round(BAND_CYCLES * (to - from)))
+  const width = (to - from) / bands
+  for (let i = 0; i < bands; i++) {
+    const color = colors[i % colors.length]!
+    stops.push(from + i * width, color, from + (i + BAND_HOLD) * width, color)
+  }
+  stops.push(to, colors[(bands - 1) % colors.length]!)
+  return stops
+}
+
+/** Where a split track switches colour (activity-legs D5): the way-down colours from `at` on. */
+interface LegSplit {
+  at: number
+  colors: readonly string[]
+}
+/** Closer to either end than this, the track holds only one leg's colours. */
+const SPLIT_EDGE = 0.001
+
 /**
  * `line-gradient` over the track's length (D8). One colour → solid. Several → `BAND_CYCLES`
- * rounds of equal bands, each holding its colour then fading smoothly into the next.
+ * rounds of equal bands, each holding its colour then fading smoothly into the next. A `split`
+ * switches to the way down's colours at its progress.
  * ponytail: bands scale with track length (progress-based); switch to distance-based bands if a
  * very long track reads badly.
  */
-export function trackGradient(colors: readonly string[]): ExpressionSpecification {
-  const stops: (number | string)[] = []
-  if (colors.length <= 1) {
-    const color = colors[0] ?? FALLBACK_TRACK_COLOR
-    stops.push(0, color, 1, color)
-  }
-  else {
-    const bands = colors.length * BAND_CYCLES
-    const width = 1 / bands
-    for (let i = 0; i < bands; i++) {
-      const color = colors[i % colors.length]!
-      stops.push(i * width, color, (i + BAND_HOLD) * width, color)
-    }
-    stops.push(1, colors[(bands - 1) % colors.length]!)
-  }
+export function trackGradient(colors: readonly string[], split?: LegSplit): ExpressionSpecification {
+  const stops = !split || split.at >= 1 - SPLIT_EDGE
+    ? bandStops(colors, 0, 1)
+    : split.at <= SPLIT_EDGE
+      ? bandStops(split.colors, 0, 1)
+      : [...bandStops(colors, 0, split.at), ...bandStops(split.colors, split.at + SPLIT_EDGE / 10, 1)]
   // `interpolate` is a fixed-arity tuple in the MapLibre types; the stop pairs are correct
   // by construction (strictly ascending inputs, colour outputs).
   return ['interpolate', ['linear'], ['line-progress'], ...stops] as unknown as ExpressionSpecification
@@ -76,38 +95,69 @@ function colorAt(colors: readonly string[], progress: number): string {
   return colors[Math.min(bands - 1, Math.floor(progress * bands)) % colors.length]!
 }
 
+interface LngLat { lng: number, lat: number }
+
 const arrowImageId = (color: string, both: boolean) => `connector-arrow${both ? '-both' : ''}:${color}`
+
+interface ConnectorLeg {
+  /** The leg's activities: the way up or down of a split tour, else all of them. */
+  types: readonly TourType[]
+  feature: GeoJSON.Feature<GeoJSON.LineString>
+}
 
 /**
  * Straight legs start → goal → end of a tour WITHOUT a GPX track (its track says it better),
  * banded in its activity colours like a track — the marker palette, so a segment's connector
- * matches its markers; `arrow` names the arrow image in the colour under the leg's centre.
+ * matches its markers; `arrow` names the arrow image in the colour under the leg's centre. A
+ * split tour's legs wear their own leg's activities (activity-legs D5).
  * ponytail: arrows repeat along a banded leg in that one colour; colour per arrow needs
- * self-placed point anchors. A round trip (end = start) is one leg with a two-way arrow; a start without
- * an end is the single leg to the goal; a leg between coinciding points is dropped.
+ * self-placed point anchors. A round trip (end = start) is one leg with a two-way arrow — unless
+ * split: one arrow can't wear two legs' colours, so both legs are drawn, the way down on top. A
+ * start without an end is the single leg to the goal; a leg between coinciding points is dropped.
  */
-export function tourConnectors(tours: readonly Tour[]): GeoJSON.FeatureCollection<GeoJSON.LineString> {
-  const features: GeoJSON.Feature<GeoJSON.LineString>[] = []
-  for (const tour of tours) {
-    const { startPoint: start, endPoint: end, goal } = tour
-    if (tour.gpxFilepath || !start)
-      continue
-    const center = colorAt(distinctTypeColors(tour.tourTypes, TOUR_TYPE_COLORS), 0.5)
-    const leg = (a: { lng: number, lat: number }, b: { lng: number, lat: number }, both: boolean) => {
-      if (!isSameGoal(a, b)) {
-        features.push({
+function connectorLegs(tour: Tour): ConnectorLeg[] {
+  const { startPoint: start, endPoint: end, goal, legs } = tour
+  if (tour.gpxFilepath || !start)
+    return []
+  const roundTrip = !legs && !!end && isSameGoal(end, start)
+  const leg = (types: readonly TourType[], a: LngLat, b: LngLat, both: boolean): ConnectorLeg[] => isSameGoal(a, b)
+    ? []
+    : [{
+        types,
+        feature: {
           type: 'Feature',
-          properties: { arrow: arrowImageId(center, both) },
+          properties: { arrow: arrowImageId(colorAt(distinctTypeColors(types, TOUR_TYPE_COLORS), 0.5), both) },
           geometry: { type: 'LineString', coordinates: [[a.lng, a.lat], [b.lng, b.lat]] },
-        })
-      }
-    }
-    const roundTrip = !!end && isSameGoal(end, start)
-    leg(start, goal, roundTrip)
-    if (end && !roundTrip)
-      leg(goal, end, false)
-  }
-  return { type: 'FeatureCollection', features }
+        },
+      }]
+  return [
+    ...leg(legs?.ascent ?? tour.tourTypes, start, goal, roundTrip),
+    ...(end && !roundTrip ? leg(legs?.descent ?? tour.tourTypes, goal, end, false) : []),
+  ]
+}
+
+/** What a slot draws: a GPX track (`legs` null) or connector legs, in `types`' colours. */
+interface TrackSlot {
+  tour: Tour
+  types: readonly TourType[]
+  legs: GeoJSON.FeatureCollection<GeoJSON.LineString> | null
+}
+
+function collection(legs: readonly ConnectorLeg[]): GeoJSON.FeatureCollection<GeoJSON.LineString> {
+  return { type: 'FeatureCollection', features: legs.map(l => l.feature) }
+}
+
+export function tourConnectors(tours: readonly Tour[]): GeoJSON.FeatureCollection<GeoJSON.LineString> {
+  return collection(tours.flatMap(connectorLegs))
+}
+
+/** A split tour's single-line track switches colour at the vertex nearest the goal (D5). */
+function trackSplit(tour: Tour, track: GeoJSON.FeatureCollection | null): LegSplit | undefined {
+  const geometry = track?.features.length === 1 ? track.features[0]!.geometry : null
+  // ponytail: a multi-line track keeps the union bands; split per line if such files show up.
+  if (!tour.legs || geometry?.type !== 'LineString')
+    return undefined
+  return { at: progressNearest(geometry.coordinates, tour.goal), colors: distinctTypeColors(tour.legs.descent, TOUR_TYPE_TRACK_COLORS) }
 }
 
 /** A thin chevron pointing along +x (line direction); `both` adds a mirrored one, well apart. */
@@ -242,21 +292,26 @@ export function useGpxTrackLayer(map: MapLibreMap) {
     ensureArrows()
     map.getSource<GeoJSONSource>(ARROW_SOURCE_ID)?.setData(tourConnectors(tours))
     map.getSource<GeoJSONSource>(GAP_SOURCE_ID)?.setData(outingGapLines(tours))
-    const shown = tours
-      .map(tour => ({ tour, legs: tour.gpxFilepath ? null : tourConnectors([tour]) }))
-      .filter(e => e.legs === null || e.legs.features.length > 0)
+    // A split tour's connector legs take a slot each, so each wears its own leg's gradient.
+    const shown = tours.flatMap((tour): TrackSlot[] => {
+      if (tour.gpxFilepath)
+        return [{ tour, types: tour.legs?.ascent ?? tour.tourTypes, legs: null }]
+      const legs = connectorLegs(tour)
+      if (tour.legs)
+        return legs.map(leg => ({ tour, types: leg.types, legs: collection([leg]) }))
+      return legs.length ? [{ tour, types: tour.tourTypes, legs: collection(legs) }] : []
+    })
     while (slots < shown.length)
       addSlot(slots++)
 
     for (let i = shown.length; i < slots; i++)
       map.getSource<GeoJSONSource>(sourceId(i))?.setData(EMPTY_GEOJSON)
 
-    await Promise.all(shown.map(async ({ tour, legs }, i) => {
+    await Promise.all(shown.map(async ({ tour, types, legs }, i) => {
       const source = map.getSource<GeoJSONSource>(sourceId(i))
+      const palette = legs ? TOUR_TYPE_COLORS : TOUR_TYPE_TRACK_COLORS
       // Recolour BEFORE the data lands so a cached track never flashes the previous tour's colours.
-      map.setPaintProperty(layerId(i), 'line-gradient', trackGradient(
-        distinctTypeColors(tour.tourTypes, legs ? TOUR_TYPE_COLORS : TOUR_TYPE_TRACK_COLORS),
-      ))
+      map.setPaintProperty(layerId(i), 'line-gradient', trackGradient(distinctTypeColors(types, palette)))
       map.setPaintProperty(layerId(i), 'line-width', legs ? CONNECTOR_WIDTH : 3)
       map.setPaintProperty(layerId(i), 'line-opacity', legs ? CONNECTOR_OPACITY : TRACK_OPACITY)
       if (legs) {
@@ -267,8 +322,13 @@ export function useGpxTrackLayer(map: MapLibreMap) {
       if (!cache.get(gpxTrackKey(tour)))
         source?.setData(EMPTY_GEOJSON)
       const geojson = await loadGpxTrack(tour as Tour & { gpxFilepath: string })
-      if (gen === generation)
-        source?.setData(geojson ?? EMPTY_GEOJSON)
+      if (gen !== generation)
+        return
+      // Same task as the data, so the split lands with the track it was measured on.
+      const split = trackSplit(tour, geojson)
+      if (split)
+        map.setPaintProperty(layerId(i), 'line-gradient', trackGradient(distinctTypeColors(types, palette), split))
+      source?.setData(geojson ?? EMPTY_GEOJSON)
     }))
   }
 

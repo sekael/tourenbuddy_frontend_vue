@@ -167,6 +167,43 @@ describe('tourConnectors', () => {
   })
 })
 
+describe('legs on the map (activity-legs D5)', () => {
+  const A = { lng: 8, lat: 46 }
+  const G = { lng: 8.1, lat: 46.1 }
+  const hikeAndFly = (t: Partial<Tour> = {}) => ({
+    gpxFilepath: null,
+    tourTypes: ['paragliding', 'hiking'],
+    legs: { ascent: ['hiking'], descent: ['paragliding'] },
+    startPoint: A,
+    endPoint: { lng: 8.2, lat: 46 },
+    goal: G,
+    ...t,
+  }) as Tour
+
+  it('should colour each leg\'s arrow by its own activities', () => {
+    expect(tourConnectors([hikeAndFly()]).features.map(f => f.properties!.arrow))
+      .toEqual(['connector-arrow:#DC2626', 'connector-arrow:#D97706'])
+  })
+
+  it('should draw a split round trip as two legs, one arrow cannot wear both colours', () => {
+    expect(tourConnectors([hikeAndFly({ endPoint: { ...A } })]).features.map(f => f.properties!.arrow))
+      .toEqual(['connector-arrow:#DC2626', 'connector-arrow:#D97706'])
+  })
+
+  it('should switch a track\'s colours at the split with strictly ascending stops', () => {
+    const stops = (trackGradient(['#a00000', '#00a000'], { at: 0.6, colors: ['#0000a0'] }) as unknown[]).slice(3)
+    const inputs = stops.filter((_, i) => i % 2 === 0) as number[]
+    expect(inputs.every((v, i) => i === 0 || v > inputs[i - 1]!)).toBe(true)
+    expect(stops.at(-1)).toBe('#0000a0')
+    expect(stops[stops.indexOf(0.6) + 1]).toBe('#00a000')
+  })
+
+  it('should keep one leg\'s colours when the goal sits at an end of the track', () => {
+    expect(trackGradient(['#a00000'], { at: 1, colors: ['#0000a0'] })).toEqual(trackGradient(['#a00000']))
+    expect(trackGradient(['#a00000'], { at: 0, colors: ['#0000a0'] })).toEqual(trackGradient(['#0000a0']))
+  })
+})
+
 describe('outingGapLines', () => {
   const at = (lng: number, lat: number) => ({ lng, lat })
   const seg = (startPoint: { lng: number, lat: number } | null, goal: { lng: number, lat: number }, endPoint: { lng: number, lat: number } | null = null) =>

@@ -116,6 +116,13 @@ describe('useTourFilters', () => {
       expect(filteredTours.value[0]!.id).toBe('2')
     })
 
+    it('should find a tour by the grade its row shows, a grade-less one not', () => {
+      const tours = [makeTour({ id: '1', name: 'Hike', grade: 'T3, S2' }), makeTour({ id: '2', name: 'Walk' })]
+      const { filteredTours, searchQuery } = setup(tours)
+      searchQuery.value = 's2'
+      expect(filteredTours.value.map(t => t.id)).toEqual(['1'])
+    })
+
     it('should match partner display name', () => {
       const tours = [makeTour({ id: '1', name: 'Hike', partnerIds: ['c-1'] })]
       const contacts = [{ id: 'c-1', firstName: 'Anna', lastName: 'Meier', displayName: 'Annie' }]

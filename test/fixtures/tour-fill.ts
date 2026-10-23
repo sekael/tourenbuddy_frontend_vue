@@ -17,5 +17,6 @@ export const TOUR_FILL = {
   outing: null,
   grade: null,
   startTime: null,
+  legs: null,
   isFriendTour: false,
 }

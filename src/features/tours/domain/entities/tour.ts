@@ -3,6 +3,7 @@ import type { Season } from '@/features/tours/data/models/season'
 import type { TourOuting, tourSchema } from '@/features/tours/data/models/tour-schema'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Visibility } from '@/features/tours/data/models/visibility'
+import type { TourLegs } from '@/features/tours/domain/legs'
 
 /** Domain entity for a tour. */
 export type Tour = z.infer<typeof tourSchema>
@@ -32,6 +33,11 @@ export interface TourDraft {
   grade?: string | null
   /** "HH:MM" on `plannedDate`; null = none. */
   startTime?: string | null
+  /**
+   * Activities per leg (activity-legs); null = all both ways. `undefined` = keep the tour's
+   * while its activities don't change (the server's rule for a caller that knows no legs).
+   */
+  legs?: TourLegs | null
   completed?: boolean
   /** Owner-chosen visibility. Defaults to `friends` server-side when omitted. */
   visibility?: Visibility

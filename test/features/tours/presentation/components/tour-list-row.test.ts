@@ -91,8 +91,9 @@ describe('tourListRow', () => {
     expect(wrapper.find('.tour-owner').exists()).toBe(false)
   })
 
-  it('should lead the subtitle with the grade, also on an undated tour', () => {
+  it('should lead the subtitle with the grade badge, also on an undated tour', () => {
     const wrapper = mountRow(makeTour({ grade: 'T4' }))
-    expect(wrapper.find('.tour-subtitle').text()).toBe('T4')
+    expect(wrapper.find('.tour-subtitle > [data-testid=tour-grade]').text()).toContain('T4')
+    expect(wrapper.find('.tour-subtitle').text()).not.toContain('·')
   })
 })

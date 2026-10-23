@@ -4,6 +4,7 @@ import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Visibility } from '@/features/tours/data/models/visibility'
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
+import type { LegDirection } from '@/features/tours/domain/legs'
 import type { PointPick, SwisstopoFill } from '@/features/tours/presentation/composables/use-swisstopo-fill'
 import { storeToRefs } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
@@ -18,7 +19,7 @@ import { isOnline } from '@/core/offline/use-online-status'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
-import { GRADE_MAX_LENGTH, gradeScales } from '@/features/tours/data/models/grade'
+import { dropScales, GRADE_MAX_LENGTH, gradeScales, normalizeGrade } from '@/features/tours/data/models/grade'
 import { SEASON_VALUES, seasonsForDates } from '@/features/tours/data/models/season'
 import { MAX_ATTACHMENTS_PER_TOUR } from '@/features/tours/data/models/tour-attachment'
 import {
@@ -37,7 +38,9 @@ import { gpxStorageKey, removeGpx, uploadGpx, uploadGpxToKey } from '@/features/
 import { getElevation } from '@/features/tours/data/services/swisstopo-elevation-service'
 import { suggestTourName } from '@/features/tours/data/services/swisstopo-name-service'
 import { isSameGoal } from '@/features/tours/domain/distance'
+import { defaultDirection, directionOf, landsByAir, legsFrom } from '@/features/tours/domain/legs'
 import { trackEnds } from '@/features/tours/domain/route-metrics'
+import ActivityLegs from '@/features/tours/presentation/components/activity-legs.vue'
 import GradeChips from '@/features/tours/presentation/components/grade-chips.vue'
 import PointSuggestions from '@/features/tours/presentation/components/point-suggestions.vue'
 import TourAttachmentsPicker from '@/features/tours/presentation/components/tour-attachments-picker.vue'
@@ -137,16 +140,24 @@ const selectedTourTypes = ref<TourType[]>(props.initialDraft?.tourTypes ?? [])
 const elevation = ref(props.initialDraft?.elevation != null ? String(props.initialDraft.elevation) : '')
 const description = ref(props.initialDraft?.description ?? '')
 const selectedSeasons = ref<Set<Season>>(new Set(props.initialDraft?.seasons ?? []))
-/** Free text in the activity's scale (design D3). */
+/** Free text, one part per activity scale (design D3). */
 const grade = ref(props.initialDraft?.grade ?? '')
-/** An example from the selected activity's scale (the alpine one shows its modifier); climbing names its two scales. */
+/** An example per selected scale (the alpine one shows its modifier); climbing alone names its two scales. */
 const gradePlaceholder = computed(() => {
-  if (selectedTourTypes.value.includes('climbing'))
-    return t('tours.form.gradePlaceholderClimbing')
-  const scale = gradeScales(selectedTourTypes.value)[0]
-  if (!scale)
-    return t('tours.form.gradeOptional')
-  return t('tours.form.gradePlaceholder', { example: scale[0] === 'L' ? `${scale[1]}+` : scale[2] })
+  const examples = gradeScales(selectedTourTypes.value).map(({ grades }) => (grades[0] === 'L' ? `${grades[1]}+` : grades[2]))
+  if (selectedTourTypes.value.includes('climbing')) {
+    if (!examples.length)
+      return t('tours.form.gradePlaceholderClimbing')
+    examples.push('5c')
+  }
+  return examples.length ? t('tours.form.gradePlaceholder', { example: examples.join(', ') }) : t('tours.form.gradeOptional')
+})
+// A dropped activity takes its scale's grade along; a hand-typed one stays.
+watch(selectedTourTypes, (types, before) => {
+  const kept = new Set(gradeScales(types).map(s => s.grades))
+  const gone = gradeScales(before).filter(s => !kept.has(s.grades))
+  if (gone.length)
+    grade.value = dropScales(grade.value, gone)
 })
 const startPoint = ref(props.initialDraft?.startPoint ?? null)
 const endPoint = ref(props.initialDraft?.endPoint ?? null)
@@ -409,6 +420,24 @@ function toggleTourType(type: TourType) {
   const on = !selectedTourTypes.value.includes(type)
   selectedTourTypes.value = TOUR_TYPE_VALUES.filter(v => v === type ? on : selectedTourTypes.value.includes(v))
 }
+
+// ── Way up, way down (activity-legs D3) ─────────────────────────────────────
+// A tapped line is the user's; the rest follow the default. An edit starts from the tour's
+// legs — an unsplit multi-activity tour stays unsplit until the user says otherwise.
+const legChoices = ref<Partial<Record<TourType, LegDirection>>>(
+  selectedTourTypes.value.length > 1
+    ? Object.fromEntries(selectedTourTypes.value.map(t => [t, directionOf(props.initialDraft?.legs ?? null, t)]))
+    : {},
+)
+const legDirection = (type: TourType) => legChoices.value[type] ?? defaultDirection(type, selectedTourTypes.value)
+const legs = computed(() => (selectedTourTypes.value.length > 1 ? legsFrom(selectedTourTypes.value, legDirection) : null))
+function setLegDirection(type: TourType, direction: LegDirection) {
+  legChoices.value = { ...legChoices.value, [type]: direction }
+}
+/** Flying comes last — it's how the day ends. */
+const legRows = computed(() => [...selectedTourTypes.value].sort((a, b) => Number(a === 'paragliding') - Number(b === 'paragliding')))
+/** A flown way down ends where the glider lands. */
+const endIsLanding = computed(() => landsByAir({ tourTypes: selectedTourTypes.value, legs: legs.value }))
 
 // ── Seasons follow the dates (design D6) ────────────────────────────────────
 // Automatic while the chips hold nothing or exactly what the dates say; a tap makes them the
@@ -688,7 +717,8 @@ function handleSubmit() {
     endPointElevation: endPointElevation.value ? Number(endPointElevation.value) : null,
     equipment: equipment.value.trim() || null,
     notes: notes.value.trim() || null,
-    grade: grade.value.trim() || null,
+    grade: normalizeGrade(grade.value) || null,
+    legs: legs.value,
     startTime: plannedDate.value && startTime.value ? startTime.value : null,
   }
   emit(
@@ -852,7 +882,7 @@ defineExpose({ cancel: handleCancel, submitBlocked })
           <div v-if="startPoint || endPoint" class="point-section point-section--end">
             <div class="point-section-header">
               <BaseIcon name="sports_score" class="point-section-icon" />
-              <span class="point-section-title">{{ t('tours.form.endPointLabel') }}</span>
+              <span class="point-section-title">{{ endIsLanding ? t('tours.form.landingLabel') : t('tours.form.endPointLabel') }}</span>
             </div>
             <template v-if="endPoint">
               <div class="point-row">
@@ -910,16 +940,16 @@ defineExpose({ cancel: handleCancel, submitBlocked })
               <div class="point-row">
                 <BaseButton type="button" variant="secondary" size="sm" @click="emit('pickPoint', 'end')">
                   <BaseIcon name="add" />
-                  {{ t('tours.form.addEndPointBtn') }}
+                  {{ endIsLanding ? t('tours.form.addLandingBtn') : t('tours.form.addEndPointBtn') }}
                 </BaseButton>
-                <BaseButton type="button" variant="secondary" size="sm" @click="handleRoundTrip">
+                <BaseButton v-if="!endIsLanding" type="button" variant="secondary" size="sm" @click="handleRoundTrip">
                   <BaseIcon name="replay" />
                   {{ t('tours.form.roundTripBtn') }}
                 </BaseButton>
               </div>
               <PointSuggestions
                 v-if="currentGoal" role="end" :around="currentGoal" :exclude="startPoint" :tour-id="tourId"
-                @pick="applyPick({ type: 'end', ...$event })"
+                :landing="endIsLanding" @pick="applyPick({ type: 'end', ...$event })"
               />
             </template>
           </div>
@@ -947,6 +977,10 @@ defineExpose({ cancel: handleCancel, submitBlocked })
               }}</span>
             </button>
           </div>
+          <ActivityLegs
+            v-if="selectedTourTypes.length > 1" :types="legRows" :direction="legDirection"
+            @set="setLegDirection"
+          />
           <div class="field">
             <label class="label" for="tf-grade">{{ t('tours.form.gradeLabel') }}</label>
             <input

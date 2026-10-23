@@ -518,12 +518,21 @@
       "gradePlaceholder": "e.g. {example}",
       "gradePlaceholderClimbing": "e.g. 5c or V+",
       "gradeOptional": "Optional",
-      "gradeScale": "Scale",
+      "gradeScale": "{activity} scale",
       "suggestions": {
         "label": "Suggestions",
         "history": "{name} – as on your last tour here",
         "stop": "{name} – public transport stop"
-      }
+      },
+      "legs": {
+        "label": "Way up and down",
+        "up": "Up",
+        "both": "Both",
+        "down": "Down",
+        "hint": "Up: from the start to the goal. Down: from the goal to the end."
+      },
+      "landingLabel": "Landing",
+      "addLandingBtn": "Add landing"
     },
     "creation": {
       "title": "New Tour",
@@ -562,7 +571,11 @@
       "iconTooltipPartners": "Partners",
       "downloadGpxBtn": "Download GPX",
       "startShort": "Start",
-      "endShort": "End"
+      "endShort": "End",
+      "landingShort": "Landing",
+      "wayUp": "Way up",
+      "wayDown": "Way down",
+      "landingOpen": "not set yet"
     },
     "filters": {
       "partnerLabel": "Partner",
@@ -733,14 +746,15 @@
       "dayCount": "{count} day | {count} days",
       "night": "Overnight",
       "reorderHandle": "Move segment {n}",
-      "ruleHint": "One day, one tour – even with several summits. After a night, the next segment begins.",
+      "ruleHint": "One day, one tour – even with several summits, or walking up and flying down. After a night, the next segment begins.",
       "connect": "Connect",
       "connectLabel": "End segment {n} at {place}"
     },
     "route": {
       "ascent": "Ascent",
       "descent": "Descent",
-      "distance": "Distance"
+      "distance": "Distance",
+      "flight": "Flight"
     }
   },
   "map": {

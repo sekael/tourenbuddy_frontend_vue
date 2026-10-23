@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { pointMetrics, routeMetrics, totalMetrics, trackEnds, trackMetrics } from '@/features/tours/domain/route-metrics'
+import { pointMetrics, progressNearest, routeMetrics, totalMetrics, trackEnds, trackMetrics } from '@/features/tours/domain/route-metrics'
 
 const HUT = { lng: 9.86, lat: 46.64 }
 const VALLEY = { lng: 9.81, lat: 46.64 }
@@ -77,6 +77,22 @@ describe('routeMetrics', () => {
   })
 })
 
+describe('routeMetrics of a split tour (activity-legs)', () => {
+  const GOAL = { lng: 8.02, lat: 46.6 }
+  // Walk up 1000 m to the goal, then fly: a 300 m thermal on the way down to 600 m.
+  const hikeAndFly = track([[8, 46.6, 600], [8.01, 46.6, 1100], [8.02, 46.6, 1600], [8.03, 46.6, 1200], [8.04, 46.6, 1500], [8.05, 46.6, 600]])
+  const legs = { ascent: ['hiking'], descent: ['paragliding'] } as const
+
+  it('should count only the walk as the climb and the flight as its net drop', () => {
+    expect(routeMetrics({ ...heights({}), goal: GOAL, legs: { ascent: [...legs.ascent], descent: [...legs.descent] } }, hikeAndFly))
+      .toMatchObject({ ascent: 1000, descent: 1000 })
+  })
+
+  it('should keep the whole-track numbers for an unsplit tour', () => {
+    expect(routeMetrics({ ...heights({}), goal: GOAL }, hikeAndFly)).toMatchObject({ ascent: 1300, descent: 1300 })
+  })
+})
+
 describe('totalMetrics', () => {
   it('should not total a number one route lacks — a partial sum misleads', () => {
     const total = totalMetrics([
@@ -85,6 +101,17 @@ describe('totalMetrics', () => {
     ])
     expect(total).toEqual({ ascent: null, descent: null, distance: null })
     expect(totalMetrics([])).toEqual({ ascent: null, descent: null, distance: null })
+  })
+})
+
+describe('progressNearest', () => {
+  it('should measure along the line to the vertex nearest the point', () => {
+    const line = [[8, 46], [8.01, 46], [8.03, 46]]
+    expect(progressNearest(line, { lng: 8.0101, lat: 46.001 })).toBeCloseTo(1 / 3, 2)
+  })
+
+  it('should be 0 for a line without length', () => {
+    expect(progressNearest([[8, 46]], { lng: 9, lat: 47 })).toBe(0)
   })
 })
 

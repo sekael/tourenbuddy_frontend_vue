@@ -40,6 +40,24 @@ describe('tourFactRows', () => {
     expect(chips.map(c => c.attributes('style'))).toEqual(['--tag-color: #1565C0;', '--tag-color: #DC2626;'])
   })
 
+  it('should show a split tour leg by leg, the way up first, and its end as the landing', () => {
+    const w = mountRows({
+      tourTypes: ['paragliding', 'climbing'],
+      legs: { ascent: ['climbing'], descent: ['paragliding'] },
+      startPoint: START,
+      endPoint: { lng: 7.8, lat: 46.5 },
+      endPointName: 'Lauterbrunnen',
+    })
+    expect(w.findAll('.type-group').map(g => [g.attributes('data-leg'), g.findAll('.type-tag').map(c => c.text())]))
+      .toEqual([['up', ['tours.type.climbing']], ['down', ['tours.type.paragliding']]])
+    expect(w.find('[data-fact="end"] .row-label').text()).toBe('tours.infoSheet.landingShort')
+  })
+
+  it('should not claim a flown tour without a landing ends at its goal', () => {
+    const w = mountRows({ tourTypes: ['paragliding'], startPoint: START })
+    expect(w.find('[data-fact="end"]').text()).toContain('tours.infoSheet.landingOpen')
+  })
+
   it('should render no rows at all for a legacy tour without type', () => {
     expect(facts(mountRows())).toEqual([])
   })

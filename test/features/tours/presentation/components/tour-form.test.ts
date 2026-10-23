@@ -765,6 +765,72 @@ describe('tourForm — creation that knows more (smarter-tour-creation)', () => 
     expect((wrapper.find('#tf-grade').element as HTMLInputElement).value).toBe('T4')
   })
 
+  it('should hold one grade per scale and drop a scale\'s grade with its activity', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL })
+    const grade = () => (wrapper.find('#tf-grade').element as HTMLInputElement).value
+    const chip = (g: string) => wrapper.findAll('[data-testid=grade-chip]').find(c => c.text() === g)!
+    await wrapper.find('[data-type=hiking]').trigger('click')
+    await wrapper.find('[data-type=mountain-biking]').trigger('click')
+    await chip('T3').trigger('click')
+    await chip('S2').trigger('click')
+    expect(grade()).toBe('T3, S2')
+
+    await wrapper.find('#tf-grade').setValue('t3+, S2, 5c')
+    expect(chip('T3').attributes('aria-pressed')).toBe('true')
+    await wrapper.find('[data-type=mountain-biking]').trigger('click')
+    expect(grade()).toBe('t3+, 5c')
+    expect(await submitted(wrapper)).toMatchObject({ grade: 'T3+, 5c' })
+  })
+
+  it('should not let a chip push the grade past what the database takes', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL })
+    await wrapper.find('[data-type=hiking]').trigger('click')
+    await wrapper.find('[data-type=mountaineering]').trigger('click')
+    await wrapper.find('#tf-grade').setValue('ZS+ (III-IV), 5c+')
+    await wrapper.findAll('[data-testid=grade-chip]').find(c => c.text() === 'T5')!.trigger('click')
+    expect((wrapper.find('#tf-grade').element as HTMLInputElement).value).toBe('ZS+ (III-IV), 5c+')
+  })
+
+  it('should set up a hike & fly in two taps and save its legs', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL })
+    expect(wrapper.find('[data-testid=activity-legs]').exists()).toBe(false)
+    await wrapper.find('[data-type=hiking]').trigger('click')
+    expect(wrapper.find('[data-testid=activity-legs]').exists()).toBe(false)
+    await wrapper.find('[data-type=paragliding]').trigger('click')
+    const way = (type: string) => wrapper.find(`[data-leg=${type}] [aria-checked=true]`).attributes('data-way')
+    expect([way('hiking'), way('paragliding')]).toEqual(['up', 'down'])
+    expect(await submitted(wrapper)).toMatchObject({ tourTypes: ['paragliding', 'hiking'], legs: { ascent: ['hiking'], descent: ['paragliding'] } })
+  })
+
+  it('should keep a tapped way when a third activity joins, and unsplit when all go both ways', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL })
+    await wrapper.find('[data-type=hiking]').trigger('click')
+    await wrapper.find('[data-type=mountain-biking]').trigger('click')
+    await wrapper.find('[data-leg=hiking] [data-way=up]').trigger('click')
+    await wrapper.find('[data-leg=mountain-biking] [data-way=down]').trigger('click')
+    expect(await submitted(wrapper)).toMatchObject({ legs: { ascent: ['hiking'], descent: ['mountain-biking'] } })
+    await wrapper.find('[data-leg=hiking] [data-way=both]').trigger('click')
+    await wrapper.find('[data-leg=mountain-biking] [data-way=both]').trigger('click')
+    expect(await submitted(wrapper)).toMatchObject({ legs: null })
+  })
+
+  it('should leave an unsplit multi-activity tour unsplit in an edit', async () => {
+    const wrapper = mountForm({
+      currentGoal: GOAL,
+      initialDraft: { name: 'X', plannedDate: null, tourTypes: ['paragliding', 'hiking'], partnerIds: [], legs: null },
+    })
+    expect(await submitted(wrapper)).toMatchObject({ legs: null })
+  })
+
+  it('should call the end of a flown way down the landing, without a round trip', async () => {
+    const wrapper = mountForm({
+      currentGoal: GOAL,
+      initialDraft: { name: 'X', plannedDate: null, tourTypes: ['paragliding'], partnerIds: [], startPoint: { lng: 8.4, lat: 46.7 } },
+    })
+    expect(wrapper.find('.point-section--end .point-section-title').text()).toBe('tours.form.landingLabel')
+    expect(wrapper.find('.point-section--end').text()).not.toContain('tours.form.roundTripBtn')
+  })
+
   it('should say what a stage is once the dates span more than one day', async () => {
     const wrapper = mountForm({ currentGoal: GOAL })
     await wrapper.find('#tf-plannedDate').setValue('2027-03-12')

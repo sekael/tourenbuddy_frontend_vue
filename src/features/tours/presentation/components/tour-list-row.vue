@@ -9,6 +9,7 @@ import { resolveContactName } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useFriendDisplayName } from '@/features/friendships/presentation/composables/use-friend-display-name'
 import { TOUR_TYPE_COLORS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
+import GradeBadge from '@/features/tours/presentation/components/grade-badge.vue'
 import { useTourSuggestionsStore } from '@/features/tours/presentation/stores/tour-suggestions-store'
 
 const props = defineProps<{ tour: Tour }>()
@@ -70,8 +71,7 @@ const dateLabel = computed(() => {
   const otherYear = date.getFullYear() !== new Date().getFullYear()
   return formatDate.value(date, { weekday: 'short', day: 'numeric', month: 'short', ...(otherYear && { year: 'numeric' }) })
 })
-// How hard leads: it decides who comes along before the day does.
-const subtitle = computed(() => [props.tour.grade, dateLabel.value, partnerSubtitle.value].filter(Boolean).join(' · ') || null)
+const subtitle = computed(() => [dateLabel.value, partnerSubtitle.value].filter(Boolean).join(' · ') || null)
 </script>
 
 <template>
@@ -82,11 +82,16 @@ const subtitle = computed(() => [props.tour.grade, dateLabel.value, partnerSubti
     </div>
     <div class="tour-info">
       <span class="tour-name">{{ displayName }}</span>
+      <!-- How hard leads: it decides who comes along before the day does — a friend's tour too. -->
       <span v-if="tour.isFriendTour && ownerResolved" class="tour-owner">
+        <GradeBadge v-if="tour.grade" :grade="tour.grade" class="row-grade" />
         {{ dateLabel ? `${ownerLabel} · ${dateLabel}` : ownerLabel }}
       </span>
       <span v-else-if="tour.isFriendTour" class="tour-owner-skeleton" aria-hidden="true" />
-      <span v-else-if="subtitle" class="tour-subtitle">{{ subtitle }}</span>
+      <span v-else-if="tour.grade || subtitle" class="tour-subtitle">
+        <GradeBadge v-if="tour.grade" :grade="tour.grade" class="row-grade" />
+        {{ subtitle }}
+      </span>
     </div>
     <span
       v-if="pendingSuggestions > 0" class="suggestion-badge"
@@ -205,6 +210,10 @@ const subtitle = computed(() => [props.tour.grade, dateLabel.value, partnerSubti
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.row-grade {
+  margin-inline-end: var(--spacing-xxs);
 }
 
 .suggestion-badge {

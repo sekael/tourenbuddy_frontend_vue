@@ -85,6 +85,7 @@ import IconSprint from '~icons/material-symbols/sprint'
 import IconStar from '~icons/material-symbols/star'
 import IconStarOutline from '~icons/material-symbols/star-outline'
 import IconStickyNote2Outline from '~icons/material-symbols/sticky-note-2-outline'
+import IconSwapVert from '~icons/material-symbols/swap-vert'
 import IconSyncAlt from '~icons/material-symbols/sync-alt'
 import IconTimeline from '~icons/material-symbols/timeline'
 import IconTourOutline from '~icons/material-symbols/tour-outline'
@@ -220,6 +221,7 @@ export const iconRegistry: Record<string, Component> = {
   star: IconStarOutline,
   star_filled: IconStar,
   sticky_note_2: IconStickyNote2Outline,
+  swap_vert: IconSwapVert,
   sync_alt: IconSyncAlt,
   timeline: IconTimeline,
   tour: IconTourOutline,

@@ -1,11 +1,15 @@
+import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 import type {
   SuggestionField,
   SuggestionItem,
 } from '@/features/tours/domain/entities/tour-suggestion'
+import { legsMatch } from '@/features/tours/domain/legs'
 
 /** A geographic point as both the tour and the draft carry it. */
 type Point = { lng: number, lat: number } | null
+/** A `tour_type` value: the plain list, or with legs an object (activity-legs D6). */
+type ActivitiesValue = TourType[] | { types: TourType[], ascent?: TourType[], descent?: TourType[] }
 
 /** Coordinates are compared at ~1 cm; a re-render must not read as an edit. */
 const COORD_EPSILON = 1e-7
@@ -62,9 +66,16 @@ export function seedDraftFromPending(
       case 'grade':
         draft.grade = value as string | null
         break
-      case 'tour_type':
-        draft.tourTypes = (value ?? []) as TourDraft['tourTypes']
+      case 'tour_type': {
+        // An object carries the legs (activity-legs D6); a plain list keeps them while they add up.
+        const activities = value as ActivitiesValue | null
+        draft.tourTypes = Array.isArray(activities) ? activities : (activities?.types ?? [])
+        if (!Array.isArray(activities) && activities)
+          draft.legs = activities.ascent && activities.descent ? { ascent: activities.ascent, descent: activities.descent } : null
+        else if (draft.legs && !legsMatch(draft.tourTypes, draft.legs))
+          draft.legs = null
         break
+      }
       case 'elevation':
         draft.elevation = value as number | null
         break
@@ -186,9 +197,11 @@ export function buildSuggestionItems(
     })
   }
 
-  // The whole list is the value (both sides in canonical order): accepting replaces it.
-  if (original.tourTypes.join() !== draft.tourTypes.join())
-    push('tour_type', draft.tourTypes)
+  // The whole list is the value (both sides in canonical order): accepting replaces it. Legs on
+  // either side make it an object — one without legs is how a suggestion unsplits a tour (D6).
+  const legs = draft.legs === undefined ? (original.legs ?? null) : draft.legs
+  if (original.tourTypes.join() !== draft.tourTypes.join() || JSON.stringify(original.legs ?? null) !== JSON.stringify(legs))
+    push('tour_type', original.legs || legs ? { types: draft.tourTypes, ...legs } : draft.tourTypes)
 
   // The goal and its elevation decide each other. A moved goal carries the freshly
   // looked-up elevation and suppresses the standalone field — otherwise "accept the new

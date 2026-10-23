@@ -7,6 +7,7 @@ import type { DetailMarker } from '@/features/tours/domain/tour-detail-markers'
 import maplibregl from 'maplibre-gl'
 import { TOUR_TYPE_COLORS, TOUR_TYPE_PREVIEW_COLORS } from '@/features/tours/data/models/tour-type'
 import { toursToGeoJson } from '@/features/tours/domain/entities/tour'
+import { routeOrder } from '@/features/tours/domain/legs'
 import { diffForests } from './cluster-transitions'
 import {
   buildClusterTree,
@@ -952,7 +953,7 @@ export function useToursMarkerLayer(
     for (const tour of tours) {
       tourDataCache.set(tour.id, {
         lngLat: [tour.goal.lng, tour.goal.lat],
-        colors: tourColors(tour.tourTypes, TOUR_TYPE_COLORS),
+        colors: tourColors(routeOrder(tour), TOUR_TYPE_COLORS),
       })
     }
 

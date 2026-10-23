@@ -518,12 +518,21 @@
       "gradePlaceholder": "z. B. {example}",
       "gradePlaceholderClimbing": "z. B. 5c oder V+",
       "gradeOptional": "Optional",
-      "gradeScale": "Skala",
+      "gradeScale": "Skala für {activity}",
       "suggestions": {
         "label": "Vorschläge",
         "history": "{name} – wie bei deiner letzten Tour hierher",
         "stop": "{name} – ÖV-Haltestelle"
-      }
+      },
+      "legs": {
+        "label": "Hinauf und hinunter",
+        "up": "Hinauf",
+        "both": "Beides",
+        "down": "Hinunter",
+        "hint": "Hinauf: vom Start zum Ziel. Hinunter: vom Ziel zum Ende."
+      },
+      "landingLabel": "Landeplatz",
+      "addLandingBtn": "Landeplatz hinzufügen"
     },
     "creation": {
       "title": "Neue Tour",
@@ -562,7 +571,11 @@
       "iconTooltipPartners": "Tourenpartner",
       "downloadGpxBtn": "GPX herunterladen",
       "startShort": "Start",
-      "endShort": "Ende"
+      "endShort": "Ende",
+      "landingShort": "Landung",
+      "wayUp": "Hinauf",
+      "wayDown": "Hinunter",
+      "landingOpen": "noch offen"
     },
     "filters": {
       "partnerLabel": "Partner",
@@ -733,14 +746,15 @@
       "dayCount": "{count} Tag | {count} Tage",
       "night": "Übernachtung",
       "reorderHandle": "Etappe {n} verschieben",
-      "ruleHint": "Ein Tag, eine Tour – auch mit mehreren Gipfeln. Nach einer Übernachtung beginnt die nächste Etappe.",
+      "ruleHint": "Ein Tag, eine Tour – auch mit mehreren Gipfeln oder hoch zu Fuss und runter mit dem Schirm. Nach einer Übernachtung beginnt die nächste Etappe.",
       "connect": "Verbinden",
       "connectLabel": "Etappe {n} bei {place} enden lassen"
     },
     "route": {
       "ascent": "Aufstieg",
       "descent": "Abstieg",
-      "distance": "Distanz"
+      "distance": "Distanz",
+      "flight": "Flug"
     }
   },
   "map": {

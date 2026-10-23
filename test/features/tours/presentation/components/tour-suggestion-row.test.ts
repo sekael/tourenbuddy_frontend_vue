@@ -151,6 +151,19 @@ describe('tourSuggestionRow', () => {
     expect(wrapper.find('.value--old').text()).toBe('tours.suggestions.emptyValue')
   })
 
+  it('shows a split activity proposal leg by leg, and an unsplit one as its list', () => {
+    const wrapper = mountRow({
+      suggestion: makeSuggestion({
+        field: 'tour_type',
+        value: { types: ['paragliding', 'hiking'], ascent: ['hiking'], descent: ['paragliding'] },
+        baseValue: { types: ['paragliding', 'hiking'] },
+      }),
+    })
+
+    expect(wrapper.find('.value--new').text()).toBe('↑ tours.type.hiking ↓ tours.type.paragliding')
+    expect(wrapper.find('.value--old').text()).toBe('tours.type.paragliding, tours.type.hiking')
+  })
+
   it('localizes every entry of a seasons list, not just the first', () => {
     const wrapper = mountRow({
       suggestion: makeSuggestion({

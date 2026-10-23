@@ -126,6 +126,9 @@ export function useTourFilters(tab: TourTab = 'owned') {
       return true
     if (tour.name && tour.name.toLowerCase().includes(q))
       return true
+    // The row shows the grade, so "T4" or "zs" finds it.
+    if (tour.grade?.toLowerCase().includes(q))
+      return true
     // A segment surfaces its outing's row, so the outing's name must find it too (#338).
     if (tour.outing?.name?.toLowerCase().includes(q))
       return true

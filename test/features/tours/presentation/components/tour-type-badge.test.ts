@@ -28,4 +28,17 @@ describe('tourTypeBadge', () => {
   it('should not seam a single activity', () => {
     expect(mount(TourTypeBadge, { props: { types: ['hiking'] } }).findAll('.seam')).toHaveLength(0)
   })
+
+  it('should count the activities past the third in a fourth slice once five glyphs would crowd', () => {
+    const w = mount(TourTypeBadge, { props: { types: ['skitour', 'paragliding', 'hiking', 'mountaineering', 'climbing', 'mountain-biking'] } })
+    expect(w.findAllComponents(BaseIcon).map(i => i.props('name'))).toEqual(['ski_touring', 'paragliding', 'hiking'])
+    expect(w.find('.slice-more').text()).toBe('+3')
+    expect(w.findAll('.seam')).toHaveLength(4)
+  })
+
+  it('should draw four activities as four glyphs, no count', () => {
+    const w = mount(TourTypeBadge, { props: { types: ['skitour', 'paragliding', 'hiking', 'climbing'] } })
+    expect(w.findAll('.slice-icon')).toHaveLength(4)
+    expect(w.find('.slice-more').exists()).toBe(false)
+  })
 })

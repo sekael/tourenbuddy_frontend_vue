@@ -271,3 +271,28 @@ describe('grade and start time (smarter-tour-creation D3/D4)', () => {
     expect(seeded).toMatchObject({ grade: 'WS+', startTime: '05:45', plannedDate: new Date('2026-02-03') })
   })
 })
+
+describe('activities with legs (activity-legs D6)', () => {
+  const hikeAndFly = { ascent: ['hiking'], descent: ['paragliding'] } as Tour['legs']
+
+  it('should suggest a split as an object carrying the legs', () => {
+    const items = buildSuggestionItems({ ...tour, tourTypes: ['paragliding', 'hiking'] }, { ...draft, tourTypes: ['paragliding', 'hiking'], legs: hikeAndFly }, GOAL)
+    expect(itemFor(items, 'tour_type')!.value).toEqual({ types: ['paragliding', 'hiking'], ascent: ['hiking'], descent: ['paragliding'] })
+  })
+
+  it('should unsplit with an object without legs, a plain list would keep them', () => {
+    const items = buildSuggestionItems({ ...tour, tourTypes: ['paragliding', 'hiking'], legs: hikeAndFly }, { ...draft, tourTypes: ['paragliding', 'hiking'], legs: null }, GOAL)
+    expect(itemFor(items, 'tour_type')!.value).toEqual({ types: ['paragliding', 'hiking'] })
+  })
+
+  it('should read a draft that knows no legs as keeping the tour\'s', () => {
+    expect(itemFor(buildSuggestionItems({ ...tour, tourTypes: ['paragliding', 'hiking'], legs: hikeAndFly }, { ...draft, tourTypes: ['paragliding', 'hiking'] }, GOAL), 'tour_type')).toBeUndefined()
+  })
+
+  it('should seed the pending legs, and drop the tour\'s when a plain list no longer adds up', () => {
+    const pending = seedDraftFromPending(tour, [{ field: 'tour_type', value: { types: ['paragliding', 'climbing'], ascent: ['climbing'], descent: ['paragliding'] } }])
+    expect(pending).toMatchObject({ tourTypes: ['paragliding', 'climbing'], legs: { ascent: ['climbing'], descent: ['paragliding'] } })
+    const plain = seedDraftFromPending({ ...tour, tourTypes: ['paragliding', 'hiking'], legs: hikeAndFly }, [{ field: 'tour_type', value: ['hiking'] }])
+    expect(plain.legs).toBeNull()
+  })
+})

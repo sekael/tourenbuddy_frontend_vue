@@ -544,6 +544,17 @@ describe('useToursStore: outings (#338)', () => {
   /** The membership each `updateTour` call sent, by tour id. */
   const sentOutings = () => Object.fromEntries(mockUpdateTour.mock.calls.map(([id, draft]) => [id, draft.outing]))
 
+  it('should keep the legs of a draft that knows none only while the activities stay', async () => {
+    const store = useToursStore()
+    const legs = { ascent: ['hiking'], descent: ['paragliding'] } as const
+    store.tours = [{ ...mockTours[0]!, tourTypes: ['paragliding', 'hiking'], legs: { ascent: [...legs.ascent], descent: [...legs.descent] } }]
+    const { legs: _legs, ...draft } = store.tours[0]!
+    await store.updateTour(draft.id, draft, draft.goal)
+    expect(store.tours[0]!.legs).toEqual(legs)
+    await store.updateTour(draft.id, { ...draft, tourTypes: ['hiking'] }, draft.goal)
+    expect(store.tours[0]!.legs).toBeNull()
+  })
+
   it('should keep a segment in its outing when an edit draft does not mention the outing', async () => {
     const store = useToursStore()
     store.tours = [seg('a', 0)]

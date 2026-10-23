@@ -55,6 +55,22 @@ describe('pointSuggestions', () => {
     expect(names(wrapper)).toEqual(['Susten Passhöhe'])
   })
 
+  it('should not offer a stop at the goal as a start, but as an end (the ride down)', async () => {
+    mockFindStopsNear.mockResolvedValue([{ name: 'Rothorn Gipfel', lng: GOAL.lng, lat: GOAL.lat, distance: 200 }, PASS])
+    const start = mountSuggestions({})
+    const end = mountSuggestions({ role: 'end' })
+    await flushPromises()
+    expect(names(start)).toEqual(['Susten Passhöhe'])
+    expect(names(end)).toEqual(['Rothorn Gipfel', 'Susten Passhöhe'])
+  })
+
+  it('should offer a landing only the earlier landings, never the stops around the summit', async () => {
+    const wrapper = mountSuggestions({ role: 'end', landing: true }, [tour('flight', { endPoint: HUT, endPointName: 'Landeplatz Brienz' })])
+    await flushPromises()
+    expect(names(wrapper)).toEqual(['Landeplatz Brienz'])
+    expect(mockFindStopsNear).not.toHaveBeenCalled()
+  })
+
   it('should emit the suggestion as a named pick', async () => {
     const wrapper = mountSuggestions({})
     await flushPromises()
