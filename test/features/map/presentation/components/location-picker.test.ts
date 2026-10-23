@@ -30,7 +30,7 @@ function makeMapStub(overrides: Record<string, unknown> = {}) {
   }
 }
 
-const bernina: LocationResult = { name: 'Piz Bernina', kind: 'Alpiner Gipfel', region: 'Pontresina (GR)', origin: 'gazetteer', lng: 9.908, lat: 46.382, zoom: 14 }
+const bernina: LocationResult = { name: 'Piz Bernina', kind: 'Alpiner Gipfel', region: 'Pontresina (GR)', origin: 'gazetteer', objectclass: 'TLM_NAME_PKT', lng: 9.908, lat: 46.382, zoom: 14 }
 const ela: LocationResult = { ...bernina, name: 'Piz Ela', lng: 9.66, lat: 46.6 }
 
 function mountPicker(map = makeMapStub()) {

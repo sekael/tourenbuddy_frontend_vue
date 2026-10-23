@@ -13,18 +13,24 @@ import OutingSegmentCard from '@/features/tours/presentation/components/outing-s
  * The outing's segments as a stage plan (#338, design D20): numbered cards, and between two of
  * them what happens there — the night (on a later day), the place handed over at (a segment ending
  * away from its goal), a gap (the next one starts elsewhere — a reorder, a moved point, or a
- * transfer) or dates out of order. Problems are shown, never fixed. `editing` adds drag handles (mouse, pen, finger, arrow keys) and remove.
+ * transfer) or dates out of order. Problems are shown; a gap can be closed by the owner in one tap
+ * (`canConnect`: the previous segment then ends where the next starts). `editing` adds drag
+ * handles (mouse, pen, finger, arrow keys) and remove.
  */
 const props = defineProps<{
   segments: Tour[]
   metrics: Map<string, RouteMetrics>
   editing?: boolean
   busy?: boolean
+  /** The owner may close a gap (smarter-tour-creation D8). */
+  canConnect?: boolean
 }>()
 const emit = defineEmits<{
   open: [tourId: string]
   reorder: [from: number, to: number]
   remove: [tourId: string]
+  /** End segment `index - 1` where segment `index` starts. */
+  connect: [index: number]
 }>()
 
 const { t } = useI18n({ useScope: 'global' })
@@ -67,6 +73,13 @@ const links = computed(() => {
         <span v-if="links[i]!.gap" class="link-row link-row--warn" data-testid="segment-gap">
           <BaseIcon name="warning" size="sm" />
           {{ t('tours.outing.gapHint', { n: i }) }}
+          <button
+            v-if="canConnect && segment.startPoint" type="button" class="connect" :disabled="busy"
+            :aria-label="t('tours.outing.connectLabel', { n: i, place: segment.startPointName ?? t('tours.outing.connect') })"
+            data-testid="segment-connect" @click="emit('connect', i)"
+          >
+            {{ t('tours.outing.connect') }}
+          </button>
         </span>
         <span v-if="links[i]!.early" class="link-row link-row--warn" data-testid="segment-early">
           <BaseIcon name="warning" size="sm" />
@@ -136,5 +149,23 @@ const links = computed(() => {
 
 .link-row--warn {
   color: var(--color-warning-text);
+}
+
+.connect {
+  margin-inline-start: var(--spacing-xxs);
+  min-height: 32px;
+  padding: 0 var(--spacing-sm);
+  border: 1px solid currentcolor;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+}
+
+.connect:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 </style>

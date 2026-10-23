@@ -55,6 +55,15 @@ function trackLines(track: GeoJSON.FeatureCollection): GeoJSON.Position[][] {
   })
 }
 
+interface LngLat { lng: number, lat: number }
+
+/** A track's first and last point (lines in file order); null for a track without points. */
+export function trackEnds(track: GeoJSON.FeatureCollection): { first: LngLat, last: LngLat } | null {
+  const points = trackLines(track).flat()
+  const [first, last] = [points[0], points.at(-1)]
+  return first && last ? { first: { lng: first[0]!, lat: first[1]! }, last: { lng: last[0]!, lat: last[1]! } } : null
+}
+
 /** Horizontal distance, climb and descent along a GPX track; heights stay unknown if any point lacks one. */
 export function trackMetrics(track: GeoJSON.FeatureCollection): RouteMetrics {
   const lines = trackLines(track).filter(line => line.length > 0)

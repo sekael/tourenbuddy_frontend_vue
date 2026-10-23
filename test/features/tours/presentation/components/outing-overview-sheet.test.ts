@@ -115,6 +115,21 @@ describe('outingOverviewSheet', () => {
     expect(rows.map(r => r.find('[data-testid="segment-gap"]').exists())).toEqual([false, false, true])
   })
 
+  it('should let only the owner close a gap: the previous segment then ends where the next starts', async () => {
+    const hut = { lng: 8.43, lat: 46.71 }
+    const gapped = [segment('a', 0), { ...segment('b', 1), startPoint: hut, startPointName: 'Tierberglihütte SAC' }] as unknown as ReturnType<typeof segment>[]
+    const wrapper = mountSheet('me/o1', gapped)
+    await wrapper.find('[data-testid="segment-connect"]').trigger('click')
+    expect(useToursStore().connectSegments).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'a' }),
+      expect.objectContaining({ id: 'b', startPoint: hut }),
+    )
+
+    const friend = mountSheet('friend/o1', [], gapped.map(s => ({ ...s, userId: 'friend', isFriendTour: true })))
+    expect(friend.find('[data-testid="segment-gap"]').exists()).toBe(true)
+    expect(friend.find('[data-testid="segment-connect"]').exists()).toBe(false)
+  })
+
   it('should read like a stage plan: days, way, totals, the hut night and the valley handover', () => {
     const at = (lng: number) => ({ lng, lat: 46.6 })
     const wrapper = mountSheet('me/o1', [
@@ -155,6 +170,7 @@ describe('outingOverviewSheet', () => {
   it('should offer a new segment after the last one', async () => {
     const wrapper = mountSheet()
     await wrapper.find('[data-testid="outing-add-segment"]').trigger('click')
+    expect(wrapper.find('[data-testid="segment-rule"]').text()).toBe('tours.outing.ruleHint')
     await wrapper.find('[data-testid="add-segment-new"]').trigger('click')
     expect(wrapper.emitted('addSegmentNew')).toEqual([['c']])
   })

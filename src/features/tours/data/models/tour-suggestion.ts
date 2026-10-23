@@ -13,9 +13,11 @@ import { z } from 'zod'
  * owner's factual assertion about their own day), and the partner set is structurally
  * unsuggestable — `tour_partners.contact_id` lives in the owner's namespace.
  *
+ * `dates` also carries the start time (`startTime`, only when set), which needs a date.
+ *
  * IMPORTANT: this list is duplicated in exactly one other place, the SQL CHECK constraint
- * in `20260828054413_tour_suggestions.sql`. `tour-suggestion.test.ts` reads the migration
- * and asserts the two match, so drift fails CI.
+ * (newest in `20261022192018_tour_grade_start_time.sql`). `tour-suggestion.test.ts` reads the
+ * newest migration that sets it and asserts the two match, so drift fails CI.
  */
 export const SUGGESTABLE_FIELDS = [
   'name',
@@ -32,6 +34,7 @@ export const SUGGESTABLE_FIELDS = [
   'gpx',
   'attachment_add',
   'attachment_remove',
+  'grade',
 ] as const
 
 export const suggestionFieldSchema = z.enum(SUGGESTABLE_FIELDS)

@@ -30,6 +30,12 @@ const outingColumns = {
   outing_position: z.number().int().nullable().default(null),
 }
 
+/** Grade and start time ("HH:MM", the views format it), shared by both views. */
+const planColumns = {
+  grade: z.string().nullable().default(null),
+  start_time: z.string().nullable().default(null),
+}
+
 function outingFromRow(row: { outing_id: string | null, outing_name: string | null, outing_position: number | null }) {
   return row.outing_id != null && row.outing_position != null
     ? { id: row.outing_id, name: row.outing_name, position: row.outing_position }
@@ -66,6 +72,7 @@ export const tourRowSchema = z
     visibility: visibilitySchema.default('friends'),
     updated_at: z.string().nullable().default(null),
     ...outingColumns,
+    ...planColumns,
   })
   .transform(row => ({
     id: row.id,
@@ -96,6 +103,8 @@ export const tourRowSchema = z
     visibility: row.visibility,
     updatedAt: row.updated_at,
     outing: outingFromRow(row),
+    grade: row.grade,
+    startTime: row.start_time,
     isFriendTour: false,
   }))
 
@@ -142,6 +151,13 @@ export const tourSchema = z.object({
    * key absent — every reader branches on truthiness, and `cachedLoad` refetches it away.
    */
   outing: outingSchema.nullable().default(null),
+  /**
+   * Free-text grade in the activity's own scale ("T4", "ZS-", "S2", "5c"); null = none. Like
+   * `outing`, a snapshot cached before it existed hydrates with the key absent.
+   */
+  grade: z.string().nullable().default(null),
+  /** Start time "HH:MM" on `plannedDate`; null = none (always null without a date). */
+  startTime: z.string().nullable().default(null),
   /** True when this tour belongs to a friend (read via friend_tours_view), not the viewer. */
   isFriendTour: z.boolean().default(false),
   /** Friend-tour only: whether the viewer is a marked partner (drives detail gating). */
@@ -187,6 +203,7 @@ export const friendTourRowSchema = z
     unresolved_partner_count: z.number().int().nonnegative().default(0),
     visibility: visibilitySchema.default('friends'),
     ...outingColumns,
+    ...planColumns,
   })
   .transform(row => ({
     id: row.id,
@@ -217,6 +234,8 @@ export const friendTourRowSchema = z
     visibility: row.visibility,
     updatedAt: null, // friend tours are read-only — never queued, no LWW baseline
     outing: outingFromRow(row),
+    grade: row.grade,
+    startTime: row.start_time,
     isFriendTour: true,
     isPartner: row.is_partner,
     partnerNames: row.partner_names,

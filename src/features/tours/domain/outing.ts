@@ -127,16 +127,23 @@ export function appendedOuting(outing: TourOuting, segments: Pick<Tour, 'outing'
   return { id: outing.id, name: outing.name, position: last + 1 }
 }
 
+/** The day after `date` (day-precision UTC, like every tour date); null stays null. */
+function nextDay(date: Date | null): Date | null {
+  return date && new Date(date.getTime() + 86_400_000)
+}
+
 /**
  * The creation form's seed for the segment after `prev` (D17): same activities, partners,
- * visibility and seasons, on its last day, starting where it ended (its end point, else its goal).
+ * visibility and seasons, the day after its last day, starting where it ended (its end point,
+ * else its goal).
  */
 export function nextSegmentSeed(prev: Tour): TourDraft {
   const fromEnd = prev.endPoint != null
   const startElevation = fromEnd ? prev.endPointElevation : prev.elevation
   return {
     name: null,
-    plannedDate: prev.endDate ?? prev.plannedDate,
+    // A new stage starts after a night (design D8 of smarter-tour-creation).
+    plannedDate: nextDay(prev.endDate ?? prev.plannedDate),
     endDate: null,
     partnerIds: prev.partnerIds,
     tourTypes: prev.tourTypes,

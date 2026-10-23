@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { FlyToOptions, Map as MapLibreMap } from 'maplibre-gl'
-import type { LocationResult } from '@/features/map/data/services/swisstopo-search-service'
+import type { LocationResult, PickRole } from '@/features/map/data/services/swisstopo-search-service'
 import { useFocusWithin, usePreferredReducedMotion, watchDebounced } from '@vueuse/core'
 import { LngLat } from 'maplibre-gl'
 import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
@@ -19,6 +19,8 @@ const props = defineProps<{
   map: MapLibreMap | null
   /** Pixels to offset the dock (search field + Cancel/Continue) from the bottom of the viewport. */
   actionsBottom?: number
+  /** What is picked: a start or end point also finds stops and ranks access places first. */
+  role?: PickRole
 }>()
 
 const emit = defineEmits<{
@@ -98,10 +100,10 @@ watchDebounced(query, async (q) => {
     return
 
   try {
-    const found = await searchLocations(trimmed, locale.value, own.signal)
+    const found = await searchLocations(trimmed, locale.value, own.signal, props.role)
     if (controller !== own || !props.map)
       return
-    results.value = rankResults(found, getCrosshairCoordinates(props.map), props.map.getZoom())
+    results.value = rankResults(found, getCrosshairCoordinates(props.map), props.map.getZoom(), props.role)
     searchFailed.value = false
   }
   catch (err) {
@@ -202,7 +204,7 @@ function handleConfirm() {
 
       <SearchInput
         v-if="isOnline" ref="searchInput" v-model="query" class="search-field"
-        :placeholder="t('tours.picker.search.placeholder')" :label="t('tours.picker.search.label')"
+        :placeholder="role === 'start' || role === 'end' ? t('tours.picker.search.placeholderAccess') : t('tours.picker.search.placeholder')" :label="t('tours.picker.search.label')"
         @enter="choose(results[0])" @escape="closeList"
       >
         <!-- mousedown.prevent: the tap must not blur the field, or the dock would flip under the finger. -->

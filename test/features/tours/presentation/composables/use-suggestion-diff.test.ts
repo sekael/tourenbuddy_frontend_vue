@@ -1,7 +1,7 @@
 import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 import type { SuggestionItem } from '@/features/tours/domain/entities/tour-suggestion'
 import { describe, expect, it } from 'vitest'
-import { buildSuggestionItems } from '@/features/tours/presentation/composables/use-suggestion-diff'
+import { buildSuggestionItems, seedDraftFromPending } from '@/features/tours/presentation/composables/use-suggestion-diff'
 
 const GOAL = { lng: 8.2, lat: 46.8 }
 
@@ -30,6 +30,8 @@ const tour: Tour = {
   visibility: 'friends',
   updatedAt: null,
   outing: null,
+  grade: null,
+  startTime: null,
   isFriendTour: true,
   isPartner: true,
 }
@@ -238,5 +240,34 @@ describe('buildSuggestionItems', () => {
     // suggestions on the same field stop cancelling each other.
     const items = buildSuggestionItems(tour, { ...draft, notes: 'Beware cornices' }, GOAL)
     expect(itemFor(items, 'notes')!.targetId).toBeUndefined()
+  })
+})
+
+describe('grade and start time (smarter-tour-creation D3/D4)', () => {
+  it('should suggest a grade, and nothing for a draft that never knew one', () => {
+    expect(itemFor(buildSuggestionItems(tour, { ...draft, grade: undefined }, GOAL), 'grade')).toBeUndefined()
+    expect(itemFor(buildSuggestionItems(tour, { ...draft, grade: 'ZS' }, GOAL), 'grade')!.value).toBe('ZS')
+  })
+
+  it('should carry a start time inside ONE dates item, and no key without one', () => {
+    const items = buildSuggestionItems(tour, { ...draft, startTime: '06:30' }, GOAL)
+    expect(items).toEqual([{ field: 'dates', value: { plannedDate: '2026-02-01', endDate: null, startTime: '06:30' } }])
+    const moved = buildSuggestionItems(tour, { ...draft, plannedDate: new Date('2026-02-02') }, GOAL)
+    expect(itemFor(moved, 'dates')!.value).toEqual({ plannedDate: '2026-02-02', endDate: null })
+  })
+
+  it('should name the removal of the owner\'s time, also when the date goes with it', () => {
+    const removed = buildSuggestionItems({ ...tour, startTime: '06:30' }, { ...draft, startTime: null }, GOAL)
+    expect(itemFor(removed, 'dates')!.value).toEqual({ plannedDate: '2026-02-01', endDate: null, startTime: null })
+    const undated = buildSuggestionItems({ ...tour, startTime: '06:30' }, { ...draft, plannedDate: null, startTime: '06:30' }, GOAL)
+    expect(itemFor(undated, 'dates')!.value).toEqual({ plannedDate: null, endDate: null, startTime: null })
+  })
+
+  it('should seed a revision with the pending grade and time', () => {
+    const seeded = seedDraftFromPending(tour, [
+      { field: 'grade', value: 'WS+' },
+      { field: 'dates', value: { plannedDate: '2026-02-03', endDate: null, startTime: '05:45' } },
+    ])
+    expect(seeded).toMatchObject({ grade: 'WS+', startTime: '05:45', plannedDate: new Date('2026-02-03') })
   })
 })

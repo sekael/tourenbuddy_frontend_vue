@@ -71,10 +71,10 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
 <template>
   <div class="fact-rows">
-    <ul v-if="tour.tourTypes.length || tour.seasons?.length" class="fact-group">
+    <ul v-if="tour.tourTypes.length || tour.grade || tour.seasons?.length" class="fact-group">
       <!-- Chips carry their own icons, so they take the icon column too. Activities wear
            their own colour, seasons stay neutral. -->
-      <li v-if="tour.tourTypes.length" class="fact-row fact-row--wide" data-fact="type">
+      <li v-if="tour.tourTypes.length || tour.grade" class="fact-row fact-row--wide" data-fact="type">
         <span class="visually-hidden">{{ t('tours.infoSheet.iconTooltipType') }}</span>
         <span
           v-for="type in tour.tourTypes" :key="type" class="tag type-tag"
@@ -82,6 +82,10 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
         >
           <BaseIcon :name="TOUR_TYPE_ICONS[type]" size="sm" />
           {{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[type]}` as any) }}
+        </span>
+        <span v-if="tour.grade" class="tag grade-tag" data-testid="tour-grade">
+          <span class="visually-hidden">{{ t('tours.suggestions.fields.grade') }}</span>
+          {{ tour.grade }}
         </span>
       </li>
 
@@ -262,6 +266,12 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
 .type-tag .base-icon {
   color: var(--tag-color);
+}
+
+.grade-tag {
+  border: 1px solid var(--color-outline);
+  color: var(--color-on-surface);
+  font-weight: var(--font-weight-semibold);
 }
 
 .season-tag {

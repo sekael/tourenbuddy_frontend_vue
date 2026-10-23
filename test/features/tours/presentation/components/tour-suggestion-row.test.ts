@@ -120,6 +120,19 @@ describe('tourSuggestionRow', () => {
     expect(wrapper.find('.value--new').text()).toContain('–')
   })
 
+  it('renders a suggested start time with its day, and an old one alongside', () => {
+    const wrapper = mountRow({
+      suggestion: makeSuggestion({
+        field: 'dates',
+        value: { plannedDate: '2026-02-01', endDate: null, startTime: '05:45' },
+        baseValue: { plannedDate: '2026-02-01', endDate: null, startTime: '06:30' },
+      }),
+    })
+
+    expect(wrapper.find('.value--new').text()).toMatch(/ · 05:45$/)
+    expect(wrapper.find('.value--old').text()).toMatch(/ · 06:30$/)
+  })
+
   it('never renders a raw enum token — a German reader must not see "climbing"', () => {
     const wrapper = mountRow({
       suggestion: makeSuggestion({ field: 'tour_type', value: ['climbing'], baseValue: ['skitour'] }),

@@ -221,6 +221,11 @@ export const useToursStore = defineStore('tours', () => {
       updatedAt: base?.updatedAt ?? null,
       // undefined = keep, like the server does for a null `p_outing` (D12).
       outing: draft.outing === undefined ? (base?.outing ?? null) : draft.outing,
+      // undefined = keep, like the server does for null `p_grade` / `p_start_time` (D5).
+      grade: draft.grade === undefined ? (base?.grade ?? null) : draft.grade,
+      startTime: !draft.plannedDate
+        ? null
+        : draft.startTime === undefined ? (base?.startTime ?? null) : draft.startTime,
       isFriendTour: false,
     }
   }
@@ -247,6 +252,8 @@ export const useToursStore = defineStore('tours', () => {
       notes: tour.notes,
       completed: tour.completed,
       visibility: tour.visibility,
+      grade: tour.grade ?? null,
+      startTime: tour.startTime ?? null,
     }
   }
 
@@ -515,6 +522,18 @@ export const useToursStore = defineStore('tours', () => {
   }
 
   /** Take a segment out; a lone remaining segment leaves too, dissolving the outing (D14). */
+  /** Close a gap (smarter-tour-creation D8): `prev` ends where `next` starts — "we sleep there". */
+  async function connectSegments(prev: Tour, next: Tour) {
+    if (!next.startPoint)
+      return
+    await updateTour(prev.id, {
+      ...tourToDraft(prev),
+      endPoint: next.startPoint,
+      endPointName: next.startPointName,
+      endPointElevation: next.startPointElevation,
+    }, prev.goal)
+  }
+
   async function removeFromOuting(segments: Tour[], tourId: string) {
     await setOuting(tourId, null)
     const rest = segments.filter(s => s.id !== tourId)
@@ -569,6 +588,7 @@ export const useToursStore = defineStore('tours', () => {
     addToOuting,
     renameOuting,
     reorderSegments,
+    connectSegments,
     removeFromOuting,
     clear,
   }

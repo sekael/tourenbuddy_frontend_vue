@@ -95,7 +95,7 @@ describe('appendedOuting', () => {
 })
 
 describe('nextSegmentSeed', () => {
-  it('should start at the previous segment\'s end point on its last day', () => {
+  it('should start at the previous segment\'s end point the day after its last day', () => {
     const seed = nextSegmentSeed(segment('a', 0, {
       plannedDate: new Date('2027-03-11'),
       endDate: new Date('2027-03-12'),
@@ -105,7 +105,7 @@ describe('nextSegmentSeed', () => {
       tourTypes: ['skitour'],
     }))
     expect(seed).toMatchObject({
-      plannedDate: new Date('2027-03-12'),
+      plannedDate: new Date('2027-03-13'),
       startPoint: { lng: 7.6, lat: 46.1 },
       startPointName: 'Cabane de Bertol',
       startPointElevation: 3311,
@@ -118,6 +118,11 @@ describe('nextSegmentSeed', () => {
   it('should start at the goal with a whole-metre elevation when the previous segment has no end point', () => {
     const seed = nextSegmentSeed(segment('a', 0, { name: 'Hut', elevation: 2632.4 }))
     expect(seed).toMatchObject({ startPoint: { lng: 7.5, lat: 46 }, startPointName: 'Hut', startPointElevation: 2632 })
+  })
+
+  it('should leave the date empty after an undated segment, and cross a month end', () => {
+    expect(nextSegmentSeed(segment('a', 0, { plannedDate: null })).plannedDate).toBeNull()
+    expect(nextSegmentSeed(segment('a', 0, { plannedDate: new Date('2027-02-28') })).plannedDate).toEqual(new Date('2027-03-01'))
   })
 })
 

@@ -70,7 +70,8 @@ const dateLabel = computed(() => {
   const otherYear = date.getFullYear() !== new Date().getFullYear()
   return formatDate.value(date, { weekday: 'short', day: 'numeric', month: 'short', ...(otherYear && { year: 'numeric' }) })
 })
-const subtitle = computed(() => [dateLabel.value, partnerSubtitle.value].filter(Boolean).join(' · ') || null)
+// How hard leads: it decides who comes along before the day does.
+const subtitle = computed(() => [props.tour.grade, dateLabel.value, partnerSubtitle.value].filter(Boolean).join(' · ') || null)
 </script>
 
 <template>

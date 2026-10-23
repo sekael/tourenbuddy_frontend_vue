@@ -179,9 +179,10 @@ function handleAdded() {
           {{ t('tours.outing.segmentsHeader') }}
         </h4>
         <OutingSegmentTimeline
-          :segments="segments" :metrics="metrics" :editing="mode === 'edit'" :busy="busy" @open="emit('openSegment', $event)"
+          :segments="segments" :metrics="metrics" :editing="mode === 'edit'" :busy="busy" :can-connect="isOwner"
+          @open="emit('openSegment', $event)"
           @reorder="(from, to) => run(() => toursStore.reorderSegments(segments, from, to))"
-          @remove="id => run(() => toursStore.removeFromOuting(segments, id))"
+          @remove="id => run(() => toursStore.removeFromOuting(segments, id))" @connect="i => run(() => toursStore.connectSegments(segments[i - 1]!, segments[i]!))"
         />
       </section>
     </div>

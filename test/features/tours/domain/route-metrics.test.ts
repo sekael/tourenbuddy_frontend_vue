@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { pointMetrics, routeMetrics, totalMetrics, trackMetrics } from '@/features/tours/domain/route-metrics'
+import { pointMetrics, routeMetrics, totalMetrics, trackEnds, trackMetrics } from '@/features/tours/domain/route-metrics'
 
 const HUT = { lng: 9.86, lat: 46.64 }
 const VALLEY = { lng: 9.81, lat: 46.64 }
@@ -85,5 +85,18 @@ describe('totalMetrics', () => {
     ])
     expect(total).toEqual({ ascent: null, descent: null, distance: null })
     expect(totalMetrics([])).toEqual({ ascent: null, descent: null, distance: null })
+  })
+})
+
+describe('trackEnds', () => {
+  it('should have no ends without a point', () => {
+    expect(trackEnds({ type: 'FeatureCollection', features: [] })).toBeNull()
+  })
+
+  it('should take the first point of the first line and the last of the last, across features', () => {
+    const line = (coordinates: number[][]) => ({ type: 'Feature' as const, properties: {}, geometry: { type: 'LineString' as const, coordinates } })
+    const multi = { type: 'Feature' as const, properties: {}, geometry: { type: 'MultiLineString' as const, coordinates: [[[3, 3, 900]], [[4, 4], [5, 5]]] } }
+    expect(trackEnds({ type: 'FeatureCollection', features: [line([[1, 1], [2, 2]]), multi] }))
+      .toEqual({ first: { lng: 1, lat: 1 }, last: { lng: 5, lat: 5 } })
   })
 })

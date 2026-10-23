@@ -116,7 +116,8 @@ function formatValue(value: unknown, isSuggested = false): string {
     const to = obj.endDate ? formatDate(String(obj.endDate)) : null
     if (!from)
       return t('tours.suggestions.emptyValue')
-    return to ? `${from} – ${to}` : from
+    const day = typeof obj.startTime === 'string' ? `${from} · ${obj.startTime}` : from
+    return to ? `${day} – ${to}` : day
   }
 
   if ('lng' in obj && 'lat' in obj) {

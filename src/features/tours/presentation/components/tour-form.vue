@@ -18,7 +18,8 @@ import { isOnline } from '@/core/offline/use-online-status'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
-import { SEASON_VALUES } from '@/features/tours/data/models/season'
+import { GRADE_MAX_LENGTH, gradeScales } from '@/features/tours/data/models/grade'
+import { SEASON_VALUES, seasonsForDates } from '@/features/tours/data/models/season'
 import { MAX_ATTACHMENTS_PER_TOUR } from '@/features/tours/data/models/tour-attachment'
 import {
   TOUR_TYPE_COLORS,
@@ -35,6 +36,10 @@ import {
 import { gpxStorageKey, removeGpx, uploadGpx, uploadGpxToKey } from '@/features/tours/data/services/gpx-storage-service'
 import { getElevation } from '@/features/tours/data/services/swisstopo-elevation-service'
 import { suggestTourName } from '@/features/tours/data/services/swisstopo-name-service'
+import { isSameGoal } from '@/features/tours/domain/distance'
+import { trackEnds } from '@/features/tours/domain/route-metrics'
+import GradeChips from '@/features/tours/presentation/components/grade-chips.vue'
+import PointSuggestions from '@/features/tours/presentation/components/point-suggestions.vue'
 import TourAttachmentsPicker from '@/features/tours/presentation/components/tour-attachments-picker.vue'
 import UploadTile from '@/features/tours/presentation/components/upload-tile.vue'
 import { useSwisstopoFill } from '@/features/tours/presentation/composables/use-swisstopo-fill'
@@ -113,20 +118,36 @@ const endDate = ref(
   props.initialDraft?.endDate ? props.initialDraft.endDate.toISOString().split('T')[0] : '',
 )
 const endDateError = ref(false)
+/** "HH:MM" on the planned date; empty = none (design D4). */
+const startTime = ref(props.initialDraft?.startTime ?? '')
 
-// An end date without a start has no span to bound — clearing the start clears it.
+// An end date or a time without a start day has nothing to hang on — clearing the day clears both.
 watch(plannedDate, (value) => {
   if (!value) {
     endDate.value = ''
     endDateError.value = false
+    startTime.value = ''
   }
 })
+/** More than one day: the moment to say what a stage is (design D8). */
+const spansDays = computed(() => !!plannedDate.value && !!endDate.value && endDate.value > plannedDate.value)
 const selectedPartnerIds = ref<Set<string>>(new Set(props.initialDraft?.partnerIds ?? []))
 const visibility = ref<Visibility>(props.initialDraft?.visibility ?? DEFAULT_VISIBILITY)
 const selectedTourTypes = ref<TourType[]>(props.initialDraft?.tourTypes ?? [])
 const elevation = ref(props.initialDraft?.elevation != null ? String(props.initialDraft.elevation) : '')
 const description = ref(props.initialDraft?.description ?? '')
 const selectedSeasons = ref<Set<Season>>(new Set(props.initialDraft?.seasons ?? []))
+/** Free text in the activity's scale (design D3). */
+const grade = ref(props.initialDraft?.grade ?? '')
+/** An example from the selected activity's scale (the alpine one shows its modifier); climbing names its two scales. */
+const gradePlaceholder = computed(() => {
+  if (selectedTourTypes.value.includes('climbing'))
+    return t('tours.form.gradePlaceholderClimbing')
+  const scale = gradeScales(selectedTourTypes.value)[0]
+  if (!scale)
+    return t('tours.form.gradeOptional')
+  return t('tours.form.gradePlaceholder', { example: scale[0] === 'L' ? `${scale[1]}+` : scale[2] })
+})
 const startPoint = ref(props.initialDraft?.startPoint ?? null)
 const endPoint = ref(props.initialDraft?.endPoint ?? null)
 const startPointName = ref(props.initialDraft?.startPointName ?? '')
@@ -330,22 +351,34 @@ const fills = {
   end: [endName, endElevation],
 } as const
 
-watch(
-  () => props.pick,
-  (pick) => {
-    if (!pick)
-      return
-    if (pick.type === 'start')
-      startPoint.value = pick.location
-    else if (pick.type === 'end')
-      endPoint.value = pick.location
-    const [nameFill, elevationFill] = fills[pick.type]
-    // A place chosen in the picker's search names the point; otherwise look one up nearby.
-    void nameFill.fill(async signal => pick.name ?? suggestTourName(pick.location, signal))
-    void elevationFill.fill(signal => getElevation(pick.location, signal))
-  },
-  { immediate: true },
-)
+/** A map pick, a suggestion chip or a GPX end: set the point, then name it and look up its height. */
+function applyPick(pick: PointPick) {
+  if (pick.type === 'start')
+    startPoint.value = pick.location
+  else if (pick.type === 'end')
+    endPoint.value = pick.location
+  const [nameFill, elevationFill] = fills[pick.type]
+  // A place chosen in the picker's search names the point; otherwise look one up nearby.
+  void nameFill.fill(async signal => pick.name ?? suggestTourName(pick.location, signal))
+  void elevationFill.fill(signal => getElevation(pick.location, signal))
+}
+
+watch(() => props.pick, pick => pick && applyPick(pick), { immediate: true })
+
+/** A GPX names the empty ends (design D6): its first point, its last — or the start again for a loop. */
+const LOOP_M = 200
+function fillPointsFromTrack(track: GeoJSON.FeatureCollection) {
+  const ends = trackEnds(track)
+  if (!ends)
+    return
+  if (!startPoint.value)
+    applyPick({ type: 'start', location: ends.first })
+  if (!endPoint.value) {
+    const loop = isSameGoal(ends.first, ends.last, LOOP_M)
+    const at = loop ? startPoint.value! : ends.last
+    applyPick({ type: 'end', location: { ...at }, name: loop ? startPointName.value.trim() || undefined : undefined })
+  }
+}
 
 function lookupPlaceholder(fill: SwisstopoFill, placeholder: string) {
   if (fill.status === 'loading')
@@ -377,7 +410,26 @@ function toggleTourType(type: TourType) {
   selectedTourTypes.value = TOUR_TYPE_VALUES.filter(v => v === type ? on : selectedTourTypes.value.includes(v))
 }
 
+// ── Seasons follow the dates (design D6) ────────────────────────────────────
+// Automatic while the chips hold nothing or exactly what the dates say; a tap makes them the
+// user's. A cleared date leaves them as they are — an undated tour still has a season.
+function datedSeasons() {
+  return seasonsForDates(
+    plannedDate.value ? new Date(plannedDate.value) : null,
+    plannedDate.value && endDate.value ? new Date(endDate.value) : null,
+  )
+}
+const autoSeasons = ref(
+  selectedSeasons.value.size === 0
+  || (datedSeasons().length === selectedSeasons.value.size && datedSeasons().every(s => selectedSeasons.value.has(s))),
+)
+watch([plannedDate, endDate], () => {
+  if (autoSeasons.value && plannedDate.value)
+    selectedSeasons.value = new Set(datedSeasons())
+})
+
 function toggleSeason(season: Season) {
+  autoSeasons.value = false
   if (selectedSeasons.value.has(season)) {
     selectedSeasons.value.delete(season)
   }
@@ -397,7 +449,7 @@ async function handleGpxUpload(event: Event) {
   input.value = ''
 
   try {
-    await parseGpxFile(file)
+    fillPointsFromTrack(await parseGpxFile(file))
   }
   catch (err) {
     if (err instanceof GpxFileTooLargeError) {
@@ -636,6 +688,8 @@ function handleSubmit() {
     endPointElevation: endPointElevation.value ? Number(endPointElevation.value) : null,
     equipment: equipment.value.trim() || null,
     notes: notes.value.trim() || null,
+    grade: grade.value.trim() || null,
+    startTime: plannedDate.value && startTime.value ? startTime.value : null,
   }
   emit(
     'submit',
@@ -748,6 +802,10 @@ defineExpose({ cancel: handleCancel, submitBlocked })
                 @click="handleRemoveStart"
               />
             </div>
+            <PointSuggestions
+              v-if="!startPoint && currentGoal" role="start" :around="currentGoal" :tour-id="tourId"
+              @pick="applyPick({ type: 'start', ...$event })"
+            />
             <template v-if="startPoint">
               <div class="field">
                 <label class="label" for="tf-start-name">{{
@@ -789,8 +847,9 @@ defineExpose({ cancel: handleCancel, submitBlocked })
             </template>
           </div>
 
-          <!-- End point: only available once start point is set -->
-          <div v-if="startPoint" class="point-section point-section--end">
+          <!-- End point: offered once a start is set; an end set without one (a connected
+               stage, design D8) still shows. -->
+          <div v-if="startPoint || endPoint" class="point-section point-section--end">
             <div class="point-section-header">
               <BaseIcon name="sports_score" class="point-section-icon" />
               <span class="point-section-title">{{ t('tours.form.endPointLabel') }}</span>
@@ -858,7 +917,105 @@ defineExpose({ cancel: handleCancel, submitBlocked })
                   {{ t('tours.form.roundTripBtn') }}
                 </BaseButton>
               </div>
+              <PointSuggestions
+                v-if="currentGoal" role="end" :around="currentGoal" :exclude="startPoint" :tour-id="tourId"
+                @pick="applyPick({ type: 'end', ...$event })"
+              />
             </template>
+          </div>
+        </div>
+
+        <!-- SECTION: Tour Type -->
+        <div class="section">
+          <p class="section-label">
+            {{ t('tours.form.activityLabel') }}
+          </p>
+          <div class="type-chips">
+            <button
+              v-for="type in TOUR_TYPE_VALUES"
+              :key="type"
+              type="button"
+              class="type-chip"
+              :data-type="type"
+              :style="{ '--chip-type': TOUR_TYPE_COLORS[type] }"
+              :class="{ selected: selectedTourTypes.includes(type) }"
+              @click="toggleTourType(type)"
+            >
+              <BaseIcon :name="TOUR_TYPE_ICONS[type]" class="type-icon" />
+              <span class="type-label">{{
+                t(`tours.type.${TOUR_TYPE_I18N_KEYS[type]}` as any)
+              }}</span>
+            </button>
+          </div>
+          <div class="field">
+            <label class="label" for="tf-grade">{{ t('tours.form.gradeLabel') }}</label>
+            <input
+              id="tf-grade" v-model="grade" class="input" type="text" :maxlength="GRADE_MAX_LENGTH"
+              :placeholder="gradePlaceholder" autocomplete="off" data-testid="grade-input"
+            >
+            <GradeChips v-model="grade" :tour-types="selectedTourTypes" />
+          </div>
+        </div>
+
+        <!-- SECTION: When — the seasons follow the dates (design D6) -->
+        <div class="section">
+          <p class="section-label">
+            {{ t('tours.form.whenSectionLabel') }}
+          </p>
+
+          <div class="date-time">
+            <div class="field">
+              <label class="label" for="tf-plannedDate">{{ t('tours.form.plannedDateLabel') }}</label>
+              <input id="tf-plannedDate" v-model="plannedDate" class="input" type="date">
+            </div>
+            <div class="field">
+              <label class="label" for="tf-startTime">{{ t('tours.form.startTimeLabel') }}</label>
+              <input
+                id="tf-startTime" v-model="startTime" class="input" type="time" :disabled="!plannedDate"
+                data-testid="start-time-input"
+              >
+            </div>
+          </div>
+
+          <!-- Always rendered, labelled optional: two adjacent date inputs read as a range
+               with no toggle to discover. Empty = single-day tour. -->
+          <div class="field">
+            <label class="label" for="tf-endDate">{{ t('tours.form.endDateLabel') }}</label>
+            <input
+              id="tf-endDate"
+              v-model="endDate"
+              class="input"
+              :class="{ 'input--error': endDateError }"
+              type="date"
+              :min="plannedDate || undefined"
+              :disabled="!plannedDate"
+              :aria-invalid="endDateError"
+              @input="endDateError = false"
+            >
+            <p v-if="endDateError" class="field-error">
+              {{ t('tours.form.endDateBeforeStartError') }}
+            </p>
+            <p v-else-if="spansDays" class="field-hint" data-testid="multi-day-hint">
+              {{ t('tours.form.multiDayHint') }}
+            </p>
+          </div>
+
+          <div class="field">
+            <p class="label">
+              {{ t('tours.form.seasonLabel') }}
+            </p>
+            <div class="season-chips">
+              <button
+                v-for="season in SEASON_VALUES"
+                :key="season"
+                type="button"
+                class="season-chip"
+                :class="{ selected: selectedSeasons.has(season) }"
+                @click="toggleSeason(season)"
+              >
+                {{ t(`tours.season.${season}` as any) }}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -908,79 +1065,11 @@ defineExpose({ cancel: handleCancel, submitBlocked })
           </p>
         </div>
 
-        <!-- SECTION: Tour Type -->
-        <div class="section">
-          <p class="section-label">
-            {{ t('tours.form.activityLabel') }}
-          </p>
-          <div class="type-chips">
-            <button
-              v-for="type in TOUR_TYPE_VALUES"
-              :key="type"
-              type="button"
-              class="type-chip"
-              :data-type="type"
-              :style="{ '--chip-type': TOUR_TYPE_COLORS[type] }"
-              :class="{ selected: selectedTourTypes.includes(type) }"
-              @click="toggleTourType(type)"
-            >
-              <BaseIcon :name="TOUR_TYPE_ICONS[type]" class="type-icon" />
-              <span class="type-label">{{
-                t(`tours.type.${TOUR_TYPE_I18N_KEYS[type]}` as any)
-              }}</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- SECTION: Season -->
-        <div class="section">
-          <p class="section-label">
-            {{ t('tours.form.seasonLabel') }}
-          </p>
-          <div class="season-chips">
-            <button
-              v-for="season in SEASON_VALUES"
-              :key="season"
-              type="button"
-              class="season-chip"
-              :class="{ selected: selectedSeasons.has(season) }"
-              @click="toggleSeason(season)"
-            >
-              {{ t(`tours.season.${season}` as any) }}
-            </button>
-          </div>
-        </div>
-
         <!-- SECTION: Details -->
         <div class="section">
           <p class="section-label">
             {{ t('tours.form.detailSectionLabel') }}
           </p>
-
-          <div class="field">
-            <label class="label" for="tf-plannedDate">{{ t('tours.form.plannedDateLabel') }}</label>
-            <input id="tf-plannedDate" v-model="plannedDate" class="input" type="date">
-          </div>
-
-          <!-- Always rendered, labelled optional: two adjacent date inputs read as a range
-               with no toggle to discover. Empty = single-day tour. -->
-          <div class="field">
-            <label class="label" for="tf-endDate">{{ t('tours.form.endDateLabel') }}</label>
-            <input
-              id="tf-endDate"
-              v-model="endDate"
-              class="input"
-              :class="{ 'input--error': endDateError }"
-              type="date"
-              :min="plannedDate || undefined"
-              :disabled="!plannedDate"
-              :aria-invalid="endDateError"
-              @input="endDateError = false"
-            >
-            <p v-if="endDateError" class="field-error">
-              {{ t('tours.form.endDateBeforeStartError') }}
-            </p>
-          </div>
 
           <div class="field">
             <label class="label" for="tf-description">{{ t('tours.form.descriptionLabel') }}</label>
@@ -1336,6 +1425,13 @@ defineExpose({ cancel: handleCancel, submitBlocked })
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
+}
+
+/* The day and the start time on one row; the time needs only its own width. */
+.date-time {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 8.5rem);
+  gap: var(--spacing-sm);
 }
 
 .label {

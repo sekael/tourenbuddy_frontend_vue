@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Map as MapLibreMap, Point } from 'maplibre-gl'
+import type { Trail } from '@/features/map/domain/entities/trail'
 import type { StageContext } from '@/features/onboarding/presentation/composables/use-onboarding-tour'
 import type { TourSurface } from '@/features/onboarding/presentation/onboarding-steps'
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
@@ -35,6 +36,7 @@ import TrailCard from '@/features/map/presentation/components/trail-card.vue'
 import { TRAIL_LOOKUP_MIN_ZOOM } from '@/features/map/presentation/components/trail-layers'
 import { computeBarState } from '@/features/map/presentation/composables/compute-bar-state'
 import { frameBounds, frameTours, isBoundsVisible, ROUTE_ZOOM } from '@/features/map/presentation/composables/frame-tour'
+import { planFromRoute } from '@/features/map/presentation/composables/plan-from-route'
 import { useInboxNavigation } from '@/features/map/presentation/composables/use-inbox-navigation'
 import { useTrailLookup } from '@/features/map/presentation/composables/use-trail-lookup'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
@@ -516,6 +518,23 @@ function handleAddSegment(anchorId: string) {
   segmentSeed.value = nextSegmentSeed(prev)
   segmentAnchorId.value = anchorId
   mapStore.setPickingLocation(true)
+}
+
+/**
+ * "Plan as tour" on a ski route (smarter-tour-creation D7): open the creation form on the route's
+ * summit, seeded with its facts; the start is sent as a pick so the form names and measures it.
+ */
+async function handlePlanFromRoute(trail: Trail) {
+  const plan = trail.route && await planFromRoute(trail.route, trail.lines, locale.value)
+  if (!plan)
+    return
+  const { goal, seed } = plan
+  closeOverlay()
+  segmentSeed.value = seed
+  pendingLocation.value = goal
+  mapStore.setPreviewGoal(goal)
+  dialogPick.value = { type: 'start', location: seed.startPoint! }
+  openOverlay('tour-creation')
 }
 
 function handleEditContact(contactId: string) {
@@ -1091,7 +1110,7 @@ function handleDialogClose() {
     />
 
     <LocationPicker
-      v-if="isPickingLocation" :map="mapInstance"
+      v-if="isPickingLocation" :map="mapInstance" :role="pendingPickType"
       :actions-bottom="!isDesktop && (isPickingForEdit || showTourCreationDialog) ? 80 : undefined"
       @confirm="handleLocationConfirmed" @cancel="handleLocationCancelled" @searching="pickerSearching = $event"
     />
@@ -1169,11 +1188,12 @@ function handleDialogClose() {
         />
       </div>
       <div v-else-if="activeOverlay === 'trail-info' && trailCard" key="trail-info" class="sheet-host">
-        <TrailCard @close="closeOverlay" />
+        <TrailCard @close="closeOverlay" @plan="handlePlanFromRoute" />
       </div>
       <div v-else-if="showTourCreationDialog" key="tour-creation" class="sheet-host">
         <TourCreationDialog
           :pick="dialogPick" :initial-goal="pendingLocation" :active-pick-type="pendingPickType" :seed="segmentSeed"
+          :segment="segmentAnchorId !== null"
           @confirm="(d, r, tid, did) => handleTourCreated(d, r, tid, did)" @close="handleDialogClose"
           @pick-point="handlePickPoint" @tour-types-change="mapStore.setPreviewTourTypes($event)"
           @start-point-change="handleStartPointChange" @end-point-change="handleEndPointChange"

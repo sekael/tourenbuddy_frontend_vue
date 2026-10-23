@@ -119,4 +119,10 @@ describe('tourFactRows', () => {
   it('should show no route row when a height is missing', () => {
     expect(facts(mountRows({ elevation: null, startPoint: START, startPointElevation: 2632 }))).not.toContain('route')
   })
+
+  it('should show the grade beside the activities, and alone without one', () => {
+    expect(mountRows({ tourTypes: ['skitour'], grade: 'WS+' }).find('[data-fact=type] [data-testid=tour-grade]').text()).toContain('WS+')
+    expect(facts(mountRows({ grade: 'T3' }))).toEqual(['type'])
+    expect(mountRows({ tourTypes: ['skitour'] }).find('[data-testid=tour-grade]').exists()).toBe(false)
+  })
 })

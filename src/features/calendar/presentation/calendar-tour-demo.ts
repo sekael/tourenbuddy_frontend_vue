@@ -47,6 +47,8 @@ export function makeDemoChips(t: Translate): {
     isFriendTour: false,
     updatedAt: null, // demo chip is never persisted — no LWW baseline to carry
     outing: null,
+    grade: null,
+    startTime: null,
   }
   return {
     entries: [{ tour, isFriend: false, dayIndex: 1, dayCount: 1 }],

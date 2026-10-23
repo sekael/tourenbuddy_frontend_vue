@@ -19,8 +19,10 @@ const props = defineProps<{
   initialGoal?: { lng: number, lat: number } | null
   /** Which pick is currently active — drives the collapsed header label. */
   activePickType?: 'goal' | 'start' | 'end' | null
-  /** Prefilled fields — the next segment of an outing (#338). */
+  /** Prefilled fields — the next segment of an outing (#338), or a planned ski route. */
   seed?: TourDraft | null
+  /** The seed continues an outing: titled "Add segment". */
+  segment?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -71,7 +73,7 @@ const pickTypeLabel = computed(() => {
   return t('tours.picker.goalTitle')
 })
 
-const title = computed(() => pickTypeLabel.value ?? (props.seed ? t('tours.outing.addTitle') : t('tours.creation.title')))
+const title = computed(() => pickTypeLabel.value ?? (props.segment ? t('tours.outing.addTitle') : t('tours.creation.title')))
 
 function handleSubmit(
   draft: TourDraft,

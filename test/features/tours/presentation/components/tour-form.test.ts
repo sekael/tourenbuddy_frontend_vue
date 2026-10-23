@@ -31,6 +31,13 @@ const { mockGetElevation, mockSuggestTourName } = vi.hoisted(() => ({
 vi.mock('@/features/tours/data/services/swisstopo-elevation-service', () => ({ getElevation: mockGetElevation }))
 vi.mock('@/features/tours/data/services/swisstopo-name-service', () => ({ suggestTourName: mockSuggestTourName }))
 
+const { mockFindStopsNear } = vi.hoisted(() => ({ mockFindStopsNear: vi.fn() }))
+vi.mock('@/features/tours/data/services/swisstopo-stop-service', () => ({ findStopsNear: mockFindStopsNear }))
+mockFindStopsNear.mockResolvedValue([])
+
+/** A parsed GPX without a single point. */
+const NO_TRACK: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] }
+
 vi.mock('@/features/auth/presentation/stores/auth-store', () => ({
   useAuthStore: vi.fn().mockReturnValue({ currentUser: { id: 'user-abc' } }),
 }))
@@ -283,7 +290,7 @@ describe('tourForm', () => {
 
     beforeEach(() => {
       vi.clearAllMocks()
-      vi.mocked(parseGpxFile).mockResolvedValue(undefined as never)
+      vi.mocked(parseGpxFile).mockResolvedValue(NO_TRACK)
       mockUploadGpx.mockResolvedValue('user-abc/new-tour-id.gpx')
       mockRemoveGpx.mockResolvedValue(undefined)
     })
@@ -390,7 +397,7 @@ describe('tourForm', () => {
 
     beforeEach(() => {
       vi.clearAllMocks()
-      vi.mocked(parseGpxFile).mockResolvedValue(undefined as never)
+      vi.mocked(parseGpxFile).mockResolvedValue(NO_TRACK)
       mockRemoveGpx.mockResolvedValue(undefined)
     })
 
@@ -696,5 +703,123 @@ describe('tourForm — suggest mode attachment cap (D10)', () => {
 
     await wrapper.find('form').trigger('submit.prevent')
     expect(wrapper.emitted('submit')).toBeUndefined()
+  })
+})
+
+describe('tourForm — creation that knows more (smarter-tour-creation)', () => {
+  const GOAL = { lng: 8.4551, lat: 46.6989 }
+
+  beforeEach(() => {
+    mockGetElevation.mockReset().mockResolvedValue(1865)
+    mockSuggestTourName.mockReset().mockResolvedValue('Steingletscher')
+    mockFindStopsNear.mockReset().mockResolvedValue([])
+  })
+
+  async function submitted(wrapper: ReturnType<typeof mountForm>) {
+    await wrapper.find('#tf-tourName').setValue('Sustenhorn')
+    await wrapper.find('form').trigger('submit.prevent')
+    return (wrapper.emitted('submit')!.at(-1) as unknown[])[0] as Record<string, unknown>
+  }
+  const selectedSeasons = (wrapper: ReturnType<typeof mountForm>) =>
+    wrapper.findAll('.season-chip.selected').map(c => c.text())
+
+  it('should derive the seasons from the dates until the user picks one', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL })
+    await wrapper.find('#tf-plannedDate').setValue('2027-02-26')
+    await wrapper.find('#tf-endDate').setValue('2027-03-02')
+    expect(selectedSeasons(wrapper)).toEqual(['tours.season.winter', 'tours.season.spring'])
+
+    await wrapper.findAll('.season-chip')[2]!.trigger('click')
+    await wrapper.find('#tf-plannedDate').setValue('2027-07-01')
+    expect(selectedSeasons(wrapper)).toEqual(['tours.season.winter', 'tours.season.spring', 'tours.season.summer'])
+  })
+
+  it('should leave seasons that don\'t match the dates alone in an edit', async () => {
+    const wrapper = mountForm({
+      currentGoal: GOAL,
+      initialDraft: { name: 'X', plannedDate: new Date('2027-03-13'), seasons: ['winter'], tourTypes: [], partnerIds: [] },
+    })
+    await wrapper.find('#tf-plannedDate').setValue('2027-07-13')
+    expect(selectedSeasons(wrapper)).toEqual(['tours.season.winter'])
+  })
+
+  it('should send a trimmed grade and the start time, and drop the time with the date', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL })
+    expect(wrapper.find('#tf-startTime').attributes('disabled')).toBeDefined()
+    await wrapper.find('#tf-plannedDate').setValue('2027-03-13')
+    await wrapper.find('#tf-startTime').setValue('06:30')
+    await wrapper.find('#tf-grade').setValue(' ZS- ')
+    expect(await submitted(wrapper)).toMatchObject({ grade: 'ZS-', startTime: '06:30' })
+
+    await wrapper.find('#tf-plannedDate').setValue('')
+    expect(await submitted(wrapper)).toMatchObject({ startTime: null, plannedDate: null })
+  })
+
+  it('should offer the activity\'s grade scale and set the grade from a chip', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL })
+    expect(wrapper.find('[data-testid=grade-chip]').exists()).toBe(false)
+    await wrapper.find('[data-type=hiking]').trigger('click')
+    const chips = wrapper.findAll('[data-testid=grade-chip]')
+    expect(chips.map(c => c.text())).toEqual(['T1', 'T2', 'T3', 'T4', 'T5', 'T6'])
+    await chips[3]!.trigger('click')
+    expect((wrapper.find('#tf-grade').element as HTMLInputElement).value).toBe('T4')
+  })
+
+  it('should say what a stage is once the dates span more than one day', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL })
+    await wrapper.find('#tf-plannedDate').setValue('2027-03-12')
+    await wrapper.find('#tf-endDate').setValue('2027-03-12')
+    expect(wrapper.find('[data-testid=multi-day-hint]').exists()).toBe(false)
+    await wrapper.find('#tf-endDate').setValue('2027-03-14')
+    expect(wrapper.find('[data-testid=multi-day-hint]').exists()).toBe(true)
+  })
+
+  it('should set the start from a suggestion with its name and a looked-up height', async () => {
+    mockFindStopsNear.mockResolvedValue([{ name: 'Steingletscher, Susten', lng: 8.4275, lat: 46.7311, distance: 4200 }])
+    const wrapper = mountForm({ currentGoal: GOAL })
+    await flushPromises()
+    await wrapper.find('[data-testid=point-suggestion]').trigger('click')
+    await flushPromises()
+    expect(await submitted(wrapper)).toMatchObject({
+      startPoint: { lng: 8.4275, lat: 46.7311 },
+      startPointName: 'Steingletscher, Susten',
+      startPointElevation: 1865,
+    })
+    expect(mockSuggestTourName).not.toHaveBeenCalled()
+  })
+
+  describe('a picked GPX fills empty points', () => {
+    const track = (coordinates: number[][]): GeoJSON.FeatureCollection =>
+      ({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates } }] })
+
+    beforeEach(() => {
+      mockUploadGpx.mockResolvedValue('user-abc/new-tour-id.gpx')
+    })
+
+    it('should make a loop a round trip from its first point', async () => {
+      vi.mocked(parseGpxFile).mockResolvedValue(track([[8.4275, 46.7311], [8.4551, 46.6989], [8.4276, 46.7312]]))
+      const wrapper = mountForm({ currentGoal: GOAL })
+      await pickFile(wrapper, new File(['<gpx/>'], 'loop.gpx'))
+      await flushPromises()
+      const draft = await submitted(wrapper)
+      expect(draft.startPoint).toEqual({ lng: 8.4275, lat: 46.7311 })
+      expect(draft.endPoint).toEqual(draft.startPoint)
+      expect(draft).toMatchObject({ startPointName: 'Steingletscher', endPointName: 'Steingletscher', endPointElevation: 1865 })
+    })
+
+    it('should never move a point the user set', async () => {
+      vi.mocked(parseGpxFile).mockResolvedValue(track([[8.40, 46.73], [8.4551, 46.6989], [8.50, 46.75]]))
+      const wrapper = mountForm({
+        currentGoal: GOAL,
+        initialDraft: { name: 'X', startPoint: { lng: 8.43, lat: 46.71 }, startPointName: 'Tierberglihütte SAC', tourTypes: [], partnerIds: [] },
+      })
+      await pickFile(wrapper, new File(['<gpx/>'], 'traverse.gpx'))
+      await flushPromises()
+      expect(await submitted(wrapper)).toMatchObject({
+        startPoint: { lng: 8.43, lat: 46.71 },
+        startPointName: 'Tierberglihütte SAC',
+        endPoint: { lng: 8.50, lat: 46.75 },
+      })
+    })
   })
 })

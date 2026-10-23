@@ -57,6 +57,10 @@ export function seedDraftFromPending(
       case 'dates':
         draft.plannedDate = obj.plannedDate ? new Date(String(obj.plannedDate)) : null
         draft.endDate = obj.endDate ? new Date(String(obj.endDate)) : null
+        draft.startTime = (obj.startTime as string | undefined) ?? null
+        break
+      case 'grade':
+        draft.grade = value as string | null
         break
       case 'tour_type':
         draft.tourTypes = (value ?? []) as TourDraft['tourTypes']
@@ -167,13 +171,18 @@ export function buildSuggestionItems(
 
   // ONE item carrying both endpoints: accepting a new end_date against an unchanged
   // planned_date would trip `tours_end_date_after_start` on someone who did nothing wrong.
+  // The start time rides along (it needs the date): named when set, `null` only to remove the
+  // owner's time, absent otherwise — so accepting never wipes a time the suggester never saw.
+  const startTime = draft.plannedDate ? (draft.startTime ?? null) : null
   if (
     !datesEqual(original.plannedDate, draft.plannedDate)
     || !datesEqual(original.endDate, draft.endDate)
+    || (original.startTime ?? null) !== startTime
   ) {
     push('dates', {
       plannedDate: toIsoDay(draft.plannedDate),
       endDate: toIsoDay(draft.endDate),
+      ...(startTime || original.startTime ? { startTime } : {}),
     })
   }
 
@@ -221,6 +230,9 @@ export function buildSuggestionItems(
 
   if (!textEqual(original.notes, draft.notes))
     push('notes', draft.notes || null)
+
+  if (!textEqual(original.grade ?? null, draft.grade ?? null))
+    push('grade', draft.grade || null)
 
   // The form uploads a picked track at pick time, so by submit the draft already holds a
   // staging path — replace and remove are the same comparison, with null meaning "remove".

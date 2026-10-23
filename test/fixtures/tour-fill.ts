@@ -15,5 +15,7 @@ export const TOUR_FILL = {
   visibility: 'friends' as const,
   updatedAt: null,
   outing: null,
+  grade: null,
+  startTime: null,
   isFriendTour: false,
 }

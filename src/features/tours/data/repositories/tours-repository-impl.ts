@@ -11,6 +11,11 @@ function outingParam(outing: TourOuting | null | undefined) {
   return outing ? { id: outing.id, name: outing.name, position: outing.position } : {}
 }
 
+/** `p_grade` / `p_start_time` (design D5): undefined keeps (null), null clears (''), else set. */
+function keepOrClear(value: string | null | undefined) {
+  return value === undefined ? null : (value ?? '')
+}
+
 export class ToursRepositoryImpl implements ToursRepository {
   async listToursForUser(userId: string): Promise<Tour[]> {
     const { data, error } = await supabase.from('tours_view').select('*').eq('user_id', userId)
@@ -61,6 +66,8 @@ export class ToursRepositoryImpl implements ToursRepository {
       p_completed: draft.completed ?? null,
       p_end_date: draft.endDate?.toISOString().split('T')[0] ?? null,
       p_outing: outingParam(draft.outing),
+      p_grade: keepOrClear(draft.grade),
+      p_start_time: keepOrClear(draft.startTime),
     })
 
     if (error)
@@ -97,6 +104,8 @@ export class ToursRepositoryImpl implements ToursRepository {
       p_completed: draft.completed ?? null,
       p_end_date: draft.endDate?.toISOString().split('T')[0] ?? null,
       p_outing: outingParam(draft.outing),
+      p_grade: keepOrClear(draft.grade),
+      p_start_time: keepOrClear(draft.startTime),
     })
 
     if (error)

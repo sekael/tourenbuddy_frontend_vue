@@ -28,6 +28,10 @@ export interface TourDraft {
   endPointElevation: number | null
   equipment: string | null
   notes: string | null
+  /** Free text in the activity's own scale ("T4", "ZS-"); null = none. */
+  grade?: string | null
+  /** "HH:MM" on `plannedDate`; null = none. */
+  startTime?: string | null
   completed?: boolean
   /** Owner-chosen visibility. Defaults to `friends` server-side when omitted. */
   visibility?: Visibility

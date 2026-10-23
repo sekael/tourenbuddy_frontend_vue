@@ -122,3 +122,14 @@ describe('outing columns (#338)', () => {
     expect(tourRowSchema.parse(baseRow).outing).toBeNull()
   })
 })
+
+describe('grade and start time (smarter-tour-creation)', () => {
+  it('should map both, and default them to null for a row from before the columns', () => {
+    expect(tourRowSchema.parse({ ...baseRow, grade: 'ZS-', start_time: '06:30' })).toMatchObject({ grade: 'ZS-', startTime: '06:30' })
+    expect(tourRowSchema.parse(baseRow)).toMatchObject({ grade: null, startTime: null })
+  })
+
+  it('should keep a friend\'s grade but not a time the view withheld', () => {
+    expect(friendTourRowSchema.parse({ ...baseRow, grade: 'T4', start_time: null })).toMatchObject({ grade: 'T4', startTime: null })
+  })
+})

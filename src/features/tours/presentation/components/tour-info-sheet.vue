@@ -634,7 +634,8 @@ const formattedDate = computed(() => {
   // formatRange collapses the shared parts per locale ("25.–27. August 2026" / "August
   // 25 – 27, 2026") — no hand-built separator, no i18n key for it.
   const end = props.tour.endDate
-  return end ? fmt.formatRange(start, end) : fmt.format(start)
+  const day = end ? fmt.formatRange(start, end) : fmt.format(start)
+  return props.tour.startTime ? `${day} · ${props.tour.startTime}` : day
 })
 
 const partners = computed(() => contacts.value.filter(c => props.tour.partnerIds.includes(c.id)))

@@ -11,7 +11,8 @@ import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
 /**
  * "Add a segment" after `anchor` (#338, design D17): a new goal on the map, or one of the
- * owner's standalone tours. Rendered in place of a sheet's body.
+ * owner's standalone tours. Rendered in place of a sheet's body, under the rule that decides
+ * it — one day is one tour, a night starts the next segment (smarter-tour-creation D8).
  */
 const props = defineProps<{ anchor: Tour }>()
 const emit = defineEmits<{
@@ -60,6 +61,10 @@ async function addExisting(tourId: string) {
 
 <template>
   <div class="add-view">
+    <p class="rule" data-testid="segment-rule">
+      <BaseIcon name="info" size="sm" class="rule-icon" />
+      {{ t('tours.outing.ruleHint') }}
+    </p>
     <button type="button" class="new-segment" data-testid="add-segment-new" @click="emit('pickNew')">
       <span class="new-icon"><BaseIcon name="add_location_alt" /></span>
       <span class="new-text">
@@ -129,6 +134,19 @@ async function addExisting(tourId: string) {
 .new-title {
   font-weight: var(--font-weight-medium);
   color: var(--color-on-surface);
+}
+
+.rule {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
+}
+
+.rule-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
 .new-hint,

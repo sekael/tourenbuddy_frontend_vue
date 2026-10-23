@@ -90,4 +90,9 @@ describe('tourListRow', () => {
     expect(wrapper.find('.tour-owner-skeleton').exists()).toBe(false)
     expect(wrapper.find('.tour-owner').exists()).toBe(false)
   })
+
+  it('should lead the subtitle with the grade, also on an undated tour', () => {
+    const wrapper = mountRow(makeTour({ grade: 'T4' }))
+    expect(wrapper.find('.tour-subtitle').text()).toBe('T4')
+  })
 })

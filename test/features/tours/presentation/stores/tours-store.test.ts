@@ -574,6 +574,19 @@ describe('useToursStore: outings (#338)', () => {
     expect(sentOutings()).toEqual({ c: { ...outing, position: 1 }, b: { ...outing, position: 2 } })
   })
 
+  it('should connect a gap by ending the previous segment at the next one\'s start, and skip a startless next', async () => {
+    const store = useToursStore()
+    const hut = { lng: 8.43, lat: 46.71 }
+    store.tours = [seg('a', 0), { ...seg('b', 1), startPoint: hut, startPointName: 'Tierberglihütte SAC', startPointElevation: 2795 }]
+    await store.connectSegments(store.tours[0]!, store.tours[1]!)
+    expect(mockUpdateTour).toHaveBeenCalledTimes(1)
+    expect(mockUpdateTour.mock.calls[0]![0]).toBe('a')
+    expect(mockUpdateTour.mock.calls[0]![1]).toMatchObject({ endPoint: hut, endPointName: 'Tierberglihütte SAC', endPointElevation: 2795 })
+
+    await store.connectSegments(store.tours[0]!, { ...store.tours[1]!, startPoint: null })
+    expect(mockUpdateTour).toHaveBeenCalledTimes(1)
+  })
+
   it('should restore the old order when a reorder write fails', async () => {
     const store = useToursStore()
     store.tours = [seg('a', 0), seg('b', 1)]

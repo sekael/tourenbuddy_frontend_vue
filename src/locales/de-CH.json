@@ -510,6 +510,19 @@
       "swisstopo": {
         "loading": "Wird geladen…",
         "failed": "Nicht verfügbar - Wert eingeben"
+      },
+      "whenSectionLabel": "Wann",
+      "startTimeLabel": "Startzeit (optional)",
+      "multiDayHint": "Mit Übernachtung unterwegs? Plane jeden Tag als eigene Etappe – nach dem Speichern mit «Etappe hinzufügen».",
+      "gradeLabel": "Schwierigkeit (optional)",
+      "gradePlaceholder": "z. B. {example}",
+      "gradePlaceholderClimbing": "z. B. 5c oder V+",
+      "gradeOptional": "Optional",
+      "gradeScale": "Skala",
+      "suggestions": {
+        "label": "Vorschläge",
+        "history": "{name} – wie bei deiner letzten Tour hierher",
+        "stop": "{name} – ÖV-Haltestelle"
       }
     },
     "creation": {
@@ -592,6 +605,7 @@
       "endTitle": "Endpunkt",
       "search": {
         "placeholder": "Gipfel, Ort oder Adresse suchen",
+        "placeholderAccess": "Haltestelle, Ort oder Hütte suchen",
         "label": "Ort suchen",
         "clear": "Suche leeren",
         "noResults": "Keine Orte gefunden",
@@ -600,7 +614,8 @@
           "gazetteer": "Ort",
           "zipcode": "Postleitzahl",
           "gg25": "Gemeinde",
-          "address": "Adresse"
+          "address": "Adresse",
+          "stop": "ÖV-Haltestelle"
         }
       }
     },
@@ -685,7 +700,8 @@
         "end_point": "Endpunkt",
         "gpx": "GPX-Track",
         "attachment_add": "Neuer Anhang",
-        "attachment_remove": "Anhang entfernen"
+        "attachment_remove": "Anhang entfernen",
+        "grade": "Schwierigkeit"
       },
       "gpxNew": "Neuer GPX-Track",
       "gpxExisting": "Bestehender GPX-Track",
@@ -699,7 +715,7 @@
       "addSegment": "Etappe hinzufügen",
       "addTitle": "Etappe hinzufügen",
       "addNew": "Neue Etappe auf der Karte",
-      "addNewHint": "Wähle ihr Ziel – sie beginnt, wo die letzte Etappe endet.",
+      "addNewHint": "Wähle ihr Ziel – sie beginnt am Tag danach, wo die letzte Etappe endet.",
       "addExistingHeader": "Oder eine deiner Touren hinzufügen",
       "addExistingEmpty": "Keine weiteren Touren zum Hinzufügen.",
       "edit": "Bearbeiten",
@@ -716,7 +732,10 @@
       "saveFailed": "Die Etappentour konnte nicht aktualisiert werden. Bitte versuche es nochmals.",
       "dayCount": "{count} Tag | {count} Tage",
       "night": "Übernachtung",
-      "reorderHandle": "Etappe {n} verschieben"
+      "reorderHandle": "Etappe {n} verschieben",
+      "ruleHint": "Ein Tag, eine Tour – auch mit mehreren Gipfeln. Nach einer Übernachtung beginnt die nächste Etappe.",
+      "connect": "Verbinden",
+      "connectLabel": "Etappe {n} bei {place} enden lassen"
     },
     "route": {
       "ascent": "Aufstieg",
@@ -772,7 +791,8 @@
       "openSac": "Im SAC-Tourenportal öffnen",
       "noInfo": "Keine Routeninformationen verfügbar",
       "offline": "Für Routendetails braucht es eine Verbindung",
-      "lookupError": "Routeninfo konnte nicht geladen werden"
+      "lookupError": "Routeninfo konnte nicht geladen werden",
+      "planTour": "Als Tour planen"
     },
     "cluster": {
       "label": "Cluster aus {count} Touren",
@@ -935,11 +955,11 @@
       },
       "addLocation": {
         "title": "Tour planen",
-        "body": "Tippe hier und setze eine Markierung auf dein Ziel – Gipfel, Kletterfels oder Hütte. TourenBuddy schlägt einen Namen vor und ermittelt die Höhe für dich."
+        "body": "Tippe hier und setze eine Markierung auf dein Ziel – Gipfel, Kletterfels oder Hütte. TourenBuddy schlägt Namen, Höhe und passende Startpunkte vor."
       },
       "mapLayers": {
         "title": "Kartenebenen",
-        "body": "Wähle eine Grundkarte und blende Wanderwege oder Skitouren darüber ein, in beliebiger Kombination. Mit Skitouren zoomst du hinein, bis die Routen Schwierigkeits-Badges zeigen, und tippst dann für Details auf eine Route."
+        "body": "Wähle eine Grundkarte und blende Wanderwege oder Skitouren darüber ein, in beliebiger Kombination. Mit Skitouren zoomst du hinein, bis die Routen Schwierigkeits-Badges zeigen, und tippst dann für Details auf eine Route – oder planst sie gleich als Tour."
       },
       "welcome": {
         "title": "Willkommen bei TourenBuddy",

@@ -9,7 +9,7 @@ import { cssFill, distinctTypeColors, TOUR_TYPE_COLORS, TOUR_TYPE_I18N_KEYS } fr
 import RouteNumbers from '@/features/tours/presentation/components/route-numbers.vue'
 
 /**
- * One stage of an outing as a card (#338): number, name with goal height, activity · date, climb
+ * One stage of an outing as a card (#338): number, name with goal height, activity · grade · date, climb
  * and descent. While editing it is the unit that is dragged around — by its handle — or removed.
  */
 const props = defineProps<{
@@ -40,6 +40,7 @@ const dotStyle = computed(() => {
 
 const meta = computed(() => [
   props.segment.tourTypes.map(type => t(`tours.type.${TOUR_TYPE_I18N_KEYS[type]}`)).join(', ') || null,
+  props.segment.grade,
   props.segment.plannedDate
     ? formatDate.value(props.segment.plannedDate, { weekday: 'short', day: 'numeric', month: 'short' })
     : null,
