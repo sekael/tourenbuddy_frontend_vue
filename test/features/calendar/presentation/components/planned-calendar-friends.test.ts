@@ -30,7 +30,7 @@ const VIEW_DATE = new Date(2024, 5, 1) // June 2024, "today" pinned to the 10th
 interface FriendRow { user_id: string, date: string }
 
 function tour(id: string, name: string, plannedDate: Date) {
-  return { id, name, plannedDate, tourType: 'hiking' } as any
+  return { id, name, plannedDate, tourTypes: ['hiking'] } as any
 }
 
 function phoneFor(userId: string) {

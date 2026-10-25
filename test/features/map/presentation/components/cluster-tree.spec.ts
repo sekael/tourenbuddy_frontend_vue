@@ -1,11 +1,11 @@
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import { describe, expect, it } from 'vitest'
+import { haversineMeters } from '@/core/utils/haversine'
 import {
   buildClusterTree,
   collectSplitZooms,
   cutForest,
   findCrossings,
-  haversineMeters,
   solveSplitZoom,
 } from '@/features/map/presentation/components/cluster-tree'
 import { TOUR_FILL } from '../../../../fixtures/tour-fill'
@@ -19,7 +19,7 @@ function makeTour(id: string, lng: number, lat: number): Tour {
     goal: { lng, lat },
     name: null,
     partnerIds: [],
-    tourType: null,
+    tourTypes: [],
     elevation: null,
     gpxFilepath: null,
     description: null,

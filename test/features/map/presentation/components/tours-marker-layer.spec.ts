@@ -5,20 +5,15 @@ import { createPieMarkerElement, fadeIn, fadeOut } from '@/features/map/presenta
 function makeStubMap(individualFeatures: object[] = []) {
   const listeners: Record<string, ((...args: unknown[]) => void)[]> = {}
   const layers: Record<string, { filter?: unknown }> = {}
-  const sources: Record<string, { type: string }> = {}
+  const sources: Record<string, { type: string, setData: ReturnType<typeof vi.fn> }> = {}
 
   return {
     addSource: vi.fn((id: string, opts: { type: string }) => {
-      sources[id] = { type: opts.type }
+      sources[id] = { type: opts.type, setData: vi.fn() }
     }),
-    getSource: vi.fn((id: string) => {
-      if (!sources[id])
-        return undefined
-      return {
-        type: 'geojson',
-        setData: vi.fn(),
-      }
-    }),
+    getSource: vi.fn((id: string) => sources[id]),
+    /** Last data set on a source. */
+    sourceData: (id: string) => sources[id]?.setData.mock.calls.at(-1)?.[0] as GeoJSON.FeatureCollection,
     addLayer: vi.fn((layer: { id: string }) => {
       layers[layer.id] = {}
     }),
@@ -103,6 +98,64 @@ describe('useToursMarkerLayer — setup', () => {
     const layer = useToursMarkerLayer(map, vi.fn(), () => 'Cluster of N tours')
     await layer.setup()
     expect(() => layer.cleanup()).not.toThrow()
+  })
+
+  it('should split only tours whose types span several colours', async () => {
+    const { useToursMarkerLayer } = await import(
+      '@/features/map/presentation/components/tours-marker-layer'
+    )
+    const { TOUR_FILL } = await import('../../../../fixtures/tour-fill')
+    const stub = makeStubMap()
+    const layer = useToursMarkerLayer(stub as unknown as import('maplibre-gl').Map, vi.fn(), () => '')
+    await layer.setup()
+    const tour = (id: string, tourTypes: string[]) => ({
+      ...TOUR_FILL,
+      id,
+      tourTypes,
+      goal: { lng: 8, lat: 47 },
+      completed: false,
+    }) as unknown as import('@/features/tours/domain/entities/tour').Tour
+
+    layer.updateTours([tour('mixed', ['skitour', 'hiking']), tour('blue', ['skitour', 'splitboarding'])], null)
+
+    const pie = Object.fromEntries(stub.sourceData('tours').features.map(f => [f.id, f.properties!.pieImage]))
+    expect(pie).toEqual({ mixed: 'pie:#1565C0,#DC2626', blue: null })
+  })
+
+  it('should keep a focused outing\'s segments out of clusters and number them in order', async () => {
+    const { useToursMarkerLayer } = await import(
+      '@/features/map/presentation/components/tours-marker-layer'
+    )
+    const { TOUR_FILL } = await import('../../../../fixtures/tour-fill')
+    const tour = (id: string) => ({
+      ...TOUR_FILL,
+      id,
+      tourTypes: ['hiking'],
+      goal: { lng: 8, lat: 47 },
+      completed: false,
+    }) as unknown as import('@/features/tours/domain/entities/tour').Tour
+    /** Ids the unselected circle layer currently draws individually. */
+    const drawn = (stub: ReturnType<typeof makeStubMap>) => {
+      const filter = stub.setFilter.mock.calls.filter(([id]) => id === 'tours-circles').at(-1)![1]
+      return JSON.stringify(filter).match(/"literal",\[(.*?)\]/)![1]
+    }
+
+    // Same spot: without focus the two collapse into one cluster.
+    const plain = makeStubMap()
+    const plainLayer = useToursMarkerLayer(plain as unknown as import('maplibre-gl').Map, vi.fn(), () => '')
+    await plainLayer.setup()
+    plainLayer.updateTours([tour('hut'), tour('summit')], null)
+    expect(drawn(plain)).toBe('')
+
+    const stub = makeStubMap()
+    const layer = useToursMarkerLayer(stub as unknown as import('maplibre-gl').Map, vi.fn(), () => '')
+    await layer.setup()
+    layer.updateTours([tour('hut'), tour('summit'), tour('other')], null, new Set(), ['summit', 'hut'])
+
+    // `other` is left alone in the tree, so it is a lone leaf too.
+    expect(drawn(stub)).toBe('"other","summit","hut"')
+    const badges = Object.fromEntries(stub.sourceData('tours').features.map(f => [f.id, f.properties!.segmentBadge]))
+    expect(badges).toEqual({ hut: 'segment:2', summit: 'segment:1', other: undefined })
   })
 
   it('should update selected filter on updateTours', async () => {
@@ -219,19 +272,7 @@ describe('useToursMarkerLayer — reduced motion gate', () => {
 
 describe('opacity bridge — pie-marker', () => {
   it('should create pie marker element with opacity 0', () => {
-    const el = createPieMarkerElement({ hiking: 2 }, 2, {
-      'skiing': '#1565C0',
-      'snowboarding': '#1565C0',
-      'skitour': '#1565C0',
-      'splitboarding': '#1565C0',
-      'ski-mountaineering': '#1565C0',
-      'paragliding': '#D97706',
-      'hiking': '#DC2626',
-      'mountaineering': '#DC2626',
-      'climbing': '#DC2626',
-      'mountain-biking': '#DC2626',
-      'trailrunning': '#DC2626',
-    }).element
+    const el = createPieMarkerElement({ '#DC2626': 2 }, 2).element
     expect(el.style.opacity).toBe('0')
   })
 

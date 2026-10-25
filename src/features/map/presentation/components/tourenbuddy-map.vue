@@ -12,7 +12,8 @@ import {
   friendTourIdsShadowedByOwned,
   ownedTourIdsShadowedByFriends,
 } from '@/features/tours/domain/collision'
-import { tourDetailMarkers } from '@/features/tours/domain/tour-detail-markers'
+import { outingSegments } from '@/features/tours/domain/outing'
+import { outingDetailMarkers, tourDetailMarkers } from '@/features/tours/domain/tour-detail-markers'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import { useGpxTrackLayer } from './gpx-track-layer'
 import { DETAIL_CIRCLE_LAYER_ID, TOUR_LAYER_IDS, useToursMarkerLayer } from './tours-marker-layer'
@@ -36,8 +37,9 @@ const { tours, friendTours } = storeToRefs(toursStore)
 const {
   currentStyleIndex,
   selectedTourId,
+  selectedOutingKey,
   previewGoal,
-  previewTourType,
+  previewTourTypes,
   previewStart,
   previewEnd,
   activeOverlays,
@@ -100,16 +102,27 @@ const selectedTour = computed(
   () => mapTours.value.find(t => t.id === selectedTourId.value) ?? null,
 )
 
+// The open overview's segments, in order (#338, D16). An open segment is a plain tour on the
+// map — only its own markers and track. Empty too when fewer than two segments are on the map.
+const focusSegments = computed(() => outingSegments(mapTours.value, selectedOutingKey.value))
+const focusSegmentIds = computed(() => focusSegments.value.map(t => t.id))
+
+// Every overview segment's track or connector; else just the selected tour's.
+const trackTours = computed(() =>
+  focusSegments.value.length > 0 ? focusSegments.value : selectedTour.value ? [selectedTour.value] : [],
+)
+
 // Tours as fed to the marker layer. Identical to `mapTours`, except while a
-// selected tour's type is being edited: the goal's color is data-driven off the
-// `tourType` property, so the only way to preview the draft type is to feed the
-// layer a copy of the selected tour carrying `previewTourType`. (The saved
+// selected tour's types are being edited: the goal's color is data-driven off its
+// types, so the only way to preview the draft types is to feed the layer a copy of
+// the selected tour carrying `previewTourTypes`. (The saved
 // start/end markers already recolor live because their data reads it directly.)
 const renderedTours = computed(() => {
-  if (previewTourType.value === null || selectedTourId.value === null) {
+  if (previewTourTypes.value === null || selectedTourId.value === null) {
     return mapTours.value
   }
-  return mapTours.value.map(t => t.id === selectedTourId.value ? { ...t, tourType: previewTourType.value } : t)
+  const tourTypes = previewTourTypes.value
+  return mapTours.value.map(t => t.id === selectedTourId.value ? { ...t, tourTypes } : t)
 })
 
 // Start/end detail markers for the open or in-creation tour. When a tour is
@@ -117,8 +130,11 @@ const renderedTours = computed(() => {
 // selected tour) the preview refs alone drive them. Empty on the bare map.
 const detailMarkers = computed(() => {
   const tour = selectedTour.value
+  // The outing overview (no segment open): the whole outing's start and end.
+  if (!tour && focusSegments.value.length > 0 && !previewStart.value && !previewEnd.value)
+    return outingDetailMarkers(focusSegments.value)
   return tourDetailMarkers({
-    tourType: previewTourType.value ?? tour?.tourType ?? null,
+    tourTypes: previewTourTypes.value ?? tour?.tourTypes ?? [],
     start: { saved: tour?.startPoint ?? null, draft: previewStart.value },
     end: { saved: tour?.endPoint ?? null, draft: previewEnd.value },
   })
@@ -155,13 +171,13 @@ onMounted(() => {
       () => t('map.cluster.spiderfyHint'),
     )
     await markerLayer.setup()
-    markerLayer.updateTours(renderedTours.value, selectedTourId.value, linkedTourIds.value)
-    markerLayer.updatePreview(previewGoal.value, previewTourType.value)
+    markerLayer.updateTours(renderedTours.value, selectedTourId.value, linkedTourIds.value, focusSegmentIds.value)
+    markerLayer.updatePreview(previewGoal.value, previewTourTypes.value ?? [])
     markerLayer.updateDetailMarkers(detailMarkers.value)
 
     gpxLayer = useGpxTrackLayer(mapInstance!)
     gpxLayer.setup()
-    gpxLayer.updateTrack(selectedTour.value)
+    void gpxLayer.updateTracks(trackTours.value)
 
     mapInstance!.on('click', (e) => {
       // Include the detail circle so tapping a start/end marker is swallowed
@@ -194,14 +210,14 @@ onUnmounted(() => {
 
 // Watch for tour/selection changes and update both layers. Keyed on
 // `renderedTours` (not `mapTours`) so a live tour-type edit recolors the goal.
-watch([renderedTours, selectedTourId, linkedTourIds], ([newTours, newSelectedId, newLinked]) => {
-  markerLayer?.updateTours(newTours, newSelectedId, newLinked as Set<string>)
-  gpxLayer?.updateTrack(selectedTour.value)
+watch([renderedTours, selectedTourId, linkedTourIds, focusSegmentIds], ([newTours, newSelectedId, newLinked, segmentIds]) => {
+  markerLayer?.updateTours(newTours, newSelectedId, newLinked as Set<string>, segmentIds)
 })
+watch(trackTours, entries => void gpxLayer?.updateTracks(entries))
 
 // Watch for preview goal/type changes (edit or creation) and update the preview marker
-watch([previewGoal, previewTourType], ([goal, tourType]) => {
-  markerLayer?.updatePreview(goal, tourType)
+watch([previewGoal, previewTourTypes], ([goal, tourTypes]) => {
+  markerLayer?.updatePreview(goal, tourTypes ?? [])
 })
 
 // Re-render start/end detail markers whenever the open tour or its draft points change
@@ -230,11 +246,11 @@ watch(currentStyleIndex, (index) => {
     mapInstance.once('style.load', async () => {
       trailLayers?.setup(trailLayerState())
       await markerLayer?.setup()
-      markerLayer?.updateTours(renderedTours.value, selectedTourId.value, linkedTourIds.value)
-      markerLayer?.updatePreview(previewGoal.value, previewTourType.value)
+      markerLayer?.updateTours(renderedTours.value, selectedTourId.value, linkedTourIds.value, focusSegmentIds.value)
+      markerLayer?.updatePreview(previewGoal.value, previewTourTypes.value ?? [])
       markerLayer?.updateDetailMarkers(detailMarkers.value)
       gpxLayer?.setup()
-      gpxLayer?.updateTrack(selectedTour.value)
+      void gpxLayer?.updateTracks(trackTours.value)
     })
   }
 })

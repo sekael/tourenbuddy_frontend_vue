@@ -59,10 +59,18 @@ export const useMapStore = defineStore('map', () => {
   const isDrawingRegion = ref(false)
   const currentStyleIndex = ref(0)
   const selectedTourId = ref<string | null>(null)
+  /**
+   * The outing whose overview is open (`outingKey`, owner + id, #338). Exclusive with
+   * `selectedTourId`: a segment opened from the overview replaces it (design D15).
+   */
+  const selectedOutingKey = ref<string | null>(null)
   /** Tentative goal coordinates shown as a lighter-tone preview marker while editing or creating a tour. */
   const previewGoal = ref<{ lng: number, lat: number } | null>(null)
-  /** Activity type driving the preview marker's lighter shade; null → neutral fallback color. */
-  const previewTourType = ref<TourType | null>(null)
+  /**
+   * Activity types the open form currently holds, driving the preview markers' lighter shades.
+   * null → no form open (saved types apply); [] → the form cleared every type (neutral).
+   */
+  const previewTourTypes = ref<TourType[] | null>(null)
   /** Re-picked, not-yet-saved start/end coordinates shown as lighter-tone draft detail markers. */
   const previewStart = ref<{ lng: number, lat: number } | null>(null)
   const previewEnd = ref<{ lng: number, lat: number } | null>(null)
@@ -126,15 +134,23 @@ export const useMapStore = defineStore('map', () => {
   }
 
   function selectTour(tourId: string | null) {
+    if (tourId)
+      selectedOutingKey.value = null
     selectedTourId.value = tourId
+  }
+
+  function selectOuting(key: string | null) {
+    if (key)
+      selectedTourId.value = null
+    selectedOutingKey.value = key
   }
 
   function setPreviewGoal(goal: { lng: number, lat: number } | null) {
     previewGoal.value = goal
   }
 
-  function setPreviewTourType(tourType: TourType | null) {
-    previewTourType.value = tourType
+  function setPreviewTourTypes(tourTypes: TourType[] | null) {
+    previewTourTypes.value = tourTypes
   }
 
   function setPreviewStart(start: { lng: number, lat: number } | null) {
@@ -150,8 +166,9 @@ export const useMapStore = defineStore('map', () => {
     isDrawingRegion,
     currentStyleIndex,
     selectedTourId,
+    selectedOutingKey,
     previewGoal,
-    previewTourType,
+    previewTourTypes,
     previewStart,
     previewEnd,
     pendingIntent,
@@ -167,8 +184,9 @@ export const useMapStore = defineStore('map', () => {
     setDrawingRegion,
     setStyleIndex,
     selectTour,
+    selectOuting,
     setPreviewGoal,
-    setPreviewTourType,
+    setPreviewTourTypes,
     setPreviewStart,
     setPreviewEnd,
   }

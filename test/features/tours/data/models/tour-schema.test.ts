@@ -110,3 +110,26 @@ describe('tourRowSchema completed field', () => {
     expect(result.completed).toBe(false)
   })
 })
+
+describe('outing columns (#338)', () => {
+  it('should map the outing columns to a membership', () => {
+    const row = { ...baseRow, outing_id: 'o1', outing_name: null, outing_position: 0 }
+    expect(tourRowSchema.parse(row).outing).toEqual({ id: 'o1', name: null, position: 0 })
+    expect(friendTourRowSchema.parse(row).outing).toEqual({ id: 'o1', name: null, position: 0 })
+  })
+
+  it('should read a row without outing columns as standalone', () => {
+    expect(tourRowSchema.parse(baseRow).outing).toBeNull()
+  })
+})
+
+describe('grade and start time (smarter-tour-creation)', () => {
+  it('should map both, and default them to null for a row from before the columns', () => {
+    expect(tourRowSchema.parse({ ...baseRow, grade: 'ZS-', start_time: '06:30' })).toMatchObject({ grade: 'ZS-', startTime: '06:30' })
+    expect(tourRowSchema.parse(baseRow)).toMatchObject({ grade: null, startTime: null })
+  })
+
+  it('should keep a friend\'s grade but not a time the view withheld', () => {
+    expect(friendTourRowSchema.parse({ ...baseRow, grade: 'T4', start_time: null })).toMatchObject({ grade: 'T4', startTime: null })
+  })
+})

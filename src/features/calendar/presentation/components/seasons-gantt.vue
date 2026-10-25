@@ -97,9 +97,9 @@ const nowLineLeft = computed(() => {
           >
             <div class="row-label">
               <span class="tour-name">{{ tour.name ?? t('tours.infoSheet.unnamedTour') }}</span>
-              <span v-if="tour.tourType" class="tour-type">
-                <BaseIcon :name="TOUR_TYPE_ICONS[tour.tourType]" size="xs" />
-                {{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[tour.tourType]}`) }}
+              <span v-if="tour.tourTypes.length" class="tour-type">
+                <BaseIcon :name="TOUR_TYPE_ICONS[tour.tourTypes[0]!]" size="xs" />
+                {{ tour.tourTypes.map(type => t(`tours.type.${TOUR_TYPE_I18N_KEYS[type]}`)).join(', ') }}
               </span>
             </div>
 
@@ -112,7 +112,7 @@ const nowLineLeft = computed(() => {
                 :style="{
                   gridColumn: `${run.start + 2} / span ${run.span}`,
                   // Untyped tours keep the CSS default (primary) — same as before.
-                  backgroundColor: tour.tourType ? TOUR_TYPE_COLORS[tour.tourType] : undefined,
+                  backgroundColor: tour.tourTypes.length ? TOUR_TYPE_COLORS[tour.tourTypes[0]!] : undefined,
                 }"
               />
             </template>

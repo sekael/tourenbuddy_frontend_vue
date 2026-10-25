@@ -24,14 +24,14 @@ const soleFriend = computed(() => (props.friends.length === 1 ? props.friends[0]
     v-if="soleEntry"
     class="pill"
     :style="
-      soleEntry.tour.tourType
-        ? { backgroundColor: TOUR_TYPE_COLORS[soleEntry.tour.tourType] }
+      soleEntry.tour.tourTypes[0]
+        ? { backgroundColor: TOUR_TYPE_COLORS[soleEntry.tour.tourTypes[0]] }
         : undefined
     "
   >
     <BaseIcon
-      v-if="soleEntry.tour.tourType"
-      :name="TOUR_TYPE_ICONS[soleEntry.tour.tourType]"
+      v-if="soleEntry.tour.tourTypes[0]"
+      :name="TOUR_TYPE_ICONS[soleEntry.tour.tourTypes[0]]"
       size="xs"
     />
     <span class="chip-name">{{ soleEntry.tour.name ?? t('tours.infoSheet.unnamedTour') }}</span>

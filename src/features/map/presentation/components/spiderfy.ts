@@ -1,7 +1,6 @@
 import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl'
-import type { TourType } from '@/features/tours/data/models/tour-type'
 import maplibregl from 'maplibre-gl'
-import { TOUR_TYPE_COLORS } from '@/features/tours/data/models/tour-type'
+import { cssFill } from './pie-marker'
 
 const SPIDERFY_CIRCLE_RADIUS_PX = 32
 const SPIDERFY_SPIRAL_THRESHOLD = 8
@@ -13,7 +12,8 @@ const SPIDERFY_LAYER_ID = 'cluster-spiderfy-lines'
 
 export interface SpiderfyLeaf {
   id: string
-  tourType: TourType | null
+  /** The tour's marker colours (split when several). */
+  colors: string[]
 }
 
 export function computeLeafPositions(count: number): Array<[number, number]> {
@@ -135,9 +135,8 @@ export function createSpiderfier(map: MapLibreMap): Spiderfier {
       const projected = map.unproject([px.x, px.y])
       const leafLngLat: [number, number] = [projected.lng, projected.lat]
 
-      const color = leaf.tourType ? (TOUR_TYPE_COLORS[leaf.tourType] ?? '#78716C') : '#78716C'
       const el = document.createElement('div')
-      el.style.cssText = `width:24px;height:24px;border-radius:50%;background:${color};opacity:0.9;cursor:pointer;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);`
+      el.style.cssText = `width:24px;height:24px;border-radius:50%;background:${cssFill(leaf.colors)};opacity:0.9;cursor:pointer;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);`
       el.setAttribute('role', 'button')
       el.setAttribute('tabindex', '0')
       el.setAttribute('aria-label', leaf.id)

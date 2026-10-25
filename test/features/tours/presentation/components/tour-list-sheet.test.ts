@@ -17,7 +17,7 @@ const mockTours = [
     plannedDate: new Date('2024-06-15'),
     goal: { lng: 8.5, lat: 47.5 },
     partnerIds: [],
-    tourType: 'hiking',
+    tourTypes: ['hiking'],
     elevation: 1500,
     gpxFilepath: null,
     description: null,
@@ -35,7 +35,7 @@ const mockTours = [
     plannedDate: null,
     goal: { lng: 8.6, lat: 47.6 },
     partnerIds: [],
-    tourType: 'skiing',
+    tourTypes: ['skiing'],
     elevation: 2000,
     gpxFilepath: null,
     description: null,
@@ -391,5 +391,40 @@ describe('tourListSheet', () => {
       expect(wrapper.find('[data-testid="header-backfill"]').exists()).toBe(false)
       wrapper.unmount()
     })
+  })
+})
+
+describe('tourListSheet — outings (#338)', () => {
+  const outing = (position: number) => ({ id: 'o1', name: 'Haute Route', position })
+  const tours = [
+    { ...mockTours[0]!, id: 's-1', name: 'Valley to hut', outing: outing(0) },
+    { ...mockTours[1]!, id: 'solo', name: 'Solo' },
+    { ...mockTours[0]!, id: 's-2', name: 'Hut to summit', tourTypes: ['paragliding'], outing: outing(1) },
+  ]
+
+  beforeEach(async () => {
+    const { resetTourFilters, useActiveTourTab } = await import('@/features/tours/presentation/composables/use-tour-filters')
+    resetTourFilters()
+    useActiveTourTab().value = 'owned'
+  })
+
+  it('should fold an outing\'s segments into one row where its first segment was', () => {
+    const wrapper = mountSheet({ tours })
+    const rows = wrapper.findAll('.tour-row')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]!.attributes('data-testid')).toBe('outing-row')
+    expect(rows[0]!.text()).toContain('Haute Route')
+  })
+
+  it('should open the outing from its row', async () => {
+    const wrapper = mountSheet({ tours })
+    await wrapper.find('[data-testid="outing-row"]').trigger('click')
+    expect(wrapper.emitted('selectOuting')).toEqual([['u-1/o1']])
+  })
+
+  it('should find the outing by its name even when no segment name matches', async () => {
+    const wrapper = mountSheet({ tours })
+    await wrapper.find('.search-input').setValue('haute')
+    expect(wrapper.findAll('.tour-row').map(r => r.attributes('data-testid'))).toEqual(['outing-row'])
   })
 })

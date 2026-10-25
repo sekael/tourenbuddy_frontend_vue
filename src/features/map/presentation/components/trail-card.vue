@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import type { Trail } from '@/features/map/domain/entities/trail'
 import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
@@ -10,7 +12,11 @@ import { trailTitle } from '../composables/trail-title'
 import { useMapStore } from '../stores/map-store'
 import TrailCandidateList from './trail-candidate-list.vue'
 
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{
+  close: []
+  /** Plan this route as a tour (smarter-tour-creation D7). */
+  plan: [trail: Trail]
+}>()
 
 const { t } = useI18n({ useScope: 'global' })
 const isDesktop = useIsDesktop()
@@ -49,6 +55,10 @@ const title = computed(() => selected.value
           <span v-if="route.ascentM != null" class="fact">↑ {{ t('map.trail.metres', { value: route.ascentM }) }}</span>
           <span v-if="route.descentM != null" class="fact">↓ {{ t('map.trail.metres', { value: route.descentM }) }}</span>
         </div>
+        <BaseButton variant="primary" size="sm" class="plan" data-testid="trail-plan-tour" @click="emit('plan', selected!)">
+          <BaseIcon name="add_location_alt" />
+          {{ t('map.trail.planTour') }}
+        </BaseButton>
         <a v-if="route.sacUrl" class="sac" :href="route.sacUrl" target="_blank" rel="noopener">
           {{ t('map.trail.openSac') }}
           <BaseIcon name="open_in_new" size="sm" />
@@ -105,6 +115,10 @@ const title = computed(() => selected.value
   color: var(--color-on-secondary-container);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
+}
+
+.plan {
+  align-self: flex-start;
 }
 
 .sac {

@@ -31,6 +31,13 @@ const { mockGetElevation, mockSuggestTourName } = vi.hoisted(() => ({
 vi.mock('@/features/tours/data/services/swisstopo-elevation-service', () => ({ getElevation: mockGetElevation }))
 vi.mock('@/features/tours/data/services/swisstopo-name-service', () => ({ suggestTourName: mockSuggestTourName }))
 
+const { mockFindStopsNear } = vi.hoisted(() => ({ mockFindStopsNear: vi.fn() }))
+vi.mock('@/features/tours/data/services/swisstopo-stop-service', () => ({ findStopsNear: mockFindStopsNear }))
+mockFindStopsNear.mockResolvedValue([])
+
+/** A parsed GPX without a single point. */
+const NO_TRACK: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] }
+
 vi.mock('@/features/auth/presentation/stores/auth-store', () => ({
   useAuthStore: vi.fn().mockReturnValue({ currentUser: { id: 'user-abc' } }),
 }))
@@ -61,6 +68,24 @@ async function pickFile(wrapper: ReturnType<typeof mountForm>, file: File) {
 }
 
 describe('tourForm', () => {
+  describe('seeded create (#338)', () => {
+    /** The `draftId` a submit carries — non-empty only when the form creates (staging attachments). */
+    async function submittedDraftId(props: Record<string, unknown>) {
+      const wrapper = mountForm(props)
+      await wrapper.find('#tf-tourName').setValue('Hut to summit')
+      await wrapper.find('form').trigger('submit.prevent')
+      return (wrapper.emitted('submit')![0] as unknown[])[3]
+    }
+
+    it('should still create when seeded without a tour id', async () => {
+      expect(await submittedDraftId({ initialDraft: { tourTypes: ['skitour'] } })).not.toBe('')
+    })
+
+    it('should edit when given a tour id', async () => {
+      expect(await submittedDraftId({ initialDraft: { tourTypes: ['skitour'] }, tourId: 't1' })).toBe('')
+    })
+  })
+
   describe('disabled prop', () => {
     it('renders the fieldset disabled so nested inputs and buttons are inert', () => {
       const wrapper = mountForm({ disabled: true })
@@ -119,6 +144,33 @@ describe('tourForm', () => {
     })
   })
 
+  describe('activity chips (multi-select)', () => {
+    async function submitTypes(wrapper: ReturnType<typeof mountForm>) {
+      await wrapper.find('#tf-tourName').setValue('My Tour')
+      await wrapper.find('form').trigger('submit.prevent')
+      return ((wrapper.emitted('submit')![0] as unknown[])[0] as { tourTypes: string[] }).tourTypes
+    }
+
+    it('saves several activities in chip order, not tap order', async () => {
+      const wrapper = mountForm()
+      await wrapper.find('[data-type="hiking"]').trigger('click')
+      await wrapper.find('[data-type="skitour"]').trigger('click')
+      expect(await submitTypes(wrapper)).toEqual(['skitour', 'hiking'])
+    })
+
+    it('deselecting one activity keeps the others', async () => {
+      const wrapper = mountForm({ initialDraft: { tourTypes: ['skitour', 'hiking'] } })
+      await wrapper.find('[data-type="skitour"]').trigger('click')
+      expect(await submitTypes(wrapper)).toEqual(['hiking'])
+    })
+
+    it('surfaces an emptied selection as [] (neutral preview), not null', async () => {
+      const wrapper = mountForm({ initialDraft: { tourTypes: ['hiking'] } })
+      await wrapper.find('[data-type="hiking"]').trigger('click')
+      expect(wrapper.emitted('tourTypesChange')!.at(-1)).toEqual([[]])
+    })
+  })
+
   describe('clearing end point also clears metadata', () => {
     it('should include null endPointName and endPointElevation in draft when end point is removed', async () => {
       const wrapper = mountForm({
@@ -163,7 +215,7 @@ describe('tourForm', () => {
           name: 'Test',
           plannedDate: null,
           partnerIds: [],
-          tourType: null,
+          tourTypes: [],
           elevation: null,
           gpxFilepath: 'tour-abc.gpx',
           description: null,
@@ -188,7 +240,7 @@ describe('tourForm', () => {
           name: 'Test',
           plannedDate: null,
           partnerIds: [],
-          tourType: null,
+          tourTypes: [],
           elevation: null,
           gpxFilepath: 'tour-abc.gpx',
           description: null,
@@ -238,7 +290,7 @@ describe('tourForm', () => {
 
     beforeEach(() => {
       vi.clearAllMocks()
-      vi.mocked(parseGpxFile).mockResolvedValue(undefined as never)
+      vi.mocked(parseGpxFile).mockResolvedValue(NO_TRACK)
       mockUploadGpx.mockResolvedValue('user-abc/new-tour-id.gpx')
       mockRemoveGpx.mockResolvedValue(undefined)
     })
@@ -345,7 +397,7 @@ describe('tourForm', () => {
 
     beforeEach(() => {
       vi.clearAllMocks()
-      vi.mocked(parseGpxFile).mockResolvedValue(undefined as never)
+      vi.mocked(parseGpxFile).mockResolvedValue(NO_TRACK)
       mockRemoveGpx.mockResolvedValue(undefined)
     })
 
@@ -651,5 +703,242 @@ describe('tourForm — suggest mode attachment cap (D10)', () => {
 
     await wrapper.find('form').trigger('submit.prevent')
     expect(wrapper.emitted('submit')).toBeUndefined()
+  })
+})
+
+describe('tourForm — creation that knows more (smarter-tour-creation)', () => {
+  const GOAL = { lng: 8.4551, lat: 46.6989 }
+
+  beforeEach(() => {
+    mockGetElevation.mockReset().mockResolvedValue(1865)
+    mockSuggestTourName.mockReset().mockResolvedValue('Steingletscher')
+    mockFindStopsNear.mockReset().mockResolvedValue([])
+  })
+
+  async function submitted(wrapper: ReturnType<typeof mountForm>) {
+    await wrapper.find('#tf-tourName').setValue('Sustenhorn')
+    await wrapper.find('form').trigger('submit.prevent')
+    return (wrapper.emitted('submit')!.at(-1) as unknown[])[0] as Record<string, unknown>
+  }
+  const selectedSeasons = (wrapper: ReturnType<typeof mountForm>) =>
+    wrapper.findAll('.season-chip.selected').map(c => c.text())
+
+  it('should derive the seasons from the dates until the user picks one', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL })
+    await wrapper.find('#tf-plannedDate').setValue('2027-02-26')
+    await wrapper.find('#tf-endDate').setValue('2027-03-02')
+    expect(selectedSeasons(wrapper)).toEqual(['tours.season.winter', 'tours.season.spring'])
+
+    await wrapper.findAll('.season-chip')[2]!.trigger('click')
+    await wrapper.find('#tf-plannedDate').setValue('2027-07-01')
+    expect(selectedSeasons(wrapper)).toEqual(['tours.season.winter', 'tours.season.spring', 'tours.season.summer'])
+  })
+
+  it('should leave seasons that don\'t match the dates alone in an edit', async () => {
+    const wrapper = mountForm({
+      currentGoal: GOAL,
+      initialDraft: { name: 'X', plannedDate: new Date('2027-03-13'), seasons: ['winter'], tourTypes: [], partnerIds: [] },
+    })
+    await wrapper.find('#tf-plannedDate').setValue('2027-07-13')
+    expect(selectedSeasons(wrapper)).toEqual(['tours.season.winter'])
+  })
+
+  it('should send a trimmed grade and the start time, and drop the time with the date', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL })
+    expect(wrapper.find('#tf-startTime').attributes('disabled')).toBeDefined()
+    await wrapper.find('#tf-plannedDate').setValue('2027-03-13')
+    await wrapper.find('#tf-startTime').setValue('06:30')
+    await wrapper.find('#tf-grade').setValue(' ZS- ')
+    expect(await submitted(wrapper)).toMatchObject({ grade: 'ZS-', startTime: '06:30' })
+
+    await wrapper.find('#tf-plannedDate').setValue('')
+    expect(await submitted(wrapper)).toMatchObject({ startTime: null, plannedDate: null })
+  })
+
+  it('should offer the activity\'s grade scale and set the grade from a chip', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL })
+    expect(wrapper.find('[data-testid=grade-chip]').exists()).toBe(false)
+    await wrapper.find('[data-type=hiking]').trigger('click')
+    const chips = wrapper.findAll('[data-testid=grade-chip]')
+    expect(chips.map(c => c.text())).toEqual(['T1', 'T2', 'T3', 'T4', 'T5', 'T6'])
+    await chips[3]!.trigger('click')
+    expect((wrapper.find('#tf-grade').element as HTMLInputElement).value).toBe('T4')
+  })
+
+  it('should hold one grade per scale and drop a scale\'s grade with its activity', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL })
+    const grade = () => (wrapper.find('#tf-grade').element as HTMLInputElement).value
+    const chip = (g: string) => wrapper.findAll('[data-testid=grade-chip]').find(c => c.text() === g)!
+    await wrapper.find('[data-type=hiking]').trigger('click')
+    await wrapper.find('[data-type=mountain-biking]').trigger('click')
+    await chip('T3').trigger('click')
+    await chip('S2').trigger('click')
+    expect(grade()).toBe('T3, S2')
+
+    await wrapper.find('#tf-grade').setValue('t3+, S2, 5c')
+    expect(chip('T3').attributes('aria-pressed')).toBe('true')
+    await wrapper.find('[data-type=mountain-biking]').trigger('click')
+    expect(grade()).toBe('t3+, 5c')
+    expect(await submitted(wrapper)).toMatchObject({ grade: 'T3+, 5c' })
+  })
+
+  it('should not let a chip push the grade past what the database takes', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL })
+    await wrapper.find('[data-type=hiking]').trigger('click')
+    await wrapper.find('[data-type=mountaineering]').trigger('click')
+    await wrapper.find('#tf-grade').setValue('ZS+ (III-IV), 5c+')
+    await wrapper.findAll('[data-testid=grade-chip]').find(c => c.text() === 'T5')!.trigger('click')
+    expect((wrapper.find('#tf-grade').element as HTMLInputElement).value).toBe('ZS+ (III-IV), 5c+')
+  })
+
+  it('should set up a hike & fly in two taps and save its legs', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL })
+    expect(wrapper.find('[data-testid=activity-legs]').exists()).toBe(false)
+    await wrapper.find('[data-type=hiking]').trigger('click')
+    expect(wrapper.find('[data-testid=activity-legs]').exists()).toBe(false)
+    await wrapper.find('[data-type=paragliding]').trigger('click')
+    const way = (type: string) => wrapper.find(`[data-leg=${type}] [aria-checked=true]`).attributes('data-way')
+    expect([way('hiking'), way('paragliding')]).toEqual(['up', 'down'])
+    expect(await submitted(wrapper)).toMatchObject({ tourTypes: ['paragliding', 'hiking'], legs: { ascent: ['hiking'], descent: ['paragliding'] } })
+  })
+
+  it('should keep a tapped way when a third activity joins, and unsplit when all go both ways', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL })
+    await wrapper.find('[data-type=hiking]').trigger('click')
+    await wrapper.find('[data-type=mountain-biking]').trigger('click')
+    await wrapper.find('[data-leg=hiking] [data-way=up]').trigger('click')
+    await wrapper.find('[data-leg=mountain-biking] [data-way=down]').trigger('click')
+    expect(await submitted(wrapper)).toMatchObject({ legs: { ascent: ['hiking'], descent: ['mountain-biking'] } })
+    await wrapper.find('[data-leg=hiking] [data-way=both]').trigger('click')
+    await wrapper.find('[data-leg=mountain-biking] [data-way=both]').trigger('click')
+    expect(await submitted(wrapper)).toMatchObject({ legs: null })
+  })
+
+  it('should not let the last activity on a way leave it', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL })
+    await wrapper.find('[data-type=hiking]').trigger('click')
+    await wrapper.find('[data-type=mountain-biking]').trigger('click')
+    const disabled = (type: string, way: string) => wrapper.find(`[data-leg=${type}] [data-way=${way}]`).attributes('disabled') !== undefined
+    expect([disabled('mountain-biking', 'up'), disabled('hiking', 'down'), disabled('mountain-biking', 'both')]).toEqual([true, true, false])
+    expect(wrapper.find('[data-testid=activity-legs] .hint').text()).toContain('tours.form.legs.needsOne')
+  })
+
+  it('should show and save the defaults when removing an activity leaves a way empty', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL })
+    for (const type of ['hiking', 'mountain-biking', 'paragliding'])
+      await wrapper.find(`[data-type=${type}]`).trigger('click')
+    await wrapper.find('[data-leg=mountain-biking] [data-way=up]').trigger('click')
+    await wrapper.find('[data-type=paragliding]').trigger('click')
+    expect(wrapper.find('[data-leg=mountain-biking] [aria-checked=true]').attributes('data-way')).toBe('down')
+    expect(await submitted(wrapper)).toMatchObject({ legs: { ascent: ['hiking'], descent: ['mountain-biking'] } })
+  })
+
+  it('should give an activity added back the way it had', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL })
+    await wrapper.find('[data-type=hiking]').trigger('click')
+    await wrapper.find('[data-type=paragliding]').trigger('click')
+    await wrapper.find('[data-leg=paragliding] [data-way=both]').trigger('click')
+    await wrapper.find('[data-type=paragliding]').trigger('click')
+    await wrapper.find('[data-type=paragliding]').trigger('click')
+    expect(wrapper.find('[data-leg=paragliding] [aria-checked=true]').attributes('data-way')).toBe('both')
+  })
+
+  it('should let a lone glider fly from the start, and keep it so in an edit', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL })
+    await wrapper.find('[data-type=paragliding]').trigger('click')
+    expect(wrapper.findAll('[data-leg=paragliding] [data-way]').map(w => w.attributes('data-way'))).toEqual(['both', 'down'])
+    expect(await submitted(wrapper)).toMatchObject({ legs: null })
+    await wrapper.find('[data-leg=paragliding] [data-way=both]').trigger('click')
+    expect(await submitted(wrapper)).toMatchObject({ legs: { ascent: ['paragliding'], descent: ['paragliding'] } })
+    const edit = mountForm({
+      currentGoal: GOAL,
+      initialDraft: { name: 'X', plannedDate: null, tourTypes: ['paragliding'], partnerIds: [], legs: { ascent: ['paragliding'], descent: ['paragliding'] } },
+    })
+    expect(edit.find('[data-leg=paragliding] [aria-checked=true]').attributes('data-way')).toBe('both')
+  })
+
+  it('should leave an unsplit multi-activity tour unsplit in an edit', async () => {
+    const wrapper = mountForm({
+      currentGoal: GOAL,
+      initialDraft: { name: 'X', plannedDate: null, tourTypes: ['paragliding', 'hiking'], partnerIds: [], legs: null },
+    })
+    expect(await submitted(wrapper)).toMatchObject({ legs: null })
+  })
+
+  it('should flag a landing picked in the wrong valley by its distance from the goal', async () => {
+    const wrapper = mountForm({
+      currentGoal: GOAL,
+      initialDraft: { name: 'X', plannedDate: null, tourTypes: ['paragliding'], partnerIds: [], startPoint: { lng: 8.4, lat: 46.7 }, endPoint: { lng: 7.6, lat: 47.4 } },
+    })
+    const [start, end] = wrapper.findAll('[data-testid=point-distance]')
+    expect([start!.classes('far'), end!.classes('far')]).toEqual([false, true])
+    expect(end!.text()).toBe('tours.form.farFromGoal')
+  })
+
+  it('should call the end of a flown way down the landing, without a round trip', async () => {
+    const wrapper = mountForm({
+      currentGoal: GOAL,
+      initialDraft: { name: 'X', plannedDate: null, tourTypes: ['paragliding'], partnerIds: [], startPoint: { lng: 8.4, lat: 46.7 } },
+    })
+    expect(wrapper.find('.point-section--end .point-section-title').text()).toBe('tours.form.landingLabel')
+    expect(wrapper.find('.point-section--end').text()).not.toContain('tours.form.roundTripBtn')
+  })
+
+  it('should say what a stage is once the dates span more than one day', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL })
+    await wrapper.find('#tf-plannedDate').setValue('2027-03-12')
+    await wrapper.find('#tf-endDate').setValue('2027-03-12')
+    expect(wrapper.find('[data-testid=multi-day-hint]').exists()).toBe(false)
+    await wrapper.find('#tf-endDate').setValue('2027-03-14')
+    expect(wrapper.find('[data-testid=multi-day-hint]').exists()).toBe(true)
+  })
+
+  it('should set the start from a suggestion with its name and a looked-up height', async () => {
+    mockFindStopsNear.mockResolvedValue([{ name: 'Steingletscher, Susten', lng: 8.4275, lat: 46.7311, distance: 4200 }])
+    const wrapper = mountForm({ currentGoal: GOAL })
+    await flushPromises()
+    await wrapper.find('[data-testid=point-suggestion]').trigger('click')
+    await flushPromises()
+    expect(await submitted(wrapper)).toMatchObject({
+      startPoint: { lng: 8.4275, lat: 46.7311 },
+      startPointName: 'Steingletscher, Susten',
+      startPointElevation: 1865,
+    })
+    expect(mockSuggestTourName).not.toHaveBeenCalled()
+  })
+
+  describe('a picked GPX fills empty points', () => {
+    const track = (coordinates: number[][]): GeoJSON.FeatureCollection =>
+      ({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates } }] })
+
+    beforeEach(() => {
+      mockUploadGpx.mockResolvedValue('user-abc/new-tour-id.gpx')
+    })
+
+    it('should make a loop a round trip from its first point', async () => {
+      vi.mocked(parseGpxFile).mockResolvedValue(track([[8.4275, 46.7311], [8.4551, 46.6989], [8.4276, 46.7312]]))
+      const wrapper = mountForm({ currentGoal: GOAL })
+      await pickFile(wrapper, new File(['<gpx/>'], 'loop.gpx'))
+      await flushPromises()
+      const draft = await submitted(wrapper)
+      expect(draft.startPoint).toEqual({ lng: 8.4275, lat: 46.7311 })
+      expect(draft.endPoint).toEqual(draft.startPoint)
+      expect(draft).toMatchObject({ startPointName: 'Steingletscher', endPointName: 'Steingletscher', endPointElevation: 1865 })
+    })
+
+    it('should never move a point the user set', async () => {
+      vi.mocked(parseGpxFile).mockResolvedValue(track([[8.40, 46.73], [8.4551, 46.6989], [8.50, 46.75]]))
+      const wrapper = mountForm({
+        currentGoal: GOAL,
+        initialDraft: { name: 'X', startPoint: { lng: 8.43, lat: 46.71 }, startPointName: 'Tierberglihütte SAC', tourTypes: [], partnerIds: [] },
+      })
+      await pickFile(wrapper, new File(['<gpx/>'], 'traverse.gpx'))
+      await flushPromises()
+      expect(await submitted(wrapper)).toMatchObject({
+        startPoint: { lng: 8.43, lat: 46.71 },
+        startPointName: 'Tierberglihütte SAC',
+        endPoint: { lng: 8.50, lat: 46.75 },
+      })
+    })
   })
 })

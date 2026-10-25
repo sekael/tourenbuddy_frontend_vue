@@ -120,13 +120,48 @@ describe('tourSuggestionRow', () => {
     expect(wrapper.find('.value--new').text()).toContain('–')
   })
 
+  it('renders a suggested start time with its day, and an old one alongside', () => {
+    const wrapper = mountRow({
+      suggestion: makeSuggestion({
+        field: 'dates',
+        value: { plannedDate: '2026-02-01', endDate: null, startTime: '05:45' },
+        baseValue: { plannedDate: '2026-02-01', endDate: null, startTime: '06:30' },
+      }),
+    })
+
+    expect(wrapper.find('.value--new').text()).toMatch(/ · 05:45$/)
+    expect(wrapper.find('.value--old').text()).toMatch(/ · 06:30$/)
+  })
+
   it('never renders a raw enum token — a German reader must not see "climbing"', () => {
     const wrapper = mountRow({
-      suggestion: makeSuggestion({ field: 'tour_type', value: 'climbing', baseValue: 'skitour' }),
+      suggestion: makeSuggestion({ field: 'tour_type', value: ['climbing'], baseValue: ['skitour'] }),
     })
 
     expect(wrapper.find('.value--new').text()).toBe('tours.type.climbing')
     expect(wrapper.find('.value--old').text()).toBe('tours.type.skitour')
+  })
+
+  it('lists every proposed activity through its i18n key, not its token', () => {
+    const wrapper = mountRow({
+      suggestion: makeSuggestion({ field: 'tour_type', value: ['ski-mountaineering', 'climbing'], baseValue: [] }),
+    })
+
+    expect(wrapper.find('.value--new').text()).toBe('tours.type.skiMountaineering, tours.type.climbing')
+    expect(wrapper.find('.value--old').text()).toBe('tours.suggestions.emptyValue')
+  })
+
+  it('shows a split activity proposal leg by leg, and an unsplit one as its list', () => {
+    const wrapper = mountRow({
+      suggestion: makeSuggestion({
+        field: 'tour_type',
+        value: { types: ['paragliding', 'hiking'], ascent: ['hiking'], descent: ['paragliding'] },
+        baseValue: { types: ['paragliding', 'hiking'] },
+      }),
+    })
+
+    expect(wrapper.find('.value--new').text()).toBe('↑ tours.type.hiking ↓ tours.type.paragliding')
+    expect(wrapper.find('.value--old').text()).toBe('tours.type.paragliding, tours.type.hiking')
   })
 
   it('localizes every entry of a seasons list, not just the first', () => {

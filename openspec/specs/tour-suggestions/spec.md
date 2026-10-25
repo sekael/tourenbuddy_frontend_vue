@@ -388,3 +388,35 @@ hidden tab.
 #### Scenario: State reconciles after the tab was hidden
 - **WHEN** suggestions are created and resolved while the owner's tab is hidden and it becomes visible again
 - **THEN** the re-subscribe triggers a full refetch and the displayed state matches the server
+
+### Requirement: Activity suggestions carry the legs
+
+An activity suggestion on a split tour SHALL carry the legs, and accepting it SHALL set them. A
+suggestion without legs SHALL keep the tour's legs only while they still match its activities.
+
+#### Scenario: A friend suggests flying down
+
+- **WHEN** a partner suggests hiking up and paragliding down for a hiking tour and the owner accepts
+- **THEN** the tour SHALL have hiking up and paragliding down
+
+### Requirement: Grade and start time are suggestable
+
+A partner SHALL be able to suggest a grade (logical field `grade`) and a start time as part of
+the `dates` field (`startTime`: the time, `null` to remove the owner's, absent when untouched).
+Accepting SHALL write them; a `dates` value without `startTime` SHALL keep the tour's time. A
+grade or start-time change SHALL notify partners like any meaningful change.
+
+#### Scenario: Suggesting a grade
+
+- **WHEN** a partner changes the grade from "WS" to "ZS" in the suggest form and sends it
+- **THEN** one `grade` suggestion SHALL be created with the new value and the owner SHALL see it in the review sheet
+
+#### Scenario: A pending date suggestion from before start times
+
+- **WHEN** a `dates` suggestion created before start times existed is reviewed on a tour without a start time
+- **THEN** it SHALL not be marked stale
+
+#### Scenario: The owner set a time after the suggestion
+
+- **WHEN** a `dates` suggestion without a start time is accepted on a tour that has one
+- **THEN** the tour SHALL keep its start time

@@ -455,10 +455,10 @@ function selectFromDetail(tourId: string) {
               @click="selectFromDetail(entry.tour.id)"
             >
               <BaseIcon
-                v-if="entry.tour.tourType"
-                :name="TOUR_TYPE_ICONS[entry.tour.tourType]"
+                v-if="entry.tour.tourTypes[0]"
+                :name="TOUR_TYPE_ICONS[entry.tour.tourTypes[0]]"
                 size="sm"
-                :style="{ color: TOUR_TYPE_COLORS[entry.tour.tourType] }"
+                :style="{ color: TOUR_TYPE_COLORS[entry.tour.tourTypes[0]] }"
               />
               <span class="pill-name">{{ entry.tour.name ?? t('tours.infoSheet.unnamedTour') }}</span>
               <span

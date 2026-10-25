@@ -18,7 +18,7 @@ const baseDraft: TourDraft = {
   name: 'Test Tour',
   plannedDate: null,
   partnerIds: [],
-  tourType: null,
+  tourTypes: [],
   elevation: null,
   gpxFilepath: null,
   description: null,
@@ -175,5 +175,65 @@ describe('toursRepositoryImpl: new RPC params', () => {
       mockRpc.mockResolvedValue({ data: true, error: null })
       await expect(repo.updateTour('id-1', baseDraft, goal)).resolves.toBe(true)
     })
+  })
+})
+
+describe('toursRepositoryImpl: p_outing (#338, D12)', () => {
+  const repo = new ToursRepositoryImpl()
+  const outing = { id: 'o1', name: 'Haute Route', position: 2 }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockRpc.mockResolvedValue({ data: true, error: null })
+  })
+
+  it('should send null when the draft does not touch the outing, so the server keeps it', async () => {
+    await repo.updateTour('id-1', baseDraft, goal)
+    expect(mockRpc).toHaveBeenCalledWith('update_tour_full', expect.objectContaining({ p_outing: null }))
+  })
+
+  it('should send an empty object to leave the outing', async () => {
+    await repo.updateTour('id-1', { ...baseDraft, outing: null }, goal)
+    expect(mockRpc).toHaveBeenCalledWith('update_tour_full', expect.objectContaining({ p_outing: {} }))
+  })
+
+  it('should send the membership when creating a segment', async () => {
+    await repo.createTourWithPartners('id-1', { ...baseDraft, outing }, goal)
+    expect(mockRpc).toHaveBeenCalledWith('create_tour_full', expect.objectContaining({ p_outing: outing }))
+  })
+})
+
+describe('toursRepositoryImpl: p_grade / p_start_time (smarter-tour-creation D5)', () => {
+  const repo = new ToursRepositoryImpl()
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockRpc.mockResolvedValue({ data: true, error: null })
+  })
+
+  it('should send null for a draft that predates the fields, so the server keeps them', async () => {
+    await repo.updateTour('id-1', baseDraft, goal)
+    expect(mockRpc).toHaveBeenCalledWith('update_tour_full', expect.objectContaining({ p_grade: null, p_start_time: null }))
+  })
+
+  it('should send an empty string to clear, and the value to set', async () => {
+    await repo.updateTour('id-1', { ...baseDraft, grade: null, startTime: '06:30' }, goal)
+    expect(mockRpc).toHaveBeenCalledWith('update_tour_full', expect.objectContaining({ p_grade: '', p_start_time: '06:30' }))
+  })
+})
+
+describe('toursRepositoryImpl: legs (activity-legs D2)', () => {
+  const repo = new ToursRepositoryImpl()
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockRpc.mockResolvedValue({ data: true, error: null })
+  })
+
+  it('should send null legs for a draft that knows none, and empty ones to unsplit', async () => {
+    await repo.updateTour('id-1', baseDraft, goal)
+    expect(mockRpc).toHaveBeenCalledWith('update_tour_full', expect.objectContaining({ p_ascent_types: null, p_descent_types: null }))
+    await repo.updateTour('id-1', { ...baseDraft, legs: null }, goal)
+    expect(mockRpc).toHaveBeenLastCalledWith('update_tour_full', expect.objectContaining({ p_ascent_types: [], p_descent_types: [] }))
   })
 })

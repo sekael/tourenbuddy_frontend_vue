@@ -9,6 +9,9 @@ import { resolveContactName } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useFriendDisplayName } from '@/features/friendships/presentation/composables/use-friend-display-name'
 import { TOUR_TYPE_COLORS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
+import { routeOrder } from '@/features/tours/domain/legs'
+import GradeBadge from '@/features/tours/presentation/components/grade-badge.vue'
+import TourTypeBadge from '@/features/tours/presentation/components/tour-type-badge.vue'
 import { useTourSuggestionsStore } from '@/features/tours/presentation/stores/tour-suggestions-store'
 
 const props = defineProps<{ tour: Tour }>()
@@ -32,9 +35,12 @@ const displayName = computed(() => props.tour.name ?? t('tours.infoSheet.unnamed
 // The activity type IS the row's identity at a glance — same icon+color language the
 // map markers and calendar already speak. A typeless tour keeps the neutral primary tint
 // via the CSS default, so the null case needs no template branch.
-const avatarIcon = computed(() => (props.tour.tourType ? TOUR_TYPE_ICONS[props.tour.tourType] : 'tour'))
+// A multi-activity tour shows the detail's disc instead, the way up first (activity-legs).
+const multi = computed(() => props.tour.tourTypes.length > 1)
+const primaryType = computed(() => props.tour.tourTypes[0] ?? null)
+const avatarIcon = computed(() => (primaryType.value ? TOUR_TYPE_ICONS[primaryType.value] : 'tour'))
 const avatarTint = computed(() =>
-  props.tour.tourType ? { '--avatar-tint': TOUR_TYPE_COLORS[props.tour.tourType] } : undefined,
+  primaryType.value ? { '--avatar-tint': TOUR_TYPE_COLORS[primaryType.value] } : undefined,
 )
 
 // Friend tours: the owner is named by the viewer's OWN contact for them, gated so the
@@ -73,17 +79,25 @@ const subtitle = computed(() => [dateLabel.value, partnerSubtitle.value].filter(
 
 <template>
   <li class="tour-row" @click="emit('click')">
-    <div class="tour-avatar" :style="avatarTint">
+    <TourTypeBadge v-if="multi" :types="routeOrder(tour)" class="tour-avatar">
+      <BaseIcon v-if="tour.isFriendTour" name="group" class="friend-badge" />
+    </TourTypeBadge>
+    <div v-else class="tour-avatar" :style="avatarTint">
       <BaseIcon :name="avatarIcon" />
       <BaseIcon v-if="tour.isFriendTour" name="group" class="friend-badge" />
     </div>
     <div class="tour-info">
       <span class="tour-name">{{ displayName }}</span>
+      <!-- How hard leads: it decides who comes along before the day does — a friend's tour too. -->
       <span v-if="tour.isFriendTour && ownerResolved" class="tour-owner">
+        <GradeBadge v-if="tour.grade" :grade="tour.grade" class="row-grade" />
         {{ dateLabel ? `${ownerLabel} · ${dateLabel}` : ownerLabel }}
       </span>
       <span v-else-if="tour.isFriendTour" class="tour-owner-skeleton" aria-hidden="true" />
-      <span v-else-if="subtitle" class="tour-subtitle">{{ subtitle }}</span>
+      <span v-else-if="tour.grade || subtitle" class="tour-subtitle">
+        <GradeBadge v-if="tour.grade" :grade="tour.grade" class="row-grade" />
+        {{ subtitle }}
+      </span>
     </div>
     <span
       v-if="pendingSuggestions > 0" class="suggestion-badge"
@@ -202,6 +216,10 @@ const subtitle = computed(() => [dateLabel.value, partnerSubtitle.value].filter(
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.row-grade {
+  margin-inline-end: var(--spacing-xxs);
 }
 
 .suggestion-badge {

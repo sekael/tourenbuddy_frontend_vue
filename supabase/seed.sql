@@ -195,11 +195,11 @@ ON CONFLICT (id) DO NOTHING;
 
 -- ----- public.tours ---------------------------------------------------------
 -- Solo tour for Patrick.
-INSERT INTO public.tours (id, planned_date, user_id, goal, name, tour_type, elevation, description, seasons, start_point, end_point, equipment, notes, completed, start_point_name, start_point_elevation, end_point_name, end_point_elevation, gpx_filepath) VALUES ('cccccccc-0000-0000-0000-000000000001', '2026-05-17', '11111111-1111-1111-1111-111111111111', '0101000020E6100000805554B4A3C6234018C9E1F574654740', 'Büelehora', 'hiking', 2512, NULL, '{summer}', '0101000020E610000040ECF72C27B023406871F8EABF674740', NULL, NULL, NULL, false, 'Flüelabach', 1559, NULL, NULL, NULL)
+INSERT INTO public.tours (id, planned_date, user_id, goal, name, tour_types, elevation, description, seasons, start_point, end_point, equipment, notes, completed, start_point_name, start_point_elevation, end_point_name, end_point_elevation, gpx_filepath) VALUES ('cccccccc-0000-0000-0000-000000000001', '2026-05-17', '11111111-1111-1111-1111-111111111111', '0101000020E6100000805554B4A3C6234018C9E1F574654740', 'Büelehora', '{hiking}', 2512, NULL, '{summer}', '0101000020E610000040ECF72C27B023406871F8EABF674740', NULL, NULL, NULL, false, 'Flüelabach', 1559, NULL, NULL, NULL)
 ON CONFLICT (id) DO NOTHING;
 
 -- Joint tour: owned by Patrick, partner = Jakob (via Patrick's contact for Jakob).
-INSERT INTO public.tours (id, planned_date, user_id, goal, name, tour_type, elevation, description, seasons, start_point, end_point, equipment, notes, completed, start_point_name, start_point_elevation, end_point_name, end_point_elevation, gpx_filepath) VALUES ('cccccccc-0000-0000-0000-000000000002', '2027-01-09', '11111111-1111-1111-1111-111111111111', '0101000020E61000009045D1B72ABE2340487CC076605C4740', 'Gfroren Hora', 'skitour', 2747, NULL, '{winter}', '0101000020E610000020A6FC867AB22340A4FEF803E85C4740', '0101000020E610000020A6FC867AB22340A4FEF803E85C4740', NULL, NULL, false, 'Sertig Dörfji', 1864, 'Sertig Dörfji', 1864, NULL)
+INSERT INTO public.tours (id, planned_date, user_id, goal, name, tour_types, elevation, description, seasons, start_point, end_point, equipment, notes, completed, start_point_name, start_point_elevation, end_point_name, end_point_elevation, gpx_filepath) VALUES ('cccccccc-0000-0000-0000-000000000002', '2027-01-09', '11111111-1111-1111-1111-111111111111', '0101000020E61000009045D1B72ABE2340487CC076605C4740', 'Gfroren Hora', '{skitour}', 2747, NULL, '{winter}', '0101000020E610000020A6FC867AB22340A4FEF803E85C4740', '0101000020E610000020A6FC867AB22340A4FEF803E85C4740', NULL, NULL, false, 'Sertig Dörfji', 1864, 'Sertig Dörfji', 1864, NULL)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.tour_partners (tour_id, contact_id) VALUES
@@ -220,7 +220,7 @@ ON CONFLICT DO NOTHING;
 -- `visibility` is omitted to take the column default ('friends') like the tours above; a
 -- private tour here would be invisible to Patrick entirely.
 INSERT INTO public.tours (
-  id, planned_date, end_date, user_id, goal, name, tour_type, elevation,
+  id, planned_date, end_date, user_id, goal, name, tour_types, elevation,
   description, seasons, start_point, end_point, equipment, notes, completed,
   start_point_name, start_point_elevation, end_point_name, end_point_elevation, gpx_filepath
 ) VALUES (
@@ -230,7 +230,7 @@ INSERT INTO public.tours (
   '22222222-2222-2222-2222-222222222222',
   '0101000020E61000007EA67109546A23400573FA230D4D4740',
   'Piz Ela',
-  'mountaineering',
+  '{mountaineering}',
   3339,
   'Zwei Tage mit Übernachtung in der Chamanna d''Es-cha.',
   '{winter,spring}',
@@ -343,14 +343,14 @@ ON CONFLICT DO NOTHING;
 
 -- Points as (lng, lat) so they stay readable; values are approximate.
 INSERT INTO public.tours (
-  id, user_id, name, tour_type, elevation, planned_date, end_date, visibility, completed,
+  id, user_id, name, tour_types, elevation, planned_date, end_date, visibility, completed,
   goal, start_point, start_point_name, start_point_elevation,
   end_point, end_point_name, end_point_elevation,
   seasons, description, equipment, notes
 ) VALUES
   ('cccccccc-0000-0000-0000-000000000010', '66666666-6666-6666-6666-666666666666',
    'Piz Palü Ostgipfel über den Fortezzagrat mit Abfahrt nach Morteratsch',
-   'splitboarding', 3882,
+   '{splitboarding}', 3882,
    (date_trunc('month', current_date) + interval '2 months')::date - 2,
    (date_trunc('month', current_date) + interval '2 months')::date + 1,
    'friends', false,
@@ -364,7 +364,7 @@ INSERT INTO public.tours (
    'Splitboard, Felle, Harscheisen, Steigeisen, Pickel, Gurt, Seil 30 m, 2 Eisschrauben, LVS/Schaufel/Sonde',
    'Treffpunkt 07:15 Talstation Diavolezza. Zug ab Pontresina 06:52. Rückfahrt ab Morteratsch stündlich.'),
   ('cccccccc-0000-0000-0000-000000000011', '66666666-6666-6666-6666-666666666666',
-   'Schwarzhorn', 'skitour', NULL,
+   'Schwarzhorn', '{skitour,hiking}', NULL,
    current_date + 21, NULL,
    'friends', false,
    extensions.st_setsrid(extensions.st_makepoint(9.9403, 46.7343), 4326)::extensions.geography,
@@ -374,7 +374,7 @@ INSERT INTO public.tours (
    NULL, NULL,
    '{winter}', NULL, NULL, NULL),
   ('cccccccc-0000-0000-0000-000000000012', '66666666-6666-6666-6666-666666666666',
-   'Pischahorn', NULL, NULL,
+   'Pischahorn', '{}', NULL,
    NULL, NULL,
    'friends', false,
    extensions.st_setsrid(extensions.st_makepoint(9.9306, 46.8131), 4326)::extensions.geography,
@@ -382,7 +382,7 @@ INSERT INTO public.tours (
    NULL, NULL, NULL,
    NULL, NULL, NULL, NULL),
   ('cccccccc-0000-0000-0000-000000000013', '66666666-6666-6666-6666-666666666666',
-   'Piz Kesch', 'mountaineering', 3418,
+   'Piz Kesch', '{mountaineering}', 3418,
    current_date - 30, NULL,
    'private', true,
    extensions.st_setsrid(extensions.st_makepoint(9.8727, 46.6213), 4326)::extensions.geography,
@@ -393,7 +393,7 @@ INSERT INTO public.tours (
    '{summer}', NULL, NULL,
    'Porchabella-Gletscher stark ausgeapert, Randkluft beim Einstieg offen.'),
   ('cccccccc-0000-0000-0000-000000000014', '66666666-6666-6666-6666-666666666666',
-   'Sentischhorn', 'ski-mountaineering', 2827,
+   'Sentischhorn', '{ski-mountaineering}', 2827,
    current_date - 60, current_date - 59,
    'friends', true,
    extensions.st_setsrid(extensions.st_makepoint(9.9087, 46.7186), 4326)::extensions.geography,
@@ -404,7 +404,33 @@ INSERT INTO public.tours (
    '{winter}', 'Übernachtung im Berghaus Dürrboden.', NULL, NULL)
 ON CONFLICT (id) DO NOTHING;
 
+-- A two-segment outing (#338): valley → hut on day one, hut → summit → valley on day two.
+INSERT INTO public.tours (
+  id, user_id, name, tour_types, elevation, planned_date, visibility,
+  goal, start_point, start_point_name, start_point_elevation,
+  end_point, end_point_name, end_point_elevation, seasons,
+  outing_id, outing_name, outing_position
+) VALUES
+  ('cccccccc-0000-0000-0000-000000000015', '66666666-6666-6666-6666-666666666666',
+   'Chamanna digl Kesch', '{hiking}', 2632, current_date + 40, 'friends',
+   extensions.st_setsrid(extensions.st_makepoint(9.8650, 46.6383), 4326)::extensions.geography,
+   extensions.st_setsrid(extensions.st_makepoint(9.7459, 46.6295), 4326)::extensions.geography,
+   'Bergün/Bravuogn', 1367,
+   NULL, NULL, NULL, '{summer}',
+   'eeeeeeee-0000-0000-0000-000000000338', 'Kesch-Runde', 0),
+  ('cccccccc-0000-0000-0000-000000000016', '66666666-6666-6666-6666-666666666666',
+   'Piz Porchabella', '{mountaineering}', 3079, current_date + 41, 'friends',
+   extensions.st_setsrid(extensions.st_makepoint(9.8957, 46.6239), 4326)::extensions.geography,
+   extensions.st_setsrid(extensions.st_makepoint(9.8650, 46.6383), 4326)::extensions.geography,
+   'Chamanna digl Kesch', 2632,
+   extensions.st_setsrid(extensions.st_makepoint(9.8160, 46.6400), 4326)::extensions.geography,
+   'Chants', 1822, '{summer}',
+   'eeeeeeee-0000-0000-0000-000000000338', 'Kesch-Runde', 1)
+ON CONFLICT (id) DO NOTHING;
+
 INSERT INTO public.tour_partners (tour_id, contact_id) VALUES
+  ('cccccccc-0000-0000-0000-000000000015', 'aaaaaaaa-0000-0000-0000-000000000010'),
+  ('cccccccc-0000-0000-0000-000000000016', 'aaaaaaaa-0000-0000-0000-000000000010'),
   ('cccccccc-0000-0000-0000-000000000010', 'aaaaaaaa-0000-0000-0000-000000000010'),
   ('cccccccc-0000-0000-0000-000000000010', 'aaaaaaaa-0000-0000-0000-000000000011'),
   ('cccccccc-0000-0000-0000-000000000010', 'aaaaaaaa-0000-0000-0000-000000000012'),

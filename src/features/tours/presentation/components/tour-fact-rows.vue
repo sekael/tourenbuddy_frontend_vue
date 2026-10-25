@@ -4,18 +4,23 @@ import type { Tour } from '@/features/tours/domain/entities/tour'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/core/components/base-icon.vue'
-import { TOUR_TYPE_I18N_KEYS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
+import { useFormatter } from '@/core/composables/use-formatter'
+import { TOUR_TYPE_COLORS, TOUR_TYPE_I18N_KEYS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
+import { landsByAir, legsApart } from '@/features/tours/domain/legs'
+import GradeBadge from '@/features/tours/presentation/components/grade-badge.vue'
 
 /**
  * A tour's facts as dense icon-led rows, no headings or cards (spec: design-system →
  * "Tour detail reads at a glance"), grouped by what belongs together: activity, route,
- * partners, free texts — a divider above each group. Start and End carry a short visible
+ * partners, free texts — a divider above each group. The route numbers (design D19) sit in the
+ * sheet's hero, beside the date. Start and End carry a short visible
  * label — their icons alone are ambiguous; every other row is named for assistive tech only.
  * Partners and the route's GPX download come in through slots so the sheet keeps the wiring.
  */
 const props = defineProps<{ tour: Tour }>()
 
 const { t } = useI18n({ useScope: 'global' })
+const { formatElevation } = useFormatter()
 
 const SEASON_ICONS: Record<Season, string> = {
   winter: 'ac_unit',
@@ -33,9 +38,19 @@ const isRoundTrip = computed(() => {
   return !!s && !!e && s.lng === e.lng && s.lat === e.lat
 })
 
+/** Activities as groups: one for an unsplit tour, the way up and the way down for a split one. */
+const typeGroups = computed(() => {
+  const legs = legsApart(props.tour.legs)
+  return legs
+    ? [{ way: 'up' as const, types: legs.ascent }, { way: 'down' as const, types: legs.descent }]
+    : [{ way: null, types: props.tour.tourTypes }]
+})
+/** A flown way down ends in a landing. */
+const landing = computed(() => landsByAir(props.tour))
+
 const endValue = computed(() => {
   if (isOneWayToGoal.value)
-    return t('tours.infoSheet.oneWayToGoalIndicator')
+    return landing.value ? t('tours.infoSheet.landingOpen') : t('tours.infoSheet.oneWayToGoalIndicator')
   if (isRoundTrip.value)
     return t('tours.infoSheet.roundTrip')
   return props.tour.endPointName ?? endPointText.value
@@ -63,17 +78,31 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
 <template>
   <div class="fact-rows">
-    <ul v-if="tour.tourType || tour.seasons?.length" class="fact-group">
-      <li v-if="tour.tourType" class="fact-row" data-fact="type">
-        <BaseIcon :name="TOUR_TYPE_ICONS[tour.tourType]" size="sm" class="row-icon" />
+    <ul v-if="tour.tourTypes.length || tour.grade || tour.seasons?.length" class="fact-group">
+      <!-- Chips carry their own icons, so they take the icon column too. Activities wear
+           their own colour, seasons stay neutral. -->
+      <li v-if="tour.tourTypes.length || tour.grade" class="fact-row fact-row--wide" data-fact="type">
         <span class="visually-hidden">{{ t('tours.infoSheet.iconTooltipType') }}</span>
-        <span class="row-value">{{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[tour.tourType]}` as any) }}</span>
+        <!-- A split tour: the way up, then the way down, each led by its arrow. -->
+        <span v-for="group in typeGroups" :key="group.way ?? 'all'" class="type-group" :data-leg="group.way">
+          <template v-if="group.way">
+            <BaseIcon :name="group.way === 'up' ? 'arrow_upward' : 'arrow_downward'" size="sm" class="leg-arrow" />
+            <span class="visually-hidden">{{ t(group.way === 'up' ? 'tours.infoSheet.wayUp' : 'tours.infoSheet.wayDown') }}</span>
+          </template>
+          <span
+            v-for="type in group.types" :key="type" class="tag type-tag"
+            :style="{ '--tag-color': TOUR_TYPE_COLORS[type] }"
+          >
+            <BaseIcon :name="TOUR_TYPE_ICONS[type]" size="sm" />
+            {{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[type]}` as any) }}
+          </span>
+        </span>
+        <GradeBadge v-if="tour.grade" :grade="tour.grade" />
       </li>
 
-      <!-- Each season chip carries its own icon, so the chips take the icon column too. -->
       <li v-if="tour.seasons?.length" class="fact-row fact-row--wide" data-fact="seasons">
         <span class="visually-hidden">{{ t('tours.infoSheet.iconTooltipSeasons') }}</span>
-        <span v-for="season in tour.seasons" :key="season" class="season-tag">
+        <span v-for="season in tour.seasons" :key="season" class="tag season-tag">
           <BaseIcon :name="SEASON_ICONS[season]" size="sm" />
           {{ t(`tours.season.${season}` as any) }}
         </span>
@@ -83,19 +112,20 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
     <ul v-if="startPointText || $slots.route" class="fact-group">
       <template v-if="startPointText">
         <li class="fact-row" data-fact="start">
-          <BaseIcon name="home" size="sm" class="row-icon" />
+          <!-- The form's point icons (D22): ring = start, flag = goal, chequered flag = end. -->
+          <BaseIcon name="trip_origin" size="sm" class="row-icon" />
           <span class="row-value">
             <span class="row-label">{{ t('tours.infoSheet.startShort') }}</span>
             <span :class="{ coords: !tour.startPointName }">{{ tour.startPointName ?? startPointText }}</span>
-            <span v-if="tour.startPointName && tour.startPointElevation != null" class="row-sub">{{ tour.startPointElevation }}m</span>
+            <span v-if="tour.startPointName && tour.startPointElevation != null" class="row-sub">{{ formatElevation(tour.startPointElevation) }}</span>
           </span>
         </li>
         <li class="fact-row" data-fact="end">
-          <BaseIcon :name="isOneWayToGoal ? 'directions' : 'flag'" size="sm" class="row-icon" />
+          <BaseIcon :name="isOneWayToGoal ? 'flag' : 'sports_score'" size="sm" class="row-icon" />
           <span class="row-value">
-            <span class="row-label">{{ t('tours.infoSheet.endShort') }}</span>
+            <span class="row-label">{{ landing ? t('tours.infoSheet.landingShort') : t('tours.infoSheet.endShort') }}</span>
             <span :class="{ coords: endValue === endPointText }">{{ endValue }}</span>
-            <span v-if="endElevation != null" class="row-sub">{{ endElevation }}m</span>
+            <span v-if="endElevation != null" class="row-sub">{{ formatElevation(endElevation) }}</span>
           </span>
         </li>
       </template>
@@ -184,7 +214,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
 
 .row-icon {
   margin-top: 2px;
-  color: var(--type-tint);
+  color: var(--color-on-surface-variant);
 }
 
 .row-value {
@@ -225,7 +255,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   hyphens: auto;
 }
 
-.season-tag {
+.tag {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-xxs);
@@ -233,12 +263,36 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
   border-radius: var(--chip-radius);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  background-color: color-mix(in srgb, var(--type-tint) 10%, var(--color-background));
+}
+
+.type-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.leg-arrow {
+  color: var(--color-on-surface-variant);
+}
+
+.type-tag {
+  background-color: color-mix(in srgb, var(--tag-color) 12%, var(--color-background));
+  /* Darkened for the label: amber at full strength is under 4.5:1 on its own tint. */
+  color: color-mix(in srgb, var(--tag-color) 75%, black);
+}
+
+.type-tag .base-icon {
+  color: var(--tag-color);
+}
+
+.season-tag {
+  background-color: var(--color-neutral-container);
   color: var(--color-on-surface);
 }
 
 .season-tag .base-icon {
-  color: var(--type-tint);
+  color: var(--color-on-surface-variant);
 }
 
 .description-link {

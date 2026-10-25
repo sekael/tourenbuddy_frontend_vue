@@ -8,18 +8,22 @@ import {
 
 const MIGRATIONS_DIR = join(process.cwd(), 'supabase/migrations')
 
-/** The `field in (...)` list from the CHECK constraint in the tour_suggestion migration. */
+/**
+ * The `field in (...)` list from the newest migration that sets the tour_suggestion field
+ * CHECK — the table's inline one, or a later `add constraint tour_suggestion_field_check`.
+ */
 function sqlFieldEnum(): string[] {
-  const file = readdirSync(MIGRATIONS_DIR).find(f => f.endsWith('_tour_suggestions.sql'))
-  if (!file)
-    throw new Error('tour_suggestions migration not found')
+  const check = /(?:field\s+text not null|constraint tour_suggestion_field_check) check \(field in \(([\s\S]*?)\)\)/
+  const latest = readdirSync(MIGRATIONS_DIR)
+    .filter(f => f.endsWith('.sql'))
+    .sort()
+    .map(f => readFileSync(join(MIGRATIONS_DIR, f), 'utf8').match(check))
+    .filter(match => match != null)
+    .at(-1)
+  if (!latest)
+    throw new Error('field CHECK constraint not found in migrations')
 
-  const sql = readFileSync(join(MIGRATIONS_DIR, file), 'utf8')
-  const match = sql.match(/field\s+text not null check \(field in \(([\s\S]*?)\)\)/)
-  if (!match)
-    throw new Error('field CHECK constraint not found in migration')
-
-  return [...match[1].matchAll(/'([a-z_]+)'/g)].map(m => m[1])
+  return [...latest[1]!.matchAll(/'([a-z_]+)'/g)].map(m => m[1])
 }
 
 describe('suggestable field enum', () => {

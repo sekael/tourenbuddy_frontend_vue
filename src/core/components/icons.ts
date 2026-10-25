@@ -3,11 +3,15 @@ import IconAcUnit from '~icons/material-symbols/ac-unit'
 import IconAccountCircleOutline from '~icons/material-symbols/account-circle-outline'
 import IconAdd from '~icons/material-symbols/add'
 import IconAddLocationAltOutline from '~icons/material-symbols/add-location-alt-outline'
+import IconAddRoad from '~icons/material-symbols/add-road'
 import IconArrowBack from '~icons/material-symbols/arrow-back'
+import IconArrowDownward from '~icons/material-symbols/arrow-downward'
 import IconArrowForward from '~icons/material-symbols/arrow-forward'
+import IconArrowUpward from '~icons/material-symbols/arrow-upward'
 import IconAttachFile from '~icons/material-symbols/attach-file'
 import IconAutoAwesomeOutline from '~icons/material-symbols/auto-awesome-outline'
 import IconBadgeOutline from '~icons/material-symbols/badge-outline'
+import IconBedOutline from '~icons/material-symbols/bed-outline'
 import IconBlockOutline from '~icons/material-symbols/block-outline'
 import IconBrokenImageOutline from '~icons/material-symbols/broken-image-outline'
 import IconCalendarTodayOutline from '~icons/material-symbols/calendar-today-outline'
@@ -24,6 +28,7 @@ import IconContentCopyOutline from '~icons/material-symbols/content-copy-outline
 import IconDeleteOutline from '~icons/material-symbols/delete-outline'
 import IconDescriptionOutline from '~icons/material-symbols/description-outline'
 import IconDirectionsBike from '~icons/material-symbols/directions-bike'
+import IconDirectionsBus from '~icons/material-symbols/directions-bus-outline'
 import IconDirectionsOutline from '~icons/material-symbols/directions-outline'
 import IconDoNotDisturbOnOutline from '~icons/material-symbols/do-not-disturb-on-outline'
 import IconDownhillSkiing from '~icons/material-symbols/downhill-skiing'
@@ -32,6 +37,7 @@ import IconDownloadForOfflineOutline from '~icons/material-symbols/download-for-
 import IconDragIndicator from '~icons/material-symbols/drag-indicator'
 import IconEcoOutline from '~icons/material-symbols/eco-outline'
 import IconEditOutline from '~icons/material-symbols/edit-outline'
+import IconElevationOutline from '~icons/material-symbols/elevation-outline'
 import IconEventAvailableOutline from '~icons/material-symbols/event-available-outline'
 import IconExpandLess from '~icons/material-symbols/expand-less'
 import IconExpandMore from '~icons/material-symbols/expand-more'
@@ -79,7 +85,9 @@ import IconSprint from '~icons/material-symbols/sprint'
 import IconStar from '~icons/material-symbols/star'
 import IconStarOutline from '~icons/material-symbols/star-outline'
 import IconStickyNote2Outline from '~icons/material-symbols/sticky-note-2-outline'
+import IconSwapVert from '~icons/material-symbols/swap-vert'
 import IconSyncAlt from '~icons/material-symbols/sync-alt'
+import IconTimeline from '~icons/material-symbols/timeline'
 import IconTourOutline from '~icons/material-symbols/tour-outline'
 import IconTripOrigin from '~icons/material-symbols/trip-origin'
 import IconTune from '~icons/material-symbols/tune'
@@ -125,11 +133,15 @@ export const iconRegistry: Record<string, Component> = {
   account_circle: IconAccountCircleOutline,
   add: IconAdd,
   add_location_alt: IconAddLocationAltOutline,
+  add_road: IconAddRoad,
   arrow_back: IconArrowBack,
+  arrow_downward: IconArrowDownward,
   arrow_forward: IconArrowForward,
+  arrow_upward: IconArrowUpward,
   attach_file: IconAttachFile,
   auto_awesome: IconAutoAwesomeOutline,
   badge: IconBadgeOutline,
+  bed: IconBedOutline,
   block: IconBlockOutline,
   broken_image: IconBrokenImageOutline,
   calendar_today: IconCalendarTodayOutline,
@@ -148,12 +160,14 @@ export const iconRegistry: Record<string, Component> = {
   description: IconDescriptionOutline,
   directions: IconDirectionsOutline,
   directions_bike: IconDirectionsBike,
+  directions_bus: IconDirectionsBus,
   downhill_skiing: IconDownhillSkiing,
   download: IconDownload,
   download_for_offline: IconDownloadForOfflineOutline,
   drag_indicator: IconDragIndicator,
   eco: IconEcoOutline,
   edit: IconEditOutline,
+  elevation: IconElevationOutline,
   event_available: IconEventAvailableOutline,
   expand_less: IconExpandLess,
   expand_more: IconExpandMore,
@@ -207,7 +221,9 @@ export const iconRegistry: Record<string, Component> = {
   star: IconStarOutline,
   star_filled: IconStar,
   sticky_note_2: IconStickyNote2Outline,
+  swap_vert: IconSwapVert,
   sync_alt: IconSyncAlt,
+  timeline: IconTimeline,
   tour: IconTourOutline,
   trip_origin: IconTripOrigin,
   tune: IconTune,

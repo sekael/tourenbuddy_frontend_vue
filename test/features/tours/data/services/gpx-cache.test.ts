@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createGpxCache } from '@/features/map/presentation/composables/use-gpx-cache'
+import { createGpxCache } from '@/features/tours/data/services/gpx-cache'
 
 function mockGeojson(id: string): GeoJSON.FeatureCollection {
   return {

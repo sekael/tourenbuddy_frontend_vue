@@ -86,7 +86,7 @@ function draft(over: Partial<TourDraft> = {}): TourDraft {
     name: 'Rigi',
     plannedDate: null,
     partnerIds: ['contact-1'],
-    tourType: null,
+    tourTypes: [],
     elevation: null,
     gpxFilepath: null,
     description: null,
@@ -141,6 +141,18 @@ describe('tours-store offline write → replay', () => {
 
     expect(mockUpdate).not.toHaveBeenCalled() // replayed as a create, not an update
     expect(mockCreate).toHaveBeenCalledTimes(1)
+  })
+
+  it('a draft queued by a pre-#335 build replays its single type as a one-element list', async () => {
+    useToursStore()
+    const { tourTypes: _, ...legacy } = draft()
+    peekAllOrdered.mockResolvedValue([entry({ payload: { draft: { ...legacy, tourType: 'hiking' }, goal } })])
+
+    await replayQueue()
+
+    // Without the lift the RPC would get no `p_tour_types` and the type would be lost.
+    expect(mockCreate.mock.calls[0]![1]).toMatchObject({ tourTypes: ['hiking'] })
+    expect(mockCreate.mock.calls[0]![1]).not.toHaveProperty('tourType')
   })
 
   it('a replayed update whose server row is newer (LWW loser) never writes or retries', async () => {

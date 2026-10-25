@@ -80,7 +80,7 @@ const mockTours = [
     goal: { lng: 8.2, lat: 46.8 },
     name: 'Rigi Tour',
     partnerIds: [],
-    tourType: null,
+    tourTypes: [],
     elevation: null,
     gpxFilepath: null,
     description: null,
@@ -120,7 +120,7 @@ describe('useToursStore', () => {
         plannedDate: null,
         ...DRAFT_FILL,
         partnerIds: [],
-        tourType: null,
+        tourTypes: [],
         elevation: null,
         gpxFilepath: null,
         description: null,
@@ -156,7 +156,7 @@ describe('useToursStore', () => {
         plannedDate: null,
         ...DRAFT_FILL,
         partnerIds: [],
-        tourType: null,
+        tourTypes: [],
         elevation: null,
         gpxFilepath: null,
         description: null,
@@ -184,7 +184,7 @@ describe('useToursStore', () => {
         plannedDate: new Date('2026-07-15'),
         ...DRAFT_FILL,
         partnerIds: ['contact-1'],
-        tourType: 'hiking',
+        tourTypes: ['hiking'],
         elevation: 1798,
         gpxFilepath: null,
         description: 'Great hike',
@@ -200,7 +200,7 @@ describe('useToursStore', () => {
     expect(mockCreateTour).toHaveBeenCalledWith(
       'mock-uuid-123',
       expect.objectContaining({
-        tourType: 'hiking',
+        tourTypes: ['hiking'],
         elevation: 1798,
         seasons: ['summer'],
         equipment: 'Boots, poles',
@@ -242,7 +242,7 @@ describe('useToursStore', () => {
           plannedDate: null,
           ...DRAFT_FILL,
           partnerIds: [],
-          tourType: null,
+          tourTypes: [],
           elevation: null,
           gpxFilepath: 'user-123/pre-uploaded-uuid.gpx',
           description: null,
@@ -270,7 +270,7 @@ describe('useToursStore', () => {
         plannedDate: null,
         ...DRAFT_FILL,
         partnerIds: [],
-        tourType: null,
+        tourTypes: [],
         elevation: 1800,
         gpxFilepath: null,
         description: null,
@@ -306,7 +306,7 @@ describe('useToursStore', () => {
             plannedDate: null,
             ...DRAFT_FILL,
             partnerIds: [],
-            tourType: null,
+            tourTypes: [],
             elevation: null,
             gpxFilepath: null,
             description: null,
@@ -338,7 +338,7 @@ describe('useToursStore', () => {
             plannedDate: null,
             ...DRAFT_FILL,
             partnerIds: [],
-            tourType: null,
+            tourTypes: [],
             elevation: null,
             gpxFilepath: null,
             description: null,
@@ -440,7 +440,7 @@ describe('useToursStore', () => {
       goal: { lng: 8.2, lat: 46.8 },
       name: 'Alpine Tour',
       partnerIds: ['contact-deleted', 'contact-kept'],
-      tourType: null,
+      tourTypes: [],
       elevation: 1200,
       gpxFilepath: null,
       description: 'A great tour',
@@ -460,7 +460,7 @@ describe('useToursStore', () => {
       goal: { lng: 7.1, lat: 46.5 },
       name: 'Valley Tour',
       partnerIds: ['contact-kept'],
-      tourType: null,
+      tourTypes: [],
       elevation: null,
       gpxFilepath: null,
       description: null,
@@ -528,5 +528,99 @@ describe('useToursStore', () => {
       expect(updated.description).toBe('A great tour')
       expect(updated.id).toBe('tour-a')
     })
+  })
+})
+
+describe('useToursStore: outings (#338)', () => {
+  const outing = { id: 'o1', name: null, position: 0 }
+  const seg = (id: string, position: number) => ({ ...mockTours[0]!, id, outing: { ...outing, position } })
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    mockUpdateTour.mockResolvedValue(true)
+  })
+
+  /** The membership each `updateTour` call sent, by tour id. */
+  const sentOutings = () => Object.fromEntries(mockUpdateTour.mock.calls.map(([id, draft]) => [id, draft.outing]))
+
+  it('should keep the legs of a draft that knows none only while the activities stay', async () => {
+    const store = useToursStore()
+    const legs = { ascent: ['hiking'], descent: ['paragliding'] } as const
+    store.tours = [{ ...mockTours[0]!, tourTypes: ['paragliding', 'hiking'], legs: { ascent: [...legs.ascent], descent: [...legs.descent] } }]
+    const { legs: _legs, ...draft } = store.tours[0]!
+    await store.updateTour(draft.id, draft, draft.goal)
+    expect(store.tours[0]!.legs).toEqual(legs)
+    await store.updateTour(draft.id, { ...draft, tourTypes: ['hiking'] }, draft.goal)
+    expect(store.tours[0]!.legs).toBeNull()
+  })
+
+  it('should keep a segment in its outing when an edit draft does not mention the outing', async () => {
+    const store = useToursStore()
+    store.tours = [seg('a', 0)]
+    const { outing: _membership, ...formDraft } = store.tours[0]!
+    await store.updateTour('a', { ...formDraft, name: 'Renamed' }, formDraft.goal)
+    expect(store.tours[0]).toMatchObject({ name: 'Renamed', outing })
+  })
+
+  it('should dissolve the outing when removing leaves a single segment', async () => {
+    const store = useToursStore()
+    store.tours = [seg('a', 0), seg('b', 1)]
+    await store.removeFromOuting(store.tours, 'a')
+    expect(sentOutings()).toEqual({ a: null, b: null })
+  })
+
+  it('should keep a three-segment outing when one segment leaves', async () => {
+    const store = useToursStore()
+    store.tours = [seg('a', 0), seg('b', 1), seg('c', 2)]
+    await store.removeFromOuting(store.tours, 'b')
+    expect(sentOutings()).toEqual({ b: null })
+  })
+
+  it('should renumber on a move so tied positions settle', async () => {
+    const store = useToursStore()
+    store.tours = [seg('a', 0), seg('b', 0), seg('c', 7)]
+    // a, b, c → a, c, b: renumbered 0, 1, 2; `a` already sits at 0.
+    await store.reorderSegments(store.tours, 2, 1)
+    expect(sentOutings()).toEqual({ c: { ...outing, position: 1 }, b: { ...outing, position: 2 } })
+  })
+
+  it('should connect a gap by ending the previous segment at the next one\'s start, and skip a startless next', async () => {
+    const store = useToursStore()
+    const hut = { lng: 8.43, lat: 46.71 }
+    store.tours = [seg('a', 0), { ...seg('b', 1), startPoint: hut, startPointName: 'Tierberglihütte SAC', startPointElevation: 2795 }]
+    await store.connectSegments(store.tours[0]!, store.tours[1]!)
+    expect(mockUpdateTour).toHaveBeenCalledTimes(1)
+    expect(mockUpdateTour.mock.calls[0]![0]).toBe('a')
+    expect(mockUpdateTour.mock.calls[0]![1]).toMatchObject({ endPoint: hut, endPointName: 'Tierberglihütte SAC', endPointElevation: 2795 })
+
+    await store.connectSegments(store.tours[0]!, { ...store.tours[1]!, startPoint: null })
+    expect(mockUpdateTour).toHaveBeenCalledTimes(1)
+  })
+
+  it('should restore the old order when a reorder write fails', async () => {
+    const store = useToursStore()
+    store.tours = [seg('a', 0), seg('b', 1)]
+    const before = store.tours
+    mockUpdateTour.mockRejectedValueOnce(new Error('boom'))
+    await expect(store.reorderSegments(store.tours, 0, 1)).rejects.toThrow('boom')
+    expect(store.tours).toBe(before)
+  })
+
+  it('should mint an outing for a standalone anchor and append the added tour after it', async () => {
+    const store = useToursStore()
+    store.tours = [{ ...mockTours[0]!, id: 'anchor' }, { ...mockTours[0]!, id: 'other' }]
+    await store.addToOuting('anchor', 'other')
+    expect(sentOutings()).toEqual({
+      anchor: { id: 'mock-uuid-123', name: null, position: 0 },
+      other: { id: 'mock-uuid-123', name: null, position: 1 },
+    })
+  })
+
+  it('should not touch a segment whose name already matches on rename', async () => {
+    const store = useToursStore()
+    store.tours = [{ ...seg('a', 0), outing: { ...outing, name: 'Route' } }, seg('b', 1)]
+    await store.renameOuting(store.tours, '  Route ')
+    expect(sentOutings()).toEqual({ b: { ...outing, name: 'Route', position: 1 } })
   })
 })

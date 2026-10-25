@@ -159,7 +159,7 @@ The search field SHALL get out of the way of the map once the user acts on the m
 
 ### Requirement: Search result names the picked point
 
-When the user confirms within 50 m of the last chosen result, that result's name SHALL be used as the suggested name of the picked point (the tour name for a goal, the start or end point name otherwise) instead of the nearby-name lookup. Elevation lookup SHALL run unchanged.
+When the user confirms within 50 m of the last chosen result, that result's name SHALL be used as the suggested name of the picked point (the tour name for a goal, the start or end point name otherwise) instead of the nearby-name lookup. A confirm while the map is still flying to the chosen result, before the user touched the map, SHALL pick the result itself: its location and its name. Elevation lookup SHALL run unchanged.
 
 #### Scenario: Confirm on the result
 
@@ -175,6 +175,11 @@ When the user confirms within 50 m of the last chosen result, that result's name
 
 - **WHEN** the user picks a start point by choosing the result "Pontresina" and confirms without panning
 - **THEN** the start point name SHALL be "Pontresina"
+
+#### Scenario: Confirm before the flight lands
+
+- **WHEN** the user chooses a landing 165 km away and confirms while the map is still flying there
+- **THEN** the landing SHALL be the result's location with the result's name, not a place passed en route
 
 ### Requirement: Re-picking keeps a name the user typed
 
@@ -199,3 +204,38 @@ The search field SHALL be hidden while the device is offline; location picking b
 - **WHEN** the device goes offline while the picker is open
 - **THEN** the search field and any result list SHALL be hidden
 - **AND** the crosshair and Cancel/Continue actions SHALL remain usable
+
+### Requirement: The search knows what is being picked
+
+The picker SHALL pass what it picks (goal, start or end) to the search. For a start or end
+point the search SHALL also find public-transport stops and SHALL list access places (stops,
+stations, villages, huts and other buildings, addresses) before terrain (glaciers, ridges), also
+among same-named places. A goal search SHALL keep the service order. Ranking SHALL never hide a
+result.
+
+#### Scenario: Start at the trailhead, not on the glacier
+
+- **WHEN** the user picks a start near the Sustenhorn and searches "Steingletscher"
+- **THEN** the hamlet Steingletscher and the bus stop "Steingletscher, Susten" SHALL be listed
+  before the Steingletscher glacier
+
+#### Scenario: Goal search unchanged
+
+- **WHEN** the user picks a goal and searches "Steingletscher"
+- **THEN** no stop SHALL be requested and the results SHALL keep the service's order with the
+  nearest-first rule for same-named places
+
+#### Scenario: A stop and a same-named place at one spot
+
+- **WHEN** a stop and a gazetteer place share a name and lie within 150 m of each other
+- **THEN** only one of them SHALL be listed
+
+#### Scenario: Stops show their kind
+
+- **WHEN** a stop is listed
+- **THEN** its kind SHALL read as a localized "Public transport stop"
+
+#### Scenario: The stop search fails
+
+- **WHEN** the stop request fails while the place search succeeds
+- **THEN** the place results SHALL still be shown without an error

@@ -30,7 +30,7 @@ function makeMapStub(overrides: Record<string, unknown> = {}) {
   }
 }
 
-const bernina: LocationResult = { name: 'Piz Bernina', kind: 'Alpiner Gipfel', region: 'Pontresina (GR)', origin: 'gazetteer', lng: 9.908, lat: 46.382, zoom: 14 }
+const bernina: LocationResult = { name: 'Piz Bernina', kind: 'Alpiner Gipfel', region: 'Pontresina (GR)', origin: 'gazetteer', objectclass: 'TLM_NAME_PKT', lng: 9.908, lat: 46.382, zoom: 14 }
 const ela: LocationResult = { ...bernina, name: 'Piz Ela', lng: 9.66, lat: 46.6 }
 
 function mountPicker(map = makeMapStub()) {
@@ -241,9 +241,10 @@ describe('locationPicker', () => {
   describe('confirm after a search', () => {
     const atResult = () => ({ lng: bernina.lng, lat: bernina.lat })
 
-    async function chooseBernina(unproject: () => { lng: number, lat: number }) {
+    // The flight has landed unless a test says otherwise.
+    async function chooseBernina(unproject: () => { lng: number, lat: number }, easing = false) {
       search.mockResolvedValueOnce([bernina])
-      const { wrapper } = mountPicker(makeMapStub({ unproject: vi.fn(unproject) }))
+      const { wrapper } = mountPicker(makeMapStub({ unproject: vi.fn(unproject), isEasing: vi.fn(() => easing) }))
       await type(wrapper, 'Piz')
       await wrapper.find('.search-result').trigger('click')
       return wrapper
@@ -260,6 +261,12 @@ describe('locationPicker', () => {
       const wrapper = await chooseBernina(() => ({ lng: bernina.lng, lat: bernina.lat + 0.001 }))
       await wrapper.find('[data-testid="picker-confirm"]').trigger('click')
       expect(wrapper.emitted('confirm')![0]![0]).not.toHaveProperty('name')
+    })
+
+    it('should keep the chosen result and its name when confirmed before the flight lands', async () => {
+      const wrapper = await chooseBernina(() => ({ lng: 8.6, lat: 47.4 }), true)
+      await wrapper.find('[data-testid="picker-confirm"]').trigger('click')
+      expect(wrapper.emitted('confirm')![0]![0]).toEqual({ ...atResult(), name: 'Piz Bernina' })
     })
 
     it('should forget the chosen result once the field is cleared', async () => {

@@ -478,7 +478,7 @@
       "visibilityPrivate": "Privat",
       "visibilityFriendsHint": "Freunde sehen diese Tour. Markierte Partner sehen alle Details.",
       "visibilityPrivateHint": "Nur du siehst diese Tour – verborgen vor allen, auch markierten Partnern.",
-      "activityLabel": "Aktivitätstyp",
+      "activityLabel": "Aktivitäten",
       "seasonLabel": "Saison",
       "gpxTooLarge": "Datei zu gross (max. 2 MB)",
       "gpxInvalid": "Ungültige GPX-Datei",
@@ -510,7 +510,33 @@
       "swisstopo": {
         "loading": "Wird geladen…",
         "failed": "Nicht verfügbar - Wert eingeben"
-      }
+      },
+      "whenSectionLabel": "Wann",
+      "startTimeLabel": "Startzeit (optional)",
+      "multiDayHint": "Mit Übernachtung unterwegs? Plane jeden Tag als eigene Etappe – nach dem Speichern mit «Etappe hinzufügen».",
+      "gradeLabel": "Schwierigkeit (optional)",
+      "gradePlaceholder": "z. B. {example}",
+      "gradePlaceholderClimbing": "z. B. 5c oder V+",
+      "gradeOptional": "Optional",
+      "gradeScale": "Skala für {activity}",
+      "suggestions": {
+        "label": "Vorschläge",
+        "history": "{name} – wie bei deiner letzten Tour hierher",
+        "stop": "{name} – ÖV-Haltestelle"
+      },
+      "legs": {
+        "label": "Hinauf und hinunter",
+        "up": "Hinauf",
+        "both": "Beides",
+        "down": "Hinunter",
+        "hint": "Hinauf: vom Start zum Ziel. Hinunter: vom Ziel zum Ende. Beides: auf dem ganzen Weg.",
+        "needsOne": "Jeder Weg braucht mindestens eine Aktivität.",
+        "soloHint": "Hinunter: zu Fuss oder mit der Bahn zum Startplatz am Ziel. Beides: schon ab dem Start geflogen, in der Thermik."
+      },
+      "landingLabel": "Landeplatz",
+      "fromGoal": "{distance} vom Ziel",
+      "farFromGoal": "{distance} vom Ziel – stimmt der Ort?",
+      "addLandingBtn": "Landeplatz hinzufügen"
     },
     "creation": {
       "title": "Neue Tour",
@@ -549,7 +575,11 @@
       "iconTooltipPartners": "Tourenpartner",
       "downloadGpxBtn": "GPX herunterladen",
       "startShort": "Start",
-      "endShort": "Ende"
+      "endShort": "Ende",
+      "landingShort": "Landung",
+      "wayUp": "Hinauf",
+      "wayDown": "Hinunter",
+      "landingOpen": "noch offen"
     },
     "filters": {
       "partnerLabel": "Partner",
@@ -592,6 +622,7 @@
       "endTitle": "Endpunkt",
       "search": {
         "placeholder": "Gipfel, Ort oder Adresse suchen",
+        "placeholderAccess": "Haltestelle, Ort oder Hütte suchen",
         "label": "Ort suchen",
         "clear": "Suche leeren",
         "noResults": "Keine Orte gefunden",
@@ -600,7 +631,8 @@
           "gazetteer": "Ort",
           "zipcode": "Postleitzahl",
           "gg25": "Gemeinde",
-          "address": "Adresse"
+          "address": "Adresse",
+          "stop": "ÖV-Haltestelle"
         }
       }
     },
@@ -627,7 +659,8 @@
       "cancelUpload": "Upload abbrechen",
       "retryUpload": "Upload wiederholen",
       "dismissUpload": "Datei entfernen",
-      "loadFailed": "Die Dateien dieser Tour konnten nicht geladen werden."
+      "loadFailed": "Die Dateien dieser Tour konnten nicht geladen werden.",
+      "reorderHandle": "{name} verschieben"
     },
     "suggestions": {
       "suggestBtn": "Änderungen vorschlagen",
@@ -684,12 +717,51 @@
         "end_point": "Endpunkt",
         "gpx": "GPX-Track",
         "attachment_add": "Neuer Anhang",
-        "attachment_remove": "Anhang entfernen"
+        "attachment_remove": "Anhang entfernen",
+        "grade": "Schwierigkeit"
       },
       "gpxNew": "Neuer GPX-Track",
       "gpxExisting": "Bestehender GPX-Track",
       "anAttachment": "Ein Anhang",
       "byYou": "Vorgeschlagen von dir"
+    },
+    "outing": {
+      "segmentCount": "{count} Etappe | {count} Etappen",
+      "segmentOf": "Etappe {n} von {count}",
+      "segmentsHeader": "Etappen",
+      "addSegment": "Etappe hinzufügen",
+      "addTitle": "Etappe hinzufügen",
+      "addNew": "Neue Etappe auf der Karte",
+      "addNewHint": "Wähle ihr Ziel – sie beginnt am Tag danach, wo die letzte Etappe endet.",
+      "addExistingHeader": "Oder eine deiner Touren hinzufügen",
+      "addExistingEmpty": "Keine weiteren Touren zum Hinzufügen.",
+      "edit": "Bearbeiten",
+      "done": "Fertig",
+      "nameLabel": "Name der Etappentour",
+      "namePlaceholder": "z. B. Haute Route",
+      "remove": "Aus der Etappentour entfernen",
+      "gapHint": "Beginnt nicht, wo Etappe {n} endet",
+      "dateBeforeHint": "Datum liegt vor Etappe {n}",
+      "previous": "Vorherige Etappe",
+      "next": "Nächste Etappe",
+      "openOverview": "Ganze Etappentour anzeigen",
+      "backToOuting": "Zurück zur Etappentour",
+      "saveFailed": "Die Etappentour konnte nicht aktualisiert werden. Bitte versuche es nochmals.",
+      "dayCount": "{count} Tag | {count} Tage",
+      "night": "Übernachtung",
+      "reorderHandle": "Etappe {n} verschieben",
+      "ruleHint": "Ein Tag, eine Tour – auch mit mehreren Gipfeln oder hoch zu Fuss und runter mit dem Schirm. Nach einer Übernachtung beginnt die nächste Etappe.",
+      "connect": "Verbinden",
+      "connectLabel": "Etappe {n} bei {place} enden lassen"
+    },
+    "route": {
+      "ascent": "Aufstieg",
+      "descent": "Abstieg",
+      "distance": "Distanz",
+      "flight": "Flug",
+      "flightUp": "Flug hinauf",
+      "ascentPartFlown": "Aufstieg, teils geflogen",
+      "descentPartFlown": "Abstieg, teils geflogen"
     }
   },
   "map": {
@@ -734,13 +806,14 @@
       "skiRoute": "Skitour",
       "listTitle": "{count} Skitouren",
       "target": "{name} · {altitude}m",
-      "metres": "{value}m",
+      "metres": "{value}\u00a0m",
       "more": "+{count} weitere – hineinzoomen",
       "backToList": "Skitouren",
       "openSac": "Im SAC-Tourenportal öffnen",
       "noInfo": "Keine Routeninformationen verfügbar",
       "offline": "Für Routendetails braucht es eine Verbindung",
-      "lookupError": "Routeninfo konnte nicht geladen werden"
+      "lookupError": "Routeninfo konnte nicht geladen werden",
+      "planTour": "Als Tour planen"
     },
     "cluster": {
       "label": "Cluster aus {count} Touren",
@@ -903,11 +976,11 @@
       },
       "addLocation": {
         "title": "Tour planen",
-        "body": "Tippe hier und setze eine Markierung auf dein Ziel – Gipfel, Kletterfels oder Hütte. TourenBuddy schlägt einen Namen vor und ermittelt die Höhe für dich."
+        "body": "Tippe hier und setze eine Markierung auf dein Ziel – Gipfel, Kletterfels oder Hütte. TourenBuddy schlägt Namen, Höhe und passende Startpunkte vor."
       },
       "mapLayers": {
         "title": "Kartenebenen",
-        "body": "Wähle eine Grundkarte und blende Wanderwege oder Skitouren darüber ein, in beliebiger Kombination. Mit Skitouren zoomst du hinein, bis die Routen Schwierigkeits-Badges zeigen, und tippst dann für Details auf eine Route."
+        "body": "Wähle eine Grundkarte und blende Wanderwege oder Skitouren darüber ein, in beliebiger Kombination. Mit Skitouren zoomst du hinein, bis die Routen Schwierigkeits-Badges zeigen, und tippst dann für Details auf eine Route – oder planst sie gleich als Tour."
       },
       "welcome": {
         "title": "Willkommen bei TourenBuddy",
@@ -1117,6 +1190,28 @@
         "details": {
           "title": "Routendetails mit einem Tipp",
           "body": "Tippe auf eine markierte Route für Gipfel, Aufstiegszeit, Höhenmeter und Schwierigkeit, samt Link ins SAC-Tourenportal. Wo sich Routen überlagern, wählst du eine aus der Liste."
+        }
+      }
+    },
+    "2026-10-multi-activity-search": {
+      "title": "Hike & Fly in einer Tour, Etappentouren und klügere Planung",
+      "intro": "Plane das ganze Vorhaben so, wie du es machst – zu Fuss hinauf, fliegend hinunter, über mehrere Tage.",
+      "features": {
+        "hikefly": {
+          "title": "Hike & Fly in einer Tour",
+          "body": "Wähle Wandern und Gleitschirm, und die Tour geht zu Fuss hinauf und fliegend hinunter zu deinem Landeplatz. Lege für jede Aktivität fest: hinauf, hinunter oder beides – für Climb & Fly, Ski & Fly, Hike & Bike oder einen Thermikflug ab dem Tal. Die Details zeigen Auf- und Abstieg jedes Wegs, geflogene Wege markiert."
+        },
+        "outings": {
+          "title": "Etappentouren",
+          "body": "Eine Nacht beginnt eine neue Etappe: vom Tal zur Hütte, von der Hütte auf den Gipfel. Die nächste Etappe beginnt am folgenden Tag dort, wo die letzte endet, eine Lücke lässt sich verbinden, und die Karte zeigt die ganze Route mit nummerierten Markern und allen Tracks. Auf- und Abstieg stehen pro Etappe und für die ganze Tour."
+        },
+        "search": {
+          "title": "Planen, wo du startest",
+          "body": "Setzt du einen Punkt? Suche Gipfel, Hütten, Orte und Adressen – für Start und Landeplatz auch Haltestellen und Bergbahnstationen. Ist das Ziel gesetzt, wählst du mit einem Tipp deinen früheren Start oder die nächsten Haltestellen. Jede Skiroute auf der Karte lässt sich als Tour planen."
+        },
+        "grade": {
+          "title": "Schwierigkeit, Startzeit und mehrere Aktivitäten",
+          "body": "Gib die Schwierigkeit auf der Skala der Aktivität an – T1–T6, L–EX, S0–S5 – und wann ihr losgeht. Wähle jede Aktivität, als die eine Tour möglich ist: Marker und GPX-Track zeigen alle ihre Farben, und der Aktivitätsfilter findet die Tour unter jeder davon."
         }
       }
     }

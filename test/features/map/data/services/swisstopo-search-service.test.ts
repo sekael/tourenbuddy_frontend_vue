@@ -2,8 +2,8 @@ import type { LocationResult } from '@/features/map/data/services/swisstopo-sear
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { parseLabel, rankResults, searchLocations } from '@/features/map/data/services/swisstopo-search-service'
 
-function result(name: string, lng: number, lat = 46.5): LocationResult {
-  return { name, kind: null, region: null, origin: 'gazetteer', lng, lat, zoom: 14 }
+function result(name: string, lng: number, lat = 46.5, objectclass: string | null = null): LocationResult {
+  return { name, kind: null, region: null, origin: 'gazetteer', objectclass, lng, lat, zoom: 14 }
 }
 
 function respond(body: unknown, status = 200) {
@@ -125,5 +125,57 @@ describe('rankResults', () => {
     const ranked = rankResults(list, center, 10)
     expect(ranked).toHaveLength(8)
     expect(ranked[0]).toBe(nearDuplicate)
+  })
+})
+
+describe('role-aware search (smarter-tour-creation D1)', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  const place = (label: string, lon: number, objectclass: string) => ({ attrs: { label, lat: 46.73, lon, origin: 'gazetteer', objectclass } })
+  const stop = (label: string, lon: number) => ({ attrs: { label, lat: 46.73, lon, origin: 'feature' } })
+  /** The place search answers `places`; the stop search answers `stops` (or fails with it). */
+  function respondBoth(places: unknown[], stops: unknown[] | Error) {
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      if (url.includes('featuresearch'))
+        return stops instanceof Error ? Promise.reject(stops) : Promise.resolve(new Response(JSON.stringify({ results: stops })))
+      return Promise.resolve(new Response(JSON.stringify({ results: places })))
+    }))
+  }
+
+  it('should not look for stops when picking a goal', async () => {
+    respondBoth([place('<b>Sustenhorn</b>', 8.45, 'TLM_NAME_PKT')], [stop('Steingletscher, Susten', 8.427)])
+    const found = await searchLocations('Susten', 'de-CH', new AbortController().signal)
+    expect(found.map(r => r.origin)).toEqual(['gazetteer'])
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1)
+  })
+
+  it('should add stops for a start, dropping one at a same-named place', async () => {
+    respondBoth(
+      [place('<i>Übrige Bahnen</i> <b>Diavolezza</b>', 9.966, 'TLM_HALTESTELLE')],
+      [stop('Diavolezza', 9.9661), stop('Diavolezza Talstation', 9.97)],
+    )
+    const found = await searchLocations('Diavolezza', 'de-CH', new AbortController().signal, 'start')
+    expect(found.map(r => [r.name, r.origin])).toEqual([['Diavolezza', 'gazetteer'], ['Diavolezza Talstation', 'stop']])
+  })
+
+  it('should keep the place results when the stop search fails', async () => {
+    respondBoth([place('<b>Steingletscher</b>', 8.43, 'TLM_SIEDLUNGSNAME')], new TypeError('offline'))
+    const found = await searchLocations('Stein', 'de-CH', new AbortController().signal, 'end')
+    expect(found.map(r => r.name)).toEqual(['Steingletscher'])
+  })
+
+  it('should rank the hamlet and the stop before the nearer glacier of the same name for a start', () => {
+    const center = { lng: 8.455, lat: 46.699 }
+    const glacier = result('Steingletscher', 8.45, 46.70, 'TLM_GELAENDENAME')
+    const hamlet = result('Steingletscher', 8.43, 46.73, 'TLM_SIEDLUNGSNAME')
+    const busStop = { ...result('Steingletscher, Susten', 8.427, 46.731), origin: 'stop' }
+    const summit = result('Sustenhorn', 8.455, 46.699, 'TLM_NAME_PKT')
+    const address = { ...result('Steingletscher 365c, 3863 Gadmen', 8.43, 46.73), origin: 'address' }
+    expect(rankResults([address, glacier, summit, hamlet, busStop], center, 12, 'start').map(r => r.objectclass ?? r.origin))
+      // House addresses after summits and passes; terrain last, even when it shares the hamlet's name.
+      .toEqual(['stop', 'TLM_SIEDLUNGSNAME', 'TLM_NAME_PKT', 'address', 'TLM_GELAENDENAME'])
+    // A goal keeps the service order with the nearest duplicate first.
+    expect(rankResults([glacier, summit, hamlet], center, 12).map(r => r.objectclass))
+      .toEqual(['TLM_GELAENDENAME', 'TLM_SIEDLUNGSNAME', 'TLM_NAME_PKT'])
   })
 })

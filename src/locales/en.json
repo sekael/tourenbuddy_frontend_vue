@@ -478,7 +478,7 @@
       "visibilityPrivate": "Private",
       "visibilityFriendsHint": "Friends can see this tour. Partners you mark see full details.",
       "visibilityPrivateHint": "Only you can see this tour — hidden from everyone, including marked partners.",
-      "activityLabel": "Activity Type",
+      "activityLabel": "Activities",
       "seasonLabel": "Season",
       "gpxTooLarge": "File too large (max 2 MB)",
       "gpxInvalid": "Invalid GPX file",
@@ -510,7 +510,33 @@
       "swisstopo": {
         "loading": "Loading value…",
         "failed": "Not available - enter manually"
-      }
+      },
+      "whenSectionLabel": "When",
+      "startTimeLabel": "Start time (optional)",
+      "multiDayHint": "Staying overnight? Plan each day as its own segment – after saving, with “Add segment”.",
+      "gradeLabel": "Grade (optional)",
+      "gradePlaceholder": "e.g. {example}",
+      "gradePlaceholderClimbing": "e.g. 5c or V+",
+      "gradeOptional": "Optional",
+      "gradeScale": "{activity} scale",
+      "suggestions": {
+        "label": "Suggestions",
+        "history": "{name} – as on your last tour here",
+        "stop": "{name} – public transport stop"
+      },
+      "legs": {
+        "label": "Way up and down",
+        "up": "Up",
+        "both": "Both",
+        "down": "Down",
+        "hint": "Up: from the start to the goal. Down: from the goal to the end. Both: the whole way.",
+        "needsOne": "Each way needs at least one activity.",
+        "soloHint": "Down: on foot or by lift to the launch at the goal. Both: flown from the start, in thermals."
+      },
+      "landingLabel": "Landing",
+      "fromGoal": "{distance} from the goal",
+      "farFromGoal": "{distance} from the goal – right place?",
+      "addLandingBtn": "Add landing"
     },
     "creation": {
       "title": "New Tour",
@@ -549,7 +575,11 @@
       "iconTooltipPartners": "Partners",
       "downloadGpxBtn": "Download GPX",
       "startShort": "Start",
-      "endShort": "End"
+      "endShort": "End",
+      "landingShort": "Landing",
+      "wayUp": "Way up",
+      "wayDown": "Way down",
+      "landingOpen": "not set yet"
     },
     "filters": {
       "partnerLabel": "Partner",
@@ -592,6 +622,7 @@
       "endTitle": "End Point",
       "search": {
         "placeholder": "Search summit, place or address",
+        "placeholderAccess": "Search stop, village or hut",
         "label": "Search location",
         "clear": "Clear search",
         "noResults": "No places found",
@@ -600,7 +631,8 @@
           "gazetteer": "Place",
           "zipcode": "Postcode",
           "gg25": "Municipality",
-          "address": "Address"
+          "address": "Address",
+          "stop": "Public transport stop"
         }
       }
     },
@@ -627,7 +659,8 @@
       "cancelUpload": "Cancel upload",
       "retryUpload": "Retry upload",
       "dismissUpload": "Remove file",
-      "loadFailed": "Could not load the files for this tour."
+      "loadFailed": "Could not load the files for this tour.",
+      "reorderHandle": "Move {name}"
     },
     "suggestions": {
       "suggestBtn": "Suggest changes",
@@ -684,12 +717,51 @@
         "end_point": "End point",
         "gpx": "GPX track",
         "attachment_add": "New attachment",
-        "attachment_remove": "Remove attachment"
+        "attachment_remove": "Remove attachment",
+        "grade": "Grade"
       },
       "gpxNew": "New GPX track",
       "gpxExisting": "Existing GPX track",
       "anAttachment": "An attachment",
       "byYou": "Suggested by you"
+    },
+    "outing": {
+      "segmentCount": "{count} segment | {count} segments",
+      "segmentOf": "Segment {n} of {count}",
+      "segmentsHeader": "Segments",
+      "addSegment": "Add segment",
+      "addTitle": "Add a segment",
+      "addNew": "New segment on the map",
+      "addNewHint": "Pick its goal — it starts the next day, where the last segment ends.",
+      "addExistingHeader": "Or add one of your tours",
+      "addExistingEmpty": "No other tours to add.",
+      "edit": "Edit",
+      "done": "Done",
+      "nameLabel": "Outing name",
+      "namePlaceholder": "e.g. Haute Route",
+      "remove": "Remove from outing",
+      "gapHint": "Starts away from where segment {n} ends",
+      "dateBeforeHint": "Dated before segment {n}",
+      "previous": "Previous segment",
+      "next": "Next segment",
+      "openOverview": "Show the whole outing",
+      "backToOuting": "Back to outing",
+      "saveFailed": "Couldn't update the outing. Please try again.",
+      "dayCount": "{count} day | {count} days",
+      "night": "Overnight",
+      "reorderHandle": "Move segment {n}",
+      "ruleHint": "One day, one tour – even with several summits, or walking up and flying down. After a night, the next segment begins.",
+      "connect": "Connect",
+      "connectLabel": "End segment {n} at {place}"
+    },
+    "route": {
+      "ascent": "Ascent",
+      "descent": "Descent",
+      "distance": "Distance",
+      "flight": "Flight",
+      "flightUp": "Flight up",
+      "ascentPartFlown": "Ascent, partly flown",
+      "descentPartFlown": "Descent, partly flown"
     }
   },
   "map": {
@@ -734,13 +806,14 @@
       "skiRoute": "Ski route",
       "listTitle": "{count} ski routes",
       "target": "{name} · {altitude}m",
-      "metres": "{value}m",
+      "metres": "{value}\u00a0m",
       "more": "+{count} more — zoom in",
       "backToList": "Ski routes",
       "openSac": "Open in SAC route portal",
       "noInfo": "No route information available",
       "offline": "Route details need a connection",
-      "lookupError": "Couldn't load route info"
+      "lookupError": "Couldn't load route info",
+      "planTour": "Plan as tour"
     },
     "cluster": {
       "label": "Cluster of {count} tours",
@@ -903,11 +976,11 @@
       },
       "addLocation": {
         "title": "Plan a tour",
-        "body": "Tap here and drop a pin on your objective — summit, crag or hut. TourenBuddy suggests a name and looks up the elevation for you."
+        "body": "Tap here and drop a pin on your objective — summit, crag or hut. TourenBuddy suggests the name, the elevation and nearby starting points."
       },
       "mapLayers": {
         "title": "Map layers",
-        "body": "Pick a base map and add hiking trails or ski routes on top, in any combination. With ski routes on, zoom in until the routes show difficulty badges, then tap one for its details."
+        "body": "Pick a base map and add hiking trails or ski routes on top, in any combination. With ski routes on, zoom in until the routes show difficulty badges, then tap one for its details — or plan it as a tour right away."
       },
       "welcome": {
         "title": "Welcome to TourenBuddy",
@@ -1117,6 +1190,28 @@
         "details": {
           "title": "Route details with one tap",
           "body": "Tap a marked route for summit, ascent time, elevation gain and difficulty, plus a link to the SAC route portal. Where routes overlap, pick one from the list."
+        }
+      }
+    },
+    "2026-10-multi-activity-search": {
+      "title": "Hike & fly in one tour, multi-day outings and smarter planning",
+      "intro": "Plan the whole endeavour the way you do it — up on foot, down by air, over several days.",
+      "features": {
+        "hikefly": {
+          "title": "Hike & fly in one tour",
+          "body": "Pick hiking and paragliding and the tour goes up on foot and down by air to your landing. Set each activity to up, down or both — for climb & fly, ski & fly, hike & bike or a thermal flight from the valley. The details show each way's climb and descent, flown ways marked."
+        },
+        "outings": {
+          "title": "Multi-day tours in segments",
+          "body": "A night starts a new segment: valley to hut, hut to summit. The next segment starts the following day where the last one ends, a gap offers to connect them, and the map shows the whole route with numbered markers and every track. Climb and descent show per segment and for the whole outing."
+        },
+        "search": {
+          "title": "Plan from where you start",
+          "body": "Placing a point? Search summits, huts, places and addresses — and for a start or landing, public-transport stops and cable-car stations too. Once the goal is set, one tap picks your earlier start or the nearest stops. Any ski route on the map can be planned as a tour."
+        },
+        "grade": {
+          "title": "Grade, start time and more activities",
+          "body": "Add a grade on the activity's own scale — T1–T6, L–EX, S0–S5 — and when you leave. Pick every activity a tour can be done as: the marker and the GPX track show all their colours, and the activity filter finds the tour under each of them."
         }
       }
     }

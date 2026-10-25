@@ -58,7 +58,7 @@ describe('useMapStore', () => {
     it('should start with no preview goal or type', () => {
       const store = useMapStore()
       expect(store.previewGoal).toBeNull()
-      expect(store.previewTourType).toBeNull()
+      expect(store.previewTourTypes).toBeNull()
     })
 
     it('should clear the preview goal back to null', () => {
@@ -70,19 +70,19 @@ describe('useMapStore', () => {
 
     it('should clear the preview tour type back to null', () => {
       const store = useMapStore()
-      store.setPreviewTourType('skitour')
-      store.setPreviewTourType(null)
-      expect(store.previewTourType).toBeNull()
+      store.setPreviewTourTypes(['skitour'])
+      store.setPreviewTourTypes(null)
+      expect(store.previewTourTypes).toBeNull()
     })
 
     it('should keep preview goal and type independent of tour selection', () => {
       const store = useMapStore()
       store.setPreviewGoal({ lng: 8.2, lat: 46.8 })
-      store.setPreviewTourType('hiking')
+      store.setPreviewTourTypes(['hiking'])
       store.selectTour('tour-xyz')
       store.selectTour(null)
       expect(store.previewGoal).toEqual({ lng: 8.2, lat: 46.8 })
-      expect(store.previewTourType).toBe('hiking')
+      expect(store.previewTourTypes).toEqual(['hiking'])
     })
   })
 })
@@ -124,5 +124,25 @@ describe('useMapStore overlays', () => {
     store.toggleOverlay('ski')
     await nextTick()
     expect(store.activeOverlays).toEqual(['ski'])
+  })
+})
+
+describe('map store: outing overview vs segment (#338, D15)', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('should close the overview when a segment opens, and the segment when an overview opens', () => {
+    const store = useMapStore()
+    store.selectOuting('me/o1')
+    store.selectTour('t1')
+    expect([store.selectedOutingKey, store.selectedTourId]).toEqual([null, 't1'])
+    store.selectOuting('me/o1')
+    expect([store.selectedOutingKey, store.selectedTourId]).toEqual(['me/o1', null])
+  })
+
+  it('should leave the overview open when the tour selection is cleared', () => {
+    const store = useMapStore()
+    store.selectOuting('me/o1')
+    store.selectTour(null)
+    expect(store.selectedOutingKey).toBe('me/o1')
   })
 })

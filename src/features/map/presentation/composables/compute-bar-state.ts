@@ -11,7 +11,7 @@ export interface BarState {
   addTourAction: 'pick' | 'dismiss' | 'disabled' | 'hidden'
 }
 
-const TOUR_OVERLAYS = new Set(['tours', 'tour', 'tour-creation'])
+const TOUR_OVERLAYS = new Set(['tours', 'tour', 'outing', 'tour-creation'])
 
 export function computeBarState({
   activeOverlay,

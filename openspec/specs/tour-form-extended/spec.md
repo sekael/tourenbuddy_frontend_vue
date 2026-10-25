@@ -100,7 +100,11 @@ The tour creation dialog SHALL include a multi-line textarea for description/gui
 
 ### Requirement: Season chip selector
 
-The tour creation dialog SHALL include season chips (Winter, Spring, Summer, Autumn) supporting multi-select.
+The tour form SHALL include season chips (Winter, Spring, Summer, Autumn) supporting
+multi-select. While the chips are automatic they SHALL follow the planned date and end date
+(Dec–Feb winter, Mar–May spring, Jun–Aug summer, Sep–Nov autumn; a span selects every season it
+touches). The chips SHALL be automatic when the form opens without seasons or with exactly the
+dates' seasons, and SHALL stop following the dates once the user taps a chip.
 
 #### Scenario: Multiple seasons selected
 
@@ -111,6 +115,21 @@ The tour creation dialog SHALL include season chips (Winter, Spring, Summer, Aut
 
 - **WHEN** the user taps an already-selected season chip
 - **THEN** it SHALL be deselected and removed from the seasons array
+
+#### Scenario: Season from the date
+
+- **WHEN** a new tour gets the planned date 13 March
+- **THEN** Spring SHALL be selected without a tap
+
+#### Scenario: A span across seasons
+
+- **WHEN** the dates run from 26 February to 2 March
+- **THEN** Winter and Spring SHALL be selected
+
+#### Scenario: The user's choice wins
+
+- **WHEN** the user has tapped a season chip and then changes the date
+- **THEN** the seasons SHALL stay as the user set them
 
 ### Requirement: Start and end point pickers
 
@@ -334,3 +353,152 @@ Starting, confirming or cancelling a location pick (goal, start or end) from the
 
 - **WHEN** the user edits an existing tour on a mobile viewport, changes the notes, then picks and confirms an end point
 - **THEN** the changed notes SHALL still be in the form
+
+### Requirement: Way up and way down in the form
+
+With two or more activities selected, the form SHALL let the user set each activity to up, both
+or down. Untouched activities SHALL default to both, except paragliding with others (paragliding
+down, the others up) and, without paragliding, hiking with mountain biking (the bike down, the
+others up). All activities on both legs SHALL save as an unsplit tour.
+
+#### Scenario: Hike & fly in two taps
+
+- **WHEN** the user selects hiking and paragliding
+- **THEN** hiking SHALL be set to up and paragliding to down without further taps
+
+#### Scenario: Hike & bike carried up
+
+- **WHEN** the user selects hiking and mountain biking
+- **THEN** hiking SHALL be set to up and mountain biking to down, and the tour SHALL save them so
+
+#### Scenario: The landing
+
+- **WHEN** the way down is paragliding only
+- **THEN** the end point SHALL be labelled as the landing
+
+### Requirement: The picker saves what it shows
+
+The form SHALL NOT offer a way that leaves a leg without activity. An activity removed and added
+back SHALL return to its way; a removal that leaves a leg empty SHALL show, and save, the defaults.
+
+#### Scenario: No way without activity
+
+- **WHEN** hiking goes up and mountain biking is the only activity on the way down
+- **THEN** mountain biking's "up" SHALL be unavailable, and reopening the saved tour SHALL show the same ways
+
+### Requirement: Distance from the goal
+
+The form SHALL show how far the start and end points lie from the goal, as a warning past 20 km.
+
+#### Scenario: A landing in the wrong valley
+
+- **WHEN** the landing picked from the search is a commune centre 50 km from the goal
+- **THEN** the landing row SHALL warn with that distance
+
+### Requirement: A lone glider's climb
+
+With paragliding as the only activity, the form SHALL offer "down" (on foot or by lift to the
+launch at the goal, the default, saved unsplit) or "both" (flown from the start in thermals,
+saved as paragliding on both legs).
+
+#### Scenario: Thermal flight from the valley
+
+- **WHEN** the user plans a flight from the valley, climbing in thermals to the goal and landing below
+- **THEN** choosing "both" SHALL save the climb as flown, and the detail SHALL read "↑ [glider]" and "↓ [glider]"
+
+### Requirement: Activity type chip selector
+
+The tour form (create, edit and suggest) SHALL show one chip per activity type supporting multi-select: tapping an unselected chip adds that type, tapping a selected chip removes it. Zero, one or several types MAY be selected. The saved list SHALL follow the chips' display order, regardless of the order in which they were tapped.
+
+#### Scenario: Select two activities
+
+- **WHEN** the user taps Hiking and then Ski Tour and saves
+- **THEN** the tour SHALL be saved with both types, Ski Tour first (display order)
+
+#### Scenario: Deselect an activity
+
+- **WHEN** the user taps an already-selected activity chip
+- **THEN** that type SHALL be removed and the other selected types SHALL stay selected
+
+#### Scenario: Clear every activity
+
+- **WHEN** the user deselects every activity chip and saves
+- **THEN** the tour SHALL be saved with no activity type
+
+#### Scenario: Edit form shows saved activities
+
+- **WHEN** the user opens the edit form of a tour with several types
+- **THEN** every saved type's chip SHALL be shown selected
+
+### Requirement: Form order
+
+The tour form SHALL ask where, then what, then when, then who: name, goal, start, end;
+activities and grade; planned date with start time, end date and seasons; partners and
+visibility; then description, equipment, notes, GPX and attachments.
+
+#### Scenario: Date near the top
+
+- **WHEN** the creation form opens after a goal pick
+- **THEN** the date SHALL come right after the activities, before partners and visibility
+
+### Requirement: Grade field
+
+The form SHALL have an optional grade field (at most 20 characters). It SHALL offer the selected
+activities' scales as chips — T1–T6 for hiking and trail running; L, WS, ZS, S, SS, AS, EX for
+ski touring, splitboarding, ski mountaineering and mountaineering; S0–S5 for mountain biking —
+and a tap SHALL set the grade to the chip. Climbing SHALL get an example placeholder instead of
+chips. Without a scale the field SHALL stay free text.
+
+#### Scenario: Hiking
+
+- **WHEN** the user selects Hiking
+- **THEN** chips T1 to T6 SHALL be offered and tapping T4 SHALL set the grade to "T4"
+
+#### Scenario: Mixed activities
+
+- **WHEN** the user selects Hiking and Mountain biking
+- **THEN** both scales SHALL be offered
+
+#### Scenario: Modifiers stay typable
+
+- **WHEN** the user taps ZS and types "-"
+- **THEN** the grade SHALL be "ZS-"
+
+### Requirement: Start time
+
+The form SHALL have an optional start time beside the planned date. It SHALL be disabled without
+a planned date and cleared with it.
+
+#### Scenario: Clearing the date
+
+- **WHEN** the user clears the planned date
+- **THEN** the start time SHALL be cleared too
+
+### Requirement: Start and end suggestions
+
+When the goal is set and the start is empty, the start card SHALL offer up to three one-tap
+suggestions: the user's own earlier start for a goal within 300 m, then the public-transport
+stops nearest the goal. When the start is set and the end is empty, the end card SHALL offer the
+nearest stops other than the start. A suggestion SHALL set the point with the suggestion's name
+and look up its height. Suggestions SHALL never block the form; a failed lookup SHALL show none.
+
+#### Scenario: Stop near the Sustenhorn
+
+- **WHEN** the goal is the Sustenhorn and the start is empty
+- **THEN** "Steingletscher, Susten" SHALL be offered, and tapping it SHALL set the start there with that name and its height
+
+#### Scenario: Been here before
+
+- **WHEN** the user's earlier tour to the same summit started at "Tierberglihütte SAC"
+- **THEN** that start SHALL be offered first
+
+### Requirement: GPX fills empty points
+
+Picking a GPX SHALL set an empty start point to the track's first point and an empty end point to
+its last point, or make it a round trip when first and last point lie within 200 m. Set points
+and the goal SHALL never change.
+
+#### Scenario: Loop track
+
+- **WHEN** a GPX whose ends are 40 m apart is picked for a tour without start and end
+- **THEN** the start SHALL be the first track point and the end SHALL equal the start

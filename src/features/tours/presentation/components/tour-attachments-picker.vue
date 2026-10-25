@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
+import { useHandleReorder } from '@/core/composables/use-handle-reorder'
 import { isOnline } from '@/core/offline/use-online-status'
 import { MAX_ATTACHMENTS_PER_TOUR } from '@/features/tours/data/models/tour-attachment'
 import TourAttachmentUploadRow from '@/features/tours/presentation/components/tour-attachment-upload-row.vue'
@@ -38,7 +39,6 @@ const { error } = storeToRefs(store)
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const confirmDeleteTarget = ref<TourAttachment | null>(null)
-const dragFrom = ref<number | null>(null)
 
 /** Uploads for this surface — keyed on the real tour id (edit) or the pre-minted one (create). */
 const pending = computed(() => {
@@ -100,25 +100,10 @@ function cancelDelete() {
   confirmDeleteTarget.value = null
 }
 
-// ── Drag-to-reorder ────────────────────────────────────────────────────────────
-function onDragStart(index: number, event: DragEvent) {
-  dragFrom.value = index
-  if (event.dataTransfer)
-    event.dataTransfer.effectAllowed = 'move'
-}
+// ── Reorder by handle (mouse, pen, finger, arrow keys) ────────────────────────
+const { from: dragFrom, over: dragOver, offset: dragOffset, handleProps } = useHandleReorder((from, to) => void move(from, to))
 
-function onDragOver(event: DragEvent) {
-  event.preventDefault()
-  if (event.dataTransfer)
-    event.dataTransfer.dropEffect = 'move'
-}
-
-async function onDrop(toIndex: number) {
-  const from = dragFrom.value
-  dragFrom.value = null
-  if (from === null || from === toIndex)
-    return
-
+async function move(from: number, toIndex: number) {
   if (props.draftId) {
     store.stageReorder(props.draftId, from, toIndex)
   }
@@ -144,11 +129,13 @@ async function onDrop(toIndex: number) {
         v-for="(attachment, index) in attachments"
         :key="attachment.id"
         class="picker__item"
-        :class="{ 'picker__item--confirm': confirmDeleteTarget?.id === attachment.id }"
-        :draggable="confirmDeleteTarget === null"
-        @dragstart="onDragStart(index, $event)"
-        @dragover="onDragOver"
-        @drop="onDrop(index)"
+        :class="{
+          'picker__item--confirm': confirmDeleteTarget?.id === attachment.id,
+          'picker__item--dragging': dragFrom === index,
+          'picker__item--over': dragOver === index && dragFrom !== index,
+        }"
+        :style="dragFrom === index ? { transform: `translateY(${dragOffset}px)` } : undefined"
+        :data-reorder-index="index"
       >
         <!-- Inline delete confirm state. Gated on `isOnline` alongside the delete button
              below, so losing the connection mid-confirm drops back to the normal row
@@ -166,7 +153,13 @@ async function onDrop(toIndex: number) {
 
         <!-- Normal state -->
         <template v-else>
-          <BaseIcon name="drag_indicator" class="picker__drag-handle" />
+          <button
+            type="button" class="picker__drag-handle" :disabled="confirmDeleteTarget !== null"
+            :aria-label="t('tours.attachments.reorderHandle', { name: attachment.originalFilename })"
+            v-bind="confirmDeleteTarget === null ? handleProps(index, attachments.length) : {}"
+          >
+            <BaseIcon name="drag_indicator" />
+          </button>
           <BaseIcon
             :name="attachment.mimeType === 'application/pdf' ? 'picture_as_pdf' : 'image'"
             class="picker__file-icon"
@@ -254,8 +247,19 @@ async function onDrop(toIndex: number) {
   border: 1px solid var(--color-outline-variant);
   border-radius: var(--radius-md);
   background: var(--color-surface-variant);
-  cursor: grab;
   min-height: 40px;
+}
+
+/* Lifted and following the pointer; the row it would land on is outlined. */
+.picker__item--dragging {
+  position: relative;
+  z-index: 1;
+  box-shadow: var(--shadow-lg);
+}
+
+.picker__item--over {
+  outline: 2px dashed var(--color-primary);
+  outline-offset: -1px;
 }
 
 .picker__item--confirm {
@@ -268,6 +272,23 @@ async function onDrop(toIndex: number) {
 .picker__file-icon {
   color: var(--color-on-surface-variant);
   flex-shrink: 0;
+}
+
+/* Finger-sized grip; `touch-action: none` keeps the page from scrolling under the drag. */
+.picker__drag-handle {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 40px;
+  margin-inline-start: calc(-1 * var(--spacing-sm));
+  border: none;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+}
+
+.picker__drag-handle:disabled {
+  cursor: default;
 }
 
 .picker__filename {

@@ -18,7 +18,7 @@ describe('diffForests', () => {
     const n1 = node('a', 'leaf', [8, 47], ['a'])
     const old = new Map([['a', n1]])
     const { appeared, disappeared, updated } = diffForests(old, [
-      { kind: 'leaf', id: 'a', coord: [8, 47], tourType: null },
+      { kind: 'leaf', id: 'a', coord: [8, 47] },
     ])
     expect(appeared).toHaveLength(0)
     expect(disappeared).toHaveLength(0)
@@ -28,7 +28,7 @@ describe('diffForests', () => {
   it('should detect appeared nodes', () => {
     const old: Map<string, RenderedNode> = new Map()
     const { appeared } = diffForests(old, [
-      { kind: 'leaf', id: 'a', coord: [8, 47], tourType: null },
+      { kind: 'leaf', id: 'a', coord: [8, 47] },
     ])
     expect(appeared).toHaveLength(1)
     expect(appeared[0]!.id).toBe('a')
@@ -46,8 +46,8 @@ describe('diffForests', () => {
     const old = new Map([['cluster-0', parent]])
 
     const newForest: import('@/features/map/presentation/components/cluster-tree').TreeNode[] = [
-      { kind: 'leaf', id: 'a', coord: [7.9, 47.0], tourType: null },
-      { kind: 'leaf', id: 'b', coord: [8.1, 47.0], tourType: null },
+      { kind: 'leaf', id: 'a', coord: [7.9, 47.0] },
+      { kind: 'leaf', id: 'b', coord: [8.1, 47.0] },
     ]
 
     const { appeared, disappeared, updated } = diffForests(old, newForest)
@@ -69,8 +69,8 @@ describe('diffForests', () => {
         centroid: [8.0, 47.0],
         leafIds: ['a', 'b'],
         children: [
-          { kind: 'leaf', id: 'a', coord: [7.9, 47], tourType: null },
-          { kind: 'leaf', id: 'b', coord: [8.1, 47], tourType: null },
+          { kind: 'leaf', id: 'a', coord: [7.9, 47] },
+          { kind: 'leaf', id: 'b', coord: [8.1, 47] },
         ],
         splitZoom: 10,
         totalLeafCount: 2,

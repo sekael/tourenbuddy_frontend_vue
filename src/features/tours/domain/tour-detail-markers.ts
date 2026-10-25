@@ -1,8 +1,12 @@
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import { isSameGoal } from '@/features/tours/domain/distance'
+import { segmentFinish } from '@/features/tours/domain/outing'
 
-/** Which point a detail marker represents. The goal is rendered separately. */
-export type DetailPointKind = 'start' | 'end'
+/**
+ * Which point a detail marker represents. The goal is rendered separately. `via` is an outing's
+ * handover away from every goal: one segment ends where the next starts (design D21).
+ */
+export type DetailPointKind = 'start' | 'end' | 'via'
 
 interface LngLat {
   lng: number
@@ -16,7 +20,7 @@ interface LngLat {
 export interface DetailMarker {
   pointKind: DetailPointKind
   lngLat: LngLat
-  tourType: TourType | null
+  tourTypes: TourType[]
   draft: boolean
 }
 
@@ -32,8 +36,8 @@ interface PointInput {
 }
 
 export interface TourDetailMarkersInput {
-  /** Type driving marker color; null → neutral fallback (handled by the layer). */
-  tourType: TourType | null
+  /** Types driving marker color; empty → neutral fallback (handled by the layer). */
+  tourTypes: TourType[]
   start: PointInput
   end: PointInput
 }
@@ -69,9 +73,9 @@ export function tourDetailMarkers(input: TourDetailMarkersInput): DetailMarker[]
   ): DetailMarker[] {
     const out: DetailMarker[] = []
     if (start !== null)
-      out.push({ pointKind: 'start', lngLat: start, tourType: input.tourType, draft })
+      out.push({ pointKind: 'start', lngLat: start, tourTypes: input.tourTypes, draft })
     if (end !== null && anchor !== null && !isSameGoal(end, anchor))
-      out.push({ pointKind: 'end', lngLat: end, tourType: input.tourType, draft })
+      out.push({ pointKind: 'end', lngLat: end, tourTypes: input.tourTypes, draft })
     return out
   }
 
@@ -79,4 +83,36 @@ export function tourDetailMarkers(input: TourDetailMarkersInput): DetailMarker[]
     ...tone(input.start.saved, input.end.saved, input.start.saved, false),
     ...tone(input.start.draft, input.end.draft, effectiveStart, true),
   ]
+}
+
+interface SegmentPoints {
+  tourTypes: TourType[]
+  goal: LngLat
+  startPoint: LngLat | null
+  endPoint: LngLat | null
+}
+
+/**
+ * The whole outing's start/end markers (#338): every segment start and end that is a loose end of
+ * the chain — so the first start and last end, plus both sides of a gap (`outingGaps`), each in
+ * its segment's colours. Where the chain hands over (a start on the previous segment's finish) the
+ * point is a `via` ring in the next segment's colours, and the previous end is not drawn again.
+ * Nothing is drawn on a goal (its marker stands there) or on a marker already placed (a round
+ * outing ends where it began).
+ */
+export function outingDetailMarkers(segments: readonly SegmentPoints[]): DetailMarker[] {
+  const out: DetailMarker[] = []
+  const taken = (p: LngLat) =>
+    segments.some(s => isSameGoal(p, s.goal)) || out.some(m => isSameGoal(p, m.lngLat))
+  segments.forEach((s, i) => {
+    const prev = segments[i - 1]
+    const next = segments[i + 1]
+    if (s.startPoint && !taken(s.startPoint)) {
+      const handover = !!prev && isSameGoal(s.startPoint, segmentFinish(prev))
+      out.push({ pointKind: handover ? 'via' : 'start', lngLat: s.startPoint, tourTypes: s.tourTypes, draft: false })
+    }
+    if (s.endPoint && !(next?.startPoint && isSameGoal(s.endPoint, next.startPoint)) && !taken(s.endPoint))
+      out.push({ pointKind: 'end', lngLat: s.endPoint, tourTypes: s.tourTypes, draft: false })
+  })
+  return out
 }

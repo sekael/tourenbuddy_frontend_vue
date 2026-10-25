@@ -54,7 +54,7 @@ begin
                                p_partner_ids,
                                array(select contact_id from public.tour_partners where tour_id = t.id)
                              ),
-    p_tour_type           := t.tour_type,
+    p_tour_types          := t.tour_types,
     p_elevation           := t.elevation,
     p_gpx_filepath        := t.gpx_filepath,
     p_description         := t.description,
@@ -208,7 +208,7 @@ select public.create_tour_full(
   p_id := 'cccccccc-0000-0000-0000-0000000000a1',
   p_name := 'Büelehora too',
   p_goal := '0101000020E6100000805554B4A3C6234018C9E1F574654740',
-  p_tour_type := 'hiking'
+  p_tour_types := array['hiking']
 );
 reset role;
 select ok(pg_temp.n(:'patrick', 'collision') = 1, '10a solo create notifies colliding friend');

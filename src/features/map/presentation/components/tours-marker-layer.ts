@@ -7,6 +7,7 @@ import type { DetailMarker } from '@/features/tours/domain/tour-detail-markers'
 import maplibregl from 'maplibre-gl'
 import { TOUR_TYPE_COLORS, TOUR_TYPE_PREVIEW_COLORS } from '@/features/tours/data/models/tour-type'
 import { toursToGeoJson } from '@/features/tours/domain/entities/tour'
+import { routeOrder } from '@/features/tours/domain/legs'
 import { diffForests } from './cluster-transitions'
 import {
   buildClusterTree,
@@ -16,7 +17,22 @@ import {
   cutForest,
   findCrossings,
 } from './cluster-tree'
-import { createPieMarkerElement, fadeIn, fadeOut } from './pie-marker'
+import {
+  addTourWeight,
+  createPieMarkerElement,
+  cssFill,
+  drawPieImage,
+  drawSegmentBadge,
+  fadeIn,
+  fadeOut,
+  FALLBACK_COLOR,
+  MARKER_RADIUS,
+  pieImageColors,
+  pieImageId,
+  segmentBadgeId,
+  segmentBadgeNumber,
+  tourColors,
+} from './pie-marker'
 import { createSpiderfier } from './spiderfy'
 
 export { CLUSTER_RADIUS }
@@ -30,6 +46,13 @@ const CHECK_LAYER_ID = 'tours-completed-check'
 const FRIEND_LAYER_ID = 'tours-friend-indicator'
 const LINK_LAYER_ID = 'tours-link-indicator'
 const PREVIEW_LAYER_ID = 'tours-preview-circle'
+// Split (multi-colour) fills drawn over a transparent circle, one per circle layer (D6).
+const SPLIT_LAYER_ID = 'tours-split'
+const SELECTED_SPLIT_LAYER_ID = 'tours-split-selected'
+const DETAIL_SPLIT_LAYER_ID = 'tour-detail-split'
+const PREVIEW_SPLIT_LAYER_ID = 'tours-preview-split'
+// Number badges on the focused outing's segments (design D16).
+const SEGMENT_BADGE_LAYER_ID = 'tours-segment-badge'
 const CHECK_ICON_ID = 'tour-check-icon'
 const FRIEND_ICON_ID = 'tour-friend-icon'
 const LINK_ICON_ID = 'tour-link-icon'
@@ -44,6 +67,10 @@ const END_ICON_ID = 'tour-end-icon'
 
 // Shared with the goal circle so the detail circle can't visually drift from it.
 const MARKER_CIRCLE_RADIUS = 14
+/** A handover ring (D21): small enough to read as a waypoint, not a destination. */
+const VIA_CIRCLE_RADIUS = 6
+const SELECTED_CIRCLE_RADIUS = 18
+const PREVIEW_CIRCLE_RADIUS = 16
 const MARKER_CIRCLE_OPACITY = 0.85
 
 export const SPIDERFY_CIRCLE_RADIUS_PX = 32
@@ -64,6 +91,39 @@ function buildMatchExpr(
 
 const COLOR_EXPR = buildMatchExpr(TOUR_TYPE_COLORS, '#78716C')
 const PREVIEW_COLOR_EXPR = buildMatchExpr(TOUR_TYPE_PREVIEW_COLORS, '#A8A29E')
+
+// A feature with a `pieImage` is split: its circle keeps radius, stroke and hit area but turns
+// transparent, and the split layer above paints the slices (design D6).
+const IS_SPLIT: ExpressionSpecification = ['to-boolean', ['get', 'pieImage']]
+const TRANSPARENT = 'rgba(0,0,0,0)'
+function unlessSplit(color: ExpressionSpecification): ExpressionSpecification {
+  return ['case', IS_SPLIT, TRANSPARENT, color]
+}
+
+/** Symbol layer painting the split fill of a circle layer's features at that circle's `radius`. */
+function addSplitLayer(
+  map: MapLibreMap,
+  id: string,
+  source: string,
+  radius: number,
+  opacity: number,
+  beforeId?: string,
+) {
+  map.addLayer({
+    id,
+    type: 'symbol',
+    source,
+    filter: IS_SPLIT,
+    layout: {
+      'icon-image': ['get', 'pieImage'],
+      // Images are drawn at MARKER_RADIUS (the largest circle) and scaled down.
+      'icon-size': radius / MARKER_RADIUS,
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
+    },
+    paint: { 'icon-opacity': opacity },
+  }, beforeId)
+}
 
 async function loadCheckIcon(map: MapLibreMap): Promise<boolean> {
   if (map.hasImage(CHECK_ICON_ID))
@@ -229,9 +289,10 @@ async function loadWhiteGlyphIcon(map: MapLibreMap, id: string, innerSvg: string
   })
 }
 
-// House glyph (start) and flag glyph (end) — mirror the info sheet's home/flag.
-const START_GLYPH_SVG = '<path d="M12 3 3 10.5V21h6v-6h6v6h6V10.5z" />'
-const END_GLYPH_SVG = '<path d="M6 3h1.8v18H6z" /><path d="M7.8 4h11l-2.6 4 2.6 4h-11z" />'
+// Ring glyph (start) and chequered flag (end) — the form's and the detail rows' `trip_origin` /
+// `sports_score` (design D22). A house would read as a hut on swisstopo maps.
+const START_GLYPH_SVG = '<path d="M8.125 21.213q-1.825-.788-3.187-2.15t-2.15-3.188T2 11.988t.788-3.875t2.15-3.175t3.187-2.15T12.013 2t3.875.788t3.175 2.15t2.15 3.175t.787 3.875t-.787 3.887t-2.15 3.188t-3.175 2.15t-3.875.787t-3.888-.787m8.125-4.963Q18 14.5 18 12t-1.75-4.25T12 6T7.75 7.75T6 12t1.75 4.25T12 18t4.25-1.75" />'
+const END_GLYPH_SVG = '<path d="M9 6h2V4H9zm4 0V4h2v2zm-4 8v-2h2v2zm8-4V8h2v2zm0 4v-2h2v2zm-4 0v-2h2v2zm4-8V4h2v2zm-6 2V6h2v2zM5 20V4h2v2h2v2H7v2h2v2H7v8zm10-8v-2h2v2zm-4 0v-2h2v2zm-2-2V8h2v2zm4 0V8h2v2zm2-2V6h2v2z" />'
 
 function cubicEaseOut(t: number): number {
   return 1 - (1 - t) ** 3
@@ -265,9 +326,9 @@ function animateMarker(
   return { cancel: () => cancelAnimationFrame(rafId) }
 }
 
-function makeDotEl(color: string): HTMLElement {
+function makeDotEl(colors: string[]): HTMLElement {
   const el = document.createElement('div')
-  el.style.cssText = `width:12px;height:12px;border-radius:50%;background:${color};opacity:0.85;pointer-events:none;`
+  el.style.cssText = `width:12px;height:12px;border-radius:50%;background:${cssFill(colors)};opacity:0.85;pointer-events:none;`
   return el
 }
 
@@ -287,13 +348,16 @@ export function useToursMarkerLayer(
   const animatingIds = new Set<string>()
   const inflight: Array<{ handle: AnimHandle, marker: maplibregl.Marker }> = []
 
-  const tourDataCache = new Map<string, { lngLat: [number, number], tourType: TourType | null }>()
+  const tourDataCache = new Map<string, { lngLat: [number, number], colors: string[] }>()
+  let pieImagesHandled = false
 
   let currentTree: TreeNode | null = null
   let splitZooms: number[] = []
   let lastSampledZoom = 0
   let currentIndividualIds = new Set<string>()
   let currentSelectedId: string | null = null
+  /** The focused outing's segments: kept out of clustering so every one shows (D16). */
+  let pinnedIds = new Set<string>()
   let lastFrame: { tree: TreeNode | null, zoom: number, byNodeId: Map<string, RenderedNode> } = {
     tree: null,
     zoom: 0,
@@ -313,11 +377,8 @@ export function useToursMarkerLayer(
 
   function getCountsForNode(node: InternalNode): Record<string, number> {
     const counts: Record<string, number> = {}
-    for (const id of node.leafIds) {
-      const data = tourDataCache.get(id)
-      const type = String(data?.tourType ?? 'unknown')
-      counts[type] = (counts[type] ?? 0) + 1
-    }
+    for (const id of node.leafIds)
+      addTourWeight(counts, tourDataCache.get(id)?.colors ?? [FALLBACK_COLOR])
     return counts
   }
 
@@ -325,12 +386,10 @@ export function useToursMarkerLayer(
     const counts: Record<string, number> = {}
     let total = 0
     for (const id of leafIds) {
-      const data = tourDataCache.get(id)
-      const type = String(data?.tourType ?? 'unknown')
-      counts[type] = (counts[type] ?? 0) + 1
+      addTourWeight(counts, tourDataCache.get(id)?.colors ?? [FALLBACK_COLOR])
       total++
     }
-    const { element } = createPieMarkerElement(counts, total, TOUR_TYPE_COLORS)
+    const { element } = createPieMarkerElement(counts, total)
     element.style.cssText = 'cursor:default;opacity:1;transition:none;pointer-events:none;'
     return element
   }
@@ -342,17 +401,12 @@ export function useToursMarkerLayer(
     const visibleIds = [...currentIndividualIds].filter(id => !animatingIds.has(id))
     const inVisible: ExpressionSpecification = ['in', ['get', 'id'], ['literal', visibleIds]]
 
-    map.setFilter(LAYER_ID, [
-      'all',
-      inVisible,
-      ['!=', ['get', 'id'], currentSelectedId ?? ''],
-    ] as ExpressionSpecification)
-
-    map.setFilter(SELECTED_LAYER_ID, [
-      'all',
-      inVisible,
-      ['==', ['get', 'id'], currentSelectedId ?? ''],
-    ] as ExpressionSpecification)
+    const unselected: ExpressionSpecification = ['all', inVisible, ['!=', ['get', 'id'], currentSelectedId ?? '']]
+    const selected: ExpressionSpecification = ['all', inVisible, ['==', ['get', 'id'], currentSelectedId ?? '']]
+    map.setFilter(LAYER_ID, unselected)
+    map.setFilter(SELECTED_LAYER_ID, selected)
+    map.setFilter(SPLIT_LAYER_ID, ['all', unselected, IS_SPLIT])
+    map.setFilter(SELECTED_SPLIT_LAYER_ID, ['all', selected, IS_SPLIT])
 
     if (map.getLayer(CHECK_LAYER_ID)) {
       map.setFilter(CHECK_LAYER_ID, [
@@ -455,7 +509,7 @@ export function useToursMarkerLayer(
   function createClusterMarkerEntry(node: InternalNode): ClusterEntry {
     let currentNode = node
     const counts = getCountsForNode(node)
-    const { element, update } = createPieMarkerElement(counts, node.totalLeafCount, TOUR_TYPE_COLORS)
+    const { element, update } = createPieMarkerElement(counts, node.totalLeafCount)
     element.setAttribute('role', 'button')
     element.setAttribute('tabindex', '0')
     element.setAttribute('aria-label', getAriaLabel(node.totalLeafCount))
@@ -465,7 +519,7 @@ export function useToursMarkerLayer(
         if (spiderfier.getActiveClusterId() !== currentNode.id) {
           const leaves = currentNode.leafIds.map(id => ({
             id,
-            tourType: tourDataCache.get(id)?.tourType ?? null,
+            colors: tourDataCache.get(id)?.colors ?? [FALLBACK_COLOR],
           }))
           spiderfier.spiderfy(currentNode.id, currentNode.centroid, leaves, getSpiderfyHint(), onTourClick)
         }
@@ -514,9 +568,9 @@ export function useToursMarkerLayer(
     const { appeared, disappeared, updated } = diffForests(oldByNodeId, forest)
     const parentMap = buildParentMap(newTree)
 
-    // Update visible leaf set before filter refresh
+    // Update visible leaf set before filter refresh; pinned segments are never in the tree.
     currentIndividualIds = new Set(
-      forest.filter(n => n.kind === 'leaf').map(n => n.id),
+      [...forest.filter(n => n.kind === 'leaf').map(n => n.id), ...pinnedIds],
     )
 
     for (const node of disappeared) {
@@ -532,8 +586,7 @@ export function useToursMarkerLayer(
           const tourData = tourDataCache.get(node.id)
           if (tourData) {
             animatingIds.add(node.id)
-            const color = tourData.tourType ? (TOUR_TYPE_COLORS[tourData.tourType] ?? '#78716C') : '#78716C'
-            spawnTemp(makeDotEl(color), node.centroid, classification.targetCentroid, () => {
+            spawnTemp(makeDotEl(tourData.colors), node.centroid, classification.targetCentroid, () => {
               animatingIds.delete(node.id)
               refreshLayerFilters()
             })
@@ -592,8 +645,7 @@ export function useToursMarkerLayer(
           const tourData = tourDataCache.get(node.id)
           if (tourData) {
             animatingIds.add(node.id)
-            const color = tourData.tourType ? (TOUR_TYPE_COLORS[tourData.tourType] ?? '#78716C') : '#78716C'
-            spawnTemp(makeDotEl(color), classification.sourceCentroid, treeNode.coord, () => {
+            spawnTemp(makeDotEl(tourData.colors), classification.sourceCentroid, treeNode.coord, () => {
               animatingIds.delete(node.id)
               refreshLayerFilters()
             })
@@ -640,6 +692,22 @@ export function useToursMarkerLayer(
   async function setup() {
     lastSampledZoom = map.getZoom()
 
+    // Split-marker images are drawn on first use, from the colours in their id. A style switch
+    // drops every image; this handler simply draws them again. Registered once per layer.
+    if (!pieImagesHandled) {
+      pieImagesHandled = true
+      map.on('styleimagemissing', ({ id }) => {
+        const colors = pieImageColors(id)
+        const segment = segmentBadgeNumber(id)
+        const pixelRatio = window.devicePixelRatio || 1
+        const image = colors
+          ? drawPieImage(colors, MARKER_RADIUS, pixelRatio)
+          : segment && drawSegmentBadge(segment, pixelRatio)
+        if (image && !map.hasImage(id))
+          map.addImage(id, image, { pixelRatio })
+      })
+    }
+
     map.addSource(SOURCE_ID, {
       type: 'geojson',
       data: { type: 'FeatureCollection', features: [] },
@@ -662,9 +730,12 @@ export function useToursMarkerLayer(
       filter: ['in', ['get', 'id'], ['literal', []]],
       paint: {
         'circle-radius': MARKER_CIRCLE_RADIUS,
-        'circle-color': COLOR_EXPR,
+        'circle-color': unlessSplit(COLOR_EXPR),
         'circle-opacity': MARKER_CIRCLE_OPACITY,
         'circle-opacity-transition': { duration: 200 },
+        // A focused outing's segments wear a thin white ring (the selected one its thicker one).
+        'circle-stroke-width': ['case', ['has', 'segmentBadge'], 2, 0],
+        'circle-stroke-color': '#ffffff',
       },
     })
 
@@ -674,8 +745,8 @@ export function useToursMarkerLayer(
       source: SOURCE_ID,
       filter: ['in', ['get', 'id'], ['literal', []]],
       paint: {
-        'circle-radius': 18,
-        'circle-color': COLOR_EXPR,
+        'circle-radius': SELECTED_CIRCLE_RADIUS,
+        'circle-color': unlessSplit(COLOR_EXPR),
         'circle-opacity': 1,
         'circle-opacity-transition': { duration: 200 },
         'circle-stroke-width': 3,
@@ -683,19 +754,28 @@ export function useToursMarkerLayer(
       },
     })
 
+    // Unselected split fills sit under the selected circle; the selected one on top of it.
+    addSplitLayer(map, SPLIT_LAYER_ID, SOURCE_ID, MARKER_CIRCLE_RADIUS, MARKER_CIRCLE_OPACITY, SELECTED_LAYER_ID)
+    addSplitLayer(map, SELECTED_SPLIT_LAYER_ID, SOURCE_ID, SELECTED_CIRCLE_RADIUS, 1)
+
     // Start/end detail markers — inserted BEFORE the goal circle so the goal
     // always stacks on top when they overlap. Circle mirrors the goal's paint
     // constants; the draft tone uses the lighter preview palette.
+    // An outing's handover (`via`) is a small white ring in its next segment's colour (D21).
+    const IS_VIA: ExpressionSpecification = ['==', ['get', 'pointKind'], 'via']
     map.addLayer({
       id: DETAIL_CIRCLE_LAYER_ID,
       type: 'circle',
       source: DETAIL_SOURCE_ID,
       paint: {
-        'circle-radius': MARKER_CIRCLE_RADIUS,
-        'circle-color': ['case', ['get', 'draft'], PREVIEW_COLOR_EXPR, COLOR_EXPR],
+        'circle-radius': ['case', IS_VIA, VIA_CIRCLE_RADIUS, MARKER_CIRCLE_RADIUS],
+        'circle-color': ['case', IS_VIA, '#ffffff', unlessSplit(['case', ['get', 'draft'], PREVIEW_COLOR_EXPR, COLOR_EXPR])],
         'circle-opacity': MARKER_CIRCLE_OPACITY,
+        'circle-stroke-width': ['case', IS_VIA, 3, 0],
+        'circle-stroke-color': COLOR_EXPR,
       },
     }, LAYER_ID)
+    addSplitLayer(map, DETAIL_SPLIT_LAYER_ID, DETAIL_SOURCE_ID, MARKER_CIRCLE_RADIUS, MARKER_CIRCLE_OPACITY, LAYER_ID)
 
     const startIconLoaded = await loadWhiteGlyphIcon(map, START_ICON_ID, START_GLYPH_SVG)
     const endIconLoaded = await loadWhiteGlyphIcon(map, END_ICON_ID, END_GLYPH_SVG)
@@ -704,6 +784,7 @@ export function useToursMarkerLayer(
         id: DETAIL_ICON_LAYER_ID,
         type: 'symbol',
         source: DETAIL_SOURCE_ID,
+        filter: ['!=', ['get', 'pointKind'], 'via'],
         layout: {
           'icon-image': ['match', ['get', 'pointKind'], 'end', END_ICON_ID, START_ICON_ID],
           'icon-size': 0.7,
@@ -720,13 +801,14 @@ export function useToursMarkerLayer(
       type: 'circle',
       source: PREVIEW_SOURCE_ID,
       paint: {
-        'circle-radius': 16,
-        'circle-color': PREVIEW_COLOR_EXPR,
+        'circle-radius': PREVIEW_CIRCLE_RADIUS,
+        'circle-color': unlessSplit(PREVIEW_COLOR_EXPR),
         'circle-opacity': 0.9,
         'circle-stroke-width': 3,
         'circle-stroke-color': '#ffffff',
       },
     })
+    addSplitLayer(map, PREVIEW_SPLIT_LAYER_ID, PREVIEW_SOURCE_ID, PREVIEW_CIRCLE_RADIUS, 0.9)
 
     // Friend indicator is added BEFORE the completion check so the check (added
     // last below) stacks on top — completion must read above everything else.
@@ -799,6 +881,20 @@ export function useToursMarkerLayer(
       })
     }
 
+    // Last, so the number reads above every other marker glyph.
+    map.addLayer({
+      id: SEGMENT_BADGE_LAYER_ID,
+      type: 'symbol',
+      source: SOURCE_ID,
+      filter: ['has', 'segmentBadge'],
+      layout: {
+        'icon-image': ['get', 'segmentBadge'],
+        'icon-offset': [12, -12],
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+    })
+
     map.on('click', LAYER_ID, (e) => {
       const feature = e.features?.[0]
       if (feature?.properties?.id) {
@@ -840,10 +936,12 @@ export function useToursMarkerLayer(
     })
   }
 
+  /** `segmentIds`: the focused outing's segments in order — pinned, ringed and numbered. */
   function updateTours(
     tours: Tour[],
     selectedTourId: string | null,
     linkedTourIds: Set<string> = new Set(),
+    segmentIds: string[] = [],
   ) {
     const source = map.getSource<GeoJSONSource>(SOURCE_ID)
     if (!source)
@@ -855,20 +953,27 @@ export function useToursMarkerLayer(
     for (const tour of tours) {
       tourDataCache.set(tour.id, {
         lngLat: [tour.goal.lng, tour.goal.lat],
-        tourType: tour.tourType,
+        colors: tourColors(routeOrder(tour), TOUR_TYPE_COLORS),
       })
     }
 
-    currentTree = buildClusterTree(tours)
+    pinnedIds = new Set(segmentIds)
+    currentTree = buildClusterTree(tours.filter(t => !pinnedIds.has(t.id)))
     splitZooms = collectSplitZooms(currentTree)
     currentSelectedId = selectedTourId
 
     const geoJson = toursToGeoJson(tours, { linkedTourIds })
+    for (const feature of geoJson.features) {
+      const id = feature.properties!.id as string
+      feature.properties!.pieImage = pieImageId(tourDataCache.get(id)!.colors)
+      if (pinnedIds.has(id))
+        feature.properties!.segmentBadge = segmentBadgeId(segmentIds.indexOf(id) + 1)
+    }
     source.setData(geoJson)
     commitFrame(currentTree, map.getZoom())
   }
 
-  function updatePreview(goal: { lng: number, lat: number } | null, tourType: TourType | null) {
+  function updatePreview(goal: { lng: number, lat: number } | null, tourTypes: TourType[]) {
     const source = map.getSource<GeoJSONSource>(PREVIEW_SOURCE_ID)
     if (!source)
       return
@@ -880,7 +985,10 @@ export function useToursMarkerLayer(
             {
               type: 'Feature',
               geometry: { type: 'Point', coordinates: [goal.lng, goal.lat] },
-              properties: { tourType: tourType ?? null },
+              properties: {
+                tourType: tourTypes[0] ?? null,
+                pieImage: pieImageId(tourColors(tourTypes, TOUR_TYPE_PREVIEW_COLORS)),
+              },
             },
           ]
         : [],
@@ -897,7 +1005,15 @@ export function useToursMarkerLayer(
       features: markers.map(m => ({
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [m.lngLat.lng, m.lngLat.lat] },
-        properties: { pointKind: m.pointKind, tourType: m.tourType ?? null, draft: m.draft },
+        properties: {
+          pointKind: m.pointKind,
+          tourType: m.tourTypes[0] ?? null,
+          draft: m.draft,
+          // ponytail: a handover ring takes the primary colour only, no split.
+          pieImage: m.pointKind === 'via'
+            ? null
+            : pieImageId(tourColors(m.tourTypes, m.draft ? TOUR_TYPE_PREVIEW_COLORS : TOUR_TYPE_COLORS)),
+        },
       })),
     })
   }

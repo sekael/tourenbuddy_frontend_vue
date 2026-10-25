@@ -59,7 +59,7 @@ Shared-tour notifications SHALL be dispatched under the `tour_updates` notificat
 - **THEN** the same generic Brevo template is used, parameterized by action and actor
 
 ### Requirement: Collision scan after tour save
-When a tour save qualifies for the collision scan, the system SHALL find friend-owned tours satisfying the shared collision predicate (within 200 m, equal non-null `tour_type`, both friends-visible, mutual accepted friendship) and emit a `tour_interest` notification to each colliding owner, in the same transaction as the save. The scan SHALL only run for saves by the tour's owner. Failures SHALL NOT block or roll back the tour write.
+When a tour save qualifies for the collision scan, the system SHALL find friend-owned tours satisfying the shared collision predicate (within 200 m, at least one activity type in common, both friends-visible, mutual accepted friendship) and emit a `tour_interest` notification to each colliding owner, in the same transaction as the save. The scan SHALL only run for saves by the tour's owner. Failures SHALL NOT block or roll back the tour write.
 
 #### Scenario: Save with friend-owned colliding tour
 - **WHEN** A saves a tour and a friend B owns a tour that matches the collision predicate

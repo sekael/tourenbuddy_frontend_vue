@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { TourSuggestion } from '@/features/tours/domain/entities/tour-suggestion'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
+import { useFormatter } from '@/core/composables/use-formatter'
+import { TOUR_TYPE_I18N_KEYS } from '@/features/tours/data/models/tour-type'
 import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 
 const props = defineProps<{
@@ -28,6 +31,7 @@ const emit = defineEmits<{
 }>()
 
 const { t, locale } = useI18n({ useScope: 'global' })
+const { formatElevation } = useFormatter()
 
 const attachmentsStore = useTourAttachmentsStore()
 
@@ -50,8 +54,16 @@ const capBlocked = computed(
  * keys rather than a suggestion-local copy that would drift.
  */
 function localizedEnum(value: unknown): string | null {
-  if (props.suggestion.field === 'tour_type' && typeof value === 'string')
-    return t(`tours.type.${value}`)
+  const names = (types: unknown[]) => types.map(v => t(`tours.type.${TOUR_TYPE_I18N_KEYS[v as TourType]}`)).join(', ')
+  if (props.suggestion.field === 'tour_type' && Array.isArray(value))
+    return value.length ? names(value) : t('tours.suggestions.emptyValue')
+  // With legs (activity-legs D6): "↑ Hiking ↓ Paragliding", like the stage cards.
+  if (props.suggestion.field === 'tour_type' && value && typeof value === 'object') {
+    const { types, ascent, descent } = value as { types: unknown[], ascent?: unknown[], descent?: unknown[] }
+    if (ascent && descent && ascent.join() !== descent.join())
+      return `↑ ${names(ascent)} ↓ ${names(descent)}`
+    return types.length ? names(types) : t('tours.suggestions.emptyValue')
+  }
   if (props.suggestion.field === 'seasons' && Array.isArray(value))
     return value.map(s => t(`tours.season.${s}`)).join(', ')
   return null
@@ -109,13 +121,14 @@ function formatValue(value: unknown, isSuggested = false): string {
     const to = obj.endDate ? formatDate(String(obj.endDate)) : null
     if (!from)
       return t('tours.suggestions.emptyValue')
-    return to ? `${from} – ${to}` : from
+    const day = typeof obj.startTime === 'string' ? `${from} · ${obj.startTime}` : from
+    return to ? `${day} – ${to}` : day
   }
 
   if ('lng' in obj && 'lat' in obj) {
     const coords = `${Number(obj.lat).toFixed(4)}°N, ${Number(obj.lng).toFixed(4)}°E`
     const name = typeof obj.name === 'string' && obj.name ? `${obj.name} · ` : ''
-    const elevation = obj.elevation != null ? ` · ${obj.elevation}m` : ''
+    const elevation = obj.elevation != null ? ` · ${formatElevation.value(Number(obj.elevation))}` : ''
     return `${name}${coords}${elevation}`
   }
 

@@ -4,6 +4,7 @@ import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Visibility } from '@/features/tours/data/models/visibility'
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
+import type { LegDirection, TourLegs } from '@/features/tours/domain/legs'
 import type { PointPick, SwisstopoFill } from '@/features/tours/presentation/composables/use-swisstopo-fill'
 import { storeToRefs } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
@@ -18,9 +19,11 @@ import { isOnline } from '@/core/offline/use-online-status'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
-import { SEASON_VALUES } from '@/features/tours/data/models/season'
+import { dropScales, GRADE_MAX_LENGTH, gradeScales, normalizeGrade } from '@/features/tours/data/models/grade'
+import { SEASON_VALUES, seasonsForDates } from '@/features/tours/data/models/season'
 import { MAX_ATTACHMENTS_PER_TOUR } from '@/features/tours/data/models/tour-attachment'
 import {
+  TOUR_TYPE_COLORS,
   TOUR_TYPE_I18N_KEYS,
   TOUR_TYPE_ICONS,
   TOUR_TYPE_VALUES,
@@ -34,6 +37,13 @@ import {
 import { gpxStorageKey, removeGpx, uploadGpx, uploadGpxToKey } from '@/features/tours/data/services/gpx-storage-service'
 import { getElevation } from '@/features/tours/data/services/swisstopo-elevation-service'
 import { suggestTourName } from '@/features/tours/data/services/swisstopo-name-service'
+import { isSameGoal } from '@/features/tours/domain/distance'
+import { defaultDirection, directionOf, landsByAir, legsFrom, waysCovered } from '@/features/tours/domain/legs'
+import { trackEnds } from '@/features/tours/domain/route-metrics'
+import ActivityLegs from '@/features/tours/presentation/components/activity-legs.vue'
+import GradeChips from '@/features/tours/presentation/components/grade-chips.vue'
+import PointDistance from '@/features/tours/presentation/components/point-distance.vue'
+import PointSuggestions from '@/features/tours/presentation/components/point-suggestions.vue'
 import TourAttachmentsPicker from '@/features/tours/presentation/components/tour-attachments-picker.vue'
 import UploadTile from '@/features/tours/presentation/components/upload-tile.vue'
 import { useSwisstopoFill } from '@/features/tours/presentation/composables/use-swisstopo-fill'
@@ -46,7 +56,7 @@ const props = defineProps<{
   allowGoalEdit?: boolean
   /** Current goal coordinates, controlled by the parent. */
   currentGoal?: { lng: number, lat: number } | null
-  /** Seeds all editable fields (edit mode). */
+  /** Seeds all editable fields (edit mode, or a new outing segment's create). */
   initialDraft?: TourDraft | null
   /**
    * The latest confirmed location pick — a new object per pick. Sets the start/end point
@@ -88,7 +98,7 @@ const emit = defineEmits<{
   ]
   cancel: []
   pickPoint: [type: 'start' | 'end' | 'goal']
-  tourTypeChange: [tourType: TourType | null]
+  tourTypesChange: [tourTypes: TourType[]]
   startPointChange: [point: { lng: number, lat: number } | null]
   endPointChange: [point: { lng: number, lat: number } | null]
 }>()
@@ -112,20 +122,44 @@ const endDate = ref(
   props.initialDraft?.endDate ? props.initialDraft.endDate.toISOString().split('T')[0] : '',
 )
 const endDateError = ref(false)
+/** "HH:MM" on the planned date; empty = none (design D4). */
+const startTime = ref(props.initialDraft?.startTime ?? '')
 
-// An end date without a start has no span to bound — clearing the start clears it.
+// An end date or a time without a start day has nothing to hang on — clearing the day clears both.
 watch(plannedDate, (value) => {
   if (!value) {
     endDate.value = ''
     endDateError.value = false
+    startTime.value = ''
   }
 })
+/** More than one day: the moment to say what a stage is (design D8). */
+const spansDays = computed(() => !!plannedDate.value && !!endDate.value && endDate.value > plannedDate.value)
 const selectedPartnerIds = ref<Set<string>>(new Set(props.initialDraft?.partnerIds ?? []))
 const visibility = ref<Visibility>(props.initialDraft?.visibility ?? DEFAULT_VISIBILITY)
-const selectedTourType = ref<TourType | null>(props.initialDraft?.tourType ?? null)
+const selectedTourTypes = ref<TourType[]>(props.initialDraft?.tourTypes ?? [])
 const elevation = ref(props.initialDraft?.elevation != null ? String(props.initialDraft.elevation) : '')
 const description = ref(props.initialDraft?.description ?? '')
 const selectedSeasons = ref<Set<Season>>(new Set(props.initialDraft?.seasons ?? []))
+/** Free text, one part per activity scale (design D3). */
+const grade = ref(props.initialDraft?.grade ?? '')
+/** An example per selected scale (the alpine one shows its modifier); climbing alone names its two scales. */
+const gradePlaceholder = computed(() => {
+  const examples = gradeScales(selectedTourTypes.value).map(({ grades }) => (grades[0] === 'L' ? `${grades[1]}+` : grades[2]))
+  if (selectedTourTypes.value.includes('climbing')) {
+    if (!examples.length)
+      return t('tours.form.gradePlaceholderClimbing')
+    examples.push('5c')
+  }
+  return examples.length ? t('tours.form.gradePlaceholder', { example: examples.join(', ') }) : t('tours.form.gradeOptional')
+})
+// A dropped activity takes its scale's grade along; a hand-typed one stays.
+watch(selectedTourTypes, (types, before) => {
+  const kept = new Set(gradeScales(types).map(s => s.grades))
+  const gone = gradeScales(before).filter(s => !kept.has(s.grades))
+  if (gone.length)
+    grade.value = dropScales(grade.value, gone)
+})
 const startPoint = ref(props.initialDraft?.startPoint ?? null)
 const endPoint = ref(props.initialDraft?.endPoint ?? null)
 const startPointName = ref(props.initialDraft?.startPointName ?? '')
@@ -220,7 +254,9 @@ const attachmentsStore = useTourAttachmentsStore()
  * the staging prefix and turns it into an `attachment_add` item (D3/D9). Staging also
  * gives us the existing picker validation (mime, 10 MB, HEIC) for free.
  */
-const draftId = props.initialDraft && !isSuggest ? null : uuidv4()
+// Keyed on the tour id, not on `initialDraft`: a new outing segment's form is seeded (#338,
+// design D17) yet still creates — and must stage its attachments like any create.
+const draftId = props.tourId && !isSuggest ? null : uuidv4()
 /** Create mode = staging a brand-new tour (suggest mode also has a draftId but no tour of its own). */
 const isCreate = draftId !== null && !isSuggest
 /**
@@ -327,22 +363,34 @@ const fills = {
   end: [endName, endElevation],
 } as const
 
-watch(
-  () => props.pick,
-  (pick) => {
-    if (!pick)
-      return
-    if (pick.type === 'start')
-      startPoint.value = pick.location
-    else if (pick.type === 'end')
-      endPoint.value = pick.location
-    const [nameFill, elevationFill] = fills[pick.type]
-    // A place chosen in the picker's search names the point; otherwise look one up nearby.
-    void nameFill.fill(async signal => pick.name ?? suggestTourName(pick.location, signal))
-    void elevationFill.fill(signal => getElevation(pick.location, signal))
-  },
-  { immediate: true },
-)
+/** A map pick, a suggestion chip or a GPX end: set the point, then name it and look up its height. */
+function applyPick(pick: PointPick) {
+  if (pick.type === 'start')
+    startPoint.value = pick.location
+  else if (pick.type === 'end')
+    endPoint.value = pick.location
+  const [nameFill, elevationFill] = fills[pick.type]
+  // A place chosen in the picker's search names the point; otherwise look one up nearby.
+  void nameFill.fill(async signal => pick.name ?? suggestTourName(pick.location, signal))
+  void elevationFill.fill(signal => getElevation(pick.location, signal))
+}
+
+watch(() => props.pick, pick => pick && applyPick(pick), { immediate: true })
+
+/** A GPX names the empty ends (design D6): its first point, its last — or the start again for a loop. */
+const LOOP_M = 200
+function fillPointsFromTrack(track: GeoJSON.FeatureCollection) {
+  const ends = trackEnds(track)
+  if (!ends)
+    return
+  if (!startPoint.value)
+    applyPick({ type: 'start', location: ends.first })
+  if (!endPoint.value) {
+    const loop = isSameGoal(ends.first, ends.last, LOOP_M)
+    const at = loop ? startPoint.value! : ends.last
+    applyPick({ type: 'end', location: { ...at }, name: loop ? startPointName.value.trim() || undefined : undefined })
+  }
+}
 
 function lookupPlaceholder(fill: SwisstopoFill, placeholder: string) {
   if (fill.status === 'loading')
@@ -350,8 +398,8 @@ function lookupPlaceholder(fill: SwisstopoFill, placeholder: string) {
   return fill.status === 'failed' ? t('tours.form.swisstopo.failed') : placeholder
 }
 
-// Surface the live activity type so the map can tint the draft preview marker.
-watch(selectedTourType, type => emit('tourTypeChange', type), { immediate: true })
+// Surface the live activity types so the map can tint the draft preview marker.
+watch(selectedTourTypes, types => emit('tourTypesChange', types), { immediate: true })
 // Surface live start/end coords so the map can draft-preview them. `immediate`
 // seeds the current value (e.g. a point picked before the dialog opened).
 watch(startPoint, point => emit('startPointChange', point), { immediate: true })
@@ -368,11 +416,74 @@ function togglePartner(contactId: string) {
   selectedPartnerIds.value = new Set(selectedPartnerIds.value)
 }
 
+/** Multi-select; the list always follows the chip (= `TOUR_TYPE_VALUES`) order, not tap order. */
 function toggleTourType(type: TourType) {
-  selectedTourType.value = selectedTourType.value === type ? null : type
+  const on = !selectedTourTypes.value.includes(type)
+  selectedTourTypes.value = TOUR_TYPE_VALUES.filter(v => v === type ? on : selectedTourTypes.value.includes(v))
 }
 
+// ── Way up, way down (activity-legs D3) ─────────────────────────────────────
+// A tapped line is the user's; the rest follow the default. An edit starts from the tour's
+// legs — an unsplit multi-activity tour stays unsplit until the user says otherwise.
+const legChoices = ref<Partial<Record<TourType, LegDirection>>>(
+  selectedTourTypes.value.length > 1
+    ? Object.fromEntries(selectedTourTypes.value.map(t => [t, directionOf(props.initialDraft?.legs ?? null, t)]))
+    : {},
+)
+// A lone glider climbs to the launch on foot or by lift ("down"), or flies from the start in
+// thermals ("both": legs glider up and glider down).
+const soloFlight = computed(() => selectedTourTypes.value.length === 1 && selectedTourTypes.value[0] === 'paragliding')
+const flownUp = ref(props.initialDraft?.tourTypes?.length === 1 && !!props.initialDraft.legs?.ascent.includes('paragliding'))
+// Choices outlive their activity, so one removed and added back returns its way; should a
+// removal leave a way without activity, the defaults show — and save — instead.
+function legDirection(type: TourType): LegDirection {
+  if (soloFlight.value)
+    return flownUp.value ? 'both' : 'down'
+  const types = selectedTourTypes.value
+  const chosen = (t: TourType) => legChoices.value[t] ?? defaultDirection(t, types)
+  return waysCovered(types, chosen) ? chosen(type) : defaultDirection(type, types)
+}
+function legAllowed(type: TourType, way: LegDirection) {
+  return soloFlight.value || waysCovered(selectedTourTypes.value, t => (t === type ? way : legDirection(t)))
+}
+const legs = computed<TourLegs | null>(() => {
+  if (soloFlight.value)
+    return flownUp.value ? { ascent: ['paragliding'], descent: ['paragliding'] } : null
+  return selectedTourTypes.value.length > 1 ? legsFrom(selectedTourTypes.value, legDirection) : null
+})
+function setLegDirection(type: TourType, direction: LegDirection) {
+  if (soloFlight.value) {
+    flownUp.value = direction === 'both'
+    return
+  }
+  const shown = Object.fromEntries(selectedTourTypes.value.map(t => [t, legDirection(t)]))
+  legChoices.value = { ...legChoices.value, ...shown, [type]: direction }
+}
+/** Flying comes last — it's how the day ends. */
+const legRows = computed(() => [...selectedTourTypes.value].sort((a, b) => Number(a === 'paragliding') - Number(b === 'paragliding')))
+/** A flown way down ends where the glider lands. */
+const endIsLanding = computed(() => landsByAir({ tourTypes: selectedTourTypes.value, legs: legs.value }))
+
+// ── Seasons follow the dates (design D6) ────────────────────────────────────
+// Automatic while the chips hold nothing or exactly what the dates say; a tap makes them the
+// user's. A cleared date leaves them as they are — an undated tour still has a season.
+function datedSeasons() {
+  return seasonsForDates(
+    plannedDate.value ? new Date(plannedDate.value) : null,
+    plannedDate.value && endDate.value ? new Date(endDate.value) : null,
+  )
+}
+const autoSeasons = ref(
+  selectedSeasons.value.size === 0
+  || (datedSeasons().length === selectedSeasons.value.size && datedSeasons().every(s => selectedSeasons.value.has(s))),
+)
+watch([plannedDate, endDate], () => {
+  if (autoSeasons.value && plannedDate.value)
+    selectedSeasons.value = new Set(datedSeasons())
+})
+
 function toggleSeason(season: Season) {
+  autoSeasons.value = false
   if (selectedSeasons.value.has(season)) {
     selectedSeasons.value.delete(season)
   }
@@ -392,7 +503,7 @@ async function handleGpxUpload(event: Event) {
   input.value = ''
 
   try {
-    await parseGpxFile(file)
+    fillPointsFromTrack(await parseGpxFile(file))
   }
   catch (err) {
     if (err instanceof GpxFileTooLargeError) {
@@ -618,7 +729,7 @@ function handleSubmit() {
     endDate: plannedDate.value && endDate.value ? new Date(endDate.value) : null,
     partnerIds: Array.from(selectedPartnerIds.value),
     visibility: visibility.value,
-    tourType: selectedTourType.value,
+    tourTypes: selectedTourTypes.value,
     elevation: elevation.value ? Number(elevation.value) : null,
     gpxFilepath: effectiveGpxFilepath,
     description: description.value.trim() || null,
@@ -631,6 +742,9 @@ function handleSubmit() {
     endPointElevation: endPointElevation.value ? Number(endPointElevation.value) : null,
     equipment: equipment.value.trim() || null,
     notes: notes.value.trim() || null,
+    grade: normalizeGrade(grade.value) || null,
+    legs: legs.value,
+    startTime: plannedDate.value && startTime.value ? startTime.value : null,
   }
   emit(
     'submit',
@@ -726,9 +840,10 @@ defineExpose({ cancel: handleCancel, submitBlocked })
               <span class="point-section-title">{{ t('tours.form.startPointLabel') }}</span>
             </div>
             <div class="point-row">
-              <span class="point-coords">{{
-                startPoint ? formatPoint(startPoint) : t('tours.form.pointNotSet')
-              }}</span>
+              <span class="point-coords">
+                {{ startPoint ? formatPoint(startPoint) : t('tours.form.pointNotSet') }}
+                <PointDistance v-if="startPoint && currentGoal" :goal="currentGoal" :point="startPoint" />
+              </span>
               <BaseButton type="button" variant="secondary" size="sm" @click="emit('pickPoint', 'start')">
                 <BaseIcon name="my_location" />
                 {{ startPoint ? t('tours.form.changeGoalBtn') : t('tours.form.pickBtn') }}
@@ -743,6 +858,10 @@ defineExpose({ cancel: handleCancel, submitBlocked })
                 @click="handleRemoveStart"
               />
             </div>
+            <PointSuggestions
+              v-if="!startPoint && currentGoal" role="start" :around="currentGoal" :tour-id="tourId"
+              @pick="applyPick({ type: 'start', ...$event })"
+            />
             <template v-if="startPoint">
               <div class="field">
                 <label class="label" for="tf-start-name">{{
@@ -784,15 +903,19 @@ defineExpose({ cancel: handleCancel, submitBlocked })
             </template>
           </div>
 
-          <!-- End point: only available once start point is set -->
-          <div v-if="startPoint" class="point-section point-section--end">
+          <!-- End point: offered once a start is set; an end set without one (a connected
+               stage, design D8) still shows. -->
+          <div v-if="startPoint || endPoint" class="point-section point-section--end">
             <div class="point-section-header">
               <BaseIcon name="sports_score" class="point-section-icon" />
-              <span class="point-section-title">{{ t('tours.form.endPointLabel') }}</span>
+              <span class="point-section-title">{{ endIsLanding ? t('tours.form.landingLabel') : t('tours.form.endPointLabel') }}</span>
             </div>
             <template v-if="endPoint">
               <div class="point-row">
-                <span class="point-coords">{{ formatPoint(endPoint) }}</span>
+                <span class="point-coords">
+                  {{ formatPoint(endPoint) }}
+                  <PointDistance v-if="currentGoal" :goal="currentGoal" :point="endPoint" />
+                </span>
                 <BaseButton type="button" variant="secondary" size="sm" @click="emit('pickPoint', 'end')">
                   <BaseIcon name="my_location" />
                   {{ t('tours.form.changeGoalBtn') }}
@@ -846,14 +969,116 @@ defineExpose({ cancel: handleCancel, submitBlocked })
               <div class="point-row">
                 <BaseButton type="button" variant="secondary" size="sm" @click="emit('pickPoint', 'end')">
                   <BaseIcon name="add" />
-                  {{ t('tours.form.addEndPointBtn') }}
+                  {{ endIsLanding ? t('tours.form.addLandingBtn') : t('tours.form.addEndPointBtn') }}
                 </BaseButton>
-                <BaseButton type="button" variant="secondary" size="sm" @click="handleRoundTrip">
+                <BaseButton v-if="!endIsLanding" type="button" variant="secondary" size="sm" @click="handleRoundTrip">
                   <BaseIcon name="replay" />
                   {{ t('tours.form.roundTripBtn') }}
                 </BaseButton>
               </div>
+              <PointSuggestions
+                v-if="currentGoal" role="end" :around="currentGoal" :exclude="startPoint" :tour-id="tourId"
+                :landing="endIsLanding" @pick="applyPick({ type: 'end', ...$event })"
+              />
             </template>
+          </div>
+        </div>
+
+        <!-- SECTION: Tour Type -->
+        <div class="section">
+          <p class="section-label">
+            {{ t('tours.form.activityLabel') }}
+          </p>
+          <div class="type-chips">
+            <button
+              v-for="type in TOUR_TYPE_VALUES"
+              :key="type"
+              type="button"
+              class="type-chip"
+              :data-type="type"
+              :style="{ '--chip-type': TOUR_TYPE_COLORS[type] }"
+              :class="{ selected: selectedTourTypes.includes(type) }"
+              @click="toggleTourType(type)"
+            >
+              <BaseIcon :name="TOUR_TYPE_ICONS[type]" class="type-icon" />
+              <span class="type-label">{{
+                t(`tours.type.${TOUR_TYPE_I18N_KEYS[type]}` as any)
+              }}</span>
+            </button>
+          </div>
+          <ActivityLegs
+            v-if="selectedTourTypes.length > 1 || soloFlight" :types="legRows" :direction="legDirection"
+            :allowed="legAllowed" :solo="soloFlight" @set="setLegDirection"
+          />
+          <div class="field">
+            <label class="label" for="tf-grade">{{ t('tours.form.gradeLabel') }}</label>
+            <input
+              id="tf-grade" v-model="grade" class="input" type="text" :maxlength="GRADE_MAX_LENGTH"
+              :placeholder="gradePlaceholder" autocomplete="off" data-testid="grade-input"
+            >
+            <GradeChips v-model="grade" :tour-types="selectedTourTypes" />
+          </div>
+        </div>
+
+        <!-- SECTION: When — the seasons follow the dates (design D6) -->
+        <div class="section">
+          <p class="section-label">
+            {{ t('tours.form.whenSectionLabel') }}
+          </p>
+
+          <div class="date-time">
+            <div class="field">
+              <label class="label" for="tf-plannedDate">{{ t('tours.form.plannedDateLabel') }}</label>
+              <input id="tf-plannedDate" v-model="plannedDate" class="input" type="date">
+            </div>
+            <div class="field">
+              <label class="label" for="tf-startTime">{{ t('tours.form.startTimeLabel') }}</label>
+              <input
+                id="tf-startTime" v-model="startTime" class="input" type="time" :disabled="!plannedDate"
+                data-testid="start-time-input"
+              >
+            </div>
+          </div>
+
+          <!-- Always rendered, labelled optional: two adjacent date inputs read as a range
+               with no toggle to discover. Empty = single-day tour. -->
+          <div class="field">
+            <label class="label" for="tf-endDate">{{ t('tours.form.endDateLabel') }}</label>
+            <input
+              id="tf-endDate"
+              v-model="endDate"
+              class="input"
+              :class="{ 'input--error': endDateError }"
+              type="date"
+              :min="plannedDate || undefined"
+              :disabled="!plannedDate"
+              :aria-invalid="endDateError"
+              @input="endDateError = false"
+            >
+            <p v-if="endDateError" class="field-error">
+              {{ t('tours.form.endDateBeforeStartError') }}
+            </p>
+            <p v-else-if="spansDays" class="field-hint" data-testid="multi-day-hint">
+              {{ t('tours.form.multiDayHint') }}
+            </p>
+          </div>
+
+          <div class="field">
+            <p class="label">
+              {{ t('tours.form.seasonLabel') }}
+            </p>
+            <div class="season-chips">
+              <button
+                v-for="season in SEASON_VALUES"
+                :key="season"
+                type="button"
+                class="season-chip"
+                :class="{ selected: selectedSeasons.has(season) }"
+                @click="toggleSeason(season)"
+              >
+                {{ t(`tours.season.${season}` as any) }}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -903,77 +1128,11 @@ defineExpose({ cancel: handleCancel, submitBlocked })
           </p>
         </div>
 
-        <!-- SECTION: Tour Type -->
-        <div class="section">
-          <p class="section-label">
-            {{ t('tours.form.activityLabel') }}
-          </p>
-          <div class="type-chips">
-            <button
-              v-for="type in TOUR_TYPE_VALUES"
-              :key="type"
-              type="button"
-              class="type-chip"
-              :class="{ selected: selectedTourType === type }"
-              @click="toggleTourType(type)"
-            >
-              <BaseIcon :name="TOUR_TYPE_ICONS[type]" class="type-icon" />
-              <span class="type-label">{{
-                t(`tours.type.${TOUR_TYPE_I18N_KEYS[type]}` as any)
-              }}</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- SECTION: Season -->
-        <div class="section">
-          <p class="section-label">
-            {{ t('tours.form.seasonLabel') }}
-          </p>
-          <div class="season-chips">
-            <button
-              v-for="season in SEASON_VALUES"
-              :key="season"
-              type="button"
-              class="season-chip"
-              :class="{ selected: selectedSeasons.has(season) }"
-              @click="toggleSeason(season)"
-            >
-              {{ t(`tours.season.${season}` as any) }}
-            </button>
-          </div>
-        </div>
-
         <!-- SECTION: Details -->
         <div class="section">
           <p class="section-label">
             {{ t('tours.form.detailSectionLabel') }}
           </p>
-
-          <div class="field">
-            <label class="label" for="tf-plannedDate">{{ t('tours.form.plannedDateLabel') }}</label>
-            <input id="tf-plannedDate" v-model="plannedDate" class="input" type="date">
-          </div>
-
-          <!-- Always rendered, labelled optional: two adjacent date inputs read as a range
-               with no toggle to discover. Empty = single-day tour. -->
-          <div class="field">
-            <label class="label" for="tf-endDate">{{ t('tours.form.endDateLabel') }}</label>
-            <input
-              id="tf-endDate"
-              v-model="endDate"
-              class="input"
-              :class="{ 'input--error': endDateError }"
-              type="date"
-              :min="plannedDate || undefined"
-              :disabled="!plannedDate"
-              :aria-invalid="endDateError"
-              @input="endDateError = false"
-            >
-            <p v-if="endDateError" class="field-error">
-              {{ t('tours.form.endDateBeforeStartError') }}
-            </p>
-          </div>
 
           <div class="field">
             <label class="label" for="tf-description">{{ t('tours.form.descriptionLabel') }}</label>
@@ -1245,6 +1404,31 @@ defineExpose({ cancel: handleCancel, submitBlocked })
   color: var(--chip-selected-color);
 }
 
+/* Activity chips wear their own colour in every state: the icon always, the outline on
+   hover, the tint once picked — never the app blue, which would read as skiing. */
+.type-chip[data-type] .type-icon {
+  color: var(--chip-type);
+}
+
+@media (hover: hover) {
+  .type-chip[data-type]:hover {
+    border-color: var(--chip-type);
+    color: var(--chip-color);
+  }
+}
+
+.type-chip[data-type]:active {
+  border-color: var(--chip-type);
+  color: var(--chip-color);
+}
+
+.type-chip[data-type].selected {
+  background-color: color-mix(in srgb, var(--chip-type) 12%, var(--color-background));
+  border-color: var(--chip-type);
+  /* Darkened for the label: amber at full strength is under 4.5:1 on its own tint. */
+  color: color-mix(in srgb, var(--chip-type) 75%, black);
+}
+
 .field-hint {
   margin-top: var(--spacing-xs);
   font-size: var(--font-size-sm);
@@ -1304,6 +1488,13 @@ defineExpose({ cancel: handleCancel, submitBlocked })
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
+}
+
+/* The day and the start time on one row; the time needs only its own width. */
+.date-time {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 8.5rem);
+  gap: var(--spacing-sm);
 }
 
 .label {
