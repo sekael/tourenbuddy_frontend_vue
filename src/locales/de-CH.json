@@ -1194,24 +1194,24 @@
       }
     },
     "2026-10-multi-activity-search": {
-      "title": "Etappentouren, mehrere Aktivitäten pro Tour und Ortssuche",
-      "intro": "Plane das ganze Vorhaben, egal wie du hinaufkommst – und finde es schneller auf der Karte.",
+      "title": "Hike & Fly in einer Tour, Etappentouren und klügere Planung",
+      "intro": "Plane das ganze Vorhaben so, wie du es machst – zu Fuss hinauf, fliegend hinunter, über mehrere Tage.",
       "features": {
-        "outings": {
-          "title": "Touren in Etappen",
-          "body": "Vom Tal zur Hütte, von der Hütte auf den Gipfel – oder zu Fuss hinauf und fliegend hinunter: Füge einer Tour eine Etappe hinzu, und sie werden zu einer Etappentour. Tippe auf der Karte auf eine Etappe, um die ganze Route mit nummerierten Markern und allen Tracks zu sehen, und gehe danach Etappe für Etappe durch."
+        "hikefly": {
+          "title": "Hike & Fly in einer Tour",
+          "body": "Wähle Wandern und Gleitschirm, und die Tour geht zu Fuss hinauf und fliegend hinunter zu deinem Landeplatz. Lege für jede Aktivität fest: hinauf, hinunter oder beides – für Climb & Fly, Ski & Fly, Hike & Bike oder einen Thermikflug ab dem Tal. Die Details zeigen Auf- und Abstieg jedes Wegs, geflogene Wege markiert."
         },
-        "activities": {
-          "title": "Mehr als eine Aktivität pro Tour",
-          "body": "Wähle jede Aktivität, als die eine Tour möglich ist – im Winter als Skitour und im Sommer als Wanderung, oder Klettern mit Flug ins Tal. Marker und GPX-Track zeigen alle ihre Farben, und der Aktivitätsfilter findet die Tour unter jeder davon."
+        "outings": {
+          "title": "Etappentouren",
+          "body": "Eine Nacht beginnt eine neue Etappe: vom Tal zur Hütte, von der Hütte auf den Gipfel. Die nächste Etappe beginnt am folgenden Tag dort, wo die letzte endet, eine Lücke lässt sich verbinden, und die Karte zeigt die ganze Route mit nummerierten Markern und allen Tracks. Auf- und Abstieg stehen pro Etappe und für die ganze Tour."
         },
         "search": {
-          "title": "Suchen beim Setzen eines Punkts",
-          "body": "Setzt du Ziel, Start oder Endpunkt? Tippe einen Gipfel, eine Hütte, einen Ort oder eine Adresse ein, und die Karte springt dorthin. Bestätigst du ohne zu verschieben, wird der Name des Orts übernommen."
+          "title": "Planen, wo du startest",
+          "body": "Setzt du einen Punkt? Suche Gipfel, Hütten, Orte und Adressen – für Start und Landeplatz auch Haltestellen und Bergbahnstationen. Ist das Ziel gesetzt, wählst du mit einem Tipp deinen früheren Start oder die nächsten Haltestellen. Jede Skiroute auf der Karte lässt sich als Tour planen."
         },
-        "details": {
-          "title": "Tourdetails auf einen Blick",
-          "body": "Die Detailansicht beginnt mit dem Ziel und seiner Höhe und zeigt alles Weitere in kompakten Zeilen. Skitouren und Splitboardtouren haben jetzt eigene Icons."
+        "grade": {
+          "title": "Schwierigkeit, Startzeit und mehrere Aktivitäten",
+          "body": "Gib die Schwierigkeit auf der Skala der Aktivität an – T1–T6, L–EX, S0–S5 – und wann ihr losgeht. Wähle jede Aktivität, als die eine Tour möglich ist: Marker und GPX-Track zeigen alle ihre Farben, und der Aktivitätsfilter findet die Tour unter jeder davon."
         }
       }
     }

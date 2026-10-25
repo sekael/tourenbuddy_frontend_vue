@@ -27,3 +27,5 @@
 
 - [x] 3.1 Tests, eslint, type-check, locale parity, openspec validate
 - [x] 3.2 Walk phone + desktop; independent pilot review until no findings remain
+- [x] 3.3 Release note `2026-10-multi-activity-search` leads with hike & fly in one tour and folds in
+      outings by night, start planning (stops, earlier starts, ski routes), grade and start time

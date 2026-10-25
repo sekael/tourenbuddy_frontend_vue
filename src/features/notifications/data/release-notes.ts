@@ -43,10 +43,10 @@ export const RELEASE_NOTES: readonly ReleaseNote[] = [
     id: '2026-10-multi-activity-search',
     since: '2026-10-20',
     features: [
+      { key: 'hikefly', icon: 'paragliding' },
       { key: 'outings', icon: 'timeline' },
-      { key: 'activities', icon: 'ski_touring' },
       { key: 'search', icon: 'search' },
-      { key: 'details', icon: 'info' },
+      { key: 'grade', icon: 'ski_touring' },
     ],
   },
 ]
