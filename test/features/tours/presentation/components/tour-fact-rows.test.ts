@@ -53,6 +53,11 @@ describe('tourFactRows', () => {
     expect(w.find('[data-fact="end"] .row-label').text()).toBe('tours.infoSheet.landingShort')
   })
 
+  it('should name a glider flown the whole way once, not as its way up and way down', () => {
+    const w = mountRows({ tourTypes: ['paragliding'], legs: { ascent: ['paragliding'], descent: ['paragliding'] } })
+    expect(w.findAll('.type-group').map(g => g.attributes('data-leg') ?? null)).toEqual([null])
+  })
+
   it('should not claim a flown tour without a landing ends at its goal', () => {
     const w = mountRows({ tourTypes: ['paragliding'], startPoint: START })
     expect(w.find('[data-fact="end"]').text()).toContain('tours.infoSheet.landingOpen')
@@ -118,7 +123,7 @@ describe('tourFactRows', () => {
     expect(link.attributes('rel')).toBe('noopener noreferrer')
   })
 
-  it('should lead the route with climb and descent, and use the ring for the start', () => {
+  it('should lead the route group with the start, marked by the ring', () => {
     const w = mountRows({
       elevation: 3079,
       startPoint: START,
@@ -128,14 +133,9 @@ describe('tourFactRows', () => {
       endPointName: 'Chants',
       endPointElevation: 1822,
     })
-    expect(groups(w)[0]).toEqual(['route', 'start', 'end'])
-    expect(w.find('[data-fact="route"]').text()).toMatch(/447\u00A0m.*1257\u00A0m/)
+    expect(groups(w)[0]).toEqual(['start', 'end'])
     expect(w.find('[data-fact="start"]').findComponent(BaseIcon).props('name')).toBe('trip_origin')
     expect(w.find('[data-fact="end"]').text()).toContain('1822\u00A0m')
-  })
-
-  it('should show no route row when a height is missing', () => {
-    expect(facts(mountRows({ elevation: null, startPoint: START, startPointElevation: 2632 }))).not.toContain('route')
   })
 
   it('should show the grade beside the activities, and alone without one', () => {

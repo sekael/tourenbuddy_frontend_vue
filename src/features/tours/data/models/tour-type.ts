@@ -60,6 +60,10 @@ export const TOUR_TYPE_ICONS: Record<TourType, string> = {
   'trailrunning': 'sprint',
 }
 
+/**
+ * Marker colour per activity: winter blue, flying orange, summer red — the bike violet, so a hike
+ * & bike's way up and way down tell apart on the map (activity-legs).
+ */
 export const TOUR_TYPE_COLORS: Record<TourType, string> = {
   'skiing': '#1565C0',
   'snowboarding': '#1565C0',
@@ -70,7 +74,7 @@ export const TOUR_TYPE_COLORS: Record<TourType, string> = {
   'hiking': '#DC2626',
   'mountaineering': '#DC2626',
   'climbing': '#DC2626',
-  'mountain-biking': '#DC2626',
+  'mountain-biking': '#7C3AED',
   'trailrunning': '#DC2626',
 }
 
@@ -84,7 +88,7 @@ export const TOUR_TYPE_TRACK_COLORS: Record<TourType, string> = {
   'hiking': '#8f1717',
   'mountaineering': '#8f1717',
   'climbing': '#8f1717',
-  'mountain-biking': '#8f1717',
+  'mountain-biking': '#4f11ba',
   'trailrunning': '#8f1717',
 }
 
@@ -98,7 +102,7 @@ export const TOUR_TYPE_PREVIEW_COLORS: Record<TourType, string> = {
   'hiking': '#FCA5A5',
   'mountaineering': '#FCA5A5',
   'climbing': '#FCA5A5',
-  'mountain-biking': '#FCA5A5',
+  'mountain-biking': '#C4B5FD',
   'trailrunning': '#FCA5A5',
 }
 

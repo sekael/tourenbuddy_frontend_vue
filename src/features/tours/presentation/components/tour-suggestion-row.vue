@@ -60,7 +60,7 @@ function localizedEnum(value: unknown): string | null {
   // With legs (activity-legs D6): "↑ Hiking ↓ Paragliding", like the stage cards.
   if (props.suggestion.field === 'tour_type' && value && typeof value === 'object') {
     const { types, ascent, descent } = value as { types: unknown[], ascent?: unknown[], descent?: unknown[] }
-    if (ascent && descent)
+    if (ascent && descent && ascent.join() !== descent.join())
       return `↑ ${names(ascent)} ↓ ${names(descent)}`
     return types.length ? names(types) : t('tours.suggestions.emptyValue')
   }

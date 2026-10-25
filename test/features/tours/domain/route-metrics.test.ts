@@ -88,6 +88,11 @@ describe('routeMetrics of a split tour (activity-legs)', () => {
       .toMatchObject({ ascent: 1000, descent: 1000 })
   })
 
+  it('should measure a flown tour\'s distance on the way up only', () => {
+    const tour = { ...heights({}), goal: GOAL, legs: { ascent: [...legs.ascent], descent: [...legs.descent] } }
+    expect(routeMetrics(tour, hikeAndFly).distance).toBeCloseTo(routeMetrics({ ...tour, legs: null }, hikeAndFly).distance! * 2 / 5, -1)
+  })
+
   it('should keep the whole-track numbers for an unsplit tour', () => {
     expect(routeMetrics({ ...heights({}), goal: GOAL }, hikeAndFly)).toMatchObject({ ascent: 1300, descent: 1300 })
   })

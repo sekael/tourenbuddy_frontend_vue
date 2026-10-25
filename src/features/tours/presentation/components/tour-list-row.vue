@@ -9,7 +9,9 @@ import { resolveContactName } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useFriendDisplayName } from '@/features/friendships/presentation/composables/use-friend-display-name'
 import { TOUR_TYPE_COLORS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
+import { routeOrder } from '@/features/tours/domain/legs'
 import GradeBadge from '@/features/tours/presentation/components/grade-badge.vue'
+import TourTypeBadge from '@/features/tours/presentation/components/tour-type-badge.vue'
 import { useTourSuggestionsStore } from '@/features/tours/presentation/stores/tour-suggestions-store'
 
 const props = defineProps<{ tour: Tour }>()
@@ -33,7 +35,8 @@ const displayName = computed(() => props.tour.name ?? t('tours.infoSheet.unnamed
 // The activity type IS the row's identity at a glance — same icon+color language the
 // map markers and calendar already speak. A typeless tour keeps the neutral primary tint
 // via the CSS default, so the null case needs no template branch.
-// A multi-activity tour shows its primary (first) type.
+// A multi-activity tour shows the detail's disc instead, the way up first (activity-legs).
+const multi = computed(() => props.tour.tourTypes.length > 1)
 const primaryType = computed(() => props.tour.tourTypes[0] ?? null)
 const avatarIcon = computed(() => (primaryType.value ? TOUR_TYPE_ICONS[primaryType.value] : 'tour'))
 const avatarTint = computed(() =>
@@ -76,7 +79,10 @@ const subtitle = computed(() => [dateLabel.value, partnerSubtitle.value].filter(
 
 <template>
   <li class="tour-row" @click="emit('click')">
-    <div class="tour-avatar" :style="avatarTint">
+    <TourTypeBadge v-if="multi" :types="routeOrder(tour)" class="tour-avatar">
+      <BaseIcon v-if="tour.isFriendTour" name="group" class="friend-badge" />
+    </TourTypeBadge>
+    <div v-else class="tour-avatar" :style="avatarTint">
       <BaseIcon :name="avatarIcon" />
       <BaseIcon v-if="tour.isFriendTour" name="group" class="friend-badge" />
     </div>

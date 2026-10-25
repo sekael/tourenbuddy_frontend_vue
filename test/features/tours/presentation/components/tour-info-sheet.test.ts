@@ -552,6 +552,12 @@ describe('tourInfoSheet', () => {
       expect(wrapper.find('.hero-meta').text()).toContain('46.8000°N')
     })
 
+    it('should put the route numbers in the hero, where the sheet opens, not in a fact row', () => {
+      const wrapper = mountSheet({ elevation: 3079, startPoint: { lng: 9.8, lat: 46.6 }, startPointElevation: 2632 })
+      expect(wrapper.find('.hero-meta [data-testid="route-ascent"]').text()).toContain('447\u00A0m')
+      expect(wrapper.find('[data-fact="route"]').exists()).toBe(false)
+    })
+
     it('should show only the coordinates when neither elevation nor date exist', () => {
       const wrapper = mountSheet({ elevation: null, plannedDate: null })
       expect(wrapper.find('.hero-headline').exists()).toBe(false)

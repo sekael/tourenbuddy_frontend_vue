@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { defaultDirection, directionOf, fliesDown, landsByAir, legsFrom, legsMatch, routeOrder } from '@/features/tours/domain/legs'
+import { defaultDirection, directionOf, fliesDown, flight, landsByAir, legsApart, legsFrom, legsMatch, routeOrder, sumFlight, waysCovered } from '@/features/tours/domain/legs'
 
 describe('defaultDirection', () => {
   it('should fly down and walk up once paragliding comes with something else', () => {
@@ -7,9 +7,22 @@ describe('defaultDirection', () => {
     expect(defaultDirection('climbing', ['paragliding', 'climbing'])).toBe('up')
   })
 
-  it('should keep paragliding alone, and tours without it, both ways', () => {
+  it('should carry the bike up and ride it down on a hike & bike, unless a glider flies down', () => {
+    expect(defaultDirection('mountain-biking', ['hiking', 'mountain-biking'])).toBe('down')
+    expect(defaultDirection('hiking', ['hiking', 'mountain-biking'])).toBe('up')
+    expect(defaultDirection('mountain-biking', ['paragliding', 'hiking', 'mountain-biking'])).toBe('up')
+  })
+
+  it('should keep paragliding alone, and other pairs, both ways', () => {
     expect(defaultDirection('paragliding', ['paragliding'])).toBe('both')
-    expect(defaultDirection('hiking', ['hiking', 'mountain-biking'])).toBe('both')
+    expect(defaultDirection('mountain-biking', ['mountain-biking', 'climbing'])).toBe('both')
+  })
+})
+
+describe('waysCovered', () => {
+  it('should fail once a way has no activity left', () => {
+    expect(waysCovered(['hiking', 'mountain-biking'], () => 'up')).toBe(false)
+    expect(waysCovered(['hiking', 'mountain-biking'], t => (t === 'hiking' ? 'up' : 'both'))).toBe(true)
   })
 })
 
@@ -53,5 +66,34 @@ describe('routeOrder / landsByAir', () => {
     expect([landsByAir(tour), fliesDown(tour)]).toEqual([true, false])
     expect([landsByAir({ tourTypes: ['paragliding'] }), fliesDown({ tourTypes: ['paragliding'] })]).toEqual([true, true])
     expect(landsByAir({ tourTypes: ['hiking'] })).toBe(false)
+  })
+
+  it('should list a flown way\'s activities glider last, and never fly an unsplit tour\'s way up', () => {
+    expect(flight({ tourTypes: ['paragliding', 'skitour'], legs: { ascent: ['skitour'], descent: ['paragliding', 'skitour'] } }))
+      .toEqual({ up: null, down: ['skitour', 'paragliding'] })
+    expect(flight({ tourTypes: ['paragliding', 'hiking'], legs: { ascent: ['paragliding'], descent: ['hiking'] } }))
+      .toEqual({ up: ['paragliding'], down: null })
+    expect(flight({ tourTypes: ['paragliding'] })).toEqual({ up: null, down: ['paragliding'] })
+  })
+})
+
+describe('sumFlight', () => {
+  const hut = { tour: { tourTypes: ['hiking' as const] }, ascent: 1495, descent: 0 }
+
+  it('should call an outing\'s descent flown when only its flown stage descends', () => {
+    const summitAndFly = { tour: { tourTypes: ['paragliding' as const, 'hiking' as const], legs: { ascent: ['hiking' as const], descent: ['paragliding' as const] } }, ascent: 826, descent: 2954 }
+    expect(sumFlight([hut, summitAndFly])).toEqual({ up: null, down: ['paragliding'] })
+  })
+
+  it('should share the climb with the glider once a stage climbs in thermals', () => {
+    const thermals = { tour: { tourTypes: ['paragliding' as const], legs: { ascent: ['paragliding' as const], descent: ['paragliding' as const] } }, ascent: 794, descent: 842 }
+    expect(sumFlight([hut, thermals]).up).toEqual(['hiking', 'paragliding'])
+  })
+})
+
+describe('legsApart', () => {
+  it('should read a glider flown the whole way as one activity', () => {
+    expect(legsApart({ ascent: ['paragliding'], descent: ['paragliding'] })).toBeNull()
+    expect(legsApart({ ascent: ['hiking'], descent: ['paragliding'] })).not.toBeNull()
   })
 })

@@ -16,8 +16,14 @@
 - [x] 2.6 Suggestion diff and rows; stage rule copy; locales
 - [x] 2.7 Split tracks measured per leg (a thermal is no climb); flown descent labelled; start
       suggestions skip stops at the goal; a landing suggests only earlier landings
+- [x] 2.8 Review round 3: picker never empties a way and keeps removed choices; hike & bike
+      defaults; partly flown ways keep the glider; route numbers in the detail hero; no "↓ 0 m";
+      flown GPX distance = way up; MTB violet; list disc up-first; start/landing distance from goal
+- [x] 2.9 Review rounds 4–5: flown ways keep the arrow and show their activities; greyed ways say
+      why; a lone glider can fly from the start; outing totals mark flown ways; a search pick
+      confirmed mid-flight keeps the result and its name
 
 ## 3. Verify
 
 - [x] 3.1 Tests, eslint, type-check, locale parity, openspec validate
-- [ ] 3.2 Walk phone + desktop; independent pilot review until no findings remain
+- [x] 3.2 Walk phone + desktop; independent pilot review until no findings remain

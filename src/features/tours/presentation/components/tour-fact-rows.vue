@@ -6,16 +6,14 @@ import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/core/components/base-icon.vue'
 import { useFormatter } from '@/core/composables/use-formatter'
 import { TOUR_TYPE_COLORS, TOUR_TYPE_I18N_KEYS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
-import { fliesDown, landsByAir } from '@/features/tours/domain/legs'
+import { landsByAir, legsApart } from '@/features/tours/domain/legs'
 import GradeBadge from '@/features/tours/presentation/components/grade-badge.vue'
-import RouteNumbers from '@/features/tours/presentation/components/route-numbers.vue'
-import { useRouteMetrics } from '@/features/tours/presentation/composables/use-route-metrics'
 
 /**
  * A tour's facts as dense icon-led rows, no headings or cards (spec: design-system →
  * "Tour detail reads at a glance"), grouped by what belongs together: activity, route,
- * partners, free texts — a divider above each group. The route group leads with climb · descent ·
- * distance (design D19). Start and End carry a short visible
+ * partners, free texts — a divider above each group. The route numbers (design D19) sit in the
+ * sheet's hero, beside the date. Start and End carry a short visible
  * label — their icons alone are ambiguous; every other row is named for assistive tech only.
  * Partners and the route's GPX download come in through slots so the sheet keeps the wiring.
  */
@@ -23,9 +21,6 @@ const props = defineProps<{ tour: Tour }>()
 
 const { t } = useI18n({ useScope: 'global' })
 const { formatElevation } = useFormatter()
-const routeMetrics = useRouteMetrics(() => [props.tour])
-const metrics = computed(() => routeMetrics.value.get(props.tour.id)!)
-const hasMetrics = computed(() => Object.values(metrics.value).some(v => v !== null))
 
 const SEASON_ICONS: Record<Season, string> = {
   winter: 'ac_unit',
@@ -45,10 +40,10 @@ const isRoundTrip = computed(() => {
 
 /** Activities as groups: one for an unsplit tour, the way up and the way down for a split one. */
 const typeGroups = computed(() => {
-  const { legs, tourTypes } = props.tour
+  const legs = legsApart(props.tour.legs)
   return legs
     ? [{ way: 'up' as const, types: legs.ascent }, { way: 'down' as const, types: legs.descent }]
-    : [{ way: null, types: tourTypes }]
+    : [{ way: null, types: props.tour.tourTypes }]
 })
 /** A flown way down ends in a landing. */
 const landing = computed(() => landsByAir(props.tour))
@@ -114,11 +109,7 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
       </li>
     </ul>
 
-    <ul v-if="hasMetrics || startPointText || $slots.route" class="fact-group">
-      <li v-if="hasMetrics" class="fact-row" data-fact="route">
-        <BaseIcon name="elevation" size="sm" class="row-icon" />
-        <RouteNumbers class="row-value" :metrics="metrics" :flown="fliesDown(tour)" />
-      </li>
+    <ul v-if="startPointText || $slots.route" class="fact-group">
       <template v-if="startPointText">
         <li class="fact-row" data-fact="start">
           <!-- The form's point icons (D22): ring = start, flag = goal, chequered flag = end. -->

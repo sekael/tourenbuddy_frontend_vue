@@ -814,12 +814,65 @@ describe('tourForm — creation that knows more (smarter-tour-creation)', () => 
     expect(await submitted(wrapper)).toMatchObject({ legs: null })
   })
 
+  it('should not let the last activity on a way leave it', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL })
+    await wrapper.find('[data-type=hiking]').trigger('click')
+    await wrapper.find('[data-type=mountain-biking]').trigger('click')
+    const disabled = (type: string, way: string) => wrapper.find(`[data-leg=${type}] [data-way=${way}]`).attributes('disabled') !== undefined
+    expect([disabled('mountain-biking', 'up'), disabled('hiking', 'down'), disabled('mountain-biking', 'both')]).toEqual([true, true, false])
+    expect(wrapper.find('[data-testid=activity-legs] .hint').text()).toContain('tours.form.legs.needsOne')
+  })
+
+  it('should show and save the defaults when removing an activity leaves a way empty', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL })
+    for (const type of ['hiking', 'mountain-biking', 'paragliding'])
+      await wrapper.find(`[data-type=${type}]`).trigger('click')
+    await wrapper.find('[data-leg=mountain-biking] [data-way=up]').trigger('click')
+    await wrapper.find('[data-type=paragliding]').trigger('click')
+    expect(wrapper.find('[data-leg=mountain-biking] [aria-checked=true]').attributes('data-way')).toBe('down')
+    expect(await submitted(wrapper)).toMatchObject({ legs: { ascent: ['hiking'], descent: ['mountain-biking'] } })
+  })
+
+  it('should give an activity added back the way it had', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL })
+    await wrapper.find('[data-type=hiking]').trigger('click')
+    await wrapper.find('[data-type=paragliding]').trigger('click')
+    await wrapper.find('[data-leg=paragliding] [data-way=both]').trigger('click')
+    await wrapper.find('[data-type=paragliding]').trigger('click')
+    await wrapper.find('[data-type=paragliding]').trigger('click')
+    expect(wrapper.find('[data-leg=paragliding] [aria-checked=true]').attributes('data-way')).toBe('both')
+  })
+
+  it('should let a lone glider fly from the start, and keep it so in an edit', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL })
+    await wrapper.find('[data-type=paragliding]').trigger('click')
+    expect(wrapper.findAll('[data-leg=paragliding] [data-way]').map(w => w.attributes('data-way'))).toEqual(['both', 'down'])
+    expect(await submitted(wrapper)).toMatchObject({ legs: null })
+    await wrapper.find('[data-leg=paragliding] [data-way=both]').trigger('click')
+    expect(await submitted(wrapper)).toMatchObject({ legs: { ascent: ['paragliding'], descent: ['paragliding'] } })
+    const edit = mountForm({
+      currentGoal: GOAL,
+      initialDraft: { name: 'X', plannedDate: null, tourTypes: ['paragliding'], partnerIds: [], legs: { ascent: ['paragliding'], descent: ['paragliding'] } },
+    })
+    expect(edit.find('[data-leg=paragliding] [aria-checked=true]').attributes('data-way')).toBe('both')
+  })
+
   it('should leave an unsplit multi-activity tour unsplit in an edit', async () => {
     const wrapper = mountForm({
       currentGoal: GOAL,
       initialDraft: { name: 'X', plannedDate: null, tourTypes: ['paragliding', 'hiking'], partnerIds: [], legs: null },
     })
     expect(await submitted(wrapper)).toMatchObject({ legs: null })
+  })
+
+  it('should flag a landing picked in the wrong valley by its distance from the goal', async () => {
+    const wrapper = mountForm({
+      currentGoal: GOAL,
+      initialDraft: { name: 'X', plannedDate: null, tourTypes: ['paragliding'], partnerIds: [], startPoint: { lng: 8.4, lat: 46.7 }, endPoint: { lng: 7.6, lat: 47.4 } },
+    })
+    const [start, end] = wrapper.findAll('[data-testid=point-distance]')
+    expect([start!.classes('far'), end!.classes('far')]).toEqual([false, true])
+    expect(end!.text()).toBe('tours.form.farFromGoal')
   })
 
   it('should call the end of a flown way down the landing, without a round trip', async () => {

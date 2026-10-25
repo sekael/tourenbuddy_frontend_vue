@@ -135,7 +135,8 @@ function asTrack(coordinates: GeoJSON.Position[]): GeoJSON.FeatureCollection {
 /**
  * A split tour's single-line track per leg (activity-legs), cut at the vertex nearest the goal:
  * the climb of the way up, the descent of the way down — a flown one as its net drop, so a
- * thermal is neither a climb nor extra descent. Null when the track can't be cut.
+ * thermal is neither a climb nor extra descent, and its distance as the way up's alone: the
+ * flight's line says nothing about the day's legwork. Null when the track can't be cut.
  * ponytail: a multi-line track keeps the whole-track numbers.
  */
 function legTrackMetrics(tour: HeightPoints, track: GeoJSON.FeatureCollection, whole: RouteMetrics): RouteMetrics | null {
@@ -144,14 +145,15 @@ function legTrackMetrics(tour: HeightPoints, track: GeoJSON.FeatureCollection, w
     return null
   const line = geometry.coordinates
   const cut = nearestVertex(line, tour.goal)
+  const up = line.slice(0, cut + 1)
   const down = line.slice(cut)
   const flown = fliesDown({ tourTypes: tour.tourTypes ?? [], legs: tour.legs })
   return {
-    ascent: trackMetrics(asTrack(line.slice(0, cut + 1))).ascent,
+    ascent: trackMetrics(asTrack(up)).ascent,
     descent: flown
       ? Math.round(Math.max(0, (down[0]![2] ?? 0) - (down.at(-1)![2] ?? 0)))
       : trackMetrics(asTrack(down)).descent,
-    distance: whole.distance,
+    distance: flown ? Math.round(lineLength(up)) : whole.distance,
   }
 }
 

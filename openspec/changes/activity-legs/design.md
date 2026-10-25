@@ -16,14 +16,26 @@ them. `{}` clears. The client sends the legs only from the form (undefined draft
 ## D3 — The picker
 
 The chips still choose the activities. With two or more, each gets Up / Both / Down, one line per
-activity. Untouched lines follow the default (paragliding with others: down, the rest up; no
-paragliding: both); a tapped line is the user's. Every line "both", or one leg empty, is no split.
+activity. Untouched lines follow the default (paragliding with others: down, the rest up; hiking
+with a bike: the bike down — hike & bike is carried up, ridden down; otherwise both); a tapped
+line is the user's. Every line "both" is no split. A way that would empty a leg is disabled, so the
+form never saves something other than it shows; choices outlive their activity (removed and added
+back, it keeps its way), and a removal that empties a leg falls back to the defaults, visibly.
+A lone glider gets one line with Down (to the launch on foot or by lift — unsplit) and Both
+(flown from the start in thermals — legs glider/glider, read as one activity in the type row).
+Start and end show their distance from the goal, as a warning past 20 km — a search hit in the
+wrong valley (a commune centre as the landing) stands out.
 
 ## D4 — Display
 
 Split tours list the way-up activities after "↑" and the way-down ones after "↓" (detail type
-row, stage card meta), and order the activity disc up-first. A flown way down (paragliding only)
-names the end point "Landing". Unsplit tours look as before.
+row, stage card meta), and order the activity disc up-first — in the list too, where a
+multi-activity tour shows the detail's disc. A way down that includes paragliding names the end
+point "Landing". Route numbers sit in the detail hero beside the date (the sheet's opening height
+shows them); a flown way keeps its arrow and adds its activities' icons, the glider last — the
+glider alone for a pure flight (a flown descent is the flight's net drop), ski + glider for a
+shared one, so neither passes for the other. Mountain biking wears
+its own violet, so a hike & bike's legs tell apart on the map. Unsplit tours look as before.
 
 ## D5 — Map
 

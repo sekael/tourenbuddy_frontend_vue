@@ -529,9 +529,13 @@
         "up": "Hinauf",
         "both": "Beides",
         "down": "Hinunter",
-        "hint": "Hinauf: vom Start zum Ziel. Hinunter: vom Ziel zum Ende."
+        "hint": "Hinauf: vom Start zum Ziel. Hinunter: vom Ziel zum Ende. Beides: auf dem ganzen Weg.",
+        "needsOne": "Jeder Weg braucht mindestens eine Aktivität.",
+        "soloHint": "Hinunter: zu Fuss oder mit der Bahn zum Startplatz am Ziel. Beides: schon ab dem Start geflogen, in der Thermik."
       },
       "landingLabel": "Landeplatz",
+      "fromGoal": "{distance} vom Ziel",
+      "farFromGoal": "{distance} vom Ziel – stimmt der Ort?",
       "addLandingBtn": "Landeplatz hinzufügen"
     },
     "creation": {
@@ -754,7 +758,10 @@
       "ascent": "Aufstieg",
       "descent": "Abstieg",
       "distance": "Distanz",
-      "flight": "Flug"
+      "flight": "Flug",
+      "flightUp": "Flug hinauf",
+      "ascentPartFlown": "Aufstieg, teils geflogen",
+      "descentPartFlown": "Abstieg, teils geflogen"
     }
   },
   "map": {

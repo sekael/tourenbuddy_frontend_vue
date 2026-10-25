@@ -4,7 +4,7 @@ import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Visibility } from '@/features/tours/data/models/visibility'
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
-import type { LegDirection } from '@/features/tours/domain/legs'
+import type { LegDirection, TourLegs } from '@/features/tours/domain/legs'
 import type { PointPick, SwisstopoFill } from '@/features/tours/presentation/composables/use-swisstopo-fill'
 import { storeToRefs } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
@@ -38,10 +38,11 @@ import { gpxStorageKey, removeGpx, uploadGpx, uploadGpxToKey } from '@/features/
 import { getElevation } from '@/features/tours/data/services/swisstopo-elevation-service'
 import { suggestTourName } from '@/features/tours/data/services/swisstopo-name-service'
 import { isSameGoal } from '@/features/tours/domain/distance'
-import { defaultDirection, directionOf, landsByAir, legsFrom } from '@/features/tours/domain/legs'
+import { defaultDirection, directionOf, landsByAir, legsFrom, waysCovered } from '@/features/tours/domain/legs'
 import { trackEnds } from '@/features/tours/domain/route-metrics'
 import ActivityLegs from '@/features/tours/presentation/components/activity-legs.vue'
 import GradeChips from '@/features/tours/presentation/components/grade-chips.vue'
+import PointDistance from '@/features/tours/presentation/components/point-distance.vue'
 import PointSuggestions from '@/features/tours/presentation/components/point-suggestions.vue'
 import TourAttachmentsPicker from '@/features/tours/presentation/components/tour-attachments-picker.vue'
 import UploadTile from '@/features/tours/presentation/components/upload-tile.vue'
@@ -429,10 +430,34 @@ const legChoices = ref<Partial<Record<TourType, LegDirection>>>(
     ? Object.fromEntries(selectedTourTypes.value.map(t => [t, directionOf(props.initialDraft?.legs ?? null, t)]))
     : {},
 )
-const legDirection = (type: TourType) => legChoices.value[type] ?? defaultDirection(type, selectedTourTypes.value)
-const legs = computed(() => (selectedTourTypes.value.length > 1 ? legsFrom(selectedTourTypes.value, legDirection) : null))
+// A lone glider climbs to the launch on foot or by lift ("down"), or flies from the start in
+// thermals ("both": legs glider up and glider down).
+const soloFlight = computed(() => selectedTourTypes.value.length === 1 && selectedTourTypes.value[0] === 'paragliding')
+const flownUp = ref(props.initialDraft?.tourTypes?.length === 1 && !!props.initialDraft.legs?.ascent.includes('paragliding'))
+// Choices outlive their activity, so one removed and added back returns its way; should a
+// removal leave a way without activity, the defaults show — and save — instead.
+function legDirection(type: TourType): LegDirection {
+  if (soloFlight.value)
+    return flownUp.value ? 'both' : 'down'
+  const types = selectedTourTypes.value
+  const chosen = (t: TourType) => legChoices.value[t] ?? defaultDirection(t, types)
+  return waysCovered(types, chosen) ? chosen(type) : defaultDirection(type, types)
+}
+function legAllowed(type: TourType, way: LegDirection) {
+  return soloFlight.value || waysCovered(selectedTourTypes.value, t => (t === type ? way : legDirection(t)))
+}
+const legs = computed<TourLegs | null>(() => {
+  if (soloFlight.value)
+    return flownUp.value ? { ascent: ['paragliding'], descent: ['paragliding'] } : null
+  return selectedTourTypes.value.length > 1 ? legsFrom(selectedTourTypes.value, legDirection) : null
+})
 function setLegDirection(type: TourType, direction: LegDirection) {
-  legChoices.value = { ...legChoices.value, [type]: direction }
+  if (soloFlight.value) {
+    flownUp.value = direction === 'both'
+    return
+  }
+  const shown = Object.fromEntries(selectedTourTypes.value.map(t => [t, legDirection(t)]))
+  legChoices.value = { ...legChoices.value, ...shown, [type]: direction }
 }
 /** Flying comes last — it's how the day ends. */
 const legRows = computed(() => [...selectedTourTypes.value].sort((a, b) => Number(a === 'paragliding') - Number(b === 'paragliding')))
@@ -815,9 +840,10 @@ defineExpose({ cancel: handleCancel, submitBlocked })
               <span class="point-section-title">{{ t('tours.form.startPointLabel') }}</span>
             </div>
             <div class="point-row">
-              <span class="point-coords">{{
-                startPoint ? formatPoint(startPoint) : t('tours.form.pointNotSet')
-              }}</span>
+              <span class="point-coords">
+                {{ startPoint ? formatPoint(startPoint) : t('tours.form.pointNotSet') }}
+                <PointDistance v-if="startPoint && currentGoal" :goal="currentGoal" :point="startPoint" />
+              </span>
               <BaseButton type="button" variant="secondary" size="sm" @click="emit('pickPoint', 'start')">
                 <BaseIcon name="my_location" />
                 {{ startPoint ? t('tours.form.changeGoalBtn') : t('tours.form.pickBtn') }}
@@ -886,7 +912,10 @@ defineExpose({ cancel: handleCancel, submitBlocked })
             </div>
             <template v-if="endPoint">
               <div class="point-row">
-                <span class="point-coords">{{ formatPoint(endPoint) }}</span>
+                <span class="point-coords">
+                  {{ formatPoint(endPoint) }}
+                  <PointDistance v-if="currentGoal" :goal="currentGoal" :point="endPoint" />
+                </span>
                 <BaseButton type="button" variant="secondary" size="sm" @click="emit('pickPoint', 'end')">
                   <BaseIcon name="my_location" />
                   {{ t('tours.form.changeGoalBtn') }}
@@ -978,8 +1007,8 @@ defineExpose({ cancel: handleCancel, submitBlocked })
             </button>
           </div>
           <ActivityLegs
-            v-if="selectedTourTypes.length > 1" :types="legRows" :direction="legDirection"
-            @set="setLegDirection"
+            v-if="selectedTourTypes.length > 1 || soloFlight" :types="legRows" :direction="legDirection"
+            :allowed="legAllowed" :solo="soloFlight" @set="setLegDirection"
           />
           <div class="field">
             <label class="label" for="tf-grade">{{ t('tours.form.gradeLabel') }}</label>

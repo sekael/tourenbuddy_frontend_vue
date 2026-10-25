@@ -529,9 +529,13 @@
         "up": "Up",
         "both": "Both",
         "down": "Down",
-        "hint": "Up: from the start to the goal. Down: from the goal to the end."
+        "hint": "Up: from the start to the goal. Down: from the goal to the end. Both: the whole way.",
+        "needsOne": "Each way needs at least one activity.",
+        "soloHint": "Down: on foot or by lift to the launch at the goal. Both: flown from the start, in thermals."
       },
       "landingLabel": "Landing",
+      "fromGoal": "{distance} from the goal",
+      "farFromGoal": "{distance} from the goal – right place?",
       "addLandingBtn": "Add landing"
     },
     "creation": {
@@ -754,7 +758,10 @@
       "ascent": "Ascent",
       "descent": "Descent",
       "distance": "Distance",
-      "flight": "Flight"
+      "flight": "Flight",
+      "flightUp": "Flight up",
+      "ascentPartFlown": "Ascent, partly flown",
+      "descentPartFlown": "Descent, partly flown"
     }
   },
   "map": {

@@ -61,6 +61,12 @@ describe('tourListRow', () => {
     expect(wrapper.find('.tour-avatar').attributes('style')).toContain('--avatar-tint')
   })
 
+  it('shows every activity of a hike & fly, the way up first, like its detail', () => {
+    const wrapper = mountRow(makeTour({ tourTypes: ['paragliding', 'hiking'], legs: { ascent: ['hiking'], descent: ['paragliding'] } }))
+
+    expect(wrapper.findAll('.tour-avatar .slice [data-icon]').map(i => i.attributes('data-icon'))).toEqual(['hiking', 'paragliding'])
+  })
+
   it('holds a skeleton instead of the fallback while the owner is unresolved', () => {
     const wrapper = mountRow(makeTour({ isFriendTour: true }))
 

@@ -12,6 +12,7 @@ import { useLogger } from '@/core/logging/use-logger'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useFriendDisplayName } from '@/features/friendships/presentation/composables/use-friend-display-name'
 import { cssFill, distinctTypeColors, TOUR_TYPE_COLORS } from '@/features/tours/data/models/tour-type'
+import { sumFlight } from '@/features/tours/domain/legs'
 import { outingDisplayName, outingSegments, outingSpan, outingWay, spanDays } from '@/features/tours/domain/outing'
 import { totalMetrics } from '@/features/tours/domain/route-metrics'
 import OutingSegmentTimeline from '@/features/tours/presentation/components/outing-segment-timeline.vue'
@@ -64,6 +65,7 @@ const headline = computed(() => {
 const way = computed(() => outingWay(segments.value))
 const metrics = useRouteMetrics(segments)
 const totals = computed(() => totalMetrics(segments.value.map(s => metrics.value.get(s.id)!)))
+const totalsFlight = computed(() => sumFlight(segments.value.map(s => ({ tour: s, ...metrics.value.get(s.id)! }))))
 const badgeFill = computed(() => {
   const colors = distinctTypeColors(segments.value.flatMap(s => s.tourTypes), TOUR_TYPE_COLORS)
   return colors.length > 0 ? { background: cssFill(colors) } : undefined
@@ -152,7 +154,7 @@ function handleAdded() {
                higher in the browse-height sheet. -->
           <span v-if="span || totals.ascent !== null || totals.descent !== null" class="hero-meta hero-meta--wrap">
             <span v-if="span">{{ span }}</span>
-            <RouteNumbers :metrics="totals" />
+            <RouteNumbers :metrics="totals" :flight="totalsFlight" />
           </span>
           <span v-if="way" class="hero-meta" data-testid="outing-way">{{ way.from }} → {{ way.to }}</span>
           <span v-if="first.isFriendTour" class="hero-meta">

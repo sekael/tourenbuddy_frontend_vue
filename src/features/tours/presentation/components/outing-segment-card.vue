@@ -7,7 +7,7 @@ import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/core/components/base-icon.vue'
 import { useFormatter } from '@/core/composables/use-formatter'
 import { cssFill, distinctTypeColors, TOUR_TYPE_COLORS, TOUR_TYPE_I18N_KEYS } from '@/features/tours/data/models/tour-type'
-import { fliesDown } from '@/features/tours/domain/legs'
+import { flight, legsApart } from '@/features/tours/domain/legs'
 import GradeBadge from '@/features/tours/presentation/components/grade-badge.vue'
 import RouteNumbers from '@/features/tours/presentation/components/route-numbers.vue'
 
@@ -44,8 +44,8 @@ const dotStyle = computed(() => {
 const names = (types: readonly TourType[]) => types.map(type => t(`tours.type.${TOUR_TYPE_I18N_KEYS[type]}`)).join(', ')
 /** "↑ Hiking ↓ Paragliding" for a split stage (activity-legs D4). */
 const activities = computed(() => {
-  const { legs, tourTypes } = props.segment
-  return legs ? `↑ ${names(legs.ascent)} ↓ ${names(legs.descent)}` : names(tourTypes)
+  const legs = legsApart(props.segment.legs)
+  return legs ? `↑ ${names(legs.ascent)} ↓ ${names(legs.descent)}` : names(props.segment.tourTypes)
 })
 
 const meta = computed(() => [
@@ -79,7 +79,7 @@ const meta = computed(() => [
           <GradeBadge v-if="segment.grade" :grade="segment.grade" class="meta-grade" />
           {{ meta }}
         </span>
-        <RouteNumbers class="meta" :metrics="metrics" :flown="fliesDown(segment)" />
+        <RouteNumbers class="meta" :metrics="metrics" :flight="flight(segment)" />
       </span>
       <BaseIcon v-if="!editing" name="chevron_right" class="chevron" />
     </button>

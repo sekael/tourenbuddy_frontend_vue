@@ -33,8 +33,9 @@ import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tou
 import { downloadOriginal } from '@/features/tours/data/services/gpx-storage-service'
 import { COLLISION_RADIUS_M, sharesActivity } from '@/features/tours/domain/collision'
 import { isSameGoal } from '@/features/tours/domain/distance'
-import { routeOrder } from '@/features/tours/domain/legs'
+import { flight, routeOrder } from '@/features/tours/domain/legs'
 import OutingNavigator from '@/features/tours/presentation/components/outing-navigator.vue'
+import RouteNumbers from '@/features/tours/presentation/components/route-numbers.vue'
 import SegmentAddView from '@/features/tours/presentation/components/segment-add-view.vue'
 import TourAttachmentViewer from '@/features/tours/presentation/components/tour-attachment-viewer.vue'
 import TourAttachmentsStrip from '@/features/tours/presentation/components/tour-attachments-strip.vue'
@@ -43,6 +44,7 @@ import TourForm from '@/features/tours/presentation/components/tour-form.vue'
 import TourSuggestionHistorySheet from '@/features/tours/presentation/components/tour-suggestion-history-sheet.vue'
 import TourSuggestionReviewSheet from '@/features/tours/presentation/components/tour-suggestion-review-sheet.vue'
 import TourTypeBadge from '@/features/tours/presentation/components/tour-type-badge.vue'
+import { useRouteMetrics } from '@/features/tours/presentation/composables/use-route-metrics'
 import {
   buildSuggestionItems,
   pendingGoalFrom,
@@ -722,6 +724,11 @@ const coordinates = computed(
   () => `${props.tour.goal.lat.toFixed(4)}°N, ${props.tour.goal.lng.toFixed(4)}°E`,
 )
 
+// Climb · descent (or flight) · distance beside the date, as the outing hero has them: the
+// numbers a pilot plans by read in the sheet's opening height (activity-legs).
+const routeMetrics = useRouteMetrics(() => [props.tour])
+const metrics = computed(() => routeMetrics.value.get(props.tour.id)!)
+
 const formattedElevation = computed(() =>
   props.tour.elevation == null ? null : formatElevation.value(props.tour.elevation),
 )
@@ -823,9 +830,10 @@ const formattedElevation = computed(() =>
               </span>
               <span v-else-if="formattedDate" class="hero-headline hero-headline--date">{{ formattedDate }}</span>
             </div>
-            <!-- Date and coordinates as separate items: a wrap leaves no dangling separator. -->
+            <!-- Date, route numbers and coordinates as separate items: a wrap leaves no dangling separator. -->
             <span class="hero-meta">
               <span v-if="formattedElevation && formattedDate">{{ formattedDate }}</span>
+              <RouteNumbers :metrics="metrics" :flight="flight(tour)" data-testid="hero-route" />
               <span class="coords">{{ coordinates }}</span>
             </span>
             <span v-if="tour.isFriendTour" class="hero-meta">

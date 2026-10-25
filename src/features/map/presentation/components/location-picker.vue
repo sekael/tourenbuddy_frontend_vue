@@ -186,6 +186,13 @@ onBeforeUnmount(() => {
 function handleConfirm() {
   if (!props.map)
     return
+  // Confirmed while still flying to the chosen result, before the user took the map: the
+  // result is the pick — the crosshair is somewhere en route, its place name a stranger's.
+  if (chosen.value && flight && props.map.isEasing()) {
+    const { lng, lat, name } = chosen.value
+    emit('confirm', { lng, lat, name })
+    return
+  }
   const coords = getCrosshairCoordinates(props.map)
   const onResult = chosen.value
     && new LngLat(chosen.value.lng, chosen.value.lat).distanceTo(new LngLat(coords.lng, coords.lat)) <= NAME_RADIUS_M
