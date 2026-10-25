@@ -6,19 +6,23 @@ Collision detection and visualization for same-objective tour planning among fri
 ## Requirements
 
 ### Requirement: Goal collision detection
-Two tours SHALL be treated as the same objective when ALL of the following hold: their goal points lie within a 200 m radius of each other; both have a non-null `tour_type` and the values are equal; both have `visibility = 'friends'`; and their owners are mutual accepted friends. Collision distance SHALL be computed with the existing tour distance utility. The same predicate SHALL be applied by the client (`domain/collision.ts`, `COLLISION_RADIUS_M = 200`: info-sheet collision notice, map precedence, link suggestions) and by the database (`fn_collision_predicate` and the `fn_scan_*` helpers: post-save scan in the tour RPCs, friendship-accept backfill scan, link-request checks); the two radii SHALL be kept in sync.
+Two tours SHALL be treated as the same objective when ALL of the following hold: their goal points lie within a 200 m radius of each other; they share at least one activity type; both have `visibility = 'friends'`; and their owners are mutual accepted friends. Collision distance SHALL be computed with the existing tour distance utility. The same predicate SHALL be applied by the client (`domain/collision.ts`, `COLLISION_RADIUS_M = 200`: info-sheet collision notice, map precedence, link suggestions) and by the database (`fn_collision_predicate` and the `fn_scan_*` helpers: post-save scan in the tour RPCs, friendship-accept backfill scan, link-request checks); the two radii SHALL be kept in sync.
 
 #### Scenario: All conditions met
-- **WHEN** A's tour and B's tour are within 200 m, share the same non-null `tour_type`, are both friends-visible, and A and B are accepted friends
+- **WHEN** A's tour and B's tour are within 200 m, share at least one activity type, are both friends-visible, and A and B are accepted friends
 - **THEN** the two are treated as a collision for notices, map precedence, and link suggestions
 
 #### Scenario: Different tour type
-- **WHEN** A's and B's tours are within 200 m and friends-visible but have different `tour_type` values
+- **WHEN** A's and B's tours are within 200 m and friends-visible but have no activity type in common
 - **THEN** no collision is triggered
 
 #### Scenario: Null tour type
-- **WHEN** A's or B's tour has a null `tour_type`
-- **THEN** no collision is triggered (null types do not match anything, including each other)
+- **WHEN** A's or B's tour has no activity type
+- **THEN** no collision is triggered (an untyped tour matches nothing, including another untyped tour)
+
+#### Scenario: Overlapping activities
+- **WHEN** A's tour has types `skitour` and `hiking`, B's tour has only `hiking`, and all other conditions hold
+- **THEN** the two are treated as a collision
 
 #### Scenario: One side private
 - **WHEN** A's tour is friends-visible but B's tour is private (or vice versa)
@@ -42,4 +46,3 @@ On the map, when an owned tour and a friend tour collide (within 200m), the owne
 #### Scenario: Suppressed friend tour still listed
 - **WHEN** a friend tour is suppressed on the map due to collision with an owned tour
 - **THEN** that friend tour still appears in the Friends list tab
-

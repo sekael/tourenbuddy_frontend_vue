@@ -110,7 +110,12 @@ The overlay SHALL expose filters for partner, activity type, season, planned-dat
 #### Scenario: Activity-type filter
 
 - **WHEN** the activity-type filter holds one or more `TourType` values
-- **THEN** a tour SHALL match only when `tour.tourType` is non-null and is one of the selected values
+- **THEN** a tour SHALL match only when at least one of its activity types is among the selected values; a tour with no type SHALL NOT match
+
+#### Scenario: Multi-activity tour matches any of its types
+
+- **WHEN** the activity-type filter holds only `hiking` and a tour has types `skitour` and `hiking`
+- **THEN** the tour SHALL match
 
 #### Scenario: Season filter
 
@@ -275,9 +280,10 @@ navigates the user to the `/calendar` calendar view.
 
 ### Requirement: Tour rows are identified by activity type
 
-Each tour row in the tour list SHALL lead with an avatar showing the tour's activity
-type — the type's icon, tinted with the type's color from the same shared maps used by
-the calendar and the map markers — instead of a letter derived from the tour's name. A
+Each tour row in the tour list SHALL lead with an avatar showing the tour's primary
+activity type (its first type) — the type's icon, tinted with the type's color from the
+same shared maps used by the calendar and the map markers — instead of a letter derived
+from the tour's name. A
 tour with no activity type SHALL render a generic tour icon on the list's neutral accent,
 and SHALL NOT fall back to a letter or to a placeholder character. The avatar SHALL keep
 its existing size, shape, and friend-tour badge overlay.

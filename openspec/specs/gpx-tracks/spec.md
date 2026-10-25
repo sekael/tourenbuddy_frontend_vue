@@ -76,7 +76,7 @@ The client SHALL delete the GPX Storage object when its tour is deleted (online,
 
 ### Requirement: Track rendering with darker tour-type color
 
-The system SHALL render the selected tour's GPX track on the map as a polyline whose color is a darker variant of `TOUR_TYPE_COLORS[tour.tourType]`, defined by a sibling map `TOUR_TYPE_TRACK_COLORS`. The track color MUST be visually darker than the corresponding tour marker so the marker remains distinguishable when stacked over its track. A defined fallback color SHALL be used when the tour type has no entry.
+The system SHALL render the selected tour's GPX track on the map as a polyline coloured with darker variants of the tour types' marker colours, defined by a sibling map `TOUR_TYPE_TRACK_COLORS`. The track color MUST be visually darker than the corresponding tour marker so the marker remains distinguishable when stacked over its track. A defined fallback color SHALL be used when the tour has no type. When the tour's types map to more than one distinct track colour, the track SHALL cycle through those colours in bands along its length, fading smoothly from one band into the next.
 
 #### Scenario: Selecting a hiking tour
 
@@ -90,13 +90,23 @@ The system SHALL render the selected tour's GPX track on the map as a polyline w
 
 #### Scenario: Unknown tour type
 
-- **WHEN** a tour has a tour type not present in `TOUR_TYPE_TRACK_COLORS`
+- **WHEN** a tour has no activity type
 - **THEN** the track renders in the defined fallback color
 
 #### Scenario: Activity type changed on selected tour
 
-- **WHEN** the selected tour's `tourType` is updated (e.g. from `splitboarding` to `mountaineering`) or set from null to a defined type
-- **THEN** the rendered track color updates immediately to the new type's `TOUR_TYPE_TRACK_COLORS` entry without a page refresh, even when the parsed GeoJSON is served from the in-memory cache
+- **WHEN** the selected tour's types are updated (e.g. from `splitboarding` to `mountaineering`, or from none to a defined type)
+- **THEN** the rendered track colours update immediately to the new types' `TOUR_TYPE_TRACK_COLORS` entries without a page refresh, even when the parsed GeoJSON is served from the in-memory cache
+
+#### Scenario: Ski tour and hike track fades between colours
+
+- **WHEN** a user selects a tour of types `skitour` and `hiking` that has a track
+- **THEN** the track alternates between the winter and summer track colours in bands along its length, each band fading smoothly into the next
+
+#### Scenario: Same-colour types render one colour
+
+- **WHEN** a tour's types all share one track colour (e.g. `skitour` and `splitboarding`)
+- **THEN** the track renders in that single colour with no bands
 
 ### Requirement: Lazy fetch and caching of GPX data
 
@@ -110,7 +120,7 @@ The system SHALL fetch and parse a tour's GPX file on demand when the tour is se
 #### Scenario: Re-selection
 
 - **WHEN** the same tour is re-selected later in the session
-- **THEN** the cached GeoJSON is reused without re-downloading, and the track is re-annotated with the tour's current `tourType` before being applied to the source so color always reflects the latest activity type
+- **THEN** the cached GeoJSON is reused without re-downloading, and the track colouring is recomputed from the tour's current types before the track is shown, so colour always reflects the latest activity types
 
 #### Scenario: Tour without track
 
@@ -216,3 +226,50 @@ The system SHALL provide all GPX-related user-facing text in both `en` and `de-C
 
 - **WHEN** the locale switcher toggles between English and Swiss German
 - **THEN** every GPX-related label, button, and error message renders translated text in the active locale
+
+### Requirement: Direction connector for tours without a track
+
+The system SHALL draw, for every shown tour WITHOUT a GPX track (the selected tour, or each segment of a focused outing), a thin, light straight line start → goal → end in the tour's activity marker colours (banded when several), with small arrows evenly spaced on screen along each leg pointing that way. A tour without a start SHALL get no connector.
+
+#### Scenario: Start, goal and distinct end
+
+- **WHEN** a tour without a GPX track and with start, goal and a distinct end is shown
+- **THEN** two thin legs start → goal and goal → end appear, each with evenly spaced one-way arrows, and a leg shorter than the spacing has one arrow in its middle
+
+#### Scenario: Round trip
+
+- **WHEN** the tour's end equals its start
+- **THEN** one leg start ↔ goal appears with a two-way arrow
+
+#### Scenario: Coinciding points
+
+- **WHEN** two consecutive points of the tour coincide
+- **THEN** the leg between them is dropped
+
+#### Scenario: Outing overview with a hike and a flight
+
+- **WHEN** the overview of an outing with a hiking segment followed by a paragliding segment is open
+- **THEN** the first connector is in the hiking colour and the second in the paragliding colour, matching each segment's markers
+
+### Requirement: Outing overview start and end markers
+
+While an outing's overview is open (no segment selected), the system SHALL show a start or end marker, in its segment's colours, at every segment start and end that is a loose end of the chain: the first start, the last end, and both sides of a gap. A point SHALL get no marker where the chain hands over (a start on the previous segment's finish, an end on the next segment's start), on any goal, or where a marker already stands.
+
+#### Scenario: Overview of a hut-to-summit outing
+
+- **WHEN** the overview of an outing starting in the valley and ending at a different village is open
+- **THEN** a start marker shows in the valley and an end marker at the village
+
+#### Scenario: Reordered into a gap
+
+- **WHEN** the segments are ordered so that segment 1 ends in one village and segment 2 starts in another
+- **THEN** an end marker shows at the first village and a start marker at the second, with no line ending unmarked
+
+### Requirement: Outing handover points
+
+While an outing's overview is open, a point where one segment ends and the next starts away from every goal SHALL show a small ring in the next segment's colour, so no line meets in empty map.
+
+#### Scenario: Handover in the valley
+
+- **WHEN** segment 2 ends in a village where segment 3 (a hike-and-fly) starts, and no goal is there
+- **THEN** a small handover ring SHALL show at the village, and no start or end marker

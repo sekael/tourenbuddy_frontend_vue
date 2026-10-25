@@ -6,17 +6,27 @@ Extended tour entity fields beyond the baseline (type, elevation, GPX reference,
 
 ### Requirement: Tour type enum
 
-A Zod enum (`tour-type.ts`) SHALL define the allowed tour activity types, mirrored by the `tours_tour_type_check` constraint: `skiing`, `snowboarding`, `skitour`, `splitboarding`, `ski-mountaineering`, `paragliding`, `hiking`, `mountaineering`, `climbing`, `mountain-biking`, `trailrunning`. Each type SHALL map to an i18n key, an icon, a marker colour, a darker track colour and a lighter preview colour.
+A Zod enum (`tour-type.ts`) SHALL define the allowed tour activity types, mirrored by the `tours_tour_types_check` constraint: `skiing`, `snowboarding`, `skitour`, `splitboarding`, `ski-mountaineering`, `paragliding`, `hiking`, `mountaineering`, `climbing`, `mountain-biking`, `trailrunning`. Each type SHALL map to an i18n key, an icon, a marker colour, a darker track colour and a lighter preview colour. A tour SHALL carry a list of zero or more distinct types (`tour_types`, never null), kept in the enum's order; the first entry is the tour's primary type.
 
 #### Scenario: Valid tour type parsed
 
-- **WHEN** a tour row contains a `tour_type` value matching one of the enum values
-- **THEN** the schema SHALL parse it into the corresponding TypeScript union type
+- **WHEN** a tour row contains a `tour_types` list whose values all match enum values
+- **THEN** the schema SHALL parse it into a `TourType[]` in the same order
 
 #### Scenario: Null tour type
 
-- **WHEN** a tour row has `tour_type` as null
-- **THEN** the schema SHALL accept it as a valid optional field with value `null`
+- **WHEN** a tour row has an empty `tour_types` list
+- **THEN** the schema SHALL accept it and the tour SHALL have no primary type
+
+#### Scenario: Unknown type rejected by the database
+
+- **WHEN** a write stores a `tour_types` list containing a value outside the enum
+- **THEN** the database SHALL reject the write
+
+#### Scenario: Legacy single-type snapshot
+
+- **WHEN** a tour cached or queued offline by a build before this change carries a single `tourType` and no `tourTypes`
+- **THEN** the app SHALL read it as a one-element type list (or an empty list when the type was null)
 
 ### Requirement: Elevation field
 
@@ -103,7 +113,7 @@ The tour schema SHALL include a `notes` field (string, nullable) for miscellaneo
 
 ### Requirement: Extended TourDraft
 
-The `TourDraft` interface SHALL be expanded to include all new fields: `tourType`,
+The `TourDraft` interface SHALL be expanded to include all new fields: `tourTypes`,
 `elevation`, `gpxFilepath`, `description`, `seasons`, `startPoint`, `endPoint`,
 `startPointName`, `startPointElevation`, `endPointName`, `endPointElevation`, `equipment`,
 `notes`, `endDate`, and the optional `completed` and `visibility`.
@@ -117,7 +127,7 @@ The `TourDraft` interface SHALL be expanded to include all new fields: `tourType
 
 - **WHEN** a TourDraft is created with only name, plannedDate, and partnerIds
 - **THEN** it SHALL be valid with all new fields defaulting to null/undefined, and the tour
-  SHALL be persisted as a single-day tour
+  SHALL be persisted as a single-day tour with no activity type
 
 ### Requirement: Completed field
 
@@ -207,3 +217,39 @@ its activities both ways.
 
 - **WHEN** a client that does not know legs saves a split tour with unchanged activities
 - **THEN** the legs SHALL be kept
+
+### Requirement: Grade and start time
+
+A tour SHALL hold an optional grade (trimmed text, at most 20 characters) and an optional start
+time (only together with a planned date); `TourDraft` SHALL carry `grade` and `startTime`
+("HH:MM"). Friends who are not partners SHALL NOT see the start time, like the planned date.
+
+#### Scenario: Created with both
+
+- **WHEN** a tour is created with grade "ZS-" and start time 06:30 on 13 March
+- **THEN** it SHALL read back with grade "ZS-" and start time "06:30"
+
+### Requirement: Older clients never wipe grade or start time
+
+On update, an omitted grade or start time (null) SHALL keep the stored value and an empty string
+SHALL clear it, so an older client or a queued older draft never wipes what it doesn't know.
+
+#### Scenario: An older client edits a graded tour
+
+- **WHEN** a tour has grade "ZS-" and start time 06:30 and a client that doesn't know these fields saves an edit
+- **THEN** the grade and start time SHALL stay
+
+#### Scenario: Clearing the grade
+
+- **WHEN** the owner empties the grade field and saves
+- **THEN** the tour SHALL have no grade
+
+#### Scenario: Grade too long
+
+- **WHEN** a write carries a grade longer than 20 characters
+- **THEN** the database SHALL reject it
+
+#### Scenario: Friend without partnership
+
+- **WHEN** a friend who is not a partner reads a friends-visible tour with a start time
+- **THEN** the start time SHALL be null for them, like the planned date

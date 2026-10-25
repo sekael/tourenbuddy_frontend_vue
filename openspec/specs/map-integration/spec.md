@@ -44,7 +44,7 @@ The map SHALL support switching between two Swisstopo styles: "Base" (the `ch.sw
 
 ### Requirement: Tour markers rendered as circles
 
-Tours SHALL be rendered on the map as circle markers using a MapLibre circle layer backed by a GeoJSON source. The circle color SHALL be derived from the tour's `tourType` via a data-driven paint expression, grouped as: winter sports (skiing, snowboarding, skitour, splitboarding, ski-mountaineering) in blue, summer sports (hiking, mountaineering, climbing, mountain-biking, trailrunning) in red, paragliding in amber, and tours with a null or unrecognized type in neutral grey.
+Tours SHALL be rendered on the map as circle markers using a MapLibre circle layer backed by a GeoJSON source. The circle color SHALL be derived from the tour's activity types, grouped as: winter sports (skiing, snowboarding, skitour, splitboarding, ski-mountaineering) in blue, summer sports (hiking, mountaineering, climbing, mountain-biking, trailrunning) in red, paragliding in amber, and tours with no type in neutral grey. A tour whose types map to more than one of these colors SHALL render split between them (see "Multi-activity markers split between their colours").
 
 Each GeoJSON feature SHALL additionally carry a `completed` boolean property mirroring the tour's `completed` field. Completed tours SHALL be rendered with a visually distinct style — a check glyph overlaid on the circle via a sibling symbol layer, or, when the symbol layer is not available, a grayscale-mixed variant of the type-based circle color. The circle radius and stroke for completed tours SHALL remain identical to not-completed tours. Selected-state styling (larger radius, white stroke) SHALL apply to completed tours identically, and the check glyph SHALL still render on top of the selected-state circle. Clicking a completed tour's marker SHALL trigger the same selection and fly-to behavior as a not-completed tour. GPX track rendering SHALL be unaffected by completion state. Not-completed tours SHALL render in the normal type-based color with no overlay.
 
@@ -65,22 +65,22 @@ Each GeoJSON feature SHALL additionally carry a `completed` boolean property mir
 
 #### Scenario: Winter tour colored blue
 
-- **WHEN** a tour has `tourType` set to skiing, snowboarding, skitour, splitboarding, or ski-mountaineering
+- **WHEN** a tour's types are all among skiing, snowboarding, skitour, splitboarding, or ski-mountaineering
 - **THEN** its circle marker SHALL render in the winter (blue) palette color
 
 #### Scenario: Summer tour colored red
 
-- **WHEN** a tour has `tourType` set to hiking, mountaineering, climbing, mountain-biking, or trailrunning
+- **WHEN** a tour's types are all among hiking, mountaineering, climbing, mountain-biking, or trailrunning
 - **THEN** its circle marker SHALL render in the summer (red) palette color
 
 #### Scenario: Paragliding tour colored amber
 
-- **WHEN** a tour has `tourType` set to paragliding
+- **WHEN** a tour's only type is paragliding
 - **THEN** its circle marker SHALL render in the paragliding (amber) palette color
 
 #### Scenario: Unknown tour type falls back to neutral
 
-- **WHEN** a tour has `tourType` set to null
+- **WHEN** a tour has no activity type
 - **THEN** its circle marker SHALL render in the neutral (grey) fallback color
 
 #### Scenario: Completed tour shows distinct visual
@@ -173,7 +173,7 @@ When the tour's details are closed (deselected) the start/end markers SHALL be r
 
 ### Requirement: Edit-mode preview marker matches tour type
 
-When a user is editing an existing tour's goal location **or creating a new tour**, the map SHALL render a tentative draft preview circle at the candidate goal coordinates. The preview circle's color SHALL be a lighter variant of the relevant tour's type-based color, preserving the "tentative / not yet committed" visual cue. During editing the relevant type is the selected tour's type; during creation it is the activity type currently selected in the creation form. When no type is selected yet (including the start of creation before any activity is chosen) or the type is null, the preview SHALL use the neutral-light fallback color.
+When a user is editing an existing tour's goal location **or creating a new tour**, the map SHALL render a tentative draft preview circle at the candidate goal coordinates. The preview circle's color SHALL be a lighter variant of the relevant tour's type-based color (split the same way as a saved marker when the types span several colors), preserving the "tentative / not yet committed" visual cue. While the form is open the relevant types are the activity types currently selected in the form, during editing and creation alike. When no type is selected (including the start of creation before any activity is chosen, or after the user deselects every type), the preview SHALL use the neutral-light fallback color.
 
 During creation, picking a goal SHALL show the draft marker, and re-picking the goal SHALL move the single existing draft marker rather than adding a second one. When the user selects or changes the activity type in the creation form, the draft marker's color SHALL update to the matching lighter shade within the same reactive tick. On save the draft marker SHALL remain visible through the create round-trip and SHALL be cleared only once the real, full-color marker exists, so the light draft visibly transforms into the saved marker with no intervening empty-map gap. If the create fails, the draft marker SHALL still be cleared.
 
@@ -206,8 +206,8 @@ The same draft-preview mechanism SHALL extend to the **start** and **end** point
 
 #### Scenario: Draft marker recolors live when activity type is selected during creation
 
-- **WHEN** the user selects or changes the activity type in the creation form
-- **THEN** the draft marker SHALL update to the matching lighter shade of that type's color within the same reactive tick
+- **WHEN** the user selects, adds or removes an activity type in the creation form
+- **THEN** the draft marker SHALL update to the matching lighter shade(s) of the selected types' colors within the same reactive tick
 
 #### Scenario: Draft marker transforms into the saved marker on create
 
@@ -762,3 +762,32 @@ The map page SHALL display entries in the bottom-right speed dial, in this order
 
 - **WHEN** the user clicks the contacts entry in the speed-dial menu
 - **THEN** the contacts list sheet SHALL open
+
+### Requirement: Multi-activity markers split between their colours
+
+A tour whose activity types map to two or three distinct palette colours SHALL render each of its circle markers — goal, selected goal, start/end detail and draft preview — as a circle divided into equal slices, one per distinct colour, in the order of its types. Types sharing a colour SHALL count once. Size, stroke, opacity and overlay glyphs SHALL match a single-colour marker.
+
+#### Scenario: Ski tour and hike
+
+- **WHEN** a tour has types `skitour` and `hiking`
+- **THEN** its goal marker SHALL show a blue half and a red half
+
+#### Scenario: Types of one colour stay solid
+
+- **WHEN** a tour has types `skitour` and `splitboarding`
+- **THEN** its goal marker SHALL render solid blue, exactly like a single-type ski tour
+
+#### Scenario: Selected split marker keeps its ring
+
+- **WHEN** a split tour is selected
+- **THEN** its marker SHALL keep the slices at the selected size with the white selected-state stroke around them
+
+### Requirement: Cluster pies weight tours by their colours
+
+A cluster pie SHALL give each member tour a total weight of one, divided equally among the tour's distinct colours, so slice sizes reflect tours rather than type counts. The number shown SHALL remain the count of tours. Spiderfied leaves and leaf tween dots of a split tour SHALL show its colours split the same way.
+
+#### Scenario: Mixed cluster
+
+- **WHEN** a cluster holds one ski tour and one ski-tour-and-hike tour
+- **THEN** its pie SHALL be three quarters blue and one quarter red
+- **AND** it SHALL show the count 2
