@@ -87,8 +87,9 @@ wouldn't separate them usefully.
 title ("11 Touren an diesem Ort") and one button per tour: a colour dot (split like the marker,
 ✓ when done), the name, and the `labelSub` line. Rows are ordered dated-planned (ascending),
 then undated, then done. A tap selects the tour. Escape closes and returns focus to the cluster
-marker; focus moves to the first row on open. Opening pans the stack to the upper middle (no
-zoom), so the list (up to 55 vh) opens below it on screen; CSS scroll shadows mark hidden rows.
+marker; focus moves to the first row on open. The list (up to 55 vh) opens below the stack and
+the map pans (no zoom) only as far as it would run off screen (D23); CSS scroll shadows mark
+hidden rows.
 Each row's dot carries the activity glyph, as on the marker. `spiderfy.ts` and its tests are deleted.
 *Alternative:* bigger spiderfy dots with labels. Rejected: 11 names around one point overlap
 and cover the terrain the user is looking at.
@@ -212,6 +213,25 @@ the start/end points. A name takes another anchor clear of every marker, or hide
 footprint grows to 6 px padding so the corner badges are inside it. Diagonal anchors don't help:
 their box corner always sits on the tour's own square footprint.
 
+**D23 — Stay put when already shown** (user review, round 3). Cycling a stack nudged the map on
+every pick: the "+N" list panned its spot to a fixed mid-height (162 px on a phone, beside the
+sheet), then framing the next tour moved it back. Now:
+- Framing a tour or outing skips the move when all its points are in view beside the drawer or
+  sheet, the map is at most a level further out than the frame, and the frame's centre is
+  within an eighth of the visible area of the current one. Further off, it still centres them:
+  the open tour is the only thing on the map, so it belongs in the middle.
+- The stack list opens first, in a fixed direction (below the stack, or above it over a sheet),
+  and the map pans only by how far the list runs past the visible area (8 px margin at the
+  sides, 64 on top, 112 below for the tour bar). Overruns up to 8 px are ignored: stacked goals
+  metres apart anchor each list a pixel apart. Focus moves to the first row without scrolling,
+  so the browser never shifts the map's container.
+
+**D24 — Cluster taps keep the tours in the middle** (user review, round 3). The fit padded
+64 px, so two tours landed in opposite corners (Säntis top left, Altmann bottom right) and the
+eye had to scan the whole map. The fit now pads a quarter of the visible width and height on
+each side (at least the old margins), so the tours fill the middle half and the rest shows
+their surroundings. The split and one-level-per-tap minimums still win when larger.
+
 ## Risks / Trade-offs
 
 - [Every scene change dips the whole map for ~0.5 s, the staying tour included] → short, and it
@@ -220,6 +240,10 @@ their box corner always sits on the tour's own square footprint.
   1 s fallback shows the scene regardless.
 - [A name with no clear anchor hides] → as before for name-to-name collisions; zooming in frees
   room, and the selected tour's marker still carries its glyph.
+- [A tour opened a little off-centre stays there] → within an eighth of the view it is still in
+  the middle; further off it is centred.
+- [A cluster tap zooms about a level less than before] → the tours still separate (split
+  minimum), and the surroundings show around them.
 
 - [Other tours vanish while a detail is open] → the map comes back on close (× , Escape, map
   tap); the "+N" chip still reaches tours at the same spot.

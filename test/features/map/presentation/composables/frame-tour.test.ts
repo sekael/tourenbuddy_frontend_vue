@@ -15,7 +15,7 @@ function fakeMap() {
     getBearing: () => 15,
     getZoom: () => 9,
     getCenter: () => ({ lng: 9.7, lat: 46.6 }),
-    getContainer: () => ({ clientWidth: 400, clientHeight: 800 }),
+    getContainer: () => ({ clientWidth: 400, clientHeight: 800, getBoundingClientRect: () => ({ width: 400, height: 800 }) }),
     // The target two screens off, unless a test brings it closer.
     project: vi.fn(() => ({ x: 200, y: 2000 })),
   }
@@ -91,5 +91,27 @@ describe('frameTours', () => {
     frameTours(map as unknown as MaplibreMap, [{ goal, startPoint: null, endPoint: null }], {})
     expect(map.easeTo).not.toHaveBeenCalled()
     expect(map.flyTo).toHaveBeenCalledOnce()
+  })
+
+  it('should stay put for a tour already in view at about its zoom, like the next one of a stack', () => {
+    const map = fakeMap()
+    map.project.mockReturnValue({ x: 200, y: 400 })
+    frameTours(map as unknown as MaplibreMap, [{ goal, startPoint: null, endPoint: null }], {})
+    expect(map.easeTo).not.toHaveBeenCalled()
+    expect(map.flyTo).not.toHaveBeenCalled()
+  })
+
+  it('should centre a tour in view that sits well off the middle', () => {
+    const map = fakeMap()
+    map.project.mockReturnValue({ x: 60, y: 400 })
+    frameTours(map as unknown as MaplibreMap, [{ goal, startPoint: null, endPoint: null }], {})
+    expect(map.easeTo).toHaveBeenCalledOnce()
+  })
+
+  it('should still frame a tour in view that the drawer covers', () => {
+    const map = fakeMap()
+    map.project.mockReturnValue({ x: 300, y: 400 })
+    frameTours(map as unknown as MaplibreMap, [{ goal, startPoint: null, endPoint: null }], { right: 100 })
+    expect(map.easeTo).toHaveBeenCalledOnce()
   })
 })

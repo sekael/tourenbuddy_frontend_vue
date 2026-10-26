@@ -125,7 +125,7 @@ A cluster pie SHALL give each member tour a total weight of one, divided equally
 
 ### Requirement: Cluster tap frames its tours or opens the stack list
 
-Tapping a cluster marker for node N SHALL fly the map to frame all of N's tours in the part of the map an open side drawer (desktop) or sheet (phone) leaves visible, never under it. The target zoom SHALL be the largest of `N.splitZoom + ε` (ε ≈ 0.01), the zoom that fits N's tours with a margin, and one level above the current zoom (so even a country-wide cluster's tap visibly drills in), capped at the map's maximum zoom. The split animation SHALL be the same one a user zoom fires. The fitted zoom SHALL NOT exceed 15.5 unless the split itself needs more, so a tap never lands at street level for no gain. The fit SHALL keep the tours clear of the bottom tour bar. When `N.splitZoom` exceeds the stack zoom (17), meaning the tours sit within metres of each other, the tap SHALL open the stack list instead and SHALL NOT zoom the map.
+Tapping a cluster marker for node N SHALL fly the map to frame all of N's tours in the part of the map an open side drawer (desktop) or sheet (phone) leaves visible, never under it. The target zoom SHALL be the largest of `N.splitZoom + ε` (ε ≈ 0.01), the zoom that fits N's tours into the middle half of that visible area, and one level above the current zoom (so even a country-wide cluster's tap visibly drills in), capped at the map's maximum zoom. The split animation SHALL be the same one a user zoom fires. The fitted zoom SHALL NOT exceed 15.5 unless the split itself needs more, so a tap never lands at street level for no gain. The fit SHALL keep the tours clear of the bottom tour bar. When `N.splitZoom` exceeds the stack zoom (17), meaning the tours sit within metres of each other, the tap SHALL open the stack list instead and SHALL NOT zoom the map.
 
 #### Scenario: Tap on a spread cluster separates it in one step
 
@@ -133,6 +133,12 @@ Tapping a cluster marker for node N SHALL fly the map to frame all of N's tours 
 - **WHEN** the user taps it
 - **THEN** the map SHALL fly so that all four tours are in view
 - **AND** the target zoom SHALL be at least `splitZoom + ε`
+
+#### Scenario: Two tours kept in the middle
+
+- **GIVEN** a cluster of Säntis and Altmann, 2.5 km apart, at zoom 9.5
+- **WHEN** the user taps it
+- **THEN** both tours SHALL land within the middle half of the map, not near its corners
 
 #### Scenario: Tap beside the open tour list on desktop
 
@@ -149,7 +155,7 @@ Tapping a cluster marker for node N SHALL fly the map to frame all of N's tours 
 
 ### Requirement: Stack list for tours on the same spot
 
-The stack list SHALL be a popup anchored at the stack, titled with the number of tours there, with one row per tour. Opening it SHALL pan the map (without zooming) so the stack sits in the upper middle of the area an open drawer leaves visible and the list opens below it within the screen, clear of the bottom tour bar. When not every row fits, the list SHALL scroll and SHALL show a shadow at the edge where more rows hide. Each row SHALL show:
+The stack list SHALL be a popup anchored at the stack, titled with the number of tours there, with one row per tour. The list SHALL open below the stack, within the area an open drawer leaves visible and clear of the bottom tour bar; opening it SHALL pan the map (without zooming) only as far as the list would otherwise run past that area, and not at all when it fits. When not every row fits, the list SHALL scroll and SHALL show a shadow at the edge where more rows hide. Each row SHALL show:
 - the tour's colour dot, split like its marker, carrying its primary activity's glyph and marked when completed
 - its name, or the unnamed-tour label
 - a second line with its date or date range, or "no date", or "done" for a completed tour
@@ -281,7 +287,7 @@ The floating bottom controls (tour bar, menu and legend buttons) SHALL dock at t
 
 ### Requirement: Calm camera flights
 
-Every camera move the app makes on its own (framing a tour or outing, a cluster tap, a place chosen in the search) SHALL fly at one shared, calm speed, slower than MapLibre's default, so that base-map tiles load while the camera moves on a decent connection. A long flight SHALL take longer than a short one rather than squeezing every distance into a fixed duration. A framing or cluster move of up to a screen and two zoom levels SHALL glide in about a second instead, never in a fraction of one. Gestures (pinch, scroll, drag) SHALL stay direct. With reduced motion requested, flights SHALL jump.
+Every camera move the app makes on its own (framing a tour or outing, a cluster tap, a place chosen in the search) SHALL fly at one shared, calm speed, slower than MapLibre's default, so that base-map tiles load while the camera moves on a decent connection. A long flight SHALL take longer than a short one rather than squeezing every distance into a fixed duration. A framing or cluster move of up to a screen and two zoom levels SHALL glide in about a second instead, never in a fraction of one. Framing SHALL NOT move the map at all when the view already shows the tour or outing about as framed: every point in view, at most a level further out, the framed centre within an eighth of the view. Gestures (pinch, scroll, drag) SHALL stay direct. With reduced motion requested, flights SHALL jump.
 
 #### Scenario: Cluster tap zooms by two levels
 
@@ -292,6 +298,12 @@ Every camera move the app makes on its own (framing a tour or outing, a cluster 
 
 - **WHEN** the user steps to the next stage of an outing, half a screen from the current one
 - **THEN** the camera SHALL glide there in about a second
+
+#### Scenario: Next tour of a stack already in view
+
+- **GIVEN** "Säntis über den Lisengrat" is open, centred, with two more tours at its spot
+- **WHEN** the user opens its "+2" list and picks another tour there
+- **THEN** the map SHALL NOT move, neither when the list opens nor when the tour opens
 
 ### Requirement: Calm switch between tours and stages
 

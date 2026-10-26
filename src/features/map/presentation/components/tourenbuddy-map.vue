@@ -389,7 +389,7 @@ watch(currentStyleIndex, (index) => {
 }
 
 .stack-list-popup--above .stack-list__rows {
-  /* Opened upward from mid-height: the room above the stack, under the title. */
+  /* Opened upward above a tour: about the room above it when framed, under the title. */
   max-height: min(38vh, 360px);
 }
 
@@ -402,7 +402,7 @@ watch(currentStyleIndex, (index) => {
 }
 
 .stack-list__rows {
-  /* The marker layer pans the stack to the upper middle first, so the list has this room. */
+  /* The marker layer pans the list into view when it runs off the visible area. */
   max-height: min(55vh, 440px);
   margin: 0;
   padding: 0;

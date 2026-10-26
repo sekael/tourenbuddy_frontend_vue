@@ -6,7 +6,12 @@ function makeStubMap(individualFeatures: object[] = []) {
   const listeners: Record<string, ((...args: unknown[]) => void)[]> = {}
   const layers: Record<string, { type?: string, paint?: Record<string, unknown>, filter?: unknown }> = {}
   const sources: Record<string, { type: string, setData: ReturnType<typeof vi.fn> }> = {}
-  const container = { clientWidth: 400, clientHeight: 800, classList: document.createElement('div').classList }
+  const container = {
+    clientWidth: 400,
+    clientHeight: 800,
+    classList: document.createElement('div').classList,
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 400, height: 800 }),
+  }
 
   return {
     addSource: vi.fn((id: string, opts: { type: string }) => {
@@ -87,6 +92,8 @@ vi.mock('maplibre-gl', () => {
     getElement() { return this.el }
   }
   const popups: { content: HTMLElement | null }[] = []
+  /** Where the opened list lands on the 400×800 stub map; tests move it off the visible area. */
+  const popupRect = { left: 100, right: 300, top: 120, bottom: 400 }
   class Popup {
     content: HTMLElement | null = null
     constructor() { popups.push(this) }
@@ -97,7 +104,12 @@ vi.mock('maplibre-gl', () => {
     }
 
     addTo() { return this }
-    getElement() { return null }
+    getElement() {
+      const el = document.createElement('div')
+      el.getBoundingClientRect = () => ({ ...popupRect }) as DOMRect
+      return el
+    }
+
     on() { return this }
     remove() {}
   }
@@ -106,6 +118,7 @@ vi.mock('maplibre-gl', () => {
     Marker,
     Popup,
     popups,
+    popupRect,
     markerElements,
   }
 })
@@ -344,12 +357,21 @@ describe('opacity bridge — pie-marker', () => {
   })
 })
 
+describe('overflow', () => {
+  it('should pan a span off the top down by the overrun, and centre one too big to fit', async () => {
+    const { overflow } = await import('@/features/map/presentation/components/tours-marker-layer')
+    expect(overflow(40, 300, 64, 688)).toBe(40 - 64)
+    expect(overflow(0, 900, 64, 688)).toBe((0 + 900 - 64 - 688) / 2)
+  })
+})
+
 describe('useToursMarkerLayer — selection, labels and cluster taps', () => {
   async function setupLayer(covered: { right?: number, bottom?: number } = {}) {
     vi.resetModules()
-    const maplibre = await import('maplibre-gl') as unknown as { markerElements: HTMLElement[], popups: { content: HTMLElement | null }[] }
+    const maplibre = await import('maplibre-gl') as unknown as { markerElements: HTMLElement[], popups: { content: HTMLElement | null }[], popupRect: Record<string, number> }
     maplibre.markerElements.length = 0
     maplibre.popups.length = 0
+    Object.assign(maplibre.popupRect, { left: 100, right: 300, top: 120, bottom: 400 })
     const { useToursMarkerLayer } = await import('@/features/map/presentation/components/tours-marker-layer')
     const { TOUR_FILL } = await import('../../../../fixtures/tour-fill')
     const stub = makeStubMap()
@@ -371,7 +393,7 @@ describe('useToursMarkerLayer — selection, labels and cluster taps', () => {
     }) as unknown as import('@/features/tours/domain/entities/tour').Tour
     /** The DOM element of each cluster marker created so far. */
     const clusterElements = () => maplibre.markerElements
-    return { stub, layer, tour, onTourClick, clusterElements, popups: maplibre.popups }
+    return { stub, layer, tour, onTourClick, clusterElements, popups: maplibre.popups, popupRect: maplibre.popupRect }
   }
 
   it('should draw the selected tour on its own beside the cluster it sat in', async () => {
@@ -429,7 +451,7 @@ describe('useToursMarkerLayer — selection, labels and cluster taps', () => {
     layer.updateTours([tour('a', 8), tour('b', 8)], null)
     clusterElements()[0]!.click()
     expect(stub.flyTo).not.toHaveBeenCalled()
-    expect(stub.panBy).toHaveBeenCalledOnce()
+    expect(stub.panBy).not.toHaveBeenCalled()
     const content = popups.at(-1)!.content!
     expect(content.querySelector('h3')!.textContent).toBe('2 tours here')
     content.querySelector<HTMLButtonElement>('.stack-list__row')!.click()
@@ -455,11 +477,12 @@ describe('useToursMarkerLayer — selection, labels and cluster taps', () => {
     expect(stub.sourceData('tours').features).toHaveLength(2)
   })
 
-  it('should frame a tapped cluster beside an open drawer, not under it', async () => {
-    const { stub, layer, tour, clusterElements } = await setupLayer({ right: 400 })
+  it('should frame a tapped cluster\'s tours in the middle half of the area beside the drawer', async () => {
+    const { stub, layer, tour, clusterElements } = await setupLayer({ right: 80 })
     layer.updateTours([tour('a', 8.0), tour('b', 8.01)], null)
     clusterElements()[0]!.click()
-    expect(stub.cameraForBounds).toHaveBeenCalledWith(expect.anything(), { padding: { top: 64, right: 464, bottom: 112, left: 64 } })
+    // Stub map 400×800: a quarter of the 320 px beside the drawer, a quarter of the height.
+    expect(stub.cameraForBounds).toHaveBeenCalledWith(expect.anything(), { padding: { top: 200, right: 160, bottom: 200, left: 80 } })
   })
 
   it('should shift a cluster zoomed by a level into the area beside the drawer', async () => {
@@ -471,12 +494,21 @@ describe('useToursMarkerLayer — selection, labels and cluster taps', () => {
     expect(stub.easeTo).toHaveBeenCalledWith(expect.objectContaining({ zoom: 6.5, offset: [-200, 0] }))
   })
 
-  it('should centre a listed stack in the area beside the drawer', async () => {
-    const { stub, layer, tour, clusterElements } = await setupLayer({ right: 200 })
+  it('should pan a stack list only as far as it runs under the tour bar', async () => {
+    const { stub, layer, tour, clusterElements, popupRect } = await setupLayer()
+    Object.assign(popupRect, { top: 300, bottom: 750 })
     layer.updateTours([tour('a', 8), tour('b', 8)], null)
     clusterElements()[0]!.click()
-    // Stub map: 400 px wide, the stack projected at x 100 — the uncovered area's middle is x 100.
-    expect(stub.panBy.mock.calls[0]![0]).toEqual([0, 100 - 800 * 0.22])
+    // Stub map 800 px tall, 112 px kept clear below.
+    expect(stub.panBy.mock.calls[0]![0]).toEqual([0, 750 - 688])
+  })
+
+  it('should pan a stack list out from under the drawer', async () => {
+    const { stub, layer, tour, clusterElements, popupRect } = await setupLayer({ right: 200 })
+    Object.assign(popupRect, { left: 150, right: 330 })
+    layer.updateTours([tour('a', 8), tour('b', 8)], null)
+    clusterElements()[0]!.click()
+    expect(stub.panBy.mock.calls[0]![0]).toEqual([330 - (400 - 208), 0])
   })
 
   it('should count the others at the selected tour\'s spot on a chip that lists them all', async () => {

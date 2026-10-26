@@ -123,8 +123,15 @@ export const LABEL_MIN_ZOOM = 10
  * couldn't separate them usefully, so a tap lists them instead (design D6).
  */
 export const STACK_ZOOM = 17
-/** Room around a tapped cluster's tours when the map frames them (more below: the tour bar). */
+/**
+ * Least room around a tapped cluster's tours when the map frames them (more below: the tour bar).
+ * They fill the middle half of the visible area unless that is smaller (D24).
+ */
 const CLUSTER_FIT_PADDING = { top: 64, right: 64, bottom: 112, left: 64 }
+/** Least room between an opened stack list and the edges of the visible area (below: the tour bar). */
+const STACK_LIST_MARGIN = { top: 64, right: 8, bottom: 112, left: 8 }
+/** A list this far into its margin stays put: stacked goals metres apart anchor it a pixel off. */
+const STACK_LIST_SLACK = 8
 /** A cluster tap frames its tours no closer than this, unless its split needs it (no street level). */
 const CLUSTER_FIT_MAX_ZOOM = 15.5
 /** Tours this close to the selected one share its spot: its "+N" chip counts and lists them. */
@@ -226,6 +233,13 @@ const END_GLYPH_SVG = '<path d="M9 6h2V4H9zm4 0V4h2v2zm-4 8v-2h2v2zm8-4V8h2v2zm0
 
 function cubicEaseOut(t: number): number {
   return 1 - (1 - t) ** 3
+}
+
+/** Pan that brings the span [lo, hi] into [min, max]: none if it lies there, centred if it can't fit. */
+export function overflow(lo: number, hi: number, min: number, max: number): number {
+  if (hi - lo > max - min)
+    return (lo + hi - min - max) / 2
+  return lo < min ? lo - min : Math.max(0, hi - max)
 }
 
 interface AnimHandle { cancel: () => void }
@@ -492,16 +506,20 @@ export function useToursMarkerLayer(
   }
 
   /**
-   * Pan (never zoom) the stack to the upper middle, so its list opens below it in full instead of
-   * running off an edge or under the tour bar (D7). `above`: a tour's sheet is open below — the
-   * stack goes to mid-height and its list opens upward.
+   * Open the list below the stack (`above`: upward, a tour's sheet is open below) and pan — never
+   * zoom — only as far as it would run off the visible area or under the tour bar (D7, D23).
    */
   function openStack(stackId: string, at: [number, number], leafIds: string[], above = false) {
-    const { clientWidth: w, clientHeight: h } = map.getContainer()
-    const { left = 0, right = 0 } = getCovered()
-    const px = map.project(at as LngLatLike)
-    map.panBy([px.x - (w + left - right) / 2, px.y - h * (above ? 0.5 : 0.22)], { duration: reducedMotion ? 0 : 300 })
-    stackList.open(stackId, at, leafIds.map(id => stackEntry(id)), text.stackTitle(leafIds.length), onTourClick, above)
+    const popup = stackList.open(stackId, at, leafIds.map(id => stackEntry(id)), text.stackTitle(leafIds.length), onTourClick, above)
+    if (!popup)
+      return
+    const box = map.getContainer().getBoundingClientRect()
+    const list = popup.getBoundingClientRect()
+    const pad = paddingBeside(getCovered(), STACK_LIST_MARGIN)
+    const dx = overflow(list.left - box.left, list.right - box.left, pad.left, box.width - pad.right)
+    const dy = overflow(list.top - box.top, list.bottom - box.top, pad.top, box.height - pad.bottom)
+    if (Math.abs(dx) > STACK_LIST_SLACK || Math.abs(dy) > STACK_LIST_SLACK)
+      map.panBy([dx, dy], { duration: reducedMotion ? 0 : 300 })
   }
 
   /** "+N" beside the selected tour: the others at its spot, hidden while it is open (D12, D15). */
@@ -567,8 +585,14 @@ export function useToursMarkerLayer(
       const lats = lngLats.map(p => p[1])
       // Beside an open drawer or sheet, not under it (D16).
       const covered = getCovered()
+      // In the middle half, not out to the corners: the eye finds them without scanning (D24).
+      const { clientWidth: w, clientHeight: h } = map.getContainer()
+      const x = (w - (covered.left ?? 0) - (covered.right ?? 0)) / 4
+      const y = (h - (covered.top ?? 0) - (covered.bottom ?? 0)) / 4
+      const m = CLUSTER_FIT_PADDING
+      const padding = paddingBeside(covered, { top: Math.max(m.top, y), right: Math.max(m.right, x), bottom: Math.max(m.bottom, y), left: Math.max(m.left, x) })
       const camera = lngLats.length
-        ? map.cameraForBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], { padding: paddingBeside(covered, CLUSTER_FIT_PADDING) })
+        ? map.cameraForBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], { padding })
         : undefined
       const fitZoom = Math.min(camera?.zoom ?? -Infinity, CLUSTER_FIT_MAX_ZOOM)
       // At least a level per tap: a country-wide cluster's fit barely moves the zoom (round 4).

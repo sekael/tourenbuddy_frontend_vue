@@ -57,6 +57,10 @@ Separately, the cluster tree was rebuilt in O(n³) on every selection: 1 s at 60
     fades in; short hops glide in about a second instead of zipping.
   - Tour names move aside, or hide, rather than run over another marker, cluster or start/end
     point.
+- User review, round 3:
+  - Cycling through tours at one spot leaves the map still: framing skips a view that already
+    shows the tour, and the stack list pans only as far as it would run off screen.
+  - A cluster tap keeps its tours in the middle half of the map instead of out in the corners.
 
 ## Capabilities
 

@@ -47,6 +47,8 @@
 - [x] 7.8 Short hops glide (D21) via `moveCalmly` for framing and cluster taps; verify frame-tour and marker-layer tests
 - [x] 7.9 Names yield to markers, clusters and start/end points (D22); verify marker-layer test and the Piz Bernina / Piz Palü walk
 - [x] 7.10 Local demo stacks for Patrick (Allalinhorn ×4, Säntis ×3 + Altmann, Piz Bernina ×2); verify stack list and "+N" chip in a walk
+- [x] 7.11 Stay put when already shown (D23): framing skips a view that already shows the tour; the stack list pans only by its overrun; verify frame-tour and marker-layer tests and a camera-move probe cycling Säntis on desktop and phone
+- [x] 7.12 Cluster taps keep the tours in the middle half (D24); verify marker-layer test and the Säntis + Altmann walk
 
 ## 8. Finalize
 

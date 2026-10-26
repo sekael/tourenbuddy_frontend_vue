@@ -72,7 +72,9 @@ export function frameBounds(
 
 /**
  * Frame the tours' goals, starts and ends (whichever exist) — one tour, or every segment of an
- * outing (#338). A lone goal is a zero-size box, so it lands centred at `TOUR_ZOOM`.
+ * outing (#338). A lone goal is a zero-size box, so it lands centred at `TOUR_ZOOM`. A view that
+ * already shows them about as framed stays put (D23): all in view, at most a level out, the frame
+ * no more than an eighth of the view off — cycling a stack doesn't nudge the map each time.
  */
 export function frameTours(
   map: MaplibreMap,
@@ -85,6 +87,14 @@ export function frameTours(
       if (p)
         bounds.extend([p.lng, p.lat])
     }
+  }
+  const fit = map.cameraForBounds(bounds, { padding: paddingBeside(covered), maxZoom: TOUR_ZOOM, bearing: map.getBearing() })
+  if (fit?.center && fit.zoom !== undefined && map.getZoom() >= fit.zoom - 1 && isBoundsVisible(map, bounds, covered)) {
+    const { clientWidth: w, clientHeight: h } = map.getContainer()
+    const { left = 0, right = 0, top = 0, bottom = 0 } = covered
+    const { x, y } = map.project(fit.center)
+    if (Math.abs(x - w / 2) <= (w - left - right) / 8 && Math.abs(y - h / 2) <= (h - top - bottom) / 8)
+      return
   }
   const first = tours[0]!.goal
   frameBounds(map, bounds, covered, { fallbackCenter: [first.lng, first.lat] })

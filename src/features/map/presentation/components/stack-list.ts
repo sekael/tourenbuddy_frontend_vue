@@ -27,8 +27,11 @@ export function orderStack<T extends Pick<StackEntry, 'completed' | 'plannedDate
 }
 
 export interface StackList {
-  /** `above`: open upward (a sheet covers the screen below the stack). */
-  open: (stackId: string, at: [number, number], entries: StackEntry[], title: string, onSelect: (id: string) => void, above?: boolean) => void
+  /**
+   * Open below the stack, or upward with `above` (a sheet covers the screen below it). Returns the
+   * popup's element to pan into view; none when that list is already open.
+   */
+  open: (stackId: string, at: [number, number], entries: StackEntry[], title: string, onSelect: (id: string) => void, above?: boolean) => HTMLElement | undefined
   close: () => void
   activeId: () => string | null
 }
@@ -47,7 +50,7 @@ export function createStackList(map: MapLibreMap, closeLabel: string): StackList
 
   function open(stackId: string, at: [number, number], entries: StackEntry[], title: string, onSelect: (id: string) => void, above = false) {
     if (active === stackId)
-      return
+      return undefined
     close()
     const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
 
@@ -106,7 +109,8 @@ export function createStackList(map: MapLibreMap, closeLabel: string): StackList
     active = stackId
     const current = new maplibregl.Popup({
       className: above ? 'stack-list-popup stack-list-popup--above' : 'stack-list-popup',
-      ...(above ? { anchor: 'bottom' as const } : {}),
+      // Fixed, so the list can't flip sides while the map pans it into view.
+      anchor: above ? 'bottom' : 'top',
       closeButton: true,
       closeOnClick: true,
       closeOnMove: false,
@@ -126,7 +130,9 @@ export function createStackList(map: MapLibreMap, closeLabel: string): StackList
       returnFocus?.focus()
     })
     popup = current
-    list.querySelector('button')?.focus()
+    // Not scrolled into view by the browser: that would shift the map's container, not the map.
+    list.querySelector('button')?.focus({ preventScroll: true })
+    return current.getElement()
   }
 
   return { open, close, activeId: () => active }
