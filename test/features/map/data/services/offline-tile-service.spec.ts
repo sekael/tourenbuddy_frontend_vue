@@ -116,7 +116,7 @@ describe('enumerateAssetUrls', () => {
     })
     expect(urls).toContain('https://host/sprites/a/sprite@2x.png')
     expect(urls).toContain('https://host/sprites/b/sprite.json')
-    // 5 font stacks × 4 ranges = 20 glyph URLs.
-    expect(urls.filter(u => u.includes('/fonts/'))).toHaveLength(20)
+    // 5 font stacks × 5 ranges (Latin + General Punctuation) = 25 glyph URLs.
+    expect(urls.filter(u => u.includes('/fonts/'))).toHaveLength(25)
   })
 })

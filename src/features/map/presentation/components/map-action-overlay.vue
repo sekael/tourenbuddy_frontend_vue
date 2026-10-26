@@ -5,6 +5,7 @@ import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useMapOverlay } from '../composables/use-map-overlay'
 import MapLayersPanel from './map-layers-panel.vue'
+import MapLegend from './map-legend.vue'
 import MapSpeedDialMenu from './map-speed-dial-menu.vue'
 import SpeedDialTrigger from './speed-dial-trigger.vue'
 
@@ -95,6 +96,21 @@ defineExpose({ isOpen, closeMenu, openMenu, openMapLayers })
       </button>
     </BaseTooltip>
 
+    <!-- The legend one tap away on the map (it is also in the layers panel), bottom left, in
+         the tour bar's row: a control above the menu button hid map labels (round 4). -->
+    <div v-if="!isOpen && !overlayActive" class="legend-anchor">
+      <BaseTooltip :text="t('map.legend.open')">
+        <button
+          class="legend-fab fab-glass"
+          :aria-label="t('map.legend.open')"
+          data-testid="legend-fab"
+          @click="view = 'legend'"
+        >
+          <BaseIcon name="info" />
+        </button>
+      </BaseTooltip>
+    </div>
+
     <!-- The layers panel takes the menu's place, right above the trigger: within
          thumb reach, full width on phones. The trigger closes either. -->
     <Transition name="dial" mode="out-in">
@@ -111,6 +127,12 @@ defineExpose({ isOpen, closeMenu, openMenu, openMapLayers })
         @select-style="selectStyle"
         @toggle-overlay="mapStore.toggleOverlay"
       />
+      <section v-else-if="view === 'legend'" class="legend-panel fab-glass" :aria-label="t('map.legend.title')">
+        <h3 class="legend-heading">
+          {{ t('map.legend.title') }}
+        </h3>
+        <MapLegend />
+      </section>
     </Transition>
 
     <SpeedDialTrigger
@@ -131,7 +153,9 @@ defineExpose({ isOpen, closeMenu, openMenu, openMapLayers })
      browsers — keeps the speed-dial above Android system nav and Brave/Chrome
      bottom chrome, not buried under page-root 100lvh. */
   position: fixed;
-  bottom: calc(var(--spacing-3xl) + var(--safe-bottom));
+  /* Docked at the screen edge, level with the location picker: floating higher, the controls
+     blocked a band of live map (objectives) instead of the edge. */
+  bottom: calc(var(--spacing-lg) + var(--safe-bottom));
   right: calc(var(--spacing-lg) + var(--safe-right));
   display: flex;
   flex-direction: column;
@@ -154,6 +178,44 @@ defineExpose({ isOpen, closeMenu, openMenu, openMapLayers })
   z-index: -1;
   background: transparent;
   pointer-events: auto;
+}
+
+.legend-anchor {
+  position: fixed;
+  left: calc(var(--spacing-lg) + var(--safe-left));
+  /* Centred on the 52 px tour bar. */
+  bottom: calc(var(--spacing-lg) + var(--safe-bottom) + 6px);
+}
+
+.legend-fab {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.legend-panel {
+  position: fixed;
+  left: calc(var(--spacing-lg) + var(--safe-left));
+  bottom: calc(var(--spacing-lg) + var(--safe-bottom) + 52px + var(--spacing-sm));
+  padding: var(--spacing-md);
+  border-radius: var(--radius-lg);
+  pointer-events: auto;
+  max-width: min(320px, calc(100vw - 2 * var(--spacing-lg)));
+  max-height: calc(100dvh - 160px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  animation: dial-rise var(--motion-duration-medium) var(--motion-ease-emphasized) backwards;
+}
+
+.legend-heading {
+  margin: 0 0 var(--spacing-xs);
+  color: var(--color-fab-on-surface);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .compass-fab {

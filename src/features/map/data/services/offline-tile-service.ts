@@ -24,8 +24,11 @@ const FONT_STACKS = [
   'Frutiger Neue Condensed Regular',
   'Frutiger Neue Condensed Medium',
 ]
-/** Glyph ranges covering Latin + accented chars used in Swiss place names. */
-const GLYPH_RANGES = ['0-255', '256-511', '512-767', '768-1023']
+/**
+ * Glyph ranges covering Latin + accented chars used in Swiss place names, plus General
+ * Punctuation (en dash, thin spaces) for the tour labels' date ranges.
+ */
+const GLYPH_RANGES = ['0-255', '256-511', '512-767', '768-1023', '8192-8447']
 
 /**
  * Average stored bytes per tile. A flat blend badly under-fits a SINGLE region

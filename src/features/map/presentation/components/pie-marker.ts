@@ -166,8 +166,18 @@ function buildSvgElement(counts: CountMap, total: number): SVGSVGElement {
     svg.appendChild(pathEl)
   }
 
-  // White backdrop disc for count label readability
-  const backdropR = 10
+  // White outline sets the cluster apart from the base map (D10).
+  const outline = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+  outline.setAttribute('cx', String(MARKER_RADIUS))
+  outline.setAttribute('cy', String(MARKER_RADIUS))
+  outline.setAttribute('r', String(MARKER_RADIUS - 1))
+  outline.setAttribute('fill', 'none')
+  outline.setAttribute('stroke', 'white')
+  outline.setAttribute('stroke-width', '2')
+  svg.appendChild(outline)
+
+  // White backdrop disc for count label readability; the ring around it carries the mix.
+  const backdropR = 9
   const cx = MARKER_RADIUS
   const cy = MARKER_RADIUS
   const backdrop = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
@@ -175,7 +185,7 @@ function buildSvgElement(counts: CountMap, total: number): SVGSVGElement {
   backdrop.setAttribute('cy', String(cy))
   backdrop.setAttribute('r', String(backdropR))
   backdrop.setAttribute('fill', 'white')
-  backdrop.setAttribute('fill-opacity', '0.9')
+  backdrop.setAttribute('fill-opacity', '0.95')
   svg.appendChild(backdrop)
 
   const text = document.createElementNS('http://www.w3.org/2000/svg', 'text')
@@ -183,7 +193,7 @@ function buildSvgElement(counts: CountMap, total: number): SVGSVGElement {
   text.setAttribute('y', String(cy))
   text.setAttribute('text-anchor', 'middle')
   text.setAttribute('dominant-baseline', 'central')
-  text.setAttribute('font-size', '10')
+  text.setAttribute('font-size', total >= 100 ? '10' : '12')
   text.setAttribute('font-weight', '600')
   text.setAttribute('font-family', 'Inter, sans-serif')
   text.setAttribute('fill', '#1c1917')
@@ -195,7 +205,16 @@ function buildSvgElement(counts: CountMap, total: number): SVGSVGElement {
 
 export interface PieMarkerResult {
   element: HTMLElement
-  update: (counts: CountMap, total: number) => void
+  update: (counts: CountMap, total: number, done?: number) => void
+}
+
+const CHECK_SVG = '<svg viewBox="0 0 24 24" width="9" height="9" aria-hidden="true"><polyline points="4.5,12.5 9.5,17.5 19.5,7" stroke="white" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+
+/** Green corner badge of a cluster's completed tours: ✓ alone when all are done, else ✓ + count. */
+function renderDoneBadge(badge: HTMLElement, done: number, total: number): void {
+  // `display`, not the `hidden` attribute: the badge's inline `display:flex` would override it.
+  badge.style.display = done === 0 ? 'none' : 'flex'
+  badge.innerHTML = done === total ? CHECK_SVG : `${CHECK_SVG}<span>${done}</span>`
 }
 
 /**
@@ -237,17 +256,26 @@ export function fadeOut(el: HTMLElement, onDone: () => void): void {
 export function createPieMarkerElement(
   counts: CountMap,
   total: number,
+  done = 0,
 ): PieMarkerResult {
   const wrapper = document.createElement('div')
-  wrapper.style.cssText = 'cursor:pointer;opacity:0;transition:opacity 200ms ease;'
+  // No inline `position`: MapLibre's marker class makes the element absolute (the badge's anchor).
+  wrapper.style.cssText = 'cursor:pointer;opacity:0;transition:opacity 200ms ease;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.35));'
 
   let currentSvg = buildSvgElement(counts, total)
   wrapper.appendChild(currentSvg)
+  // Status at a glance (round-3 review): how many of the cluster's tours are already done.
+  const badge = document.createElement('span')
+  badge.className = 'cluster-done'
+  badge.style.cssText = 'position:absolute;right:-6px;bottom:-4px;align-items:center;gap:1px;min-width:16px;height:16px;padding:0 3px;box-sizing:border-box;justify-content:center;border:1.5px solid white;border-radius:8px;background:#15803D;color:white;font:600 9px/1 Inter,system-ui,sans-serif;'
+  renderDoneBadge(badge, done, total)
+  wrapper.appendChild(badge)
 
-  function update(newCounts: CountMap, newTotal: number) {
+  function update(newCounts: CountMap, newTotal: number, newDone = 0) {
     const newSvg = buildSvgElement(newCounts, newTotal)
     wrapper.replaceChild(newSvg, currentSvg)
     currentSvg = newSvg
+    renderDoneBadge(badge, newDone, newTotal)
   }
 
   return { element: wrapper, update }

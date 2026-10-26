@@ -817,7 +817,28 @@
     },
     "cluster": {
       "label": "Cluster of {count} tours",
-      "spiderfyHint": "Press Escape to collapse"
+      "planned": "{count} planned",
+      "undated": "{count} without a date",
+      "done": "{count} done"
+    },
+    "marker": {
+      "done": "Done",
+      "noDate": "No date",
+      "stackTitle": "{count} tours at this spot",
+      "close": "Close list",
+      "stage": "Stage {n}/{total}",
+      "stackMore": "{count} more tours at this spot — show list"
+    },
+    "legend": {
+      "title": "Legend",
+      "multi": "Several activities",
+      "none": "No activity",
+      "done": "Done",
+      "friend": "A friend's tour you're on",
+      "linked": "Linked with a friend's tour",
+      "cluster": "Several tours — tap to zoom in or list them",
+      "chain": "Segments of a multi-day tour",
+      "open": "Show legend"
     }
   },
   "i18n": {
@@ -980,7 +1001,7 @@
       },
       "mapLayers": {
         "title": "Map layers",
-        "body": "Pick a base map and add hiking trails or ski routes on top, in any combination. With ski routes on, zoom in until the routes show difficulty badges, then tap one for its details — or plan it as a tour right away."
+        "body": "Pick a base map and add hiking trails or ski routes on top, in any combination. With ski routes on, zoom in until the routes show difficulty badges, then tap one for its details — or plan it as a tour right away. The legend at the bottom explains the marker colours and symbols."
       },
       "welcome": {
         "title": "Welcome to TourenBuddy",

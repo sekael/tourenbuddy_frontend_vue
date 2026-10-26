@@ -1,10 +1,11 @@
-import type { ExpressionSpecification, GeoJSONSource, LngLatLike, Map as MapLibreMap } from 'maplibre-gl'
+import type { ExpressionSpecification, GeoJSONSource, LngLatLike, Map as MapLibreMap, SymbolLayerSpecification } from 'maplibre-gl'
 import type { RenderedNode } from './cluster-transitions'
 import type { InternalNode, TreeNode } from './cluster-tree'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import type { DetailMarker } from '@/features/tours/domain/tour-detail-markers'
 import maplibregl from 'maplibre-gl'
+import { haversineMeters } from '@/core/utils/haversine'
 import { TOUR_TYPE_COLORS, TOUR_TYPE_PREVIEW_COLORS } from '@/features/tours/data/models/tour-type'
 import { toursToGeoJson } from '@/features/tours/domain/entities/tour'
 import { routeOrder } from '@/features/tours/domain/legs'
@@ -17,6 +18,19 @@ import {
   cutForest,
   findCrossings,
 } from './cluster-tree'
+import {
+  ACTIVITY_IMAGE_PREFIX,
+  activityGlyphSvg,
+  BLANK_IMAGE_ID,
+  COMPLETED_BADGE_ID,
+  FRIEND_BADGE_ID,
+  LINK_BADGE_ID,
+  loadActivityGlyphs,
+  loadBadges,
+  loadBlankImage,
+  loadSvgImage,
+  whiteGlyphSvg,
+} from './marker-images'
 import {
   addTourWeight,
   createPieMarkerElement,
@@ -33,18 +47,25 @@ import {
   segmentBadgeNumber,
   tourColors,
 } from './pie-marker'
-import { createSpiderfier } from './spiderfy'
+import { createStackList } from './stack-list'
 
 export { CLUSTER_RADIUS }
 
 const SOURCE_ID = 'tours'
 const PREVIEW_SOURCE_ID = 'tours-preview'
-export const TOUR_LAYER_IDS = ['tours-circles', 'tours-circles-selected'] as const
+/** Layers a tap selects a tour on: the goal circles and their name labels. */
+export const TOUR_LAYER_IDS = ['tours-circles', 'tours-circles-selected', 'tours-labels', 'tours-labels-focus'] as const
 const LAYER_ID = TOUR_LAYER_IDS[0]
 const SELECTED_LAYER_ID = TOUR_LAYER_IDS[1]
+const LABEL_LAYER_ID = TOUR_LAYER_IDS[2]
+const FOCUS_LABEL_LAYER_ID = TOUR_LAYER_IDS[3]
+const ACTIVITY_LAYER_ID = 'tours-activity'
 const CHECK_LAYER_ID = 'tours-completed-check'
 const FRIEND_LAYER_ID = 'tours-friend-indicator'
 const LINK_LAYER_ID = 'tours-link-indicator'
+const CHAIN_SOURCE_ID = 'tours-outing-chains'
+const CHAIN_LAYER_ID = 'tours-outing-chains'
+const DETAIL_LABEL_LAYER_ID = 'tour-detail-label'
 const PREVIEW_LAYER_ID = 'tours-preview-circle'
 // Split (multi-colour) fills drawn over a transparent circle, one per circle layer (D6).
 const SPLIT_LAYER_ID = 'tours-split'
@@ -53,9 +74,6 @@ const DETAIL_SPLIT_LAYER_ID = 'tour-detail-split'
 const PREVIEW_SPLIT_LAYER_ID = 'tours-preview-split'
 // Number badges on the focused outing's segments (design D16).
 const SEGMENT_BADGE_LAYER_ID = 'tours-segment-badge'
-const CHECK_ICON_ID = 'tour-check-icon'
-const FRIEND_ICON_ID = 'tour-friend-icon'
-const LINK_ICON_ID = 'tour-link-icon'
 
 // Selection-scoped start/end detail markers — own source so they never touch
 // clustering/collision; rendered beneath the goal so the goal stays on top.
@@ -71,13 +89,47 @@ const MARKER_CIRCLE_RADIUS = 14
 const VIA_CIRCLE_RADIUS = 6
 const SELECTED_CIRCLE_RADIUS = 18
 const PREVIEW_CIRCLE_RADIUS = 16
-const MARKER_CIRCLE_OPACITY = 0.85
-
-export const SPIDERFY_CIRCLE_RADIUS_PX = 32
-export const SPIDERFY_SPIRAL_THRESHOLD = 8
-export const SPIDERFY_SPIRAL_A = 28
-export const SPIDERFY_SPIRAL_B = 5
+const MARKER_CIRCLE_OPACITY = 0.9
+/** Name labels show from this zoom on (the selected tour's and focused segments' always). */
+export const LABEL_MIN_ZOOM = 10
+/**
+ * A cluster that only splits beyond this zoom holds tours metres apart: the over-zoomed base map
+ * couldn't separate them usefully, so a tap lists them instead (design D6).
+ */
+export const STACK_ZOOM = 17
+/** Room around a tapped cluster's tours when the map frames them (more below: the tour bar). */
+const CLUSTER_FIT_PADDING = { top: 64, right: 64, bottom: 112, left: 64 }
+/** A cluster tap frames its tours no closer than this, unless its split needs it (no street level). */
+const CLUSTER_FIT_MAX_ZOOM = 15.5
+/** A cluster drawn this close to the selected tour would cover it: it hides meanwhile (D12). */
+const SELECTION_COVER_RADIUS_PX = 24
+/** Tours this close to the selected one share its spot: its "+N" chip counts and lists them. */
+const SAME_SPOT_M = 25
 const ANIMATION_DURATION_MS = 300
+
+const LABEL_FONT = ['Frutiger Neue Medium']
+const LABEL_SUB_FONT = ['Frutiger Neue Regular']
+const IS_SELECTED: ExpressionSpecification = ['==', ['get', 'selected'], true]
+
+/** Localised text the layer shows; owned by the map component (i18n + formatting). */
+export interface MarkerText {
+  /** Label lines of a tour: its name and a "elevation · date / no date / done" line. */
+  describeTour: (tour: Tour) => { name: string, sub: string }
+  /** Stack-list title for `count` tours on one spot. */
+  stackTitle: (count: number) => string
+  /** Accessible name of the selected tour's "+N" chip: `count` other tours at its spot. */
+  stackMore: (count: number) => string
+  /** A cluster's name and hover title: its count split by status (season planning, round 5). */
+  clusterSummary?: (status: { total: number, planned: number, undated: number, done: number }) => string
+  closeLabel: string
+}
+
+const DEFAULT_TEXT: MarkerText = {
+  describeTour: tour => ({ name: tour.name ?? '', sub: '' }),
+  stackTitle: count => String(count),
+  stackMore: count => `+${count}`,
+  closeLabel: 'Close',
+}
 
 function buildMatchExpr(
   colors: Record<TourType, string>,
@@ -125,170 +177,6 @@ function addSplitLayer(
   }, beforeId)
 }
 
-async function loadCheckIcon(map: MapLibreMap): Promise<boolean> {
-  if (map.hasImage(CHECK_ICON_ID))
-    return true
-
-  const size = 28
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 28 28">
-      <polyline
-        points="5,14 11,21 23,8"
-        stroke="white"
-        stroke-width="3.5"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        fill="none"
-      />
-    </svg>
-  `.trim()
-
-  const blob = new Blob([svg], { type: 'image/svg+xml' })
-  const url = URL.createObjectURL(blob)
-
-  return new Promise((resolve) => {
-    const img = new Image(size, size)
-    img.onload = () => {
-      URL.revokeObjectURL(url)
-      try {
-        map.addImage(CHECK_ICON_ID, img, { sdf: false })
-        resolve(true)
-      }
-      catch {
-        resolve(false)
-      }
-    }
-    img.onerror = () => {
-      URL.revokeObjectURL(url)
-      resolve(false)
-    }
-    img.src = url
-  })
-}
-
-async function loadFriendIcon(map: MapLibreMap): Promise<boolean> {
-  if (map.hasImage(FRIEND_ICON_ID))
-    return true
-
-  // Logical (CSS-px) size of the icon; the 0..28 viewBox holds the glyph geometry.
-  const size = 28
-  // Rasterize at 4× and register with a matching pixelRatio so the texture carries
-  // 4× the detail while still measuring 28 logical px — crisp on hi-DPI / when scaled.
-  const scale = 4
-  const render = size * scale
-  // Two-person glyph — marks a friend's tour inside the marker.
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="${render}" height="${render}" viewBox="0 0 28 28" fill="white">
-      <circle cx="10" cy="9" r="3.5" />
-      <path d="M4 21c0-3.3 2.7-6 6-6s6 2.7 6 6z" />
-      <circle cx="19" cy="10" r="3" />
-      <path d="M19 14c2.8 0 5 2.2 5 5h-6.2c.2-.6.2-1.2.2-1.8 0-1.2-.3-2.3-.8-3.2z" />
-    </svg>
-  `.trim()
-
-  const blob = new Blob([svg], { type: 'image/svg+xml' })
-  const url = URL.createObjectURL(blob)
-
-  return new Promise((resolve) => {
-    const img = new Image(render, render)
-    img.onload = () => {
-      URL.revokeObjectURL(url)
-      try {
-        // SDF so the layer can tint it per tour type via `icon-color`; the SVG's
-        // own white fill is ignored — only its alpha silhouette is used.
-        map.addImage(FRIEND_ICON_ID, img, { sdf: true, pixelRatio: scale })
-        resolve(true)
-      }
-      catch {
-        resolve(false)
-      }
-    }
-    img.onerror = () => {
-      URL.revokeObjectURL(url)
-      resolve(false)
-    }
-    img.src = url
-  })
-}
-
-async function loadLinkIcon(map: MapLibreMap): Promise<boolean> {
-  if (map.hasImage(LINK_ICON_ID))
-    return true
-
-  const size = 28
-  const scale = 4
-  const render = size * scale
-  // Chain-link glyph (two interlocking links) — marks a tour that belongs to a
-  // tour_link_group. White fill; the SDF alpha silhouette is tinted by the layer.
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="${render}" height="${render}" viewBox="0 0 28 28" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M11.5 16.5l-3 3a3.5 3.5 0 1 1-4.95-4.95l3-3a3.5 3.5 0 0 1 4.95 0" />
-      <path d="M16.5 11.5l3-3a3.5 3.5 0 1 1 4.95 4.95l-3 3a3.5 3.5 0 0 1-4.95 0" />
-      <path d="M10.5 17.5l7-7" />
-    </svg>
-  `.trim()
-
-  const blob = new Blob([svg], { type: 'image/svg+xml' })
-  const url = URL.createObjectURL(blob)
-
-  return new Promise((resolve) => {
-    const img = new Image(render, render)
-    img.onload = () => {
-      URL.revokeObjectURL(url)
-      try {
-        map.addImage(LINK_ICON_ID, img, { sdf: true, pixelRatio: scale })
-        resolve(true)
-      }
-      catch {
-        resolve(false)
-      }
-    }
-    img.onerror = () => {
-      URL.revokeObjectURL(url)
-      resolve(false)
-    }
-    img.src = url
-  })
-}
-
-// Rasterizes a white glyph (non-SDF, like the completion check) at 4× for crisp
-// hi-DPI rendering. Used for the start/end detail-marker icons.
-async function loadWhiteGlyphIcon(map: MapLibreMap, id: string, innerSvg: string): Promise<boolean> {
-  if (map.hasImage(id))
-    return true
-
-  const size = 24
-  const scale = 4
-  const render = size * scale
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="${render}" height="${render}" viewBox="0 0 24 24" fill="white">
-      ${innerSvg}
-    </svg>
-  `.trim()
-
-  const blob = new Blob([svg], { type: 'image/svg+xml' })
-  const url = URL.createObjectURL(blob)
-
-  return new Promise((resolve) => {
-    const img = new Image(render, render)
-    img.onload = () => {
-      URL.revokeObjectURL(url)
-      try {
-        map.addImage(id, img, { sdf: false, pixelRatio: scale })
-        resolve(true)
-      }
-      catch {
-        resolve(false)
-      }
-    }
-    img.onerror = () => {
-      URL.revokeObjectURL(url)
-      resolve(false)
-    }
-    img.src = url
-  })
-}
-
 // Ring glyph (start) and chequered flag (end) — the form's and the detail rows' `trip_origin` /
 // `sports_score` (design D22). A house would read as a hut on swisstopo maps.
 const START_GLYPH_SVG = '<path d="M8.125 21.213q-1.825-.788-3.187-2.15t-2.15-3.188T2 11.988t.788-3.875t2.15-3.175t3.187-2.15T12.013 2t3.875.788t3.175 2.15t2.15 3.175t.787 3.875t-.787 3.887t-2.15 3.188t-3.175 2.15t-3.875.787t-3.888-.787m8.125-4.963Q18 14.5 18 12t-1.75-4.25T12 6T7.75 7.75T6 12t1.75 4.25T12 18t4.25-1.75" />'
@@ -326,6 +214,25 @@ function animateMarker(
   return { cancel: () => cancelAnimationFrame(rafId) }
 }
 
+/**
+ * A bowed arc from `a` to `b` (D8): a schematic link between two segments — a straight line
+ * between goals reads as the route itself, and crosses glaciers and lakes the route doesn't.
+ */
+export function chainArc(a: [number, number], b: [number, number], steps = 16): [number, number][] {
+  // Work in a locally square frame (a longitude degree is shorter than a latitude degree).
+  const k = Math.cos((((a[1] + b[1]) / 2) * Math.PI) / 180)
+  const dx = (b[0] - a[0]) * k
+  const dy = b[1] - a[1]
+  // Control point: the midpoint pushed sideways by a fifth of the distance (clockwise bow).
+  const cx = (a[0] + b[0]) / 2 + (dy * 0.2) / k
+  const cy = (a[1] + b[1]) / 2 - dx * 0.2
+  return Array.from({ length: steps + 1 }, (_, i) => {
+    const t = i / steps
+    const u = 1 - t
+    return [u * u * a[0] + 2 * u * t * cx + t * t * b[0], u * u * a[1] + 2 * u * t * cy + t * t * b[1]]
+  })
+}
+
 function makeDotEl(colors: string[]): HTMLElement {
   const el = document.createElement('div')
   el.style.cssText = `width:12px;height:12px;border-radius:50%;background:${cssFill(colors)};opacity:0.85;pointer-events:none;`
@@ -334,21 +241,33 @@ function makeDotEl(colors: string[]): HTMLElement {
 
 interface ClusterEntry {
   marker: maplibregl.Marker
-  update: (counts: Record<string, number>, total: number) => void
+  update: (counts: Record<string, number>, total: number, done: number) => void
   setNode: (node: InternalNode) => void
+  /** Completed members its badge shows. */
+  done: number
 }
 
 export function useToursMarkerLayer(
   map: MapLibreMap,
   onTourClick: (tourId: string) => void,
   getAriaLabel: (count: number) => string,
-  getSpiderfyHint: () => string = () => 'Press Escape to collapse',
+  textOverrides: Partial<MarkerText> = {},
 ) {
+  const text = { ...DEFAULT_TEXT, ...textOverrides }
   const clusterCache = new Map<string, ClusterEntry>()
   const animatingIds = new Set<string>()
   const inflight: Array<{ handle: AnimHandle, marker: maplibregl.Marker }> = []
 
-  const tourDataCache = new Map<string, { lngLat: [number, number], colors: string[] }>()
+  interface TourData {
+    lngLat: [number, number]
+    colors: string[]
+    name: string
+    sub: string
+    completed: boolean
+    plannedDate: string | null
+    type: TourType | null
+  }
+  const tourDataCache = new Map<string, TourData>()
   let pieImagesHandled = false
 
   let currentTree: TreeNode | null = null
@@ -356,7 +275,7 @@ export function useToursMarkerLayer(
   let lastSampledZoom = 0
   let currentIndividualIds = new Set<string>()
   let currentSelectedId: string | null = null
-  /** The focused outing's segments: kept out of clustering so every one shows (D16). */
+  /** Kept out of clustering so they always show: the selection and a focused outing's segments (D16, D2). */
   let pinnedIds = new Set<string>()
   let lastFrame: { tree: TreeNode | null, zoom: number, byNodeId: Map<string, RenderedNode> } = {
     tree: null,
@@ -368,7 +287,7 @@ export function useToursMarkerLayer(
     ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
     : false
 
-  const spiderfier = createSpiderfier(map)
+  const stackList = createStackList(map, text.closeLabel)
 
   function getBboxNow(): [number, number, number, number] {
     const b = map.getBounds()
@@ -380,6 +299,20 @@ export function useToursMarkerLayer(
     for (const id of node.leafIds)
       addTourWeight(counts, tourDataCache.get(id)?.colors ?? [FALLBACK_COLOR])
     return counts
+  }
+
+  function doneCount(leafIds: string[]): number {
+    return leafIds.filter(id => tourDataCache.get(id)?.completed).length
+  }
+
+  function labelCluster(element: HTMLElement, leafIds: string[]) {
+    const open = leafIds.map(id => tourDataCache.get(id)).filter(d => d && !d.completed)
+    const planned = open.filter(d => d!.plannedDate).length
+    const label = text.clusterSummary
+      ? text.clusterSummary({ total: leafIds.length, planned, undated: open.length - planned, done: leafIds.length - open.length })
+      : getAriaLabel(leafIds.length)
+    element.setAttribute('aria-label', label)
+    element.title = label
   }
 
   function makePieTempEl(leafIds: string[]): HTMLElement {
@@ -400,38 +333,27 @@ export function useToursMarkerLayer(
 
     const visibleIds = [...currentIndividualIds].filter(id => !animatingIds.has(id))
     const inVisible: ExpressionSpecification = ['in', ['get', 'id'], ['literal', visibleIds]]
+    const isSelected: ExpressionSpecification = ['==', ['get', 'id'], currentSelectedId ?? '']
+    const isFocus: ExpressionSpecification = ['any', isSelected, ['has', 'segmentBadge']]
 
-    const unselected: ExpressionSpecification = ['all', inVisible, ['!=', ['get', 'id'], currentSelectedId ?? '']]
-    const selected: ExpressionSpecification = ['all', inVisible, ['==', ['get', 'id'], currentSelectedId ?? '']]
-    map.setFilter(LAYER_ID, unselected)
-    map.setFilter(SELECTED_LAYER_ID, selected)
-    map.setFilter(SPLIT_LAYER_ID, ['all', unselected, IS_SPLIT])
-    map.setFilter(SELECTED_SPLIT_LAYER_ID, ['all', selected, IS_SPLIT])
-
-    if (map.getLayer(CHECK_LAYER_ID)) {
-      map.setFilter(CHECK_LAYER_ID, [
-        'all',
-        inVisible,
-        ['==', ['get', 'completed'], true],
-      ] as ExpressionSpecification)
+    const unselected: ExpressionSpecification = ['all', inVisible, ['!', isSelected]]
+    const selected: ExpressionSpecification = ['all', inVisible, isSelected]
+    const filters: Record<string, ExpressionSpecification> = {
+      [LAYER_ID]: unselected,
+      [SELECTED_LAYER_ID]: selected,
+      [SPLIT_LAYER_ID]: ['all', unselected, IS_SPLIT],
+      [SELECTED_SPLIT_LAYER_ID]: ['all', selected, IS_SPLIT],
+      [ACTIVITY_LAYER_ID]: inVisible,
+      [CHECK_LAYER_ID]: ['all', inVisible, ['==', ['get', 'completed'], true]],
+      // Friend badge is hidden for linked tours — the link badge takes precedence.
+      [FRIEND_LAYER_ID]: ['all', inVisible, ['==', ['get', 'isFriendTour'], true], ['!=', ['get', 'isLinked'], true]],
+      [LINK_LAYER_ID]: ['all', inVisible, ['==', ['get', 'isLinked'], true]],
+      [LABEL_LAYER_ID]: ['all', inVisible, ['!', isFocus]],
+      [FOCUS_LABEL_LAYER_ID]: ['all', inVisible, isFocus],
     }
-
-    if (map.getLayer(FRIEND_LAYER_ID)) {
-      // Friend glyph is hidden for linked tours — the chain icon takes precedence.
-      map.setFilter(FRIEND_LAYER_ID, [
-        'all',
-        inVisible,
-        ['==', ['get', 'isFriendTour'], true],
-        ['!=', ['get', 'isLinked'], true],
-      ] as ExpressionSpecification)
-    }
-
-    if (map.getLayer(LINK_LAYER_ID)) {
-      map.setFilter(LINK_LAYER_ID, [
-        'all',
-        inVisible,
-        ['==', ['get', 'isLinked'], true],
-      ] as ExpressionSpecification)
+    for (const [id, filter] of Object.entries(filters)) {
+      if (map.getLayer(id))
+        map.setFilter(id, filter)
     }
   }
 
@@ -506,31 +428,107 @@ export function useToursMarkerLayer(
     return { kind: 'deleted' }
   }
 
+  function stackEntry(id: string) {
+    const data = tourDataCache.get(id)
+    return {
+      id,
+      colors: data?.colors ?? [FALLBACK_COLOR],
+      name: data?.name ?? '',
+      sub: data?.sub ?? '',
+      completed: data?.completed ?? false,
+      plannedDate: data?.plannedDate ?? null,
+      glyph: data?.type ? activityGlyphSvg(data.type) : null,
+    }
+  }
+
+  /**
+   * Pan (never zoom) the stack to the upper middle, so its list opens below it in full instead of
+   * running off an edge or under the tour bar (D7). `above`: a tour's sheet is open below — the
+   * stack goes to mid-height and its list opens upward.
+   */
+  function openStack(stackId: string, at: [number, number], leafIds: string[], above = false) {
+    const { clientWidth: w, clientHeight: h } = map.getContainer()
+    const px = map.project(at as LngLatLike)
+    map.panBy([px.x - w / 2, px.y - h * (above ? 0.5 : 0.22)], { duration: reducedMotion ? 0 : 300 })
+    stackList.open(stackId, at, leafIds.map(id => stackEntry(id)), text.stackTitle(leafIds.length), onTourClick, above)
+  }
+
+  /** "+N" beside the selected tour: the others at its spot, while their stack is hidden (D12). */
+  let selectionChip: { marker: maplibregl.Marker, el: HTMLElement, key: string } | null = null
+  function updateSelectionChip() {
+    const selected = currentSelectedId ? tourDataCache.get(currentSelectedId) : undefined
+    const others = selected
+      ? [...tourDataCache.entries()]
+          .filter(([id, d]) => id !== currentSelectedId && !pinnedIds.has(id) && haversineMeters(d.lngLat, selected.lngLat) < SAME_SPOT_M)
+          .map(([id]) => id)
+      : []
+    const key = others.length ? `${currentSelectedId}:${others.join()}` : ''
+    if (selectionChip?.key === key)
+      return
+    selectionChip?.marker.remove()
+    selectionChip = null
+    if (!selected || !others.length)
+      return
+    const el = document.createElement('div')
+    el.className = 'selection-stack-chip'
+    el.textContent = `+${others.length}`
+    el.setAttribute('role', 'button')
+    el.setAttribute('tabindex', '0')
+    el.setAttribute('aria-label', text.stackMore(others.length))
+    el.title = text.stackMore(others.length)
+    el.style.cssText = 'padding:2px 7px;border:1.5px solid white;border-radius:10px;background:#1F2937;color:white;font:600 11px/1.2 Inter,system-ui,sans-serif;box-shadow:0 1px 3px rgba(0,0,0,0.35);cursor:pointer;'
+    const open = () => openStack(`selection:${currentSelectedId}`, selected.lngLat, [currentSelectedId!, ...others], true)
+    el.addEventListener('click', (e) => {
+      e.stopPropagation()
+      open()
+    })
+    el.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        open()
+      }
+    })
+    // Upper left: the tour's own label usually takes the right side.
+    const marker = new maplibregl.Marker({ element: el, anchor: 'right', offset: [-16, -18] })
+      .setLngLat(selected.lngLat as LngLatLike)
+      .addTo(map)
+    selectionChip = { marker, el, key }
+  }
+
   function createClusterMarkerEntry(node: InternalNode): ClusterEntry {
     let currentNode = node
     const counts = getCountsForNode(node)
-    const { element, update } = createPieMarkerElement(counts, node.totalLeafCount)
+    const { element, update } = createPieMarkerElement(counts, node.totalLeafCount, doneCount(node.leafIds))
     element.setAttribute('role', 'button')
     element.setAttribute('tabindex', '0')
-    element.setAttribute('aria-label', getAriaLabel(node.totalLeafCount))
+    labelCluster(element, node.leafIds)
 
     const onExpand = () => {
-      if (currentNode.splitZoom > map.getMaxZoom()) {
-        if (spiderfier.getActiveClusterId() !== currentNode.id) {
-          const leaves = currentNode.leafIds.map(id => ({
-            id,
-            colors: tourDataCache.get(id)?.colors ?? [FALLBACK_COLOR],
-          }))
-          spiderfier.spiderfy(currentNode.id, currentNode.centroid, leaves, getSpiderfyHint(), onTourClick)
-        }
+      const node = currentNode
+      if (node.splitZoom > Math.min(map.getMaxZoom(), STACK_ZOOM)) {
+        openStack(node.id, node.centroid, node.leafIds)
+        return
       }
-      else {
-        spiderfier.collapse()
-        map.easeTo({ center: currentNode.centroid as LngLatLike, zoom: currentNode.splitZoom + 0.01 })
-      }
+      stackList.close()
+      // Frame all the cluster's tours — at least past its split, so one tap always separates it.
+      const lngLats = node.leafIds.map(id => tourDataCache.get(id)?.lngLat).filter(p => !!p)
+      const lngs = lngLats.map(p => p[0])
+      const lats = lngLats.map(p => p[1])
+      const camera = lngLats.length
+        ? map.cameraForBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], { padding: CLUSTER_FIT_PADDING })
+        : undefined
+      const fitZoom = Math.min(camera?.zoom ?? -Infinity, CLUSTER_FIT_MAX_ZOOM)
+      // At least a level per tap: a country-wide cluster's fit barely moves the zoom (round 4).
+      const zoom = Math.min(map.getMaxZoom(), Math.max(node.splitZoom + 0.01, fitZoom, map.getZoom() + 1))
+      map.easeTo({ center: (zoom === fitZoom ? camera!.center : node.centroid) as LngLatLike, zoom })
     }
 
-    element.addEventListener('click', onExpand)
+    element.addEventListener('click', (e: MouseEvent) => {
+      // A DOM marker's click also bubbles into the map, which would read it as a background tap
+      // and close what this tap opens (design D1).
+      e.stopPropagation()
+      onExpand()
+    })
     element.addEventListener('keydown', (e: KeyboardEvent) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault()
@@ -545,7 +543,23 @@ export function useToursMarkerLayer(
     function setNode(n: InternalNode) {
       currentNode = n
     }
-    return { marker, update, setNode }
+    return { marker, update, setNode, done: doneCount(node.leafIds) }
+  }
+
+  /**
+   * The cluster sitting on the selected tour (the stack it was picked from) hides while it is
+   * selected: the selection shows on its own, and no count that changed with the framing zoom
+   * contradicts the list it was picked from (D12).
+   */
+  function hideClustersUnderSelection() {
+    const selected = currentSelectedId ? tourDataCache.get(currentSelectedId)?.lngLat : undefined
+    const selectedPx = selected && map.project(selected as LngLatLike)
+    for (const [id, entry] of clusterCache) {
+      const centroid = lastFrame.byNodeId.get(id)?.centroid
+      const px = selectedPx && centroid && map.project(centroid as LngLatLike)
+      const hidden = !!px && Math.hypot(px.x - selectedPx.x, px.y - selectedPx.y) < SELECTION_COVER_RADIUS_PX
+      entry.marker.getElement().style.visibility = hidden ? 'hidden' : ''
+    }
   }
 
   function commitFrame(newTree: TreeNode | null, newZoom: number) {
@@ -668,6 +682,8 @@ export function useToursMarkerLayer(
         = oldNode.centroid[0] !== treeNode.centroid[0]
           || oldNode.centroid[1] !== treeNode.centroid[1]
       const leafCountChanged = oldNode.leafIds.length !== treeNode.leafIds.length
+      // Same leaves, but a member may have been ticked done meanwhile.
+      const done = doneCount(treeNode.leafIds)
 
       if (centroidChanged) {
         if (reducedMotion) {
@@ -678,15 +694,18 @@ export function useToursMarkerLayer(
         }
       }
 
-      if (leafCountChanged) {
+      if (leafCountChanged || done !== entry.done) {
         const counts = getCountsForNode(treeNode)
-        entry.update(counts, treeNode.totalLeafCount)
-        entry.marker.getElement().setAttribute('aria-label', getAriaLabel(treeNode.totalLeafCount))
+        entry.update(counts, treeNode.totalLeafCount, done)
+        entry.done = done
+        labelCluster(entry.marker.getElement(), treeNode.leafIds)
       }
     }
 
     refreshLayerFilters()
     lastFrame = { tree: newTree, zoom: newZoom, byNodeId: newByNodeId }
+    hideClustersUnderSelection()
+    updateSelectionChip()
   }
 
   async function setup() {
@@ -723,18 +742,26 @@ export function useToursMarkerLayer(
       data: { type: 'FeatureCollection', features: [] },
     })
 
+    map.addSource(CHAIN_SOURCE_ID, {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+    })
+
+    const none: ExpressionSpecification = ['in', ['get', 'id'], ['literal', []]]
+
     map.addLayer({
       id: LAYER_ID,
       type: 'circle',
       source: SOURCE_ID,
-      filter: ['in', ['get', 'id'], ['literal', []]],
+      filter: none,
       paint: {
         'circle-radius': MARKER_CIRCLE_RADIUS,
         'circle-color': unlessSplit(COLOR_EXPR),
         'circle-opacity': MARKER_CIRCLE_OPACITY,
         'circle-opacity-transition': { duration: 200 },
-        // A focused outing's segments wear a thin white ring (the selected one its thicker one).
-        'circle-stroke-width': ['case', ['has', 'segmentBadge'], 2, 0],
+        // A white ring sets app pins apart from the base map's own symbols (D5); a focused
+        // outing's segments wear a thicker one (the selected one its thickest).
+        'circle-stroke-width': ['case', ['has', 'segmentBadge'], 2.5, 1.5],
         'circle-stroke-color': '#ffffff',
       },
     })
@@ -743,7 +770,7 @@ export function useToursMarkerLayer(
       id: SELECTED_LAYER_ID,
       type: 'circle',
       source: SOURCE_ID,
-      filter: ['in', ['get', 'id'], ['literal', []]],
+      filter: none,
       paint: {
         'circle-radius': SELECTED_CIRCLE_RADIUS,
         'circle-color': unlessSplit(COLOR_EXPR),
@@ -771,15 +798,32 @@ export function useToursMarkerLayer(
         'circle-radius': ['case', IS_VIA, VIA_CIRCLE_RADIUS, MARKER_CIRCLE_RADIUS],
         'circle-color': ['case', IS_VIA, '#ffffff', unlessSplit(['case', ['get', 'draft'], PREVIEW_COLOR_EXPR, COLOR_EXPR])],
         'circle-opacity': MARKER_CIRCLE_OPACITY,
-        'circle-stroke-width': ['case', IS_VIA, 3, 0],
-        'circle-stroke-color': COLOR_EXPR,
+        'circle-stroke-width': ['case', IS_VIA, 3, 1.5],
+        'circle-stroke-color': ['case', IS_VIA, COLOR_EXPR, '#ffffff'],
       },
     }, LAYER_ID)
     addSplitLayer(map, DETAIL_SPLIT_LAYER_ID, DETAIL_SOURCE_ID, MARKER_CIRCLE_RADIUS, MARKER_CIRCLE_OPACITY, LAYER_ID)
 
-    const startIconLoaded = await loadWhiteGlyphIcon(map, START_ICON_ID, START_GLYPH_SVG)
-    const endIconLoaded = await loadWhiteGlyphIcon(map, END_ICON_ID, END_GLYPH_SVG)
-    if (startIconLoaded && endIconLoaded) {
+    // Outing chains run beneath every marker (D8). Round dots, not dashes: dashed dark lines are
+    // footpaths on a Swisstopo map.
+    map.addLayer({
+      id: CHAIN_LAYER_ID,
+      type: 'line',
+      source: CHAIN_SOURCE_ID,
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': '#1F2937',
+        'line-opacity': 0.75,
+        'line-width': 4,
+        'line-dasharray': [0, 2],
+      },
+    }, DETAIL_CIRCLE_LAYER_ID)
+
+    const [startLoaded, endLoaded] = await Promise.all([
+      loadSvgImage(map, START_ICON_ID, whiteGlyphSvg(START_GLYPH_SVG), 24),
+      loadSvgImage(map, END_ICON_ID, whiteGlyphSvg(END_GLYPH_SVG), 24),
+    ])
+    if (startLoaded && endLoaded) {
       map.addLayer({
         id: DETAIL_ICON_LAYER_ID,
         type: 'symbol',
@@ -793,8 +837,22 @@ export function useToursMarkerLayer(
         },
       }, LAYER_ID)
     }
-
-    spiderfier.setup()
+    // "Startpunkt" / "Endpunkt" under the detail circles (D9).
+    map.addLayer({
+      id: DETAIL_LABEL_LAYER_ID,
+      type: 'symbol',
+      source: DETAIL_SOURCE_ID,
+      filter: ['has', 'label'],
+      layout: {
+        'text-field': ['get', 'label'],
+        'text-font': ['literal', LABEL_FONT],
+        'text-size': 11,
+        'text-anchor': 'top',
+        'text-offset': [0, 1.4],
+        'text-allow-overlap': true,
+      },
+      paint: { 'text-color': '#1c1917', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
+    })
 
     map.addLayer({
       id: PREVIEW_LAYER_ID,
@@ -810,78 +868,47 @@ export function useToursMarkerLayer(
     })
     addSplitLayer(map, PREVIEW_SPLIT_LAYER_ID, PREVIEW_SOURCE_ID, PREVIEW_CIRCLE_RADIUS, 0.9)
 
-    // Friend indicator is added BEFORE the completion check so the check (added
-    // last below) stacks on top — completion must read above everything else.
-    const friendIconLoaded = await loadFriendIcon(map)
-    if (friendIconLoaded) {
-      // Friendship indicator is centered in the marker and sized to nearly fill
-      // it (28px icon × 0.8 ≈ 22px inside a 28px circle → even ~3px padding).
-      // Tinted a lighter shade of the tour-type colour so the white completion
-      // check stays legible on top of it for completed friend tours.
-      map.addLayer({
-        id: FRIEND_LAYER_ID,
-        type: 'symbol',
-        source: SOURCE_ID,
-        filter: ['in', ['get', 'id'], ['literal', []]],
-        layout: {
-          'icon-image': FRIEND_ICON_ID,
-          'icon-size': 0.8,
-          'icon-allow-overlap': true,
-          'icon-ignore-placement': true,
-        },
-        paint: {
-          'icon-color': PREVIEW_COLOR_EXPR,
-          'icon-opacity': 1,
-          'icon-opacity-transition': { duration: 200 },
-        },
-      })
-    }
+    // The primary activity's white glyph, centred in the goal circle (D5). The symbol also claims
+    // the circle's footprint in label placement, so a base-map summit pictogram or label under a
+    // marker gives way instead of peeking out as a second, dark "marker" (untyped: a blank image).
+    await Promise.all([loadActivityGlyphs(map), loadBlankImage(map)])
+    map.addLayer({
+      id: ACTIVITY_LAYER_ID,
+      type: 'symbol',
+      source: SOURCE_ID,
+      filter: none,
+      layout: {
+        'icon-image': ['coalesce', ['get', 'activityImage'], BLANK_IMAGE_ID],
+        'icon-size': ['case', IS_SELECTED, 1.25, 1],
+        'icon-allow-overlap': true,
+        // Footprint ≈ the circle: the 18 px glyph plus padding on each side.
+        'icon-padding': ['case', IS_SELECTED, 6, 4],
+      },
+    })
 
-    // Link indicator BEFORE the check so the white completion ✓ stacks above
-    // it. Same shape / size / tint as the friend glyph — fills the marker,
-    // PREVIEW_COLOR_EXPR keeps the completion mark legible on top.
-    const linkIconLoaded = await loadLinkIcon(map)
-    if (linkIconLoaded) {
-      map.addLayer({
-        id: LINK_LAYER_ID,
-        type: 'symbol',
-        source: SOURCE_ID,
-        filter: ['in', ['get', 'id'], ['literal', []]],
-        layout: {
-          'icon-image': LINK_ICON_ID,
-          'icon-size': 0.8,
-          'icon-allow-overlap': true,
-          'icon-ignore-placement': true,
-        },
-        paint: {
-          'icon-color': PREVIEW_COLOR_EXPR,
-          'icon-opacity': 1,
-          'icon-opacity-transition': { duration: 200 },
-        },
-      })
-    }
+    // Corner badges on the circle's edge: done lower right, friend / link lower left (D5).
+    const badges = await loadBadges(map)
+    const corner = (x: number): ExpressionSpecification =>
+      ['case', IS_SELECTED, ['literal', [x * 14, 14]], ['literal', [x * 11, 11]]]
+    const addBadgeLayer = (id: string, image: string, x: number) => map.addLayer({
+      id,
+      type: 'symbol',
+      source: SOURCE_ID,
+      filter: none,
+      layout: {
+        'icon-image': image,
+        'icon-offset': corner(x),
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+    })
+    if (badges.friend)
+      addBadgeLayer(FRIEND_LAYER_ID, FRIEND_BADGE_ID, -1)
+    if (badges.link)
+      addBadgeLayer(LINK_LAYER_ID, LINK_BADGE_ID, -1)
+    if (badges.completed)
+      addBadgeLayer(CHECK_LAYER_ID, COMPLETED_BADGE_ID, 1)
 
-    const iconLoaded = await loadCheckIcon(map)
-    if (iconLoaded) {
-      map.addLayer({
-        id: CHECK_LAYER_ID,
-        type: 'symbol',
-        source: SOURCE_ID,
-        filter: ['in', ['get', 'id'], ['literal', []]],
-        layout: {
-          'icon-image': CHECK_ICON_ID,
-          'icon-size': 0.65,
-          'icon-allow-overlap': true,
-          'icon-ignore-placement': true,
-        },
-        paint: {
-          'icon-opacity': 1,
-          'icon-opacity-transition': { duration: 200 },
-        },
-      })
-    }
-
-    // Last, so the number reads above every other marker glyph.
     map.addLayer({
       id: SEGMENT_BADGE_LAYER_ID,
       type: 'symbol',
@@ -895,20 +922,44 @@ export function useToursMarkerLayer(
       },
     })
 
-    map.on('click', LAYER_ID, (e) => {
-      const feature = e.features?.[0]
-      if (feature?.properties?.id) {
-        onTourClick(feature.properties.id as string)
-      }
-    })
+    // Name labels last, so they are placed first: basemap labels in their way give way (D4).
+    const labelLayout: SymbolLayerSpecification['layout'] = {
+      'text-field': ['format', ['get', 'label'], { 'text-font': ['literal', LABEL_FONT] }, '\n', {}, ['get', 'labelSub'], { 'text-font': ['literal', LABEL_SUB_FONT], 'font-scale': 0.85, 'text-color': '#44403c' }] as ExpressionSpecification,
+      // Also the layout font: without it MapLibre requests its Open Sans default, which the
+      // Swisstopo glyph server doesn't have.
+      'text-font': ['literal', LABEL_FONT],
+      'text-size': 13,
+      'text-max-width': 12,
+      'text-line-height': 1.15,
+      'text-variable-anchor': ['left', 'right', 'top', 'bottom'],
+      // Clear of the circle: 14 px radius (18 selected) + a few px, in ems of the 13 px text.
+      'text-radial-offset': ['case', IS_SELECTED, 1.75, 1.45],
+      'text-justify': 'auto',
+      'text-padding': 3,
+    }
+    const labelPaint = {
+      'text-color': '#1c1917',
+      'text-halo-color': 'rgba(255,255,255,0.95)',
+      'text-halo-width': 1.6,
+      'text-halo-blur': 0.4,
+    }
+    map.addLayer({ id: LABEL_LAYER_ID, type: 'symbol', source: SOURCE_ID, minzoom: LABEL_MIN_ZOOM, filter: none, layout: labelLayout, paint: labelPaint })
+    map.addLayer({ id: FOCUS_LABEL_LAYER_ID, type: 'symbol', source: SOURCE_ID, filter: none, layout: labelLayout, paint: labelPaint })
 
-    map.on('mouseenter', LAYER_ID, () => {
-      map.getCanvas().style.cursor = 'pointer'
-    })
-
-    map.on('mouseleave', LAYER_ID, () => {
-      map.getCanvas().style.cursor = ''
-    })
+    // A tap on a goal circle or its label selects the tour.
+    for (const id of TOUR_LAYER_IDS) {
+      map.on('click', id, (e) => {
+        const feature = e.features?.[0]
+        if (feature?.properties?.id)
+          onTourClick(feature.properties.id as string)
+      })
+      map.on('mouseenter', id, () => {
+        map.getCanvas().style.cursor = 'pointer'
+      })
+      map.on('mouseleave', id, () => {
+        map.getCanvas().style.cursor = ''
+      })
+    }
 
     map.on('move', () => commitFrame(currentTree, map.getZoom()))
     map.on('moveend', () => commitFrame(currentTree, map.getZoom()))
@@ -921,10 +972,8 @@ export function useToursMarkerLayer(
     })
     map.on('idle', () => commitFrame(currentTree, map.getZoom()))
 
-    map.on('movestart', () => spiderfier.collapse())
-
     map.on('zoomstart', () => {
-      spiderfier.collapse()
+      stackList.close()
       cancelAllAnimations()
       lastSampledZoom = map.getZoom()
     })
@@ -951,23 +1000,36 @@ export function useToursMarkerLayer(
 
     tourDataCache.clear()
     for (const tour of tours) {
+      const { name, sub } = text.describeTour(tour)
       tourDataCache.set(tour.id, {
         lngLat: [tour.goal.lng, tour.goal.lat],
         colors: tourColors(routeOrder(tour), TOUR_TYPE_COLORS),
+        name,
+        sub,
+        completed: tour.completed ?? false,
+        plannedDate: tour.plannedDate?.toISOString() ?? null,
+        type: tour.tourTypes[0] ?? null,
       })
     }
 
-    pinnedIds = new Set(segmentIds)
+    pinnedIds = new Set(selectedTourId ? [...segmentIds, selectedTourId] : segmentIds)
     currentTree = buildClusterTree(tours.filter(t => !pinnedIds.has(t.id)))
     splitZooms = collectSplitZooms(currentTree)
     currentSelectedId = selectedTourId
 
     const geoJson = toursToGeoJson(tours, { linkedTourIds })
     for (const feature of geoJson.features) {
-      const id = feature.properties!.id as string
-      feature.properties!.pieImage = pieImageId(tourDataCache.get(id)!.colors)
-      if (pinnedIds.has(id))
-        feature.properties!.segmentBadge = segmentBadgeId(segmentIds.indexOf(id) + 1)
+      const props = feature.properties!
+      const id = props.id as string
+      const data = tourDataCache.get(id)!
+      props.pieImage = pieImageId(data.colors)
+      props.selected = id === selectedTourId
+      props.label = data.name
+      props.labelSub = data.sub
+      if (props.tourType)
+        props.activityImage = `${ACTIVITY_IMAGE_PREFIX}${props.tourType}`
+      if (segmentIds.includes(id))
+        props.segmentBadge = segmentBadgeId(segmentIds.indexOf(id) + 1)
     }
     source.setData(geoJson)
     commitFrame(currentTree, map.getZoom())
@@ -995,7 +1057,8 @@ export function useToursMarkerLayer(
     })
   }
 
-  function updateDetailMarkers(markers: DetailMarker[]) {
+  /** `labels`: the start / end point names (handover rings get none). */
+  function updateDetailMarkers(markers: DetailMarker[], labels: { start: string, end: string } = { start: '', end: '' }) {
     const source = map.getSource<GeoJSONSource>(DETAIL_SOURCE_ID)
     if (!source)
       return
@@ -1007,6 +1070,7 @@ export function useToursMarkerLayer(
         geometry: { type: 'Point', coordinates: [m.lngLat.lng, m.lngLat.lat] },
         properties: {
           pointKind: m.pointKind,
+          ...(m.pointKind !== 'via' && labels[m.pointKind] ? { label: labels[m.pointKind] } : {}),
           tourType: m.tourTypes[0] ?? null,
           draft: m.draft,
           // ponytail: a handover ring takes the primary colour only, no split.
@@ -1018,8 +1082,22 @@ export function useToursMarkerLayer(
     })
   }
 
+  /** Dotted arcs through each unopened outing's segment goals, in order (D8). */
+  function updateOutingChains(chains: [number, number][][]) {
+    map.getSource<GeoJSONSource>(CHAIN_SOURCE_ID)?.setData({
+      type: 'FeatureCollection',
+      features: chains.flatMap(chain => chain.slice(1).map((to, i) => ({
+        type: 'Feature' as const,
+        geometry: { type: 'LineString' as const, coordinates: chainArc(chain[i]!, to) },
+        properties: {},
+      }))),
+    })
+  }
+
   function cleanup() {
-    spiderfier.teardown()
+    stackList.close()
+    selectionChip?.marker.remove()
+    selectionChip = null
     cancelAllAnimations()
     for (const { marker } of clusterCache.values()) {
       marker.remove()
@@ -1030,5 +1108,5 @@ export function useToursMarkerLayer(
     splitZooms = []
   }
 
-  return { setup, updateTours, updatePreview, updateDetailMarkers, cleanup }
+  return { setup, updateTours, updatePreview, updateDetailMarkers, updateOutingChains, cleanup }
 }
