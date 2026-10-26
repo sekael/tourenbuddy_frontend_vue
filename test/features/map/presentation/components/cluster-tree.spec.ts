@@ -249,4 +249,14 @@ describe('buildClusterTree cluster ids', () => {
     expect(after.get('a,b')).toBe(before.get('a,b'))
     expect(after.get('c,d')).not.toBe(before.get('c,d,e'))
   })
+
+  it('should give two stacks distinct ids when their tour ids differ only in the last character', () => {
+    const id = (n: number) => `de300000-0000-4000-8000-00000000000${n}`
+    const tours = [
+      ...[1, 2, 3, 4].map(n => makeTour(id(n), 7.8948, 46.0464)),
+      ...[5, 6, 7, 8].map(n => makeTour(id(n), 9.3433 + n / 1e5, 47.2494)),
+    ]
+    const ids = clusterIds(buildClusterTree(tours))
+    expect(ids.get([1, 2, 3, 4].map(id).join())).not.toBe(ids.get([5, 6, 7, 8].map(id).join()))
+  })
 })

@@ -43,12 +43,18 @@ function leafIdsOf(node: TreeNode): string[] {
   return node.kind === 'leaf' ? [node.id] : node.leafIds
 }
 
-/** FNV-1a of a tour id. */
+/**
+ * FNV-1a of a tour id, then murmur3's finaliser. Plain FNV-1a ends in `(h ^ lastChar) * prime`,
+ * so summed over ids that differ only in their last character, two leaf sets collided: Allalinhorn
+ * ×4 and Säntis + Altmann shared one id, hence one marker.
+ */
 function idHash(id: string): number {
   let h = 0x811C9DC5
   for (let i = 0; i < id.length; i++)
     h = Math.imul(h ^ id.charCodeAt(i), 0x01000193)
-  return h >>> 0
+  h = Math.imul(h ^ (h >>> 16), 0x85EBCA6B)
+  h = Math.imul(h ^ (h >>> 13), 0xC2B2AE35)
+  return (h ^ (h >>> 16)) >>> 0
 }
 
 function clampMonotonicity(node: InternalNode, minZoom: number): void {

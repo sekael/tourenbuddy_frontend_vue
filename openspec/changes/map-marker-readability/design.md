@@ -34,7 +34,10 @@ spreads the knowledge to every map click consumer.
 from the tree like a focused outing's segments, so it always renders individually. Rebuilding
 on selection must not churn unrelated clusters. Cluster ids therefore derive from their leaf
 set (a count plus an order-independent sum of 32-bit leaf hashes) instead of merge order. Only
-the selected tour's ancestors change identity.
+the selected tour's ancestors change identity. Each leaf hash is FNV-1a run through murmur3's
+finaliser (user review, round 4): plain FNV-1a ends in a multiply of the last character, so the
+sums of two sets of ids differing only there collided, and two stacks shared one marker. A kept
+marker repaints whenever its colours, count or done badge differ, e.g. after a type edit.
 *Alternative:* keep the tree and draw the selected leaf on top. Rejected: the cluster count
 would still include it and the pie would sit under it.
 

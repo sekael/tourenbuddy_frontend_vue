@@ -49,6 +49,7 @@
 - [x] 7.10 Local demo stacks for Patrick (Allalinhorn ×4, Säntis ×3 + Altmann, Piz Bernina ×2); verify stack list and "+N" chip in a walk
 - [x] 7.11 Stay put when already shown (D23): framing skips a view that already shows the tour; the stack list pans only by its overrun; verify frame-tour and marker-layer tests and a camera-move probe cycling Säntis on desktop and phone
 - [x] 7.12 Cluster taps keep the tours in the middle half (D24); verify marker-layer test and the Säntis + Altmann walk
+- [x] 7.13 Collision-free cluster ids (D2): avalanche each leaf hash; repaint a kept cluster whose look changed; verify cluster-tree and marker-layer regressions fail before the fix, and Patrick's Alps view shows both stacks in their own colours
 
 ## 8. Finalize
 

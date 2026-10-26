@@ -299,8 +299,8 @@ interface ClusterEntry {
   marker: maplibregl.Marker
   update: (counts: Record<string, number>, total: number, done: number) => void
   setNode: (node: InternalNode) => void
-  /** Completed members its badge shows. */
-  done: number
+  /** Colours, count and done badge it shows: a reused marker repaints when they change. */
+  look: string
 }
 
 export function useToursMarkerLayer(
@@ -367,6 +367,10 @@ export function useToursMarkerLayer(
 
   function doneCount(leafIds: string[]): number {
     return leafIds.filter(id => tourDataCache.get(id)?.completed).length
+  }
+
+  function clusterLook(node: InternalNode): string {
+    return `${node.totalLeafCount}/${doneCount(node.leafIds)}/${JSON.stringify(getCountsForNode(node))}`
   }
 
   function labelCluster(element: HTMLElement, leafIds: string[]) {
@@ -627,7 +631,7 @@ export function useToursMarkerLayer(
     function setNode(n: InternalNode) {
       currentNode = n
     }
-    return { marker, update, setNode, done: doneCount(node.leafIds) }
+    return { marker, update, setNode, look: clusterLook(node) }
   }
 
   /**
@@ -754,9 +758,8 @@ export function useToursMarkerLayer(
       const centroidChanged
         = oldNode.centroid[0] !== treeNode.centroid[0]
           || oldNode.centroid[1] !== treeNode.centroid[1]
-      const leafCountChanged = oldNode.leafIds.length !== treeNode.leafIds.length
-      // Same leaves, but a member may have been ticked done meanwhile.
-      const done = doneCount(treeNode.leafIds)
+      // Same leaves, but a member may have been ticked done or changed activity meanwhile.
+      const look = clusterLook(treeNode)
 
       if (centroidChanged) {
         if (reducedMotion) {
@@ -767,10 +770,9 @@ export function useToursMarkerLayer(
         }
       }
 
-      if (leafCountChanged || done !== entry.done) {
-        const counts = getCountsForNode(treeNode)
-        entry.update(counts, treeNode.totalLeafCount, done)
-        entry.done = done
+      if (look !== entry.look) {
+        entry.update(getCountsForNode(treeNode), treeNode.totalLeafCount, doneCount(treeNode.leafIds))
+        entry.look = look
         labelCluster(entry.marker.getElement(), treeNode.leafIds)
       }
     }

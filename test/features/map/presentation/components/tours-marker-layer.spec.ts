@@ -521,6 +521,14 @@ describe('useToursMarkerLayer — selection, labels and cluster taps', () => {
     expect(rows.sort()).toEqual(['a', 'b', 'c'])
   })
 
+  it('should repaint a kept cluster whose tour changed activity', async () => {
+    const { layer, tour, clusterElements } = await setupLayer()
+    layer.updateTours([tour('a', 8), tour('b', 8)], null)
+    layer.updateTours([tour('a', 8), tour('b', 8, { tourTypes: ['skitour'] })], null)
+    expect(clusterElements()).toHaveLength(1)
+    expect(clusterElements()[0]!.innerHTML.toUpperCase()).toContain('#4338CA')
+  })
+
   it('should name a cluster by its status split, for season planning at a glance', async () => {
     const { layer, tour, clusterElements } = await setupLayer()
     layer.updateTours([
