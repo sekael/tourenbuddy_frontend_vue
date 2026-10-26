@@ -53,9 +53,9 @@
 
 ## 8. Finalize
 
-- [ ] 8.1 `npx eslint . --fix`, `npx eslint` (zero warnings), `npm run type-check`, `npm run test` all pass
-- [ ] 8.2 Prompt the user to commit with a ready-to-copy conventional commit message
-- [ ] 8.3 Prompt the user to push and open a PR
+- [x] 8.1 `npx eslint . --fix`, `npx eslint` (zero warnings), `npm run type-check`, `npm run test` all pass
+- [x] 8.2 Prompt the user to commit with a ready-to-copy conventional commit message
+- [x] 8.3 Prompt the user to push and open a PR
 
 ## Workflow follow-up
 
