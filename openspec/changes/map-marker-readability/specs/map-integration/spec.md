@@ -2,7 +2,7 @@
 
 ### Requirement: Tour markers rendered as circles
 
-Tours SHALL be rendered on the map as circle markers using a MapLibre circle layer backed by a GeoJSON source. The circle color SHALL be derived from the tour's activity types, grouped as: winter sports (skiing, snowboarding, skitour, splitboarding, ski-mountaineering) in blue, summer sports (hiking, mountaineering, climbing, trailrunning) in red, mountain-biking in violet, paragliding in amber, and tours with no type in neutral grey. A tour whose types map to more than one of these colors SHALL render split between them (see "Multi-activity markers split between their colours").
+Tours SHALL be rendered on the map as circle markers using a MapLibre circle layer backed by a GeoJSON source. The circle color SHALL be derived from the tour's activity types, in six groups: piste (skiing, snowboarding) in sky blue, ski touring (skitour, splitboarding, ski-mountaineering) in indigo, hiking and trailrunning in rose red, alpine (mountaineering, climbing) in rock brown, mountain-biking in plum, paragliding in amber, and tours with no type in neutral grey. Six is the most colours that stay distinguishable when any two markers sit side by side, for colour-blind and full-colour vision alike and against the green completion badge and the grey; the activity glyph tells the types within a group apart. A tour whose types map to more than one of these colors SHALL render split between them (see "Multi-activity markers split between their colours").
 
 Every goal circle SHALL carry a thin white ring, and a tour with at least one activity SHALL show the white glyph of its primary (first) activity centred in the circle, so that each activity is recognisable within a colour family and app markers never read as basemap symbols. A tour without an activity SHALL show no glyph.
 
@@ -26,12 +26,17 @@ Each GeoJSON feature SHALL additionally carry a `completed` boolean property mir
 #### Scenario: Winter tour colored blue
 
 - **WHEN** a tour's types are all among skiing, snowboarding, skitour, splitboarding, or ski-mountaineering
-- **THEN** its circle marker SHALL render in the winter (blue) palette color
+- **THEN** its circle marker SHALL render in a winter blue: sky blue for a piste day, indigo for a ski tour
 
 #### Scenario: Summer tour colored red
 
-- **WHEN** a tour's types are all among hiking, mountaineering, climbing, or trailrunning
-- **THEN** its circle marker SHALL render in the summer (red) palette color
+- **WHEN** a tour's types are all among hiking or trailrunning
+- **THEN** its circle marker SHALL render in rose red
+
+#### Scenario: Hike and alpine tour apart
+
+- **WHEN** one tour is a hike and another a Hochtour
+- **THEN** the hike SHALL render rose red and the Hochtour rock brown
 
 #### Scenario: Paragliding tour colored amber
 
@@ -45,8 +50,8 @@ Each GeoJSON feature SHALL additionally carry a `completed` boolean property mir
 
 #### Scenario: Activities of one colour tell apart
 
-- **WHEN** one tour's primary activity is hiking and another's is mountaineering
-- **THEN** both markers SHALL be red, one showing the hiking glyph and the other the mountaineering glyph
+- **WHEN** one tour's primary activity is mountaineering and another's is climbing
+- **THEN** both markers SHALL be rock brown, one showing the mountaineering glyph and the other the climbing glyph
 
 #### Scenario: Completed tour shows distinct visual
 
@@ -120,14 +125,20 @@ A cluster pie SHALL give each member tour a total weight of one, divided equally
 
 ### Requirement: Cluster tap frames its tours or opens the stack list
 
-Tapping a cluster marker for node N SHALL ease the map to frame all of N's tours. The target zoom SHALL be the largest of `N.splitZoom + ε` (ε ≈ 0.01), the zoom that fits N's tours with a margin, and one level above the current zoom (so even a country-wide cluster's tap visibly drills in), capped at the map's maximum zoom. The split animation SHALL be the same one a user zoom fires. The fitted zoom SHALL NOT exceed 15.5 unless the split itself needs more, so a tap never lands at street level for no gain. The fit SHALL keep the tours clear of the bottom tour bar. When `N.splitZoom` exceeds the stack zoom (17), meaning the tours sit within metres of each other, the tap SHALL open the stack list instead and SHALL NOT zoom the map.
+Tapping a cluster marker for node N SHALL fly the map to frame all of N's tours in the part of the map an open side drawer (desktop) or sheet (phone) leaves visible, never under it. The target zoom SHALL be the largest of `N.splitZoom + ε` (ε ≈ 0.01), the zoom that fits N's tours with a margin, and one level above the current zoom (so even a country-wide cluster's tap visibly drills in), capped at the map's maximum zoom. The split animation SHALL be the same one a user zoom fires. The fitted zoom SHALL NOT exceed 15.5 unless the split itself needs more, so a tap never lands at street level for no gain. The fit SHALL keep the tours clear of the bottom tour bar. When `N.splitZoom` exceeds the stack zoom (17), meaning the tours sit within metres of each other, the tap SHALL open the stack list instead and SHALL NOT zoom the map.
 
 #### Scenario: Tap on a spread cluster separates it in one step
 
 - **GIVEN** a cluster of four tours spread across 10 km at zoom 9.5
 - **WHEN** the user taps it
-- **THEN** the map SHALL ease so that all four tours are in view
+- **THEN** the map SHALL fly so that all four tours are in view
 - **AND** the target zoom SHALL be at least `splitZoom + ε`
+
+#### Scenario: Tap beside the open tour list on desktop
+
+- **GIVEN** the tour list drawer is open on the right
+- **WHEN** the user taps a cluster
+- **THEN** all of its tours SHALL land in view left of the drawer
 
 #### Scenario: Tap on a same-spot stack
 
@@ -138,7 +149,7 @@ Tapping a cluster marker for node N SHALL ease the map to frame all of N's tours
 
 ### Requirement: Stack list for tours on the same spot
 
-The stack list SHALL be a popup anchored at the stack, titled with the number of tours there, with one row per tour. Opening it SHALL pan the map (without zooming) so the stack sits in the upper middle and the list opens below it within the screen, clear of the bottom tour bar. When not every row fits, the list SHALL scroll and SHALL show a shadow at the edge where more rows hide. Each row SHALL show:
+The stack list SHALL be a popup anchored at the stack, titled with the number of tours there, with one row per tour. Opening it SHALL pan the map (without zooming) so the stack sits in the upper middle of the area an open drawer leaves visible and the list opens below it within the screen, clear of the bottom tour bar. When not every row fits, the list SHALL scroll and SHALL show a shadow at the edge where more rows hide. Each row SHALL show:
 - the tour's colour dot, split like its marker, carrying its primary activity's glyph and marked when completed
 - its name, or the unnamed-tour label
 - a second line with its date or date range, or "no date", or "done" for a completed tour
@@ -170,23 +181,28 @@ A tap on a cluster marker or a stack-list row SHALL NOT also be handled as a tap
 - **WHEN** the user selects a tour from the stack list
 - **THEN** its detail sheet SHALL open and stay open
 
-### Requirement: The selected tour is never clustered
+### Requirement: An open tour or outing has the map to itself
 
-The selected tour SHALL always render as its own marker, excluded from clustering like a focused outing's segments. A cluster drawn on top of the selected tour (the stack it was picked from) SHALL be hidden while that tour is selected, so the selected marker is visible and no cluster count that changed with the framing zoom contradicts the list it was picked from. Instead, when other tours share the selected tour's spot (within 25 m), a small "+N" chip at the selected marker's upper left SHALL count them; tapping it SHALL open the stack list of all tours at that spot (the selected one included), opening upward so the open sheet does not cover it. Clusters that did not contain it SHALL keep their identity, without flicker or re-animation, when the selection changes.
+While a tour's detail is open, the map SHALL show only that tour: its goal marker (never clustered), its start and end markers, its track and its label. While an outing overview is open, the map SHALL show only that outing's segments. Every other tour marker, cluster and outing chain SHALL be hidden meanwhile and SHALL return when the detail or overview closes. When other tours share the open tour's spot (within 25 m), a small "+N" chip at its marker's upper left SHALL count them; tapping it SHALL open the stack list of all tours at that spot (the open one included), opening upward so the open sheet does not cover it. When the open tour has no marker on the map (a friend tour the user is not a partner on), the map SHALL keep showing every tour.
 
-#### Scenario: Selecting a tour inside a stack
+#### Scenario: Opening a tour clears the map around it
 
-- **GIVEN** a tour that sits inside a cluster of 14 at the current zoom
-- **WHEN** the user selects it from the tour list
-- **THEN** it SHALL render as the selected marker beside a cluster of 13
+- **GIVEN** the map shows clusters and tours around Piz Kesch
+- **WHEN** the user opens "Chamanna digl Kesch"
+- **THEN** only its marker, start and end markers and route SHALL be shown
+- **AND** closing it SHALL bring every other tour and cluster back
+
+#### Scenario: Opening an outing shows only its segments
+
+- **WHEN** the user opens the overview of "Kesch-Runde"
+- **THEN** only its segments, numbered, SHALL be shown, with no other tours or outing chains
 
 #### Scenario: Selecting a tour from a same-spot stack
 
 - **GIVEN** a stack of 14 tours on one summit
 - **WHEN** the user selects one of them
-- **THEN** the selected marker SHALL show at the summit with no cluster covering it
+- **THEN** only the selected marker SHALL show at the summit
 - **AND** a "+13" chip SHALL sit at its upper left, and tapping it SHALL list all 14 tours
-- **AND** the remaining tours SHALL show there again once the selection is cleared
 
 ### Requirement: Tour name labels
 
@@ -256,3 +272,12 @@ The floating bottom controls (tour bar, menu and legend buttons) SHALL dock at t
 
 - **WHEN** a tour marker sits 100 px above the bottom edge of a 852 px phone screen
 - **THEN** a tap on it SHALL reach the marker, not a control
+
+### Requirement: Calm camera flights
+
+Every camera move the app makes on its own (framing a tour or outing, a cluster tap, a place chosen in the search) SHALL fly at one shared, calm speed, slower than MapLibre's default, so that base-map tiles load while the camera moves on a decent connection. A long flight SHALL take longer than a short one rather than squeezing every distance into a fixed duration. Gestures (pinch, scroll, drag) SHALL stay direct. With reduced motion requested, flights SHALL jump.
+
+#### Scenario: Cluster tap zooms by two levels
+
+- **WHEN** a cluster tap zooms the map in by two levels
+- **THEN** the flight SHALL take about a second, not half a second

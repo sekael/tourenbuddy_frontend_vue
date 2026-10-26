@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { LngLat, Map as MapLibreMap, Point } from 'maplibre-gl'
+import type { LngLat, Map as MapLibreMap, PaddingOptions, Point } from 'maplibre-gl'
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import maplibregl from 'maplibre-gl'
 import { storeToRefs } from 'pinia'
@@ -21,6 +21,11 @@ import { useGpxTrackLayer } from './gpx-track-layer'
 import { DETAIL_CIRCLE_LAYER_ID, TOUR_LAYER_IDS, useToursMarkerLayer } from './tours-marker-layer'
 import { useTrailLayers } from './trail-layers'
 import 'maplibre-gl/dist/maplibre-gl.css'
+
+const props = defineProps<{
+  /** The map area an open drawer or sheet covers: cluster taps frame beside it. */
+  covered?: Partial<PaddingOptions>
+}>()
 
 const emit = defineEmits<{
   tourClicked: [tourId: string]
@@ -177,8 +182,11 @@ function describeTour(tour: Tour) {
   }
 }
 
-// Each outing on the map except the open overview (it shows its tracks) as a chain of goals (D8).
-const outingChains = computed(() => outingChainsOf(mapTours.value, selectedOutingKey.value))
+// Each outing on the map as a chain of goals (D8) — none while a tour or outing is open: the map
+// shows only that (D15), and the open overview has its tracks.
+const outingChains = computed(() => selectedTour.value || focusSegments.value.length > 0
+  ? []
+  : outingChainsOf(mapTours.value, selectedOutingKey.value))
 
 const detailLabels = computed(() => ({ start: t('tours.form.startPointLabel'), end: t('tours.form.endPointLabel') }))
 
@@ -235,6 +243,7 @@ onMounted(() => {
         ].join(' · '),
         closeLabel: t('map.marker.close'),
       },
+      () => props.covered ?? {},
     )
     await markerLayer.setup()
     markerLayer.updateTours(renderedTours.value, selectedTourId.value, linkedTourIds.value, focusSegmentIds.value)

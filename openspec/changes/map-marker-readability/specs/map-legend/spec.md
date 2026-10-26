@@ -11,7 +11,7 @@ The map layers panel SHALL show a legend below its base-map and overlay sections
 SHALL list one row per marker colour, labelled with the activities that use it, derived from the
 same palette the markers use, so a palette change is reflected without editing the legend. It
 SHALL also explain:
-- a split marker (several activities)
+- a split marker (several activities), shown as a ski tour with a hike
 - the grey marker (no activity)
 - the completed badge
 - the friend badge
@@ -25,7 +25,7 @@ than the viewport.
 #### Scenario: Colour row lists its activities
 
 - **WHEN** the user opens the map layers panel
-- **THEN** the legend SHALL show a blue row naming every winter activity and a red row naming every summer activity on foot
+- **THEN** the legend SHALL show six colour rows, e.g. an indigo row naming skitour, splitboarding and ski mountaineering and a rock-brown row naming mountaineering and climbing
 
 #### Scenario: Symbols explained
 

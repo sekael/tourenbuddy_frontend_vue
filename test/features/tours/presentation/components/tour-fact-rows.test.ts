@@ -37,7 +37,7 @@ describe('tourFactRows', () => {
 
   it('should colour every activity chip with its own type, not the first one\'s', () => {
     const chips = mountRows({ tourTypes: ['skitour', 'hiking'] }).findAll('.type-tag')
-    expect(chips.map(c => c.attributes('style'))).toEqual(['--tag-color: #1565C0;', '--tag-color: #DC2626;'])
+    expect(chips.map(c => c.attributes('style'))).toEqual(['--tag-color: #4338CA;', '--tag-color: #E11D48;'])
   })
 
   it('should show a split tour leg by leg, the way up first, and its end as the landing', () => {

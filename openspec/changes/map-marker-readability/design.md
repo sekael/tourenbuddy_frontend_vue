@@ -15,7 +15,7 @@ points 0–1023. See proposal.md for the review findings this answers.
 cluster stability, transitions or offline rendering.
 
 **Non-Goals:**
-- Changing the activity colour families (the activity glyph separates activities instead).
+- One colour per activity (D18: no 11 colours stay apart on a map; six groups do).
 - Moving the "Meine Touren" pill or the inbox badge.
 - Changing how an outing or tour is framed on open.
 - Status counts inside cluster pies (cluster labels already appear from z11 when zoomed in).
@@ -108,8 +108,9 @@ existing keys). A small text layer draws it below the detail circle; handover ri
 **D10 — Cluster pie.** Same 36 px marker: inner disc r 10 → 8, count 12 px semibold (10 px from
 three digits), white 2 px outer ring, CSS drop shadow.
 
-**D12 — Selection over its stack.** After every frame commit, a cluster whose centroid is within
-24 px of the selected tour is hidden (`visibility: hidden`) until the selection changes. Round 2
+**D12 — Selection over its stack.** *(Superseded by D15: with only the open tour on the map no
+cluster can cover it; the chip stays.)* After every frame commit, a cluster whose centroid is within
+24 px of the selected tour was hidden (`visibility: hidden`) until the selection changed. Round 2
 offset it instead, but the framing zoom merged nearby tours into it ("11" in the list became
 "13" on the map), which read as a broken count. Round 4 (guide) wanted the others still
 counted: a "+N" chip DOM marker at the selection's upper left counts tours within 25 m (the
@@ -144,7 +145,49 @@ The panel scrolls when taller than the viewport. A 40 px ⓘ button opens the sa
 speed-dial `view`), one tap from the map. It sits bottom left in the tour bar's row, a band the
 controls already occupy; above the menu button it hid map labels (round 4).
 
+**D15 — An open tour or outing has the map to itself** (user review). With a detail open, every
+other marker, cluster and chain competed with the open tour's markers and route. `updateTours`
+now draws only the pinned tours (the selected one, or the open outing's segments) and builds an
+empty cluster tree when any of them is on the map; `tourDataCache` still holds every tour, so the
+"+N" chip keeps counting and listing the same-spot ones. `tourenbuddy-map` passes no outing chains
+meanwhile. A selected tour with no marker (a non-partner friend tour) leaves the map as it was.
+*Alternative:* fade the others. Rejected: faded pies and labels still clutter, and they would
+still take taps that should close the detail.
+
+**D16 — Frame beside the drawer.** The cluster-tap fit used the whole canvas, so with the desktop
+drawer open a third of the framed tours landed under it. `map-page` computes the covered area
+once (`{ right: 400 }` with a desktop overlay, `{ bottom: sheetInset }` on the phone) and hands it
+to the map as `covered`; the marker layer adds it to the fit padding through `frame-tour`'s
+`paddingBeside`, offsets a by-a-level zoom's centroid into the uncovered area, and centres the
+stack-list pan there. The tour/outing framing and the trail framing use the same value.
+
+**D17 — Calm flights.** Cluster taps eased in 500 ms and tour framing flew in a fixed 1000 ms
+however far, faster than tiles load. Every app-made camera move now flies at one
+`FLIGHT_SPEED` (1, MapLibre's default 1.2): about half a second per zoom level, longer flights for
+longer hops. Gestures stay direct; MapLibre already jumps under reduced motion.
+
+**D18 — Six colour groups.** Both reviewers asked for finer colours (the guide: one per activity).
+Run through the dataviz palette validator with all pairs compared (any two map markers can
+touch): eleven colours fail outright (worst pair ΔE 5.7 for full colour vision, 2.9 colour-blind),
+and an exhaustive search of Tailwind 600–800 steps finds no seven-colour set clear of the done
+green and the no-activity grey; the old four families already failed the full-colour floor
+(red vs amber ΔE 14.4). Six groups pass every check (worst pair ΔE 15.3 normal, 8.3 CVD): piste
+sky `#0284C7`, touring indigo `#4338CA`, hike/trail rose `#E11D48`, alpine rock `#9A3412`, bike
+plum `#86198F`, flying amber `#D97706`. Tracks take each hue's darker shade (within 18 points,
+never near-black), previews the 300 step. The glyph still names the exact activity.
+
+**D19 — Escape closes the drawer.** `SideDrawer` listens for Escape on the window (a map click
+leaves focus on the canvas, outside the drawer) and emits `close` like its × — unless focus is in
+a field, the drawer is collapsed, it is not the topmost `aria-modal` element, or an inner control
+already called `preventDefault` (tour-list filters, the speed-dial menu, tooltips; the stack list
+stops propagation).
+
 ## Risks / Trade-offs
+
+- [Other tours vanish while a detail is open] → the map comes back on close (× , Escape, map
+  tap); the "+N" chip still reaches tours at the same spot.
+- [Palette change reaches the whole app] → calendar, lists, chips and tracks read the same
+  constants, so they change together; tests pin only the semantics.
 
 - [Labels hide basemap labels next to objectives] → intended (D4); labels only show from z11
   and drop out under collision, and the tour's own label carries name + elevation.

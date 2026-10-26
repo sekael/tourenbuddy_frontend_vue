@@ -167,11 +167,11 @@ describe('locationPicker', () => {
 
       await wrapper.find('.search-input').trigger('keydown', { key: 'Enter' })
 
-      expect(map.flyTo).toHaveBeenCalledWith({
+      expect(map.flyTo).toHaveBeenCalledWith(expect.objectContaining({
         center: [bernina.lng, bernina.lat],
         zoom: 14,
         padding: { top: 0, right: 0, bottom: 0, left: 0 },
-      })
+      }))
       expect(wrapper.find('.search-results').exists()).toBe(false)
     })
 

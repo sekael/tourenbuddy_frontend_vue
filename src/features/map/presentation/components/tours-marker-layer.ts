@@ -1,4 +1,4 @@
-import type { ExpressionSpecification, GeoJSONSource, LngLatLike, Map as MapLibreMap, SymbolLayerSpecification } from 'maplibre-gl'
+import type { ExpressionSpecification, GeoJSONSource, LngLatLike, Map as MapLibreMap, PaddingOptions, SymbolLayerSpecification } from 'maplibre-gl'
 import type { RenderedNode } from './cluster-transitions'
 import type { InternalNode, TreeNode } from './cluster-tree'
 import type { TourType } from '@/features/tours/data/models/tour-type'
@@ -9,6 +9,7 @@ import { haversineMeters } from '@/core/utils/haversine'
 import { TOUR_TYPE_COLORS, TOUR_TYPE_PREVIEW_COLORS } from '@/features/tours/data/models/tour-type'
 import { toursToGeoJson } from '@/features/tours/domain/entities/tour'
 import { routeOrder } from '@/features/tours/domain/legs'
+import { FLIGHT_SPEED, paddingBeside } from '../composables/frame-tour'
 import { diffForests } from './cluster-transitions'
 import {
   buildClusterTree,
@@ -101,8 +102,6 @@ export const STACK_ZOOM = 17
 const CLUSTER_FIT_PADDING = { top: 64, right: 64, bottom: 112, left: 64 }
 /** A cluster tap frames its tours no closer than this, unless its split needs it (no street level). */
 const CLUSTER_FIT_MAX_ZOOM = 15.5
-/** A cluster drawn this close to the selected tour would cover it: it hides meanwhile (D12). */
-const SELECTION_COVER_RADIUS_PX = 24
 /** Tours this close to the selected one share its spot: its "+N" chip counts and lists them. */
 const SAME_SPOT_M = 25
 const ANIMATION_DURATION_MS = 300
@@ -252,6 +251,8 @@ export function useToursMarkerLayer(
   onTourClick: (tourId: string) => void,
   getAriaLabel: (count: number) => string,
   textOverrides: Partial<MarkerText> = {},
+  /** The map area an open drawer or sheet covers: cluster taps frame beside it. */
+  getCovered: () => Partial<PaddingOptions> = () => ({}),
 ) {
   const text = { ...DEFAULT_TEXT, ...textOverrides }
   const clusterCache = new Map<string, ClusterEntry>()
@@ -448,12 +449,13 @@ export function useToursMarkerLayer(
    */
   function openStack(stackId: string, at: [number, number], leafIds: string[], above = false) {
     const { clientWidth: w, clientHeight: h } = map.getContainer()
+    const { left = 0, right = 0 } = getCovered()
     const px = map.project(at as LngLatLike)
-    map.panBy([px.x - w / 2, px.y - h * (above ? 0.5 : 0.22)], { duration: reducedMotion ? 0 : 300 })
+    map.panBy([px.x - (w + left - right) / 2, px.y - h * (above ? 0.5 : 0.22)], { duration: reducedMotion ? 0 : 300 })
     stackList.open(stackId, at, leafIds.map(id => stackEntry(id)), text.stackTitle(leafIds.length), onTourClick, above)
   }
 
-  /** "+N" beside the selected tour: the others at its spot, while their stack is hidden (D12). */
+  /** "+N" beside the selected tour: the others at its spot, hidden while it is open (D12, D15). */
   let selectionChip: { marker: maplibregl.Marker, el: HTMLElement, key: string } | null = null
   function updateSelectionChip() {
     const selected = currentSelectedId ? tourDataCache.get(currentSelectedId) : undefined
@@ -514,13 +516,23 @@ export function useToursMarkerLayer(
       const lngLats = node.leafIds.map(id => tourDataCache.get(id)?.lngLat).filter(p => !!p)
       const lngs = lngLats.map(p => p[0])
       const lats = lngLats.map(p => p[1])
+      // Beside an open drawer or sheet, not under it (D16).
+      const covered = getCovered()
       const camera = lngLats.length
-        ? map.cameraForBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], { padding: CLUSTER_FIT_PADDING })
+        ? map.cameraForBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], { padding: paddingBeside(covered, CLUSTER_FIT_PADDING) })
         : undefined
       const fitZoom = Math.min(camera?.zoom ?? -Infinity, CLUSTER_FIT_MAX_ZOOM)
       // At least a level per tap: a country-wide cluster's fit barely moves the zoom (round 4).
       const zoom = Math.min(map.getMaxZoom(), Math.max(node.splitZoom + 0.01, fitZoom, map.getZoom() + 1))
-      map.easeTo({ center: (zoom === fitZoom ? camera!.center : node.centroid) as LngLatLike, zoom })
+      // The fit's centre already sits in the uncovered area; the centroid is shifted into it.
+      map.flyTo(zoom === fitZoom
+        ? { center: camera!.center, zoom, speed: FLIGHT_SPEED }
+        : {
+            center: node.centroid as LngLatLike,
+            zoom,
+            speed: FLIGHT_SPEED,
+            offset: [((covered.left ?? 0) - (covered.right ?? 0)) / 2, ((covered.top ?? 0) - (covered.bottom ?? 0)) / 2],
+          })
     }
 
     element.addEventListener('click', (e: MouseEvent) => {
@@ -551,17 +563,6 @@ export function useToursMarkerLayer(
    * selected: the selection shows on its own, and no count that changed with the framing zoom
    * contradicts the list it was picked from (D12).
    */
-  function hideClustersUnderSelection() {
-    const selected = currentSelectedId ? tourDataCache.get(currentSelectedId)?.lngLat : undefined
-    const selectedPx = selected && map.project(selected as LngLatLike)
-    for (const [id, entry] of clusterCache) {
-      const centroid = lastFrame.byNodeId.get(id)?.centroid
-      const px = selectedPx && centroid && map.project(centroid as LngLatLike)
-      const hidden = !!px && Math.hypot(px.x - selectedPx.x, px.y - selectedPx.y) < SELECTION_COVER_RADIUS_PX
-      entry.marker.getElement().style.visibility = hidden ? 'hidden' : ''
-    }
-  }
-
   function commitFrame(newTree: TreeNode | null, newZoom: number) {
     if (!map.getSource(SOURCE_ID))
       return
@@ -704,7 +705,6 @@ export function useToursMarkerLayer(
 
     refreshLayerFilters()
     lastFrame = { tree: newTree, zoom: newZoom, byNodeId: newByNodeId }
-    hideClustersUnderSelection()
     updateSelectionChip()
   }
 
@@ -1013,11 +1013,13 @@ export function useToursMarkerLayer(
     }
 
     pinnedIds = new Set(selectedTourId ? [...segmentIds, selectedTourId] : segmentIds)
-    currentTree = buildClusterTree(tours.filter(t => !pinnedIds.has(t.id)))
+    // An open tour or outing is all the map shows (D15). The cache keeps every tour for its chip.
+    const focused = tours.filter(t => pinnedIds.has(t.id))
+    currentTree = buildClusterTree(focused.length ? [] : tours)
     splitZooms = collectSplitZooms(currentTree)
     currentSelectedId = selectedTourId
 
-    const geoJson = toursToGeoJson(tours, { linkedTourIds })
+    const geoJson = toursToGeoJson(focused.length ? focused : tours, { linkedTourIds })
     for (const feature of geoJson.features) {
       const props = feature.properties!
       const id = props.id as string

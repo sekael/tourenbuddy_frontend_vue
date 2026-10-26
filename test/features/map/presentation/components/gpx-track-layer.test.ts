@@ -2,7 +2,6 @@ import type { Map as MapLibreMap } from 'maplibre-gl'
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import { describe, expect, it, vi } from 'vitest'
 import { loadCachedBlob } from '@/core/offline/blob-cache'
-import { darkenHex } from '@/core/utils/color'
 import { outingGapLines, tourConnectors, trackGradient, useGpxTrackLayer } from '@/features/map/presentation/components/gpx-track-layer'
 import { TOUR_TYPE_COLORS, TOUR_TYPE_TRACK_COLORS } from '@/features/tours/data/models/tour-type'
 import { useGpxCache } from '@/features/tours/data/services/gpx-cache'
@@ -35,12 +34,11 @@ describe('tOUR_TYPE_TRACK_COLORS', () => {
     }
   })
 
-  it('track colors should be approximately 18pp darker than marker colors', () => {
+  it('track colors should stay within ~18pp of the marker and never turn near-black', () => {
     for (const [type, markerColor] of Object.entries(TOUR_TYPE_COLORS)) {
-      const expected = darkenHex(markerColor, 18)
-      const actual = TOUR_TYPE_TRACK_COLORS[type as keyof typeof TOUR_TYPE_TRACK_COLORS]
-      const diffL = Math.abs(hexToLightness(actual) - hexToLightness(expected))
-      expect(diffL).toBeLessThan(0.02)
+      const track = hexToLightness(TOUR_TYPE_TRACK_COLORS[type as keyof typeof TOUR_TYPE_TRACK_COLORS])
+      expect(hexToLightness(markerColor) - track).toBeLessThan(0.19)
+      expect(track).toBeGreaterThan(0.2)
     }
   })
 })
@@ -157,11 +155,11 @@ describe('tourConnectors', () => {
 
   it('should colour the arrow like the band under it, per activity', () => {
     const arrows = (types: string[]) => tourConnectors([entry({ tourTypes: types as never })]).features.map(f => f.properties!.arrow)
-    expect(arrows(['hiking'])).toEqual(['connector-arrow:#DC2626'])
+    expect(arrows(['hiking'])).toEqual(['connector-arrow:#E11D48'])
     // Each outing segment keeps its own activity, in the marker palette.
     const segments = [entry({ tourTypes: ['hiking'] }), entry({ tourTypes: ['paragliding'] })]
     expect(tourConnectors(segments).features.map(f => f.properties!.arrow))
-      .toEqual(['connector-arrow:#DC2626', 'connector-arrow:#D97706'])
+      .toEqual(['connector-arrow:#E11D48', 'connector-arrow:#D97706'])
     expect(arrows([])).toEqual(['connector-arrow:#555555'])
     expect(tourConnectors([entry({ endPoint: { ...A } })]).features[0]!.properties!.arrow).toMatch(/^connector-arrow-both:/)
   })
@@ -182,12 +180,12 @@ describe('legs on the map (activity-legs D5)', () => {
 
   it('should colour each leg\'s arrow by its own activities', () => {
     expect(tourConnectors([hikeAndFly()]).features.map(f => f.properties!.arrow))
-      .toEqual(['connector-arrow:#DC2626', 'connector-arrow:#D97706'])
+      .toEqual(['connector-arrow:#E11D48', 'connector-arrow:#D97706'])
   })
 
   it('should draw a split round trip as two legs, one arrow cannot wear both colours', () => {
     expect(tourConnectors([hikeAndFly({ endPoint: { ...A } })]).features.map(f => f.properties!.arrow))
-      .toEqual(['connector-arrow:#DC2626', 'connector-arrow:#D97706'])
+      .toEqual(['connector-arrow:#E11D48', 'connector-arrow:#D97706'])
   })
 
   it('should switch a track\'s colours at the split with strictly ascending stops', () => {

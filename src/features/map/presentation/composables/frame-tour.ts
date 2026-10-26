@@ -8,13 +8,19 @@ export const TOUR_ZOOM = 12
 export const ROUTE_ZOOM = 15
 /** Room around the framed points for the markers themselves (more on top: notch / status bar). */
 const MARGIN = { top: 64, right: 48, bottom: 48, left: 48 }
+/**
+ * Every camera flight's speed — calmer than MapLibre's 1.2 so tiles load as the map moves.
+ * About half a second per zoom level; a long hop takes longer than a short one.
+ */
+export const FLIGHT_SPEED = 1.1
 
-function paddingBeside(covered: Partial<PaddingOptions>) {
+/** `margin` around the framed points, plus whatever the sheet or drawer covers. */
+export function paddingBeside(covered: Partial<PaddingOptions>, margin: typeof MARGIN = MARGIN) {
   return {
-    top: MARGIN.top + (covered.top ?? 0),
-    right: MARGIN.right + (covered.right ?? 0),
-    bottom: MARGIN.bottom + (covered.bottom ?? 0),
-    left: MARGIN.left + (covered.left ?? 0),
+    top: margin.top + (covered.top ?? 0),
+    right: margin.right + (covered.right ?? 0),
+    bottom: margin.bottom + (covered.bottom ?? 0),
+    left: margin.left + (covered.left ?? 0),
   }
 }
 
@@ -43,7 +49,7 @@ export function frameBounds(
   const camera = map.cameraForBounds(bounds, { padding: paddingBeside(covered), maxZoom, bearing: map.getBearing() })
   // No room left to frame in (tiny viewport): just centre on the fallback, no closer
   // than a tour's zoom, so a long route isn't cut down to its middle.
-  map.flyTo({ ...(camera ?? { center: fallbackCenter, zoom: Math.min(maxZoom, TOUR_ZOOM) }), duration: 1000 })
+  map.flyTo({ ...(camera ?? { center: fallbackCenter, zoom: Math.min(maxZoom, TOUR_ZOOM) }), speed: FLIGHT_SPEED })
 }
 
 /**

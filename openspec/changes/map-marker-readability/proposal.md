@@ -44,6 +44,14 @@ Separately, the cluster tree was rebuilt in O(n³) on every selection: 1 s at 60
   - The cluster covering a selected tour hides while it is selected.
   - Outing links are bowed arcs, not straight lines, with "Etappe n/N" in the labels.
   - The bottom controls dock at the screen edge.
+- User review (after both reviewers were happy):
+  - Legend badges render at badge size (they showed oversized glyphs).
+  - Opening a tour or outing shows only it on the map; everything else returns on close.
+  - Cluster taps frame beside an open drawer or sheet, not under it.
+  - Camera flights are calmer, so tiles keep up.
+  - Six marker colour groups instead of four: piste, ski touring, hike & trail, alpine, bike,
+    flying (one per activity is not distinguishable on a map; validated).
+  - Escape closes the desktop side drawer.
 
 ## Capabilities
 
@@ -55,13 +63,19 @@ Separately, the cluster tree was rebuilt in O(n³) on every selection: 1 s at 60
   labels, cluster tap fit, stack list replacing spiderfy, selected tour unclustered, marker taps
   not leaking to the map, cluster pie styling.
 - `tour-completion`: the completion check moves from the marker centre to a corner badge.
-- `tour-outings`: outing chain line drawn outside the outing focus as well.
+- `tour-outings`: outing chain line drawn outside the outing focus as well, hidden while a tour
+  or outing is open.
+- `side-drawer`: Escape closes the drawer.
 
 ## Impact
 
 - `src/features/map/presentation/components/`: `tours-marker-layer.ts`, `cluster-tree.ts`,
   `pie-marker.ts`, `spiderfy.ts` (replaced by a stack list), `tourenbuddy-map.vue`,
   `map-layers-panel.vue`, new `activity-glyphs.ts` and `map-legend.vue`.
+- `src/features/tours/data/models/tour-type.ts`: six-group palette (markers, tracks, previews),
+  used app-wide (calendar, lists, chips).
+- `src/core/components/side-drawer.vue` (+ Escape consumers: tour list, speed-dial overlay,
+  tooltip); `map-page.vue` covered-area plumbing; `frame-tour.ts` shared flight speed.
 - Locales `en.json` / `de-CH.json`: label lines, stack list, legend, start/end.
 - Onboarding step copy for the map layers panel (it now holds the legend).
 - No DB, Worker or API changes. Glyph PBFs for labels come from the Swisstopo font server both

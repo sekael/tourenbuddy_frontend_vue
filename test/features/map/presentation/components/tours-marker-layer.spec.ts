@@ -31,7 +31,7 @@ function makeStubMap(individualFeatures: object[] = []) {
     getCanvas: vi.fn(() => ({ style: {} })),
     hasImage: vi.fn(() => true),
     addImage: vi.fn(),
-    easeTo: vi.fn(),
+    flyTo: vi.fn(),
     panBy: vi.fn(),
     getContainer: vi.fn(() => ({ clientWidth: 400, clientHeight: 800 })),
     cameraForBounds: vi.fn((): { center: [number, number], zoom: number } | undefined => ({ center: [8.005, 47], zoom: 14 })),
@@ -146,7 +146,7 @@ describe('useToursMarkerLayer — setup', () => {
     layer.updateTours([tour('mixed', ['skitour', 'hiking']), tour('blue', ['skitour', 'splitboarding'])], null)
 
     const pie = Object.fromEntries(stub.sourceData('tours').features.map(f => [f.id, f.properties!.pieImage]))
-    expect(pie).toEqual({ mixed: 'pie:#1565C0,#DC2626', blue: null })
+    expect(pie).toEqual({ mixed: 'pie:#4338CA,#E11D48', blue: null })
   })
 
   it('should keep a focused outing\'s segments out of clusters and number them in order', async () => {
@@ -179,10 +179,10 @@ describe('useToursMarkerLayer — setup', () => {
     await layer.setup()
     layer.updateTours([tour('hut'), tour('summit'), tour('other')], null, new Set(), ['summit', 'hut'])
 
-    // `other` is left alone in the tree, so it is a lone leaf too.
-    expect(drawn(stub)).toBe('"other","summit","hut"')
+    // `other` is not part of the open outing, so it is off the map meanwhile (D15).
+    expect(drawn(stub)).toBe('"summit","hut"')
     const badges = Object.fromEntries(stub.sourceData('tours').features.map(f => [f.id, f.properties!.segmentBadge]))
-    expect(badges).toEqual({ hut: 'segment:2', summit: 'segment:1', other: undefined })
+    expect(badges).toEqual({ hut: 'segment:2', summit: 'segment:1' })
   })
 
   it('should update selected filter on updateTours', async () => {
@@ -336,7 +336,7 @@ describe('opacity bridge — pie-marker', () => {
 })
 
 describe('useToursMarkerLayer — selection, labels and cluster taps', () => {
-  async function setupLayer() {
+  async function setupLayer(covered: { right?: number, bottom?: number } = {}) {
     vi.resetModules()
     const maplibre = await import('maplibre-gl') as unknown as { markerElements: HTMLElement[], popups: { content: HTMLElement | null }[] }
     maplibre.markerElements.length = 0
@@ -349,7 +349,7 @@ describe('useToursMarkerLayer — selection, labels and cluster taps', () => {
       describeTour: tour => ({ name: tour.name ?? 'Unnamed', sub: tour.completed ? 'Done' : 'No date' }),
       stackTitle: count => `${count} tours here`,
       clusterSummary: ({ total, planned, undated, done }) => `${total}: ${planned} planned, ${undated} undated, ${done} done`,
-    })
+    }, () => covered)
     await layer.setup()
     const tour = (id: string, lng: number, extra: object = {}) => ({
       ...TOUR_FILL,
@@ -384,7 +384,7 @@ describe('useToursMarkerLayer — selection, labels and cluster taps', () => {
     const { stub, layer, tour, clusterElements } = await setupLayer()
     layer.updateTours([tour('a', 8.0), tour('b', 8.01)], null)
     clusterElements()[0]!.click()
-    expect(stub.easeTo).toHaveBeenCalledWith({ center: [8.005, 47], zoom: 14 })
+    expect(stub.flyTo).toHaveBeenCalledWith(expect.objectContaining({ center: [8.005, 47], zoom: 14 }))
   })
 
   it('should not frame a cluster closer than street-overview zoom when its split allows', async () => {
@@ -392,7 +392,7 @@ describe('useToursMarkerLayer — selection, labels and cluster taps', () => {
     stub.cameraForBounds.mockReturnValue({ center: [8.005, 47], zoom: 18.2 })
     layer.updateTours([tour('a', 8.0), tour('b', 8.01)], null)
     clusterElements()[0]!.click()
-    expect((stub.easeTo.mock.calls[0]![0] as { zoom: number }).zoom).toBe(15.5)
+    expect((stub.flyTo.mock.calls[0]![0] as { zoom: number }).zoom).toBe(15.5)
   })
 
   it('should still zoom past the split when the fitted zoom falls short of it', async () => {
@@ -400,7 +400,7 @@ describe('useToursMarkerLayer — selection, labels and cluster taps', () => {
     stub.cameraForBounds.mockReturnValue({ center: [8.005, 47], zoom: 10.5 })
     layer.updateTours([tour('a', 8.0), tour('b', 8.01)], null)
     clusterElements()[0]!.click()
-    const { zoom } = stub.easeTo.mock.calls[0]![0] as { zoom: number }
+    const { zoom } = stub.flyTo.mock.calls[0]![0] as { zoom: number }
     expect(zoom).toBeGreaterThan(12.5)
   })
 
@@ -410,14 +410,14 @@ describe('useToursMarkerLayer — selection, labels and cluster taps', () => {
     stub.cameraForBounds.mockReturnValue({ center: [8.5, 47], zoom: 5.6 })
     layer.updateTours([tour('a', 8.0), tour('b', 9.0)], null)
     clusterElements()[0]!.click()
-    expect((stub.easeTo.mock.calls[0]![0] as { zoom: number }).zoom).toBe(6.5)
+    expect((stub.flyTo.mock.calls[0]![0] as { zoom: number }).zoom).toBe(6.5)
   })
 
   it('should list a same-spot stack instead of moving the map, and select from it', async () => {
     const { stub, layer, tour, clusterElements, popups, onTourClick } = await setupLayer()
     layer.updateTours([tour('a', 8), tour('b', 8)], null)
     clusterElements()[0]!.click()
-    expect(stub.easeTo).not.toHaveBeenCalled()
+    expect(stub.flyTo).not.toHaveBeenCalled()
     expect(stub.panBy).toHaveBeenCalledOnce()
     const content = popups.at(-1)!.content!
     expect(content.querySelector('h3')!.textContent).toBe('2 tours here')
@@ -425,13 +425,47 @@ describe('useToursMarkerLayer — selection, labels and cluster taps', () => {
     expect(onTourClick).toHaveBeenCalledWith('a')
   })
 
-  it('should hide the stack covering the selected tour until the selection clears', async () => {
-    const { layer, tour, clusterElements } = await setupLayer()
-    layer.updateTours([tour('a', 8), tour('b', 8), tour('c', 8)], 'b')
-    const stacks = () => clusterElements().filter(el => el.className !== 'selection-stack-chip')
-    expect(stacks().at(-1)!.style.visibility).toBe('hidden')
-    layer.updateTours([tour('a', 8), tour('b', 8), tour('c', 8)], null)
-    expect(stacks().at(-1)!.style.visibility).toBe('')
+  it('should show only the open tour, or the open outing\'s segments, until it closes', async () => {
+    const { stub, layer, tour, clusterElements } = await setupLayer()
+    const all = [tour('a', 8), tour('b', 8), tour('c', 8.5), tour('d', 9)]
+    const shown = () => stub.sourceData('tours').features.map(f => f.id)
+    layer.updateTours(all, 'b')
+    expect(shown()).toEqual(['b'])
+    expect(clusterElements().filter(el => el.className !== 'selection-stack-chip')).toHaveLength(0)
+    layer.updateTours(all, null, new Set(), ['c', 'd'])
+    expect(shown()).toEqual(['c', 'd'])
+    layer.updateTours(all, null)
+    expect(shown()).toHaveLength(4)
+  })
+
+  it('should keep showing every tour when the selected one has no marker of its own', async () => {
+    const { stub, layer, tour } = await setupLayer()
+    layer.updateTours([tour('a', 8), tour('b', 9)], 'not-on-map')
+    expect(stub.sourceData('tours').features).toHaveLength(2)
+  })
+
+  it('should frame a tapped cluster beside an open drawer, not under it', async () => {
+    const { stub, layer, tour, clusterElements } = await setupLayer({ right: 400 })
+    layer.updateTours([tour('a', 8.0), tour('b', 8.01)], null)
+    clusterElements()[0]!.click()
+    expect(stub.cameraForBounds).toHaveBeenCalledWith(expect.anything(), { padding: { top: 64, right: 464, bottom: 112, left: 64 } })
+  })
+
+  it('should shift a cluster zoomed by a level into the area beside the drawer', async () => {
+    const { stub, layer, tour, clusterElements } = await setupLayer({ right: 400 })
+    stub.getZoom.mockReturnValue(5.5)
+    stub.cameraForBounds.mockReturnValue({ center: [8.5, 47], zoom: 5.6 })
+    layer.updateTours([tour('a', 8.0), tour('b', 9.0)], null)
+    clusterElements()[0]!.click()
+    expect(stub.flyTo).toHaveBeenCalledWith(expect.objectContaining({ zoom: 6.5, offset: [-200, 0] }))
+  })
+
+  it('should centre a listed stack in the area beside the drawer', async () => {
+    const { stub, layer, tour, clusterElements } = await setupLayer({ right: 200 })
+    layer.updateTours([tour('a', 8), tour('b', 8)], null)
+    clusterElements()[0]!.click()
+    // Stub map: 400 px wide, the stack projected at x 100 — the uncovered area's middle is x 100.
+    expect(stub.panBy.mock.calls[0]![0]).toEqual([0, 100 - 800 * 0.22])
   })
 
   it('should count the others at the selected tour\'s spot on a chip that lists them all', async () => {

@@ -35,11 +35,20 @@
 
 - [x] 6.1 Re-run both reviewer personas against the new build; iterate until both report HAPPY
 
-## 7. Finalize
+## 7. User review
 
-- [ ] 7.1 `npx eslint . --fix`, `npx eslint` (zero warnings), `npm run type-check`, `npm run test` all pass
-- [ ] 7.2 Prompt the user to commit with a ready-to-copy conventional commit message
-- [ ] 7.3 Prompt the user to push and open a PR
+- [x] 7.1 Legend badge glyphs sized to the badge (BaseIcon's own 20 px wins over inherited size); verify in walk screenshot
+- [x] 7.2 Open tour/outing has the map to itself (D15); chains hidden meanwhile; verify marker-layer tests and walk screenshot
+- [x] 7.3 Cluster fit, by-a-level centring and stack pan beside the drawer/sheet (D16); verify marker-layer tests and desktop walk
+- [x] 7.4 Shared `FLIGHT_SPEED` for cluster taps, framing and place search (D17); verify picker/frame tests
+- [x] 7.5 Six-group palette (D18) in markers, tracks, previews; legend sample pair; verify palette validator and tests
+- [x] 7.6 Escape closes the side drawer (D19); inner Escape consumers call `preventDefault`; verify side-drawer tests
+
+## 8. Finalize
+
+- [ ] 8.1 `npx eslint . --fix`, `npx eslint` (zero warnings), `npm run type-check`, `npm run test` all pass
+- [ ] 8.2 Prompt the user to commit with a ready-to-copy conventional commit message
+- [ ] 8.3 Prompt the user to push and open a PR
 
 ## Workflow follow-up
 

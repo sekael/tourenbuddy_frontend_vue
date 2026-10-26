@@ -135,6 +135,14 @@ function closeFilters() {
   filtersExpanded.value = false
 }
 
+/** Escape folds the open filters first; the drawer closes on the next one. */
+function onListEscape(e: KeyboardEvent) {
+  if (!filtersExpanded.value)
+    return
+  e.preventDefault()
+  closeFilters()
+}
+
 // The header (tabs, search, trigger) counts as part of the panel's surface, not as
 // "outside": the overlay covers the whole list region, so the header is all that is
 // left to tap, and a literal outside-rule would make the search box undismissable —
@@ -236,7 +244,7 @@ function handleRowClick(tourId: string) {
     <!-- Escape is bound here, not on the panel: focus may legitimately sit in the
          search input, which is the panel's SIBLING, so a listener on the panel root
          would never see that keydown. This is the nearest common ancestor. -->
-    <div v-else class="list-view" :class="{ 'list-view--drawer': isDesktop }" @keydown.escape="closeFilters">
+    <div v-else class="list-view" :class="{ 'list-view--drawer': isDesktop }" @keydown.escape="onListEscape">
       <div ref="listHeaderEl" class="list-header">
         <div
           class="tabs"

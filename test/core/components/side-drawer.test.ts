@@ -105,6 +105,63 @@ describe('sideDrawer', () => {
         expect(wrapper.find('[aria-label^="core.drawer.back"]').exists()).toBe(false)
       })
     })
+
+    describe('escape', () => {
+      const press = (target: EventTarget = document.body, init: KeyboardEventInit = {}) => {
+        const e = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true, ...init })
+        target.dispatchEvent(e)
+        return e
+      }
+
+      it('should close on Escape wherever focus is, like the close button', () => {
+        const wrapper = mount(SideDrawer, { props: { title: 'Test' }, attachTo: document.body })
+        press()
+        expect(wrapper.emitted('close')).toHaveLength(1)
+        wrapper.unmount()
+      })
+
+      it('should leave Escape to a field being typed in', () => {
+        const wrapper = mount(SideDrawer, {
+          props: { title: 'Test' },
+          slots: { default: '<input class="field">' },
+          attachTo: document.body,
+        })
+        press(wrapper.find('.field').element)
+        expect(wrapper.emitted('close')).toBeUndefined()
+        wrapper.unmount()
+      })
+
+      it('should stay open when a control inside already spent the key', () => {
+        const wrapper = mount(SideDrawer, {
+          props: { title: 'Test' },
+          slots: { default: '<button class="inner">x</button>' },
+          attachTo: document.body,
+        })
+        const inner = wrapper.find('.inner').element
+        inner.addEventListener('keydown', e => e.preventDefault())
+        press(inner)
+        expect(wrapper.emitted('close')).toBeUndefined()
+        wrapper.unmount()
+      })
+
+      it('should stay open under a dialog stacked above it', () => {
+        const wrapper = mount(SideDrawer, { props: { title: 'Test' }, attachTo: document.body })
+        const dialog = document.createElement('div')
+        dialog.setAttribute('aria-modal', 'true')
+        document.body.append(dialog)
+        press()
+        expect(wrapper.emitted('close')).toBeUndefined()
+        dialog.remove()
+        wrapper.unmount()
+      })
+
+      it('should not close while collapsed (it has no close button then)', () => {
+        const wrapper = mount(SideDrawer, { props: { title: 'Test', collapsed: true }, attachTo: document.body })
+        press()
+        expect(wrapper.emitted('close')).toBeUndefined()
+        wrapper.unmount()
+      })
+    })
   })
 
   describe('on mobile (<600px)', () => {

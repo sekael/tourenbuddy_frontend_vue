@@ -63,6 +63,13 @@ function closeMenu() {
   view.value = 'closed'
 }
 
+/** Escape folds an open menu or panel only — an open drawer stays (it closes on the next one). */
+function onEscape(e: KeyboardEvent) {
+  if (isOpen.value)
+    e.preventDefault()
+  closeMenu()
+}
+
 // Imperative openers for the onboarding tour to demonstrate the navigation
 // path (open the speed-dial menu, then the map layers panel) — both live
 // inside this component's `view`, not the page-level overlay set.
@@ -80,7 +87,7 @@ defineExpose({ isOpen, closeMenu, openMenu, openMapLayers })
 </script>
 
 <template>
-  <div v-if="!isPickingLocation && !isDrawingRegion" class="overlay" @keydown.esc="closeMenu">
+  <div v-if="!isPickingLocation && !isDrawingRegion" class="overlay" @keydown.esc="onEscape">
     <div v-if="isOpen" class="backdrop" aria-hidden="true" @click="closeMenu" />
 
     <BaseTooltip v-if="showCompass" :text="t('map.overlay.compassTooltip')">

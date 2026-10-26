@@ -98,7 +98,10 @@ function onTouchStart() {
   dismissTimer = setTimeout(hideTooltip, 3000)
 }
 
-function onEscape() {
+function onEscape(e: KeyboardEvent) {
+  // Spent on the tooltip: the drawer around it stays open.
+  if (visible.value)
+    e.preventDefault()
   hideTooltip()
 }
 
