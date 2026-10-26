@@ -210,7 +210,7 @@ From zoom 10, every individually rendered tour marker SHALL show a label beside 
 1. the tour's name (or the unnamed-tour label)
 2. for an outing segment its stage ("Etappe 2/3"), then its elevation and its date or date range; "no date" when undated; "done" instead of the date when completed
 
-Labels SHALL avoid overlapping each other. Where they collide, lower-priority labels SHALL be dropped and basemap labels SHALL give way to tour labels. The selected tour's label and the focused outing's segment labels SHALL show at any zoom. Clustered tours SHALL have no label. Labels SHALL be localised and SHALL render with the base map's own fonts, including offline.
+Labels SHALL avoid overlapping each other and SHALL NOT run over another tour's marker, a cluster or a start/end marker: a label SHALL move to another side of its marker or, failing that, be dropped. Where labels collide, lower-priority labels SHALL be dropped and basemap labels SHALL give way to tour labels. The selected tour's label and the focused outing's segment labels SHALL show at any zoom. Clustered tours SHALL have no label. Labels SHALL be localised and SHALL render with the base map's own fonts, including offline.
 
 #### Scenario: Labels appear when zoomed in
 
@@ -226,6 +226,12 @@ Labels SHALL avoid overlapping each other. Where they collide, lower-priority la
 
 - **WHEN** a tour is selected at zoom 9
 - **THEN** its label SHALL be shown
+
+#### Scenario: Name next to a neighbouring marker
+
+- **GIVEN** "Piz Bernina" and the "Piz Palü" friend tour about 150 px apart
+- **WHEN** Piz Bernina's name on its right would reach the Piz Palü marker
+- **THEN** the name SHALL sit on another side of its marker, clear of Piz Palü
 
 ### Requirement: Start and end markers are labelled
 
@@ -275,9 +281,30 @@ The floating bottom controls (tour bar, menu and legend buttons) SHALL dock at t
 
 ### Requirement: Calm camera flights
 
-Every camera move the app makes on its own (framing a tour or outing, a cluster tap, a place chosen in the search) SHALL fly at one shared, calm speed, slower than MapLibre's default, so that base-map tiles load while the camera moves on a decent connection. A long flight SHALL take longer than a short one rather than squeezing every distance into a fixed duration. Gestures (pinch, scroll, drag) SHALL stay direct. With reduced motion requested, flights SHALL jump.
+Every camera move the app makes on its own (framing a tour or outing, a cluster tap, a place chosen in the search) SHALL fly at one shared, calm speed, slower than MapLibre's default, so that base-map tiles load while the camera moves on a decent connection. A long flight SHALL take longer than a short one rather than squeezing every distance into a fixed duration. A framing or cluster move of up to a screen and two zoom levels SHALL glide in about a second instead, never in a fraction of one. Gestures (pinch, scroll, drag) SHALL stay direct. With reduced motion requested, flights SHALL jump.
 
 #### Scenario: Cluster tap zooms by two levels
 
 - **WHEN** a cluster tap zooms the map in by two levels
 - **THEN** the flight SHALL take about a second, not half a second
+
+#### Scenario: Next stage half a screen away
+
+- **WHEN** the user steps to the next stage of an outing, half a screen from the current one
+- **THEN** the camera SHALL glide there in about a second
+
+### Requirement: Calm switch between tours and stages
+
+When a tour or outing opens or closes, or the user steps to another stage, the map's tour markers, labels, clusters, chains and tracks SHALL fade out first; the next view's SHALL be drawn while hidden and fade in once drawn, so old and new never show side by side and no marker shows without its glyph. Changes within one view (an edit, a refresh) SHALL apply without fading. With reduced motion requested, the switch SHALL be immediate.
+
+#### Scenario: Stepping to the next stage
+
+- **GIVEN** stage 1 of "Piz Bernina Hike & Fly" is open
+- **WHEN** the user taps the next-stage button
+- **THEN** stage 1's markers and route SHALL fade out as the camera starts moving
+- **AND** stage 2's markers, start point and route SHALL fade in together once drawn, never next to stage 1's
+
+#### Scenario: Two quick steps
+
+- **WHEN** the user taps next twice within a fifth of a second
+- **THEN** only the last stage SHALL be drawn and faded in

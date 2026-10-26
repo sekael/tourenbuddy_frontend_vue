@@ -4,8 +4,9 @@ import { createPieMarkerElement, fadeIn, fadeOut } from '@/features/map/presenta
 // Minimal MapLibre stub with all events needed for the new cluster pipeline
 function makeStubMap(individualFeatures: object[] = []) {
   const listeners: Record<string, ((...args: unknown[]) => void)[]> = {}
-  const layers: Record<string, { filter?: unknown }> = {}
+  const layers: Record<string, { type?: string, paint?: Record<string, unknown>, filter?: unknown }> = {}
   const sources: Record<string, { type: string, setData: ReturnType<typeof vi.fn> }> = {}
+  const container = { clientWidth: 400, clientHeight: 800, classList: document.createElement('div').classList }
 
   return {
     addSource: vi.fn((id: string, opts: { type: string }) => {
@@ -14,8 +15,8 @@ function makeStubMap(individualFeatures: object[] = []) {
     getSource: vi.fn((id: string) => sources[id]),
     /** Last data set on a source. */
     sourceData: (id: string) => sources[id]?.setData.mock.calls.at(-1)?.[0] as GeoJSON.FeatureCollection,
-    addLayer: vi.fn((layer: { id: string }) => {
-      layers[layer.id] = {}
+    addLayer: vi.fn((layer: { id: string, type?: string, paint?: Record<string, unknown> }, _beforeId?: string) => {
+      layers[layer.id] = { type: layer.type, paint: layer.paint }
     }),
     getLayer: vi.fn((id: string) => layers[id] ?? null),
     setFilter: vi.fn((id: string, filter: unknown) => {
@@ -27,13 +28,20 @@ function makeStubMap(individualFeatures: object[] = []) {
         listeners[event] = []
       listeners[event].push(handler)
     }),
-    off: vi.fn(),
+    off: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+      listeners[event] = (listeners[event] ?? []).filter(h => h !== handler)
+    }),
     getCanvas: vi.fn(() => ({ style: {} })),
+    setPaintProperty: vi.fn(),
+    getPaintProperty: vi.fn((id: string, prop: string) => layers[id]?.paint?.[prop]),
+    isSourceLoaded: vi.fn(() => true),
+    triggerRepaint: vi.fn(),
     hasImage: vi.fn(() => true),
     addImage: vi.fn(),
     flyTo: vi.fn(),
+    easeTo: vi.fn(),
     panBy: vi.fn(),
-    getContainer: vi.fn(() => ({ clientWidth: 400, clientHeight: 800 })),
+    getContainer: vi.fn(() => container),
     cameraForBounds: vi.fn((): { center: [number, number], zoom: number } | undefined => ({ center: [8.005, 47], zoom: 14 })),
     getZoom: vi.fn(() => 10),
     getMaxZoom: vi.fn(() => 22),
@@ -43,6 +51,7 @@ function makeStubMap(individualFeatures: object[] = []) {
       getEast: () => 9,
       getNorth: () => 48,
     })),
+    getCenter: vi.fn(() => ({ lng: 8, lat: 47 })),
     removeSource: vi.fn(),
     removeLayer: vi.fn(),
     project: vi.fn(() => ({ x: 100, y: 100 })),
@@ -404,13 +413,15 @@ describe('useToursMarkerLayer — selection, labels and cluster taps', () => {
     expect(zoom).toBeGreaterThan(12.5)
   })
 
-  it('should zoom in at least a level when framing a wide cluster barely zooms', async () => {
+  it('should zoom in at least a level, gliding, when framing a wide cluster barely zooms', async () => {
     const { stub, layer, tour, clusterElements } = await setupLayer()
     stub.getZoom.mockReturnValue(5.5)
     stub.cameraForBounds.mockReturnValue({ center: [8.5, 47], zoom: 5.6 })
     layer.updateTours([tour('a', 8.0), tour('b', 9.0)], null)
     clusterElements()[0]!.click()
-    expect((stub.flyTo.mock.calls[0]![0] as { zoom: number }).zoom).toBe(6.5)
+    // A level in on screen: a flight would take under half a second (D21).
+    expect(stub.flyTo).not.toHaveBeenCalled()
+    expect(stub.easeTo).toHaveBeenCalledWith(expect.objectContaining({ zoom: 6.5, duration: 1000 }))
   })
 
   it('should list a same-spot stack instead of moving the map, and select from it', async () => {
@@ -457,7 +468,7 @@ describe('useToursMarkerLayer — selection, labels and cluster taps', () => {
     stub.cameraForBounds.mockReturnValue({ center: [8.5, 47], zoom: 5.6 })
     layer.updateTours([tour('a', 8.0), tour('b', 9.0)], null)
     clusterElements()[0]!.click()
-    expect(stub.flyTo).toHaveBeenCalledWith(expect.objectContaining({ zoom: 6.5, offset: [-200, 0] }))
+    expect(stub.easeTo).toHaveBeenCalledWith(expect.objectContaining({ zoom: 6.5, offset: [-200, 0] }))
   })
 
   it('should centre a listed stack in the area beside the drawer', async () => {
@@ -498,6 +509,87 @@ describe('useToursMarkerLayer — selection, labels and cluster taps', () => {
     canvasContainer.append(clusterElements()[0]!)
     clusterElements()[0]!.click()
     expect(mapClick).not.toHaveBeenCalled()
+  })
+
+  it('should not resend the clusters\' footprints on a pan that keeps the same clusters', async () => {
+    const { stub, layer, tour } = await setupLayer()
+    layer.updateTours([tour('a', 8), tour('b', 8)], null)
+    const spots = () => stub.getSource('tours-cluster-spots')!.setData.mock.calls
+    expect(spots().at(-1)![0].features).toHaveLength(1)
+    const sent = spots().length
+    stub.emit('move')
+    expect(spots()).toHaveLength(sent)
+  })
+
+  it('should place names below the footprints, so they yield to markers', async () => {
+    const { stub } = await setupLayer()
+    const order = stub.addLayer.mock.calls.map(([l, before]) => [(l as { id: string }).id, before])
+    expect(order).toContainEqual(['tours-labels', 'tour-detail-label'])
+    expect(order.slice(-2).map(([id]) => id)).toEqual(['tours-cluster-spots', 'tour-detail-spots'])
+  })
+})
+
+describe('useToursMarkerLayer — scene swap', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  async function setupScene() {
+    const { useToursMarkerLayer } = await import('@/features/map/presentation/components/tours-marker-layer')
+    const stub = makeStubMap()
+    const layer = useToursMarkerLayer(stub as unknown as import('maplibre-gl').Map, vi.fn(), () => '')
+    await layer.setup()
+    const opacity = (id: string) => stub.setPaintProperty.mock.calls.filter(([l, p]) => l === id && p === 'circle-opacity').at(-1)?.[2]
+    const hidden = () => stub.getContainer().classList.contains('tours-scene-hidden')
+    return { stub, layer, opacity, hidden }
+  }
+
+  it('should draw only the latest scene when a switch comes during the fade-out', async () => {
+    const { layer } = await setupScene()
+    const first = vi.fn()
+    const second = vi.fn()
+    layer.swapScene(first)
+    vi.advanceTimersByTime(100)
+    layer.swapScene(second)
+    vi.advanceTimersByTime(200)
+    expect(first).not.toHaveBeenCalled()
+    expect(second).toHaveBeenCalledOnce()
+  })
+
+  it('should keep the new scene hidden until its tours have drawn', async () => {
+    const { stub, layer, opacity, hidden } = await setupScene()
+    const fade = vi.fn()
+    stub.isSourceLoaded.mockReturnValue(false)
+    layer.swapScene(vi.fn(), fade)
+    vi.advanceTimersByTime(200)
+    stub.emit('render')
+    expect(opacity('tours-circles')).toBe(0)
+    expect(hidden()).toBe(true)
+    stub.isSourceLoaded.mockReturnValue(true)
+    stub.emit('render')
+    expect(opacity('tours-circles')).toBe(0.9)
+    expect(hidden()).toBe(false)
+    expect(fade.mock.calls).toEqual([[false], [true]])
+  })
+
+  it('should fade the scene back in after a second when its sources never report drawn', async () => {
+    const { stub, layer, hidden } = await setupScene()
+    stub.isSourceLoaded.mockReturnValue(false)
+    layer.swapScene(vi.fn())
+    vi.advanceTimersByTime(1199)
+    expect(hidden()).toBe(true)
+    vi.advanceTimersByTime(1)
+    expect(hidden()).toBe(false)
+  })
+
+  it('should not fade in a scene a newer switch replaced after it was drawn', async () => {
+    const { stub, layer, hidden } = await setupScene()
+    stub.isSourceLoaded.mockReturnValue(false)
+    layer.swapScene(vi.fn())
+    vi.advanceTimersByTime(200)
+    layer.swapScene(vi.fn())
+    stub.isSourceLoaded.mockReturnValue(true)
+    stub.emit('render')
+    expect(hidden()).toBe(true)
   })
 })
 

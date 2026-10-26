@@ -52,6 +52,11 @@ Separately, the cluster tree was rebuilt in O(n³) on every selection: 1 s at 60
   - Six marker colour groups instead of four: piste, ski touring, hike & trail, alpine, bike,
     flying (one per activity is not distinguishable on a map; validated).
   - Escape closes the desktop side drawer.
+- User review, round 2:
+  - Switching stages (or opening and closing a tour) fades the old view out before the new one
+    fades in; short hops glide in about a second instead of zipping.
+  - Tour names move aside, or hide, rather than run over another marker, cluster or start/end
+    point.
 
 ## Capabilities
 

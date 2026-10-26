@@ -51,8 +51,12 @@ const fakeMap = {
   getBearing: () => 0,
   cameraForBounds: () => undefined,
   flyTo: vi.fn(),
+  easeTo: vi.fn(),
+  getCenter: () => ({ lng: 8.5, lat: 46.5 }),
   on: vi.fn(),
 }
+/** Camera moves of either kind: a short hop glides, a long one flies (D21). */
+const cameraMoves = () => fakeMap.flyTo.mock.calls.length + fakeMap.easeTo.mock.calls.length
 
 // Stubs for all heavy child components
 const TourenbuddyMapStub = {
@@ -313,6 +317,7 @@ describe('mapPage', () => {
         vi.spyOn(fakeMap, 'project').mockReturnValue({ x: 200, y: 300 })
         vi.spyOn(fakeMap, 'getContainer').mockReturnValue({ clientWidth: 1200, clientHeight: 800, getBoundingClientRect: () => ({ width: 1200, height: 800 }) })
         fakeMap.flyTo.mockClear()
+        fakeMap.easeTo.mockClear()
         mountMapPage(skiOn, { TrailCard: { template: '<div />' } })
         return useMapStore()
       }
@@ -332,23 +337,24 @@ describe('mapPage', () => {
         const [bounds, options] = camera.mock.calls[0] as unknown as [{ toArray: () => number[][] }, { maxZoom: number }]
         expect(bounds.toArray()).toEqual(other.lines[0])
         expect(options.maxZoom).toBe(ROUTE_ZOOM)
-        expect(fakeMap.flyTo).toHaveBeenCalledOnce()
+        expect(cameraMoves()).toBe(1)
       })
 
       it('should not move the camera when a lookup opens a single visible route', async () => {
         await show(mountVisible(), { candidates: [trail], more: 0, selectedId: 'r1' })
 
-        expect(fakeMap.flyTo).not.toHaveBeenCalled()
+        expect(cameraMoves()).toBe(0)
       })
 
       it('should not move the camera when going back to a visible list', async () => {
         const mapStore = mountVisible()
         await show(mapStore, { ...list, selectedId: 'r2' })
         fakeMap.flyTo.mockClear()
+        fakeMap.easeTo.mockClear()
 
         await show(mapStore, list)
 
-        expect(fakeMap.flyTo).not.toHaveBeenCalled()
+        expect(cameraMoves()).toBe(0)
       })
     })
   })

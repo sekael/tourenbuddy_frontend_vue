@@ -1,4 +1,4 @@
-import type { LngLatLike, Map as MaplibreMap, PaddingOptions } from 'maplibre-gl'
+import type { CameraOptions, LngLatLike, Map as MaplibreMap, PaddingOptions, PointLike } from 'maplibre-gl'
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import { LngLatBounds } from 'maplibre-gl'
 
@@ -13,6 +13,24 @@ const MARGIN = { top: 64, right: 48, bottom: 48, left: 48 }
  * About half a second per zoom level; a long hop takes longer than a short one.
  */
 export const FLIGHT_SPEED = 1.1
+/** A hop of up to a screen (the next stage, a level in) glides this long (D21). */
+export const GLIDE_MS = 1000
+
+/**
+ * Move the camera calmly (D17, D21): a hop of up to a screen and two levels glides in `GLIDE_MS`
+ * — a flight that short would take a third to two thirds of a second — anything further flies at
+ * `FLIGHT_SPEED`, which takes longer than that.
+ */
+export function moveCalmly(map: MaplibreMap, camera: CameraOptions & { offset?: PointLike }) {
+  const { clientWidth: w, clientHeight: h } = map.getContainer()
+  const to = map.project(camera.center ?? map.getCenter())
+  const near = Math.hypot(to.x - w / 2, to.y - h / 2) <= Math.max(w, h)
+    && Math.abs((camera.zoom ?? map.getZoom()) - map.getZoom()) <= 2
+  if (near)
+    map.easeTo({ ...camera, duration: GLIDE_MS })
+  else
+    map.flyTo({ ...camera, speed: FLIGHT_SPEED })
+}
 
 /** `margin` around the framed points, plus whatever the sheet or drawer covers. */
 export function paddingBeside(covered: Partial<PaddingOptions>, margin: typeof MARGIN = MARGIN) {
@@ -49,7 +67,7 @@ export function frameBounds(
   const camera = map.cameraForBounds(bounds, { padding: paddingBeside(covered), maxZoom, bearing: map.getBearing() })
   // No room left to frame in (tiny viewport): just centre on the fallback, no closer
   // than a tour's zoom, so a long route isn't cut down to its middle.
-  map.flyTo({ ...(camera ?? { center: fallbackCenter, zoom: Math.min(maxZoom, TOUR_ZOOM) }), speed: FLIGHT_SPEED })
+  moveCalmly(map, camera ?? { center: fallbackCenter, zoom: Math.min(maxZoom, TOUR_ZOOM) })
 }
 
 /**

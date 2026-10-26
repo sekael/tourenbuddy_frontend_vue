@@ -9,7 +9,7 @@ import { haversineMeters } from '@/core/utils/haversine'
 import { TOUR_TYPE_COLORS, TOUR_TYPE_PREVIEW_COLORS } from '@/features/tours/data/models/tour-type'
 import { toursToGeoJson } from '@/features/tours/domain/entities/tour'
 import { routeOrder } from '@/features/tours/domain/legs'
-import { FLIGHT_SPEED, paddingBeside } from '../composables/frame-tour'
+import { moveCalmly, paddingBeside } from '../composables/frame-tour'
 import { diffForests } from './cluster-transitions'
 import {
   buildClusterTree,
@@ -20,6 +20,7 @@ import {
   findCrossings,
 } from './cluster-tree'
 import {
+  ACTIVITY_GLYPH_SIZE,
   ACTIVITY_IMAGE_PREFIX,
   activityGlyphSvg,
   BLANK_IMAGE_ID,
@@ -75,6 +76,11 @@ const DETAIL_SPLIT_LAYER_ID = 'tour-detail-split'
 const PREVIEW_SPLIT_LAYER_ID = 'tours-preview-split'
 // Number badges on the focused outing's segments (design D16).
 const SEGMENT_BADGE_LAYER_ID = 'tours-segment-badge'
+// Invisible footprints of the DOM clusters and the start/end points, placed before the names so
+// a name moves aside or hides instead of running over them (D22).
+const CLUSTER_SPOT_SOURCE_ID = 'tours-cluster-spots'
+const CLUSTER_SPOT_LAYER_ID = 'tours-cluster-spots'
+const DETAIL_SPOT_LAYER_ID = 'tour-detail-spots'
 
 // Selection-scoped start/end detail markers — own source so they never touch
 // clustering/collision; rendered beneath the goal so the goal stays on top.
@@ -83,6 +89,25 @@ export const DETAIL_CIRCLE_LAYER_ID = 'tour-detail-circle'
 const DETAIL_ICON_LAYER_ID = 'tour-detail-icon'
 const START_ICON_ID = 'tour-start-icon'
 const END_ICON_ID = 'tour-end-icon'
+/** Everything the scene fade (D20) fades: every tour layer but the creation preview. */
+const SCENE_LAYER_IDS = [
+  CHAIN_LAYER_ID,
+  DETAIL_CIRCLE_LAYER_ID,
+  DETAIL_SPLIT_LAYER_ID,
+  DETAIL_ICON_LAYER_ID,
+  DETAIL_LABEL_LAYER_ID,
+  LAYER_ID,
+  SPLIT_LAYER_ID,
+  SELECTED_LAYER_ID,
+  SELECTED_SPLIT_LAYER_ID,
+  ACTIVITY_LAYER_ID,
+  CHECK_LAYER_ID,
+  FRIEND_LAYER_ID,
+  LINK_LAYER_ID,
+  SEGMENT_BADGE_LAYER_ID,
+  LABEL_LAYER_ID,
+  FOCUS_LABEL_LAYER_ID,
+]
 
 // Shared with the goal circle so the detail circle can't visually drift from it.
 const MARKER_CIRCLE_RADIUS = 14
@@ -105,6 +130,24 @@ const CLUSTER_FIT_MAX_ZOOM = 15.5
 /** Tours this close to the selected one share its spot: its "+N" chip counts and lists them. */
 const SAME_SPOT_M = 25
 const ANIMATION_DURATION_MS = 300
+/** A scene change (another tour or outing opens) fades the map's markers out, then back in (D20). */
+export const SCENE_FADE_OUT_MS = 200
+export const SCENE_FADE_IN_MS = 300
+/** On the map container while the scene is faded out: hides the DOM clusters and chip too. */
+const SCENE_HIDDEN_CLASS = 'tours-scene-hidden'
+const OPACITY_PROPS: Partial<Record<string, string[]>> = {
+  circle: ['circle-opacity', 'circle-stroke-opacity'],
+  symbol: ['icon-opacity', 'text-opacity'],
+  line: ['line-opacity'],
+}
+
+/** Fade one layer's opacity `prop` to `value` (`visible`) or 0 at the scene's pace (D20). */
+export function fadeLayer(map: MapLibreMap, id: string, prop: string, value: unknown, visible: boolean) {
+  if (!map.getLayer(id))
+    return
+  map.setPaintProperty(id, `${prop}-transition`, { duration: visible ? SCENE_FADE_IN_MS : SCENE_FADE_OUT_MS, delay: 0 })
+  map.setPaintProperty(id, prop, visible ? value : 0)
+}
 
 const LABEL_FONT = ['Frutiger Neue Medium']
 const LABEL_SUB_FONT = ['Frutiger Neue Regular']
@@ -278,6 +321,12 @@ export function useToursMarkerLayer(
   let currentSelectedId: string | null = null
   /** Kept out of clustering so they always show: the selection and a focused outing's segments (D16, D2). */
   let pinnedIds = new Set<string>()
+  /** The clusters' footprint points last sent to their source, so a pan doesn't resend them. */
+  let clusterSpotsKey = ''
+  /** Each scene layer's opacity props at full strength, read once its layers exist (D20). */
+  let sceneOpacity: [layer: string, prop: string, value: unknown][] = []
+  let sceneSwaps = 0
+  let sceneTimer: ReturnType<typeof setTimeout> | undefined
   let lastFrame: { tree: TreeNode | null, zoom: number, byNodeId: Map<string, RenderedNode> } = {
     tree: null,
     zoom: 0,
@@ -478,7 +527,7 @@ export function useToursMarkerLayer(
     el.setAttribute('tabindex', '0')
     el.setAttribute('aria-label', text.stackMore(others.length))
     el.title = text.stackMore(others.length)
-    el.style.cssText = 'padding:2px 7px;border:1.5px solid white;border-radius:10px;background:#1F2937;color:white;font:600 11px/1.2 Inter,system-ui,sans-serif;box-shadow:0 1px 3px rgba(0,0,0,0.35);cursor:pointer;'
+    el.style.cssText = 'padding:2px 7px;border:1.5px solid white;border-radius:10px;background:#1F2937;color:white;font:600 11px/1.2 Inter,system-ui,sans-serif;box-shadow:0 1px 3px rgba(0,0,0,0.35);cursor:pointer;transition:opacity 200ms ease;'
     const open = () => openStack(`selection:${currentSelectedId}`, selected.lngLat, [currentSelectedId!, ...others], true)
     el.addEventListener('click', (e) => {
       e.stopPropagation()
@@ -525,12 +574,11 @@ export function useToursMarkerLayer(
       // At least a level per tap: a country-wide cluster's fit barely moves the zoom (round 4).
       const zoom = Math.min(map.getMaxZoom(), Math.max(node.splitZoom + 0.01, fitZoom, map.getZoom() + 1))
       // The fit's centre already sits in the uncovered area; the centroid is shifted into it.
-      map.flyTo(zoom === fitZoom
-        ? { center: camera!.center, zoom, speed: FLIGHT_SPEED }
+      moveCalmly(map, zoom === fitZoom
+        ? { center: camera!.center, zoom }
         : {
             center: node.centroid as LngLatLike,
             zoom,
-            speed: FLIGHT_SPEED,
             offset: [((covered.left ?? 0) - (covered.right ?? 0)) / 2, ((covered.top ?? 0) - (covered.bottom ?? 0)) / 2],
           })
     }
@@ -704,8 +752,76 @@ export function useToursMarkerLayer(
     }
 
     refreshLayerFilters()
+    updateClusterSpots(forest)
     lastFrame = { tree: newTree, zoom: newZoom, byNodeId: newByNodeId }
     updateSelectionChip()
+  }
+
+  function updateClusterSpots(forest: TreeNode[]) {
+    const spots = forest.flatMap(n => n.kind === 'internal' ? [n.centroid] : [])
+    const key = spots.join(';')
+    if (key === clusterSpotsKey)
+      return
+    clusterSpotsKey = key
+    map.getSource<GeoJSONSource>(CLUSTER_SPOT_SOURCE_ID)?.setData({
+      type: 'FeatureCollection',
+      features: spots.map(coordinates => ({ type: 'Feature', geometry: { type: 'Point', coordinates }, properties: {} })),
+    })
+  }
+
+  /**
+   * Fade every tour layer, the clusters and the chip out or back in (D20). A scene change swaps
+   * the data while they are hidden, so the old stage never shows beside the new one.
+   */
+  function setSceneVisible(visible: boolean) {
+    for (const [id, prop, value] of sceneOpacity)
+      fadeLayer(map, id, prop, value, visible)
+    map.getContainer().classList.toggle(SCENE_HIDDEN_CLASS, !visible)
+    if (!visible)
+      stackList.close()
+  }
+
+  /** Calls `done` once the tours and detail sources have drawn their latest data (or after 1 s). */
+  function whenDrawn(done: () => void) {
+    const drawn = () => [SOURCE_ID, DETAIL_SOURCE_ID].every(id => !map.getSource(id) || map.isSourceLoaded(id))
+    const fallback = setTimeout(finish, 1000)
+    map.on('render', check)
+    map.triggerRepaint()
+
+    function check() {
+      if (drawn())
+        finish()
+    }
+    function finish() {
+      map.off('render', check)
+      clearTimeout(fallback)
+      done()
+    }
+  }
+
+  /**
+   * Show another tour or outing (D20): fade the scene out, `draw` the next one while hidden and
+   * fade it in once drawn. `fade` fades what other layers draw with it (the tracks). A swap
+   * started meanwhile takes over; reduced motion draws at once.
+   */
+  function swapScene(draw: () => void, fade: (visible: boolean) => void = () => {}) {
+    const swap = ++sceneSwaps
+    clearTimeout(sceneTimer)
+    if (reducedMotion) {
+      draw()
+      return
+    }
+    setSceneVisible(false)
+    fade(false)
+    sceneTimer = setTimeout(() => {
+      draw()
+      whenDrawn(() => {
+        if (swap !== sceneSwaps)
+          return
+        setSceneVisible(true)
+        fade(true)
+      })
+    }, SCENE_FADE_OUT_MS)
   }
 
   async function setup() {
@@ -743,6 +859,11 @@ export function useToursMarkerLayer(
     })
 
     map.addSource(CHAIN_SOURCE_ID, {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+    })
+
+    map.addSource(CLUSTER_SPOT_SOURCE_ID, {
       type: 'geojson',
       data: { type: 'FeatureCollection', features: [] },
     })
@@ -881,8 +1002,8 @@ export function useToursMarkerLayer(
         'icon-image': ['coalesce', ['get', 'activityImage'], BLANK_IMAGE_ID],
         'icon-size': ['case', IS_SELECTED, 1.25, 1],
         'icon-allow-overlap': true,
-        // Footprint ≈ the circle: the 18 px glyph plus padding on each side.
-        'icon-padding': ['case', IS_SELECTED, 6, 4],
+        // Footprint ≈ the circle and its corner badges: the 18 px glyph plus padding each side.
+        'icon-padding': 6,
       },
     })
 
@@ -922,7 +1043,9 @@ export function useToursMarkerLayer(
       },
     })
 
-    // Name labels last, so they are placed first: basemap labels in their way give way (D4).
+    // Names sit below the glyphs, the start/end labels and the footprints, which MapLibre places
+    // first (top down): a name takes an anchor clear of every marker, or hides (D22). Above the
+    // base map all the same, so its labels give way to them (D4).
     const labelLayout: SymbolLayerSpecification['layout'] = {
       'text-field': ['format', ['get', 'label'], { 'text-font': ['literal', LABEL_FONT] }, '\n', {}, ['get', 'labelSub'], { 'text-font': ['literal', LABEL_SUB_FONT], 'font-scale': 0.85, 'text-color': '#44403c' }] as ExpressionSpecification,
       // Also the layout font: without it MapLibre requests its Open Sans default, which the
@@ -943,8 +1066,23 @@ export function useToursMarkerLayer(
       'text-halo-width': 1.6,
       'text-halo-blur': 0.4,
     }
-    map.addLayer({ id: LABEL_LAYER_ID, type: 'symbol', source: SOURCE_ID, minzoom: LABEL_MIN_ZOOM, filter: none, layout: labelLayout, paint: labelPaint })
-    map.addLayer({ id: FOCUS_LABEL_LAYER_ID, type: 'symbol', source: SOURCE_ID, filter: none, layout: labelLayout, paint: labelPaint })
+    map.addLayer({ id: LABEL_LAYER_ID, type: 'symbol', source: SOURCE_ID, minzoom: LABEL_MIN_ZOOM, filter: none, layout: labelLayout, paint: labelPaint }, DETAIL_LABEL_LAYER_ID)
+    map.addLayer({ id: FOCUS_LABEL_LAYER_ID, type: 'symbol', source: SOURCE_ID, filter: none, layout: labelLayout, paint: labelPaint }, DETAIL_LABEL_LAYER_ID)
+
+    // Blank icons, each padded out to its marker's radius (the image is ACTIVITY_GLYPH_SIZE wide).
+    const addSpotLayer = (id: string, source: string, padding: number | ExpressionSpecification) => map.addLayer({
+      id,
+      type: 'symbol',
+      source,
+      layout: { 'icon-image': BLANK_IMAGE_ID, 'icon-allow-overlap': true, 'icon-padding': padding },
+    })
+    addSpotLayer(CLUSTER_SPOT_LAYER_ID, CLUSTER_SPOT_SOURCE_ID, MARKER_RADIUS + 2 - ACTIVITY_GLYPH_SIZE / 2)
+    addSpotLayer(DETAIL_SPOT_LAYER_ID, DETAIL_SOURCE_ID, ['case', IS_VIA, 0, MARKER_CIRCLE_RADIUS + 2 - ACTIVITY_GLYPH_SIZE / 2])
+
+    sceneOpacity = SCENE_LAYER_IDS.flatMap((id) => {
+      const type = map.getLayer(id)?.type
+      return (OPACITY_PROPS[type ?? ''] ?? []).map(prop => [id, prop, map.getPaintProperty(id, prop) ?? 1] as [string, string, unknown])
+    })
 
     // A tap on a goal circle or its label selects the tour.
     for (const id of TOUR_LAYER_IDS) {
@@ -1097,6 +1235,10 @@ export function useToursMarkerLayer(
   }
 
   function cleanup() {
+    clearTimeout(sceneTimer)
+    sceneSwaps++
+    map.getContainer().classList.remove(SCENE_HIDDEN_CLASS)
+    clusterSpotsKey = ''
     stackList.close()
     selectionChip?.marker.remove()
     selectionChip = null
@@ -1110,5 +1252,5 @@ export function useToursMarkerLayer(
     splitZooms = []
   }
 
-  return { setup, updateTours, updatePreview, updateDetailMarkers, updateOutingChains, cleanup }
+  return { setup, updateTours, updatePreview, updateDetailMarkers, updateOutingChains, swapScene, cleanup }
 }

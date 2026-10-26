@@ -1,7 +1,7 @@
 import type { Map as MaplibreMap } from 'maplibre-gl'
 import { LngLatBounds } from 'maplibre-gl'
 import { describe, expect, it, vi } from 'vitest'
-import { frameBounds, frameTours, ROUTE_ZOOM, TOUR_ZOOM } from '@/features/map/presentation/composables/frame-tour'
+import { frameBounds, frameTours, GLIDE_MS, ROUTE_ZOOM, TOUR_ZOOM } from '@/features/map/presentation/composables/frame-tour'
 
 const goal = { lng: 9.7, lat: 46.6 }
 const start = { lng: 9.6, lat: 46.5 }
@@ -11,7 +11,13 @@ function fakeMap() {
   return {
     cameraForBounds: vi.fn(() => ({ center: [0, 0], zoom: 10 })),
     flyTo: vi.fn(),
+    easeTo: vi.fn(),
     getBearing: () => 15,
+    getZoom: () => 9,
+    getCenter: () => ({ lng: 9.7, lat: 46.6 }),
+    getContainer: () => ({ clientWidth: 400, clientHeight: 800 }),
+    // The target two screens off, unless a test brings it closer.
+    project: vi.fn(() => ({ x: 200, y: 2000 })),
   }
 }
 
@@ -68,5 +74,22 @@ describe('frameTours', () => {
     frameBounds(map as unknown as MaplibreMap, new LngLatBounds([start.lng, start.lat], [end.lng, end.lat]), {}, { maxZoom: ROUTE_ZOOM })
     expect((map.cameraForBounds.mock.calls[0] as unknown as [unknown, { maxZoom: number }])[1].maxZoom).toBe(ROUTE_ZOOM)
     expect(map.flyTo).toHaveBeenCalledWith(expect.objectContaining({ zoom: TOUR_ZOOM }))
+  })
+
+  it('should glide to the next stage a screen away instead of zipping there in a blink', () => {
+    const map = fakeMap()
+    map.project.mockReturnValue({ x: 200, y: 1150 })
+    frameTours(map as unknown as MaplibreMap, [{ goal, startPoint: null, endPoint: null }], {})
+    expect(map.flyTo).not.toHaveBeenCalled()
+    expect(map.easeTo).toHaveBeenCalledWith(expect.objectContaining({ zoom: 10, duration: GLIDE_MS }))
+  })
+
+  it('should fly, not glide, when the target in view is far more zoomed in', () => {
+    const map = fakeMap()
+    map.project.mockReturnValue({ x: 200, y: 400 })
+    map.cameraForBounds.mockReturnValue({ center: [0, 0], zoom: 14 })
+    frameTours(map as unknown as MaplibreMap, [{ goal, startPoint: null, endPoint: null }], {})
+    expect(map.easeTo).not.toHaveBeenCalled()
+    expect(map.flyTo).toHaveBeenCalledOnce()
   })
 })

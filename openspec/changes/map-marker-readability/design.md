@@ -163,8 +163,9 @@ stack-list pan there. The tour/outing framing and the trail framing use the same
 
 **D17 — Calm flights.** Cluster taps eased in 500 ms and tour framing flew in a fixed 1000 ms
 however far, faster than tiles load. Every app-made camera move now flies at one
-`FLIGHT_SPEED` (1, MapLibre's default 1.2): about half a second per zoom level, longer flights for
-longer hops. Gestures stay direct; MapLibre already jumps under reduced motion.
+`FLIGHT_SPEED` (1.1, MapLibre's default 1.2): about half a second per zoom level, longer flights
+for longer hops. Gestures stay direct; MapLibre already jumps under reduced motion. Short hops
+glide instead (D21).
 
 **D18 — Six colour groups.** Both reviewers asked for finer colours (the guide: one per activity).
 Run through the dataviz palette validator with all pairs compared (any two map markers can
@@ -182,7 +183,43 @@ a field, the drawer is collapsed, it is not the topmost `aria-modal` element, or
 already called `preventDefault` (tour-list filters, the speed-dial menu, tooltips; the stack list
 stops propagation).
 
+**D20 — Scene swap** (user review, round 2). Switching an outing's stage cleared nothing first:
+`setFilter` and `setData` reach the screen only after a worker round trip, so the old stage's
+marker still stood when the camera landed, and the new circles popped in a few frames before
+their glyphs and names (MapLibre fades symbols in, never circles). Now a change of what has the
+map (`tourenbuddy-map`'s `scene`: the open tour, else the open outing's segments) goes through
+`swapScene`: every tour layer's opacity fades to 0 in 200 ms (paint transitions on constant
+values), together with the tracks (`gpx-track-layer.setVisible`) and the DOM clusters and chip (a
+container class); the new scene is drawn while hidden; once the `tours` and `tour-detail` sources
+report loaded on a render (1 s fallback), it fades in over 300 ms. Updates for the incoming scene
+wait for the swap (they would show early); a newer swap takes over a pending one. Reduced motion
+draws at once.
+*Alternative:* cross-fade per feature (feature-state opacity animated per frame), keeping a tour
+that stays — the overview's segment you open — on screen. Rejected for now: a ghost source or
+per-frame state for a 0.5 s dip; the dip reads as one deliberate change.
+
+**D21 — Short hops glide.** `flyTo`'s time scales with distance: the next stage half a screen
+away took 0.3 s, a level in on a cluster 0.45 s. `moveCalmly` glides (`easeTo`, 1 s) when the
+target is within a screen of the centre and two zoom levels; anything further flies at
+`FLIGHT_SPEED`, which then takes over a second anyway. Used by tour/outing/trail framing and
+cluster taps; the place search keeps its flight (far targets, its re-aim logic is flight-based).
+
+**D22 — Names yield to markers.** Names were placed before the glyph layer that claims each
+marker's footprint (MapLibre places symbol layers top-down), so a name could run over a
+neighbouring marker. The name layers now sit below the glyphs, the start/end labels and two
+invisible footprint layers (blank icons padded to the marker's radius) for the DOM clusters and
+the start/end points. A name takes another anchor clear of every marker, or hides. The glyph's
+footprint grows to 6 px padding so the corner badges are inside it. Diagonal anchors don't help:
+their box corner always sits on the tour's own square footprint.
+
 ## Risks / Trade-offs
+
+- [Every scene change dips the whole map for ~0.5 s, the staying tour included] → short, and it
+  marks the change; the camera moves meanwhile.
+- [A slow worker delays the fade-in] → the sources usually load during the camera's move; the
+  1 s fallback shows the scene regardless.
+- [A name with no clear anchor hides] → as before for name-to-name collisions; zooming in frees
+  room, and the selected tour's marker still carries its glyph.
 
 - [Other tours vanish while a detail is open] → the map comes back on close (× , Escape, map
   tap); the "+N" chip still reaches tours at the same spot.

@@ -43,6 +43,10 @@
 - [x] 7.4 Shared `FLIGHT_SPEED` for cluster taps, framing and place search (D17); verify picker/frame tests
 - [x] 7.5 Six-group palette (D18) in markers, tracks, previews; legend sample pair; verify palette validator and tests
 - [x] 7.6 Escape closes the side drawer (D19); inner Escape consumers call `preventDefault`; verify side-drawer tests
+- [x] 7.7 Scene swap on a change of what has the map (D20): fade out markers, tracks and DOM markers, draw while hidden, fade in once drawn; verify marker-layer tests and a frame-by-frame walk of stage switches
+- [x] 7.8 Short hops glide (D21) via `moveCalmly` for framing and cluster taps; verify frame-tour and marker-layer tests
+- [x] 7.9 Names yield to markers, clusters and start/end points (D22); verify marker-layer test and the Piz Bernina / Piz Palü walk
+- [x] 7.10 Local demo stacks for Patrick (Allalinhorn ×4, Säntis ×3 + Altmann, Piz Bernina ×2); verify stack list and "+N" chip in a walk
 
 ## 8. Finalize
 

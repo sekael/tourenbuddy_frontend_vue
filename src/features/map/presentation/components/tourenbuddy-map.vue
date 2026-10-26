@@ -190,6 +190,19 @@ const outingChains = computed(() => selectedTour.value || focusSegments.value.le
 
 const detailLabels = computed(() => ({ start: t('tours.form.startPointLabel'), end: t('tours.form.endPointLabel') }))
 
+/** Who has the map (D15): the open tour, else the open outing's segments. A change swaps the scene (D20). */
+const scene = computed(() => `${selectedTour.value?.id ?? ''}/${focusSegmentIds.value.join()}`)
+/** The scene last drawn; until a swap draws the new one, updates for it wait (they'd show early). */
+let drawnScene: string | null = null
+
+function drawScene() {
+  drawnScene = scene.value
+  markerLayer?.updateTours(renderedTours.value, selectedTourId.value, linkedTourIds.value, focusSegmentIds.value)
+  markerLayer?.updateDetailMarkers(detailMarkers.value, detailLabels.value)
+  markerLayer?.updateOutingChains(outingChains.value)
+  void gpxLayer?.updateTracks(trackTours.value)
+}
+
 /**
  * Swisstopo draws landmark summits (Eiger, Piz Bernina, …) as navy discs that both reviews took
  * for tour markers; give them the plain summit symbol the base map uses for every other peak.
@@ -246,14 +259,10 @@ onMounted(() => {
       () => props.covered ?? {},
     )
     await markerLayer.setup()
-    markerLayer.updateTours(renderedTours.value, selectedTourId.value, linkedTourIds.value, focusSegmentIds.value)
     markerLayer.updatePreview(previewGoal.value, previewTourTypes.value ?? [])
-    markerLayer.updateDetailMarkers(detailMarkers.value, detailLabels.value)
-    markerLayer.updateOutingChains(outingChains.value)
-
     gpxLayer = useGpxTrackLayer(mapInstance!)
     gpxLayer.setup()
-    void gpxLayer.updateTracks(trackTours.value)
+    drawScene()
 
     mapInstance!.on('click', (e) => {
       // Include the detail circle so tapping a start/end marker is swallowed
@@ -284,12 +293,19 @@ onUnmounted(() => {
   map.value = null
 })
 
-// Watch for tour/selection changes and update both layers. Keyed on
-// `renderedTours` (not `mapTours`) so a live tour-type edit recolors the goal.
+watch(scene, () => markerLayer?.swapScene(drawScene, visible => gpxLayer?.setVisible(visible)))
+
+// Changes within the drawn scene apply at once. Keyed on `renderedTours` (not `mapTours`) so a
+// live tour-type edit recolors the goal.
+const inDrawnScene = () => scene.value === drawnScene
 watch([renderedTours, selectedTourId, linkedTourIds, focusSegmentIds, locale], ([newTours, newSelectedId, newLinked, segmentIds]) => {
-  markerLayer?.updateTours(newTours, newSelectedId, newLinked as Set<string>, segmentIds)
+  if (inDrawnScene())
+    markerLayer?.updateTours(newTours, newSelectedId, newLinked as Set<string>, segmentIds)
 })
-watch(trackTours, entries => void gpxLayer?.updateTracks(entries))
+watch(trackTours, (entries) => {
+  if (inDrawnScene())
+    void gpxLayer?.updateTracks(entries)
+})
 
 // Watch for preview goal/type changes (edit or creation) and update the preview marker
 watch([previewGoal, previewTourTypes], ([goal, tourTypes]) => {
@@ -298,9 +314,13 @@ watch([previewGoal, previewTourTypes], ([goal, tourTypes]) => {
 
 // Re-render start/end detail markers whenever the open tour or its draft points change
 watch([detailMarkers, detailLabels], ([markers, labels]) => {
-  markerLayer?.updateDetailMarkers(markers, labels)
+  if (inDrawnScene())
+    markerLayer?.updateDetailMarkers(markers, labels)
 })
-watch(outingChains, chains => markerLayer?.updateOutingChains(chains))
+watch(outingChains, (chains) => {
+  if (inDrawnScene())
+    markerLayer?.updateOutingChains(chains)
+})
 
 watch(activeOverlays, ids => trailLayers?.setVisible(ids))
 watch(trailCard, card => trailLayers?.setHighlight(card))
@@ -324,12 +344,9 @@ watch(currentStyleIndex, (index) => {
       calmLandmarkPeaks(mapInstance!)
       trailLayers?.setup(trailLayerState())
       await markerLayer?.setup()
-      markerLayer?.updateTours(renderedTours.value, selectedTourId.value, linkedTourIds.value, focusSegmentIds.value)
       markerLayer?.updatePreview(previewGoal.value, previewTourTypes.value ?? [])
-      markerLayer?.updateDetailMarkers(detailMarkers.value, detailLabels.value)
-      markerLayer?.updateOutingChains(outingChains.value)
       gpxLayer?.setup()
-      void gpxLayer?.updateTracks(trackTours.value)
+      drawScene()
     })
   }
 })
@@ -349,6 +366,12 @@ watch(currentStyleIndex, (index) => {
 </style>
 
 <style>
+/* A scene change (D20) fades the DOM clusters and chip with the GL markers. */
+.tours-scene-hidden .maplibregl-marker {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
 /* Stack list (design D7): built as plain DOM by the marker layer inside a MapLibre popup, so it
    can't take scoped styles. */
 .stack-list-popup .maplibregl-popup-content {
