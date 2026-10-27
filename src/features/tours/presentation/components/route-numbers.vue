@@ -8,8 +8,8 @@ import { TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
 
 /**
  * Climb · descent · distance as a guide reads them — "↑ 447 m  ↓ 1257 m  8.4 km" — each only
- * when known (design D19); a zero leg — a tour that ends at its goal — says nothing and stays
- * out. The arrows are spelled out for assistive tech.
+ * when known (design D19); a 0 — nothing climbed, nothing descended (e.g. it ends at its goal), no
+ * length walked — says nothing and stays out. The arrows are spelled out for assistive tech.
  */
 defineProps<{
   metrics: RouteMetrics
@@ -30,7 +30,7 @@ const label = (way: keyof typeof LABELS, flown: FlownWay | undefined) => t(LABEL
 </script>
 
 <template>
-  <span v-if="metrics.ascent || metrics.descent || metrics.distance !== null" class="route-numbers">
+  <span v-if="metrics.ascent || metrics.descent || metrics.distance" class="route-numbers">
     <span v-if="metrics.ascent" data-testid="route-ascent">
       <span aria-hidden="true">↑</span>
       <BaseIcon v-for="type in flight?.up" :key="type" :name="TOUR_TYPE_ICONS[type]" size="xs" class="flown" />
@@ -43,7 +43,7 @@ const label = (way: keyof typeof LABELS, flown: FlownWay | undefined) => t(LABEL
       <span class="visually-hidden">{{ label('descent', flight?.down) }}</span>
       {{ formatElevation(metrics.descent) }}
     </span>
-    <span v-if="metrics.distance !== null" data-testid="route-distance">
+    <span v-if="metrics.distance" data-testid="route-distance">
       <span class="visually-hidden">{{ t('tours.route.distance') }}</span>
       {{ formatDistance(metrics.distance) }}
     </span>

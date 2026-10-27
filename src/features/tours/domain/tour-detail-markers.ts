@@ -54,17 +54,14 @@ export interface TourDetailMarkersInput {
  *
  * Round-trip dedup, per tone: an end marker is omitted when it coincides
  * (`isSameGoal`) with the start of the same tone — a saved round trip shows one
- * saved marker; a draft round trip shows one draft marker. A tour with no
- * effective start (no saved and no draft start) renders nothing — an end never
- * appears orphaned.
+ * saved marker; a draft round trip shows one draft marker. An end without a
+ * start (a connected stage: it ends where the next one starts) shows on its own.
  */
 export function tourDetailMarkers(input: TourDetailMarkersInput): DetailMarker[] {
   const effectiveStart = input.start.draft ?? input.start.saved
-  if (effectiveStart === null)
-    return []
 
-  // One tone (saved or draft): the start always shows; the end shows only when
-  // it's distinct from that tone's anchoring start (round-trip dedup).
+  // One tone (saved or draft): the start always shows; the end shows unless it
+  // coincides with that tone's anchoring start (round-trip dedup).
   function tone(
     start: LngLat | null,
     end: LngLat | null,
@@ -74,7 +71,7 @@ export function tourDetailMarkers(input: TourDetailMarkersInput): DetailMarker[]
     const out: DetailMarker[] = []
     if (start !== null)
       out.push({ pointKind: 'start', lngLat: start, tourTypes: input.tourTypes, draft })
-    if (end !== null && anchor !== null && !isSameGoal(end, anchor))
+    if (end !== null && !(anchor !== null && isSameGoal(end, anchor)))
       out.push({ pointKind: 'end', lngLat: end, tourTypes: input.tourTypes, draft })
     return out
   }

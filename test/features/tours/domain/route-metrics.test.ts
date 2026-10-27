@@ -25,8 +25,11 @@ describe('pointMetrics', () => {
     expect(pointMetrics(heights({}))).toEqual({ ascent: 447, descent: 0, distance: null })
   })
 
-  it('should count a goal below the start as descent (a flight down)', () => {
+  it('should count every rise as climb and every drop as descent, whichever leg runs which way', () => {
+    // Goal below the start (a lift up, then down to a lake): the drop to the goal is descent.
     expect(pointMetrics(heights({ elevation: 1707 }))).toEqual({ ascent: 0, descent: 925, distance: null })
+    // End above the goal: the rise to the end is climb too.
+    expect(pointMetrics(heights({ endPoint: VALLEY, endPointElevation: 3200 }))).toEqual({ ascent: 568, descent: 0, distance: null })
   })
 
   it('should take the start height for a round trip whose end has none', () => {
@@ -34,12 +37,21 @@ describe('pointMetrics', () => {
       .toEqual({ ascent: 447, descent: 447, distance: null })
   })
 
-  it('should know nothing when a height is missing, rather than guess', () => {
-    const unknown = { ascent: null, descent: null, distance: null }
-    expect(pointMetrics(heights({ startPointElevation: null }))).toEqual(unknown)
-    expect(pointMetrics(heights({ startPoint: null }))).toEqual(unknown)
-    expect(pointMetrics(heights({ elevation: null }))).toEqual(unknown)
-    expect(pointMetrics(heights({ endPoint: VALLEY, endPointElevation: null }))).toEqual(unknown)
+  it('should count only the goal → end leg without a start — a stage connected without one still has numbers', () => {
+    expect(pointMetrics(heights({ startPoint: null }))).toEqual({ ascent: 0, descent: 0, distance: null })
+    expect(pointMetrics(heights({ startPoint: null, endPoint: VALLEY, endPointElevation: 1822 })))
+      .toEqual({ ascent: 0, descent: 1257, distance: null })
+    expect(pointMetrics(heights({ startPoint: null, endPoint: VALLEY, endPointElevation: 3200 })))
+      .toEqual({ ascent: 121, descent: 0, distance: null })
+  })
+
+  it('should leave out a leg that lacks a height and still count the other', () => {
+    expect(pointMetrics(heights({ startPointElevation: null, endPoint: VALLEY, endPointElevation: 1822 })))
+      .toEqual({ ascent: 0, descent: 1257, distance: null })
+    expect(pointMetrics(heights({ endPoint: VALLEY, endPointElevation: null }))).toEqual({ ascent: 447, descent: 0, distance: null })
+    // A round trip's end borrows the start's height — neither leg counts when the start has none.
+    expect(pointMetrics(heights({ startPointElevation: null, endPoint: { ...HUT } }))).toEqual({ ascent: 0, descent: 0, distance: null })
+    expect(pointMetrics(heights({ elevation: null, endPoint: VALLEY, endPointElevation: 1822 }))).toEqual({ ascent: 0, descent: 0, distance: null })
   })
 })
 
@@ -79,13 +91,41 @@ describe('routeMetrics', () => {
 
 describe('routeMetrics of a split tour (activity-legs)', () => {
   const GOAL = { lng: 8.02, lat: 46.6 }
-  // Walk up 1000 m to the goal, then fly: a 300 m thermal on the way down to 600 m.
-  const hikeAndFly = track([[8, 46.6, 600], [8.01, 46.6, 1100], [8.02, 46.6, 1600], [8.03, 46.6, 1200], [8.04, 46.6, 1500], [8.05, 46.6, 600]])
+  // Walk up to the goal through a 100 m dip, then fly: a 300 m thermal on the way down to 600 m.
+  const hikeAndFly = track([[8, 46.6, 600], [8.01, 46.6, 1100], [8.015, 46.6, 1000], [8.02, 46.6, 1600], [8.03, 46.6, 1200], [8.04, 46.6, 1500], [8.05, 46.6, 600]])
   const legs = { ascent: ['hiking'], descent: ['paragliding'] } as const
 
-  it('should count only the walk as the climb and the flight as its net drop', () => {
+  it('should count every rise and drop of the walk and only the flight\'s net drop', () => {
     expect(routeMetrics({ ...heights({}), goal: GOAL, legs: { ascent: [...legs.ascent], descent: [...legs.descent] } }, hikeAndFly))
-      .toMatchObject({ ascent: 1000, descent: 1000 })
+      .toMatchObject({ ascent: 1100, descent: 1100 })
+  })
+
+  it('should count a lone glider\'s walk up the same, though saved unsplit', () => {
+    expect(routeMetrics({ ...heights({}), goal: GOAL, tourTypes: ['paragliding'] }, hikeAndFly))
+      .toMatchObject({ ascent: 1100, descent: 1100 })
+  })
+
+  it('should count a way up flown in thermals as its net climb, and no distance for a day flown both ways', () => {
+    const both = { ascent: ['paragliding' as const], descent: ['paragliding' as const] }
+    expect(routeMetrics({ ...heights({}), goal: GOAL, tourTypes: ['paragliding'], legs: both }, hikeAndFly))
+      .toEqual({ ascent: 1000, descent: 1000, distance: null })
+  })
+
+  it('should measure only the walked way when the way up is flown', () => {
+    const tour = { ...heights({}), goal: GOAL, tourTypes: ['paragliding' as const, 'hiking' as const], legs: { ascent: ['paragliding' as const], descent: ['hiking' as const] } }
+    expect(routeMetrics(tour, hikeAndFly).distance).toBeCloseTo(routeMetrics({ ...tour, legs: null }, hikeAndFly).distance! * 3 / 5, -1)
+  })
+
+  it('should keep the point numbers but measure only the walk on a flown track without heights', () => {
+    const flat = track([[8, 46.6], [8.01, 46.6], [8.015, 46.6], [8.02, 46.6], [8.03, 46.6], [8.04, 46.6], [8.05, 46.6]])
+    const glider = { ...heights({}), goal: GOAL, tourTypes: ['paragliding' as const] }
+    expect(routeMetrics(glider, flat)).toMatchObject({ ascent: 447, descent: 0 })
+    expect(routeMetrics(glider, flat).distance).toBeCloseTo(routeMetrics({ ...glider, tourTypes: [] }, flat).distance! * 2 / 5, -1)
+  })
+
+  it('should count the whole track when no way is flown whole — the flight can\'t be cut out', () => {
+    expect(routeMetrics({ ...heights({}), goal: GOAL, legs: { ascent: ['skitour'], descent: ['skitour', 'paragliding'] } }, hikeAndFly))
+      .toMatchObject({ ascent: 1400, descent: 1400 })
   })
 
   it('should measure a flown tour\'s distance on the way up only', () => {
@@ -94,17 +134,18 @@ describe('routeMetrics of a split tour (activity-legs)', () => {
   })
 
   it('should keep the whole-track numbers for an unsplit tour', () => {
-    expect(routeMetrics({ ...heights({}), goal: GOAL }, hikeAndFly)).toMatchObject({ ascent: 1300, descent: 1300 })
+    expect(routeMetrics({ ...heights({}), goal: GOAL }, hikeAndFly)).toMatchObject({ ascent: 1400, descent: 1400 })
   })
 })
 
 describe('totalMetrics', () => {
-  it('should not total a number one route lacks — a partial sum misleads', () => {
+  it('should total what the routes know and know nothing only when none does', () => {
     const total = totalMetrics([
       { ascent: 1265, descent: 0, distance: null },
-      { ascent: null, descent: null, distance: null },
+      { ascent: null, descent: null, distance: 8400 },
+      { ascent: 300, descent: 900, distance: null },
     ])
-    expect(total).toEqual({ ascent: null, descent: null, distance: null })
+    expect(total).toEqual({ ascent: 1565, descent: 900, distance: 8400 })
     expect(totalMetrics([])).toEqual({ ascent: null, descent: null, distance: null })
   })
 })

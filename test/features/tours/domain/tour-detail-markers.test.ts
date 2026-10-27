@@ -39,9 +39,14 @@ describe('tourDetailMarkers', () => {
     expect(out.every(m => m.draft === false)).toBe(true)
   })
 
-  it('no start coordinate yields no markers (and no orphan end)', () => {
+  it('an end without a start (a connected stage) yields the end marker alone', () => {
     const out = tourDetailMarkers(input({ end: { saved: FAR_END, draft: null } }))
-    expect(out).toEqual([])
+    expect(out).toEqual([{ pointKind: 'end', lngLat: FAR_END, tourTypes: ['hiking'], draft: false }])
+  })
+
+  it('re-picking an end without a start keeps the saved end and adds a draft end', () => {
+    const out = tourDetailMarkers(input({ end: { saved: FAR_END, draft: ELSEWHERE } }))
+    expect(out.map(m => [m.pointKind, m.lngLat, m.draft])).toEqual([['end', FAR_END, false], ['end', ELSEWHERE, true]])
   })
 
   it('editing the start keeps the saved start AND end, plus a draft start', () => {
@@ -113,6 +118,16 @@ describe('outingDetailMarkers', () => {
     ])
     expect(m.map(x => x.pointKind)).toEqual(['start', 'via'])
     expect(m[1]).toMatchObject({ lngLat: E, tourTypes: ['paragliding'] })
+  })
+
+  it('should hand a new first stage connected without a start over at the next start, a via ring at each handover', () => {
+    // C (goal only, then connected: its end = A's start) put before A–B.
+    const m = outingDetailMarkers([
+      seg({ goal: P, endPoint: { ...A } }),
+      seg({ startPoint: A, endPoint: E }),
+      seg({ startPoint: { ...E }, goal: { lng: 9.97, lat: 46.65 } }),
+    ])
+    expect(m.map(x => [x.pointKind, x.lngLat])).toEqual([['via', A], ['via', E]])
   })
 
   it('should drop an end back at the start or on the last goal', () => {

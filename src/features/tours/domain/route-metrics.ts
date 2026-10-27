@@ -1,7 +1,7 @@
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import { haversineMeters } from '@/core/utils/haversine'
 import { isSameGoal } from '@/features/tours/domain/distance'
-import { fliesDown } from '@/features/tours/domain/legs'
+import { flight } from '@/features/tours/domain/legs'
 
 /**
  * A route's numbers (design D19): what a guide plans by, derived from data the tour already
@@ -29,22 +29,21 @@ type HeightPoints = Pick<Tour, 'elevation' | 'startPoint' | 'startPointElevation
   & Partial<Pick<Tour, 'goal' | 'legs' | 'tourTypes'>>
 
 /**
- * Climb and descent over start → goal → end heights: the goal itself when the tour ends there,
- * the start's height on a round trip that has none of its own. Counter-climbs between the points
- * are unknown, so these are the route's net numbers — as SAC states them per stage.
+ * Climb and descent over the legs the tour has — start → goal, goal → end: every rise is climb and
+ * every drop descent, whichever leg it is on (both gauge the day's effort). A leg the tour does not
+ * have (no start, or no end: it ends at its goal), or one missing a height, adds nothing; the other
+ * still counts. A round trip's end without a height of its own takes the start's. Counter-climbs
+ * between the points are unknown, so these are the route's net numbers — as SAC states them per
+ * stage.
  */
 export function pointMetrics(tour: HeightPoints): RouteMetrics {
-  const start = tour.startPoint ? tour.startPointElevation : null
-  const goal = tour.elevation
-  const end = !tour.endPoint
-    ? goal
-    : tour.endPointElevation ?? (tour.startPoint && isSameGoal(tour.endPoint, tour.startPoint) ? start : null)
-  if (start == null || goal == null || end == null)
-    return UNKNOWN
-  const legs = [goal - start, end - goal]
+  const { startPoint: start, endPoint: end, elevation: goal } = tour
+  const endHeight = tour.endPointElevation ?? (start && end && isSameGoal(end, start) ? tour.startPointElevation : null)
+  const legs = [...(start ? [[tour.startPointElevation, goal]] : []), ...(end ? [[goal, endHeight]] : [])]
+  const rises = legs.flatMap(([from, to]) => (from == null || to == null ? [] : [to - from]))
   return {
-    ascent: Math.round(legs.reduce((sum, d) => sum + Math.max(d, 0), 0)),
-    descent: Math.round(legs.reduce((sum, d) => sum + Math.max(-d, 0), 0)),
+    ascent: Math.round(rises.reduce((sum, d) => sum + Math.max(d, 0), 0)),
+    descent: Math.round(rises.reduce((sum, d) => sum + Math.max(-d, 0), 0)),
     distance: null,
   }
 }
@@ -133,44 +132,59 @@ function asTrack(coordinates: GeoJSON.Position[]): GeoJSON.FeatureCollection {
 }
 
 /**
- * A split tour's single-line track per leg (activity-legs), cut at the vertex nearest the goal:
- * the climb of the way up, the descent of the way down — a flown one as its net drop, so a
- * thermal is neither a climb nor extra descent, and its distance as the way up's alone: the
- * flight's line says nothing about the day's legwork. Null when the track can't be cut.
- * ponytail: a multi-line track keeps the whole-track numbers.
+ * A way's numbers: a walked one's every rise and drop and its distance, a flown one's net change
+ * alone — a thermal is not legwork, and the flight's line says nothing about the day's legwork.
+ * Heights stay unknown if any point lacks one.
  */
-function legTrackMetrics(tour: HeightPoints, track: GeoJSON.FeatureCollection, whole: RouteMetrics): RouteMetrics | null {
+function wayMetrics(line: GeoJSON.Position[], flown: boolean): RouteMetrics {
+  const walked = trackMetrics(asTrack(line))
+  if (!flown)
+    return walked
+  if (walked.ascent === null)
+    return UNKNOWN
+  const rise = Math.round(line.at(-1)![2]! - line[0]![2]!)
+  return { ascent: Math.max(rise, 0), descent: Math.max(-rise, 0), distance: null }
+}
+
+/**
+ * A track with a way flown whole (activity-legs; a lone glider's way down too), cut at the vertex
+ * nearest the goal into its ways, each counted as `wayMetrics` says: the distance is the walked
+ * way's, none for a day flown both ways. Null when no way is flown whole, or the track can't be
+ * cut: the whole track counts.
+ * ponytail: a multi-line track, or a way flown only in part, counts the whole track, thermals
+ * included — cutting the flight out of a way needs the launch.
+ */
+function flownTrackMetrics(tour: HeightPoints, track: GeoJSON.FeatureCollection): RouteMetrics | null {
   const geometry = track.features.length === 1 ? track.features[0]!.geometry : null
-  if (!tour.legs || !tour.goal || geometry?.type !== 'LineString' || whole.ascent === null)
+  const flown = flight({ tourTypes: tour.tourTypes ?? [], legs: tour.legs })
+  const [upFlown, downFlown] = [flown.up?.length === 1, flown.down?.length === 1]
+  if (!tour.goal || geometry?.type !== 'LineString' || !(upFlown || downFlown))
     return null
   const line = geometry.coordinates
   const cut = nearestVertex(line, tour.goal)
-  const up = line.slice(0, cut + 1)
-  const down = line.slice(cut)
-  const flown = fliesDown({ tourTypes: tour.tourTypes ?? [], legs: tour.legs })
-  return {
-    ascent: trackMetrics(asTrack(up)).ascent,
-    descent: flown
-      ? Math.round(Math.max(0, (down[0]![2] ?? 0) - (down.at(-1)![2] ?? 0)))
-      : trackMetrics(asTrack(down)).descent,
-    distance: flown ? Math.round(lineLength(up)) : whole.distance,
-  }
+  const up = wayMetrics(line.slice(0, cut + 1), upFlown)
+  const down = wayMetrics(line.slice(cut), downFlown)
+  const sum = (key: 'ascent' | 'descent') => (up[key] === null || down[key] === null ? null : up[key] + down[key])
+  return { ascent: sum('ascent'), descent: sum('descent'), distance: up.distance ?? down.distance }
 }
 
-/** The track's numbers when it has heights; else the point heights' climb and descent, with the track's distance. */
+/**
+ * The most accurate numbers the tour has: its track's when the track has heights, else the point
+ * heights' climb and descent, with the track's distance.
+ */
 export function routeMetrics(tour: HeightPoints, track?: GeoJSON.FeatureCollection | null): RouteMetrics {
   const points = pointMetrics(tour)
   if (!track)
     return points
-  const fromTrack = trackMetrics(track)
-  if (fromTrack.ascent === null)
-    return { ...points, distance: fromTrack.distance }
-  return legTrackMetrics(tour, track, fromTrack) ?? fromTrack
+  const fromTrack = flownTrackMetrics(tour, track) ?? trackMetrics(track)
+  return fromTrack.ascent === null ? { ...points, distance: fromTrack.distance } : fromTrack
 }
 
-/** Sum per number; unknown as soon as one route lacks it — a partial total misleads. */
+/** Sum per number of the routes that know it; unknown only when none does. */
 export function totalMetrics(routes: readonly RouteMetrics[]): RouteMetrics {
-  const total = (key: keyof RouteMetrics) =>
-    routes.length > 0 && routes.every(r => r[key] !== null) ? routes.reduce((sum, r) => sum + r[key]!, 0) : null
+  const total = (key: keyof RouteMetrics) => {
+    const known = routes.map(r => r[key]).filter(v => v !== null)
+    return known.length > 0 ? known.reduce((sum, v) => sum + v, 0) : null
+  }
   return { ascent: total('ascent'), descent: total('descent'), distance: total('distance') }
 }

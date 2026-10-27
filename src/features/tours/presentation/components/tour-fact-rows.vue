@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/core/components/base-icon.vue'
 import { useFormatter } from '@/core/composables/use-formatter'
 import { TOUR_TYPE_COLORS, TOUR_TYPE_I18N_KEYS, TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
+import { isSameGoal } from '@/features/tours/domain/distance'
 import { landsByAir, legsApart } from '@/features/tours/domain/legs'
 import GradeBadge from '@/features/tours/presentation/components/grade-badge.vue'
 
@@ -33,9 +34,10 @@ const pointText = (p: { lng: number, lat: number } | null) => (p ? `${p.lat.toFi
 const startPointText = computed(() => pointText(props.tour.startPoint))
 const endPointText = computed(() => pointText(props.tour.endPoint))
 const isOneWayToGoal = computed(() => !!props.tour.startPoint && !props.tour.endPoint)
+/** Same place as the map's markers and connector take it (within 10 m), not the same digits. */
 const isRoundTrip = computed(() => {
   const { startPoint: s, endPoint: e } = props.tour
-  return !!s && !!e && s.lng === e.lng && s.lat === e.lat
+  return !!s && !!e && isSameGoal(s, e)
 })
 
 /** Activities as groups: one for an unsplit tour, the way up and the way down for a split one. */
@@ -109,9 +111,10 @@ function linkifyText(text: string): Array<{ text: string, url?: string }> {
       </li>
     </ul>
 
-    <ul v-if="startPointText || $slots.route" class="fact-group">
-      <template v-if="startPointText">
-        <li class="fact-row" data-fact="start">
+    <ul v-if="startPointText || endPointText || $slots.route" class="fact-group">
+      <!-- An end without a start (a connected stage) shows on its own. -->
+      <template v-if="startPointText || endPointText">
+        <li v-if="startPointText" class="fact-row" data-fact="start">
           <!-- The form's point icons (D22): ring = start, flag = goal, chequered flag = end. -->
           <BaseIcon name="trip_origin" size="sm" class="row-icon" />
           <span class="row-value">
