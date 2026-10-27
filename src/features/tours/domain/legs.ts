@@ -97,8 +97,3 @@ export function sumFlight(routes: readonly { tour: LegTour, ascent: number | nul
 export function legsApart(legs: TourLegs | null | undefined): TourLegs | null {
   return legs && legs.ascent.join() !== legs.descent.join() ? legs : null
 }
-
-/** The whole way down is flown: its descent is the flight's drop. */
-export function fliesDown(tour: { tourTypes: readonly TourType[], legs?: TourLegs | null }): boolean {
-  return flight(tour).down?.length === 1
-}

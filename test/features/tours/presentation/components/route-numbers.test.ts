@@ -7,10 +7,11 @@ import RouteNumbers from '@/features/tours/presentation/components/route-numbers
 const icons = (w: ReturnType<typeof mount>, id: string) => w.find(`[data-testid="${id}"]`).findAllComponents(BaseIcon).map(i => i.props('name'))
 
 describe('routeNumbers', () => {
-  it('should leave out the zero descent of a tour that ends at its goal', () => {
-    const w = mount(RouteNumbers, { props: { metrics: { ascent: 447, descent: 0, distance: null } } })
+  it('should leave out the zero descent of a tour that ends at its goal, and a zero distance', () => {
+    const w = mount(RouteNumbers, { props: { metrics: { ascent: 447, descent: 0, distance: 0 } } })
     expect(w.find('[data-testid="route-ascent"]').text()).toContain('447\u00A0m')
     expect(w.find('[data-testid="route-descent"]').exists()).toBe(false)
+    expect(w.find('[data-testid="route-distance"]').exists()).toBe(false)
   })
 
   it('should show the activities of a shared way, glider last, so it never reads as a pure flight', () => {

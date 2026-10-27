@@ -657,15 +657,13 @@ function openGpxPicker() {
   gpxInputRef.value?.click()
 }
 
+/** The end stays: it stands on its own (a connected stage ends where the next one starts). */
 function handleRemoveStart() {
-  for (const fill of [startName, startElevation, endName, endElevation])
-    fill.cancel()
+  startName.cancel()
+  startElevation.cancel()
   startPoint.value = null
   startPointName.value = ''
   startPointElevation.value = ''
-  endPoint.value = null
-  endPointName.value = ''
-  endPointElevation.value = ''
 }
 
 function handleRemoveEnd() {

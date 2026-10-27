@@ -596,6 +596,33 @@ describe('tourForm', () => {
       const draft = (wrapper.emitted('submit')![0] as unknown[])[0] as Record<string, unknown>
       expect(draft.startPointName).toBeNull()
     })
+
+    it('shows a connected stage\'s end without a start, and hides the section once that end goes', async () => {
+      const wrapper = mountForm({
+        initialDraft: { name: 'Stage 0', startPoint: null, endPoint: { lng: 8.4, lat: 46.7 }, endPointName: 'Tierberglihütte' },
+      })
+      expect(wrapper.find('[data-testid="remove-start-btn"]').exists()).toBe(false)
+      expect((wrapper.find('#tf-end-name').element as HTMLInputElement).value).toBe('Tierberglihütte')
+      await wrapper.find('[data-testid="remove-end-btn"]').trigger('click')
+      expect(wrapper.find('.point-section--end').exists()).toBe(false)
+    })
+
+    it('keeps the end when the start is removed — an end stands on its own (a connected stage)', async () => {
+      const end = { lng: 8.4, lat: 46.7 }
+      const wrapper = mountForm({
+        initialDraft: { name: 'Stage 1', startPoint: GOAL, startPointName: 'Hut', endPoint: end, endPointName: 'Tierberglihütte', endPointElevation: 2795 },
+      })
+      await wrapper.find('[data-testid="remove-start-btn"]').trigger('click')
+      expect(wrapper.find('[data-testid="remove-end-btn"]').exists()).toBe(true)
+      await wrapper.find('form').trigger('submit.prevent')
+      expect(wrapper.emitted('submit')![0]![0]).toMatchObject({
+        startPoint: null,
+        startPointName: null,
+        endPoint: end,
+        endPointName: 'Tierberglihütte',
+        endPointElevation: 2795,
+      })
+    })
   })
 
   describe('end date (multi-day span)', () => {

@@ -155,6 +155,11 @@ describe('tourConnectors', () => {
     expect(legs({ endPoint: { ...G } })).toHaveLength(1)
   })
 
+  it('should point a stage connected without a start from its goal to its end, one way', () => {
+    expect(legs({ startPoint: null, endPoint: E })).toEqual([[[[8.1, 46.1], [8.2, 46]], false]])
+    expect(legs({ startPoint: null, endPoint: { ...G } })).toEqual([])
+  })
+
   it('should colour the arrow like the band under it, per activity', () => {
     const arrows = (types: string[]) => tourConnectors([entry({ tourTypes: types as never })]).features.map(f => f.properties!.arrow)
     expect(arrows(['hiking'])).toEqual(['connector-arrow:#DC2626'])
@@ -188,6 +193,11 @@ describe('legs on the map (activity-legs D5)', () => {
   it('should draw a split round trip as two legs, one arrow cannot wear both colours', () => {
     expect(tourConnectors([hikeAndFly({ endPoint: { ...A } })]).features.map(f => f.properties!.arrow))
       .toEqual(['connector-arrow:#DC2626', 'connector-arrow:#D97706'])
+  })
+
+  it('should draw only the way down of a split tour without a start, in its own colours', () => {
+    expect(tourConnectors([hikeAndFly({ startPoint: null })]).features.map(f => f.properties!.arrow))
+      .toEqual(['connector-arrow:#D97706'])
   })
 
   it('should switch a track\'s colours at the split with strictly ascending stops', () => {

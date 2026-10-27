@@ -113,13 +113,14 @@ interface ConnectorLeg {
  * ponytail: arrows repeat along a banded leg in that one colour; colour per arrow needs
  * self-placed point anchors. A round trip (end = start) is one leg with a two-way arrow — unless
  * split: one arrow can't wear two legs' colours, so both legs are drawn, the way down on top. A
- * start without an end is the single leg to the goal; a leg between coinciding points is dropped.
+ * start without an end is the single leg to the goal, an end without a start (a connected stage)
+ * the single leg from the goal to the end; a leg between coinciding points is dropped.
  */
 function connectorLegs(tour: Tour): ConnectorLeg[] {
   const { startPoint: start, endPoint: end, goal, legs } = tour
-  if (tour.gpxFilepath || !start)
+  if (tour.gpxFilepath)
     return []
-  const roundTrip = !legs && !!end && isSameGoal(end, start)
+  const roundTrip = !legs && !!start && !!end && isSameGoal(end, start)
   const leg = (types: readonly TourType[], a: LngLat, b: LngLat, both: boolean): ConnectorLeg[] => isSameGoal(a, b)
     ? []
     : [{
@@ -131,7 +132,7 @@ function connectorLegs(tour: Tour): ConnectorLeg[] {
         },
       }]
   return [
-    ...leg(legs?.ascent ?? tour.tourTypes, start, goal, roundTrip),
+    ...(start ? leg(legs?.ascent ?? tour.tourTypes, start, goal, roundTrip) : []),
     ...(end && !roundTrip ? leg(legs?.descent ?? tour.tourTypes, goal, end, false) : []),
   ]
 }
