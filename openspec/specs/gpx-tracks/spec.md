@@ -8,7 +8,7 @@ Optional GPX track per tour: stored in the private `tour-gpx` Storage bucket und
 
 ### Requirement: GPX file storage in Supabase Storage
 
-The system SHALL persist user-uploaded GPX files in a private Supabase Storage bucket named `tour-gpx` using the object key `${userId}/${tourId}.gpx`, where `userId` is `auth.uid()` of the uploader and `tourId` is the UUID also used as `tours.id`. The system SHALL store this full key on the `tours` row in column `gpx_filepath`. The path's first segment encodes the **uploader**, not the readers — read access remains independently controllable so future visibility models (private / shared / public) can be implemented by editing only the SELECT policy, without re-keying objects or migrating existing data.
+The system SHALL persist user-uploaded GPX files in a private Supabase Storage bucket named `tour-gpx` under the uploader's prefix, `${userId}/${id}.gpx`, where `userId` is `auth.uid()` of the uploader. `id` SHALL be the tour's UUID (also used as `tours.id`) for a file picked while creating the tour, and a fresh random UUID for every later file — a replacement picked in edit, or an accepted GPX suggestion. The system SHALL store this full key on the `tours` row in column `gpx_filepath`. Each key SHALL be written once: a file is never overwritten in place by another file, so a different track always means a different `gpx_filepath` (an interrupted upload MAY be retried to the same key). The path's first segment encodes the **uploader**, not the readers — read access remains independently controllable so future visibility models (private / shared / public) can be implemented by editing only the SELECT policy, without re-keying objects or migrating existing data.
 
 #### Scenario: Upload during tour creation (pre-upload)
 
@@ -19,7 +19,7 @@ The system SHALL persist user-uploaded GPX files in a private Supabase Storage b
 #### Scenario: Upload during tour edit (replace)
 
 - **WHEN** a user edits a tour that already has a track and uploads a different `.gpx` file
-- **THEN** the new file overwrites the existing object at the canonical key `${userId}/${tourId}.gpx` and `gpx_filepath` remains unchanged
+- **THEN** the new file is uploaded to a fresh key `${userId}/${uuid}.gpx`, saving sets `gpx_filepath` to that key, and the previous object is removed (see Cascade deletion)
 
 #### Scenario: File exceeds size limit
 
@@ -110,7 +110,7 @@ The system SHALL render the selected tour's GPX track on the map as a polyline c
 
 ### Requirement: Lazy fetch and caching of GPX data
 
-The system SHALL fetch and parse a tour's GPX file on demand when the tour is selected on the map, and SHALL cache parsed GeoJSON in memory for the session to avoid duplicate work.
+The system SHALL fetch and parse a tour's GPX file on demand when the tour is selected on the map, and SHALL keep the most recently parsed tracks in memory, keyed by `gpx_filepath`, to avoid duplicate work. Because a key is written once, a write that leaves `gpx_filepath` unchanged (completion, visibility or any other field) SHALL reuse the parsed track: the map SHALL keep the track drawn throughout, never emptying it while the tour reloads.
 
 #### Scenario: First selection
 
@@ -126,6 +126,16 @@ The system SHALL fetch and parse a tour's GPX file on demand when the tour is se
 
 - **WHEN** a tour with `gpx_filepath = null` is selected
 - **THEN** the gpx-track layer renders no polyline and no network request is made
+
+#### Scenario: Completion or visibility toggled
+
+- **WHEN** the owner marks the selected tour completed or incomplete, or toggles its visibility, and the refetched row carries a new `updated_at`
+- **THEN** the track stays drawn in every frame, and the file is neither downloaded nor parsed again
+
+#### Scenario: Track replaced
+
+- **WHEN** the selected tour's track is replaced
+- **THEN** the track is loaded from its new `gpx_filepath`, never served from the old one's parse
 
 ### Requirement: Responsive upload UX
 

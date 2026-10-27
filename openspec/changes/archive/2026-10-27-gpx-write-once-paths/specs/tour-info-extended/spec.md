@@ -2,7 +2,7 @@
 
 ### Requirement: Route numbers
 
-The tour detail SHALL show the route's climb, descent and, when known, distance from the most accurate data, never typed: the distance from a GPX track; climb and descent from a track with heights (past a 5 m swing from the last turning point), else from the point heights over the legs start → goal and goal → end, every rise as climb and every drop as descent. A leg that is missing or lacks a height adds nothing; the other still counts. A 0 SHALL NOT show. No walking time SHALL be estimated. A write that leaves the tour's `gpx_filepath` unchanged SHALL NOT reload the track (see `gpx-tracks`).
+The tour detail SHALL show the route's climb, descent and, when known, distance from the most accurate data, never typed: the distance from a GPX track; climb and descent from a track with heights (past a 5 m swing from the last turning point), else from the point heights over the legs start → goal and goal → end, every rise as climb and every drop as descent. A leg that is missing or lacks a height adds nothing; the other still counts. A 0 SHALL NOT show. No walking time SHALL be estimated.
 
 #### Scenario: Hut to summit to valley without a track
 
