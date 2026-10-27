@@ -5,9 +5,12 @@ import { supabase } from '@/core/utils/supabase'
 const BUCKET = 'tour-gpx'
 const SIGNED_URL_EXPIRES_IN = 3600
 
-/** Deterministic storage key for a tour's GPX — mintable client-side (offline) before upload. */
-export function gpxStorageKey(userId: string, tourId: string): string {
-  return `${userId}/${tourId}.gpx`
+/**
+ * Storage key for one GPX file — mintable client-side (offline) before upload. `id` is fresh per
+ * file (a new tour's id, else a random uuid): a key is written once (`loadGpxTrack`).
+ */
+export function gpxStorageKey(userId: string, id: string): string {
+  return `${userId}/${id}.gpx`
 }
 
 /**
@@ -15,11 +18,12 @@ export function gpxStorageKey(userId: string, tourId: string): string {
  * at pick-time).
  *
  * Routed through the shared XHR transport so one upload path exists app-wide and the picker
- * can show real progress instead of an indeterminate spinner. `upsert` is not optional here
- * the way it is for attachments: the key is stable (`<uid>/<tourId>.gpx`), so every replace
- * overwrites. The signed upload URL carries it as the `x-upsert` header, and an overwrite
- * needs an UPDATE storage policy on top of INSERT — `tour-gpx owner update` in
- * `20260510064254_storage_buckets_and_policies.sql` provides it.
+ * can show real progress instead of an indeterminate spinner. Every pick mints a fresh key, so
+ * an upload never changes another track's bytes (the parsed-track cache is keyed by path,
+ * `loadGpxTrack`). `upsert` stays on for the same key's retries — an offline replay re-uploads
+ * its staged blob until the row write lands. The signed upload URL carries it as the `x-upsert`
+ * header, and an overwrite needs an UPDATE storage policy on top of INSERT — `tour-gpx owner
+ * update` in `20260510064254_storage_buckets_and_policies.sql` provides it.
  *
  * `opts` is deliberately narrowed: `contentType` and `upsert` are properties of the GPX key
  * itself, not of a single call, so no caller may override them.

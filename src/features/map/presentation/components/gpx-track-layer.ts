@@ -3,7 +3,7 @@ import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import { distinctTypeColors, TOUR_TYPE_COLORS, TOUR_TYPE_TRACK_COLORS } from '@/features/tours/data/models/tour-type'
 import { useGpxCache } from '@/features/tours/data/services/gpx-cache'
-import { gpxTrackKey, loadGpxTrack } from '@/features/tours/data/services/gpx-track-service'
+import { loadGpxTrack } from '@/features/tours/data/services/gpx-track-service'
 import { isSameGoal } from '@/features/tours/domain/distance'
 import { outingGaps } from '@/features/tours/domain/outing'
 import { progressNearest } from '@/features/tours/domain/route-metrics'
@@ -339,9 +339,10 @@ export function useGpxTrackLayer(map: MapLibreMap) {
         return
       }
       // Empty the slot while loading, so it never shows the track it held before.
-      if (!cache.get(gpxTrackKey(tour)))
+      const gpxTour = tour as Tour & { gpxFilepath: string }
+      if (!cache.get(gpxTour.gpxFilepath))
         source?.setData(EMPTY_GEOJSON)
-      const geojson = await loadGpxTrack(tour as Tour & { gpxFilepath: string })
+      const geojson = await loadGpxTrack(gpxTour)
       if (gen !== generation)
         return
       // Same task as the data, so the split lands with the track it was measured on.

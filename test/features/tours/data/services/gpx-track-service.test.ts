@@ -22,12 +22,15 @@ describe('loadGpxTrack', () => {
     expect(parseGpxFile).toHaveBeenCalledTimes(1)
   })
 
-  it('should load a replaced track again once the saved tour is a new version', async () => {
+  it('should keep the parse across a row-only write and load a replaced track from its new path', async () => {
     vi.mocked(parseGpxFile).mockResolvedValueOnce(track('old')).mockResolvedValueOnce(track('new'))
-    const tour = { id: 'replaced', gpxFilepath: 'u/replaced.gpx', updatedAt: '1' }
+    const fetches = vi.mocked(loadCachedBlob).mock.calls.length
+    const tour = { id: 'replaced', gpxFilepath: 'u/a.gpx', updatedAt: '1' }
     expect(await loadGpxTrack(tour)).toEqual(track('old'))
-    expect(await loadGpxTrack(tour)).toEqual(track('old'))
-    expect(await loadGpxTrack({ ...tour, updatedAt: '2' })).toEqual(track('new'))
+    // Marked completed / visibility toggled: the row's `updatedAt` moves on, the file does not.
+    expect(await loadGpxTrack({ ...tour, updatedAt: '2' })).toEqual(track('old'))
+    expect(await loadGpxTrack({ ...tour, gpxFilepath: 'u/b.gpx', updatedAt: '3' })).toEqual(track('new'))
+    expect(vi.mocked(loadCachedBlob).mock.calls.length - fetches).toBe(2)
   })
 
   it('should give no track when the bytes cannot be had offline', async () => {

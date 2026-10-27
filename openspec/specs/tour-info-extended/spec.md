@@ -331,6 +331,11 @@ The tour detail SHALL show the route's climb, descent and, when known, distance 
 - **WHEN** a tour starts at 2632 m, its goal lies at 1707 m, and it ends at a viewpoint at 1950 m
 - **THEN** the detail SHALL show a descent of 925 m and a climb of 243 m
 
+#### Scenario: Completion or visibility toggled on a tour with a track
+
+- **WHEN** the owner marks a tour with a GPX track completed or toggles its visibility
+- **THEN** the detail SHALL keep showing the track's numbers throughout, never falling back to the point heights' numbers while the tour reloads
+
 ### Requirement: Point icons match the form
 
 The start, goal and end of a tour SHALL use the same icons wherever they show — form, detail rows and map markers: a ring for the start, a flag for the goal, a chequered flag for the end. No house glyph SHALL mark a start, since a house marks a hut on swisstopo maps.

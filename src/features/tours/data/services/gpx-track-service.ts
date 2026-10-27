@@ -8,24 +8,18 @@ const logger = useLogger('gpx-track-service')
 /** Loads under way, so the map and the route numbers asking at once fetch and parse once. */
 const inflight = new Map<string, Promise<GeoJSON.FeatureCollection | null>>()
 
-interface TrackTour { id: string, gpxFilepath: string, updatedAt?: string | null }
-
-/**
- * Cache key of a tour's parsed track. The GPX key is fixed per tour (`<uid>/<tourId>.gpx`, upserted
- * on replace) and the form uploads a new file before it saves the row, so the row's `updatedAt`
- * marks a new version — a replaced track never shows from the old parse. Friend tours carry no
- * `updatedAt`: theirs refreshes on reload.
- */
-export function gpxTrackKey(tour: { id: string, updatedAt?: string | null }): string {
-  return `${tour.id}@${tour.updatedAt ?? ''}`
-}
+interface TrackTour { id: string, gpxFilepath: string }
 
 /**
  * A tour's parsed GPX track: memory cache, else offline-first bytes (cached on first online view).
  * Null when it can't be had — offline and never cached, or a broken file.
+ *
+ * Cached by storage path: every GPX file lands at a path of its own and is never rewritten (a
+ * pick mints a fresh key, an accepted suggestion copies to one), so a replaced track is a new
+ * path and a row-only write (completed, visibility) keeps the parse — no reload, no blink.
  */
 export function loadGpxTrack(tour: TrackTour): Promise<GeoJSON.FeatureCollection | null> {
-  const key = gpxTrackKey(tour)
+  const key = tour.gpxFilepath
   const cached = useGpxCache().get(key)
   if (cached)
     return Promise.resolve(cached)

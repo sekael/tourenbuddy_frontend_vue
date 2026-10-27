@@ -56,8 +56,8 @@ export function clearPendingUpload(key: string): Promise<undefined> {
  * hit is returned with NO request at all. Sound only because an attachment path
  * (`<uid>/<tourId>/<uuid>.<ext>`) is never upserted — an "edit" is a delete plus a fresh
  * uuid — so a hit is byte-identical to the server by construction. Adding an upsert on an
- * attachment path breaks THIS read path too, not just the write. GPX must NOT pass the flag:
- * `<uid>/<tourId>.gpx` IS upserted on replace, so a hit there could render the old track.
+ * attachment path breaks THIS read path too, not just the write. GPX paths are written once
+ * as well (`loadGpxTrack`) but still read online-first.
  */
 export async function loadCachedBlob(
   key: string,

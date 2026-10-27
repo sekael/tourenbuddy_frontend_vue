@@ -5,7 +5,6 @@ import { loadCachedBlob } from '@/core/offline/blob-cache'
 import { outingGapLines, tourConnectors, trackGradient, useGpxTrackLayer } from '@/features/map/presentation/components/gpx-track-layer'
 import { TOUR_TYPE_COLORS, TOUR_TYPE_TRACK_COLORS } from '@/features/tours/data/models/tour-type'
 import { useGpxCache } from '@/features/tours/data/services/gpx-cache'
-import { gpxTrackKey } from '@/features/tours/data/services/gpx-track-service'
 
 vi.mock('@/core/offline/blob-cache', () => ({ loadCachedBlob: vi.fn() }))
 vi.mock('@/features/tours/data/services/gpx-storage-service', () => ({ getSignedUrl: vi.fn() }))
@@ -85,8 +84,8 @@ describe('useGpxTrackLayer — several tracks (#338)', () => {
   }
 
   it('should draw one slot per track', async () => {
-    useGpxCache().set(gpxTrackKey(tour('a')), track('a'))
-    useGpxCache().set(gpxTrackKey(tour('b')), track('b'))
+    useGpxCache().set('u/a.gpx', track('a'))
+    useGpxCache().set('u/b.gpx', track('b'))
     const map = stubMap()
     const layer = useGpxTrackLayer(map as unknown as MapLibreMap)
     layer.setup()
@@ -127,6 +126,19 @@ describe('useGpxTrackLayer — several tracks (#338)', () => {
     await slow
 
     expect(map.lastData('gpx-track-0')).toEqual(EMPTY)
+  })
+
+  it('should never empty a track whose tour was marked completed or had its visibility toggled', async () => {
+    useGpxCache().set('u/toggled.gpx', track('toggled'))
+    const map = stubMap()
+    const layer = useGpxTrackLayer(map as unknown as MapLibreMap)
+    layer.setup()
+    await layer.updateTracks([{ ...tour('toggled'), updatedAt: '1', completed: false } as Tour])
+    // The server bumps `updatedAt` on every row write; the realtime refetch brings it in.
+    await layer.updateTracks([{ ...tour('toggled'), updatedAt: '2', completed: true } as Tour])
+
+    expect(map.getSource('gpx-track-0')!.setData).not.toHaveBeenCalledWith(EMPTY)
+    expect(map.lastData('gpx-track-0')).toEqual(track('toggled'))
   })
 })
 
