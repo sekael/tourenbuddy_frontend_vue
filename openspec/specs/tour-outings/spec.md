@@ -132,9 +132,9 @@ Tapping a segment SHALL open that segment's tour detail; back from there SHALL r
 ### Requirement: Outing overview reads like a stage plan
 
 The overview header SHALL give the days spanned and the segment count, the date span, the way
-from the first start to the last finish, and the total climb and descent when every segment has
-them. Each timeline card SHALL show the name with the goal height, activity, date, and climb and
-descent; between two segments the timeline SHALL mark the night where the next one starts on a
+from the first start to the last finish when both are named, and the total climb and descent of
+what the segments know. Each timeline card SHALL show the name with the goal height, activity,
+date, and its climb and descent when known and not 0; between two segments the timeline SHALL mark the night where the next one starts on a
 later day, at the previous segment's finish.
 
 #### Scenario: Hut night in a two-day outing
@@ -146,6 +146,16 @@ later day, at the previous segment's finish.
 
 - **WHEN** segment 2 is dated a day before segment 1
 - **THEN** the timeline SHALL say so between them, without blocking the order or changing a date
+
+#### Scenario: First stage without a start
+
+- **WHEN** the first stage has a goal and an end but no start
+- **THEN** the header SHALL name no way, and the totals SHALL still show, that stage counting its goal → end leg only
+
+#### Scenario: A segment's height missing
+
+- **WHEN** one segment's start has no height
+- **THEN** the totals SHALL still show, adding up the climb and descent the segments know
 
 ### Requirement: Manage an outing
 

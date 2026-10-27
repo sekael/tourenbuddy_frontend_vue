@@ -55,7 +55,7 @@ A start or end point row SHALL name the point by its name when it has one, else 
 
 ### Requirement: Route numbers
 
-The tour detail SHALL show the route's climb and descent, and its distance when known, from the most accurate data the tour has, never typed: the distance from a GPX track (horizontal), the climb and descent from the track when it has heights (counted only past a 5 m swing from the last turning point), else from the point heights over the legs the tour has — start → goal and goal → end — counting every rise as climb and every drop as descent, whichever leg it is on. Without a start the start → goal leg is absent, and without an end (it ends at its goal) the goal → end leg is absent; an absent leg, or one missing a height, adds nothing, and the other leg still counts. A 0 SHALL NOT show. No walking time SHALL be estimated.
+The tour detail SHALL show the route's climb, descent and, when known, distance from the most accurate data, never typed: the distance from a GPX track; climb and descent from a track with heights (past a 5 m swing from the last turning point), else from the point heights over the legs start → goal and goal → end, every rise as climb and every drop as descent. A leg that is missing or lacks a height adds nothing; the other still counts. A 0 SHALL NOT show. No walking time SHALL be estimated.
 
 #### Scenario: Hut to summit to valley without a track
 
@@ -84,13 +84,7 @@ The tour detail SHALL show the route's climb and descent, and its distance when 
 
 ### Requirement: Route numbers per leg
 
-A GPX track with heights SHALL count every rise and drop, a split tour's too, unless a way is
-flown whole (a lone glider's way down included): then each walked way SHALL count every rise and drop and each
-flown way only its net change (a thermal is neither climb nor extra descent), and the track's
-distance SHALL be the walked way's alone, with heights or without — none for a day flown both
-ways; point heights count as Route numbers
-says. A flown way SHALL show its arrow and its activities' icons, the glider last — the
-glider alone for a pure flight. A 0 SHALL NOT show: a tour that ends at its goal shows no "↓ 0 m".
+A GPX track with heights SHALL count every rise and drop, a split tour's too, except on a way flown whole (a lone glider's way down included), which counts only its net change — a thermal is neither climb nor extra descent. The track's distance SHALL be the walked way's alone, with heights or without — none for a day flown both ways. A flown way SHALL show its arrow and its activities' icons, the glider last — the glider alone for a pure flight.
 
 #### Scenario: Hike & fly with a thermal
 
