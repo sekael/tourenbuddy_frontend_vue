@@ -9,6 +9,7 @@ import { useLogger } from '@/core/logging/use-logger'
 import { isOnline } from '@/core/offline/use-online-status'
 import { findStopsNear } from '@/features/tours/data/services/swisstopo-stop-service'
 import { isSameGoal } from '@/features/tours/domain/distance'
+import { landsByAir } from '@/features/tours/domain/legs'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
 /**
@@ -49,7 +50,7 @@ const isExcluded = (p: { lng: number, lat: number }) => !!props.exclude && isSam
 const history = computed<Suggestion[]>(() => {
   const seen = new Set<string>()
   return tours.value
-    .filter(tour => tour.id !== props.tourId && isSameGoal(tour.goal, props.around, SAME_GOAL_M))
+    .filter(tour => tour.id !== props.tourId && isSameGoal(tour.goal, props.around, SAME_GOAL_M) && (!props.landing || landsByAir(tour)))
     .sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''))
     .flatMap((tour) => {
       const [point, name] = props.role === 'start'

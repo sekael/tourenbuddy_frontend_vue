@@ -13,7 +13,7 @@ const PASS = { name: 'Susten Passhöhe', lng: 8.4466, lat: 46.7291, distance: 34
 const HUT = { lng: 8.43, lat: 46.71 }
 
 function tour(id: string, over: Record<string, unknown>) {
-  return { id, goal: GOAL, startPoint: null, startPointName: null, endPoint: null, endPointName: null, updatedAt: '2026-01-01', ...over }
+  return { id, goal: GOAL, tourTypes: [], legs: null, startPoint: null, startPointName: null, endPoint: null, endPointName: null, updatedAt: '2026-01-01', ...over }
 }
 
 function mountSuggestions(props: Record<string, unknown>, tours: unknown[] = []) {
@@ -65,7 +65,10 @@ describe('pointSuggestions', () => {
   })
 
   it('should offer a landing only the earlier landings, never the stops around the summit', async () => {
-    const wrapper = mountSuggestions({ role: 'end', landing: true }, [tour('flight', { endPoint: HUT, endPointName: 'Landeplatz Brienz' })])
+    const wrapper = mountSuggestions({ role: 'end', landing: true }, [
+      tour('hike', { endPoint: STOP, endPointName: 'Steingletscher', updatedAt: '2026-02-01' }),
+      tour('flight', { tourTypes: ['paragliding'], endPoint: HUT, endPointName: 'Landeplatz Brienz' }),
+    ])
     await flushPromises()
     expect(names(wrapper)).toEqual(['Landeplatz Brienz'])
     expect(mockFindStopsNear).not.toHaveBeenCalled()
