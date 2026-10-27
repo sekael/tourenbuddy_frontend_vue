@@ -646,6 +646,11 @@ onMounted(async () => {
 // ponytail: mirrors `.side-drawer { width }` — measure it if the drawer ever resizes.
 const SIDE_DRAWER_WIDTH = 400
 
+/** The map area the open drawer (desktop) or sheet (phone) covers: camera moves frame beside it. */
+const mapCovered = computed(() => isDesktop.value
+  ? activeOverlay.value ? { right: SIDE_DRAWER_WIDTH } : {}
+  : { bottom: sheetInset.value })
+
 /** Frame the open tour, or every segment of the open outing. */
 async function flyToSelectedTour() {
   if (!selectedTour.value && selectedOutingSegments.value.length === 0)
@@ -666,7 +671,7 @@ async function flyToSelectedTour() {
   const framed = selectedTour.value ? [selectedTour.value] : selectedOutingSegments.value
   if (!map || framed.length === 0)
     return
-  frameTours(map, framed, isDesktop.value ? { right: SIDE_DRAWER_WIDTH } : { bottom: sheetInset.value })
+  frameTours(map, framed, mapCovered.value)
 }
 
 watch(sheetContainerRef, async (el) => {
@@ -921,7 +926,7 @@ watch(() => [trailCard.value?.candidates, trailCard.value?.selectedId], async ()
     if (!card.selectedId || trail.id === card.selectedId)
       trail.lines.forEach(line => line.forEach(c => bounds.extend(c)))
   }
-  const covered = isDesktop.value ? { right: SIDE_DRAWER_WIDTH } : { bottom: sheetInset.value }
+  const covered = mapCovered.value
   // Read after the waits: a back tap meanwhile turns this into a list frame.
   // A lone lookup hit opens straight on its details, so a choice needs several.
   const chosenFromList = !!card.selectedId && card.candidates.length > 1
@@ -1092,7 +1097,10 @@ function handleDialogClose() {
       :info="trailSnackbarInfo" @dismiss="trailSnackbar.dismiss"
     />
 
-    <TourenbuddyMap ref="mapRef" @tour-clicked="handleTourClicked" @map-background-click="handleMapBackgroundClick" />
+    <TourenbuddyMap
+      ref="mapRef" :covered="mapCovered" @tour-clicked="handleTourClicked"
+      @map-background-click="handleMapBackgroundClick"
+    />
 
     <MapActionOverlay
       ref="mapOverlayRef" :bearing="mapBearing" :overlay-active="activeOverlay !== null"

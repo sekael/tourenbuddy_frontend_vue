@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import type { LngLat, Map as MapLibreMap, Point } from 'maplibre-gl'
+import type { LngLat, Map as MapLibreMap, PaddingOptions, Point } from 'maplibre-gl'
+import type { Tour } from '@/features/tours/domain/entities/tour'
 import maplibregl from 'maplibre-gl'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFormatter } from '@/core/composables/use-formatter'
 import { SWISSTOPO_STYLES } from '@/features/map/data/swisstopo-styles'
 import { TRAIL_OVERLAYS } from '@/features/map/data/trail-overlays'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
@@ -12,7 +14,7 @@ import {
   friendTourIdsShadowedByOwned,
   ownedTourIdsShadowedByFriends,
 } from '@/features/tours/domain/collision'
-import { outingSegments } from '@/features/tours/domain/outing'
+import { outingChains as outingChainsOf, outingKey, outingSegments } from '@/features/tours/domain/outing'
 import { outingDetailMarkers, tourDetailMarkers } from '@/features/tours/domain/tour-detail-markers'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import { useGpxTrackLayer } from './gpx-track-layer'
@@ -20,12 +22,18 @@ import { DETAIL_CIRCLE_LAYER_ID, TOUR_LAYER_IDS, useToursMarkerLayer } from './t
 import { useTrailLayers } from './trail-layers'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
+const props = defineProps<{
+  /** The map area an open drawer or sheet covers: cluster taps frame beside it. */
+  covered?: Partial<PaddingOptions>
+}>()
+
 const emit = defineEmits<{
   tourClicked: [tourId: string]
   mapBackgroundClick: [tap: { point: Point, lngLat: LngLat }]
 }>()
 
 const { t, locale } = useI18n({ useScope: 'global' })
+const { formatDateRange, formatElevation } = useFormatter()
 
 const mapContainer = ref<HTMLDivElement | null>(null)
 let mapInstance: MapLibreMap | null = null
@@ -140,6 +148,73 @@ const detailMarkers = computed(() => {
   })
 })
 
+/** Each outing segment's place in its outing, for its label ("Etappe 2/3"). */
+const stageOf = computed(() => {
+  const stages = new Map<string, { n: number, total: number }>()
+  for (const key of new Set(mapTours.value.map(outingKey).filter(k => k !== null))) {
+    const segments = outingSegments(mapTours.value, key)
+    segments.forEach((s, i) => stages.set(s.id, { n: i + 1, total: segments.length }))
+  }
+  return stages
+})
+
+/** Label lines (D4): the name, then elevation · date — or "no date" / "done". */
+function describeTour(tour: Tour) {
+  const thisYear = new Date().getFullYear()
+  const start = tour.plannedDate
+  const status = tour.completed
+    ? t('map.marker.done')
+    : start
+      ? formatDateRange.value(start, tour.endDate ?? start, {
+          day: 'numeric',
+          month: 'short',
+          ...(start.getFullYear() !== thisYear ? { year: 'numeric' } : {}),
+        })
+      : t('map.marker.noDate')
+  const stage = stageOf.value.get(tour.id)
+  return {
+    name: tour.name || t('tours.infoSheet.unnamedTour'),
+    sub: [
+      stage ? t('map.marker.stage', stage) : null,
+      tour.elevation ? formatElevation.value(tour.elevation) : null,
+      status,
+    ].filter(Boolean).join(' · '),
+  }
+}
+
+// Each outing on the map as a chain of goals (D8) — none while a tour or outing is open: the map
+// shows only that (D15), and the open overview has its tracks.
+const outingChains = computed(() => selectedTour.value || focusSegments.value.length > 0
+  ? []
+  : outingChainsOf(mapTours.value, selectedOutingKey.value))
+
+const detailLabels = computed(() => ({ start: t('tours.form.startPointLabel'), end: t('tours.form.endPointLabel') }))
+
+/** Who has the map (D15): the open tour, else the open outing's segments. A change swaps the scene (D20). */
+const scene = computed(() => `${selectedTour.value?.id ?? ''}/${focusSegmentIds.value.join()}`)
+/** The scene last drawn; until a swap draws the new one, updates for it wait (they'd show early). */
+let drawnScene: string | null = null
+
+function drawScene() {
+  drawnScene = scene.value
+  markerLayer?.updateTours(renderedTours.value, selectedTourId.value, linkedTourIds.value, focusSegmentIds.value)
+  markerLayer?.updateDetailMarkers(detailMarkers.value, detailLabels.value)
+  markerLayer?.updateOutingChains(outingChains.value)
+  void gpxLayer?.updateTracks(trackTours.value)
+}
+
+/**
+ * Swisstopo draws landmark summits (Eiger, Piz Bernina, …) as navy discs that both reviews took
+ * for tour markers; give them the plain summit symbol the base map uses for every other peak.
+ * Names and heights stay. A no-op on the raster style, which has no such layer.
+ */
+function calmLandmarkPeaks(m: MapLibreMap) {
+  if (!m.getLayer('peak_lm'))
+    return
+  m.setLayoutProperty('peak_lm', 'icon-image', 'mountain')
+  m.setLayoutProperty('peak_lm', 'icon-size', ['interpolate', ['linear'], ['zoom'], 13, 0.25, 18, 0.55])
+}
+
 onMounted(() => {
   if (!mapContainer.value)
     return
@@ -158,6 +233,7 @@ onMounted(() => {
 
   mapInstance.on('load', async () => {
     preloadLayerThumbnails()
+    calmLandmarkPeaks(mapInstance!)
     // First: the overlay stack must sit below everything added after it.
     trailLayers = useTrailLayers(mapInstance!)
     trailLayers.setup(trailLayerState())
@@ -168,16 +244,25 @@ onMounted(() => {
         emit('tourClicked', tourId)
       },
       count => t('map.cluster.label', { count }),
-      () => t('map.cluster.spiderfyHint'),
+      {
+        describeTour,
+        stackTitle: count => t('map.marker.stackTitle', { count }),
+        stackMore: count => t('map.marker.stackMore', { count }),
+        clusterSummary: ({ total, planned, undated, done }) => [
+          t('map.cluster.label', { count: total }),
+          ...([['planned', planned], ['undated', undated], ['done', done]] as const)
+            .filter(([, count]) => count > 0)
+            .map(([key, count]) => t(`map.cluster.${key}`, { count })),
+        ].join(' · '),
+        closeLabel: t('map.marker.close'),
+      },
+      () => props.covered ?? {},
     )
     await markerLayer.setup()
-    markerLayer.updateTours(renderedTours.value, selectedTourId.value, linkedTourIds.value, focusSegmentIds.value)
     markerLayer.updatePreview(previewGoal.value, previewTourTypes.value ?? [])
-    markerLayer.updateDetailMarkers(detailMarkers.value)
-
     gpxLayer = useGpxTrackLayer(mapInstance!)
     gpxLayer.setup()
-    void gpxLayer.updateTracks(trackTours.value)
+    drawScene()
 
     mapInstance!.on('click', (e) => {
       // Include the detail circle so tapping a start/end marker is swallowed
@@ -208,12 +293,19 @@ onUnmounted(() => {
   map.value = null
 })
 
-// Watch for tour/selection changes and update both layers. Keyed on
-// `renderedTours` (not `mapTours`) so a live tour-type edit recolors the goal.
-watch([renderedTours, selectedTourId, linkedTourIds, focusSegmentIds], ([newTours, newSelectedId, newLinked, segmentIds]) => {
-  markerLayer?.updateTours(newTours, newSelectedId, newLinked as Set<string>, segmentIds)
+watch(scene, () => markerLayer?.swapScene(drawScene, visible => gpxLayer?.setVisible(visible)))
+
+// Changes within the drawn scene apply at once. Keyed on `renderedTours` (not `mapTours`) so a
+// live tour-type edit recolors the goal.
+const inDrawnScene = () => scene.value === drawnScene
+watch([renderedTours, selectedTourId, linkedTourIds, focusSegmentIds, locale], ([newTours, newSelectedId, newLinked, segmentIds]) => {
+  if (inDrawnScene())
+    markerLayer?.updateTours(newTours, newSelectedId, newLinked as Set<string>, segmentIds)
 })
-watch(trackTours, entries => void gpxLayer?.updateTracks(entries))
+watch(trackTours, (entries) => {
+  if (inDrawnScene())
+    void gpxLayer?.updateTracks(entries)
+})
 
 // Watch for preview goal/type changes (edit or creation) and update the preview marker
 watch([previewGoal, previewTourTypes], ([goal, tourTypes]) => {
@@ -221,8 +313,13 @@ watch([previewGoal, previewTourTypes], ([goal, tourTypes]) => {
 })
 
 // Re-render start/end detail markers whenever the open tour or its draft points change
-watch(detailMarkers, (markers) => {
-  markerLayer?.updateDetailMarkers(markers)
+watch([detailMarkers, detailLabels], ([markers, labels]) => {
+  if (inDrawnScene())
+    markerLayer?.updateDetailMarkers(markers, labels)
+})
+watch(outingChains, (chains) => {
+  if (inDrawnScene())
+    markerLayer?.updateOutingChains(chains)
 })
 
 watch(activeOverlays, ids => trailLayers?.setVisible(ids))
@@ -244,13 +341,12 @@ watch(currentStyleIndex, (index) => {
     markerLayer?.cleanup()
     mapInstance.setStyle(style.style)
     mapInstance.once('style.load', async () => {
+      calmLandmarkPeaks(mapInstance!)
       trailLayers?.setup(trailLayerState())
       await markerLayer?.setup()
-      markerLayer?.updateTours(renderedTours.value, selectedTourId.value, linkedTourIds.value, focusSegmentIds.value)
       markerLayer?.updatePreview(previewGoal.value, previewTourTypes.value ?? [])
-      markerLayer?.updateDetailMarkers(detailMarkers.value)
       gpxLayer?.setup()
-      void gpxLayer?.updateTracks(trackTours.value)
+      drawScene()
     })
   }
 })
@@ -266,5 +362,128 @@ watch(currentStyleIndex, (index) => {
   inset: 0;
   width: 100%;
   height: 100%;
+}
+</style>
+
+<style>
+/* A scene change (D20) fades the DOM clusters and chip with the GL markers. */
+.tours-scene-hidden .maplibregl-marker {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+/* Stack list (design D7): built as plain DOM by the marker layer inside a MapLibre popup, so it
+   can't take scoped styles. */
+.stack-list-popup .maplibregl-popup-content {
+  padding: var(--spacing-xs) 0;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  font-family: var(--font-family-base);
+}
+
+.stack-list-popup .maplibregl-popup-close-button {
+  width: 32px;
+  height: 32px;
+  font-size: 20px;
+  color: var(--color-on-surface-variant);
+}
+
+.stack-list-popup--above .stack-list__rows {
+  /* Opened upward above a tour: about the room above it when framed, under the title. */
+  max-height: min(38vh, 360px);
+}
+
+.stack-list__title {
+  margin: 0;
+  padding: var(--spacing-xxs) 40px var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-on-surface);
+}
+
+.stack-list__rows {
+  /* The marker layer pans the list into view when it runs off the visible area. */
+  max-height: min(55vh, 440px);
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  /* Scroll shadows: a soft edge shows only where more rows hide (local covers vs. fixed shades). */
+  background:
+    linear-gradient(var(--white) 30%, transparent) center top / 100% 32px no-repeat local,
+    linear-gradient(transparent, var(--white) 70%) center bottom / 100% 32px no-repeat local,
+    radial-gradient(farthest-side at 50% 0, rgba(0, 0, 0, 0.18), transparent) center top / 100% 10px no-repeat scroll,
+    radial-gradient(farthest-side at 50% 100%, rgba(0, 0, 0, 0.18), transparent) center bottom / 100% 10px no-repeat
+      scroll;
+}
+
+.stack-list__row {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+  width: 100%;
+  min-height: 48px;
+  padding: var(--spacing-xxs) var(--spacing-sm);
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: var(--color-on-surface);
+
+  &:hover,
+  &:focus-visible {
+    background: var(--color-neutral-container);
+  }
+}
+
+.stack-list__dot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--white);
+  border-radius: var(--radius-round);
+  box-shadow: var(--shadow-control);
+
+  & img {
+    width: 16px;
+    height: 16px;
+  }
+
+  &[data-completed]::after {
+    content: '';
+    position: absolute;
+    right: -4px;
+    bottom: -4px;
+    width: 11px;
+    height: 11px;
+    border: 1.5px solid var(--white);
+    border-radius: var(--radius-round);
+    background: #15803d
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpolyline points='5,12.5 10,17.5 19.5,7' stroke='white' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+      center / 9px no-repeat;
+  }
+}
+
+.stack-list__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.stack-list__name {
+  overflow: hidden;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stack-list__sub {
+  font-size: var(--font-size-xs);
+  color: var(--color-on-surface-variant);
 }
 </style>

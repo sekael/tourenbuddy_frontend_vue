@@ -120,15 +120,18 @@ describe('tourForm', () => {
   })
 
   describe('end-point row conditional rendering', () => {
-    it('shows "Add end point" button and hides point inputs when endPoint is null', () => {
-      // End-point section only renders once a start point exists.
+    it('offers the end without a start, but no round trip — there is no start to return to', async () => {
+      const wrapper = mountForm()
+      const end = wrapper.find('.point-section--end')
+      expect(end.text()).toContain('tours.form.addEndPointBtn')
+      expect(end.text()).not.toContain('tours.form.roundTripBtn')
+      await end.findAll('button').find(b => b.text().includes('addEndPointBtn'))!.trigger('click')
+      expect(wrapper.emitted('pickPoint')).toEqual([['end']])
+    })
+
+    it('offers the round trip once a start is set', () => {
       const wrapper = mountForm({ initialDraft: { startPoint: { lng: 7.8, lat: 46.5 } } })
-      // No end point → end-point row collapsed to "Add" button
-      const addBtn = wrapper.findAll('button').filter(b => b.text().includes('addEndPointBtn'))
-      expect(addBtn.length).toBeGreaterThan(0)
-      // Only the start point shows coordinates; end point is still the "Add" prompt.
-      const coords = wrapper.findAll('.point-coords')
-      expect(coords.length).toBe(1)
+      expect(wrapper.find('.point-section--end').text()).toContain('tours.form.roundTripBtn')
     })
 
     it('reveals end-point row when an end point is set', () => {
@@ -596,6 +599,33 @@ describe('tourForm', () => {
       const draft = (wrapper.emitted('submit')![0] as unknown[])[0] as Record<string, unknown>
       expect(draft.startPointName).toBeNull()
     })
+
+    it('shows a connected stage\'s end without a start, and offers a new end once that end goes', async () => {
+      const wrapper = mountForm({
+        initialDraft: { name: 'Stage 0', startPoint: null, endPoint: { lng: 8.4, lat: 46.7 }, endPointName: 'Tierberglihütte' },
+      })
+      expect(wrapper.find('[data-testid="remove-start-btn"]').exists()).toBe(false)
+      expect((wrapper.find('#tf-end-name').element as HTMLInputElement).value).toBe('Tierberglihütte')
+      await wrapper.find('[data-testid="remove-end-btn"]').trigger('click')
+      expect(wrapper.find('.point-section--end').text()).toContain('tours.form.addEndPointBtn')
+    })
+
+    it('keeps the end when the start is removed — an end stands on its own (a connected stage)', async () => {
+      const end = { lng: 8.4, lat: 46.7 }
+      const wrapper = mountForm({
+        initialDraft: { name: 'Stage 1', startPoint: GOAL, startPointName: 'Hut', endPoint: end, endPointName: 'Tierberglihütte', endPointElevation: 2795 },
+      })
+      await wrapper.find('[data-testid="remove-start-btn"]').trigger('click')
+      expect(wrapper.find('[data-testid="remove-end-btn"]').exists()).toBe(true)
+      await wrapper.find('form').trigger('submit.prevent')
+      expect(wrapper.emitted('submit')![0]![0]).toMatchObject({
+        startPoint: null,
+        startPointName: null,
+        endPoint: end,
+        endPointName: 'Tierberglihütte',
+        endPointElevation: 2795,
+      })
+    })
   })
 
   describe('end date (multi-day span)', () => {
@@ -884,6 +914,13 @@ describe('tourForm — creation that knows more (smarter-tour-creation)', () => 
     expect(wrapper.find('.point-section--end').text()).not.toContain('tours.form.roundTripBtn')
   })
 
+  it('should offer a lone glider\'s landing without a start, and no round trip', () => {
+    const wrapper = mountForm({ currentGoal: GOAL, initialDraft: { name: 'X', plannedDate: null, tourTypes: ['paragliding'], partnerIds: [] } })
+    const end = wrapper.find('.point-section--end')
+    expect(end.text()).toContain('tours.form.addLandingBtn')
+    expect(end.text()).not.toContain('tours.form.roundTripBtn')
+  })
+
   it('should say what a stage is once the dates span more than one day', async () => {
     const wrapper = mountForm({ currentGoal: GOAL })
     await wrapper.find('#tf-plannedDate').setValue('2027-03-12')
@@ -924,6 +961,27 @@ describe('tourForm — creation that knows more (smarter-tour-creation)', () => 
       expect(draft.startPoint).toEqual({ lng: 8.4275, lat: 46.7311 })
       expect(draft.endPoint).toEqual(draft.startPoint)
       expect(draft).toMatchObject({ startPointName: 'Steingletscher', endPointName: 'Steingletscher', endPointElevation: 1865 })
+    })
+
+    it('should name no point at the goal — a flight from it has no start, a walk up it no end, a top landing neither', async () => {
+      const valley = [8.40, 46.73]
+      vi.mocked(parseGpxFile).mockResolvedValue(track([[GOAL.lng + 0.001, GOAL.lat], valley]))
+      const flight = mountForm({ currentGoal: GOAL })
+      await pickFile(flight, new File(['<gpx/>'], 'flight.gpx'))
+      await flushPromises()
+      expect(await submitted(flight)).toMatchObject({ startPoint: null, endPoint: { lng: 8.40, lat: 46.73 } })
+
+      vi.mocked(parseGpxFile).mockResolvedValue(track([valley, [GOAL.lng, GOAL.lat + 0.001]]))
+      const walkUp = mountForm({ currentGoal: GOAL })
+      await pickFile(walkUp, new File(['<gpx/>'], 'walk-up.gpx'))
+      await flushPromises()
+      expect(await submitted(walkUp)).toMatchObject({ startPoint: { lng: 8.40, lat: 46.73 }, endPoint: null })
+
+      vi.mocked(parseGpxFile).mockResolvedValue(track([[GOAL.lng + 0.001, GOAL.lat], valley, [GOAL.lng, GOAL.lat + 0.001]]))
+      const topLanding = mountForm({ currentGoal: GOAL })
+      await pickFile(topLanding, new File(['<gpx/>'], 'top-landing.gpx'))
+      await flushPromises()
+      expect(await submitted(topLanding)).toMatchObject({ startPoint: null, endPoint: null })
     })
 
     it('should never move a point the user set', async () => {

@@ -61,54 +61,58 @@ export const TOUR_TYPE_ICONS: Record<TourType, string> = {
 }
 
 /**
- * Marker colour per activity: winter blue, flying orange, summer red — the bike violet, so a hike
- * & bike's way up and way down tell apart on the map (activity-legs).
+ * Marker colour per activity group — six, the most a map can keep apart (any two markers can sit
+ * side by side; validated for colour-blind and full-colour vision against each other, the done
+ * green and the no-activity grey). Winter is blue (piste sky, touring indigo), on foot red (hike
+ * rose, alpine rock brown), bike plum, flying amber. The glyph inside names the exact activity.
  */
 export const TOUR_TYPE_COLORS: Record<TourType, string> = {
-  'skiing': '#1565C0',
-  'snowboarding': '#1565C0',
-  'skitour': '#1565C0',
-  'splitboarding': '#1565C0',
-  'ski-mountaineering': '#1565C0',
+  'skiing': '#0284C7',
+  'snowboarding': '#0284C7',
+  'skitour': '#4338CA',
+  'splitboarding': '#4338CA',
+  'ski-mountaineering': '#4338CA',
   'paragliding': '#D97706',
-  'hiking': '#DC2626',
-  'mountaineering': '#DC2626',
-  'climbing': '#DC2626',
-  'mountain-biking': '#7C3AED',
-  'trailrunning': '#DC2626',
+  'hiking': '#E11D48',
+  'mountaineering': '#9A3412',
+  'climbing': '#9A3412',
+  'mountain-biking': '#86198F',
+  'trailrunning': '#E11D48',
 }
 
+/** Each group's darker shade for tracks — at most ~18 points darker, never so dark its hue is lost. */
 export const TOUR_TYPE_TRACK_COLORS: Record<TourType, string> = {
-  'skiing': '#0c396d',
-  'snowboarding': '#0c396d',
-  'skitour': '#0c396d',
-  'splitboarding': '#0c396d',
-  'ski-mountaineering': '#0c396d',
+  'skiing': '#0C4A6E',
+  'snowboarding': '#0C4A6E',
+  'skitour': '#312E81',
+  'splitboarding': '#312E81',
+  'ski-mountaineering': '#312E81',
   'paragliding': '#804604',
-  'hiking': '#8f1717',
-  'mountaineering': '#8f1717',
-  'climbing': '#8f1717',
-  'mountain-biking': '#4f11ba',
-  'trailrunning': '#8f1717',
+  'hiking': '#90132E',
+  'mountaineering': '#7C2D12',
+  'climbing': '#7C2D12',
+  'mountain-biking': '#701A75',
+  'trailrunning': '#90132E',
 }
 
+/** Each group's light shade, for a goal still being placed. */
 export const TOUR_TYPE_PREVIEW_COLORS: Record<TourType, string> = {
-  'skiing': '#60A5FA',
-  'snowboarding': '#60A5FA',
-  'skitour': '#60A5FA',
-  'splitboarding': '#60A5FA',
-  'ski-mountaineering': '#60A5FA',
+  'skiing': '#7DD3FC',
+  'snowboarding': '#7DD3FC',
+  'skitour': '#A5B4FC',
+  'splitboarding': '#A5B4FC',
+  'ski-mountaineering': '#A5B4FC',
   'paragliding': '#FCD34D',
-  'hiking': '#FCA5A5',
-  'mountaineering': '#FCA5A5',
-  'climbing': '#FCA5A5',
-  'mountain-biking': '#C4B5FD',
-  'trailrunning': '#FCA5A5',
+  'hiking': '#FDA4AF',
+  'mountaineering': '#FDBA74',
+  'climbing': '#FDBA74',
+  'mountain-biking': '#F0ABFC',
+  'trailrunning': '#FDA4AF',
 }
 
 /**
  * The distinct palette colours of a tour's types, in type order — e.g. skitour + splitboarding
- * is one blue, skitour + hiking is blue then red. Empty for an untyped tour.
+ * is one indigo, skitour + hiking is indigo then rose. Empty for an untyped tour.
  */
 export function distinctTypeColors(
   types: readonly TourType[],

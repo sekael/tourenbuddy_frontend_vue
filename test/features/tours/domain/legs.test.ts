@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { defaultDirection, directionOf, fliesDown, flight, landsByAir, legsApart, legsFrom, legsMatch, routeOrder, sumFlight, waysCovered } from '@/features/tours/domain/legs'
+import { defaultDirection, directionOf, flight, landsByAir, legsApart, legsFrom, legsMatch, routeOrder, sumFlight, waysCovered } from '@/features/tours/domain/legs'
 
 describe('defaultDirection', () => {
   it('should fly down and walk up once paragliding comes with something else', () => {
@@ -60,11 +60,9 @@ describe('routeOrder / landsByAir', () => {
     expect(routeOrder({ tourTypes: ['paragliding', 'hiking'], legs: { ascent: ['hiking'], descent: ['paragliding'] } })).toEqual(['hiking', 'paragliding'])
   })
 
-  it('should land whenever the way down ends in a flight, but count only a pure flight as flown', () => {
-    const skiAndFly = { tourTypes: ['paragliding', 'skitour'], legs: { ascent: ['skitour'], descent: ['skitour', 'paragliding'] } } as const
-    const tour = { tourTypes: [...skiAndFly.tourTypes], legs: { ascent: [...skiAndFly.legs.ascent], descent: [...skiAndFly.legs.descent] } }
-    expect([landsByAir(tour), fliesDown(tour)]).toEqual([true, false])
-    expect([landsByAir({ tourTypes: ['paragliding'] }), fliesDown({ tourTypes: ['paragliding'] })]).toEqual([true, true])
+  it('should land whenever the way down ends in a flight', () => {
+    expect(landsByAir({ tourTypes: ['paragliding', 'skitour'], legs: { ascent: ['skitour'], descent: ['skitour', 'paragliding'] } })).toBe(true)
+    expect(landsByAir({ tourTypes: ['paragliding'] })).toBe(true)
     expect(landsByAir({ tourTypes: ['hiking'] })).toBe(false)
   })
 

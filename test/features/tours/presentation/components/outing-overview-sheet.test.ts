@@ -147,14 +147,29 @@ describe('outingOverviewSheet', () => {
     expect(rows[2]!.find('[data-testid="segment-handover"]').text()).toBe('Chants · 1822\u00A0m')
   })
 
-  it('should leave out totals and a single-day count it cannot state honestly', () => {
+  it('should total what the segments know and leave out a single-day count', () => {
     const wrapper = mountSheet('me/o1', [
       { ...segment('a', 0), elevation: 2632, startPoint: { lng: 7.4, lat: 46 }, startPointElevation: 1367, plannedDate: new Date('2026-11-29') },
-      { ...segment('b', 1), elevation: 3079, plannedDate: new Date('2026-11-29') },
+      // A start without a height: that leg is left out, the others still total.
+      { ...segment('b', 1), elevation: 3079, startPoint: { lng: 7.45, lat: 46 }, plannedDate: new Date('2026-11-29') },
     ])
     expect(wrapper.find('[data-testid="outing-headline"]').text()).toBe('tours.outing.segmentCount')
-    expect(wrapper.find('.hero [data-testid="route-ascent"]').exists()).toBe(false)
-    expect(wrapper.findAll('[data-testid="route-ascent"]')).toHaveLength(1)
+    expect(wrapper.find('.hero [data-testid="route-ascent"]').text()).toContain('1265\u00A0m')
+    expect(wrapper.findAll('[data-testid="outing-segment"] [data-testid="route-ascent"]')).toHaveLength(1)
+  })
+
+  it('should total a first stage connected without a start as climbing nothing, descending to its end', () => {
+    const at = (lng: number) => ({ lng, lat: 46.6 })
+    const wrapper = mountSheet('me/o1', [
+      { ...segment('c', 0), elevation: 3420, goal: at(9.8), endPoint: at(9.86), endPointElevation: 2795 },
+      { ...segment('a', 1), elevation: 3503, startPoint: at(9.86), startPointElevation: 2795, goal: at(9.9) },
+    ])
+    expect(wrapper.find('.hero [data-testid="route-ascent"]').text()).toContain('708\u00A0m')
+    expect(wrapper.find('.hero [data-testid="route-descent"]').text()).toContain('625\u00A0m')
+  })
+
+  it('should leave the dates-and-totals line out when there is nothing to put on it', () => {
+    expect(mountSheet('me/o1', [segment('a', 0), segment('b', 1)]).find('.hero-meta--wrap').exists()).toBe(false)
   })
 
   it('should say when the order and the dates disagree', () => {

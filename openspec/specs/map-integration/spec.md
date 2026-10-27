@@ -44,9 +44,11 @@ The map SHALL support switching between two Swisstopo styles: "Base" (the `ch.sw
 
 ### Requirement: Tour markers rendered as circles
 
-Tours SHALL be rendered on the map as circle markers using a MapLibre circle layer backed by a GeoJSON source. The circle color SHALL be derived from the tour's activity types, grouped as: winter sports (skiing, snowboarding, skitour, splitboarding, ski-mountaineering) in blue, summer sports (hiking, mountaineering, climbing, mountain-biking, trailrunning) in red, paragliding in amber, and tours with no type in neutral grey. A tour whose types map to more than one of these colors SHALL render split between them (see "Multi-activity markers split between their colours").
+Tours SHALL be rendered on the map as circle markers using a MapLibre circle layer backed by a GeoJSON source. The circle color SHALL be derived from the tour's activity types, in six groups: piste (skiing, snowboarding) in sky blue, ski touring (skitour, splitboarding, ski-mountaineering) in indigo, hiking and trailrunning in rose red, alpine (mountaineering, climbing) in rock brown, mountain-biking in plum, paragliding in amber, and tours with no type in neutral grey. Six is the most colours that stay distinguishable when any two markers sit side by side, for colour-blind and full-colour vision alike and against the green completion badge and the grey; the activity glyph tells the types within a group apart. A tour whose types map to more than one of these colors SHALL render split between them (see "Multi-activity markers split between their colours").
 
-Each GeoJSON feature SHALL additionally carry a `completed` boolean property mirroring the tour's `completed` field. Completed tours SHALL be rendered with a visually distinct style — a check glyph overlaid on the circle via a sibling symbol layer, or, when the symbol layer is not available, a grayscale-mixed variant of the type-based circle color. The circle radius and stroke for completed tours SHALL remain identical to not-completed tours. Selected-state styling (larger radius, white stroke) SHALL apply to completed tours identically, and the check glyph SHALL still render on top of the selected-state circle. Clicking a completed tour's marker SHALL trigger the same selection and fly-to behavior as a not-completed tour. GPX track rendering SHALL be unaffected by completion state. Not-completed tours SHALL render in the normal type-based color with no overlay.
+Every goal circle SHALL carry a thin white ring, and a tour with at least one activity SHALL show the white glyph of its primary (first) activity centred in the circle, so that each activity is recognisable within a colour family and app markers never read as basemap symbols. A tour without an activity SHALL show no glyph.
+
+Each GeoJSON feature SHALL additionally carry a `completed` boolean property mirroring the tour's `completed` field. A completed tour SHALL show a completion badge (a small green disc with a white check) on the lower right edge of its circle. A friend tour SHALL show a friendship badge, and a linked tour a link badge instead, on the lower left edge. The circle radius and stroke for completed tours SHALL remain identical to not-completed tours. Selected-state styling (larger radius, thicker white stroke) SHALL apply to completed tours identically, and the badges SHALL still render on top of the selected-state circle. Clicking a completed tour's marker SHALL trigger the same selection and fly-to behavior as a not-completed tour. GPX track rendering SHALL be unaffected by completion state. Not-completed tours SHALL render with no completion badge.
 
 #### Scenario: Tours displayed on map
 
@@ -66,12 +68,17 @@ Each GeoJSON feature SHALL additionally carry a `completed` boolean property mir
 #### Scenario: Winter tour colored blue
 
 - **WHEN** a tour's types are all among skiing, snowboarding, skitour, splitboarding, or ski-mountaineering
-- **THEN** its circle marker SHALL render in the winter (blue) palette color
+- **THEN** its circle marker SHALL render in a winter blue: sky blue for a piste day, indigo for a ski tour
 
 #### Scenario: Summer tour colored red
 
-- **WHEN** a tour's types are all among hiking, mountaineering, climbing, mountain-biking, or trailrunning
-- **THEN** its circle marker SHALL render in the summer (red) palette color
+- **WHEN** a tour's types are all among hiking or trailrunning
+- **THEN** its circle marker SHALL render in rose red
+
+#### Scenario: Hike and alpine tour apart
+
+- **WHEN** one tour is a hike and another a Hochtour
+- **THEN** the hike SHALL render rose red and the Hochtour rock brown
 
 #### Scenario: Paragliding tour colored amber
 
@@ -81,19 +88,24 @@ Each GeoJSON feature SHALL additionally carry a `completed` boolean property mir
 #### Scenario: Unknown tour type falls back to neutral
 
 - **WHEN** a tour has no activity type
-- **THEN** its circle marker SHALL render in the neutral (grey) fallback color
+- **THEN** its circle marker SHALL render in the neutral (grey) fallback color with no activity glyph
+
+#### Scenario: Activities of one colour tell apart
+
+- **WHEN** one tour's primary activity is mountaineering and another's is climbing
+- **THEN** both markers SHALL be rock brown, one showing the mountaineering glyph and the other the climbing glyph
 
 #### Scenario: Completed tour shows distinct visual
 
 - **WHEN** a tour has `completed === true`
-- **THEN** the marker SHALL render either with a check glyph overlaid on the type-colored circle, or with a grayscale-mixed variant of the type-colored circle when the glyph layer is unavailable
+- **THEN** the marker SHALL show the completion badge on the lower right edge of the type-colored circle
 - **AND** the circle radius and stroke SHALL be identical to not-completed markers
 
 #### Scenario: Selected completed tour
 
 - **WHEN** a completed tour becomes the selected tour
 - **THEN** the marker SHALL show the selected-state larger radius and white stroke
-- **AND** the check glyph SHALL remain rendered on top
+- **AND** the completion badge SHALL remain rendered on top
 
 #### Scenario: GPX track unaffected by completion
 
@@ -107,13 +119,13 @@ Each GeoJSON feature SHALL additionally carry a `completed` boolean property mir
 
 ### Requirement: Start and end markers shown only while viewing or editing a tour's details
 
-The map SHALL render a tour's **start** and **end** point markers ONLY while that tour's details are being viewed or edited (its info sheet is open, i.e. it is the selected tour) OR while a tour is being created. The standard map view, with no tour selected and no tour being created, SHALL NOT show any start or end markers. Start/end markers SHALL NOT participate in clustering, collision suppression, or the goal-marker click/selection behavior. Start/end markers SHALL be display-only (non-interactive): a tap on a start or end marker SHALL be swallowed — it SHALL NOT select a tour, fly to it, NOR dismiss the open info sheet or cancel an in-progress tour creation. The same start/end markers SHALL be shown for a partner friend tour's details exactly as for an owned tour, with no friend-specific icon on the start or end marker.
+The map SHALL render a tour's **start** and **end** point markers ONLY while that tour's details are being viewed or edited (its info sheet is open, i.e. it is the selected tour) OR while a tour is being created. An open outing overview shows its segments' loose ends and handover rings instead (gpx-tracks → Outing overview start and end markers, Outing handover points). The standard map view, with no tour selected, no outing overview open and no tour being created, SHALL NOT show any start or end markers. Start/end markers SHALL NOT participate in clustering, collision suppression, or the goal-marker click/selection behavior. Start/end markers SHALL be display-only (non-interactive): a tap on a start or end marker SHALL be swallowed — it SHALL NOT select a tour, fly to it, NOR dismiss the open info sheet or cancel an in-progress tour creation. The same start/end markers SHALL be shown for a partner friend tour's details exactly as for an owned tour, with no friend-specific icon on the start or end marker.
 
 Start/end markers SHALL reuse the goal marker's GL rendering mechanism: a circle in the tour's type-based color with a sibling symbol layer carrying the icon, kept on a selection-scoped source separate from the clustering source, and rendered beneath the goal marker so the goal stays on top when they overlap.
 
-A start/end marker SHALL reuse the goal marker's circle design and the tour's type-based color, distinguished by a centered white icon: the **start** marker SHALL carry the start icon and the **end** marker SHALL carry the end icon, matching the icons the tour info sheet uses for those points (`home` for start, `flag` for end). The completion check glyph SHALL remain on the goal marker only — completing a tour SHALL NOT change its start or end markers.
+A start/end marker SHALL reuse the goal marker's circle design and the tour's type-based color, distinguished by a centered white icon: the **start** marker SHALL carry the start icon and the **end** marker SHALL carry the end icon, matching the icons the tour info sheet uses for those points (the ring `trip_origin` for start, the chequered flag `sports_score` for end; see tour-info-extended → Point icons match the form). The completion check glyph SHALL remain on the goal marker only — completing a tour SHALL NOT change its start or end markers.
 
-The **start** marker SHALL be shown whenever the tour has a start point. The **end** marker SHALL be shown ONLY when the tour has an end point that is distinct from the start point. A round-trip tour (end point equal to start point) and a one-way-to-goal tour (no end point) SHALL therefore show a start marker and no end marker, mirroring the info sheet's treatment.
+The **start** marker SHALL be shown whenever the tour has a start point. The **end** marker SHALL be shown whenever the tour has an end point, unless it is the same place as the start point (within 10 m). A round-trip tour (end point in the same place as the start point, within 10 m) and a one-way-to-goal tour (no end point) SHALL therefore show a start marker and no end marker, mirroring the info sheet's treatment. A tour with an end point but no start point (a stage connected to the next one) SHALL show the end marker alone.
 
 When the tour's details are closed (deselected) the start/end markers SHALL be removed. On a map style switch the start/end markers SHALL be re-rendered for the still-selected tour, the same as the goal and GPX layers.
 
@@ -125,19 +137,24 @@ When the tour's details are closed (deselected) the start/end markers SHALL be r
 
 #### Scenario: No start/end markers on the standard map
 
-- **WHEN** no tour is selected
+- **WHEN** no tour is selected, no outing overview is open and no tour is being created
 - **THEN** no start or end markers SHALL be rendered anywhere on the map
 - **AND** clustering and collision behavior SHALL be computed from goal markers only
 
 #### Scenario: Round-trip tour shows start only
 
-- **WHEN** the selected tour's end point equals its start point
+- **WHEN** the selected tour's end point is the same place as its start point (within 10 m)
 - **THEN** a start marker SHALL render and NO end marker SHALL render
 
 #### Scenario: One-way-to-goal tour shows start only
 
 - **WHEN** the selected tour has a start point but no end point
 - **THEN** a start marker SHALL render and NO end marker SHALL render
+
+#### Scenario: End without a start shows the end marker alone
+
+- **WHEN** the selected tour has an end point but no start point
+- **THEN** an end marker SHALL render at the end point and NO start marker SHALL render
 
 #### Scenario: Friend tour shows identical start/end markers
 
@@ -518,24 +535,6 @@ The renderer SHALL fire a split or merge animation if and only if the user's zoo
 - **THEN** the renderer SHALL fire a split animation for N1 when the zoom crosses 9.5
 - **AND** SHALL fire a split animation for N2 when the zoom crosses 10.5
 
-### Requirement: Cluster click navigates to `splitZoom + ε` or spiderfies if unreachable
-
-When the user clicks a cluster marker for node N, the renderer SHALL invoke `map.easeTo({ center: N.centroid, zoom: N.splitZoom + ε })` where `ε` is a small positive constant (≈ 0.01), unless `N.splitZoom > map.getMaxZoom()`, in which case the renderer SHALL invoke `spiderfier.spiderfy(N)` instead. The split animation that fires when the easeTo zoom crosses `N.splitZoom` SHALL be the same animation that would fire from a user-initiated zoom — there SHALL NOT be a separate click-driven animation code path.
-
-#### Scenario: Click on expandable cluster zooms past split threshold
-
-- **GIVEN** a cluster node N with `splitZoom = 12` and `map.getMaxZoom() = 18`
-- **WHEN** the user clicks N's marker
-- **THEN** `map.easeTo` SHALL be invoked with target zoom strictly greater than 12 (ε > 0)
-- **AND** the standard split animation SHALL fire as the easeTo crosses zoom 12
-
-#### Scenario: Click on un-expandable cluster spiderfies
-
-- **GIVEN** a cluster node N with `splitZoom > map.getMaxZoom()` (e.g. tours at near-identical coordinates)
-- **WHEN** the user clicks N's marker
-- **THEN** the spiderfier SHALL be invoked with N's leaves
-- **AND** `map.easeTo` SHALL NOT be invoked
-
 ### Requirement: Marker-granularity tweens for cluster transitions
 
 Split and merge animations SHALL tween at the granularity of visible markers (cluster pies for cluster nodes, colored circles for leaf nodes), not at the granularity of every constituent leaf. For a split, the renderer SHALL spawn one temp marker per child of the splitting node, each starting at the parent centroid and tweening to its child centroid. For a merge, the renderer SHALL spawn one temp marker per disappearing visible node, each starting at the disappearing node's centroid and tweening to the new parent centroid. Temp markers for cluster children SHALL be constructed using the same pie-marker primitive as committed cluster markers; temp markers for leaf children SHALL be colored circles matching the tour-type palette. Animation duration SHALL be approximately 250 ms with a cubic ease-out.
@@ -614,7 +613,7 @@ The MapLibre GL `tours` GeoJSON source SHALL be configured with `cluster: false`
 
 ### Requirement: `splitZoom` is computed from world-meter centroid distance and pixel radius
 
-For every internal tree node N with children C1 and C2, the `splitZoom` SHALL be computed as the zoom at which the projected pixel distance between `C1.centroid` and `C2.centroid` equals `CLUSTER_RADIUS = 50` pixels, using the standard Web Mercator pixels-per-meter formula evaluated at the merge node's centroid latitude. The post-build pass SHALL clamp every child's `splitZoom` to be greater than or equal to its parent's `splitZoom`, propagating recursively, to guarantee monotone visibility transitions during a continuous zoom.
+For every internal tree node N with children C1 and C2, the `splitZoom` SHALL be computed as the zoom at which the projected pixel distance between `C1.centroid` and `C2.centroid` equals `CLUSTER_RADIUS = 50` pixels, using the standard Web Mercator pixels-per-meter formula evaluated at the merge node's centroid latitude. The post-build pass SHALL clamp every child's `splitZoom` to be greater than or equal to its parent's `splitZoom`, propagating recursively, to guarantee monotone visibility transitions during a continuous zoom. Building the tree SHALL NOT take time cubic in the number of tours; its merges SHALL equal those of an exhaustive closest-pair search.
 
 #### Scenario: Two tours 100 m apart at latitude 47° have a deterministic `splitZoom`
 
@@ -633,8 +632,13 @@ For every internal tree node N with children C1 and C2, the `splitZoom` SHALL be
 
 - **GIVEN** two tour leaves at identical coordinates (distance = 0)
 - **WHEN** the tree is built
-- **THEN** their merge node's `splitZoom` SHALL be greater than `map.getMaxZoom()`
-- **AND** clicking that cluster SHALL spiderfy
+- **THEN** their merge node's `splitZoom` SHALL be greater than the stack zoom
+- **AND** tapping that cluster SHALL open the stack list
+
+#### Scenario: Large tour sets build fast
+
+- **WHEN** the tree is built for 600 tours
+- **THEN** the build SHALL finish in well under 100 ms on a desktop browser
 
 ### Requirement: Reduced motion bypasses all marker tweens
 
@@ -784,10 +788,208 @@ A tour whose activity types map to two or three distinct palette colours SHALL r
 
 ### Requirement: Cluster pies weight tours by their colours
 
-A cluster pie SHALL give each member tour a total weight of one, divided equally among the tour's distinct colours, so slice sizes reflect tours rather than type counts. The number shown SHALL remain the count of tours. Spiderfied leaves and leaf tween dots of a split tour SHALL show its colours split the same way.
+A cluster pie SHALL give each member tour a total weight of one, divided equally among the tour's distinct colours, so slice sizes reflect tours rather than type counts. The number shown SHALL remain the count of tours. Stack-list colour dots and leaf tween dots of a split tour SHALL show its colours split the same way.
 
 #### Scenario: Mixed cluster
 
 - **WHEN** a cluster holds one ski tour and one ski-tour-and-hike tour
 - **THEN** its pie SHALL be three quarters blue and one quarter red
 - **AND** it SHALL show the count 2
+
+### Requirement: Cluster tap frames its tours or opens the stack list
+
+Tapping a cluster marker for node N SHALL fly the map to frame all of N's tours in the part of the map an open side drawer (desktop) or sheet (phone) leaves visible, never under it. The target zoom SHALL be the largest of `N.splitZoom + ε` (ε ≈ 0.01), the zoom that fits N's tours into the middle half of that visible area, and one level above the current zoom (so even a country-wide cluster's tap visibly drills in), capped at the map's maximum zoom. The split animation SHALL be the same one a user zoom fires. The fitted zoom SHALL NOT exceed 15.5 unless the split itself needs more, so a tap never lands at street level for no gain. The fit SHALL keep the tours clear of the bottom tour bar. When `N.splitZoom` exceeds the stack zoom (17), meaning the tours sit within metres of each other, the tap SHALL open the stack list instead and SHALL NOT zoom the map.
+
+#### Scenario: Tap on a spread cluster separates it in one step
+
+- **GIVEN** a cluster of four tours spread across 10 km at zoom 9.5
+- **WHEN** the user taps it
+- **THEN** the map SHALL fly so that all four tours are in view
+- **AND** the target zoom SHALL be at least `splitZoom + ε`
+
+#### Scenario: Two tours kept in the middle
+
+- **GIVEN** a cluster of Säntis and Altmann, 2.5 km apart, at zoom 9.5
+- **WHEN** the user taps it
+- **THEN** both tours SHALL land within the middle half of the map, not near its corners
+
+#### Scenario: Tap beside the open tour list on desktop
+
+- **GIVEN** the tour list drawer is open on the right
+- **WHEN** the user taps a cluster
+- **THEN** all of its tours SHALL land in view left of the drawer
+
+#### Scenario: Tap on a same-spot stack
+
+- **GIVEN** a cluster whose tours share one goal
+- **WHEN** the user taps it
+- **THEN** the stack list SHALL open
+- **AND** the map SHALL NOT zoom
+
+### Requirement: Stack list for tours on the same spot
+
+The stack list SHALL be a popup anchored at the stack, titled with the number of tours there, with one row per tour. The list SHALL open below the stack, within the area an open drawer leaves visible and clear of the bottom tour bar; opening it SHALL pan the map (without zooming) only as far as the list would otherwise run past that area, and not at all when it fits. When not every row fits, the list SHALL scroll and SHALL show a shadow at the edge where more rows hide. Each row SHALL show:
+- the tour's colour dot, split like its marker, carrying its primary activity's glyph and marked when completed
+- its name, or the unnamed-tour label
+- a second line with its date or date range, or "no date", or "done" for a completed tour
+
+Rows SHALL be ordered:
+1. planned tours with a date, earliest first
+2. undated tours
+3. completed tours
+
+Tapping a row SHALL close the list and select that tour exactly as a marker tap does. The list SHALL close with its close button, Escape, a tap on the map, or a zoom. Opening SHALL move keyboard focus to the first row and closing SHALL return it to the cluster marker. Each row SHALL be a button whose accessible name is the tour's name.
+
+#### Scenario: Open a tour from the stack
+
+- **GIVEN** the stack list is open at Niederhorn with 11 tours
+- **WHEN** the user taps the row "Mira R5 Outing Tag 1"
+- **THEN** the list SHALL close and that tour's detail (or its outing overview) SHALL open
+
+#### Scenario: Escape closes the list
+
+- **WHEN** the stack list is open and the user presses Escape
+- **THEN** the list SHALL close and focus SHALL return to the cluster marker
+
+### Requirement: Marker taps do not reach the map
+
+A tap on a cluster marker or a stack-list row SHALL NOT also be handled as a tap on the map background. It SHALL NOT close an open sheet, start a trail lookup or dismiss the stack list it opened.
+
+#### Scenario: Selecting from the stack keeps the sheet open
+
+- **WHEN** the user selects a tour from the stack list
+- **THEN** its detail sheet SHALL open and stay open
+
+### Requirement: An open tour or outing has the map to itself
+
+While a tour's detail is open, the map SHALL show only that tour: its goal marker (never clustered), its start and end markers, its track and its label. While an outing overview is open, the map SHALL show only that outing's segments. Every other tour marker, cluster and outing chain SHALL be hidden meanwhile and SHALL return when the detail or overview closes. When other tours share the open tour's spot (within 25 m), a small "+N" chip at its marker's upper left SHALL count them; tapping it SHALL open the stack list of all tours at that spot (the open one included), opening upward so the open sheet does not cover it. When the open tour has no marker on the map (a friend tour the user is not a partner on), the map SHALL keep showing every tour.
+
+#### Scenario: Opening a tour clears the map around it
+
+- **GIVEN** the map shows clusters and tours around Piz Kesch
+- **WHEN** the user opens "Chamanna digl Kesch"
+- **THEN** only its marker, start and end markers and route SHALL be shown
+- **AND** closing it SHALL bring every other tour and cluster back
+
+#### Scenario: Opening an outing shows only its segments
+
+- **WHEN** the user opens the overview of "Kesch-Runde"
+- **THEN** only its segments, numbered, SHALL be shown, with no other tours or outing chains
+
+#### Scenario: Selecting a tour from a same-spot stack
+
+- **GIVEN** a stack of 14 tours on one summit
+- **WHEN** the user selects one of them
+- **THEN** only the selected marker SHALL show at the summit
+- **AND** a "+13" chip SHALL sit at its upper left, and tapping it SHALL list all 14 tours
+
+### Requirement: Tour name labels
+
+From zoom 10, every individually rendered tour marker SHALL show a label beside it with two lines:
+1. the tour's name (or the unnamed-tour label)
+2. for an outing segment its stage ("Etappe 2/3"), then its elevation and its date or date range; "no date" when undated; "done" instead of the date when completed
+
+Labels SHALL avoid overlapping each other and SHALL NOT run over another tour's marker, a cluster or a start/end marker: a label SHALL move to another side of its marker or, failing that, be dropped. Where labels collide, lower-priority labels SHALL be dropped and basemap labels SHALL give way to tour labels. The selected tour's label and the focused outing's segment labels SHALL show at any zoom. Clustered tours SHALL have no label. Labels SHALL be localised and SHALL render with the base map's own fonts, including offline.
+
+#### Scenario: Labels appear when zoomed in
+
+- **WHEN** the map is at zoom 12 and a tour renders as an individual marker
+- **THEN** its name SHALL be shown beside the marker, with its elevation and date below
+
+#### Scenario: No labels at overview zoom
+
+- **WHEN** the map is at zoom 9.5 and no tour is selected
+- **THEN** no tour labels SHALL be shown
+
+#### Scenario: Selected tour labelled at any zoom
+
+- **WHEN** a tour is selected at zoom 9
+- **THEN** its label SHALL be shown
+
+#### Scenario: Name next to a neighbouring marker
+
+- **GIVEN** "Piz Bernina" and the "Piz Palü" friend tour about 150 px apart
+- **WHEN** Piz Bernina's name on its right would reach the Piz Palü marker
+- **THEN** the name SHALL sit on another side of its marker, clear of Piz Palü
+
+### Requirement: Start and end markers are labelled
+
+While a tour's start and end markers are shown, each SHALL carry a short label below it naming it as the start point or the end point. An outing's handover rings SHALL carry no label.
+
+#### Scenario: Open tour with start and end
+
+- **WHEN** a tour with a start and an end point is opened
+- **THEN** the start marker SHALL be labelled "Startpunkt" and the end marker "Endpunkt" (de-CH)
+
+### Requirement: Base-map symbols give way to tour markers
+
+A base-map symbol (summit pictogram, place or height label, POI icon) that would be drawn under a tour marker SHALL be hidden, so it can never read as a second, dark marker. Base-map symbols beside a marker SHALL remain. Landmark summits, which the base map draws as dark pictogram discs, SHALL instead use the base map's ordinary summit symbol, keeping their names and heights.
+
+#### Scenario: Landmark summit without a tour
+
+- **WHEN** the map shows the Eiger at zoom 12 and no tour is there
+- **THEN** the Eiger SHALL carry the ordinary summit symbol with its name and height, not a dark disc
+
+#### Scenario: Tour on a summit
+
+- **WHEN** a tour's goal is a summit that the base map marks with a summit pictogram
+- **THEN** only the tour marker SHALL show at that spot
+
+### Requirement: Cluster marker readability
+
+A cluster marker SHALL show its pie as a ring wide enough to read the colour mix, its count in a legible size (at least 12 px for up to two digits) on a white centre, and a white outline with a soft shadow so it stands out from the base map. When any of its tours are completed it SHALL carry a green completion badge on its lower right: a bare check when all are completed, else a check with the number completed. Its accessible name, also its hover title, SHALL split its count by status: planned (dated), without a date, and done (e.g. "Cluster aus 14 Touren · 9 geplant · 4 ohne Datum · 1 erledigt"), omitting empty parts.
+
+#### Scenario: Partly completed cluster
+
+- **WHEN** a cluster holds three tours, one of them completed
+- **THEN** it SHALL show the count 3 and a green badge "✓ 1"
+
+#### Scenario: Cluster on a busy base map
+
+- **WHEN** a cluster renders over dense topo detail
+- **THEN** its outline, ring colours and count SHALL remain distinguishable
+
+### Requirement: Map controls leave the map tappable
+
+The floating bottom controls (tour bar, menu and legend buttons) SHALL dock at the bottom edge of the screen (above the safe area), level with the location picker's controls, rather than floating above a strip of live map, so that an objective in the lower part of the map stays tappable.
+
+#### Scenario: Objective near the bottom of a phone screen
+
+- **WHEN** a tour marker sits 100 px above the bottom edge of a 852 px phone screen
+- **THEN** a tap on it SHALL reach the marker, not a control
+
+### Requirement: Calm camera flights
+
+Every camera move the app makes on its own (framing a tour or outing, a cluster tap, a place chosen in the search) SHALL fly at one shared, calm speed, slower than MapLibre's default, so that base-map tiles load while the camera moves on a decent connection. A long flight SHALL take longer than a short one rather than squeezing every distance into a fixed duration. A framing or cluster move of up to a screen and two zoom levels SHALL glide in about a second instead, never in a fraction of one. Framing SHALL NOT move the map at all when the view already shows the tour or outing about as framed: every point in view, at most a level further out, the framed centre within an eighth of the view. Gestures (pinch, scroll, drag) SHALL stay direct. With reduced motion requested, flights SHALL jump.
+
+#### Scenario: Cluster tap zooms by two levels
+
+- **WHEN** a cluster tap zooms the map in by two levels
+- **THEN** the flight SHALL take about a second, not half a second
+
+#### Scenario: Next stage half a screen away
+
+- **WHEN** the user steps to the next stage of an outing, half a screen from the current one
+- **THEN** the camera SHALL glide there in about a second
+
+#### Scenario: Next tour of a stack already in view
+
+- **GIVEN** "Säntis über den Lisengrat" is open, centred, with two more tours at its spot
+- **WHEN** the user opens its "+2" list and picks another tour there
+- **THEN** the map SHALL NOT move, neither when the list opens nor when the tour opens
+
+### Requirement: Calm switch between tours and stages
+
+When a tour or outing opens or closes, or the user steps to another stage, the map's tour markers, labels, clusters, chains and tracks SHALL fade out first; the next view's SHALL be drawn while hidden and fade in once drawn, so old and new never show side by side and no marker shows without its glyph. Changes within one view (an edit, a refresh) SHALL apply without fading. With reduced motion requested, the switch SHALL be immediate.
+
+#### Scenario: Stepping to the next stage
+
+- **GIVEN** stage 1 of "Piz Bernina Hike & Fly" is open
+- **WHEN** the user taps the next-stage button
+- **THEN** stage 1's markers and route SHALL fade out as the camera starts moving
+- **AND** stage 2's markers, start point and route SHALL fade in together once drawn, never next to stage 1's
+
+#### Scenario: Two quick steps
+
+- **WHEN** the user taps next twice within a fifth of a second
+- **THEN** only the last stage SHALL be drawn and faded in

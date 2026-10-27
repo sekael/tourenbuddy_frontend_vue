@@ -37,7 +37,7 @@ describe('tourFactRows', () => {
 
   it('should colour every activity chip with its own type, not the first one\'s', () => {
     const chips = mountRows({ tourTypes: ['skitour', 'hiking'] }).findAll('.type-tag')
-    expect(chips.map(c => c.attributes('style'))).toEqual(['--tag-color: #1565C0;', '--tag-color: #DC2626;'])
+    expect(chips.map(c => c.attributes('style'))).toEqual(['--tag-color: #4338CA;', '--tag-color: #E11D48;'])
   })
 
   it('should show a split tour leg by leg, the way up first, and its end as the landing', () => {
@@ -80,6 +80,20 @@ describe('tourFactRows', () => {
     const end = w.find('[data-fact="end"]')
     expect(end.text()).toContain('roundTrip')
     expect(end.text()).not.toContain('1789')
+  })
+
+  it('should read an end picked a few metres off the start as a round trip, like the map does', () => {
+    const w = mountRows({ startPoint: START, endPoint: { lng: 7.90005, lat: 46.6 }, endPointName: 'Preda' })
+    expect(w.find('[data-fact="end"]').text()).toContain('roundTrip')
+  })
+
+  it('should show an end without a start (a connected stage) on its own, as an end', () => {
+    const w = mountRows({ endPoint: { lng: 7.8, lat: 46.5 }, endPointName: 'Tierberglihütte', endPointElevation: 2795 })
+    expect(groups(w)).toEqual([['end']])
+    const end = w.find('[data-fact="end"]')
+    expect(end.text()).toContain('Tierberglihütte')
+    expect(end.text()).toContain('2795\u00A0m')
+    expect(end.findComponent(BaseIcon).props('name')).toBe('sports_score')
   })
 
   it('should fall back to coordinates for an unnamed start, without an elevation', () => {

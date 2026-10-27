@@ -7,7 +7,7 @@ import { useFriendshipsStore } from '@/features/friendships/presentation/stores/
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { useInboxStore } from '@/features/notifications/presentation/stores/inbox-store'
 
-export type OverlayView = 'closed' | 'menu' | 'map-layers'
+export type OverlayView = 'closed' | 'menu' | 'map-layers' | 'legend'
 
 export function useMapOverlay(emit: {
   (e: 'openProfile'): void

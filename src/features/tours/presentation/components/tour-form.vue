@@ -377,16 +377,20 @@ function applyPick(pick: PointPick) {
 
 watch(() => props.pick, pick => pick && applyPick(pick), { immediate: true })
 
-/** A GPX names the empty ends (design D6): its first point, its last — or the start again for a loop. */
-const LOOP_M = 200
+/**
+ * A GPX names the empty ends (design D6): its first point, its last — or the start again for a
+ * loop. A track end at the goal names nothing: a flight from the goal has no start, a walk up no end.
+ */
+const NEAR_M = 200
 function fillPointsFromTrack(track: GeoJSON.FeatureCollection) {
   const ends = trackEnds(track)
   if (!ends)
     return
-  if (!startPoint.value)
+  const atGoal = (p: { lng: number, lat: number }) => !!props.currentGoal && isSameGoal(p, props.currentGoal, NEAR_M)
+  if (!startPoint.value && !atGoal(ends.first))
     applyPick({ type: 'start', location: ends.first })
-  if (!endPoint.value) {
-    const loop = isSameGoal(ends.first, ends.last, LOOP_M)
+  if (!endPoint.value && !atGoal(ends.last)) {
+    const loop = !!startPoint.value && isSameGoal(ends.first, ends.last, NEAR_M)
     const at = loop ? startPoint.value! : ends.last
     applyPick({ type: 'end', location: { ...at }, name: loop ? startPointName.value.trim() || undefined : undefined })
   }
@@ -657,15 +661,13 @@ function openGpxPicker() {
   gpxInputRef.value?.click()
 }
 
+/** The end stays: it stands on its own (a connected stage ends where the next one starts). */
 function handleRemoveStart() {
-  for (const fill of [startName, startElevation, endName, endElevation])
-    fill.cancel()
+  startName.cancel()
+  startElevation.cancel()
   startPoint.value = null
   startPointName.value = ''
   startPointElevation.value = ''
-  endPoint.value = null
-  endPointName.value = ''
-  endPointElevation.value = ''
 }
 
 function handleRemoveEnd() {
@@ -903,9 +905,9 @@ defineExpose({ cancel: handleCancel, submitBlocked })
             </template>
           </div>
 
-          <!-- End point: offered once a start is set; an end set without one (a connected
-               stage, design D8) still shows. -->
-          <div v-if="startPoint || endPoint" class="point-section point-section--end">
+          <!-- End point: always offered, start or not — a flight from the goal needs only the
+               landing, a connected stage (design D8) only its end. -->
+          <div class="point-section point-section--end">
             <div class="point-section-header">
               <BaseIcon name="sports_score" class="point-section-icon" />
               <span class="point-section-title">{{ endIsLanding ? t('tours.form.landingLabel') : t('tours.form.endPointLabel') }}</span>
@@ -971,7 +973,7 @@ defineExpose({ cancel: handleCancel, submitBlocked })
                   <BaseIcon name="add" />
                   {{ endIsLanding ? t('tours.form.addLandingBtn') : t('tours.form.addEndPointBtn') }}
                 </BaseButton>
-                <BaseButton v-if="!endIsLanding" type="button" variant="secondary" size="sm" @click="handleRoundTrip">
+                <BaseButton v-if="startPoint && !endIsLanding" type="button" variant="secondary" size="sm" @click="handleRoundTrip">
                   <BaseIcon name="replay" />
                   {{ t('tours.form.roundTripBtn') }}
                 </BaseButton>

@@ -178,3 +178,85 @@ describe('findCrossings', () => {
     expect(findCrossings(zooms, 9, 17)).toEqual([10, 12, 14, 16])
   })
 })
+
+describe('buildClusterTree nearest-neighbour cache', () => {
+  /** The pre-cache O(n³) build: merge the globally closest pair, repeat. Returns merge signatures. */
+  function bruteForceMerges(tours: Tour[]): string[] {
+    const nodes = tours.map(t => ({ ids: [t.id], c: [t.goal.lng, t.goal.lat] as [number, number] }))
+    const merges: string[] = []
+    while (nodes.length > 1) {
+      let best = [0, 1, Infinity]
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const d = haversineMeters(nodes[i]!.c, nodes[j]!.c)
+          if (d < best[2]!)
+            best = [i, j, d]
+        }
+      }
+      const [a, b] = [nodes[best[0]!]!, nodes[best[1]!]!]
+      const w = a.ids.length + b.ids.length
+      const merged = {
+        ids: [...a.ids, ...b.ids].sort(),
+        c: [(a.c[0] * a.ids.length + b.c[0] * b.ids.length) / w, (a.c[1] * a.ids.length + b.c[1] * b.ids.length) / w] as [number, number],
+      }
+      merges.push(merged.ids.join())
+      nodes.splice(best[1]!, 1)
+      nodes.splice(best[0]!, 1)
+      nodes.push(merged)
+    }
+    return merges
+  }
+
+  it('should merge in exactly the order of the exhaustive pair search', () => {
+    let seed = 7
+    const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647
+    const tours = Array.from({ length: 120 }, (_, i) => makeTour(`t${i}`, 6 + rand() * 4, 45.9 + rand() * 1.8))
+    const merges: string[] = []
+    const walk = (n: ReturnType<typeof buildClusterTree>): void => {
+      if (n?.kind === 'internal') {
+        merges.push(n.leafIds.join())
+        n.children.forEach(walk)
+      }
+    }
+    walk(buildClusterTree(tours))
+    expect(merges.sort()).toEqual(bruteForceMerges(tours).sort())
+  })
+})
+
+describe('buildClusterTree cluster ids', () => {
+  function clusterIds(root: ReturnType<typeof buildClusterTree>): Map<string, string> {
+    const ids = new Map<string, string>()
+    const walk = (n: ReturnType<typeof buildClusterTree>): void => {
+      if (n?.kind === 'internal') {
+        ids.set(n.leafIds.join(), n.id)
+        n.children.forEach(walk)
+      }
+    }
+    walk(root)
+    return ids
+  }
+
+  it('should keep the id of every cluster that does not contain a removed tour', () => {
+    const tours = [
+      makeTour('a', 8.0, 47.0),
+      makeTour('b', 8.001, 47.0),
+      makeTour('c', 9.0, 46.5),
+      makeTour('d', 9.001, 46.5),
+      makeTour('e', 9.002, 46.5),
+    ]
+    const before = clusterIds(buildClusterTree(tours))
+    const after = clusterIds(buildClusterTree(tours.filter(t => t.id !== 'e')))
+    expect(after.get('a,b')).toBe(before.get('a,b'))
+    expect(after.get('c,d')).not.toBe(before.get('c,d,e'))
+  })
+
+  it('should give two stacks distinct ids when their tour ids differ only in the last character', () => {
+    const id = (n: number) => `de300000-0000-4000-8000-00000000000${n}`
+    const tours = [
+      ...[1, 2, 3, 4].map(n => makeTour(id(n), 7.8948, 46.0464)),
+      ...[5, 6, 7, 8].map(n => makeTour(id(n), 9.3433 + n / 1e5, 47.2494)),
+    ]
+    const ids = clusterIds(buildClusterTree(tours))
+    expect(ids.get([1, 2, 3, 4].map(id).join())).not.toBe(ids.get([5, 6, 7, 8].map(id).join()))
+  })
+})

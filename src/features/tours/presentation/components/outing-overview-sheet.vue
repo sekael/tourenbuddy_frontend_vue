@@ -152,7 +152,7 @@ function handleAdded() {
           <span class="hero-headline" data-testid="outing-headline">{{ headline }}</span>
           <!-- Dates and totals share a line (wrapping on a narrow phone), so the stages start
                higher in the browse-height sheet. -->
-          <span v-if="span || totals.ascent !== null || totals.descent !== null" class="hero-meta hero-meta--wrap">
+          <span v-if="span || totals.ascent || totals.descent || totals.distance" class="hero-meta hero-meta--wrap">
             <span v-if="span">{{ span }}</span>
             <RouteNumbers :metrics="totals" :flight="totalsFlight" />
           </span>

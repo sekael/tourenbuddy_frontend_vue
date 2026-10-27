@@ -7,7 +7,7 @@ import { gpxTrackKey, loadGpxTrack } from '@/features/tours/data/services/gpx-tr
 import { isSameGoal } from '@/features/tours/domain/distance'
 import { outingGaps } from '@/features/tours/domain/outing'
 import { progressNearest } from '@/features/tours/domain/route-metrics'
-import { DETAIL_CIRCLE_LAYER_ID, TOUR_LAYER_IDS } from './tours-marker-layer'
+import { DETAIL_CIRCLE_LAYER_ID, fadeLayer, TOUR_LAYER_IDS } from './tours-marker-layer'
 
 const GPX_SOURCE_ID = 'gpx-track'
 const GPX_LAYER_ID = 'gpx-track-line'
@@ -113,13 +113,14 @@ interface ConnectorLeg {
  * ponytail: arrows repeat along a banded leg in that one colour; colour per arrow needs
  * self-placed point anchors. A round trip (end = start) is one leg with a two-way arrow — unless
  * split: one arrow can't wear two legs' colours, so both legs are drawn, the way down on top. A
- * start without an end is the single leg to the goal; a leg between coinciding points is dropped.
+ * start without an end is the single leg to the goal, an end without a start (a connected stage)
+ * the single leg from the goal to the end; a leg between coinciding points is dropped.
  */
 function connectorLegs(tour: Tour): ConnectorLeg[] {
   const { startPoint: start, endPoint: end, goal, legs } = tour
-  if (tour.gpxFilepath || !start)
+  if (tour.gpxFilepath)
     return []
-  const roundTrip = !legs && !!end && isSameGoal(end, start)
+  const roundTrip = !legs && !!start && !!end && isSameGoal(end, start)
   const leg = (types: readonly TourType[], a: LngLat, b: LngLat, both: boolean): ConnectorLeg[] => isSameGoal(a, b)
     ? []
     : [{
@@ -131,7 +132,7 @@ function connectorLegs(tour: Tour): ConnectorLeg[] {
         },
       }]
   return [
-    ...leg(legs?.ascent ?? tour.tourTypes, start, goal, roundTrip),
+    ...(start ? leg(legs?.ascent ?? tour.tourTypes, start, goal, roundTrip) : []),
     ...(end && !roundTrip ? leg(legs?.descent ?? tour.tourTypes, goal, end, false) : []),
   ]
 }
@@ -196,6 +197,9 @@ export function useGpxTrackLayer(map: MapLibreMap) {
   let slots = 0
   /** Bumped per update: a fetch that resolves after a newer update must not draw (D16). */
   let generation = 0
+  /** Each slot's line opacity; drawn as 0 while the scene is faded out (D20). */
+  const slotOpacity: number[] = []
+  let visible = true
 
   const sourceId = (i: number) => `${GPX_SOURCE_ID}-${i}`
   const layerId = (i: number) => `${GPX_LAYER_ID}-${i}`
@@ -203,6 +207,22 @@ export function useGpxTrackLayer(map: MapLibreMap) {
   /** Call after every style load: the style dropped every track source and layer. */
   function setup() {
     slots = 0
+    slotOpacity.length = 0
+    visible = true
+  }
+
+  function setSlotOpacity(i: number, value: number) {
+    slotOpacity[i] = value
+    map.setPaintProperty(layerId(i), 'line-opacity', visible ? value : 0)
+  }
+
+  /** Fade the tracks, connectors and gaps out or back in with the markers' scene (D20). */
+  function setVisible(show: boolean) {
+    visible = show
+    for (let i = 0; i < slots; i++)
+      fadeLayer(map, layerId(i), 'line-opacity', slotOpacity[i] ?? TRACK_OPACITY, show)
+    fadeLayer(map, ARROW_LAYER_ID, 'icon-opacity', CONNECTOR_OPACITY, show)
+    fadeLayer(map, GAP_LAYER_ID, 'line-opacity', 1, show)
   }
 
   function addSlot(i: number) {
@@ -226,7 +246,7 @@ export function useGpxTrackLayer(map: MapLibreMap) {
         paint: {
           'line-gradient': trackGradient([]),
           'line-width': 3,
-          'line-opacity': TRACK_OPACITY,
+          'line-opacity': visible ? TRACK_OPACITY : 0,
         },
       },
       // Under the connector arrows, which sit under the markers.
@@ -313,7 +333,7 @@ export function useGpxTrackLayer(map: MapLibreMap) {
       // Recolour BEFORE the data lands so a cached track never flashes the previous tour's colours.
       map.setPaintProperty(layerId(i), 'line-gradient', trackGradient(distinctTypeColors(types, palette)))
       map.setPaintProperty(layerId(i), 'line-width', legs ? CONNECTOR_WIDTH : 3)
-      map.setPaintProperty(layerId(i), 'line-opacity', legs ? CONNECTOR_OPACITY : TRACK_OPACITY)
+      setSlotOpacity(i, legs ? CONNECTOR_OPACITY : TRACK_OPACITY)
       if (legs) {
         source?.setData(legs)
         return
@@ -332,5 +352,5 @@ export function useGpxTrackLayer(map: MapLibreMap) {
     }))
   }
 
-  return { setup, updateTracks }
+  return { setup, updateTracks, setVisible }
 }

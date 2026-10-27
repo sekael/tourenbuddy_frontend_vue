@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { onKeyStroke } from '@vueuse/core'
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
@@ -21,6 +23,21 @@ const emit = defineEmits<{ close: [], back: [] }>()
 const { t } = useI18n({ useScope: 'global' })
 
 const isDesktop = useIsDesktop()
+
+// Escape closes the drawer like its ×, wherever focus is (a map click leaves it on the map).
+// Not while typing in a field, not under a dialog stacked above it, and not when a control
+// inside already spent the key (it calls preventDefault).
+const drawerEl = ref<HTMLElement | null>(null)
+onKeyStroke('Escape', (e) => {
+  const el = drawerEl.value
+  if (!el || props.collapsed || e.defaultPrevented)
+    return
+  if ((e.target as Element | null)?.closest?.('input, textarea, select, [contenteditable="true"]'))
+    return
+  if ([...document.querySelectorAll('[aria-modal="true"]')].at(-1) !== el)
+    return
+  emit('close')
+})
 </script>
 
 <template>
@@ -37,6 +54,7 @@ const isDesktop = useIsDesktop()
   <!-- Desktop: right-edge side drawer, no backdrop -->
   <div
     v-else
+    ref="drawerEl"
     class="side-drawer"
     :class="{ 'side-drawer--collapsed': props.collapsed }"
     role="dialog"

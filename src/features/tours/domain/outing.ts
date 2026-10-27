@@ -31,6 +31,17 @@ export function outingSegments(tours: Tour[], key: string | null): Tour[] {
   return segments.length >= 2 ? segments : []
 }
 
+/**
+ * The goal chain of every outing among `tours` except the open one (`openKey`, which shows its
+ * tracks instead): one `[lng, lat]` line per outing with two or more segments, in segment order.
+ */
+export function outingChains(tours: Tour[], openKey: string | null): [number, number][][] {
+  const keys = new Set(tours.map(outingKey).filter(k => k !== null && k !== openKey))
+  return [...keys]
+    .map(key => outingSegments(tours, key).map(s => [s.goal.lng, s.goal.lat] as [number, number]))
+    .filter(chain => chain.length >= 2)
+}
+
 interface LngLat {
   lng: number
   lat: number

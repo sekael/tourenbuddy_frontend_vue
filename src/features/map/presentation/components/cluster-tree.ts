@@ -43,6 +43,20 @@ function leafIdsOf(node: TreeNode): string[] {
   return node.kind === 'leaf' ? [node.id] : node.leafIds
 }
 
+/**
+ * FNV-1a of a tour id, then murmur3's finaliser. Plain FNV-1a ends in `(h ^ lastChar) * prime`,
+ * so summed over ids that differ only in their last character, two leaf sets collided: Allalinhorn
+ * ×4 and Säntis + Altmann shared one id, hence one marker.
+ */
+function idHash(id: string): number {
+  let h = 0x811C9DC5
+  for (let i = 0; i < id.length; i++)
+    h = Math.imul(h ^ id.charCodeAt(i), 0x01000193)
+  h = Math.imul(h ^ (h >>> 16), 0x85EBCA6B)
+  h = Math.imul(h ^ (h >>> 13), 0xC2B2AE35)
+  return (h ^ (h >>> 16)) >>> 0
+}
+
 function clampMonotonicity(node: InternalNode, minZoom: number): void {
   if (node.splitZoom < minZoom)
     node.splitZoom = minZoom
@@ -56,34 +70,54 @@ export function buildClusterTree(tours: Tour[], radiusPx: number = CLUSTER_RADIU
   if (tours.length === 0)
     return null
 
-  let counter = 0
+  // A cluster's id derives from its leaf set (count + order-independent hash sum), not from merge
+  // order: pinning one tour out (selection) then changes only the ids of its own ancestors, so
+  // every other cluster keeps its marker instead of flickering out and back in.
+  const hashes = new Map<TreeNode, number>()
   const nodes: TreeNode[] = tours.map(t => ({
     kind: 'leaf' as const,
     id: t.id,
     coord: [t.goal.lng, t.goal.lat] as [number, number],
   }))
+  for (const n of nodes)
+    hashes.set(n, idHash(n.id))
 
   if (nodes.length === 1)
     return nodes[0]!
 
-  while (nodes.length > 1) {
-    let bestI = 0
-    let bestJ = 1
-    let bestDist = Infinity
-
-    for (let i = 0; i < nodes.length; i++) {
-      for (let j = i + 1; j < nodes.length; j++) {
-        const d = haversineMeters(centroidOf(nodes[i]!), centroidOf(nodes[j]!))
-        if (d < bestDist) {
-          bestDist = d
-          bestI = i
-          bestJ = j
-        }
+  // Nearest-neighbour cache: a merge only invalidates the nodes whose nearest was one of the two
+  // merged, so a build is ~O(n²) instead of rescanning every pair per merge (O(n³): 600 tours
+  // took a second, and every selection rebuilds the tree).
+  const alive: (TreeNode | null)[] = nodes
+  const nn: number[] = []
+  const nnDist: number[] = []
+  function scanNearest(i: number): void {
+    nn[i] = -1
+    nnDist[i] = Infinity
+    for (let k = 0; k < alive.length; k++) {
+      if (k === i || !alive[k])
+        continue
+      const d = haversineMeters(centroidOf(alive[i]!), centroidOf(alive[k]!))
+      if (d < nnDist[i]!) {
+        nnDist[i] = d
+        nn[i] = k
       }
     }
+  }
+  for (let i = 0; i < alive.length; i++)
+    scanNearest(i)
 
-    const a = nodes[bestI]!
-    const b = nodes[bestJ]!
+  for (let remaining = alive.length; remaining > 1; remaining--) {
+    let bestI = -1
+    for (let i = 0; i < alive.length; i++) {
+      if (alive[i] && (bestI < 0 || nnDist[i]! < nnDist[bestI]!))
+        bestI = i
+    }
+    const bestJ = nn[bestI]!
+    const bestDist = nnDist[bestI]!
+
+    const a = alive[bestI]!
+    const b = alive[bestJ]!
     const wA = leafCountOf(a)
     const wB = leafCountOf(b)
     const total = wA + wB
@@ -95,10 +129,11 @@ export function buildClusterTree(tours: Tour[], radiusPx: number = CLUSTER_RADIU
     ]
     const splitZoom = solveSplitZoom(bestDist, centroid[1], radiusPx)
     const leafIds = [...leafIdsOf(a), ...leafIdsOf(b)].sort()
+    const hash = (hashes.get(a)! + hashes.get(b)!) >>> 0
 
     const merged: InternalNode = {
       kind: 'internal',
-      id: `cluster-${counter++}`,
+      id: `cluster-${total}-${hash.toString(36)}`,
       centroid,
       leafIds,
       children: [a, b],
@@ -106,13 +141,27 @@ export function buildClusterTree(tours: Tour[], radiusPx: number = CLUSTER_RADIU
       totalLeafCount: total,
     }
 
-    // Remove bestJ first (higher index) to preserve bestI index
-    nodes.splice(bestJ, 1)
-    nodes.splice(bestI, 1)
-    nodes.push(merged)
+    hashes.set(merged, hash)
+    alive[bestI] = merged
+    alive[bestJ] = null
+    scanNearest(bestI)
+    for (let k = 0; k < alive.length; k++) {
+      if (!alive[k] || k === bestI)
+        continue
+      if (nn[k] === bestI || nn[k] === bestJ) {
+        scanNearest(k)
+      }
+      else {
+        const d = haversineMeters(centroidOf(alive[k]!), centroid)
+        if (d < nnDist[k]!) {
+          nnDist[k] = d
+          nn[k] = bestI
+        }
+      }
+    }
   }
 
-  const root = nodes[0]!
+  const root = alive.find(n => n !== null)!
   if (root.kind === 'internal')
     clampMonotonicity(root, -Infinity)
   return root

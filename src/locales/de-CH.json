@@ -817,7 +817,28 @@
     },
     "cluster": {
       "label": "Cluster aus {count} Touren",
-      "spiderfyHint": "Esc drücken, um zu schliessen"
+      "planned": "{count} geplant",
+      "undated": "{count} ohne Datum",
+      "done": "{count} erledigt"
+    },
+    "marker": {
+      "done": "Erledigt",
+      "noDate": "Ohne Datum",
+      "stackTitle": "{count} Touren an diesem Ort",
+      "close": "Liste schliessen",
+      "stage": "Etappe {n}/{total}",
+      "stackMore": "{count} weitere Touren an diesem Ort – Liste zeigen"
+    },
+    "legend": {
+      "title": "Legende",
+      "multi": "Mehrere Aktivitäten",
+      "none": "Ohne Aktivität",
+      "done": "Erledigt",
+      "friend": "Tour eines Freundes, bei der du dabei bist",
+      "linked": "Mit einer Freundestour verknüpft",
+      "cluster": "Mehrere Touren – tippen zum Hineinzoomen oder Auflisten",
+      "chain": "Etappen einer Etappentour",
+      "open": "Legende anzeigen"
     }
   },
   "i18n": {
@@ -980,7 +1001,7 @@
       },
       "mapLayers": {
         "title": "Kartenebenen",
-        "body": "Wähle eine Grundkarte und blende Wanderwege oder Skitouren darüber ein, in beliebiger Kombination. Mit Skitouren zoomst du hinein, bis die Routen Schwierigkeits-Badges zeigen, und tippst dann für Details auf eine Route – oder planst sie gleich als Tour."
+        "body": "Wähle eine Grundkarte und blende Wanderwege oder Skitouren darüber ein, in beliebiger Kombination. Mit Skitouren zoomst du hinein, bis die Routen Schwierigkeits-Badges zeigen, und tippst dann für Details auf eine Route – oder planst sie gleich als Tour. Die Legende unten erklärt die Farben und Symbole der Tourenmarker."
       },
       "welcome": {
         "title": "Willkommen bei TourenBuddy",

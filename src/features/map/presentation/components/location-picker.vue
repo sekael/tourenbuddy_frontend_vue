@@ -13,6 +13,7 @@ import { useIsTouch } from '@/core/composables/use-is-touch'
 import { useVisualViewportTop } from '@/core/composables/use-visual-viewport-top'
 import { isOnline } from '@/core/offline/use-online-status'
 import { rankResults, searchLocations } from '@/features/map/data/services/swisstopo-search-service'
+import { FLIGHT_SPEED } from '@/features/map/presentation/composables/frame-tour'
 import LocationSearchResults from './location-search-results.vue'
 
 const props = defineProps<{
@@ -159,7 +160,7 @@ function choose(result: LocationResult | undefined) {
   query.value = result.name
   closeList()
   // Zero padding: a framed tour leaves padding set, which would park the result off-crosshair.
-  const camera = { center: [result.lng, result.lat] as [number, number], zoom: result.zoom, padding: { top: 0, right: 0, bottom: 0, left: 0 } }
+  const camera = { center: [result.lng, result.lat] as [number, number], zoom: result.zoom, padding: { top: 0, right: 0, bottom: 0, left: 0 }, speed: FLIGHT_SPEED }
   if (reducedMotion.value === 'reduce') {
     props.map.jumpTo(camera)
     return

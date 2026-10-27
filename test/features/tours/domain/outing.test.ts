@@ -4,6 +4,7 @@ import {
   appendedOuting,
   movedSegment,
   nextSegmentSeed,
+  outingChains,
   outingDateConflicts,
   outingDisplayName,
   outingGaps,
@@ -202,5 +203,18 @@ describe('outingDateConflicts', () => {
   it('should flag a segment dated before the previous one, but not a same-day or undated one', () => {
     const d = (s: string | null) => ({ plannedDate: s ? new Date(s) : null })
     expect([...outingDateConflicts([d('2026-11-30'), d('2026-11-29'), d('2026-11-29'), d(null), d('2026-11-01')])]).toEqual([1])
+  })
+})
+
+describe('outingChains', () => {
+  it('should chain segment goals in order and leave out the open outing and lone segments', () => {
+    const tours = [
+      segment('b', 1, { goal: { lng: 8, lat: 46 } }),
+      segment('a', 0, { goal: { lng: 7, lat: 46 } }),
+      tour({ id: 'o2-only', outing: { id: 'o2', name: null, position: 0 } }),
+      tour({ id: 'x', userId: 'friend', outing: { id: OUTING, name: null, position: 2 } }),
+    ]
+    expect(outingChains(tours, null)).toEqual([[[7, 46], [8, 46]]])
+    expect(outingChains(tours, `me/${OUTING}`)).toEqual([])
   })
 })
