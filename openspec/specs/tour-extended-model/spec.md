@@ -90,7 +90,7 @@ The tour schema SHALL include `startPoint` and `endPoint` (each an object with l
 
 #### Scenario: End point without start point
 
-- **WHEN** a tour has `endPoint` set but `startPoint` is null (a stage connected to the next one)
+- **WHEN** a tour has `endPoint` set but `startPoint` is null (a flight from the goal to its landing, or a stage connected to the next one)
 - **THEN** the end point SHALL be kept and presented on its own, and the missing start SHALL get nothing — no start marker, no start → goal leg, so nothing climbed or descended before the goal in the route numbers — never a position borrowed from the goal or the end
 
 #### Scenario: Both points set

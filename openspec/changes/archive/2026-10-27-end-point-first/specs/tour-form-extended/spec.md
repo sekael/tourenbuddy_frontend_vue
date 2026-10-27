@@ -53,7 +53,7 @@ The tour form SHALL allow optional start and end point selection via map coordin
 
 ### Requirement: Start and end suggestions
 
-With the goal set, an empty start card SHALL offer up to three suggestions: the user's latest own start for a goal within 300 m, then the public-transport stops nearest the goal, none within 500 m of it. An empty end card SHALL offer the user's latest own end the same way — a landing only an earlier tour's landing — then the nearest stops, none within 100 m of the start; a landing gets no stops. A suggestion SHALL set the point with its name and look up its height. Suggestions SHALL never block the form; a failed lookup SHALL show none.
+With the goal set, an empty start card SHALL offer up to three suggestions: the user's latest start for a goal within 300 m, then the public-transport stops nearest the goal, none within 500 m of it. An empty end card SHALL offer the user's latest end the same way, then the nearest stops, none within 100 m of the start; a landing only an earlier landing, no stops. A suggestion SHALL set the point with its name and look up its height; none SHALL block the form; a failed lookup SHALL show none.
 
 #### Scenario: Stop near the Sustenhorn
 

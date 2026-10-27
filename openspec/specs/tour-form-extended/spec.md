@@ -143,7 +143,7 @@ When a start point is set and no end point is set, the form SHALL render a "Roun
 #### Scenario: Round Trip button hidden without start point
 
 - **WHEN** no start point is set
-- **THEN** the "Round Trip" button SHALL NOT be rendered (the end point section is hidden, or shows only an end point already set)
+- **THEN** the "Round Trip" button SHALL NOT be rendered (an empty end point section offers only "Add end point" or "Add landing" and its suggestions)
 
 #### Scenario: Round Trip button hidden when end point already set
 
@@ -437,7 +437,7 @@ a planned date and cleared with it.
 
 ### Requirement: Start and end suggestions
 
-With the goal set, an empty start card SHALL offer up to three suggestions: the user's latest own start for a goal within 300 m, then the public-transport stops nearest the goal, none within 500 m of it. An empty end card SHALL offer the user's latest own end the same way, then the nearest stops, none within 100 m of the start; a landing gets no stops. A suggestion SHALL set the point with its name and look up its height. Suggestions SHALL never block the form; a failed lookup SHALL show none.
+With the goal set, an empty start card SHALL offer up to three suggestions: the user's latest start for a goal within 300 m, then the public-transport stops nearest the goal, none within 500 m of it. An empty end card SHALL offer the user's latest end the same way, then the nearest stops, none within 100 m of the start; a landing only an earlier landing, no stops. A suggestion SHALL set the point with its name and look up its height; none SHALL block the form; a failed lookup SHALL show none.
 
 #### Scenario: Stop near the Sustenhorn
 
@@ -454,30 +454,58 @@ With the goal set, an empty start card SHALL offer up to three suggestions: the 
 - **WHEN** the user's earlier tour to the same summit ended at "Steingletscher" and the end is empty
 - **THEN** that end SHALL be offered first, before the nearest stops
 
+#### Scenario: Been here before, the landing
+
+- **WHEN** the user's latest tour to the same launch was a hike that ended at "Wiler, Bahnhof", an older one a flight that landed at "Landeplatz Wiler", and the way down is flown
+- **THEN** the landing card SHALL offer "Landeplatz Wiler" and not "Wiler, Bahnhof"
+
 ### Requirement: GPX fills empty points
 
 Picking a GPX SHALL set an empty start point to the track's first point and an empty end point to
-its last point, or make it a round trip when first and last point lie within 200 m. Set points
-and the goal SHALL never change.
+its last point, or make it a round trip when first and last point lie within 200 m of each other
+and the tour has a start (set before or by the same pick). A track end within 200 m of the goal
+SHALL set nothing — it is the goal: a tour without an end ends at its goal, and a flight from the
+goal has no start to show. Set points and the goal SHALL never
+change.
 
 #### Scenario: Loop track
 
 - **WHEN** a GPX whose ends are 40 m apart is picked for a tour without start and end
 - **THEN** the start SHALL be the first track point and the end SHALL equal the start
 
-### Requirement: Independent start and end point pickers
+#### Scenario: Track from the goal
 
-The tour form SHALL allow optional start and end point selection via map coordinate pickers. The end point section SHALL be offered once a start point is set, and SHALL also show whenever an end point is set without a start: an end point stands on its own. Picking or removing one point SHALL NOT change the other.
+- **WHEN** a GPX of a flight that starts 80 m from the goal and ends in the valley is picked for a tour without start and end
+- **THEN** the start SHALL stay empty and the end SHALL be the track's last point
 
-#### Scenario: Initial form shows start row only
+#### Scenario: Track up to the goal
+
+- **WHEN** a GPX that starts in the valley and ends 110 m from the goal is picked for a tour without start and end
+- **THEN** the start SHALL be the track's first point and the end SHALL stay empty
+
+#### Scenario: Track from the goal back to it
+
+- **WHEN** a GPX of a flight that starts and lands within 200 m of the goal is picked for a tour without start and end
+- **THEN** the start and the end SHALL both stay empty: the tour ends at its goal and has no start to show
+
+### Requirement: Start and end points in any order
+
+The tour form SHALL allow optional start and end point selection via map coordinate pickers, in create, edit and suggest alike. The start point section and the end point section SHALL both always be rendered, so either point can be set first or alone. Picking or removing one point SHALL NOT change the other.
+
+#### Scenario: Initial form offers both points
 
 - **WHEN** the form opens with no draft start or end point
-- **THEN** the start point row SHALL be visible and the end point section SHALL NOT be rendered
+- **THEN** the start point section SHALL offer its picker and the end point section SHALL offer "Add end point" (a flown way down: "Add landing") without "Round Trip"
 
-#### Scenario: End point section appears after start is set
+#### Scenario: End point set without a start
 
-- **WHEN** the user confirms a start point pick (or the form opens with a draft that already has a start point)
-- **THEN** the end point section SHALL be rendered, showing an "Add end point" button and a "Round Trip" button when no end point is yet set (a flown way down: "Add landing", and no "Round Trip")
+- **WHEN** the user picks an end point while no start point is set
+- **THEN** the end point SHALL be stored in the draft with its name and elevation, and `startPoint`, `startPointName`, and `startPointElevation` SHALL stay null
+
+#### Scenario: Round Trip offered once a start is set
+
+- **WHEN** the user confirms a start point pick (or the form opens with a draft that already has a start point) and no end point is set
+- **THEN** the end point section SHALL show an "Add end point" button and a "Round Trip" button (a flown way down: "Add landing", and no "Round Trip")
 
 #### Scenario: User sets start point
 
@@ -492,27 +520,17 @@ The tour form SHALL allow optional start and end point selection via map coordin
 #### Scenario: User removes end point
 
 - **WHEN** the user clears a previously set end point
-- **THEN** `endPoint`, `endPointName`, and `endPointElevation` SHALL be null in the draft and the row SHALL collapse back to the "Add end point" / "Round Trip" affordances (or "Add landing" for a flown way down)
-
-#### Scenario: User removes the end point of a stage without a start
-
-- **WHEN** the user clears the end point of a tour that has no start point
-- **THEN** `endPoint`, `endPointName`, and `endPointElevation` SHALL be null in the draft and the end point section SHALL be hidden
+- **THEN** `endPoint`, `endPointName`, and `endPointElevation` SHALL be null in the draft and the end point section SHALL collapse back to "Add end point" — with "Round Trip" while a start is set — or "Add landing" for a flown way down
 
 #### Scenario: User removes start point and the end stays
 
 - **WHEN** the user clears a previously set start point while an end point is set
-- **THEN** `startPoint`, `startPointName`, and `startPointElevation` SHALL be null in the draft, and `endPoint`, `endPointName`, and `endPointElevation` SHALL keep their values, with the end point section still rendered
+- **THEN** `startPoint`, `startPointName`, and `startPointElevation` SHALL be null in the draft, and `endPoint`, `endPointName`, and `endPointElevation` SHALL keep their values, with the end point section still showing the end
 
-#### Scenario: User removes the only point
-
-- **WHEN** the user clears a previously set start point while no end point is set
-- **THEN** the start point fields SHALL be null in the draft and the end point section SHALL be hidden
-
-#### Scenario: Editing a connected stage without a start
+#### Scenario: Editing a tour without a start
 
 - **WHEN** the form opens for a tour that has an end point but no start point
-- **THEN** the start point row SHALL offer a picker and the end point section SHALL show the end point with its name and elevation
+- **THEN** the start point section SHALL offer a picker and the end point section SHALL show the end point with its name and elevation
 
 #### Scenario: No start/end points
 
