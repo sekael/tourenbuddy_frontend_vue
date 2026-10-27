@@ -7,12 +7,26 @@ import type {
   TourSuggestionsRepository,
 } from '@/features/tours/domain/repositories/tour-suggestions-repository'
 import { v4 as uuidv4 } from 'uuid'
+import { useLogger } from '@/core/logging/use-logger'
 import { uploadWithProgress } from '@/core/utils/storage-upload'
 import { supabase } from '@/core/utils/supabase'
 import { tourSuggestionRowSchema } from '@/features/tours/data/models/tour-suggestion'
 import { gpxStorageKey } from '@/features/tours/data/services/gpx-storage-service'
 
+const logger = useLogger('tour-suggestions-repository')
+
 export type StagedBucket = 'tour-gpx' | 'tour-attachments'
+interface StagedObject { bucket: StagedBucket, path: string }
+/** A PostgREST (`PGRST…`) or Postgres (SQLSTATE) code: the server answered, the call rolled back. */
+const SERVER_ERROR_CODE = /^(?:PGRST\d+|[0-9A-Z]{5})$/
+
+/**
+ * A replaced owner object's bucket, by its key's shape: an attachment is `<uid>/<tourId>/<id>.<ext>`
+ * (`attachmentStoragePath`), a GPX `<uid>/<id>.gpx` (`gpxStorageKey`).
+ */
+function ownerBucketOf(path: string): StagedBucket {
+  return path.split('/').length >= 3 ? 'tour-attachments' : 'tour-gpx'
+}
 
 /** Which bucket a staged blob for this field lives in. */
 export function bucketForField(field: string): StagedBucket | null {
@@ -69,15 +83,15 @@ export class SupabaseTourSuggestionsRepository implements TourSuggestionsReposit
   }
 
   async accept(suggestion: TourSuggestion): Promise<ResolveResult> {
-    const ownPath = await this.copyStagedToOwner(suggestion)
+    const copy = await this.copyStagedToOwner(suggestion)
 
     const { data, error } = await supabase.rpc('accept_tour_suggestion', {
       p_id: suggestion.id,
-      p_storage_path: ownPath,
+      p_storage_path: copy?.path ?? null,
     })
 
     if (error)
-      throw new Error(error.message)
+      throw await this.discardCopies(copy ? [copy] : [], error)
 
     const result = (data ?? {}) as Record<string, unknown>
     await this.sweepOwnerLeftovers([result.removed_storage_path as string | null], suggestion.field)
@@ -92,11 +106,21 @@ export class SupabaseTourSuggestionsRepository implements TourSuggestionsReposit
   async acceptBatch(batchId: string, rows: TourSuggestion[]): Promise<ResolveResult> {
     // Copy every staged blob into the owner's prefix FIRST, then hand the map to the RPC,
     // which applies the whole review in one transaction (D10).
+    const copies: StagedObject[] = []
     const paths: Record<string, string> = {}
-    for (const row of rows) {
-      const ownPath = await this.copyStagedToOwner(row)
-      if (ownPath)
-        paths[row.id] = ownPath
+    try {
+      for (const row of rows) {
+        const copy = await this.copyStagedToOwner(row)
+        if (copy) {
+          copies.push(copy)
+          paths[row.id] = copy.path
+        }
+      }
+    }
+    catch (err) {
+      // Nothing points at the copies yet.
+      await this.removeObjects(copies)
+      throw err
     }
 
     const { data, error } = await supabase.rpc('accept_tour_suggestion_batch', {
@@ -105,12 +129,12 @@ export class SupabaseTourSuggestionsRepository implements TourSuggestionsReposit
     })
 
     if (error)
-      throw new Error(error.message)
+      throw await this.discardCopies(copies, error)
 
     const result = (data ?? {}) as Record<string, unknown>
+    // A replaced GPX comes back here too, next to removed attachments.
     const removed = (result.removed_storage_paths as string[] | null) ?? []
-    for (const path of removed)
-      await supabase.storage.from('tour-attachments').remove([path]).catch(() => {})
+    await this.removeObjects(removed.map(path => ({ bucket: ownerBucketOf(path), path })))
 
     return {
       resolvedBatches: (result.resolved_batches as string[]) ?? [],
@@ -154,13 +178,21 @@ export class SupabaseTourSuggestionsRepository implements TourSuggestionsReposit
     return path
   }
 
-  async sweepStaged(paths: { bucket: StagedBucket, path: string }[]): Promise<void> {
+  async sweepStaged(paths: StagedObject[]): Promise<void> {
+    await this.removeObjects(paths)
+  }
+
+  /** Best-effort delete of objects, one request per bucket. */
+  private async removeObjects(paths: StagedObject[]): Promise<void> {
     const byBucket = new Map<StagedBucket, string[]>()
     for (const { bucket, path } of paths)
       byBucket.set(bucket, [...(byBucket.get(bucket) ?? []), path])
 
-    for (const [bucket, list] of byBucket)
-      await supabase.storage.from(bucket).remove(list).catch(() => {})
+    for (const [bucket, list] of byBucket) {
+      const { error } = await supabase.storage.from(bucket).remove(list).catch((err: Error) => ({ error: err }))
+      if (error)
+        logger.warn('Storage objects not removed (orphaned)', { bucket, list, error })
+    }
   }
 
   /**
@@ -169,11 +201,12 @@ export class SupabaseTourSuggestionsRepository implements TourSuggestionsReposit
    * with the suggestion. Needs read on the source (the pending-scoped SELECT policy) and
    * insert on the destination (the owner's existing policy).
    *
-   * Known ceiling: a crash between the copy and the RPC orphans one object in the owner's
-   * prefix and leaves the suggestion pending; a retry re-copies. Same exposure as the
-   * existing upload-then-write window in the attachment picker.
+   * Every copy lands at a fresh key; a failed accept discards its copies (`discardCopies`).
+   * Known ceiling: a crash, or a lost response, between the copy and the RPC orphans one
+   * object in the owner's prefix. Same exposure as the existing upload-then-write window in
+   * the attachment picker.
    */
-  private async copyStagedToOwner(row: TourSuggestion): Promise<string | null> {
+  private async copyStagedToOwner(row: TourSuggestion): Promise<StagedObject | null> {
     const bucket = bucketForField(row.field)
     const staged = storagePathOf(row)
     if (!bucket || !staged)
@@ -181,14 +214,27 @@ export class SupabaseTourSuggestionsRepository implements TourSuggestionsReposit
 
     const ownPath
       = bucket === 'tour-gpx'
-        ? gpxStorageKey(row.ownerId, row.tourId)
+        // A fresh key, never the tour's own `<uid>/<tourId>.gpx`: a tour created with a track
+        // already holds that path, and it is swept as the replaced file right after.
+        ? gpxStorageKey(row.ownerId, uuidv4())
         : `${row.ownerId}/${row.tourId}/${uuidv4()}${extOf(staged)}`
 
     const { error } = await supabase.storage.from(bucket).copy(staged, ownPath)
     if (error)
       throw new Error(error.message)
 
-    return ownPath
+    return { bucket, path: ownPath }
+  }
+
+  /**
+   * An accept that failed: drop the copies made for it and hand back the error to throw. Only
+   * when the outcome is known — a server answer carries a code and rolled back. A lost response
+   * (no code) may have committed, the row then pointing at a copy: keep it (orphan at worst).
+   */
+  private async discardCopies(copies: StagedObject[], error: { code?: string, message: string }): Promise<Error> {
+    if (SERVER_ERROR_CODE.test(error.code ?? ''))
+      await this.removeObjects(copies)
+    return new Error(error.message)
   }
 
   /** The tour's previous GPX object after a replace, or the removed attachment's bytes. */
