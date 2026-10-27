@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.49.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.48.0...tourenbuddy-frontend-v0.49.0) (2026-10-27)
+
+
+### Features
+
+* Map marker clustering review ([#359](https://github.com/sekael/tourenbuddy_frontend_vue/issues/359)) ([161a2f2](https://github.com/sekael/tourenbuddy_frontend_vue/commit/161a2f2393446a9a584bc15157f1b5258eac2e0f))
+
+
+### Bug Fixes
+
+* **map:** Keep GPX track visible when toggling completed or visibility ([#361](https://github.com/sekael/tourenbuddy_frontend_vue/issues/361)) ([e2d9f5b](https://github.com/sekael/tourenbuddy_frontend_vue/commit/e2d9f5bb78ce5a95fb6ed2b0e0475b7c539a76a1))
+* **tours:** Keep owner toggle row layout stable across states ([#363](https://github.com/sekael/tourenbuddy_frontend_vue/issues/363)) ([f43b06d](https://github.com/sekael/tourenbuddy_frontend_vue/commit/f43b06d38a926b001a46a6b886ca500e45ee8cb1))
+
 ## [0.48.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.47.0...tourenbuddy-frontend-v0.48.0) (2026-10-25)
 
 
