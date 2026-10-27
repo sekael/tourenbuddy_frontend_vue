@@ -858,11 +858,10 @@ const formattedElevation = computed(() =>
           >
             <BaseIcon v-if="tour.completed" name="check_circle" />
             <BaseIcon v-else name="radio_button_unchecked" />
-            {{
-              tour.completed
-                ? t('tours.infoSheet.completedBtn')
-                : t('tours.infoSheet.completeTourBtn')
-            }}
+            <span
+              class="toggle-label"
+              :data-alt="t(tour.completed ? 'tours.infoSheet.completeTourBtn' : 'tours.infoSheet.completedBtn')"
+            >{{ t(tour.completed ? 'tours.infoSheet.completedBtn' : 'tours.infoSheet.completeTourBtn') }}</span>
           </button>
 
           <!-- Visibility toggle -->
@@ -872,11 +871,10 @@ const formattedElevation = computed(() =>
             :aria-pressed="tour.visibility === 'private'" @click="toggleVisibility"
           >
             <BaseIcon :name="tour.visibility === 'private' ? 'lock' : 'group'" />
-            {{
-              tour.visibility === 'private'
-                ? t('tours.infoSheet.visibilityMakeFriends')
-                : t('tours.infoSheet.visibilityMakePrivate')
-            }}
+            <span
+              class="toggle-label"
+              :data-alt="t(tour.visibility === 'private' ? 'tours.infoSheet.visibilityMakePrivate' : 'tours.infoSheet.visibilityMakeFriends')"
+            >{{ t(tour.visibility === 'private' ? 'tours.infoSheet.visibilityMakeFriends' : 'tours.infoSheet.visibilityMakePrivate') }}</span>
           </button>
         </div>
 
@@ -1152,6 +1150,23 @@ const formattedElevation = computed(() =>
 
 .owner-toggles > .action-btn {
   flex: 1 1 auto;
+  justify-content: center;
+  padding-inline: var(--spacing-sm);
+}
+
+/* Each label also lays out its other state's text (zero height, hidden), so a pill is as
+   wide in both states and flipping a toggle never changes whether the row wraps. */
+.toggle-label {
+  display: inline-flex;
+  flex-direction: column;
+  text-align: start;
+}
+
+.toggle-label::after {
+  content: attr(data-alt);
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
 }
 
 .completion-toggle--done {

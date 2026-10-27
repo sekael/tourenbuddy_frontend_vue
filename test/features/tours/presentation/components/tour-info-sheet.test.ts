@@ -573,6 +573,19 @@ describe('tourInfoSheet', () => {
       expect(row.find('.visibility-toggle').attributes('aria-pressed')).toBe('true')
     })
 
+    it('should reserve each toggle\'s other label so flipping one never re-wraps the row', () => {
+      const labels = (completed: boolean, visibility: 'friends' | 'private') =>
+        mountSheet({ completed, visibility }).find('.owner-toggles').findAll('.toggle-label').map(l => [l.text(), l.attributes('data-alt')])
+      expect(labels(false, 'friends')).toEqual([
+        ['tours.infoSheet.completeTourBtn', 'tours.infoSheet.completedBtn'],
+        ['tours.infoSheet.visibilityMakePrivate', 'tours.infoSheet.visibilityMakeFriends'],
+      ])
+      expect(labels(true, 'private')).toEqual([
+        ['tours.infoSheet.completedBtn', 'tours.infoSheet.completeTourBtn'],
+        ['tours.infoSheet.visibilityMakeFriends', 'tours.infoSheet.visibilityMakePrivate'],
+      ])
+    })
+
     it('should not keep an empty first line for a friend viewing a tour without elevation or date', () => {
       const wrapper = mountSheet({ isFriendTour: true, elevation: null, plannedDate: null }, 'user-2')
       expect(wrapper.find('.hero-line').exists()).toBe(false)
