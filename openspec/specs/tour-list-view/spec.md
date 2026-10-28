@@ -98,94 +98,12 @@ The search input SHALL share a single row with the filters trigger. That row SHA
 - **WHEN** a tour's `partnerIds` contains an ID that has no matching entry in `useContactsStore.contacts`
 - **THEN** that ID SHALL contribute an empty string to the partner name set and SHALL NOT cause an error
 
-### Requirement: Tour filters
-
-The overlay SHALL expose filters for partner, activity type, grade, season, planned-date range, and completion status, and on the Friends tab also for the friend who recorded the tour. A tour SHALL appear in the filtered list only when it satisfies every active filter (logical AND across filter categories). When no filters are active, all tours SHALL pass.
-
-#### Scenario: Partner filter
-
-- **WHEN** on the My Tours tab the partner filter holds a set of one or more contact IDs
-- **THEN** a tour SHALL match only when `tour.partnerIds` intersects the selected set (at least one partner in common)
-
-#### Scenario: Partner filter on the Friends tab
-
-- **WHEN** on the Friends tab the partner filter holds one or more people
-- **THEN** a friend tour SHALL match only when at least one of them is among its registered partners
-- **AND** a tour whose partners are withheld from the viewer (the viewer is not a partner on it) SHALL NOT match
-
-#### Scenario: Recorded-by filter
-
-- **WHEN** on the Friends tab the recorded-by filter holds one or more friends
-- **THEN** a tour SHALL match only when one of them recorded (owns) it
-
-#### Scenario: Recorded-by filter absent on My Tours
-
-- **WHEN** the My Tours tab is active
-- **THEN** the filter panel SHALL NOT offer the recorded-by filter
-
-#### Scenario: Activity-type filter
-
-- **WHEN** the activity-type filter holds one or more `TourType` values
-- **THEN** a tour SHALL match only when at least one of its activity types is among the selected values; a tour with no type SHALL NOT match
-
-#### Scenario: Multi-activity tour matches any of its types
-
-- **WHEN** the activity-type filter holds only `hiking` and a tour has types `skitour` and `hiking`
-- **THEN** the tour SHALL match
-
-#### Scenario: Grade filter
-
-- **WHEN** the grade filter holds the range T2–T4
-- **THEN** tours graded T2, T3 or T4 SHALL match
-- **AND** tours graded T5, tours graded only on another scale, and ungraded tours SHALL NOT match
-
-#### Scenario: Season filter
-
-- **WHEN** the season filter holds one or more `Season` values
-- **THEN** a tour SHALL match only when `tour.seasons` is non-null and intersects the selected set
-
-#### Scenario: Planned-date range filter uses span overlap
-
-- **WHEN** the user sets a `from` date, a `to` date, or both
-- **THEN** a tour SHALL match only when `tour.plannedDate` is non-null and the tour's span —
-  `plannedDate` through `endDate`, or `plannedDate` alone when `endDate` is null — intersects
-  the inclusive filter range; tours with `plannedDate === null` SHALL be excluded
-
-#### Scenario: Multi-day tour straddling the filter boundary
-
-- **WHEN** a tour runs 25–27 August and the filter range is 26–30 August
-- **THEN** the tour SHALL match, even though its planned (start) date lies before `from`
-
-#### Scenario: Multi-day tour entirely outside the range
-
-- **WHEN** a tour runs 1–3 August and the filter range is 26–30 August
-- **THEN** the tour SHALL NOT match
-
-#### Scenario: Planned-date filter inactive
-
-- **WHEN** both `from` and `to` are empty
-- **THEN** the planned-date filter SHALL NOT exclude any tour, including tours with `plannedDate === null`
-
-#### Scenario: Completion-status filter tri-state
-
-- **WHEN** the completion filter is `all`
-- **THEN** no tour SHALL be excluded by this filter
-- **WHEN** the filter is `done`
-- **THEN** only tours with `completed === true` SHALL match
-- **WHEN** the filter is `open`
-- **THEN** only tours with `completed === false` SHALL match
-
-#### Scenario: Filters combine with search
-
-- **WHEN** a search query and one or more filters are active
-- **THEN** a tour SHALL appear only when it satisfies both the search predicate and every active filter
-
 ### Requirement: No-results state and clear filters
 
-The overlay SHALL provide two distinct reset controls, with deliberately different scope:
+The list SHALL provide two distinct reset controls, with deliberately different scope:
 
 - The **filtered empty state**, shown when the tour list is non-empty but search + filters yield zero matches, SHALL offer a "Clear filters" action that resets every filter **and** the search query — nothing matched, so the query is the likely culprit.
-- The **filter panel's** "Clear filters" control SHALL reset the filters but SHALL preserve the search query, because the search input remains visible above the open panel and its content is never hidden context.
+- The filters' **"Reset"** footer action SHALL reset the filters but SHALL preserve the search query, because the search input remains visible above the open filters.
 
 Neither control SHALL close the overlay. Clearing on one tab SHALL NOT affect the other tab's filters.
 
@@ -201,7 +119,7 @@ Neither control SHALL close the overlay. Clearing on one tab SHALL NOT affect th
 
 #### Scenario: Panel clear preserves the search query
 
-- **WHEN** the user has both a search query and active filters, and activates Clear filters inside the panel
+- **WHEN** the user has both a search query and active filters, and activates "Reset" in the filters footer
 - **THEN** the filters SHALL be reset
 - **AND** the search query SHALL be preserved
 
@@ -220,69 +138,6 @@ Tapping a tour row SHALL call `mapStore.selectTour(tour.id)` and emit `close` so
 - **THEN** `mapStore.selectTour` SHALL be called with that tour's `id`
 - **AND** the component SHALL emit `close`
 - **AND** the existing map-page machinery SHALL open `TourInfoSheet` and fly to the tour goal
-
-### Requirement: Filter UI density
-
-Filter controls SHALL be collapsed behind a "Filters" disclosure trigger by default. The trigger SHALL display a numeric badge equal to the count of currently active filter categories (search does not count). The search input SHALL always be visible.
-
-When expanded, the filter controls SHALL be presented as an overlay layered over the tour list region, in both the bottom-sheet and side-drawer shells. They SHALL NOT expand in place within the scroll flow, SHALL NOT displace the tour rows, and SHALL NOT cover the tab switcher, the search/filters row, or the shell header. The panel SHALL be opaque.
-
-The panel SHALL scroll within its own bounds, constrained to the height of the list region, and SHALL NOT chain its scroll to the list, the sheet, or the map. Expanding the panel SHALL NOT resize or re-snap the containing sheet.
-
-The panel SHALL enter with a downward slide from beneath the search row, clipped to the list region, and SHALL appear without transition when the user has requested reduced motion.
-
-#### Scenario: Filters hidden by default
-
-- **WHEN** the overlay opens
-- **THEN** the search input and tour list SHALL be visible and the filter controls SHALL be hidden behind the "Filters" trigger
-
-#### Scenario: Badge reflects active filter count
-
-- **WHEN** the user has selected two partners and a completion status of `done`
-- **THEN** the "Filters" trigger SHALL display a badge with the value `2` (partner counts as one active category, completion counts as one active category; active = non-default)
-
-#### Scenario: Expand filters overlays the rows
-
-- **WHEN** the user taps the "Filters" trigger
-- **THEN** the filter controls SHALL cover the region occupied by the tour rows
-- **AND** the tour rows SHALL NOT be pushed down or reflowed
-- **AND** the overlay SHALL NOT close or navigate away
-
-#### Scenario: Panel does not scroll with the list
-
-- **WHEN** the panel is expanded over a list holding more rows than fit
-- **THEN** the panel's position SHALL NOT change in response to the list's scroll offset
-
-#### Scenario: Panel is opaque
-
-- **WHEN** the panel is expanded over a populated list
-- **THEN** tour row content SHALL NOT be visible through it
-
-#### Scenario: Panel content exceeds available height
-
-- **WHEN** the filter groups are taller than the list region
-- **THEN** the panel SHALL scroll internally
-- **AND** the tour list beneath SHALL NOT scroll
-
-#### Scenario: Scrolling past the panel's end does not chain
-
-- **WHEN** the user scrolls beyond the panel's first or last filter group
-- **THEN** the scroll SHALL NOT propagate to the tour list, the sheet, or the map behind it
-
-#### Scenario: Sheet snap point is preserved
-
-- **WHEN** the user expands the filters
-- **THEN** the bottom sheet SHALL remain at its current snap point
-
-#### Scenario: Same presentation in both shells
-
-- **WHEN** the sheet is rendered on desktop in the side drawer
-- **THEN** the panel SHALL be presented as an overlay, as it is in the bottom sheet
-
-#### Scenario: Reduced motion preference
-
-- **WHEN** the user has requested reduced motion
-- **THEN** the panel SHALL appear without a transition
 
 ### Requirement: Calendar entry point in the tour list
 
@@ -353,109 +208,30 @@ suggestions SHALL show none.
 - **WHEN** the list renders a friend's tour on which the viewer has authored a pending suggestion
 - **THEN** no owner-facing pending indicator is shown on that row
 
-### Requirement: Pinned summary row in the filter panel
-
-The filter panel SHALL present a summary row pinned to the top of its scroll region, always rendered, showing the live count of tours the list will display. That count SHALL reflect search and filters together, so it states exactly what appears on collapse. The panel's Clear filters control SHALL live within that row and SHALL appear only while at least one filter is active.
-
-#### Scenario: Count reflects search and filters together
-
-- **WHEN** a search query and one or more filters are both active
-- **THEN** the count SHALL equal the number of tours matching both
-- **AND** SHALL equal the number of rows displayed when the panel is collapsed
-
-#### Scenario: Count updates as facets change
-
-- **WHEN** the user toggles a filter facet
-- **THEN** the count SHALL update without collapsing the panel
-
-#### Scenario: Count reaches zero
-
-- **WHEN** the active combination matches no tours
-- **THEN** the count SHALL display zero while the panel remains open
-
-#### Scenario: Row stays reachable while scrolling filter groups
-
-- **WHEN** the user scrolls down through the filter groups
-- **THEN** the summary row SHALL remain visible at the top of the panel
-- **AND** filter chips scrolling beneath it SHALL NOT be visible through it
-
-#### Scenario: No active filters
-
-- **WHEN** the active filter count is zero
-- **THEN** the summary row SHALL still render with its count
-- **AND** the Clear filters control SHALL NOT be rendered
-
-### Requirement: Filter panel dismissal
-
-The filter panel SHALL be dismissable via the filters trigger, the Escape key, and a pointer interaction outside it. The tab switcher, search field, and filters trigger SHALL count as part of the panel's interactive surface and SHALL NOT dismiss it. On dismissal the filtered results SHALL be displayed as the normal list view, and the filter selection SHALL be preserved.
-
-#### Scenario: Escape collapses the panel
-
-- **WHEN** the panel is expanded and the user presses Escape
-- **THEN** the panel SHALL collapse
-
-#### Scenario: Escape while typing in search
-
-- **WHEN** focus is in the search input and the user presses Escape
-- **THEN** the panel SHALL collapse
-
-#### Scenario: Interacting with the search field keeps the panel open
-
-- **WHEN** the panel is expanded and the user presses a pointer down on the search input
-- **THEN** the panel SHALL remain expanded
-- **AND** the search input SHALL receive focus
-
-#### Scenario: Switching tabs keeps the panel open
-
-- **WHEN** the panel is expanded and the user activates the other tab
-- **THEN** the panel SHALL remain expanded
-- **AND** SHALL present the filter selection stored for the newly active tab
-
-#### Scenario: Pointer outside the sheet collapses the panel
-
-- **WHEN** the panel is expanded and the user presses a pointer down on the shell header or outside the sheet
-- **THEN** the panel SHALL collapse
-
-#### Scenario: Pointer inside does not collapse the panel
-
-- **WHEN** the user presses a pointer down on a filter chip or anywhere within the panel
-- **THEN** the panel SHALL remain expanded
-
-#### Scenario: Trigger toggles without reopening
-
-- **WHEN** the panel is expanded and the user activates the filters trigger
-- **THEN** the panel SHALL collapse and SHALL NOT immediately reopen from the same interaction
-
-#### Scenario: Panel is closed after remount
-
-- **WHEN** the user opens a tour detail view and returns to the list
-- **THEN** the filter panel SHALL be collapsed
-- **AND** the previously selected filters SHALL still be active
-
 ### Requirement: Filter panel accessibility
 
-The filter panel SHALL expose its expanded state and accessible name to assistive technology, and SHALL manage focus on open and close. It SHALL be announced as a non-modal region, since content outside it remains operable.
+The filters SHALL expose their expanded state and accessible name to assistive technology, and SHALL manage focus on open and close. They SHALL be announced as a non-modal region, since content outside them remains operable.
 
 #### Scenario: Trigger exposes panel state
 
-- **WHEN** the panel is expanded or collapsed
-- **THEN** the filters trigger SHALL reflect the state via `aria-expanded`
-- **AND** SHALL reference the panel via `aria-controls`
+- **WHEN** the filters are open or closed
+- **THEN** the trigger SHALL reflect the state via `aria-expanded`
+- **AND** SHALL reference the filters via `aria-controls`
 
 #### Scenario: Focus moves into the panel on open
 
-- **WHEN** the user expands the panel
-- **THEN** focus SHALL move to the panel
+- **WHEN** the user opens the filters
+- **THEN** focus SHALL move to the filters region without scrolling the tabs and search row out of view
 
 #### Scenario: Focus returns to the trigger on close
 
-- **WHEN** the panel is collapsed by the trigger, Escape, or an outside pointer interaction
-- **THEN** focus SHALL return to the filters trigger
+- **WHEN** the filters are closed by the trigger, "Show N tours" or Escape
+- **THEN** focus SHALL return to the trigger
 
 #### Scenario: Panel has an accessible name
 
-- **WHEN** the panel is rendered
-- **THEN** it SHALL expose an accessible name sourced from a localized string present in every locale file
+- **WHEN** the filters are rendered
+- **THEN** they SHALL expose an accessible name sourced from a localized string present in every locale file
 
 ### Requirement: Backfill entry point in the sheet header
 
@@ -521,68 +297,6 @@ Leaving the tour list SHALL clear the search query and every filter on both tabs
 - **WHEN** the user opens a tour from a searched/filtered list and closes the tour detail instead of returning
 - **THEN** the search query and filters SHALL be cleared
 
-### Requirement: Grade filter
-
-The grade filter SHALL offer one chip row per closed grade scale — SAC hiking T1–T6, SAC alpine L–EX, singletrail S0–S5 — and SHALL hold at most one inclusive range per scale. A tour SHALL match when at least one part of its grade lies on a filtered scale and every such part lies within that scale's range. A part SHALL count as the scale grade it leads with, so a modifier keeps its base grade.
-
-#### Scenario: Modifier keeps its base grade
-
-- **WHEN** the grade filter holds the range WS–ZS
-- **THEN** tours graded "WS-", "ZS+" or "ZS+ (III)" SHALL match
-- **AND** a tour graded "S-" SHALL NOT match
-
-#### Scenario: Free-text grade never matches a range
-
-- **WHEN** any grade range is active
-- **THEN** a tour graded only in free text outside the closed scales (e.g. "5c", "6a+") SHALL NOT match
-
-#### Scenario: Every filtered part must fit
-
-- **WHEN** the grade filter holds T1–T3 and a tour is graded "S2, T4"
-- **THEN** the tour SHALL NOT match
-- **WHEN** the grade filter holds S0–S2 only and a tour is graded "S2, T4"
-- **THEN** the tour SHALL match
-
-#### Scenario: Picking a range
-
-- **WHEN** no grade of a scale is selected and the user taps T2
-- **THEN** the range SHALL be T2 alone
-- **WHEN** the user then taps T4
-- **THEN** the range SHALL become T2–T4 and T2, T3 and T4 SHALL show as selected
-- **WHEN** the user then taps any chip of that scale
-- **THEN** the range SHALL restart at that chip alone
-
-#### Scenario: Clearing a scale
-
-- **WHEN** a scale's range is a single grade and the user taps that grade again
-- **THEN** that scale SHALL have no range, and other scales' ranges SHALL be unchanged
-
-#### Scenario: Only scales in use are offered
-
-- **WHEN** the active tab's tours carry grades on the hiking scale only
-- **THEN** the grade filter SHALL offer the hiking row alone
-- **AND** a scale holding an active range SHALL stay offered even when no tour uses it
-- **AND** when no tour carries a closed-scale grade and no range is active, the grade filter SHALL NOT be shown
-
-#### Scenario: Grade counts as one filter
-
-- **WHEN** ranges are active on two scales
-- **THEN** the filters badge SHALL count the grade filter once
-
-### Requirement: People filters on the Friends tab
-
-On the Friends tab the recorded-by chips SHALL be the friends who recorded at least one of the tab's tours, named as the viewer saved them in their contacts, and the partner chips SHALL be the registered partners named on the tab's tours, the viewer shown as "Me". A person selected in either filter SHALL stay offered while selected. Chip labels SHALL render once in final form; the chips SHALL be ordered by label, "Me" first.
-
-#### Scenario: Friend without tours stays clearable
-
-- **WHEN** the recorded-by filter holds a friend who recorded none of the tab's tours
-- **THEN** that friend's chip SHALL still be shown, selected, so it can be cleared
-
-#### Scenario: Viewer's own partner entry
-
-- **WHEN** the viewer is a partner on at least one friend tour
-- **THEN** the Friends tab partner chips SHALL include a "Me" chip, and selecting it SHALL keep exactly the friend tours the viewer is a partner on
-
 ### Requirement: A narrowed Friends list says what the map marks
 
 While search or filters narrow the Friends tab and the map marks fewer of the listed tours than the list holds — the map marks only friend tours the viewer is a partner on — the list SHALL state above its rows how many of them the map shows, and why.
@@ -597,21 +311,215 @@ While search or filters narrow the Friends tab and the map marks fewer of the li
 - **WHEN** every listed friend tour is marked on the map, or nothing narrows the list, or the My Tours tab is active
 - **THEN** no such note SHALL be shown
 
-### Requirement: Filter panel scroll ends with its content
+### Requirement: Tour filter categories
 
-While the filter panel is open over a list taller than the panel's content, the list region SHALL extend no further than that content, so scrolling ends at the last filter group with no blank space beyond it. Collapsing the panel SHALL restore the list at full length. The sheet SHALL NOT shrink while the panel is open.
+The list SHALL filter by activity type, grade, season, planned-date range and completion status, plus partner on the My Tours tab and the friend who recorded the tour on the Friends tab. A tour SHALL appear only when it satisfies every active filter (logical AND across categories). When no filters are active, all tours SHALL pass.
 
-#### Scenario: Long list under the open panel
+#### Scenario: Partner filter
 
-- **WHEN** the panel is open over a list far taller than the panel and the user scrolls down
-- **THEN** scrolling SHALL stop once the last filter group is fully shown
+- **WHEN** on the My Tours tab the partner filter holds a set of one or more contact IDs
+- **THEN** a tour SHALL match only when `tour.partnerIds` intersects the selected set (at least one partner in common)
 
-#### Scenario: Short list under the open panel
+#### Scenario: No partner filter on the Friends tab
 
-- **WHEN** the panel's content is taller than the list region
-- **THEN** the panel SHALL scroll within the region as before
+- **WHEN** the Friends tab is active
+- **THEN** the filters SHALL NOT offer a partner filter
 
-#### Scenario: Collapse restores the list
+#### Scenario: Recorded-by filter
 
-- **WHEN** the user collapses the panel
-- **THEN** every listed row SHALL be reachable by scrolling again
+- **WHEN** on the Friends tab the recorded-by filter holds one or more friends
+- **THEN** a tour SHALL match only when one of them recorded (owns) it
+
+#### Scenario: Recorded-by filter absent on My Tours
+
+- **WHEN** the My Tours tab is active
+- **THEN** the filters SHALL NOT offer the recorded-by filter
+
+#### Scenario: Activity-type filter
+
+- **WHEN** the activity-type filter holds one or more `TourType` values
+- **THEN** a tour SHALL match only when at least one of its activity types is among the selected values; a tour with no type SHALL NOT match
+
+#### Scenario: Multi-activity tour matches any of its types
+
+- **WHEN** the activity-type filter holds only `hiking` and a tour has types `skitour` and `hiking`
+- **THEN** the tour SHALL match
+
+#### Scenario: Grade filter
+
+- **WHEN** the grade filter holds T2 and T4
+- **THEN** tours graded T2 or T4 SHALL match
+- **AND** tours graded T3, tours graded only on another scale, and ungraded tours SHALL NOT match
+
+#### Scenario: Season filter
+
+- **WHEN** the season filter holds one or more `Season` values
+- **THEN** a tour SHALL match only when `tour.seasons` is non-null and intersects the selected set
+
+#### Scenario: Planned-date range filter uses span overlap
+
+- **WHEN** the user sets a `from` date, a `to` date, or both
+- **THEN** a tour SHALL match only when `tour.plannedDate` is non-null and the tour's span —
+  `plannedDate` through `endDate`, or `plannedDate` alone when `endDate` is null — intersects
+  the inclusive filter range; tours with `plannedDate === null` SHALL be excluded
+
+#### Scenario: Multi-day tour straddling the filter boundary
+
+- **WHEN** a tour runs 25–27 August and the filter range is 26–30 August
+- **THEN** the tour SHALL match, even though its planned (start) date lies before `from`
+
+#### Scenario: Multi-day tour entirely outside the range
+
+- **WHEN** a tour runs 1–3 August and the filter range is 26–30 August
+- **THEN** the tour SHALL NOT match
+
+#### Scenario: Planned-date filter inactive
+
+- **WHEN** both `from` and `to` are empty
+- **THEN** the planned-date filter SHALL NOT exclude any tour, including tours with `plannedDate === null`
+
+#### Scenario: Completion-status filter tri-state
+
+- **WHEN** the completion filter is `all`
+- **THEN** no tour SHALL be excluded by this filter
+- **WHEN** the filter is `done`
+- **THEN** only tours with `completed === true` SHALL match
+- **WHEN** the filter is `open`
+- **THEN** only tours with `completed === false` SHALL match
+
+#### Scenario: Filters combine with search
+
+- **WHEN** a search query and one or more filters are active
+- **THEN** a tour SHALL appear only when it satisfies both the search predicate and every active filter
+
+### Requirement: Filters view
+
+Filter controls SHALL be collapsed behind a "Filters" trigger in the search row, with a badge counting active filter categories (search does not count). Opened, the filters SHALL replace the tour rows in the sheet's or drawer's normal flow, below the tabs and the search row, as the only scrolling region. Their layout SHALL depend on the tab's tours only, never on how many match, so selecting or clearing a filter SHALL NOT resize the filters or move any control.
+
+#### Scenario: Filters hidden by default
+
+- **WHEN** the list opens
+- **THEN** the search input and tour rows SHALL be visible and the filters hidden behind the trigger
+
+#### Scenario: Badge reflects active filter count
+
+- **WHEN** the user has selected two partners and a completion status of `done`
+- **THEN** the trigger SHALL display a badge with the value `2`
+
+#### Scenario: Opening the filters
+
+- **WHEN** the user activates the trigger
+- **THEN** the filters SHALL take the rows' place, with the tabs and the search row still above them
+- **AND** the sheet SHALL scroll them as its one scrolling region
+
+#### Scenario: A selection that thins the list
+
+- **WHEN** the filters are open and the user taps a chip that leaves one matching tour
+- **THEN** no filter group, chip or footer action SHALL move or change size
+
+#### Scenario: Sheet size on a phone
+
+- **WHEN** the filters open in the bottom sheet
+- **THEN** the sheet SHALL open them at their content height, at most 70% of the visible viewport, and SHALL be draggable up to 90%
+- **AND** dragging the sheet SHALL NOT close the filters
+
+#### Scenario: Glove-sized targets
+
+- **WHEN** the filters are shown
+- **THEN** every chip, date field and status option SHALL be at least 44px tall
+
+#### Scenario: Same presentation in both shells
+
+- **WHEN** the list is rendered in the desktop side drawer
+- **THEN** the filters SHALL take the rows' place there too, scrolling within the drawer below the search row
+
+### Requirement: Filters footer actions
+
+While the filters are open, the sheet or drawer footer SHALL hold a "Reset" action and a primary "Show N tours" action, visible at every scroll position. N SHALL be the number of rows the list shows on close (search and filters together, an outing counted once). "Show N tours" SHALL close the filters. "Reset" SHALL stay in place, disabled, while no filter is active.
+
+#### Scenario: Count reflects search and filters together
+
+- **WHEN** a search query and one or more filters are both active
+- **THEN** N SHALL equal the number of rows displayed once the filters close
+
+#### Scenario: Count updates as facets change
+
+- **WHEN** the user toggles a filter facet
+- **THEN** N SHALL update without closing the filters
+
+#### Scenario: No active filters
+
+- **WHEN** no filter is active
+- **THEN** "Reset" SHALL be shown disabled
+
+### Requirement: Filters view dismissal
+
+The filters SHALL close via the trigger, the "Show N tours" action and the Escape key. Pointers elsewhere, including dragging the sheet, SHALL NOT close them. Closing SHALL show the filtered rows and preserve the selection.
+
+#### Scenario: Escape while typing in search
+
+- **WHEN** focus is in the search input and the user presses Escape
+- **THEN** the filters SHALL close and the sheet SHALL stay open
+
+#### Scenario: Switching tabs keeps the filters open
+
+- **WHEN** the filters are open and the user activates the other tab
+- **THEN** the filters SHALL stay open and present the selection stored for that tab
+
+#### Scenario: Filters are closed after remount
+
+- **WHEN** the user opens a tour detail view and returns to the list
+- **THEN** the filters SHALL be closed and the previously selected filters SHALL still be active
+
+### Requirement: Additive grade filter
+
+The grade filter SHALL offer one chip row per closed scale in use on the tab's tours — SAC hiking T1–T6, SAC alpine L–EX, singletrail S0–S5 — in aligned columns, each scale on one row. Each chip SHALL toggle its grade on its own. A tour SHALL match when any part of its grade leads with a selected grade, so a modifier keeps its base grade.
+
+#### Scenario: Modifier keeps its base grade
+
+- **WHEN** the grade filter holds WS and ZS
+- **THEN** tours graded "WS-", "ZS+" or "ZS+ (III)" SHALL match
+- **AND** a tour graded "S-" SHALL NOT match
+
+#### Scenario: Free-text grade never matches
+
+- **WHEN** any grade is selected
+- **THEN** a tour graded only in free text outside the closed scales (e.g. "5c", "6a+") SHALL NOT match
+
+#### Scenario: Any selected part passes
+
+- **WHEN** the grade filter holds T4 only and a tour is graded "S2, T4"
+- **THEN** the tour SHALL match
+- **WHEN** the grade filter holds T3 and S1 and a tour is graded "S2, T4"
+- **THEN** the tour SHALL NOT match
+
+#### Scenario: Toggling a grade
+
+- **WHEN** T2 is selected and the user taps T4, then taps T2
+- **THEN** T4 alone SHALL be selected, and no grade between them SHALL be
+
+#### Scenario: Only scales in use are offered
+
+- **WHEN** the active tab's tours carry grades on the hiking scale only
+- **THEN** the grade filter SHALL offer the hiking row alone
+- **AND** a scale holding a selected grade SHALL stay offered even when no tour uses it
+- **AND** when no tour carries a closed-scale grade and no grade is selected, the grade filter SHALL NOT be shown
+
+#### Scenario: Grade counts as one filter
+
+- **WHEN** grades on two scales are selected
+- **THEN** the filters badge SHALL count the grade filter once
+
+### Requirement: Recorded-by filter on the Friends tab
+
+On the Friends tab the recorded-by chips SHALL be the friends who recorded at least one of the tab's tours, named as the viewer saved them in their contacts and ordered by label. A friend selected SHALL stay offered while selected. Chip labels SHALL render once in final form; until they settle, the group SHALL hold its place.
+
+#### Scenario: Friend without tours stays clearable
+
+- **WHEN** the recorded-by filter holds a friend who recorded none of the tab's tours
+- **THEN** that friend's chip SHALL still be shown, selected, so it can be cleared
+
+#### Scenario: Names still settling
+
+- **WHEN** the filters open before the friends' names have resolved
+- **THEN** the recorded-by group SHALL hold one chip row of space and show no chip until every label is final
