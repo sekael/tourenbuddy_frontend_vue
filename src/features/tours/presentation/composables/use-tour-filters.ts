@@ -1,4 +1,5 @@
 import type { Ref } from 'vue'
+import type { GradeRange } from '@/features/tours/data/models/grade'
 import type { Season } from '@/features/tours/data/models/season'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Tour } from '@/features/tours/domain/entities/tour'
@@ -7,6 +8,8 @@ import { resolveContactName } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { resolveFriendName } from '@/features/friendships/domain/resolve-friend-name'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
+import { gradeInRanges } from '@/features/tours/data/models/grade'
+import { outingKey, outingSegments } from '@/features/tours/domain/outing'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
 export type CompletionFilter = 'all' | 'done' | 'open'
@@ -14,8 +17,13 @@ export type CompletionFilter = 'all' | 'done' | 'open'
 export type TourTab = 'owned' | 'friends'
 
 export interface TourFilters {
+  /** Partners: contact ids on `owned`, user ids on `friends` (friend tours expose no contact ids). */
   partnerIds: Set<string>
+  /** Friends tab only: the friends who recorded the tour (#362). */
+  ownerIds: Set<string>
   tourTypes: Set<TourType>
+  /** At most one range per closed scale (#351). */
+  gradeRanges: GradeRange[]
   seasons: Set<Season>
   dateRange: { from: Date | null, to: Date | null }
   completion: CompletionFilter
@@ -26,7 +34,9 @@ function createFilterState() {
     searchQuery: ref(''),
     filters: reactive<TourFilters>({
       partnerIds: new Set<string>(),
+      ownerIds: new Set<string>(),
       tourTypes: new Set<TourType>(),
+      gradeRanges: [] as GradeRange[],
       seasons: new Set<Season>(),
       dateRange: { from: null as Date | null, to: null as Date | null },
       completion: 'all' as CompletionFilter,
@@ -70,7 +80,9 @@ watch(activeTourTab, (next) => {
 
 function clearFilterState({ filters }: ReturnType<typeof createFilterState>) {
   filters.partnerIds = new Set()
+  filters.ownerIds = new Set()
   filters.tourTypes = new Set()
+  filters.gradeRanges = []
   filters.seasons = new Set()
   filters.dateRange.from = null
   filters.dateRange.to = null
@@ -87,6 +99,35 @@ export function resetTourFilters() {
 
 export function useActiveTourTab() {
   return activeTourTab
+}
+
+/** A friend's tours on their own (#362, from the contact detail): Friends tab, that friend only. */
+export function showFriendTours(userId: string) {
+  resetTourFilters()
+  activeTourTab.value = 'friends'
+  tabStates.friends.filters.ownerIds = new Set([userId])
+}
+
+/**
+ * The ids the active tab lists while its search or filters narrow it, for the map (#351); null
+ * when nothing narrows. A listed outing row stands for all its segments, so they all count.
+ */
+export function useListedTourIds(): Ref<Set<string> | null> {
+  const tabs = { owned: useTourFilters('owned'), friends: useTourFilters('friends') }
+  const toursStore = useToursStore()
+  return computed(() => {
+    const tab = tabs[activeTourTab.value]
+    if (!tab.searchQuery.value.trim() && tab.activeFilterCount.value === 0)
+      return null
+    const source = activeTourTab.value === 'friends' ? toursStore.friendTours : toursStore.tours
+    const ids = new Set<string>()
+    for (const tour of tab.filteredTours.value) {
+      ids.add(tour.id)
+      for (const segment of outingSegments(source, outingKey(tour)))
+        ids.add(segment.id)
+    }
+    return ids
+  })
 }
 
 export function useTourFilters(tab: TourTab = 'owned') {
@@ -148,16 +189,23 @@ export function useTourFilters(tab: TourTab = 'owned') {
 
   function matchesFilters(tour: Tour): boolean {
     if (filters.partnerIds.size > 0) {
-      const hasCommonPartner = tour.partnerIds.some(id => filters.partnerIds.has(id))
-      if (!hasCommonPartner)
+      // Friend tours name partners by user, and only to a partner viewer — a withheld roster is [].
+      const partners = tab === 'friends' ? (tour.partnerNames ?? []).map(p => p.userId) : tour.partnerIds
+      if (!partners.some(id => filters.partnerIds.has(id)))
         return false
     }
+
+    if (filters.ownerIds.size > 0 && !filters.ownerIds.has(tour.userId))
+      return false
 
     if (filters.tourTypes.size > 0) {
       // Any of the tour's activities may match (#335).
       if (!tour.tourTypes.some(t => filters.tourTypes.has(t)))
         return false
     }
+
+    if (filters.gradeRanges.length > 0 && !gradeInRanges(tour.grade, filters.gradeRanges))
+      return false
 
     if (filters.seasons.size > 0) {
       if (!tour.seasons || !tour.seasons.some(s => filters.seasons.has(s)))
@@ -193,7 +241,11 @@ export function useTourFilters(tab: TourTab = 'owned') {
     let count = 0
     if (filters.partnerIds.size > 0)
       count++
+    if (filters.ownerIds.size > 0)
+      count++
     if (filters.tourTypes.size > 0)
+      count++
+    if (filters.gradeRanges.length > 0)
       count++
     if (filters.seasons.size > 0)
       count++

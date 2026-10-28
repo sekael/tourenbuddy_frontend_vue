@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import type { GradeRange } from '@/features/tours/data/models/grade'
 import type { Season } from '@/features/tours/data/models/season'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import type { CompletionFilter } from '@/features/tours/presentation/composables/use-tour-filters'
+import { useElementSize } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -19,7 +21,7 @@ import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import BackfillCollisionsPage from '@/features/tour-links/presentation/pages/backfill-collisions-page.vue'
 import { outingKey, outingSegments } from '@/features/tours/domain/outing'
-import { useActiveTourTab, useTourFilters } from '@/features/tours/presentation/composables/use-tour-filters'
+import { useActiveTourTab, useListedTourIds, useTourFilters } from '@/features/tours/presentation/composables/use-tour-filters'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import OutingListRow from './outing-list-row.vue'
 import TourFiltersPanel from './tour-filters-panel.vue'
@@ -77,6 +79,17 @@ const listEntries = computed<ListEntry[]>(() => {
   }
   return entries
 })
+// The map marks only friend tours the viewer is a partner on (map-integration), so a narrowed
+// Friends list says how many of its tours the map shows — else "Lena's tours" reads as broken.
+const listedTourIds = useListedTourIds()
+const friendsOnMap = computed(() => {
+  const listed = listedTourIds.value
+  if (activeTab.value !== 'friends' || !listed)
+    return null
+  const marked = friendTours.value.filter(t => listed.has(t.id) && t.isPartner === true).length
+  return marked < listed.size ? marked : null
+})
+
 function clearAll() {
   active.value.clearAll()
 }
@@ -126,6 +139,17 @@ const filtersExpanded = ref(false)
 const filtersOverlayEl = ref<HTMLElement | null>(null)
 const listHeaderEl = ref<HTMLElement | null>(null)
 const filtersTriggerRef = ref<InstanceType<typeof BaseButton> | null>(null)
+
+// On mobile the sheet's `.content` is the one scroller, and the open panel only covers the rows:
+// `.list-region` stays as tall as every row, so scrolling ran on past the last filter group through
+// blank panel (#362). While open, the region is clamped to the panel's content — a no-op when the
+// rows are shorter, where the panel scrolls inside as before — and the sheet holds its height.
+// Not on desktop: the drawer's region is already viewport-bound, a clamp would bare rows below.
+const filtersPanelEl = ref<InstanceType<typeof TourFiltersPanel> | null>(null)
+const { height: filtersPanelHeight } = useElementSize(() => filtersPanelEl.value?.$el as HTMLElement | undefined)
+const listRegionStyle = computed(() => !isDesktop.value && filtersExpanded.value && filtersPanelHeight.value > 0
+  ? { maxHeight: `${filtersPanelHeight.value}px` }
+  : undefined)
 
 function toggleFilters() {
   filtersExpanded.value = !filtersExpanded.value
@@ -185,7 +209,7 @@ function handleRowClick(tourId: string) {
     :title="t('tours.list.title')"
     :fit-content="!isDesktop"
     :resizable="!isDesktop"
-    :hold-height="!isDesktop && (!!searchQuery.trim() || activeFilterCount > 0)"
+    :hold-height="!isDesktop && (!!searchQuery.trim() || activeFilterCount > 0 || filtersExpanded)"
     @close="emit('close')"
   >
     <template #header-actions>
@@ -293,7 +317,7 @@ function handleRowClick(tourId: string) {
       <!-- `min-height: 0` lets this shrink inside the flex column instead of pushing
            the scroller past the shell; `overflow: hidden` clips the panel's slide-in;
            `position: relative` is what the overlay's `inset: 0` resolves against. -->
-      <div class="list-region">
+      <div class="list-region" :style="listRegionStyle">
         <div class="tours-scroll" :style="{ '--swap-dir': activeTab === 'friends' ? 1 : -1 }">
           <Transition name="tab-swap" mode="out-in">
             <div :key="activeTab">
@@ -321,12 +345,18 @@ function handleRowClick(tourId: string) {
                 </BaseButton>
               </div>
 
-              <ul v-else class="tours-list">
-                <template v-for="entry in listEntries" :key="entry.kind === 'tour' ? entry.tour.id : entry.key">
-                  <TourListRow v-if="entry.kind === 'tour'" :tour="entry.tour" @click="handleRowClick(entry.tour.id)" />
-                  <OutingListRow v-else :segments="entry.segments" @click="emit('selectOuting', entry.key)" />
-                </template>
-              </ul>
+              <template v-else>
+                <p v-if="friendsOnMap !== null" class="map-note" data-testid="friends-on-map">
+                  <BaseIcon name="map" size="sm" />
+                  {{ t('tours.list.friendsOnMap', { count: friendsOnMap }) }}
+                </p>
+                <ul class="tours-list">
+                  <template v-for="entry in listEntries" :key="entry.kind === 'tour' ? entry.tour.id : entry.key">
+                    <TourListRow v-if="entry.kind === 'tour'" :tour="entry.tour" @click="handleRowClick(entry.tour.id)" />
+                    <OutingListRow v-else :segments="entry.segments" @click="emit('selectOuting', entry.key)" />
+                  </template>
+                </ul>
+              </template>
             </div>
           </Transition>
         </div>
@@ -342,12 +372,17 @@ function handleRowClick(tourId: string) {
             tabindex="-1"
           >
             <TourFiltersPanel
+              ref="filtersPanelEl"
               :filters="filters"
-              :match-count="filteredTours.length"
+              :tab="activeTab"
+              :tours="source"
+              :match-count="listEntries.length"
               :can-clear="activeFilterCount > 0"
               @clear="clearFilters"
               @update:partner-ids="(v: Set<string>) => (filters.partnerIds = v)"
+              @update:owner-ids="(v: Set<string>) => (filters.ownerIds = v)"
               @update:tour-types="(v: Set<TourType>) => (filters.tourTypes = v)"
+              @update:grade-ranges="(v: GradeRange[]) => (filters.gradeRanges = v)"
               @update:seasons="(v: Set<Season>) => (filters.seasons = v)"
               @update:date-range-from="(v: Date | null) => (filters.dateRange.from = v)"
               @update:date-range-to="(v: Date | null) => (filters.dateRange.to = v)"
@@ -506,6 +541,15 @@ function handleRowClick(tourId: string) {
   font-size: var(--font-size-sm);
   color: var(--color-on-surface-variant);
   opacity: 0.7;
+}
+
+.map-note {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding-block: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
 }
 
 .tours-list {

@@ -35,7 +35,7 @@ const props = defineProps<{
   initialContactId?: string | null
 }>()
 
-const emit = defineEmits<{ close: [], openFriendRequests: [] }>()
+const emit = defineEmits<{ close: [], openFriendRequests: [], showFriendTours: [userId: string] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 
@@ -591,6 +591,7 @@ function onFormPhoneInput(phone: string) {
           @back="backToList"
           @deleted="handleContactDeleted"
           @edit-contact="(c) => { openDetail(c); detailEditMode = 'edit' }"
+          @show-tours="(userId) => emit('showFriendTours', userId)"
         />
         <ConnectPrompt
           v-if="detailViewMatchedUserId && liveContact && !isConnectDismissed(liveContact.id)"

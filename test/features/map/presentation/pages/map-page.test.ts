@@ -10,7 +10,7 @@ import { fetchSkiRoute } from '@/features/map/data/services/swisstopo-trail-serv
 import { ROUTE_ZOOM } from '@/features/map/presentation/composables/frame-tour'
 import MapPage from '@/features/map/presentation/pages/map-page.vue'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
-import { useTourFilters } from '@/features/tours/presentation/composables/use-tour-filters'
+import { useActiveTourTab, useTourFilters } from '@/features/tours/presentation/composables/use-tour-filters'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
@@ -62,6 +62,7 @@ const cameraMoves = () => fakeMap.flyTo.mock.calls.length + fakeMap.easeTo.mock.
 const TourenbuddyMapStub = {
   name: 'TourenbuddyMap',
   template: '<div data-testid="map" />',
+  props: ['covered', 'listedTourIds'],
   emits: ['tourClicked', 'mapBackgroundClick'],
   expose: ['map'],
   setup: () => ({ map: fakeMap }),
@@ -85,7 +86,7 @@ const UserProfileSheetStub = {
 const ContactsListSheetStub = {
   name: 'ContactsListSheet',
   template: '<div data-testid="contacts-sheet" />',
-  emits: ['close'],
+  emits: ['close', 'showFriendTours'],
 }
 
 const TourCreationDialogStub = {
@@ -233,6 +234,40 @@ describe('mapPage', () => {
       await nextTick()
       expect(owned.searchQuery.value).toBe('')
       expect(owned.filters.completion).toBe('all')
+    })
+
+    // #351: a filter that outlived the page (calendar round trip) must not thin a bare map.
+    it('should narrow the map only while the list itself is open', async () => {
+      const wrapper = mountMapPage({ tours: { tours: [{ ...STUB_TOUR, completed: false }] } }, { TourListSheet: true })
+      const listed = () => wrapper.findComponent({ name: 'TourenbuddyMap' }).props('listedTourIds')
+      useTourFilters('owned').filters.completion = 'done'
+      await nextTick()
+      expect(listed()).toBeNull()
+
+      wrapper.vm.activeOverlay = 'tours'
+      await nextTick()
+      expect([...listed()]).toEqual([])
+
+      wrapper.vm.activeOverlay = 'tour'
+      await nextTick()
+      expect(listed()).toBeNull()
+    })
+
+    it('should open a friend\'s tours from their contact on the Friends tab, filtered to them', async () => {
+      const wrapper = mountMapPage({}, { TourListSheet: true })
+      useTourFilters('friends').searchQuery.value = 'old query'
+      wrapper.vm.openOverlay('contacts')
+      await nextTick()
+
+      await wrapper.findComponent({ name: 'ContactsListSheet' }).vm.$emit('showFriendTours', 'u-lena')
+      await nextTick()
+
+      expect(wrapper.vm.activeOverlay).toBe('tours')
+      expect(useActiveTourTab().value).toBe('friends')
+      expect(useTourFilters('friends').searchQuery.value).toBe('')
+      expect([...useTourFilters('friends').filters.ownerIds]).toEqual(['u-lena'])
+      useTourFilters('friends').clearAll()
+      useActiveTourTab().value = 'owned'
     })
   })
 

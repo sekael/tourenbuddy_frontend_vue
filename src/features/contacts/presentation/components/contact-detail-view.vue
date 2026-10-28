@@ -33,7 +33,7 @@ const props = defineProps<{
   headerless?: boolean
 }>()
 
-const emit = defineEmits<{ back: [], deleted: [], editContact: [contact: Contact] }>()
+const emit = defineEmits<{ back: [], deleted: [], editContact: [contact: Contact], showTours: [userId: string] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 
@@ -681,6 +681,18 @@ defineExpose({
           <span class="view-label">{{ t('contacts.form.displayNameLabel') }}</span>
           <span class="view-value">{{ contact.displayName }}</span>
         </div>
+        <!-- A friend's tours, one tap from their contact (#362): the list on Friends, filtered. -->
+        <BaseButton
+          v-if="linkedFriendUserId && !isContactBlocked"
+          variant="secondary"
+          size="sm"
+          class="show-tours-btn"
+          data-testid="show-friend-tours"
+          @click="emit('showTours', linkedFriendUserId)"
+        >
+          <BaseIcon name="location_on" />
+          {{ t('contacts.detailView.showToursBtn') }}
+        </BaseButton>
       </template>
 
       <!-- Edit mode: inputs -->
@@ -1208,6 +1220,10 @@ defineExpose({
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.show-tours-btn {
+  align-self: flex-start;
 }
 
 .view-label {

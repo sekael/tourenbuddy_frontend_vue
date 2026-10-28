@@ -677,4 +677,28 @@ describe('contactDetailView', () => {
       expect(blocks.report).toHaveBeenCalledWith('u-2', 'spam')
     })
   })
+
+  // #362: a friend's tours one tap from their contact.
+  describe('show friend tours', () => {
+    const showTours = (wrapper: ReturnType<typeof mountDetail>) => wrapper.find('[data-testid="show-friend-tours"]')
+
+    it('should not offer it for a contact that is no friend', () => {
+      expect(showTours(mountDetail()).exists()).toBe(false)
+    })
+
+    it('should not offer it for a blocked friend', async () => {
+      const wrapper = mountDetail(mockContact, 'u-2')
+      useUserBlocksStore().blockedUserIds = new Set(['u-2']) as any
+      await flushPromises()
+      expect(showTours(wrapper).exists()).toBe(false)
+    })
+
+    it('should hide it while editing, and emit the friend\'s user id otherwise', async () => {
+      const wrapper = mountDetail(mockContact, 'u-2')
+      await showTours(wrapper).trigger('click')
+      expect(wrapper.emitted('showTours')).toEqual([['u-2']])
+      await enterEditMode(wrapper)
+      expect(showTours(wrapper).exists()).toBe(false)
+    })
+  })
 })

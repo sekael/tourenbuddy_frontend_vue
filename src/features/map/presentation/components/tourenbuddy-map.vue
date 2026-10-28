@@ -8,12 +8,9 @@ import { useI18n } from 'vue-i18n'
 import { useFormatter } from '@/core/composables/use-formatter'
 import { SWISSTOPO_STYLES } from '@/features/map/data/swisstopo-styles'
 import { TRAIL_OVERLAYS } from '@/features/map/data/trail-overlays'
+import { toursOnMap } from '@/features/map/domain/tours-on-map'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
-import {
-  friendTourIdsShadowedByOwned,
-  ownedTourIdsShadowedByFriends,
-} from '@/features/tours/domain/collision'
 import { outingChains as outingChainsOf, outingKey, outingSegments } from '@/features/tours/domain/outing'
 import { outingDetailMarkers, tourDetailMarkers } from '@/features/tours/domain/tour-detail-markers'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
@@ -25,6 +22,8 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 const props = defineProps<{
   /** The map area an open drawer or sheet covers: cluster taps frame beside it. */
   covered?: Partial<PaddingOptions>
+  /** The tours a narrowed tour list shows (#351): only those get markers. Null/absent = all. */
+  listedTourIds?: Set<string> | null
 }>()
 
 const emit = defineEmits<{
@@ -78,33 +77,8 @@ function preloadLayerThumbnails() {
   }))
 }
 
-// The map shows the user's own tours plus only the friend tours the user is a
-// partner on — non-partner friend tours never get a marker (the Friends list
-// still shows every shared tour). A partner friend tour colliding (COLLISION_RADIUS_M)
-// with an owned tour is suppressed — owned tours take precedence.
-const mapTours = computed(() => {
-  const partnerFriendTours = friendTours.value.filter(t => t.isPartner === true)
-  const shadowed = friendTourIdsShadowedByOwned(tours.value, partnerFriendTours)
-  const hiddenOwned = new Set<string>()
-
-  // When a partner friend tour is the active selection, it overrides owned
-  // precedence at its location: un-shadow it AND hide the owned tour(s) it
-  // collides with, so only the friend marker + GPX show (no co-located cluster)
-  // until deselected.
-  const selectedFriend = selectedTourId.value
-    ? partnerFriendTours.find(t => t.id === selectedTourId.value)
-    : undefined
-  if (selectedFriend) {
-    shadowed.delete(selectedFriend.id)
-    for (const id of ownedTourIdsShadowedByFriends(tours.value, [selectedFriend]))
-      hiddenOwned.add(id)
-  }
-
-  return [
-    ...tours.value.filter(t => !hiddenOwned.has(t.id)),
-    ...partnerFriendTours.filter(t => !shadowed.has(t.id)),
-  ]
-})
+const mapTours = computed(() =>
+  toursOnMap(tours.value, friendTours.value, selectedTourId.value, props.listedTourIds ?? null))
 
 const selectedTour = computed(
   () => mapTours.value.find(t => t.id === selectedTourId.value) ?? null,

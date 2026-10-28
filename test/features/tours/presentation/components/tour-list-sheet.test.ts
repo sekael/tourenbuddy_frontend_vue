@@ -1,9 +1,10 @@
 import { createTestingPinia } from '@pinia/testing'
 import { mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import TourListSheet from '@/features/tours/presentation/components/tour-list-sheet.vue'
+import { resetTourFilters, useActiveTourTab, useTourFilters } from '@/features/tours/presentation/composables/use-tour-filters'
 
 // Desktop by default (happy-dom matchMedia); the sheet-height test flips to mobile.
 const isDesktop = ref(true)
@@ -52,6 +53,7 @@ function mountSheet(
   options: {
     /** Seeds the store state as-is; rows may break the Tour type (e.g. a null name). */
     tours?: unknown[]
+    friendTours?: unknown[]
     isLoading?: boolean
     isAuthenticated?: boolean
     /** Needed for focus assertions — focus() is a no-op on a detached tree. */
@@ -68,6 +70,7 @@ function mountSheet(
           initialState: {
             tours: {
               tours: options.tours ?? mockTours,
+              friendTours: options.friendTours ?? [],
               isLoading: options.isLoading ?? false,
               error: null,
             },
@@ -131,6 +134,18 @@ describe('tourListSheet', () => {
       await wrapper.find('.search-input').setValue('alp')
       expect(sheet().props('holdHeight')).toBe(true)
       await wrapper.find('.search-input').setValue('   ')
+      expect(sheet().props('holdHeight')).toBe(false)
+      isDesktop.value = true
+    })
+
+    // #362: the open panel clamps the list region to its own height; the sheet must not follow.
+    it('should hold the sheet height while the filter panel is open, and release it on collapse', async () => {
+      isDesktop.value = false
+      const wrapper = mountSheet()
+      const sheet = () => wrapper.findComponent(BottomSheet)
+      await wrapper.find('.filters-trigger').trigger('click')
+      expect(sheet().props('holdHeight')).toBe(true)
+      await wrapper.find('.filters-trigger').trigger('click')
       expect(sheet().props('holdHeight')).toBe(false)
       isDesktop.value = true
     })
@@ -348,6 +363,54 @@ describe('tourListSheet', () => {
       expect(wrapper.findAll('.tour-row')).toHaveLength(1)
 
       await wrapper.find('.search-input').setValue('')
+      wrapper.unmount()
+    })
+
+    // An outing folds its segments into one row (#338), so the promise counts rows, not tours.
+    it('should count an outing as its one row', async () => {
+      const outing = (position: number) => ({ id: 'o-1', name: 'Haute Route', position })
+      const tours = [
+        { ...mockTours[0]!, id: 's-1', outing: outing(0) },
+        { ...mockTours[0]!, id: 's-2', outing: outing(1) },
+        mockTours[1]!,
+      ]
+      const wrapper = mountSheet({ tours })
+      await wrapper.find('.filters-trigger').trigger('click')
+      expect(wrapper.findComponent({ name: 'TourFiltersPanel' }).props('matchCount')).toBe(2)
+      wrapper.unmount()
+    })
+  })
+
+  // The map marks only friend tours the viewer partners on; a narrowed Friends list says so.
+  describe('friends on the map note', () => {
+    const friendTour = (id: string, isPartner: boolean) =>
+      ({ ...mockTours[0]!, id, userId: 'u-lena', isFriendTour: true, isPartner, partnerNames: [] })
+
+    async function friendsNarrowedTo(friendTours: unknown[]) {
+      useActiveTourTab().value = 'friends'
+      const wrapper = mountSheet({ friendTours })
+      useTourFilters('friends').filters.ownerIds = new Set(['u-lena'])
+      await wrapper.vm.$nextTick()
+      return wrapper
+    }
+
+    afterEach(() => {
+      resetTourFilters()
+      useActiveTourTab().value = 'owned'
+    })
+
+    it('should say when the map marks fewer of the listed friend tours', async () => {
+      const wrapper = await friendsNarrowedTo([friendTour('f-1', true), friendTour('f-2', false)])
+      expect(wrapper.find('[data-testid="friends-on-map"]').exists()).toBe(true)
+      wrapper.unmount()
+    })
+
+    it('should stay silent when every listed friend tour is marked, or nothing narrows', async () => {
+      const wrapper = await friendsNarrowedTo([friendTour('f-1', true)])
+      expect(wrapper.find('[data-testid="friends-on-map"]').exists()).toBe(false)
+      resetTourFilters()
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-testid="friends-on-map"]').exists()).toBe(false)
       wrapper.unmount()
     })
   })

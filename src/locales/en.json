@@ -409,7 +409,8 @@
       "editEvictFriendWarning": "Saving this change will remove your friendship with the previously linked contact.",
       "editEvictPendingWarning": "Saving this change will cancel the pending friend request linked to the previous number.",
       "editEvictFriendAndPendingWarning": "Saving this change will remove your friendship and cancel the pending friend request linked to the previous number.",
-      "confirmSaveBtn": "Save anyway"
+      "confirmSaveBtn": "Save anyway",
+      "showToursBtn": "Show tours"
     },
     "actionMenu": {
       "noMethods": "No contact method available. Edit contact to add one.",
@@ -442,7 +443,8 @@
       "friendsEmptySubtitle": "Tours your friends share will appear here.",
       "ownedByLabel": "by {name}",
       "aFriend": "a friend",
-      "viewBackfillCollisionsBtn": "Review tour overlaps"
+      "viewBackfillCollisionsBtn": "Review tour overlaps",
+      "friendsOnMap": "None of these on the map – you're a partner on none | Only 1 of these on the map – the one you're a partner on | Only {count} of these on the map – the ones you're a partner on"
     },
     "duplicate": {
       "title": "Tour already here",
@@ -593,7 +595,11 @@
       "plannedDateLabel": "Planned date",
       "statusLabel": "Status",
       "matchCount": "{count} tour | {count} tour | {count} tours",
-      "panelAriaLabel": "Tour filters"
+      "panelAriaLabel": "Tour filters",
+      "ownerLabel": "Recorded by",
+      "gradeLabel": "Grade",
+      "gradeHint": "One tap: that grade only. Tap a second for a range — T1 then T3 is up to T3.",
+      "gradeScale": "Grades for {activities}"
     },
     "type": {
       "skiing": "Skiing",

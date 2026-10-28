@@ -1,24 +1,34 @@
 <script setup lang="ts">
+import type { GradeRange } from '@/features/tours/data/models/grade'
 import type { Season } from '@/features/tours/data/models/season'
 import type { TourType } from '@/features/tours/data/models/tour-type'
+import type { Tour } from '@/features/tours/domain/entities/tour'
 import type {
   CompletionFilter,
   TourFilters,
+  TourTab,
 } from '@/features/tours/presentation/composables/use-tour-filters'
 import { storeToRefs } from 'pinia'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import { resolveContactName } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
+import { FILTER_GRADE_SCALES, GRADE_SCALES, gradeLeads, gradeScaleOf, tapGradeRange } from '@/features/tours/data/models/grade'
 import { SEASON_VALUES } from '@/features/tours/data/models/season'
-import { TOUR_TYPE_I18N_KEYS, TOUR_TYPE_VALUES } from '@/features/tours/data/models/tour-type'
+import { TOUR_TYPE_I18N_KEYS, TOUR_TYPE_ICONS, TOUR_TYPE_VALUES } from '@/features/tours/data/models/tour-type'
+import { useFriendPeopleOptions } from '@/features/tours/presentation/composables/use-friend-people-options'
 
 const props = defineProps<{
   filters: TourFilters
+  /** The tab the filters belong to: Friends adds recorded-by and names partners by user. */
+  tab: TourTab
+  /** The tab's tours, unfiltered: which grade scales are worth offering. */
+  tours: Tour[]
   /**
-   * Tours the list will show on collapse — search AND filters, so the number is
-   *  a literal promise rather than a filters-only count that disagrees with it.
+   * Rows the list will show on collapse — search AND filters, an outing counted once as its
+   *  one row — so the number is a literal promise rather than a count that disagrees with it.
    */
   matchCount: number
   canClear: boolean
@@ -26,7 +36,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   'clear': []
   'update:partnerIds': [Set<string>]
+  'update:ownerIds': [Set<string>]
   'update:tourTypes': [Set<TourType>]
+  'update:gradeRanges': [GradeRange[]]
   'update:seasons': [Set<Season>]
   'update:dateRangeFrom': [Date | null]
   'update:dateRangeTo': [Date | null]
@@ -38,28 +50,41 @@ const { t } = useI18n({ useScope: 'global' })
 const contactsStore = useContactsStore()
 const { contacts } = storeToRefs(contactsStore)
 
-function togglePartner(id: string) {
-  const next = new Set(props.filters.partnerIds)
-  if (next.has(id))
-    next.delete(id)
-  else next.add(id)
-  emit('update:partnerIds', next)
+const people = useFriendPeopleOptions(() => props.filters)
+// My Tours: the viewer's address book. Friends: the registered partners named on friend tours —
+// their contact ids are never exposed — behind the names' settle gate.
+const partnerOptions = computed(() => props.tab === 'friends'
+  ? (people.settled.value ? people.partners.value : [])
+  : contacts.value.map(c => ({ id: c.id, label: resolveContactName(c) })))
+const ownerOptions = computed(() =>
+  props.tab === 'friends' && people.settled.value ? people.owners.value : [])
+
+function toggled<T>(set: Set<T>, value: T): Set<T> {
+  const next = new Set(set)
+  if (next.has(value))
+    next.delete(value)
+  else next.add(value)
+  return next
 }
 
-function toggleTourType(type: TourType) {
-  const next = new Set(props.filters.tourTypes)
-  if (next.has(type))
-    next.delete(type)
-  else next.add(type)
-  emit('update:tourTypes', next)
-}
+// ── Grade (#351) ─────────────────────────────────────────────────────────────
+const scalesInUse = computed(() =>
+  new Set(props.tours.flatMap(tour => (tour.grade ? gradeLeads(tour.grade) : [])).map(gradeScaleOf)))
+/** Scales a tour uses, plus any holding a range so it stays clearable. */
+const gradeScales = computed(() => FILTER_GRADE_SCALES
+  .filter(s => scalesInUse.value.has(s.grades) || props.filters.gradeRanges.some(r => gradeScaleOf(r.from) === s.grades))
+  .map(s => ({
+    ...s,
+    // Every activity graded on it ("Ski tour, Splitboarding, …"), so the row needs no legend.
+    activities: TOUR_TYPE_VALUES.filter(type => GRADE_SCALES[type] === s.grades)
+      .map(type => t(`tours.type.${TOUR_TYPE_I18N_KEYS[type]}`))
+      .join(', '),
+  })))
 
-function toggleSeason(season: Season) {
-  const next = new Set(props.filters.seasons)
-  if (next.has(season))
-    next.delete(season)
-  else next.add(season)
-  emit('update:seasons', next)
+function isGradeLit(grades: readonly string[], grade: string) {
+  const range = props.filters.gradeRanges.find(r => gradeScaleOf(r.from) === grades)
+  const i = grades.indexOf(grade)
+  return !!range && i >= grades.indexOf(range.from) && i <= grades.indexOf(range.to)
 }
 
 const completionOptions = [
@@ -88,20 +113,40 @@ const completionOptions = [
     </div>
 
     <div class="filters-body">
-      <div v-if="contacts.length" class="filter-group">
+      <div v-if="ownerOptions.length" class="filter-group" data-testid="owner-filter">
+        <p class="filter-label">
+          {{ t('tours.filters.ownerLabel') }}
+        </p>
+        <div class="chip-row">
+          <button
+            v-for="owner in ownerOptions"
+            :key="owner.id"
+            class="chip"
+            :class="{ active: filters.ownerIds.has(owner.id) }"
+            :aria-pressed="filters.ownerIds.has(owner.id)"
+            type="button"
+            @click="emit('update:ownerIds', toggled(filters.ownerIds, owner.id))"
+          >
+            {{ owner.label }}
+          </button>
+        </div>
+      </div>
+
+      <div v-if="partnerOptions.length" class="filter-group" data-testid="partner-filter">
         <p class="filter-label">
           {{ t('tours.filters.partnerLabel') }}
         </p>
         <div class="chip-row">
           <button
-            v-for="contact in contacts"
-            :key="contact.id"
+            v-for="partner in partnerOptions"
+            :key="partner.id"
             class="chip"
-            :class="{ active: filters.partnerIds.has(contact.id) }"
+            :class="{ active: filters.partnerIds.has(partner.id) }"
+            :aria-pressed="filters.partnerIds.has(partner.id)"
             type="button"
-            @click="togglePartner(contact.id)"
+            @click="emit('update:partnerIds', toggled(filters.partnerIds, partner.id))"
           >
-            {{ resolveContactName(contact) }}
+            {{ partner.label }}
           </button>
         </div>
       </div>
@@ -117,9 +162,38 @@ const completionOptions = [
             class="chip"
             :class="{ active: filters.tourTypes.has(type) }"
             type="button"
-            @click="toggleTourType(type)"
+            @click="emit('update:tourTypes', toggled(filters.tourTypes, type))"
           >
             {{ t(`tours.type.${TOUR_TYPE_I18N_KEYS[type]}` as any) }}
+          </button>
+        </div>
+      </div>
+
+      <div v-if="gradeScales.length" class="filter-group" data-testid="grade-filter">
+        <p class="filter-label">
+          {{ t('tours.filters.gradeLabel') }}
+        </p>
+        <p class="filter-hint">
+          {{ t('tours.filters.gradeHint') }}
+        </p>
+        <div
+          v-for="scale in gradeScales"
+          :key="scale.type"
+          class="chip-row chip-row--grades"
+          role="group"
+          :aria-label="t('tours.filters.gradeScale', { activities: scale.activities })"
+        >
+          <BaseIcon :name="TOUR_TYPE_ICONS[scale.type]" class="scale-icon" />
+          <button
+            v-for="grade in scale.grades"
+            :key="grade"
+            class="chip chip--grade"
+            :class="{ active: isGradeLit(scale.grades, grade) }"
+            :aria-pressed="isGradeLit(scale.grades, grade)"
+            type="button"
+            @click="emit('update:gradeRanges', tapGradeRange(filters.gradeRanges, grade))"
+          >
+            {{ grade }}
           </button>
         </div>
       </div>
@@ -135,7 +209,7 @@ const completionOptions = [
             class="chip"
             :class="{ active: filters.seasons.has(season) }"
             type="button"
-            @click="toggleSeason(season)"
+            @click="emit('update:seasons', toggled(filters.seasons, season))"
           >
             {{ t(`tours.season.${season}` as any) }}
           </button>
@@ -262,6 +336,30 @@ const completionOptions = [
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-xs);
+}
+
+.filter-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-on-surface-variant);
+}
+
+.scale-icon {
+  flex: none;
+  align-self: center;
+  width: 24px;
+  color: var(--color-on-surface-variant);
+}
+
+/* Short labels ("T3", "ZS"): narrow, even chips, so a whole scale — seven alpine grades — fits
+   one row on a phone. Doubled class: `.chip` below sets the `padding` shorthand and would win on
+   source order. */
+.chip-row--grades {
+  gap: var(--spacing-xxs);
+}
+
+.chip.chip--grade {
+  min-width: 40px;
+  padding-inline: var(--spacing-xs);
 }
 
 .chip {

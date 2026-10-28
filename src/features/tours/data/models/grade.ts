@@ -83,6 +83,56 @@ export function dropScales(grade: string, scales: readonly GradeScale[]): string
   }))
 }
 
+/** Every closed scale once, for the tour list's grade filter (#351). */
+export const FILTER_GRADE_SCALES: GradeScale[] = gradeScales(TOUR_TYPE_VALUES)
+
+/** The closed scale a canonical grade belongs to ("ZS" → L–EX); undefined for free text. */
+export function gradeScaleOf(grade: string): readonly string[] | undefined {
+  return scaleOf(grade)
+}
+
+/** An inclusive range on one scale, `from` at or below `to`: "T3 max" is T1–T3. */
+export interface GradeRange {
+  from: string
+  to: string
+}
+
+/**
+ * A grade-filter chip tap, the booking-calendar way: a first tap picks one grade, a second widens
+ * the pick to it, a further tap starts over there; tapping a lone pick clears its scale.
+ */
+export function tapGradeRange(ranges: readonly GradeRange[], chip: string): GradeRange[] {
+  const scale = scaleOf(chip)!
+  const others = ranges.filter(r => scaleOf(r.from) !== scale)
+  const own = ranges.find(r => scaleOf(r.from) === scale)
+  if (own && own.from === own.to && own.from === chip)
+    return others
+  if (!own || own.from !== own.to)
+    return [...others, { from: chip, to: chip }]
+  const [from, to] = [own.from, chip].sort((a, b) => scale.indexOf(a) - scale.indexOf(b)) as [string, string]
+  return [...others, { from, to }]
+}
+
+/**
+ * Whether a tour's grade passes the ranges: at least one part lies on a filtered scale and every
+ * such part lies within its range ("nothing above S2" holds for a bike-and-hike too). A part counts
+ * as the grade it leads with, so ZS+ is ZS; free text ("5c") never matches.
+ */
+export function gradeInRanges(grade: string | null, ranges: readonly GradeRange[]): boolean {
+  let hit = false
+  for (const lead of grade ? gradeLeads(grade) : []) {
+    const scale = scaleOf(lead)!
+    const range = ranges.find(r => scaleOf(r.from) === scale)
+    if (!range)
+      continue
+    const i = scale.indexOf(lead)
+    if (i < scale.indexOf(range.from) || i > scale.indexOf(range.to))
+      return false
+    hit = true
+  }
+  return hit
+}
+
 /** As stored: trimmed, comma-separated, scale grades in their capitals ("zs+" → "ZS+"). */
 export function normalizeGrade(grade: string): string {
   return join(tokens(grade.trim()).map((p) => {
