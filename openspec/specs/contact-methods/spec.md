@@ -192,7 +192,7 @@ When the user makes another phone primary in the contact detail view, the switch
 
 ### Requirement: Primary phone is highlighted and not re-selectable
 
-With more than one phone, the contact detail view SHALL visually highlight the primary phone row beyond its filled star. The primary phone SHALL NOT offer a "set as primary" action in any mode; only non-primary phones SHALL. While a switch's save is pending, further taps on any star SHALL be ignored.
+With more than one phone, the contact detail view SHALL visually highlight the primary phone row beyond its filled star. The primary phone SHALL NOT offer a "set as primary" action in any mode; only non-primary phones SHALL. While a switch's save is pending, further taps on any star SHALL be ignored. In view mode, a contact with a single phone SHALL show no primary star.
 
 #### Scenario: Primary row highlighted
 
@@ -203,6 +203,7 @@ With more than one phone, the contact detail view SHALL visually highlight the p
 
 - **WHEN** a contact has exactly one phone
 - **THEN** that row SHALL NOT carry the primary highlight
+- **AND** in view mode it SHALL show no star
 
 #### Scenario: Primary star inert in edit mode
 

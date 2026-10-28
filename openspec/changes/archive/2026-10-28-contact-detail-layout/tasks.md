@@ -40,5 +40,5 @@
 ## 7. Finalize
 
 - [x] 7.1 `npx eslint . --fix`, `npm run type-check`, `npm run check:locales`, `npm run test`
-- [ ] 7.2 Prompt the user to commit with a ready-to-copy conventional commit message
-- [ ] 7.3 Prompt the user to push and open a PR (based on `feat/351-362-tour-filters` until it merges), then archive the change with `openspec-archive`
+- [x] 7.2 Prompt the user to commit with a ready-to-copy conventional commit message
+- [x] 7.3 Prompt the user to push and open a PR (based on `feat/351-362-tour-filters` until it merges), then archive the change with `openspec-archive`
