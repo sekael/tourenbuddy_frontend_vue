@@ -14,7 +14,7 @@
 
 ## 4. Detail view
 
-- [x] 4.1 Hero: initial avatar, full-name subtitle when a display name is set, friend / blocked status line; remove the "Name" heading and name rows from view mode
+- [x] 4.1 Hero (no avatar): full-name subtitle when a display name is set, friend / blocked status line; remove the "Name" heading and name rows from view mode
 - [x] 4.2 Quick actions: Tours (friend, not blocked), Call and WhatsApp from `buildContactActions(contact)[0]`; equal-width labelled tiles ≥ 56px; omitted when empty; view mode only
 - [x] 4.3 Locales: Call / WhatsApp labels, "Tours" label for `showToursBtn`
 - [x] 4.4 View mode: no primary star for a single phone
@@ -35,10 +35,10 @@
 ## 6. Verify
 
 - [x] 6.1 Headless walk at 360px in `de-CH` and on desktop: friend, blocked, plain and display-name contacts; delete and block confirmations in the footer
-- [ ] 6.2 Persona UX review: baseline round on the current layout, then rounds on the new one until it passes
+- [x] 6.2 Persona UX review: baseline round on the current layout, then rounds on the new one until it passes
 
 ## 7. Finalize
 
-- [ ] 7.1 `npx eslint . --fix`, `npm run type-check`, `npm run check:locales`, `npm run test`
+- [x] 7.1 `npx eslint . --fix`, `npm run type-check`, `npm run check:locales`, `npm run test`
 - [ ] 7.2 Prompt the user to commit with a ready-to-copy conventional commit message
 - [ ] 7.3 Prompt the user to push and open a PR (based on `feat/351-362-tour-filters` until it merges), then archive the change with `openspec-archive`

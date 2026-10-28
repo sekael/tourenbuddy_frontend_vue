@@ -4,7 +4,7 @@ The contact detail view reads like a disabled form: the name is shown four times
 
 ## What Changes
 
-- The view opens with a hero: the contact's initial, the full name as a subtitle only when a display name is set (the header title already shows the resolved name), and the relationship status ("Friend on TourenBuddy" / "Blocked") as a labelled line instead of a bare icon next to a "Name" heading.
+- The view opens with a hero (no avatar): the full name as a subtitle only when a display name is set (the header title already shows the resolved name), and the relationship status ("Friend on TourenBuddy" / "Blocked") as a labelled line instead of a bare icon next to a "Name" heading.
 - A quick-action row under the hero: **Tours** (friend, not blocked), **Call** and **WhatsApp** to the primary valid phone. Large labelled targets, glove-sized.
 - The First / Last / Display name rows and the "Name" heading are removed from view mode. Edit mode is unchanged.
 - The phone list stays; in view mode a contact with a single phone shows no primary star.

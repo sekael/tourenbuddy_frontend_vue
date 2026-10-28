@@ -62,10 +62,11 @@ row in place (as the tour footer does); the block confirmation keeps its existin
 
 ### D5 — Hero
 
-Initial avatar (the contact list's style), the full name ("First Last") as a subtitle only when a
-display name is set that differs from it (seed data stores "Jakob Tester" as both), and a status
-line: `group` + "Friend on TourenBuddy", or `block` + "Blocked". With neither subtitle nor status
-the avatar row is omitted — a lone initial is decoration. The "Name" heading and the name rows go.
+The full name ("First Last") as a subtitle only when a display name is set that differs from it
+(seed data stores "Jakob Tester" as both), and a status line: `group` + "Friend on TourenBuddy",
+or `block` + "Blocked". No avatar: the title already names the contact and an initial adds
+nothing there (the contact list keeps its initials, where they help scanning). With neither
+subtitle nor status the line is omitted. The "Name" heading and the name rows go.
 
 ### D6 — Remove the in-view header
 

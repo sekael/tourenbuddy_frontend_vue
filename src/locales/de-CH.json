@@ -410,7 +410,11 @@
       "editEvictPendingWarning": "Das Speichern dieser Änderung bricht die offene Freundschaftsanfrage der bisherigen Nummer ab.",
       "editEvictFriendAndPendingWarning": "Das Speichern dieser Änderung entfernt die Freundschaft und bricht die offene Freundschaftsanfrage der bisherigen Nummer ab.",
       "confirmSaveBtn": "Trotzdem speichern",
-      "showToursBtn": "Touren anzeigen"
+      "showToursBtn": "Touren",
+      "callAction": "Anrufen",
+      "whatsAppAction": "WhatsApp",
+      "deleteAction": "Löschen",
+      "deleteFailed": "Kontakt konnte nicht gelöscht werden."
     },
     "actionMenu": {
       "noMethods": "Keine Kontaktmethode verfügbar. Bearbeite den Kontakt, um eine hinzuzufügen.",

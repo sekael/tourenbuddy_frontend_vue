@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { formatPhoneDisplay } from '@/features/contacts/domain/entities/contact'
 import ContactDetailView from '@/features/contacts/presentation/components/contact-detail-view.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
-import BlockConfirmDialog from '@/features/friendships/presentation/components/block-confirm-dialog.vue'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useUserBlocksStore } from '@/features/friendships/presentation/stores/user-blocks-store'
 
@@ -67,8 +66,10 @@ function mountDetail(contact: Contact = mockContact, linkedFriendUserId: string 
   })
 }
 
+// Edit is the host's footer action; it calls the exposed enterEditMode.
 async function enterEditMode(wrapper: ReturnType<typeof mountDetail>) {
-  await wrapper.find('[data-testid="edit-contact-btn"]').trigger('click')
+  ;(wrapper.vm as unknown as { enterEditMode: () => void }).enterEditMode()
+  await flushPromises()
 }
 
 describe('contactDetailView', () => {
@@ -77,11 +78,11 @@ describe('contactDetailView', () => {
   })
 
   describe('view/edit mode toggle', () => {
-    it('should default to view mode showing read-only name spans', () => {
+    it('should default to view mode without name rows or fields', () => {
       const wrapper = mountDetail()
-      expect(wrapper.find('[data-testid="edit-contact-btn"]').exists()).toBe(true)
       expect(wrapper.find('#dv-firstName').exists()).toBe(false)
-      expect(wrapper.find('.view-value').text()).toContain('Anna')
+      expect(wrapper.text()).not.toContain('Anna')
+      expect(wrapper.find('.hero').exists()).toBe(true)
     })
 
     it('should enter edit mode exposing inputs when Edit is clicked', async () => {
@@ -98,10 +99,11 @@ describe('contactDetailView', () => {
       await wrapper.find('#dv-firstName').setValue('Annika')
       await wrapper.find('.form-actions .base-button--secondary').trigger('click')
 
-      expect(wrapper.find('[data-testid="edit-contact-btn"]').exists()).toBe(true)
+      expect(wrapper.find('.hero').exists()).toBe(true)
       expect(wrapper.find('#dv-firstName').exists()).toBe(false)
-      // view-value shows original name again
-      expect(wrapper.text()).toContain('Anna')
+      // The next edit starts from the original name again
+      await enterEditMode(wrapper)
+      expect((wrapper.find('#dv-firstName').element as HTMLInputElement).value).toBe('Anna')
     })
 
     it('should show add-method button and delete buttons only in edit mode', async () => {
@@ -114,11 +116,10 @@ describe('contactDetailView', () => {
       expect(wrapper.find('[data-testid="remove-method-btn"]').exists()).toBe(true)
     })
 
-    it('should make primary-phone star non-interactive in view mode', () => {
-      const wrapper = mountDetail()
-      // In view mode it renders as a span (not a button)
-      const star = wrapper.find('.primary-star')
-      expect(star.element.tagName.toLowerCase()).toBe('span')
+    it('should make every primary-phone star non-interactive in view mode', () => {
+      const wrapper = mountDetail(contactWithTwoPhones)
+      // In view mode they render as spans (not buttons)
+      expect(wrapper.findAll('.primary-star').map(s => s.element.tagName.toLowerCase())).toEqual(['span', 'span'])
     })
 
     it('should keep the primary star inert and only offer non-primary stars in edit mode', async () => {
@@ -152,7 +153,7 @@ describe('contactDetailView', () => {
         displayName: null,
       })
       // After success, back to view mode
-      expect(wrapper.find('[data-testid="edit-contact-btn"]').exists()).toBe(true)
+      expect(wrapper.find('.hero').exists()).toBe(true)
       expect(wrapper.find('#dv-firstName').exists()).toBe(false)
     })
 
@@ -217,15 +218,14 @@ describe('contactDetailView', () => {
       await expect(vm.commitPendingEdits()).resolves.toBeUndefined()
       await flushPromises()
 
-      expect(wrapper.find('[data-testid="edit-contact-btn"]').exists()).toBe(true)
+      expect(wrapper.find('.hero').exists()).toBe(true)
     })
   })
 
   describe('contact methods', () => {
     it('should display existing contact methods in view mode', () => {
       const wrapper = mountDetail()
-      expect(wrapper.find('.method-row').exists()).toBe(true)
-      expect(wrapper.find('.view-value').text()).toContain('Anna')
+      expect(wrapper.find('.method-row .view-value').text()).toBe(formatPhoneDisplay('+41791234567'))
     })
 
     it('should show empty methods message when no methods', () => {
@@ -325,7 +325,7 @@ describe('contactDetailView', () => {
       await wrapper.find('.form-actions .base-button--secondary').trigger('click')
       // Returned to view mode — add-method-form gone
       expect(wrapper.find('.add-method-form').exists()).toBe(false)
-      expect(wrapper.find('[data-testid="edit-contact-btn"]').exists()).toBe(true)
+      expect(wrapper.find('.hero').exists()).toBe(true)
     })
 
     it('should save successfully after cancelling a blank, errored add-method draft', async () => {
@@ -347,7 +347,7 @@ describe('contactDetailView', () => {
       await wrapper.find('.form-actions .base-button--primary').trigger('click')
       await flushPromises()
 
-      expect(wrapper.find('[data-testid="edit-contact-btn"]').exists()).toBe(true)
+      expect(wrapper.find('.hero').exists()).toBe(true)
       expect(wrapper.find('.error-text').exists()).toBe(false)
     })
 
@@ -580,101 +580,57 @@ describe('contactDetailView', () => {
     })
   })
 
-  describe('delete contact', () => {
-    it('should show confirmation when delete button clicked', async () => {
-      const wrapper = mountDetail()
-      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
-      expect(wrapper.find('.delete-confirm-text').exists()).toBe(true)
-      expect(wrapper.find('.base-button--danger').exists()).toBe(true)
+  describe('hero', () => {
+    const hero = (wrapper: ReturnType<typeof mountDetail>) => ({
+      subtitle: wrapper.find('[data-testid="hero-subtitle"]'),
+      status: wrapper.find('[data-testid="hero-status"]'),
     })
 
-    it('should hide confirmation when cancel clicked in delete section', async () => {
-      const wrapper = mountDetail()
-      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
-      const deleteSection = wrapper.find('.section--danger')
-      await deleteSection.find('.base-button--secondary').trigger('click')
-
-      expect(wrapper.find('.delete-confirm-text').exists()).toBe(false)
-      expect(wrapper.find('[data-testid="delete-btn"]').exists()).toBe(true)
+    it('should show the full name only when a display name hides it', () => {
+      expect(hero(mountDetail({ ...mockContact, displayName: 'Anna Meier' })).subtitle.exists()).toBe(false)
+      expect(hero(mountDetail({ ...mockContact, displayName: 'Ännu' })).subtitle.text()).toBe('Anna Meier')
     })
 
-    it('should call deleteContact and emit deleted when confirmed', async () => {
-      const wrapper = mountDetail()
-      const store = useContactsStore()
-      vi.mocked(store.deleteContact).mockResolvedValue({ queued: false, failed: false, value: undefined })
-
-      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
-      await wrapper.find('.base-button--danger').trigger('click')
-      await flushPromises()
-
-      expect(store.deleteContact).toHaveBeenCalledWith('c-1')
-      expect(wrapper.emitted('deleted')).toHaveLength(1)
+    it('should show no avatar, and no identity line for a plain contact with nothing to say', () => {
+      expect(mountDetail(mockContact, 'u-2').find('.hero-avatar').exists()).toBe(false)
+      expect(mountDetail().find('.hero-identity').exists()).toBe(false)
     })
 
-    it('does NOT delete contact when removeFriendship fails', async () => {
-      const wrapper = mountDetail(mockContact, 'user-friend')
-      const friendships = useFriendshipsStore()
-      const contacts = useContactsStore()
-      vi.mocked(friendships.removeFriendship).mockRejectedValue(new Error('rpc failed'))
-
-      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
-      await wrapper.find('.base-button--danger').trigger('click')
-      await flushPromises()
-
-      expect(contacts.deleteContact).not.toHaveBeenCalled()
-      expect(wrapper.emitted('deleted')).toBeFalsy()
-      expect(wrapper.find('.error-text').exists()).toBe(true)
-    })
-  })
-
-  describe('back navigation', () => {
-    it('should emit back when back button clicked', async () => {
-      const wrapper = mountDetail()
-      await wrapper.find('[data-testid="back-btn"]').trigger('click')
-      expect(wrapper.emitted('back')).toHaveLength(1)
-    })
-  })
-
-  describe('linked-friendship deletion', () => {
-    it('does not render friend warning when contact is not linked to a friend', async () => {
-      const wrapper = mountDetail(mockContact, null)
-      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
-      expect(wrapper.find('.delete-friend-warning').exists()).toBe(false)
-    })
-
-    it('renders friend warning when contact is linked to a friend', async () => {
-      const wrapper = mountDetail(mockContact, 'user-friend')
-      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
-      expect(wrapper.find('.delete-friend-warning').exists()).toBe(true)
-    })
-
-    it('skips removeFriendship when no linked friend', async () => {
-      const wrapper = mountDetail(mockContact, null)
-      const friendships = useFriendshipsStore()
-      const contacts = useContactsStore()
-      vi.mocked(contacts.deleteContact).mockResolvedValue({ queued: false, failed: false, value: undefined })
-
-      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
-      await wrapper.find('.base-button--danger').trigger('click')
-      await flushPromises()
-
-      expect(friendships.removeFriendship).not.toHaveBeenCalled()
-      expect(contacts.deleteContact).toHaveBeenCalledWith('c-1')
-    })
-  })
-
-  describe('block and report', () => {
-    it('should report the blocked user even after blocking unlinks the friend', async () => {
+    it('should say "blocked" rather than "friend" for a blocked friend', async () => {
       const wrapper = mountDetail(mockContact, 'u-2')
-      const blocks = useUserBlocksStore()
-      // block_user ends the friendship; the parent's refetch drops the link mid-flight.
-      vi.mocked(blocks.block).mockImplementation(async () => {
-        await wrapper.setProps({ linkedFriendUserId: null })
-      })
-      await wrapper.find('.base-button--danger-outline').trigger('click')
-      wrapper.findComponent(BlockConfirmDialog).vm.$emit('confirm', 'spam')
+      expect(hero(wrapper).status.text()).toBe('friendships.tooltip')
+      useUserBlocksStore().blockedUserIds = new Set(['u-2']) as any
       await flushPromises()
-      expect(blocks.report).toHaveBeenCalledWith('u-2', 'spam')
+      expect(hero(wrapper).status.text()).toBe('blocks.tooltip')
+    })
+
+    it('should call and message the first valid phone, primary first', () => {
+      const wrapper = mountDetail({
+        ...contactWithTwoPhones,
+        contactMethods: [
+          { ...contactWithTwoPhones.contactMethods[0]!, value: '079 111 22 33', isValid: false },
+          { ...contactWithTwoPhones.contactMethods[1]!, value: '+41442223344' },
+        ],
+      })
+      expect(wrapper.find('[data-testid="call-action"]').attributes('href')).toBe('tel:+41442223344')
+      expect(wrapper.find('[data-testid="whatsapp-action"]').attributes('href')).toBe('https://wa.me/41442223344')
+    })
+
+    it('should render no quick actions without a valid phone or a friend, and no empty hero', () => {
+      const wrapper = mountDetail({ ...mockContact, contactMethods: [{ ...mockContact.contactMethods[0]!, isValid: false }] })
+      expect(wrapper.find('[data-testid="quick-actions"]').exists()).toBe(false)
+      expect(wrapper.find('.hero').exists()).toBe(false)
+    })
+
+    it('should hide the hero while editing', async () => {
+      const wrapper = mountDetail(mockContact, 'u-2')
+      await enterEditMode(wrapper)
+      expect(wrapper.find('.hero').exists()).toBe(false)
+    })
+
+    it('should show no star for a lone phone while reading, but one for each of two', () => {
+      expect(mountDetail().find('.primary-star').exists()).toBe(false)
+      expect(mountDetail(contactWithTwoPhones).findAll('.primary-star')).toHaveLength(2)
     })
   })
 

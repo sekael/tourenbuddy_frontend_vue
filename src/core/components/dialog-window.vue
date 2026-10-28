@@ -93,6 +93,9 @@ const contentStyle = computed(() => bodyHeight.value === null || props.collapsed
           <slot />
         </div>
       </div>
+      <div v-if="$slots.footer && !props.collapsed" class="dialog-footer">
+        <slot name="footer" />
+      </div>
     </div>
   </div>
 </template>
@@ -216,6 +219,17 @@ const contentStyle = computed(() => bodyHeight.value === null || props.collapsed
 .dialog-content::-webkit-scrollbar-thumb {
   background-color: var(--color-outline-variant);
   border-radius: var(--radius-pill);
+}
+
+/* With a footer below, content fades out over its last 24px instead of being cut off at the
+   footer's edge (as in the bottom sheet and side drawer). */
+.dialog-content:has(~ .dialog-footer) {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent);
+}
+
+.dialog-footer {
+  flex-shrink: 0;
+  padding: var(--spacing-sm) var(--spacing-lg) var(--spacing-lg);
 }
 
 /* Natural height, never stretched — the measure the scroll box follows */

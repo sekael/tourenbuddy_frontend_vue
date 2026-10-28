@@ -10,83 +10,47 @@ import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useAsYouTypePhone } from '@/core/composables/use-as-you-type-phone'
-import { useSnackbar } from '@/core/composables/use-snackbar'
 import { DuplicateContactAcrossContactsError } from '@/core/exceptions'
 import { normalizePhone } from '@/core/utils/phone-normalize'
+import { buildContactActions } from '@/features/contacts/core/utils/contact-actions'
 import { orderedPhoneMethods } from '@/features/contacts/core/utils/order-phone-methods'
 import { formatPhoneDisplay, resolveContactName } from '@/features/contacts/domain/entities/contact'
+import { useContactBlocked } from '@/features/contacts/presentation/composables/use-contact-blocked'
 import { PRIMARY_FADE_MS, PRIMARY_MOVE_MS, usePrimarySwitchSequence } from '@/features/contacts/presentation/composables/use-primary-switch-sequence'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
-import BlockConfirmDialog from '@/features/friendships/presentation/components/block-confirm-dialog.vue'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
-import { useUserBlocksStore } from '@/features/friendships/presentation/stores/user-blocks-store'
 
 const props = defineProps<{
   contact: Contact
   linkedFriendUserId?: string | null
   /**
-   * Rendered inside a full-screen page: hide the in-view header and the
-   *  bottom Save/Cancel bar — the page's top app bar supplies both.
+   * Rendered inside a full-screen page: hide the bottom Save/Cancel bar — the
+   *  page's top app bar supplies it.
    */
   embedded?: boolean
-  /** The host overlay renders title/back/Edit in its own header (no second header row). */
-  headerless?: boolean
 }>()
 
-const emit = defineEmits<{ back: [], deleted: [], editContact: [contact: Contact], showTours: [userId: string] }>()
+const emit = defineEmits<{ editContact: [contact: Contact], showTours: [userId: string] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 
 const store = useContactsStore()
 const friendshipsStore = useFriendshipsStore()
-const { userIdToPhoneMap, friendUserIds } = storeToRefs(friendshipsStore)
-const blocksStore = useUserBlocksStore()
-const { blockedPhones, blockedUserIds } = storeToRefs(blocksStore)
-const snackbar = useSnackbar()
+const { userIdToPhoneMap } = storeToRefs(friendshipsStore)
 
-const blockConfirmOpen = ref(false)
+const isContactBlocked = useContactBlocked(() => props.contact, () => props.linkedFriendUserId)
+const isFriend = computed(() => !!props.linkedFriendUserId && !isContactBlocked.value)
 
-const isContactBlocked = computed(() => {
-  if (props.linkedFriendUserId && blockedUserIds.value.has(props.linkedFriendUserId))
-    return true
-  for (const m of props.contact.contactMethods) {
-    if (m.methodType !== 'phone')
-      continue
-    const norm = normalizePhone(m.value)
-    const phone = norm.ok ? norm.e164 : m.value
-    if (blockedPhones.value.has(phone))
-      return true
-  }
-  return false
-})
-
-function openBlockConfirm() {
-  blockConfirmOpen.value = true
-}
-
-function cancelBlock() {
-  blockConfirmOpen.value = false
-}
-
-async function handleBlockConfirm(reportReason: string | null) {
-  // Capture before awaiting: blocking ends the friendship, so the parent's refetch
-  // clears `linkedFriendUserId` while `block()` is still in flight.
-  const target = props.linkedFriendUserId
-  if (!target)
-    return
-  blockConfirmOpen.value = false
-  try {
-    await blocksStore.block(target)
-    snackbar.show(t('blocks.snackbar.blockSuccess'))
-    if (reportReason !== null) {
-      await blocksStore.report(target, reportReason)
-      snackbar.show(t('blocks.snackbar.reportSuccess'))
-    }
-  }
-  catch {
-    snackbar.show(t('blocks.snackbar.sendRequestFailed'))
-  }
-}
+// ── Hero ─────────────────────────────────────────────────────────────────────
+// The overlay title already shows the resolved name: the full name only when a display name
+// hides it.
+const fullName = computed(() => [props.contact.firstName, props.contact.lastName].filter(Boolean).join(' '))
+const heroSubtitle = computed(() =>
+  props.contact.displayName && props.contact.displayName !== fullName.value ? fullName.value : null)
+// Call / WhatsApp reach the first valid phone, primary first.
+const reach = computed(() => buildContactActions(props.contact)[0] ?? null)
+const hasIdentity = computed(() => !!heroSubtitle.value || isContactBlocked.value || isFriend.value)
+const hasQuickActions = computed(() => isFriend.value || !!reach.value)
 
 // Staged primary switch: the clicked phone is the target at once (the old highlight
 // fades out while the save runs) and stays it until the store catches up; a failed
@@ -603,31 +567,6 @@ async function saveAll(): Promise<boolean> {
   }
 }
 
-// ── Delete ───────────────────────────────────────────────────────────────────
-const deleteState = ref<'idle' | 'confirm' | 'loading'>('idle')
-const deleteError = ref<string | null>(null)
-const contactRelationships = ref<{ hasPending: boolean, hasFriendship: boolean } | null>(null)
-
-async function requestDelete() {
-  deleteState.value = 'confirm'
-  contactRelationships.value = (await store.relationshipsForContact(props.contact.id)) ?? null
-}
-
-async function confirmDelete() {
-  deleteError.value = null
-  deleteState.value = 'loading'
-  try {
-    if (props.linkedFriendUserId)
-      await friendshipsStore.removeFriendship(props.linkedFriendUserId)
-    await store.deleteContact(props.contact.id)
-    emit('deleted')
-  }
-  catch (err) {
-    deleteError.value = err instanceof Error ? err.message : 'Failed to delete'
-    deleteState.value = 'idle'
-  }
-}
-
 defineExpose({
   mode,
   isSaving,
@@ -646,94 +585,87 @@ defineExpose({
 
 <template>
   <div class="detail-view">
-    <!-- Header (suppressed when embedded — the page's top app bar replaces it) -->
-    <div v-if="!embedded && !headerless" class="detail-header">
-      <BaseIconButton name="arrow_back" :label="t('core.drawer.back')" size="sm" data-testid="back-btn" @click="emit('back')" />
-      <span class="detail-title">{{ t('contacts.detailView.title') }}</span>
-      <BaseButton v-if="mode === 'view'" variant="primary-outline" size="sm" data-testid="edit-contact-btn" @click="enterEditMode">
-        {{ t('contacts.detailView.editBtn') }}
-      </BaseButton>
-    </div>
+    <!-- View mode: who it is, then the ways to reach them. The overlay title holds the name. -->
+    <section v-if="mode === 'view' && (hasIdentity || hasQuickActions)" class="hero">
+      <div v-if="hasIdentity" class="hero-identity">
+        <span v-if="heroSubtitle" class="hero-subtitle" data-testid="hero-subtitle">{{ heroSubtitle }}</span>
+        <span v-if="isContactBlocked" class="hero-status hero-status--blocked" data-testid="hero-status">
+          <BaseIcon name="block" size="sm" />
+          {{ t('blocks.tooltip') }}
+        </span>
+        <span v-else-if="isFriend" class="hero-status hero-status--friend" data-testid="hero-status">
+          <BaseIcon name="group" size="sm" />
+          {{ t('friendships.tooltip') }}
+        </span>
+      </div>
 
-    <!-- Name section -->
-    <section class="section">
-      <h3 class="section-label">
-        {{ t('contacts.detailView.nameSection') }}
-        <BaseTooltip v-if="linkedFriendUserId && !isContactBlocked" :text="t('friendships.tooltip')">
-          <BaseIcon name="group" class="detail-friend-icon" />
-        </BaseTooltip>
-        <BaseTooltip v-if="isContactBlocked" :text="t('blocks.tooltip')">
-          <BaseIcon name="block" class="detail-blocked-icon" />
-        </BaseTooltip>
-      </h3>
-
-      <!-- View mode: read-only -->
-      <template v-if="mode === 'view'">
-        <div class="view-row">
-          <span class="view-label">{{ t('contacts.form.firstNameLabel') }}</span>
-          <span class="view-value">{{ contact.firstName }}</span>
-        </div>
-        <div v-if="contact.lastName" class="view-row">
-          <span class="view-label">{{ t('contacts.form.lastNameLabel') }}</span>
-          <span class="view-value">{{ contact.lastName }}</span>
-        </div>
-        <div v-if="contact.displayName" class="view-row">
-          <span class="view-label">{{ t('contacts.form.displayNameLabel') }}</span>
-          <span class="view-value">{{ contact.displayName }}</span>
-        </div>
+      <div v-if="hasQuickActions" class="quick-actions" data-testid="quick-actions">
         <!-- A friend's tours, one tap from their contact (#362): the list on Friends, filtered. -->
-        <BaseButton
-          v-if="linkedFriendUserId && !isContactBlocked"
-          variant="secondary"
-          size="sm"
-          class="show-tours-btn"
+        <button
+          v-if="isFriend"
+          type="button"
+          class="quick-action"
           data-testid="show-friend-tours"
-          @click="emit('showTours', linkedFriendUserId)"
+          @click="emit('showTours', linkedFriendUserId!)"
         >
           <BaseIcon name="route" />
           {{ t('contacts.detailView.showToursBtn') }}
-        </BaseButton>
-      </template>
+        </button>
+        <template v-if="reach">
+          <a :href="reach.call" class="quick-action" data-testid="call-action">
+            <BaseIcon name="call" />
+            {{ t('contacts.detailView.callAction') }}
+          </a>
+          <a :href="reach.whatsApp" class="quick-action" target="_blank" rel="noopener noreferrer" data-testid="whatsapp-action">
+            <BaseIcon name="chat" />
+            {{ t('contacts.detailView.whatsAppAction') }}
+          </a>
+        </template>
+      </div>
+    </section>
 
-      <!-- Edit mode: inputs -->
-      <template v-else>
-        <div class="field">
-          <label class="label" for="dv-firstName">{{ t('contacts.form.firstNameLabel') }}<span class="required">*</span></label>
-          <input
-            id="dv-firstName"
-            v-model="firstName"
-            class="input"
-            type="text"
-            maxlength="50"
-            :placeholder="t('contacts.form.firstNamePlaceholder')"
-          >
-        </div>
-        <div class="field">
-          <label class="label" for="dv-lastName">{{ t('contacts.form.lastNameLabel') }}</label>
-          <input
-            id="dv-lastName"
-            v-model="lastName"
-            class="input"
-            type="text"
-            maxlength="50"
-            :placeholder="t('contacts.form.lastNamePlaceholder')"
-          >
-        </div>
-        <div class="field">
-          <label class="label" for="dv-displayName">{{ t('contacts.form.displayNameLabel') }}</label>
-          <input
-            id="dv-displayName"
-            v-model="displayName"
-            class="input"
-            type="text"
-            maxlength="50"
-            :placeholder="t('contacts.form.displayNamePlaceholder')"
-          >
-        </div>
-        <p v-if="nameError" class="error-text">
-          {{ nameError }}
-        </p>
-      </template>
+    <!-- Name fields (edit mode only) -->
+    <section v-if="mode === 'edit'" class="section">
+      <h3 class="section-label">
+        {{ t('contacts.detailView.nameSection') }}
+      </h3>
+
+      <div class="field">
+        <label class="label" for="dv-firstName">{{ t('contacts.form.firstNameLabel') }}<span class="required">*</span></label>
+        <input
+          id="dv-firstName"
+          v-model="firstName"
+          class="input"
+          type="text"
+          maxlength="50"
+          :placeholder="t('contacts.form.firstNamePlaceholder')"
+        >
+      </div>
+      <div class="field">
+        <label class="label" for="dv-lastName">{{ t('contacts.form.lastNameLabel') }}</label>
+        <input
+          id="dv-lastName"
+          v-model="lastName"
+          class="input"
+          type="text"
+          maxlength="50"
+          :placeholder="t('contacts.form.lastNamePlaceholder')"
+        >
+      </div>
+      <div class="field">
+        <label class="label" for="dv-displayName">{{ t('contacts.form.displayNameLabel') }}</label>
+        <input
+          id="dv-displayName"
+          v-model="displayName"
+          class="input"
+          type="text"
+          maxlength="50"
+          :placeholder="t('contacts.form.displayNamePlaceholder')"
+        >
+      </div>
+      <p v-if="nameError" class="error-text">
+        {{ nameError }}
+      </p>
     </section>
 
     <!-- Contact methods -->
@@ -775,8 +707,9 @@ defineExpose({
                 <BaseIcon name="star" />
               </BaseTooltip>
             </button>
+            <!-- A lone phone needs no star while reading -->
             <span
-              v-else
+              v-else-if="mode === 'edit' || orderedPhones.length > 1"
               class="primary-star"
               :class="{ 'primary-star--selected': isShownPrimary(method) }"
             >
@@ -1081,75 +1014,6 @@ defineExpose({
         </BaseButton>
       </div>
     </section>
-
-    <!-- Danger section -->
-    <section class="section section--danger">
-      <BlockConfirmDialog
-        v-if="blockConfirmOpen && linkedFriendUserId && !isContactBlocked"
-        :has-friendship="friendUserIds.has(linkedFriendUserId)"
-        @cancel="cancelBlock"
-        @confirm="handleBlockConfirm"
-      />
-      <BaseButton
-        v-else-if="linkedFriendUserId && !isContactBlocked"
-        variant="danger-outline"
-        size="sm"
-        @click="openBlockConfirm"
-      >
-        <BaseIcon name="block" />
-        {{ t('blocks.blockAction') }}
-      </BaseButton>
-
-      <p v-if="deleteError" class="error-text">
-        {{ deleteError }}
-      </p>
-
-      <template v-if="deleteState === 'confirm'">
-        <p class="delete-confirm-text">
-          {{ t('contacts.detailView.deleteConfirm') }}
-        </p>
-        <p
-          v-if="contactRelationships?.hasFriendship && contactRelationships?.hasPending"
-          class="delete-friend-warning"
-        >
-          <BaseIcon name="warning" class="warn-icon" />
-          {{ t('contacts.detailView.deleteFriendAndPendingWarning') }}
-        </p>
-        <p v-else-if="contactRelationships?.hasFriendship || linkedFriendUserId" class="delete-friend-warning">
-          <BaseIcon name="warning" class="warn-icon" />
-          {{ t('contacts.detailView.deleteFriendWarning') }}
-        </p>
-        <p v-else-if="contactRelationships?.hasPending" class="delete-friend-warning">
-          <BaseIcon name="warning" class="warn-icon" />
-          {{ t('contacts.detailView.deletePendingWarning') }}
-        </p>
-        <div class="delete-actions">
-          <BaseButton type="button" variant="secondary" size="sm" data-testid="delete-cancel-btn" @click="deleteState = 'idle'">
-            {{ t('contacts.shared.cancelBtn') }}
-          </BaseButton>
-          <BaseButton type="button" variant="danger" size="sm" data-testid="delete-confirm-btn" @click="confirmDelete">
-            {{ t('contacts.detailView.deleteBtn') }}
-          </BaseButton>
-        </div>
-      </template>
-
-      <BaseButton
-        v-else
-        type="button"
-        variant="danger-outline"
-        size="sm"
-        data-testid="delete-btn"
-        :disabled="deleteState === 'loading'"
-        @click="requestDelete"
-      >
-        <BaseIcon name="person_remove" />
-        {{
-          deleteState === 'loading'
-            ? t('contacts.detailView.deletingBtn')
-            : t('contacts.detailView.deleteBtn')
-        }}
-      </BaseButton>
-    </section>
   </div>
 </template>
 
@@ -1160,39 +1024,78 @@ defineExpose({
   gap: var(--spacing-lg);
 }
 
-.detail-header {
+.hero {
   display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.hero-identity {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-xxs);
+}
+
+.hero-subtitle {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-on-surface);
+}
+
+.hero-status {
+  display: inline-flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-xs);
-
-  /* Pinned to the top of the overlay's scroll region (`.content` in bottom-sheet,
-     `.dialog-content` in dialog-window). `sticky`, not `fixed`: sticky resolves
-     against that scroll container, so on mobile the row travels with the sheet
-     when it is dragged between snap points — `fixed` would glue it to the
-     viewport and tear it off the sheet. Opaque background + z-index so sections
-     scrolling underneath do not show through. */
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background-color: var(--color-background);
-  padding-block: var(--spacing-sm);
+  gap: var(--spacing-xxs);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
 }
 
-.detail-title {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  flex: 1;
-}
-
-.detail-friend-icon {
-  font-size: var(--icon-size-md);
+.hero-status--friend {
   color: var(--color-friend);
 }
 
-.detail-blocked-icon {
-  font-size: var(--icon-size-md);
+.hero-status--blocked {
   color: var(--color-error);
+}
+
+/* Field actions: equal tiles, icon over label, glove-sized. */
+.quick-actions {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: var(--spacing-sm);
+}
+
+.quick-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xxs);
+  min-height: 64px;
+  padding: var(--spacing-sm) var(--spacing-xs);
+  border-radius: var(--radius-md);
+  background-color: var(--color-secondary-container);
+  color: var(--color-on-secondary-container);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  text-align: center;
+  text-decoration: none;
+  transition:
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    transform var(--motion-duration-short) var(--motion-ease-spring);
+}
+
+@media (hover: hover) {
+  .quick-action:hover {
+    background-color: var(--color-secondary-container-hover);
+  }
+}
+
+.quick-action:active {
+  background-color: var(--color-secondary-container-hover);
+  transform: scale(var(--press-scale));
 }
 
 .section {
@@ -1214,21 +1117,6 @@ defineExpose({
   font-weight: var(--heading-section-weight);
   color: var(--heading-section-color);
   letter-spacing: var(--heading-section-tracking);
-}
-
-.view-row {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.show-tours-btn {
-  align-self: flex-start;
-}
-
-.view-label {
-  font-size: var(--font-size-xs);
-  color: var(--color-on-surface-variant);
 }
 
 .view-value {
@@ -1518,11 +1406,6 @@ button.primary-star:active {
   display: flex;
   gap: var(--spacing-sm);
   justify-content: flex-end;
-}
-
-.section--danger {
-  border-bottom: none;
-  padding-top: var(--spacing-sm);
 }
 
 .delete-confirm-text {

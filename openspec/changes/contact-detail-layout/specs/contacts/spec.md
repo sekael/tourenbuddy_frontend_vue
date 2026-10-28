@@ -59,8 +59,8 @@ The detail view of a contact linked to an accepted friend, and not blocked, SHAL
 ### Requirement: Contact detail opens with a hero
 
 In view mode the contact detail SHALL open with a hero: the full name as a subtitle only when a
-display name is set that differs from it, the relationship status as an icon with a visible
-label, and the contact's initial beside them (omitted when there is neither). View mode SHALL NOT
+display name is set that differs from it, and the relationship status as an icon with a visible
+label. The hero SHALL show no avatar (the contact list keeps its initials). View mode SHALL NOT
 show a "Name" heading or First / Last / Display name rows; edit mode keeps its name fields.
 
 #### Scenario: Name shown once
@@ -77,7 +77,7 @@ show a "Name" heading or First / Last / Display name rows; edit mode keeps its n
 
 #### Scenario: No status for a plain contact
 - **WHEN** the contact is neither a friend nor blocked, and has no differing display name
-- **THEN** the hero shows no status line and no initial; the quick actions follow the header
+- **THEN** the hero shows no status line; the quick actions follow the header
 
 ### Requirement: Contact detail quick actions
 

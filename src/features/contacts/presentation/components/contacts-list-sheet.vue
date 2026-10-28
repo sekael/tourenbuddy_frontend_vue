@@ -26,6 +26,7 @@ import ConnectPrompt from '@/features/friendships/presentation/components/connec
 import { useDismissedConnectPrompts } from '@/features/friendships/presentation/composables/use-dismissed-connect-prompts'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { useUserBlocksStore } from '@/features/friendships/presentation/stores/user-blocks-store'
+import ContactDetailActions from './contact-detail-actions.vue'
 import ContactDetailView from './contact-detail-view.vue'
 import ContactForm from './contact-form.vue'
 import ContactImportHelp from './contact-import-help.vue'
@@ -500,12 +501,14 @@ function onFormPhoneInput(phone: string) {
         {{ detailRef?.isSaving ? t('contacts.detailView.savingBtn') : t('contacts.detailView.saveBtn') }}
       </BaseButton>
     </template>
-    <!-- Detail view: Edit sits in the overlay header next to back/close, so the
-         detail view renders no header row of its own. -->
-    <template v-if="viewState === 'detail' && !contactPage && detailEditMode === 'view'" #header-actions>
-      <BaseButton variant="primary-outline" size="sm" data-testid="edit-contact-btn" @click="detailRef?.enterEditMode()">
-        {{ t('contacts.detailView.editBtn') }}
-      </BaseButton>
+    <!-- Detail view: Delete · Block · Edit in the footer, as in the tour detail. -->
+    <template v-if="viewState === 'detail' && liveContact && detailEditMode === 'view'" #footer>
+      <ContactDetailActions
+        :contact="liveContact"
+        :linked-friend-user-id="detailLinkedFriendUserId"
+        @edit="detailRef?.enterEditMode()"
+        @deleted="handleContactDeleted"
+      />
     </template>
 
     <!-- List view. Views push/pop: forward slides in from the right, back from the left. -->
@@ -587,9 +590,6 @@ function onFormPhoneInput(phone: string) {
           :contact="liveContact"
           :linked-friend-user-id="detailLinkedFriendUserId"
           :embedded="detailEditPage && !isDesktop"
-          headerless
-          @back="backToList"
-          @deleted="handleContactDeleted"
           @edit-contact="(c) => { openDetail(c); detailEditMode = 'edit' }"
           @show-tours="(userId) => emit('showFriendTours', userId)"
         />

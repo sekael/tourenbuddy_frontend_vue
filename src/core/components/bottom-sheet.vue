@@ -96,6 +96,7 @@ const sheetRef = ref<HTMLElement | null>(null)
 const headerRef = ref<HTMLElement | null>(null)
 const handleRef = ref<HTMLElement | null>(null)
 const contentRef = ref<HTMLElement | null>(null)
+const footerRef = ref<HTMLElement | null>(null)
 const bodyRef = ref<HTMLElement | null>(null)
 
 function updatePeekHeight() {
@@ -348,8 +349,9 @@ let observer: ResizeObserver | undefined
 onMounted(() => {
   updatePeekHeight()
 
-  // Header/handle → peek height; body → content changed (views, tabs, data
-  // loading); sheet → its on-screen height for `--sheet-inset`.
+  // Header/handle → peek height; body, footer → content changed (views, tabs, data
+  // loading, a confirmation opening in the footer); sheet → its on-screen height
+  // for `--sheet-inset`.
   observer = new ResizeObserver((entries) => {
     if (entries.some(entry => entry.target !== sheetRef.value)) {
       updatePeekHeight()
@@ -359,7 +361,7 @@ onMounted(() => {
     if (sheetRef.value && props.collapsed)
       publishInset(sheetRef.value.offsetHeight)
   })
-  for (const el of [headerRef.value, handleRef.value, bodyRef.value, sheetRef.value]) {
+  for (const el of [headerRef.value, handleRef.value, bodyRef.value, footerRef.value, sheetRef.value]) {
     if (el)
       observer.observe(el)
   }
@@ -367,6 +369,14 @@ onMounted(() => {
   if (!props.collapsed)
     refit()
   requestAnimationFrame(() => requestAnimationFrame(() => (glide.value = true)))
+})
+
+// The footer comes and goes with its slot.
+watch(footerRef, (el, old) => {
+  if (old)
+    observer?.unobserve(old)
+  if (el)
+    observer?.observe(el)
 })
 
 onUnmounted(() => {
@@ -455,7 +465,7 @@ const sheetStyle = computed(() => {
       </div>
     </div>
 
-    <div v-if="$slots.footer" v-show="!props.collapsed" class="footer">
+    <div v-if="$slots.footer" v-show="!props.collapsed" ref="footerRef" class="footer">
       <slot name="footer" />
     </div>
   </div>
