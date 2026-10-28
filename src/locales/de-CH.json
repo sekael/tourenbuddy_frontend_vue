@@ -594,12 +594,12 @@
       "seasonLabel": "Saison",
       "plannedDateLabel": "Geplantes Datum",
       "statusLabel": "Status",
-      "matchCount": "{count} Touren | {count} Tour | {count} Touren",
       "panelAriaLabel": "Tourenfilter",
       "ownerLabel": "Erfasst von",
       "gradeLabel": "Schwierigkeit",
-      "gradeHint": "Ein Tipp: nur diese Schwierigkeit. Eine zweite antippen für einen Bereich – T1, dann T3 heisst bis T3.",
-      "gradeScale": "Schwierigkeit für {activities}"
+      "gradeScale": "Schwierigkeit für {activities}",
+      "resetBtn": "Zurücksetzen",
+      "showResultsBtn": "{count} Touren anzeigen | {count} Tour anzeigen | {count} Touren anzeigen"
     },
     "type": {
       "skiing": "Skifahren",

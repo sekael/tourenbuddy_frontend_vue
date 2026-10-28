@@ -690,7 +690,7 @@ defineExpose({
           data-testid="show-friend-tours"
           @click="emit('showTours', linkedFriendUserId)"
         >
-          <BaseIcon name="location_on" />
+          <BaseIcon name="route" />
           {{ t('contacts.detailView.showToursBtn') }}
         </BaseButton>
       </template>

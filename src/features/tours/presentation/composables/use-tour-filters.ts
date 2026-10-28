@@ -1,5 +1,4 @@
 import type { Ref } from 'vue'
-import type { GradeRange } from '@/features/tours/data/models/grade'
 import type { Season } from '@/features/tours/data/models/season'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Tour } from '@/features/tours/domain/entities/tour'
@@ -8,7 +7,7 @@ import { resolveContactName } from '@/features/contacts/domain/entities/contact'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { resolveFriendName } from '@/features/friendships/domain/resolve-friend-name'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
-import { gradeInRanges } from '@/features/tours/data/models/grade'
+import { gradeSelected } from '@/features/tours/data/models/grade'
 import { outingKey, outingSegments } from '@/features/tours/domain/outing'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 
@@ -17,13 +16,13 @@ export type CompletionFilter = 'all' | 'done' | 'open'
 export type TourTab = 'owned' | 'friends'
 
 export interface TourFilters {
-  /** Partners: contact ids on `owned`, user ids on `friends` (friend tours expose no contact ids). */
+  /** My Tours only: partner contact ids. Friends filter by who recorded the tour instead. */
   partnerIds: Set<string>
   /** Friends tab only: the friends who recorded the tour (#362). */
   ownerIds: Set<string>
   tourTypes: Set<TourType>
-  /** At most one range per closed scale (#351). */
-  gradeRanges: GradeRange[]
+  /** Closed-scale grades, additive: a tour on any of them passes (#351). */
+  grades: Set<string>
   seasons: Set<Season>
   dateRange: { from: Date | null, to: Date | null }
   completion: CompletionFilter
@@ -36,7 +35,7 @@ function createFilterState() {
       partnerIds: new Set<string>(),
       ownerIds: new Set<string>(),
       tourTypes: new Set<TourType>(),
-      gradeRanges: [] as GradeRange[],
+      grades: new Set<string>(),
       seasons: new Set<Season>(),
       dateRange: { from: null as Date | null, to: null as Date | null },
       completion: 'all' as CompletionFilter,
@@ -82,7 +81,7 @@ function clearFilterState({ filters }: ReturnType<typeof createFilterState>) {
   filters.partnerIds = new Set()
   filters.ownerIds = new Set()
   filters.tourTypes = new Set()
-  filters.gradeRanges = []
+  filters.grades = new Set()
   filters.seasons = new Set()
   filters.dateRange.from = null
   filters.dateRange.to = null
@@ -188,12 +187,8 @@ export function useTourFilters(tab: TourTab = 'owned') {
   }
 
   function matchesFilters(tour: Tour): boolean {
-    if (filters.partnerIds.size > 0) {
-      // Friend tours name partners by user, and only to a partner viewer — a withheld roster is [].
-      const partners = tab === 'friends' ? (tour.partnerNames ?? []).map(p => p.userId) : tour.partnerIds
-      if (!partners.some(id => filters.partnerIds.has(id)))
-        return false
-    }
+    if (filters.partnerIds.size > 0 && !tour.partnerIds.some(id => filters.partnerIds.has(id)))
+      return false
 
     if (filters.ownerIds.size > 0 && !filters.ownerIds.has(tour.userId))
       return false
@@ -204,7 +199,7 @@ export function useTourFilters(tab: TourTab = 'owned') {
         return false
     }
 
-    if (filters.gradeRanges.length > 0 && !gradeInRanges(tour.grade, filters.gradeRanges))
+    if (filters.grades.size > 0 && !gradeSelected(tour.grade, filters.grades))
       return false
 
     if (filters.seasons.size > 0) {
@@ -245,7 +240,7 @@ export function useTourFilters(tab: TourTab = 'owned') {
       count++
     if (filters.tourTypes.size > 0)
       count++
-    if (filters.gradeRanges.length > 0)
+    if (filters.grades.size > 0)
       count++
     if (filters.seasons.size > 0)
       count++

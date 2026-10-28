@@ -31,7 +31,9 @@ const props = defineProps<{
   /**
    * With `fitContent`: never shrink to shorter content while set (growing, drags
    * and snaps still apply); refits once released. Keeps search results from
-   * sinking behind the on-screen keyboard as a query narrows the list.
+   * sinking behind the on-screen keyboard as a query narrows the list. Drags and
+   * snap keys reach every snap's full height meanwhile, however short the content
+   * got — a held sheet never refuses a drag.
    */
   holdHeight?: boolean
 }>()
@@ -106,6 +108,17 @@ function updatePeekHeight() {
 function applySnap(snap: Snap) {
   lastSnap.value = snap
   currentHeight.value = snapHeightPx(snap)
+}
+
+/** Where a drag or snap key may take the sheet: uncapped by content while held. */
+function userSnapPx(snap: Snap): number {
+  return props.holdHeight ? snapHeightPx(snap, Infinity) : snapHeightPx(snap)
+}
+
+/** A snap the user asked for (drag, snap key). */
+function moveTo(snap: Snap) {
+  lastSnap.value = snap
+  currentHeight.value = userSnapPx(snap)
 }
 
 // ── Natural height ───────────────────────────────────────────────────────────
@@ -202,7 +215,7 @@ function onDragMove(e: PointerEvent) {
   if (!isDragging.value)
     return
   e.preventDefault()
-  const ceiling = snapHeightPx('expanded')
+  const ceiling = userSnapPx('expanded')
   const wanted = startHeight - (e.clientY - startY)
   currentHeight.value = Math.round(wanted > ceiling
     ? ceiling + resist(wanted - ceiling)
@@ -218,8 +231,8 @@ function onDragEnd(e: PointerEvent) {
   activeDragPointerId = null
 
   if (Math.abs(e.clientY - startY) < 4) {
-    // tap — restore snap without change
-    applySnap(lastSnap.value)
+    // tap — restore the height without change
+    currentHeight.value = startHeight
     return
   }
 
@@ -227,7 +240,7 @@ function onDragEnd(e: PointerEvent) {
   const dt = lastMove.t - prevMove.t
   const velocity = dt > 0 && e.timeStamp - lastMove.t < 100 ? (lastMove.y - prevMove.y) / dt : 0
   const direction = lastMove.y < startY ? 'up' : 'down'
-  applySnap(Math.abs(velocity) > FLICK_VELOCITY
+  moveTo(Math.abs(velocity) > FLICK_VELOCITY
     ? nextSnap(currentHeight.value, velocity < 0 ? 'up' : 'down')
     : nearestSnap(currentHeight.value, direction))
 }
@@ -253,7 +266,7 @@ function nearestSnap(heightPx: number, bias: 'up' | 'down'): Snap {
   let bestDist = Infinity
 
   for (const snap of snaps.value) {
-    const dist = Math.abs(snapHeightPx(snap) - heightPx)
+    const dist = Math.abs(userSnapPx(snap) - heightPx)
     if (dist < bestDist) {
       bestDist = dist
       best = snap
@@ -275,8 +288,8 @@ function nearestSnap(heightPx: number, bias: 'up' | 'down'): Snap {
 function nextSnap(heightPx: number, direction: 'up' | 'down'): Snap {
   const ordered = direction === 'up' ? snaps.value : [...snaps.value].reverse()
   return ordered.find(snap => direction === 'up'
-    ? snapHeightPx(snap) > heightPx
-    : snapHeightPx(snap) < heightPx) ?? ordered.at(-1)!
+    ? userSnapPx(snap) > heightPx
+    : userSnapPx(snap) < heightPx) ?? ordered.at(-1)!
 }
 
 // ── Keyboard a11y ────────────────────────────────────────────────────────────
@@ -294,7 +307,7 @@ function onHandleKeydown(e: KeyboardEvent) {
   if (!target)
     return
   e.preventDefault()
-  applySnap(target)
+  moveTo(target)
 }
 
 // ── Collapse prop ────────────────────────────────────────────────────────────

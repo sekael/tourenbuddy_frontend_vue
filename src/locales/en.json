@@ -594,12 +594,12 @@
       "seasonLabel": "Season",
       "plannedDateLabel": "Planned date",
       "statusLabel": "Status",
-      "matchCount": "{count} tour | {count} tour | {count} tours",
       "panelAriaLabel": "Tour filters",
       "ownerLabel": "Recorded by",
       "gradeLabel": "Grade",
-      "gradeHint": "One tap: that grade only. Tap a second for a range — T1 then T3 is up to T3.",
-      "gradeScale": "Grades for {activities}"
+      "gradeScale": "Grades for {activities}",
+      "resetBtn": "Reset",
+      "showResultsBtn": "Show {count} tours | Show {count} tour | Show {count} tours"
     },
     "type": {
       "skiing": "Skiing",

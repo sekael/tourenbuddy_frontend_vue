@@ -18,7 +18,7 @@ function filters(over: Partial<TourFilters> = {}): TourFilters {
     partnerIds: new Set(),
     ownerIds: new Set(),
     tourTypes: new Set(),
-    gradeRanges: [],
+    grades: new Set(),
     seasons: new Set(),
     dateRange: { from: null, to: null },
     completion: 'all',
@@ -28,14 +28,13 @@ function filters(over: Partial<TourFilters> = {}): TourFilters {
 
 function mountPanel(opts: { tab: 'owned' | 'friends', tours?: unknown[], friendTours?: unknown[], filters?: TourFilters, contactsLoaded?: boolean }) {
   return mount(TourFiltersPanel, {
-    props: { filters: opts.filters ?? filters(), tab: opts.tab, tours: (opts.tours ?? []) as any, matchCount: 0, canClear: false },
+    props: { filters: opts.filters ?? filters(), tab: opts.tab, tours: (opts.tours ?? []) as any },
     global: {
       plugins: [createTestingPinia({
         createSpy: vi.fn,
         initialState: {
           tours: { tours: [], friendTours: opts.friendTours ?? [] },
           contacts: { contacts: [{ id: 'c-1', firstName: 'Ana', lastName: null, displayName: null, contactMethods: [] }], hasLoaded: opts.contactsLoaded ?? true },
-          auth: { currentUser: { id: 'u-me' } },
         },
       })],
     },
@@ -53,17 +52,18 @@ describe('tourFiltersPanel', () => {
       tour({ id: 'f-2', userId: 'u-amy', isFriendTour: true, partnerNames: [] }),
     ]
 
-    it('should hold the people chips until names settle, so labels never swap', async () => {
+    it('should hold the recorded-by chips until names settle, keeping the group in place', async () => {
       const wrapper = mountPanel({ tab: 'friends', friendTours, contactsLoaded: false })
       await flushPromises()
-      expect(wrapper.find('[data-testid="owner-filter"]').exists()).toBe(false)
-      expect(wrapper.find('[data-testid="partner-filter"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="owner-filter"]').exists()).toBe(true)
+      expect(chipTexts(wrapper, 'owner-filter')).toEqual([])
     })
 
-    it('should offer the viewer as "Me" first, then partners by profile name when no contact resolves', async () => {
+    it('should offer no partner filter on Friends, only recorded-by', async () => {
       const wrapper = mountPanel({ tab: 'friends', friendTours })
       await flushPromises()
-      expect(chipTexts(wrapper, 'partner-filter')).toEqual(['tours.infoSheet.partnerSelf', 'Bea K'])
+      expect(wrapper.find('[data-testid="partner-filter"]').exists()).toBe(false)
+      expect(chipTexts(wrapper, 'owner-filter')).toHaveLength(2)
     })
 
     it('should keep a selected friend with no tours offered and lit, so it can be cleared', async () => {
@@ -89,21 +89,25 @@ describe('tourFiltersPanel', () => {
       expect(wrapper.find('[data-testid="grade-filter"]').exists()).toBe(false)
     })
 
-    it('should offer only scales in use, plus a scale still holding a range', () => {
+    it('should offer only scales in use, plus a scale still holding a selected grade', () => {
       const wrapper = mountPanel({
         tab: 'owned',
         tours: [tour({ grade: 'T3' })],
-        filters: filters({ gradeRanges: [{ from: 'S1', to: 'S2' }] }),
+        filters: filters({ grades: new Set(['S1', 'S3']) }),
       })
       const rows = wrapper.find('[data-testid="grade-filter"]').findAll('[role="group"]')
       expect(rows.map(r => r.findAll('button')[0]!.text())).toEqual(['T1', 'S0'])
-      expect(rows[1]!.findAll('button[aria-pressed="true"]').map(b => b.text())).toEqual(['S1', 'S2'])
+      expect(rows[1]!.findAll('button[aria-pressed="true"]').map(b => b.text())).toEqual(['S1', 'S3'])
     })
 
-    it('should widen a lone pick to the second tap', async () => {
-      const wrapper = mountPanel({ tab: 'owned', tours: [tour({ grade: 'T3' })], filters: filters({ gradeRanges: [{ from: 'T4', to: 'T4' }] }) })
-      await wrapper.findAll('[data-testid="grade-filter"] button').find(b => b.text() === 'T2')!.trigger('click')
-      expect(wrapper.emitted('update:gradeRanges')![0]![0]).toEqual([{ from: 'T2', to: 'T4' }])
+    it('should add a tapped grade to the others and remove a lit one (no range)', async () => {
+      const wrapper = mountPanel({ tab: 'owned', tours: [tour({ grade: 'T3' })], filters: filters({ grades: new Set(['T4']) }) })
+      const chip = (g: string) => wrapper.findAll('[data-testid="grade-filter"] button').find(b => b.text() === g)!
+      await chip('T2').trigger('click')
+      await chip('T4').trigger('click')
+      const [added, removed] = wrapper.emitted('update:grades')!.map(e => [...(e[0] as Set<string>)])
+      expect(added).toEqual(['T4', 'T2'])
+      expect(removed).toEqual([])
     })
   })
 })

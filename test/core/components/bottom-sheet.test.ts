@@ -349,6 +349,21 @@ describe('bottomSheet', () => {
       expect(sheetHeight(wrapper)).toBeLessThan(200)
     })
 
+    it('should let a held sheet be dragged to full snap heights however short its content', async () => {
+      const wrapper = mount(BottomSheet, { props: { title: 'Test', fitContent: true, resizable: true, holdHeight: true } })
+      Object.defineProperty(wrapper.find('.content-body').element, 'offsetHeight', { value: 150, configurable: true })
+      notify()
+      await flushPromises()
+      const handle = wrapper.find('.drag-handle').element
+      firePointer(handle, 'pointerdown', 800)
+      firePointer(handle, 'pointermove', 300)
+      firePointer(handle, 'pointerup', 300)
+      await nextTick()
+      expect(sheetHeight(wrapper)).toBe(700)
+      await wrapper.find('.drag-handle').trigger('keydown', { key: 'ArrowDown' })
+      expect(sheetHeight(wrapper)).toBe(400)
+    })
+
     it('should open a long resizable sheet at 40% and cap its full height at 70%', async () => {
       const wrapper = mount(BottomSheet, { props: { title: 'Test', fitContent: true, resizable: true } })
       Object.defineProperty(wrapper.find('.content-body').element, 'offsetHeight', { value: 1200, configurable: true })

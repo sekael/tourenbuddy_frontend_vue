@@ -444,30 +444,13 @@ describe('useTourFilters', () => {
     })
   })
 
-  // #362: friend tours expose partners by user (and only to partner viewers), never contact ids.
-  describe('friends-tab people filters', () => {
+  describe('friends-tab recorded-by filter', () => {
     function setupFriends(friendTours: Tour[]) {
       useToursStore().friendTours = friendTours as any
       const friends = useTourFilters('friends')
       friends.clearAll()
       return friends
     }
-    const partner = (userId: string) => ({ userId, firstName: 'P', lastName: null })
-
-    it('should match a partner chip by user id, not by contact id', () => {
-      const { filteredTours, filters } = setupFriends([
-        makeTour({ id: 'f-1', isFriendTour: true, isPartner: true, partnerNames: [partner('u-me'), partner('u-ana')] }),
-        makeTour({ id: 'f-2', isFriendTour: true, isPartner: true, partnerNames: [partner('u-me')] }),
-      ])
-      filters.partnerIds = new Set(['u-ana'])
-      expect(filteredTours.value.map(t => t.id)).toEqual(['f-1'])
-    })
-
-    it('should never match a tour whose roster is withheld from a non-partner', () => {
-      const { filteredTours, filters } = setupFriends([makeTour({ id: 'f-1', isFriendTour: true, isPartner: false, partnerNames: [] })])
-      filters.partnerIds = new Set(['u-ana'])
-      expect(filteredTours.value).toHaveLength(0)
-    })
 
     it('should keep only the selected friends\' tours and count as one filter', () => {
       const { filteredTours, filters, activeFilterCount } = setupFriends([
@@ -481,7 +464,7 @@ describe('useTourFilters', () => {
   })
 
   describe('grade filter', () => {
-    it('should drop ungraded and free-text tours once a range is set, and count ranges once', () => {
+    it('should drop ungraded and free-text tours once a grade is picked, and count grades once', () => {
       const tours = [
         makeTour({ id: '1', grade: 'T3' }),
         makeTour({ id: '2', grade: null }),
@@ -489,14 +472,14 @@ describe('useTourFilters', () => {
         makeTour({ id: '4', grade: 'S1' }),
       ]
       const { filteredTours, filters, activeFilterCount } = setup(tours)
-      filters.gradeRanges = [{ from: 'T1', to: 'T3' }, { from: 'S0', to: 'S0' }]
+      filters.grades = new Set(['T1', 'T3', 'S0'])
       expect(filteredTours.value.map(t => t.id)).toEqual(['1'])
       expect(activeFilterCount.value).toBe(1)
     })
 
     it('should be cleared by clearFilters', () => {
       const { filters, clearFilters, activeFilterCount } = setup([])
-      filters.gradeRanges = [{ from: 'T1', to: 'T3' }]
+      filters.grades = new Set(['T3'])
       filters.ownerIds = new Set(['u-1'])
       clearFilters()
       expect(activeFilterCount.value).toBe(0)
@@ -518,13 +501,13 @@ describe('useTourFilters', () => {
       ]
       const { filters } = setup(tours)
       useActiveTourTab().value = 'owned'
-      filters.gradeRanges = [{ from: 'T1', to: 'T3' }]
+      filters.grades = new Set(['T2'])
       expect([...useListedTourIds().value!].sort()).toEqual(['s-1', 's-2'])
     })
 
     it('should follow the active tab, not the one that holds filters', () => {
       const { filters } = setup([makeTour({ id: '1', grade: 'T5' })])
-      filters.gradeRanges = [{ from: 'T1', to: 'T3' }]
+      filters.grades = new Set(['T3'])
       const tab = useActiveTourTab()
       tab.value = 'friends'
       expect(useListedTourIds().value).toBeNull()

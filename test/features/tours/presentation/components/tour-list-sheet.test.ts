@@ -138,15 +138,16 @@ describe('tourListSheet', () => {
       isDesktop.value = true
     })
 
-    // #362: the open panel clamps the list region to its own height; the sheet must not follow.
-    it('should hold the sheet height while the filter panel is open, and release it on collapse', async () => {
+    // Open, the filters size the sheet on their own (opening at 70%, draggable to 90%); closed
+    // with nothing selected, the sheet fits the rows again.
+    it('should size the sheet for the filters while open, and release it on collapse', async () => {
       isDesktop.value = false
       const wrapper = mountSheet()
       const sheet = () => wrapper.findComponent(BottomSheet)
       await wrapper.find('.filters-trigger').trigger('click')
-      expect(sheet().props('holdHeight')).toBe(true)
+      expect(sheet().props()).toMatchObject({ holdHeight: true, resizable: false })
       await wrapper.find('.filters-trigger').trigger('click')
-      expect(sheet().props('holdHeight')).toBe(false)
+      expect(sheet().props()).toMatchObject({ holdHeight: false, resizable: true })
       isDesktop.value = true
     })
   })
@@ -215,168 +216,69 @@ describe('tourListSheet', () => {
     })
   })
 
-  describe('clear-filters button', () => {
+  describe('filters view', () => {
     // Filter state is module-level in the composable, so it survives unmount —
     // reset it or the assertions below leak into neighbouring tests.
-    async function withFilter(fn: (w: ReturnType<typeof mountSheet>) => Promise<void>) {
-      const wrapper = mountSheet()
-      await wrapper.find('.filters-trigger').trigger('click')
-      wrapper.findComponent({ name: 'TourFiltersPanel' }).vm.$emit('update:completion', 'done')
-      await wrapper.vm.$nextTick()
-      try {
-        await fn(wrapper)
-      }
-      finally {
-        wrapper.unmount()
-      }
-    }
+    afterEach(() => resetTourFilters())
 
-    it('should stay hidden while no facet is active', () => {
-      const wrapper = mountSheet()
-      expect(wrapper.find('[data-testid="clear-filters"]').exists()).toBe(false)
-    })
-
-    it('should reset the facets but leave the search query', async () => {
-      await withFilter(async (wrapper) => {
-        await wrapper.find('.search-input').setValue('Alpine')
-        await wrapper.find('[data-testid="clear-filters"]').trigger('click')
-        await wrapper.vm.$nextTick()
-
-        expect(wrapper.find('[data-testid="clear-filters"]').exists()).toBe(false)
-        expect((wrapper.find('.search-input').element as HTMLInputElement).value).toBe('Alpine')
-        // Search survived, so only the matching tour is listed.
-        expect(wrapper.findAll('.tour-row')).toHaveLength(1)
-      })
-    })
-
-    it('should keep the summary row with its count while no facet is active', async () => {
-      const wrapper = mountSheet()
-      await wrapper.find('.filters-trigger').trigger('click')
-
-      expect(wrapper.find('.filters-summary').exists()).toBe(true)
-      expect(wrapper.find('[data-testid="clear-filters"]').exists()).toBe(false)
-      wrapper.unmount()
-    })
-  })
-
-  describe('filters overlay dismissal', () => {
-    async function openFilters() {
-      const wrapper = mountSheet()
+    async function openFilters(options: Parameters<typeof mountSheet>[0] = {}) {
+      const wrapper = mountSheet(options)
       await wrapper.find('.filters-trigger').trigger('click')
       return wrapper
     }
+    const resetBtn = (w: ReturnType<typeof mountSheet>) => w.find('[data-testid="clear-filters"]')
+
+    it('should take the rows\' place, so a thinning list can never squeeze the filters', async () => {
+      const wrapper = await openFilters()
+      wrapper.findComponent({ name: 'TourFiltersPanel' }).vm.$emit('update:completion', 'done')
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('.tours-scroll').attributes('style')).toContain('display: none')
+      expect(wrapper.findComponent({ name: 'TourFiltersPanel' }).exists()).toBe(true)
+      wrapper.unmount()
+    })
+
+    it('should keep reset in place but disabled while no facet is active', async () => {
+      const wrapper = await openFilters()
+      expect(resetBtn(wrapper).attributes('disabled')).toBeDefined()
+      wrapper.unmount()
+    })
+
+    it('should reset the facets but leave the search query', async () => {
+      const wrapper = await openFilters()
+      wrapper.findComponent({ name: 'TourFiltersPanel' }).vm.$emit('update:completion', 'done')
+      await wrapper.find('.search-input').setValue('Alpine')
+      await resetBtn(wrapper).trigger('click')
+      await wrapper.find('[data-testid="show-results"]').trigger('click')
+
+      expect((wrapper.find('.search-input').element as HTMLInputElement).value).toBe('Alpine')
+      // Search survived, so only the matching tour is listed.
+      expect(wrapper.findAll('.tour-row')).toHaveLength(1)
+      wrapper.unmount()
+    })
 
     it('should collapse when Escape is pressed from the search input', async () => {
       const wrapper = await openFilters()
-
       await wrapper.find('.search-input').trigger('keydown.escape')
-
-      expect(wrapper.find('.filters-overlay').exists()).toBe(false)
+      expect(wrapper.findComponent({ name: 'TourFiltersPanel' }).exists()).toBe(false)
       wrapper.unmount()
     })
 
-    it('should stay open when pointer goes down on the search input', async () => {
+    it('should stay open through a pointer outside — dragging the sheet must not close it', async () => {
       const wrapper = await openFilters()
-
-      wrapper.find('.search-input').element.dispatchEvent(
-        new PointerEvent('pointerdown', { bubbles: true }),
-      )
+      document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
       await wrapper.vm.$nextTick()
-
-      expect(wrapper.find('.filters-overlay').exists()).toBe(true)
-      wrapper.unmount()
-    })
-
-    it('should stay open when pointer goes down inside the panel', async () => {
-      const wrapper = await openFilters()
-
-      wrapper.find('.filters-overlay').element.dispatchEvent(
-        new PointerEvent('pointerdown', { bubbles: true }),
-      )
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.find('.filters-overlay').exists()).toBe(true)
-      wrapper.unmount()
-    })
-
-    it('should collapse when pointer goes down outside the sheet', async () => {
-      const wrapper = await openFilters()
-
-      const outside = document.createElement('div')
-      document.body.appendChild(outside)
-      outside.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.find('.filters-overlay').exists()).toBe(false)
-      outside.remove()
-      wrapper.unmount()
-    })
-
-    it('should collapse without reopening when the trigger is activated again', async () => {
-      const wrapper = await openFilters()
-
-      // pointerdown lands on the trigger (inside the header, so not "outside"),
-      // then the click toggles — the panel must not close-then-reopen.
-      wrapper.find('.filters-trigger').element.dispatchEvent(
-        new PointerEvent('pointerdown', { bubbles: true }),
-      )
-      await wrapper.find('.filters-trigger').trigger('click')
-
-      expect(wrapper.find('.filters-overlay').exists()).toBe(false)
+      expect(wrapper.findComponent({ name: 'TourFiltersPanel' }).exists()).toBe(true)
       wrapper.unmount()
     })
 
     it('should return focus to the trigger when dismissed', async () => {
-      const wrapper = mountSheet({ attachTo: document.body })
-      await wrapper.find('.filters-trigger').trigger('click')
-
-      await wrapper.find('.search-input').trigger('keydown.escape')
+      const wrapper = await openFilters({ attachTo: document.body })
+      await wrapper.find('[data-testid="show-results"]').trigger('click')
+      await wrapper.vm.$nextTick()
       await wrapper.vm.$nextTick()
 
       expect(document.activeElement).toBe(wrapper.find('.filters-trigger').element)
-      wrapper.unmount()
-    })
-
-    it('should remove the document listener on unmount', async () => {
-      const removeSpy = vi.spyOn(document, 'removeEventListener')
-      const wrapper = await openFilters()
-
-      wrapper.unmount()
-
-      expect(removeSpy).toHaveBeenCalledWith('pointerdown', expect.any(Function))
-      removeSpy.mockRestore()
-    })
-  })
-
-  describe('summary count', () => {
-    it('should report a count matching the rows rendered on collapse', async () => {
-      const wrapper = mountSheet()
-      await wrapper.find('.search-input').setValue('Alpine')
-      await wrapper.find('.filters-trigger').trigger('click')
-      await wrapper.vm.$nextTick()
-
-      // Count reflects search as well as filters — it is a promise about the list.
-      // Asserted on the prop, not rendered text: i18n returns raw keys under test.
-      expect(wrapper.findComponent({ name: 'TourFiltersPanel' }).props('matchCount')).toBe(1)
-
-      await wrapper.find('.filters-trigger').trigger('click')
-      expect(wrapper.findAll('.tour-row')).toHaveLength(1)
-
-      await wrapper.find('.search-input').setValue('')
-      wrapper.unmount()
-    })
-
-    // An outing folds its segments into one row (#338), so the promise counts rows, not tours.
-    it('should count an outing as its one row', async () => {
-      const outing = (position: number) => ({ id: 'o-1', name: 'Haute Route', position })
-      const tours = [
-        { ...mockTours[0]!, id: 's-1', outing: outing(0) },
-        { ...mockTours[0]!, id: 's-2', outing: outing(1) },
-        mockTours[1]!,
-      ]
-      const wrapper = mountSheet({ tours })
-      await wrapper.find('.filters-trigger').trigger('click')
-      expect(wrapper.findComponent({ name: 'TourFiltersPanel' }).props('matchCount')).toBe(2)
       wrapper.unmount()
     })
   })
@@ -427,12 +329,12 @@ describe('tourListSheet', () => {
       await wrapper.vm.$nextTick()
       await wrapper.find('[data-testid="clear-filters"]').trigger('click')
       await wrapper.vm.$nextTick()
-      expect(wrapper.find('[data-testid="clear-filters"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="clear-filters"]').attributes('disabled')).toBeDefined()
 
       // Owned kept its own facet through the friends-tab clear.
       await wrapper.findAll('.tab')[0].trigger('click')
       await wrapper.vm.$nextTick()
-      expect(wrapper.find('[data-testid="clear-filters"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="clear-filters"]').attributes('disabled')).toBeUndefined()
 
       // Filter state is module-level — reset or it leaks into neighbouring tests.
       await wrapper.find('[data-testid="clear-filters"]').trigger('click')

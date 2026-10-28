@@ -1,12 +1,10 @@
 <script setup lang="ts">
-import type { GradeRange } from '@/features/tours/data/models/grade'
 import type { Season } from '@/features/tours/data/models/season'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Tour } from '@/features/tours/domain/entities/tour'
 import type { CompletionFilter } from '@/features/tours/presentation/composables/use-tour-filters'
-import { useElementSize } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
-import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import BaseButton from '@/core/components/base-button.vue'
@@ -94,9 +92,9 @@ function clearAll() {
   active.value.clearAll()
 }
 // Two resets, deliberately different: the empty state clears search too (nothing
-// matched — the query is the likely culprit), the panel's button leaves it alone
-// because the search box stays visible above the open panel, so a filled query is
-// never hidden context.
+// matched — the query is the likely culprit), the filters' footer button leaves it
+// alone because the search box stays visible above the open filters, so a filled
+// query is never hidden context.
 function clearFilters() {
   active.value.clearFilters()
 }
@@ -129,27 +127,16 @@ watch(activeTab, (tab) => {
 // owners still fires one lookup each on first paint. If that ever measurably stalls, batch
 // it here with `friendshipsStore.ensurePhones(ownerIds)`; don't revive a name prefetch.
 
-// ── Filters overlay ──────────────────────────────────────────────────────────
-// Deliberately a local ref, not module-level like the tab and the filter values:
-// returning from a tour detail view remounts this sheet, and re-opening an opaque
-// overlay over the list the user just navigated back to would hide the rows they
-// came for. The selection survives regardless — it lives in the composable.
+// ── Filters view ─────────────────────────────────────────────────────────────
+// Open, the filters take the rows' place in the sheet's normal flow: one scroller, sized by the
+// filter groups alone, so tapping a chip that thins the list never resizes the panel or moves a
+// chip. The footer keeps reset and "show N tours" in the thumb zone at every scroll position.
+// Deliberately a local ref, not module-level like the tab and the filter values: returning
+// from a tour detail view remounts this sheet and must show the rows the user came back for.
 const FILTERS_PANEL_ID = 'tour-filters-panel'
 const filtersExpanded = ref(false)
-const filtersOverlayEl = ref<HTMLElement | null>(null)
-const listHeaderEl = ref<HTMLElement | null>(null)
+const filtersRegionEl = ref<HTMLElement | null>(null)
 const filtersTriggerRef = ref<InstanceType<typeof BaseButton> | null>(null)
-
-// On mobile the sheet's `.content` is the one scroller, and the open panel only covers the rows:
-// `.list-region` stays as tall as every row, so scrolling ran on past the last filter group through
-// blank panel (#362). While open, the region is clamped to the panel's content — a no-op when the
-// rows are shorter, where the panel scrolls inside as before — and the sheet holds its height.
-// Not on desktop: the drawer's region is already viewport-bound, a clamp would bare rows below.
-const filtersPanelEl = ref<InstanceType<typeof TourFiltersPanel> | null>(null)
-const { height: filtersPanelHeight } = useElementSize(() => filtersPanelEl.value?.$el as HTMLElement | undefined)
-const listRegionStyle = computed(() => !isDesktop.value && filtersExpanded.value && filtersPanelHeight.value > 0
-  ? { maxHeight: `${filtersPanelHeight.value}px` }
-  : undefined)
 
 function toggleFilters() {
   filtersExpanded.value = !filtersExpanded.value
@@ -167,35 +154,13 @@ function onListEscape(e: KeyboardEvent) {
   closeFilters()
 }
 
-// The header (tabs, search, trigger) counts as part of the panel's surface, not as
-// "outside": the overlay covers the whole list region, so the header is all that is
-// left to tap, and a literal outside-rule would make the search box undismissable —
-// tapping it to type would close the panel. Excluding the header also covers the
-// trigger, whose own click must not close-then-reopen in one gesture.
-function onDocumentPointerDown(event: PointerEvent) {
-  const target = event.target as Node | null
-  if (!target)
-    return
-  if (filtersOverlayEl.value?.contains(target) || listHeaderEl.value?.contains(target))
-    return
-  closeFilters()
-}
-
 watch(filtersExpanded, async (expanded) => {
-  if (expanded) {
-    document.addEventListener('pointerdown', onDocumentPointerDown)
-    await nextTick()
-    filtersOverlayEl.value?.focus()
-    return
-  }
-  document.removeEventListener('pointerdown', onDocumentPointerDown)
+  await nextTick()
   // Returning focus is the half that gets skipped; without it a keyboard user is
   // dumped at the top of the document every time they dismiss.
-  ;(filtersTriggerRef.value?.$el as HTMLElement | undefined)?.focus()
-})
-
-onUnmounted(() => {
-  document.removeEventListener('pointerdown', onDocumentPointerDown)
+  // No scroll on focus: the tabs and search above the filters stay in view.
+  const el = expanded ? filtersRegionEl.value : filtersTriggerRef.value?.$el as HTMLElement | undefined
+  el?.focus({ preventScroll: true })
 })
 
 function handleRowClick(tourId: string) {
@@ -208,9 +173,10 @@ function handleRowClick(tourId: string) {
     :is="isDesktop ? SideDrawer : BottomSheet"
     :title="t('tours.list.title')"
     :fit-content="!isDesktop"
-    :resizable="!isDesktop"
+    :resizable="!isDesktop && !filtersExpanded"
     :hold-height="!isDesktop && (!!searchQuery.trim() || activeFilterCount > 0 || filtersExpanded)"
     @close="emit('close')"
+    @keydown.escape="onListEscape"
   >
     <template #header-actions>
       <BaseTooltip
@@ -265,11 +231,8 @@ function handleRowClick(tourId: string) {
       @back="closeBackfill"
     />
 
-    <!-- Escape is bound here, not on the panel: focus may legitimately sit in the
-         search input, which is the panel's SIBLING, so a listener on the panel root
-         would never see that keydown. This is the nearest common ancestor. -->
-    <div v-else class="list-view" :class="{ 'list-view--drawer': isDesktop }" @keydown.escape="onListEscape">
-      <div ref="listHeaderEl" class="list-header">
+    <div v-else class="list-view" :class="{ 'list-view--drawer': isDesktop }">
+      <div class="list-header">
         <div
           class="tabs"
           role="tablist"
@@ -315,10 +278,33 @@ function handleRowClick(tourId: string) {
       </div>
 
       <!-- `min-height: 0` lets this shrink inside the flex column instead of pushing
-           the scroller past the shell; `overflow: hidden` clips the panel's slide-in;
-           `position: relative` is what the overlay's `inset: 0` resolves against. -->
-      <div class="list-region" :style="listRegionStyle">
-        <div class="tours-scroll" :style="{ '--swap-dir': activeTab === 'friends' ? 1 : -1 }">
+           the scroller past the shell. -->
+      <div class="list-region">
+        <div
+          v-if="filtersExpanded"
+          :id="FILTERS_PANEL_ID"
+          ref="filtersRegionEl"
+          class="region-scroll"
+          role="region"
+          :aria-label="t('tours.filters.panelAriaLabel')"
+          tabindex="-1"
+        >
+          <TourFiltersPanel
+            :filters="filters"
+            :tab="activeTab"
+            :tours="source"
+            @update:partner-ids="(v: Set<string>) => (filters.partnerIds = v)"
+            @update:owner-ids="(v: Set<string>) => (filters.ownerIds = v)"
+            @update:tour-types="(v: Set<TourType>) => (filters.tourTypes = v)"
+            @update:grades="(v: Set<string>) => (filters.grades = v)"
+            @update:seasons="(v: Set<Season>) => (filters.seasons = v)"
+            @update:date-range-from="(v: Date | null) => (filters.dateRange.from = v)"
+            @update:date-range-to="(v: Date | null) => (filters.dateRange.to = v)"
+            @update:completion="(v: CompletionFilter) => (filters.completion = v)"
+          />
+        </div>
+        <!-- v-show: the rows (and the drawer's scroll position) survive a look at the filters. -->
+        <div v-show="!filtersExpanded" class="tours-scroll region-scroll" :style="{ '--swap-dir': activeTab === 'friends' ? 1 : -1 }">
           <Transition name="tab-swap" mode="out-in">
             <div :key="activeTab">
               <div v-if="activeTab === 'owned' && isLoading && tours.length === 0" class="loading-text">
@@ -360,38 +346,24 @@ function handleRowClick(tourId: string) {
             </div>
           </Transition>
         </div>
-
-        <Transition name="filters-slide">
-          <div
-            v-if="filtersExpanded"
-            :id="FILTERS_PANEL_ID"
-            ref="filtersOverlayEl"
-            class="filters-overlay"
-            role="region"
-            :aria-label="t('tours.filters.panelAriaLabel')"
-            tabindex="-1"
-          >
-            <TourFiltersPanel
-              ref="filtersPanelEl"
-              :filters="filters"
-              :tab="activeTab"
-              :tours="source"
-              :match-count="listEntries.length"
-              :can-clear="activeFilterCount > 0"
-              @clear="clearFilters"
-              @update:partner-ids="(v: Set<string>) => (filters.partnerIds = v)"
-              @update:owner-ids="(v: Set<string>) => (filters.ownerIds = v)"
-              @update:tour-types="(v: Set<TourType>) => (filters.tourTypes = v)"
-              @update:grade-ranges="(v: GradeRange[]) => (filters.gradeRanges = v)"
-              @update:seasons="(v: Set<Season>) => (filters.seasons = v)"
-              @update:date-range-from="(v: Date | null) => (filters.dateRange.from = v)"
-              @update:date-range-to="(v: Date | null) => (filters.dateRange.to = v)"
-              @update:completion="(v: CompletionFilter) => (filters.completion = v)"
-            />
-          </div>
-        </Transition>
       </div>
     </div>
+
+    <template v-if="filtersExpanded && !showBackfill" #footer>
+      <div class="filters-footer">
+        <BaseButton
+          variant="secondary"
+          data-testid="clear-filters"
+          :disabled="activeFilterCount === 0"
+          @click="clearFilters"
+        >
+          {{ t('tours.filters.resetBtn') }}
+        </BaseButton>
+        <BaseButton variant="primary" class="show-results" data-testid="show-results" @click="closeFilters">
+          {{ t('tours.filters.showResultsBtn', { count: listEntries.length }) }}
+        </BaseButton>
+      </div>
+    </template>
   </component>
 </template>
 
@@ -465,50 +437,31 @@ function handleRowClick(tourId: string) {
 .list-region {
   flex: 1;
   min-height: 0;
-  position: relative;
   overflow: hidden;
 }
 
-/* Desktop only (see `.list-view`). `overflow-x` explicit: unset, it computes to
-   `auto` and the tab-swap slide would flash a horizontal scrollbar. */
-.list-view--drawer .tours-scroll {
+/* Desktop only (see `.list-view`): the rows or the filters scroll themselves.
+   `overflow-x` explicit: unset, it computes to `auto` and the tab-swap slide would
+   flash a horizontal scrollbar. */
+.list-view--drawer .region-scroll {
   height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
 
-/* Opaque, not a translucent scrim: tour names bleeding through the filter chips is
-   the same legibility failure this component already fixed in its header. */
-.filters-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  background-color: var(--color-background);
-  /* Scrolls only when the list is shorter than the panel. No `overscroll-behavior`
-     (see `.list-view`): past either end it chains to the sheet's `.content`, which
-     contains it, so it never reaches the map. */
-  overflow-y: auto;
+.region-scroll:focus {
   outline: none;
 }
 
-/* Slides out from under the search row, so the panel keeps the spatial explanation
-   the inline expand used to provide for free. Clipped by `.list-region`. */
-.filters-slide-enter-active,
-.filters-slide-leave-active {
-  transition: transform var(--motion-duration-short) var(--motion-ease-standard);
+/* Thumb zone: reset and apply sit side by side, apply wider — it is the way back. */
+.filters-footer {
+  display: flex;
+  gap: var(--spacing-sm);
 }
 
-.filters-slide-enter-from,
-.filters-slide-leave-to {
-  transform: translateY(-100%);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .filters-slide-enter-active,
-  .filters-slide-leave-active {
-    transition: none;
-  }
+.show-results {
+  flex: 1;
 }
 
 .loading-text {

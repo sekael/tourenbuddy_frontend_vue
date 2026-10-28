@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dropScales, gradeInRanges, gradeLeads, gradeScales, normalizeGrade, tapGradeRange, toggleGrade } from '@/features/tours/data/models/grade'
+import { dropScales, gradeLeads, gradeScales, gradeSelected, normalizeGrade, toggleGrade } from '@/features/tours/data/models/grade'
 
 describe('gradeScales', () => {
   it('should offer a shared scale once, led by the first activity using it', () => {
@@ -62,39 +62,19 @@ describe('normalizeGrade', () => {
   })
 })
 
-describe('tapGradeRange', () => {
-  it('should pick one, widen to a second tap in scale order, then restart', () => {
-    const one = tapGradeRange([], 'T4')
-    const wide = tapGradeRange(one, 'T2')
-    expect(wide).toEqual([{ from: 'T2', to: 'T4' }])
-    expect(tapGradeRange(wide, 'T3')).toEqual([{ from: 'T3', to: 'T3' }])
+describe('gradeSelected', () => {
+  it('should count a modifier as its base grade, never the alpine S as S2', () => {
+    const picked = new Set(['WS', 'S2'])
+    expect(['WS-', 'ws+ (II)', 'S-', 'S'].map(g => gradeSelected(g, picked))).toEqual([true, true, false, false])
   })
 
-  it('should clear a lone pick and leave the other scales alone', () => {
-    const ranges = tapGradeRange(tapGradeRange([], 'S2'), 'T3')
-    expect(tapGradeRange(ranges, 'T3')).toEqual([{ from: 'S2', to: 'S2' }])
+  it('should never match free text or no grade', () => {
+    const picked = new Set(['T1', 'T2', 'T3', 'T4', 'T5', 'T6'])
+    expect([gradeSelected('5c', picked), gradeSelected(null, picked), gradeSelected('', picked)]).toEqual([false, false, false])
   })
 
-  it('should keep the alpine S apart from the singletrail S2', () => {
-    expect(tapGradeRange([{ from: 'S2', to: 'S2' }], 'S')).toHaveLength(2)
-  })
-})
-
-describe('gradeInRanges', () => {
-  it('should count a modifier as its base grade', () => {
-    const ranges = [{ from: 'WS', to: 'ZS' }]
-    expect(['WS-', 'zs+', 'ZS+ (III)'].map(g => gradeInRanges(g, ranges))).toEqual([true, true, true])
-    expect(gradeInRanges('S-', ranges)).toBe(false)
-  })
-
-  it('should never match free text, no grade, or a grade only on an unfiltered scale', () => {
-    const ranges = [{ from: 'T1', to: 'T6' }]
-    expect([gradeInRanges('5c', ranges), gradeInRanges(null, ranges), gradeInRanges('S1', ranges)]).toEqual([false, false, false])
-  })
-
-  it('should fail a bike-and-hike whose filtered part is out of range', () => {
-    expect(gradeInRanges('S2, T4', [{ from: 'T1', to: 'T3' }])).toBe(false)
-    expect(gradeInRanges('S2, T4', [{ from: 'S0', to: 'S2' }])).toBe(true)
-    expect(gradeInRanges('S2, T4', [{ from: 'S0', to: 'S2' }, { from: 'T1', to: 'T3' }])).toBe(false)
+  it('should pass a bike-and-hike on any one selected part (additive)', () => {
+    expect(gradeSelected('S2, T4', new Set(['T4']))).toBe(true)
+    expect(gradeSelected('S2, T4', new Set(['T3', 'S1']))).toBe(false)
   })
 })
