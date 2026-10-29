@@ -119,3 +119,18 @@ The `DialogWindow` SHALL animate in with a fade, a short drop onto its top line,
 
 - **WHEN** a `DialogWindow` enters the DOM
 - **THEN** its card SHALL animate from `opacity: 0; transform: translateY(calc(-1 * var(--motion-offset))) scale(0.98)` to its resting state over `--motion-duration-medium` with `--motion-ease-emphasized`, scaling from its top edge
+
+### Requirement: DialogWindow pins an optional footer
+
+`DialogWindow` SHALL accept an optional `footer` slot rendered below the scrolling content region,
+outside it, so its actions stay visible however long the content is. Content scrolling above the
+footer SHALL fade out under it rather than end in a hard cut. A collapsed dialog SHALL NOT show
+the footer.
+
+#### Scenario: Footer stays put
+- **WHEN** a dialog with a footer has more content than fits
+- **THEN** the content scrolls and the footer stays visible below it, with the content fading out just above the footer
+
+#### Scenario: No footer while collapsed
+- **WHEN** the dialog is collapsed
+- **THEN** the footer is not shown

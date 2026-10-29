@@ -284,6 +284,31 @@ describe('bottomSheet', () => {
       expect(sheetHeight(wrapper)).toBe(900)
     })
 
+    it('should watch its footer and grow when a confirmation opens there', async () => {
+      const observed: Element[] = []
+      vi.stubGlobal('ResizeObserver', class {
+        constructor(cb: ResizeObserverCallback) {
+          notify = () => cb([{ target: document.createElement('div') } as unknown as ResizeObserverEntry], this as unknown as ResizeObserver)
+        }
+
+        observe(el: Element) { observed.push(el) }
+        unobserve() {}
+        disconnect() {}
+      })
+      const wrapper = mount(BottomSheet, { props: { title: 'Test', fitContent: true }, slots: { footer: '<button>Delete</button>' } })
+      const size = async (sel: string, h: number) => {
+        Object.defineProperty(wrapper.find(sel).element, 'offsetHeight', { value: h, configurable: true })
+        notify()
+        await flushPromises()
+      }
+      await size('.content-body', 200)
+      await size('.footer', 50)
+      expect(sheetHeight(wrapper)).toBe(250)
+      expect(observed).toContain(wrapper.find('.footer').element)
+      await size('.footer', 300)
+      expect(sheetHeight(wrapper)).toBe(500)
+    })
+
     it('should show no drag handle when the content fits the opening height', async () => {
       const { wrapper } = await mountWithContent(300)
       expect(wrapper.find('.drag-handle').exists()).toBe(false)
@@ -347,6 +372,21 @@ describe('bottomSheet', () => {
       expect(sheetHeight(wrapper)).toBe(200)
       await wrapper.find('.drag-handle').trigger('keydown', { key: 'End' })
       expect(sheetHeight(wrapper)).toBeLessThan(200)
+    })
+
+    it('should let a held sheet be dragged to full snap heights however short its content', async () => {
+      const wrapper = mount(BottomSheet, { props: { title: 'Test', fitContent: true, resizable: true, holdHeight: true } })
+      Object.defineProperty(wrapper.find('.content-body').element, 'offsetHeight', { value: 150, configurable: true })
+      notify()
+      await flushPromises()
+      const handle = wrapper.find('.drag-handle').element
+      firePointer(handle, 'pointerdown', 800)
+      firePointer(handle, 'pointermove', 300)
+      firePointer(handle, 'pointerup', 300)
+      await nextTick()
+      expect(sheetHeight(wrapper)).toBe(700)
+      await wrapper.find('.drag-handle').trigger('keydown', { key: 'ArrowDown' })
+      expect(sheetHeight(wrapper)).toBe(400)
     })
 
     it('should open a long resizable sheet at 40% and cap its full height at 70%', async () => {

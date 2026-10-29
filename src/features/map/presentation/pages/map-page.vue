@@ -54,7 +54,7 @@ import OutingOverviewSheet from '@/features/tours/presentation/components/outing
 import TourCreationDialog from '@/features/tours/presentation/components/tour-creation-dialog.vue'
 import TourInfoSheet from '@/features/tours/presentation/components/tour-info-sheet.vue'
 import TourListSheet from '@/features/tours/presentation/components/tour-list-sheet.vue'
-import { resetTourFilters } from '@/features/tours/presentation/composables/use-tour-filters'
+import { resetTourFilters, showFriendTours, useListedTourIds } from '@/features/tours/presentation/composables/use-tour-filters'
 import { useTourAttachmentsStore } from '@/features/tours/presentation/stores/tour-attachments-store'
 import { useTourSuggestionsStore } from '@/features/tours/presentation/stores/tour-suggestions-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
@@ -546,6 +546,19 @@ function handleContactsClose() {
   editContactId.value = null
   closeOverlay()
 }
+
+/** A friend's contact detail → their tours (#362): the list on Friends, filtered to them. */
+function handleShowFriendTours(userId: string) {
+  editContactId.value = null
+  showFriendTours(userId)
+  openOverlay('tours')
+}
+
+// The map shows what a narrowed list shows (#351) — only while the list itself is open: a tour or
+// outing opened from it owns the map anyway, and the filters outlive a route change to the
+// calendar (it unmounts this page without the reset watch), so they must never thin a bare map.
+const listedTourIds = useListedTourIds()
+const mapListedTourIds = computed(() => (activeOverlay.value === 'tours' ? listedTourIds.value : null))
 
 const { openEntry: openInboxEntry, snackbar: inboxSnackbar } = useInboxNavigation({
   overlay: name => openOverlay(name),
@@ -1098,7 +1111,7 @@ function handleDialogClose() {
     />
 
     <TourenbuddyMap
-      ref="mapRef" :covered="mapCovered" @tour-clicked="handleTourClicked"
+      ref="mapRef" :covered="mapCovered" :listed-tour-ids="mapListedTourIds" @tour-clicked="handleTourClicked"
       @map-background-click="handleMapBackgroundClick"
     />
 
@@ -1169,7 +1182,7 @@ function handleDialogClose() {
       <div v-else-if="showContactDialog" key="contacts" class="sheet-host">
         <ContactsListSheet
           :initial-contact-id="editContactId" @close="handleContactsClose"
-          @open-friend-requests="handleOpenFriendRequests"
+          @open-friend-requests="handleOpenFriendRequests" @show-friend-tours="handleShowFriendTours"
         />
       </div>
       <div v-else-if="showFriendRequests" key="friend-requests" class="sheet-host">

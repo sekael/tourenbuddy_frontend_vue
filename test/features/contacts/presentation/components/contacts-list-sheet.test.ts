@@ -44,8 +44,19 @@ const mockContacts = [
 const ContactDetailViewStub = {
   name: 'ContactDetailView',
   template: '<div data-testid="contact-detail" />',
-  emits: ['back', 'deleted'],
-  props: ['contact'],
+  emits: ['update:mode'],
+  props: ['contact', 'mode'],
+  methods: {
+    enterEditMode(this: { $emit: (e: string, v: string) => void }) {
+      this.$emit('update:mode', 'edit')
+    },
+  },
+}
+
+const ContactDetailActionsStub = {
+  name: 'ContactDetailActions',
+  template: '<div data-testid="detail-actions" />',
+  emits: ['edit', 'deleted'],
 }
 
 function mountSheet() {
@@ -62,6 +73,7 @@ function mountSheet() {
       ],
       stubs: {
         ContactDetailView: ContactDetailViewStub,
+        ContactDetailActions: ContactDetailActionsStub,
         ContactForm: {
           template: '<div data-testid="contact-form" />',
           emits: ['submit', 'cancel'],
@@ -188,24 +200,24 @@ describe('contactsListSheet', () => {
       expect(wrapper.find('[data-testid="contact-form"]').exists()).toBe(true)
     })
 
-    it('should return to list from detail when detail emits back', async () => {
+    it('should keep Edit out of the header and in the footer, and drop the footer while editing', async () => {
       const wrapper = mountSheet()
       await wrapper.findAll('.contact-row')[0]!.trigger('click')
       await wrapper.vm.$nextTick()
-      expect(wrapper.find('[data-testid="contact-detail"]').exists()).toBe(true)
+      expect(wrapper.find('.header, .dialog-header').find('[data-testid="edit-contact-btn"]').exists()).toBe(false)
+      expect(wrapper.find('.footer, .dialog-footer').find('[data-testid="detail-actions"]').exists()).toBe(true)
 
-      await wrapper.findComponent(ContactDetailViewStub).vm.$emit('back')
+      await wrapper.findComponent(ContactDetailActionsStub).vm.$emit('edit')
       await wrapper.vm.$nextTick()
-      expect(wrapper.find('.contact-row').exists()).toBe(true)
-      expect(wrapper.find('[data-testid="contact-detail"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="detail-actions"]').exists()).toBe(false)
     })
 
-    it('should return to list and clear selection when detail emits deleted', async () => {
+    it('should return to list and clear selection when the footer reports the contact deleted', async () => {
       const wrapper = mountSheet()
       await wrapper.findAll('.contact-row')[0]!.trigger('click')
       await wrapper.vm.$nextTick()
 
-      await wrapper.findComponent(ContactDetailViewStub).vm.$emit('deleted')
+      await wrapper.findComponent(ContactDetailActionsStub).vm.$emit('deleted')
       await wrapper.vm.$nextTick()
       expect(wrapper.find('.contact-row').exists()).toBe(true)
       expect(wrapper.find('[data-testid="contact-detail"]').exists()).toBe(false)

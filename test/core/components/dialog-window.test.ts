@@ -23,6 +23,14 @@ describe('dialogWindow', () => {
     expect(wrapper.find('.slot-content').text()).toBe('Hello')
   })
 
+  it('should pin a footer below the scrolling content, and drop it when collapsed', async () => {
+    const wrapper = mount(DialogWindow, { props: { title: 'Test' }, slots: { default: '<p />', footer: '<button class="act">Edit</button>' } })
+    expect(wrapper.find('.dialog-content .act').exists()).toBe(false)
+    expect(wrapper.find('.dialog-footer .act').exists()).toBe(true)
+    await wrapper.setProps({ collapsed: true })
+    expect(wrapper.find('.dialog-footer').exists()).toBe(false)
+  })
+
   it('should emit close when close button is clicked', async () => {
     const wrapper = mount(DialogWindow, { props: { title: 'Test' } })
     await wrapper.find('[aria-label="Close"]').trigger('click')

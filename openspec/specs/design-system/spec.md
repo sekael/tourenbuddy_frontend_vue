@@ -430,7 +430,7 @@ Every overlay view SHALL have exactly one header row holding its title, back, ac
 #### Scenario: Contact detail has one header
 
 - **WHEN** the user opens a contact from the contacts list
-- **THEN** a single header shows back, the contact's name, Edit, and close, with no second header row inside the view
+- **THEN** a single header shows back, the contact's name, and close, with no second header row inside the view (Edit sits in the footer)
 
 #### Scenario: Tour rows show the date
 

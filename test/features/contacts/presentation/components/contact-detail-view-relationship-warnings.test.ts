@@ -54,60 +54,6 @@ const mockContact = {
   ],
 }
 
-function mountDetail(relationshipsResult: { hasPending: boolean, hasFriendship: boolean }) {
-  const wrapper = mount(ContactDetailView, {
-    props: { contact: mockContact, linkedFriendUserId: null },
-    global: {
-      plugins: [createTestingPinia({ createSpy: vi.fn, stubActions: false })],
-    },
-  })
-  const store = useContactsStore()
-  vi.spyOn(store, 'relationshipsForContact').mockResolvedValue(relationshipsResult)
-  return wrapper
-}
-
-describe('contact-detail-view — relationship warnings on delete confirm', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should show no relationship warning when no pending or friendship', async () => {
-    const wrapper = mountDetail({ hasPending: false, hasFriendship: false })
-    await wrapper.find('[data-testid="delete-btn"]').trigger('click')
-    await flushPromises()
-
-    expect(wrapper.find('.delete-confirm-text').exists()).toBe(true)
-    expect(wrapper.find('.delete-friend-warning').exists()).toBe(false)
-  })
-
-  it('should show friendship warning when only friendship exists', async () => {
-    const wrapper = mountDetail({ hasPending: false, hasFriendship: true })
-    await wrapper.find('[data-testid="delete-btn"]').trigger('click')
-    await flushPromises()
-
-    expect(wrapper.find('.delete-friend-warning').exists()).toBe(true)
-    expect(wrapper.find('.delete-friend-warning').text()).toContain('contacts.detailView.deleteFriendWarning')
-  })
-
-  it('should show pending warning when only pending request exists', async () => {
-    const wrapper = mountDetail({ hasPending: true, hasFriendship: false })
-    await wrapper.find('[data-testid="delete-btn"]').trigger('click')
-    await flushPromises()
-
-    expect(wrapper.find('.delete-friend-warning').exists()).toBe(true)
-    expect(wrapper.find('.delete-friend-warning').text()).toContain('contacts.detailView.deletePendingWarning')
-  })
-
-  it('should show combined warning when both exist', async () => {
-    const wrapper = mountDetail({ hasPending: true, hasFriendship: true })
-    await wrapper.find('[data-testid="delete-btn"]').trigger('click')
-    await flushPromises()
-
-    expect(wrapper.find('.delete-friend-warning').exists()).toBe(true)
-    expect(wrapper.find('.delete-friend-warning').text()).toContain('contacts.detailView.deleteFriendAndPendingWarning')
-  })
-})
-
 describe('contact-detail-view — relationship warnings on phone method delete', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -124,8 +70,9 @@ describe('contact-detail-view — relationship warnings on phone method delete',
     })
     const store = useContactsStore()
     vi.spyOn(store, 'relationshipsForPhone').mockResolvedValue(phoneRelResult)
-    // Enter edit mode
-    await wrapper.find('[data-testid="edit-contact-btn"]').trigger('click')
+    // Enter edit mode (the host's footer Edit calls this)
+    ;(wrapper.vm as unknown as { enterEditMode: () => void }).enterEditMode()
+    await flushPromises()
     // Click delete icon on the phone method
     await wrapper.find('[data-testid="remove-method-btn"]').trigger('click')
     await flushPromises()

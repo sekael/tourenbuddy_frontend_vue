@@ -409,7 +409,12 @@
       "editEvictFriendWarning": "Das Speichern dieser Änderung entfernt deine Freundschaft mit dem bisher verknüpften Kontakt.",
       "editEvictPendingWarning": "Das Speichern dieser Änderung bricht die offene Freundschaftsanfrage der bisherigen Nummer ab.",
       "editEvictFriendAndPendingWarning": "Das Speichern dieser Änderung entfernt die Freundschaft und bricht die offene Freundschaftsanfrage der bisherigen Nummer ab.",
-      "confirmSaveBtn": "Trotzdem speichern"
+      "confirmSaveBtn": "Trotzdem speichern",
+      "showToursBtn": "Touren",
+      "callAction": "Anrufen",
+      "whatsAppAction": "WhatsApp",
+      "deleteAction": "Löschen",
+      "deleteFailed": "Kontakt konnte nicht gelöscht werden."
     },
     "actionMenu": {
       "noMethods": "Keine Kontaktmethode verfügbar. Bearbeite den Kontakt, um eine hinzuzufügen.",
@@ -442,7 +447,8 @@
       "friendsEmptySubtitle": "Touren, die deine Freunde teilen, erscheinen hier.",
       "ownedByLabel": "von {name}",
       "aFriend": "einem Freund",
-      "viewBackfillCollisionsBtn": "Tour-Überschneidungen prüfen"
+      "viewBackfillCollisionsBtn": "Tour-Überschneidungen prüfen",
+      "friendsOnMap": "Keine davon auf der Karte – du bist bei keiner Partner | Nur 1 davon auf der Karte – die, bei der du Partner bist | Nur {count} davon auf der Karte – die, bei denen du Partner bist"
     },
     "duplicate": {
       "title": "Tour bereits vorhanden",
@@ -592,8 +598,12 @@
       "seasonLabel": "Saison",
       "plannedDateLabel": "Geplantes Datum",
       "statusLabel": "Status",
-      "matchCount": "{count} Touren | {count} Tour | {count} Touren",
-      "panelAriaLabel": "Tourenfilter"
+      "panelAriaLabel": "Tourenfilter",
+      "ownerLabel": "Erfasst von",
+      "gradeLabel": "Schwierigkeit",
+      "gradeScale": "Schwierigkeit für {activities}",
+      "resetBtn": "Zurücksetzen",
+      "showResultsBtn": "{count} Touren anzeigen | {count} Tour anzeigen | {count} Touren anzeigen"
     },
     "type": {
       "skiing": "Skifahren",

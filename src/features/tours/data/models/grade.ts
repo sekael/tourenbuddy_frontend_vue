@@ -83,6 +83,23 @@ export function dropScales(grade: string, scales: readonly GradeScale[]): string
   }))
 }
 
+/** Every closed scale once, for the tour list's grade filter (#351). */
+export const FILTER_GRADE_SCALES: GradeScale[] = gradeScales(TOUR_TYPE_VALUES)
+
+/** The closed scale a canonical grade belongs to ("ZS" → L–EX); undefined for free text. */
+export function gradeScaleOf(grade: string): readonly string[] | undefined {
+  return scaleOf(grade)
+}
+
+/**
+ * Whether a tour's grade passes the grade filter: additive, any of its parts on a selected grade
+ * (a bike-and-hike "S2, T4" passes T4 alone). A part counts as the grade it leads with, so ZS+ is
+ * ZS; free text ("5c") never matches.
+ */
+export function gradeSelected(grade: string | null, selected: ReadonlySet<string>): boolean {
+  return !!grade && gradeLeads(grade).some(g => selected.has(g))
+}
+
 /** As stored: trimmed, comma-separated, scale grades in their capitals ("zs+" → "ZS+"). */
 export function normalizeGrade(grade: string): string {
   return join(tokens(grade.trim()).map((p) => {

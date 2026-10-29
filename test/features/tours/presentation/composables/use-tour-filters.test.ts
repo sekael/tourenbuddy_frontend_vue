@@ -4,7 +4,7 @@ import { setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
-import { resetTourFilters, useActiveTourTab, useTourFilters } from '@/features/tours/presentation/composables/use-tour-filters'
+import { resetTourFilters, showFriendTours, useActiveTourTab, useListedTourIds, useTourFilters } from '@/features/tours/presentation/composables/use-tour-filters'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import { TOUR_FILL } from '../../../../fixtures/tour-fill'
 
@@ -39,9 +39,8 @@ describe('useTourFilters', () => {
   beforeEach(() => {
     pinia = createTestingPinia({ createSpy: () => () => {} })
     setActivePinia(pinia)
-    // Reset module-level filter state between tests
-    const { clearAll } = useTourFilters()
-    clearAll()
+    // Reset module-level filter state (both tabs) between tests
+    resetTourFilters()
   })
 
   function setup(
@@ -442,6 +441,96 @@ describe('useTourFilters', () => {
       filters.tourTypes = new Set(['hiking'])
       expect(filteredTours.value).toHaveLength(1)
       expect(filteredTours.value[0]!.id).toBe('1')
+    })
+  })
+
+  describe('friends-tab recorded-by filter', () => {
+    function setupFriends(friendTours: Tour[]) {
+      useToursStore().friendTours = friendTours as any
+      const friends = useTourFilters('friends')
+      friends.clearAll()
+      return friends
+    }
+
+    it('should keep only the selected friends\' tours and count as one filter', () => {
+      const { filteredTours, filters, activeFilterCount } = setupFriends([
+        makeTour({ id: 'f-1', userId: 'u-lena', isFriendTour: true }),
+        makeTour({ id: 'f-2', userId: 'u-tom', isFriendTour: true }),
+      ])
+      filters.ownerIds = new Set(['u-lena'])
+      expect(filteredTours.value.map(t => t.id)).toEqual(['f-1'])
+      expect(activeFilterCount.value).toBe(1)
+    })
+  })
+
+  describe('grade filter', () => {
+    it('should drop ungraded and free-text tours once a grade is picked, and count grades once', () => {
+      const tours = [
+        makeTour({ id: '1', grade: 'T3' }),
+        makeTour({ id: '2', grade: null }),
+        makeTour({ id: '3', grade: '5c' }),
+        makeTour({ id: '4', grade: 'S1' }),
+      ]
+      const { filteredTours, filters, activeFilterCount } = setup(tours)
+      filters.grades = new Set(['T1', 'T3', 'S0'])
+      expect(filteredTours.value.map(t => t.id)).toEqual(['1'])
+      expect(activeFilterCount.value).toBe(1)
+    })
+
+    it('should be cleared by clearFilters', () => {
+      const { filters, clearFilters, activeFilterCount } = setup([])
+      filters.grades = new Set(['T3'])
+      filters.ownerIds = new Set(['u-1'])
+      clearFilters()
+      expect(activeFilterCount.value).toBe(0)
+    })
+  })
+
+  describe('useListedTourIds', () => {
+    it('should be null while nothing narrows, even with tours loaded', () => {
+      setup([makeTour({ id: '1' })])
+      expect(useListedTourIds().value).toBeNull()
+    })
+
+    it('should keep every segment of an outing one segment matched', () => {
+      const outing = (position: number) => ({ id: 'o-1', name: 'Haute Route', position })
+      const tours = [
+        makeTour({ id: 's-1', grade: 'T2', outing: outing(0) }),
+        makeTour({ id: 's-2', grade: 'T5', outing: outing(1) }),
+        makeTour({ id: 'x', grade: 'T5' }),
+      ]
+      const { filters } = setup(tours)
+      useActiveTourTab().value = 'owned'
+      filters.grades = new Set(['T2'])
+      expect([...useListedTourIds().value!].sort()).toEqual(['s-1', 's-2'])
+    })
+
+    it('should follow the active tab, not the one that holds filters', () => {
+      const { filters } = setup([makeTour({ id: '1', grade: 'T5' })])
+      filters.grades = new Set(['T3'])
+      const tab = useActiveTourTab()
+      tab.value = 'friends'
+      expect(useListedTourIds().value).toBeNull()
+      tab.value = 'owned'
+    })
+  })
+
+  describe('showFriendTours', () => {
+    it('should drop earlier search and filters on both tabs and narrow Friends to that friend', () => {
+      const owned = setup([])
+      const friends = useTourFilters('friends')
+      owned.searchQuery.value = 'piz'
+      friends.searchQuery.value = 'ridge'
+      friends.filters.completion = 'done'
+
+      showFriendTours('u-lena')
+
+      expect(useActiveTourTab().value).toBe('friends')
+      expect([owned.searchQuery.value, friends.searchQuery.value]).toEqual(['', ''])
+      expect([...friends.filters.ownerIds]).toEqual(['u-lena'])
+      expect(friends.activeFilterCount.value).toBe(1)
+      friends.clearAll()
+      useActiveTourTab().value = 'owned'
     })
   })
 

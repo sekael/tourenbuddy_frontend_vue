@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dropScales, gradeLeads, gradeScales, normalizeGrade, toggleGrade } from '@/features/tours/data/models/grade'
+import { dropScales, gradeLeads, gradeScales, gradeSelected, normalizeGrade, toggleGrade } from '@/features/tours/data/models/grade'
 
 describe('gradeScales', () => {
   it('should offer a shared scale once, led by the first activity using it', () => {
@@ -59,5 +59,22 @@ describe('normalizeGrade', () => {
 
   it('should turn separators alone into nothing', () => {
     expect(normalizeGrade(' , ')).toBe('')
+  })
+})
+
+describe('gradeSelected', () => {
+  it('should count a modifier as its base grade, never the alpine S as S2', () => {
+    const picked = new Set(['WS', 'S2'])
+    expect(['WS-', 'ws+ (II)', 'S-', 'S'].map(g => gradeSelected(g, picked))).toEqual([true, true, false, false])
+  })
+
+  it('should never match free text or no grade', () => {
+    const picked = new Set(['T1', 'T2', 'T3', 'T4', 'T5', 'T6'])
+    expect([gradeSelected('5c', picked), gradeSelected(null, picked), gradeSelected('', picked)]).toEqual([false, false, false])
+  })
+
+  it('should pass a bike-and-hike on any one selected part (additive)', () => {
+    expect(gradeSelected('S2, T4', new Set(['T4']))).toBe(true)
+    expect(gradeSelected('S2, T4', new Set(['T3', 'S1']))).toBe(false)
   })
 })
