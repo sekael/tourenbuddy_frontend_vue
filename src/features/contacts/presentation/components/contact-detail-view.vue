@@ -1312,6 +1312,12 @@ button.primary-star:active {
   justify-content: center;
   flex-shrink: 0;
   margin-top: 2px;
+  transition: background-color var(--phone-fade, var(--motion-duration-medium)) var(--motion-ease-standard);
+}
+
+/* The badge's fill is about the primary tint's colour and would vanish into it. */
+.method-row--primary .method-type-badge {
+  background-color: var(--color-background);
 }
 
 .method-type-badge .base-icon {

@@ -574,10 +574,10 @@ const sheetStyle = computed(() => {
 }
 
 .content {
-  /* Published so slotted content can bleed a full-width divider to the sheet edges — the
-     sheet itself pads `md` on both sides, this element adds `xs` on the right. */
+  /* Published so slotted content can bleed a full-width divider to the sheet edges — content
+     sits `md` in from them on both sides (see the inline padding below). */
   --surface-pad-left: var(--spacing-md);
-  --surface-pad-right: calc(var(--spacing-md) + var(--spacing-xs));
+  --surface-pad-right: var(--spacing-md);
 
   flex: 1;
   min-height: 0;
@@ -616,7 +616,13 @@ const sheetStyle = computed(() => {
      document, or the map behind the sheet. `contain`, not `none` — the region
      keeps its own end-of-scroll rubber-band. */
   overscroll-behavior: contain;
-  padding-right: var(--spacing-xs);
+  /* `xs` of the sheet's `md` padding moves inside this box on both sides (negative margin
+     + padding): content lines up with the header and footer, the overlay scrollbar sits
+     over the right padding, and the clip box (overflow-x above) leaves room for what rows
+     paint outside their box — focus rings, the primary phone's highlight. With the left
+     padding outside this box, those were cut off at the left edge. */
+  margin-inline: calc(-1 * var(--spacing-xs));
+  padding-inline: var(--spacing-xs);
   /* Home indicator clearance: last list item stays reachable above gesture bar */
   padding-bottom: calc(var(--spacing-md) + var(--safe-bottom));
   scrollbar-gutter: stable;
