@@ -502,7 +502,7 @@
       "equipmentPlaceholder": "Gear list...",
       "notesLabel": "Notes",
       "notesPlaceholder": "Any other info...",
-      "gpxLabel": "GPX Track",
+      "gpxLabel": "Track",
       "gpxUploadBtn": "Upload GPX track",
       "gpxReplaceBtn": "Replace",
       "gpxReplaceTooltip": "Replace GPX track",
@@ -542,7 +542,12 @@
       "landingLabel": "Landing",
       "fromGoal": "{distance} from the goal",
       "farFromGoal": "{distance} from the goal – right place?",
-      "addLandingBtn": "Add landing"
+      "addLandingBtn": "Add landing",
+      "gpxDrawBtn": "Draw on map",
+      "gpxEditBtn": "Edit on map",
+      "gpxDrawn": "Drawn track",
+      "gpxDrawnFile": "Drawn track · {distance}",
+      "gpxPreparing": "Adding heights to the track…"
     },
     "creation": {
       "title": "New Tour",
@@ -849,6 +854,31 @@
       "cluster": "Several tours — tap to zoom in or list them",
       "chain": "Segments of a multi-day tour",
       "open": "Show legend"
+    },
+    "draw": {
+      "title": "Draw track",
+      "followLabel": "The line follows",
+      "status": {
+        "hiking": "The line follows the hiking trails.",
+        "ski": "The line follows the ski routes.",
+        "byActivity": "(matches the tour’s activity)",
+        "straight": "Straight lines: turn on hiking trails or ski routes to follow them.",
+        "unavailable": "Couldn’t load the trails (offline?), so this part is drawn straight.",
+        "tooFar": "Too far apart to follow the trails, so this part is drawn straight. Set your points closer together.",
+        "offNetwork": "No trail within reach of this point, so this part is straight."
+      },
+      "hint": {
+        "start": "Tap the map to set the start.",
+        "next": "Tap along the way to add points. Drag a point to move it.",
+        "profileLoading": "Loading the elevation profile…",
+        "profileOffline": "The elevation profile needs a connection."
+      },
+      "time": "Time",
+      "minutes": "{m} min",
+      "hours": "{h} h {m} min",
+      "undo": "Undo",
+      "redo": "Redo",
+      "done": "Done"
     }
   },
   "i18n": {

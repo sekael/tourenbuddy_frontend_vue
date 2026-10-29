@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Map as MapLibreMap, Point } from 'maplibre-gl'
+import type { DrawnTrack } from '@/features/map/domain/drawn-track'
 import type { Trail } from '@/features/map/domain/entities/trail'
 import type { StageContext } from '@/features/onboarding/presentation/composables/use-onboarding-tour'
 import type { TourSurface } from '@/features/onboarding/presentation/onboarding-steps'
@@ -32,6 +33,7 @@ import OfflineRegionDraw from '@/features/map/presentation/components/offline-re
 import OfflineRegionOutline from '@/features/map/presentation/components/offline-region-outline.vue'
 import TourActionBar from '@/features/map/presentation/components/tour-action-bar.vue'
 import TourenbuddyMap from '@/features/map/presentation/components/tourenbuddy-map.vue'
+import TrackDrawer from '@/features/map/presentation/components/track-drawer.vue'
 import TrailCard from '@/features/map/presentation/components/trail-card.vue'
 import { TRAIL_LOOKUP_MIN_ZOOM } from '@/features/map/presentation/components/trail-layers'
 import { computeBarState } from '@/features/map/presentation/composables/compute-bar-state'
@@ -91,7 +93,7 @@ const notificationsStore = useNotificationsStore()
 const inboxStore = useInboxStore()
 const isDesktop = useIsDesktop()
 
-const { isPickingLocation, isDrawingRegion, selectedTourId, selectedOutingKey, activeOverlays, trailCard } = storeToRefs(mapStore)
+const { isPickingLocation, isDrawingTrack, isDrawingRegion, selectedTourId, selectedOutingKey, activeOverlays, trailCard, previewTourTypes } = storeToRefs(mapStore)
 /** The picker reports a touch-screen search; read only while picking, so a stale value never hides a sheet. */
 const pickerSearching = ref(false)
 // The collapsed overlay ("Tour goal") then only takes room from the keyboard and results. On
@@ -167,6 +169,11 @@ const addTourTooltip = computed(() =>
 
 // The latest pick for the creation form, which looks up the point's name and elevation itself.
 const dialogPick = ref<PointPick | null>(null)
+// Track drawing (#323): the form's current track to go on from, and the finished drawing for the
+// creation form (a planned ski route's line arrives the same way, #352) or the edit form.
+const trackSeed = ref<DrawnTrack | null>(null)
+const dialogDrawnTrack = ref<DrawnTrack | null>(null)
+const editDrawnTrack = ref<DrawnTrack | null>(null)
 
 // Derived reactively from store so it updates immediately when tours are mutated.
 // Search friend tours too — a friend marker (partner tours) can be selected on the map.
@@ -210,6 +217,7 @@ const editPickedPoint = ref<PointPick | null>(null)
 function resetTourCreationState() {
   pendingLocation.value = null
   dialogPick.value = null
+  dialogDrawnTrack.value = null
   pendingPickType.value = 'goal'
   segmentSeed.value = null
   segmentAnchorId.value = null
@@ -219,6 +227,7 @@ function resetTourCreationState() {
   mapStore.setPreviewTourTypes(null)
   mapStore.setPreviewStart(null)
   mapStore.setPreviewEnd(null)
+  mapStore.setPreviewTrack(null)
 }
 
 /** Opens an overlay, closing any previously open overlay first. */
@@ -528,12 +537,13 @@ async function handlePlanFromRoute(trail: Trail) {
   const plan = trail.route && await planFromRoute(trail.route, trail.lines, locale.value)
   if (!plan)
     return
-  const { goal, seed } = plan
+  const { goal, seed, track } = plan
   closeOverlay()
   segmentSeed.value = seed
   pendingLocation.value = goal
   mapStore.setPreviewGoal(goal)
   dialogPick.value = { type: 'start', location: seed.startPoint! }
+  dialogDrawnTrack.value = track
   openOverlay('tour-creation')
 }
 
@@ -716,6 +726,9 @@ function handleResetBearing() {
 }
 
 function handleTourClicked(tourId: string) {
+  // A tap while drawing sets a point there instead.
+  if (isDrawingTrack.value)
+    return
   const tour = allTours.value.find(t => t.id === tourId)
   const key = tour ? outingKey(tour) : null
   const focused = selectedOutingKey.value ?? (selectedTour.value ? outingKey(selectedTour.value) : null)
@@ -820,6 +833,30 @@ function handleInfoSheetPickPoint(type: 'start' | 'end' | 'goal') {
 
 function handlePointConsumed() {
   editPickedPoint.value = null
+  editDrawnTrack.value = null
+}
+
+/** The form asks to draw its track, going on from its current one. */
+function handleDrawTrack(seed: DrawnTrack | null, forEdit = false) {
+  isPickingForEdit.value = forEdit
+  trackSeed.value = seed
+  mapStore.setDrawingTrack(true)
+}
+
+function handleTrackDrawn(track: DrawnTrack) {
+  mapStore.setDrawingTrack(false)
+  trackSeed.value = null
+  if (isPickingForEdit.value)
+    editDrawnTrack.value = track
+  else
+    dialogDrawnTrack.value = track
+  isPickingForEdit.value = false
+}
+
+function handleTrackCancelled() {
+  mapStore.setDrawingTrack(false)
+  trackSeed.value = null
+  isPickingForEdit.value = false
 }
 
 async function handleEditModeChange(editing: boolean) {
@@ -840,6 +877,7 @@ function clearTourPreview() {
   mapStore.setPreviewTourTypes(null)
   mapStore.setPreviewStart(null)
   mapStore.setPreviewEnd(null)
+  mapStore.setPreviewTrack(null)
 }
 
 // A working start/end is a *draft* marker only when it differs from the tour's
@@ -1131,9 +1169,14 @@ function handleDialogClose() {
     />
 
     <LocationPicker
-      v-if="isPickingLocation" :map="mapInstance" :role="pendingPickType"
+      v-if="isPickingLocation && !isDrawingTrack" :map="mapInstance" :role="pendingPickType"
       :actions-bottom="!isDesktop && (isPickingForEdit || showTourCreationDialog) ? 80 : undefined"
       @confirm="handleLocationConfirmed" @cancel="handleLocationCancelled" @searching="pickerSearching = $event"
+    />
+
+    <TrackDrawer
+      v-if="isDrawingTrack && mapInstance" :map="mapInstance" :seed="trackSeed" :tour-types="previewTourTypes ?? []"
+      @done="handleTrackDrawn" @cancel="handleTrackCancelled"
     />
 
     <OfflineRegionDraw
@@ -1156,8 +1199,10 @@ function handleDialogClose() {
         <TourInfoSheet
           :tour="selectedTour" :edit-picked-point="editPickedPoint" :show-back="tourDetailOrigin !== null"
           :back-text="tourDetailOrigin === 'outing' ? t('tours.outing.backToOuting') : undefined"
-          :active-pick-type="isPickingForEdit ? pendingPickType : null" @close="closeOverlay" @back="handleTourInfoBack"
+          :active-pick-type="isPickingForEdit ? pendingPickType : null" :edit-drawn-track="editDrawnTrack"
+          @close="closeOverlay" @back="handleTourInfoBack"
           @pick-point="(t: 'start' | 'end' | 'goal') => handleInfoSheetPickPoint(t)"
+          @draw-track="handleDrawTrack($event, true)" @track-change="mapStore.setPreviewTrack($event)"
           @point-consumed="handlePointConsumed" @edit-mode-change="handleEditModeChange"
           @edit-contact="handleEditContact" @tour-types-change="mapStore.setPreviewTourTypes($event)"
           @start-point-change="handleStartPointChange" @end-point-change="handleEndPointChange"
@@ -1214,9 +1259,9 @@ function handleDialogClose() {
       <div v-else-if="showTourCreationDialog" key="tour-creation" class="sheet-host">
         <TourCreationDialog
           :pick="dialogPick" :initial-goal="pendingLocation" :active-pick-type="pendingPickType" :seed="segmentSeed"
-          :segment="segmentAnchorId !== null"
+          :segment="segmentAnchorId !== null" :drawn-track="dialogDrawnTrack"
           @confirm="(d, r, tid, did) => handleTourCreated(d, r, tid, did)" @close="handleDialogClose"
-          @pick-point="handlePickPoint" @tour-types-change="mapStore.setPreviewTourTypes($event)"
+          @pick-point="handlePickPoint" @draw-track="handleDrawTrack($event)" @track-change="mapStore.setPreviewTrack($event)" @tour-types-change="mapStore.setPreviewTourTypes($event)"
           @start-point-change="handleStartPointChange" @end-point-change="handleEndPointChange"
         />
       </div>

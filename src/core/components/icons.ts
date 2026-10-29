@@ -35,6 +35,7 @@ import IconDownhillSkiing from '~icons/material-symbols/downhill-skiing'
 import IconDownload from '~icons/material-symbols/download'
 import IconDownloadForOfflineOutline from '~icons/material-symbols/download-for-offline-outline'
 import IconDragIndicator from '~icons/material-symbols/drag-indicator'
+import IconDrawOutline from '~icons/material-symbols/draw-outline'
 import IconEcoOutline from '~icons/material-symbols/eco-outline'
 import IconEditOutline from '~icons/material-symbols/edit-outline'
 import IconElevationOutline from '~icons/material-symbols/elevation-outline'
@@ -74,6 +75,7 @@ import IconPhoneEnabledOutline from '~icons/material-symbols/phone-enabled-outli
 import IconPictureAsPdfOutline from '~icons/material-symbols/picture-as-pdf-outline'
 import IconPrivacyTipOutline from '~icons/material-symbols/privacy-tip-outline'
 import IconRadioButtonUnchecked from '~icons/material-symbols/radio-button-unchecked'
+import IconRedo from '~icons/material-symbols/redo'
 import IconReplay from '~icons/material-symbols/replay'
 import IconRouteOutline from '~icons/material-symbols/route-outline'
 import IconScheduleOutline from '~icons/material-symbols/schedule-outline'
@@ -91,6 +93,7 @@ import IconTimeline from '~icons/material-symbols/timeline'
 import IconTourOutline from '~icons/material-symbols/tour-outline'
 import IconTripOrigin from '~icons/material-symbols/trip-origin'
 import IconTune from '~icons/material-symbols/tune'
+import IconUndo from '~icons/material-symbols/undo'
 import IconUploadFileOutline from '~icons/material-symbols/upload-file-outline'
 import IconVerifiedOutline from '~icons/material-symbols/verified-outline'
 import IconWarningOutline from '~icons/material-symbols/warning-outline'
@@ -165,6 +168,7 @@ export const iconRegistry: Record<string, Component> = {
   download: IconDownload,
   download_for_offline: IconDownloadForOfflineOutline,
   drag_indicator: IconDragIndicator,
+  draw: IconDrawOutline,
   eco: IconEcoOutline,
   edit: IconEditOutline,
   elevation: IconElevationOutline,
@@ -206,6 +210,7 @@ export const iconRegistry: Record<string, Component> = {
   picture_as_pdf: IconPictureAsPdfOutline,
   privacy_tip: IconPrivacyTipOutline,
   radio_button_unchecked: IconRadioButtonUnchecked,
+  redo: IconRedo,
   remove_circle_outline: IconDoNotDisturbOnOutline,
   replay: IconReplay,
   route: IconRouteOutline,
@@ -227,6 +232,7 @@ export const iconRegistry: Record<string, Component> = {
   tour: IconTourOutline,
   trip_origin: IconTripOrigin,
   tune: IconTune,
+  undo: IconUndo,
   upload_file: IconUploadFileOutline,
   verified: IconVerifiedOutline,
   warning: IconWarningOutline,

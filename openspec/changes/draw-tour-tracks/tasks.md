@@ -32,4 +32,4 @@
 
 - [x] 6.1 `npx eslint . --fix`, `npx eslint`, `npm run type-check`, `npm run test`
 - [x] 6.2 Headless walk: draw on a phone (hiking) and desktop (ski route planned as tour), edit a saved track, drag, undo; save and see route numbers
-- [ ] 6.3 Persona review loop (`.review/`) until every goal passes
+- [x] 6.3 Persona review loop (`.review/`) until every goal passes

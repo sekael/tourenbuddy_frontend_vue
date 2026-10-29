@@ -502,7 +502,7 @@
       "equipmentPlaceholder": "Materialliste...",
       "notesLabel": "Notizen",
       "notesPlaceholder": "Andere Informationen...",
-      "gpxLabel": "GPX-Track",
+      "gpxLabel": "Track",
       "gpxUploadBtn": "GPX-Track hochladen",
       "gpxReplaceBtn": "Ersetzen",
       "gpxReplaceTooltip": "GPX-Track ersetzen",
@@ -542,7 +542,12 @@
       "landingLabel": "Landeplatz",
       "fromGoal": "{distance} vom Ziel",
       "farFromGoal": "{distance} vom Ziel – stimmt der Ort?",
-      "addLandingBtn": "Landeplatz hinzufügen"
+      "addLandingBtn": "Landeplatz hinzufügen",
+      "gpxDrawBtn": "Auf Karte zeichnen",
+      "gpxEditBtn": "Auf Karte bearbeiten",
+      "gpxDrawn": "Gezeichneter Track",
+      "gpxDrawnFile": "Gezeichneter Track · {distance}",
+      "gpxPreparing": "Höhen werden ergänzt …"
     },
     "creation": {
       "title": "Neue Tour",
@@ -849,6 +854,31 @@
       "cluster": "Mehrere Touren – tippen zum Hineinzoomen oder Auflisten",
       "chain": "Etappen einer Etappentour",
       "open": "Legende anzeigen"
+    },
+    "draw": {
+      "title": "Track zeichnen",
+      "followLabel": "Die Linie folgt",
+      "status": {
+        "hiking": "Die Linie folgt den Wanderwegen.",
+        "ski": "Die Linie folgt den Skitouren.",
+        "byActivity": "(passend zur Aktivität der Tour)",
+        "straight": "Gerade Linien: Schalte Wanderwege oder Skitouren ein, um ihnen zu folgen.",
+        "unavailable": "Die Wege konnten nicht geladen werden (offline?), dieser Abschnitt ist deshalb gerade.",
+        "tooFar": "Zu weit auseinander, um den Wegen zu folgen, dieser Abschnitt ist deshalb gerade. Setze die Punkte näher zueinander.",
+        "offNetwork": "Kein Weg in Reichweite dieses Punkts, dieser Abschnitt ist deshalb gerade."
+      },
+      "hint": {
+        "start": "Tippe auf die Karte, um den Start zu setzen.",
+        "next": "Tippe entlang des Wegs, um Punkte zu setzen. Ziehe einen Punkt, um ihn zu verschieben.",
+        "profileLoading": "Höhenprofil wird geladen …",
+        "profileOffline": "Das Höhenprofil braucht eine Verbindung."
+      },
+      "time": "Zeit",
+      "minutes": "{m} min",
+      "hours": "{h} h {m} min",
+      "undo": "Rückgängig",
+      "redo": "Wiederholen",
+      "done": "Fertig"
     }
   },
   "i18n": {

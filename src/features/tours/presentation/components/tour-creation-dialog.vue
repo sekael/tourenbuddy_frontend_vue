@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { DrawnTrack } from '@/features/map/domain/drawn-track'
+import type { LngLat } from '@/features/map/domain/entities/trail'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import type { PointPick } from '@/features/tours/presentation/composables/use-swisstopo-fill'
@@ -23,6 +25,8 @@ const props = defineProps<{
   seed?: TourDraft | null
   /** The seed continues an outing: titled "Add segment". */
   segment?: boolean
+  /** The latest finished drawing (or a planned ski route's line) for the form to take as its track. */
+  drawnTrack?: DrawnTrack | null
 }>()
 
 const emit = defineEmits<{
@@ -34,6 +38,8 @@ const emit = defineEmits<{
   ]
   close: []
   pickPoint: [type: 'start' | 'end' | 'goal']
+  drawTrack: [seed: DrawnTrack | null]
+  trackChange: [line: LngLat[] | null]
   tourTypesChange: [tourTypes: TourType[]]
   startPointChange: [point: { lng: number, lat: number } | null]
   endPointChange: [point: { lng: number, lat: number } | null]
@@ -41,7 +47,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n({ useScope: 'global' })
 const mapStore = useMapStore()
-const { isPickingLocation } = storeToRefs(mapStore)
+const { isPickingLocation, isDrawingTrack } = storeToRefs(mapStore)
 const log = useLogger('tour-creation-dialog')
 const isDesktop = useIsDesktop()
 
@@ -66,6 +72,8 @@ function handleClose() {
 const pickTypeLabel = computed(() => {
   if (!isPicking.value)
     return null
+  if (isDrawingTrack.value)
+    return t('map.draw.title')
   if (props.activePickType === 'start')
     return t('tours.picker.startTitle')
   if (props.activePickType === 'end')
@@ -109,10 +117,13 @@ function handlePickPoint(type: 'start' | 'end' | 'goal') {
       :current-goal="initialGoal ?? null"
       :initial-draft="seed"
       :pick="pick"
+      :drawn-track="drawnTrack"
       :disabled="isPicking"
       @submit="(d, r, tid, did) => handleSubmit(d, r, tid, did)"
       @cancel="emit('close')"
       @pick-point="handlePickPoint"
+      @draw-track="emit('drawTrack', $event)"
+      @track-change="emit('trackChange', $event)"
       @tour-types-change="emit('tourTypesChange', $event)"
       @start-point-change="emit('startPointChange', $event)"
       @end-point-change="emit('endPointChange', $event)"

@@ -1,6 +1,6 @@
 import type { LngLat, SkiRouteInfo } from '@/features/map/domain/entities/trail'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { planFromRoute } from '@/features/map/presentation/composables/plan-from-route'
+import { planFromRoute, routeLine } from '@/features/map/presentation/composables/plan-from-route'
 
 const { mockSearch } = vi.hoisted(() => ({ mockSearch: vi.fn() }))
 vi.mock('@/features/map/data/services/swisstopo-search-service', () => ({ searchLocations: mockSearch }))
@@ -51,5 +51,41 @@ describe('planFromRoute', () => {
 
   it('should plan nothing from a route without points', async () => {
     expect(await planFromRoute(ROUTE, [[]], 'en')).toBeNull()
+  })
+})
+
+describe('routeLine (#352)', () => {
+  it('should run the route from the start up to the summit across its parts, leaving out a variant', () => {
+    // Main line in two parts meeting at the col; a variant branches off the col to a second top.
+    const parts: LngLat[][] = [[[7.83, 46.74], [7.85, 46.76]], [[7.85, 46.76], [7.88, 46.78]], [[7.85, 46.76], [7.86, 46.79]]]
+    const line = routeLine(parts, [7.83, 46.74], [7.8801, 46.7801])
+    expect(line[0]![0]).toBeCloseTo(7.83, 6)
+    expect(line.at(-1)![0]).toBeCloseTo(7.88, 6)
+    expect(line.some(([lng]) => Math.abs(lng - 7.86) < 1e-6)).toBe(false)
+  })
+
+  it('should fall back to the longest part, run from the start, when the parts do not meet', () => {
+    const parts: LngLat[][] = [[[7.88, 46.78], [7.86, 46.77], [7.83, 46.74]], [[8.5, 46.5], [8.51, 46.5]]]
+    expect(routeLine(parts, [7.83, 46.74], [9.5, 47.5])).toEqual([[7.83, 46.74], [7.86, 46.77], [7.88, 46.78]])
+  })
+})
+
+describe('planFromRoute track (#352)', () => {
+  beforeEach(() => {
+    mockSearch.mockReset().mockResolvedValue([])
+  })
+
+  it('should go up and back down the route when SAC states a descent, so its numbers are the route\'s', async () => {
+    const plan = await planFromRoute(ROUTE, LINES, 'en')
+    const line = plan!.track.legs.flatMap((leg, i) => (i === 0 ? leg : leg.slice(1)))
+    expect(line[0]).toEqual(line.at(-1))
+    // Turns at the summit end of the route.
+    expect(line.some(([lng, lat]) => Math.abs(lng - 7.88) < 1e-9 && Math.abs(lat - 46.78) < 1e-9)).toBe(true)
+  })
+
+  it('should only go up a route without a descent', async () => {
+    const plan = await planFromRoute({ ...ROUTE, descentM: 0 }, LINES, 'en')
+    const line = plan!.track.legs.flat()
+    expect(line.at(-1)).not.toEqual(line[0])
   })
 })
