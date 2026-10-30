@@ -108,13 +108,18 @@ function within(
   return hits.sort((a, b) => a.distance - b.distance)
 }
 
+/** How much a unit off the ways (tap to landing, across a gap in the tiles) weighs against one on them. */
+const OFF_WAY_WEIGHT = 3
+
 /**
  * The routable graph of `lines`. Lines sharing a vertex meet there. A vertex within `join` of
  * another line also meets it, at its closest point: a path ending on a way it was not split at
  * (simplified tiles), a line cut at a tile edge and its continuation in the next tile, and ski
- * routes running side by side up a shared approach all become one network.
+ * routes running side by side up a shared approach all become one network. A loose line end (no
+ * other line meets it) reaches across to a way within `bridge`, at `OFF_WAY_WEIGHT`: the tiles
+ * leave such gaps where people walk on, a street ending at the square a trail crosses.
  */
-export function buildNetwork(lines: readonly NetworkLine[], join: number): Network {
+export function buildNetwork(lines: readonly NetworkLine[], join: number, bridge = join): Network {
   const nodes: Pt[] = []
   const ids = new Map<string, number>()
   const nodeAt = (p: Pt) => {
@@ -128,39 +133,47 @@ export function buildNetwork(lines: readonly NetworkLine[], join: number): Netwo
   }
 
   const raw: (Segment & { line: number })[] = []
-  const vertices: { node: number, line: number }[] = []
+  const vertices: { node: number, line: number, end: boolean }[] = []
+  const linesAt = new Map<number, Set<number>>()
   lines.forEach((line, li) => {
     let prev = -1
-    for (const p of line.points) {
+    line.points.forEach((p, k) => {
       const id = nodeAt(p)
-      vertices.push({ node: id, line: li })
+      vertices.push({ node: id, line: li, end: k === 0 || k === line.points.length - 1 })
+      linesAt.set(id, (linesAt.get(id) ?? new Set()).add(li))
       if (prev >= 0 && prev !== id)
         raw.push({ a: prev, b: id, cost: line.cost, line: li })
       prev = id
-    }
+    })
   })
 
   // Joins: cut the other line at the closest point, or meet its end vertex.
   const rawGrid = gridOf(raw, nodes)
-  const cuts = new Map<number, { t: number, from: number }[]>()
-  const links: [number, number][] = []
-  for (const { node, line } of vertices) {
-    const [hit] = within(raw, nodes, rawGrid, nodes[node]!, join, i => raw[i]!.line !== line && raw[i]!.a !== node && raw[i]!.b !== node)
+  const cuts = new Map<number, { t: number, from: number, weight: number }[]>()
+  const links: [number, number, number][] = []
+  for (const { node, line, end } of vertices) {
+    const other = (i: number) => raw[i]!.line !== line && raw[i]!.a !== node && raw[i]!.b !== node
+    let [hit] = within(raw, nodes, rawGrid, nodes[node]!, join, other)
+    let weight = 1
+    if (!hit && end && linesAt.get(node)!.size === 1) {
+      [hit] = within(raw, nodes, rawGrid, nodes[node]!, bridge, other)
+      weight = OFF_WAY_WEIGHT
+    }
     if (!hit)
       continue
     if (hit.t === 0 || hit.t === 1)
-      links.push([node, hit.t === 0 ? raw[hit.segment]!.a : raw[hit.segment]!.b])
+      links.push([node, hit.t === 0 ? raw[hit.segment]!.a : raw[hit.segment]!.b, weight])
     else
-      cuts.set(hit.segment, [...(cuts.get(hit.segment) ?? []), { t: hit.t, from: node }])
+      cuts.set(hit.segment, [...(cuts.get(hit.segment) ?? []), { t: hit.t, from: node, weight }])
   }
 
   const segments: Segment[] = []
   raw.forEach(({ a, b, cost }, i) => {
     const [ax, ay] = nodes[a]!
     const [bx, by] = nodes[b]!
-    const inner = (cuts.get(i) ?? []).sort((x, y) => x.t - y.t).map(({ t, from }) => {
+    const inner = (cuts.get(i) ?? []).sort((x, y) => x.t - y.t).map(({ t, from, weight }) => {
       const id = nodeAt([ax + t * (bx - ax), ay + t * (by - ay)])
-      links.push([from, id])
+      links.push([from, id, weight])
       return id
     })
     const chain = [a, ...inner, b]
@@ -178,8 +191,8 @@ export function buildNetwork(lines: readonly NetworkLine[], join: number): Netwo
   }
   for (const { a, b, cost } of segments)
     connect(a, b, cost)
-  for (const [a, b] of links)
-    connect(a, b, 1)
+  for (const [a, b, weight] of links)
+    connect(a, b, weight)
 
   return { nodes, edges, segments, grid: gridOf(segments, nodes) }
 }
@@ -249,14 +262,12 @@ export function routeBetween(net: Network, from: Snap, to: Snap): { points: Pt[]
   return { points: path.reverse(), cost: cost[goal]! }
 }
 
-/** How much a unit between a tap and where it lands weighs against a unit of way. */
-const SNAP_WEIGHT = 3
-
 /**
  * The way from `from` to a tap at `p`. Of the ways the tap is about as near to as the nearest
- * (within `slack`), it lands on the one that costs least to reach, each unit off the tap counting
- * `SNAP_WEIGHT` times: a tap beside a road and a side path running along it lands on the road the
- * route came by, not on the path, which it would reach only at its far end and come back from.
+ * (within `slack`), it lands on the one that costs least to reach, each unit off the tap
+ * counting `OFF_WAY_WEIGHT` times: a tap beside a road and a side path running along it lands on
+ * the road the route came by, not on the path, which it would reach only at its far end and come
+ * back from.
  * One Dijkstra from `from` scores every candidate; null when none is reachable.
  */
 export function routeToTap(net: Network, from: Snap, p: Pt, radius: number, slack: number): { to: Snap, points: Pt[] } | null {
@@ -271,7 +282,7 @@ export function routeToTap(net: Network, from: Snap, p: Pt, radius: number, slac
   let best: { to: Snap, via: number, score: number } | null = null
   for (const to of candidates) {
     const { a, b, cost } = segments[to.segment]!
-    const offTap = to.distance * SNAP_WEIGHT
+    const offTap = to.distance * OFF_WAY_WEIGHT
     if (to.segment === from.segment) {
       const score = dist(from.point, to.point) * cost + offTap
       if (!best || score < best.score)

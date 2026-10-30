@@ -93,6 +93,7 @@ import IconTimeline from '~icons/material-symbols/timeline'
 import IconTourOutline from '~icons/material-symbols/tour-outline'
 import IconTripOrigin from '~icons/material-symbols/trip-origin'
 import IconTune from '~icons/material-symbols/tune'
+import IconUTurnLeft from '~icons/material-symbols/u-turn-left'
 import IconUndo from '~icons/material-symbols/undo'
 import IconUploadFileOutline from '~icons/material-symbols/upload-file-outline'
 import IconVerifiedOutline from '~icons/material-symbols/verified-outline'
@@ -232,6 +233,7 @@ export const iconRegistry: Record<string, Component> = {
   tour: IconTourOutline,
   trip_origin: IconTripOrigin,
   tune: IconTune,
+  u_turn_left: IconUTurnLeft,
   undo: IconUndo,
   upload_file: IconUploadFileOutline,
   verified: IconVerifiedOutline,

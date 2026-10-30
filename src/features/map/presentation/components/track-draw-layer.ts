@@ -8,8 +8,9 @@ const TRACK_RED = '#e3061b'
 
 /**
  * A drawn track on the map, the way the swisstopo app draws one: a red line on a white casing,
- * red end dots ringed in white, white dots ringed red for the points between, and a faint dot
- * where a tap waits for its leg. `withPoints: false` draws the line alone (an unsaved track
+ * red end dots ringed in white, white dots ringed red for the points between, a small handle
+ * halfway along each leg to pull a new point out of it, and a faint dot where a tap waits for its
+ * leg. `withPoints: false` draws the line alone (an unsaved track
  * behind the form). The line runs with the tracks, under the markers and their labels; the dots
  * sit on top, so every point stays in reach of a finger.
  */
@@ -34,22 +35,23 @@ export function useTrackDrawLayer(map: MapLibreMap, id: string, { withPoints = t
       source: id,
       filter: ['==', '$type', 'Point'],
       paint: {
-        'circle-radius': ['match', ['get', 'role'], 'end', 8, 5],
+        'circle-radius': ['match', ['get', 'role'], 'end', 8, 'mid', 4, 5],
         'circle-color': ['match', ['get', 'role'], 'end', TRACK_RED, '#ffffff'],
         'circle-stroke-color': ['match', ['get', 'role'], 'end', '#ffffff', TRACK_RED],
-        'circle-stroke-width': 3,
-        'circle-opacity': ['match', ['get', 'role'], 'queued', 0.6, 1],
-        'circle-stroke-opacity': ['match', ['get', 'role'], 'queued', 0.6, 1],
+        'circle-stroke-width': ['match', ['get', 'role'], 'mid', 2, 3],
+        'circle-opacity': ['match', ['get', 'role'], 'queued', 0.6, 'mid', 0.9, 1],
+        'circle-stroke-opacity': ['match', ['get', 'role'], 'queued', 0.6, 'mid', 0.75, 1],
       },
     })
   }
 
-  function update({ points, legs }: DrawnTrack, queued: readonly LngLat[] = []) {
+  function update({ points, legs }: DrawnTrack, queued: readonly LngLat[] = [], handles: readonly (LngLat | null)[] = []) {
     const point = (coordinates: LngLat, role: string): GeoJSON.Feature => ({ type: 'Feature', properties: { role }, geometry: { type: 'Point', coordinates } })
     const features: GeoJSON.Feature[] = legs.map(leg => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: leg } }))
     if (withPoints) {
       // Ends last, so they sit on top of a loop's closing point.
       features.push(
+        ...handles.filter(p => !!p).map(p => point(p, 'mid')),
         ...points.slice(1, -1).map(p => point(p, 'via')),
         ...queued.map(p => point(p, 'queued')),
         ...[points[0], points.length > 1 ? points.at(-1) : undefined].filter(p => !!p).map(p => point(p, 'end')),

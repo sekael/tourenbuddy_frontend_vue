@@ -33,3 +33,15 @@
 - [x] 6.1 `npx eslint . --fix`, `npx eslint`, `npm run type-check`, `npm run test`
 - [x] 6.2 Headless walk: draw on a phone (hiking) and desktop (ski route planned as tour), edit a saved track, drag, undo; save and see route numbers
 - [x] 6.3 Persona review loop (`.review/`) until every goal passes
+
+## 7. Owner follow-ups
+
+- [x] 7.1 Legend out of the layers panel (button only); onboarding copy points at the ⓘ button
+- [x] 7.2 Leg handles: pull a leg's middle to insert a snapped point (`dropInsert`), shown on legs ≥ 40 px; test in `use-track-drawing.test.ts`
+- [x] 7.3 Drop the too-far / off-network notices (only "trails couldn't load" stays)
+- [x] 7.4 "To start" (out-and-back in one step); close (×) moves to the panel's top right; test in `use-track-drawing.test.ts`
+- [x] 7.5 Goal pick: tap a marked ski route → its card → plan with track; picker hint; closing returns to the pick
+- [x] 7.6 Route numbers from the track only: nothing while it loads, terrain heights for a height-less track; tests in `use-route-metrics.test.ts`
+- [x] 7.7 Persona review round on the follow-ups
+- [x] 7.8 Round 3 findings: loose way ends bridge data gaps ≤ 30 m (test in `track-routing.test.ts`); desktop drawing panel docked left
+

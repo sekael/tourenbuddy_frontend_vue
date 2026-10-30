@@ -22,6 +22,8 @@ const props = defineProps<{
   actionsBottom?: number
   /** What is picked: a start or end point also finds stops and ranks access places first. */
   role?: PickRole
+  /** A line above the search: another way to pick, e.g. tapping a marked ski route. */
+  hint?: string
 }>()
 
 const emit = defineEmits<{
@@ -210,6 +212,10 @@ function handleConfirm() {
         <LocationSearchResults v-if="isOnline && listOpen" :results="results" :failed="searchFailed" @choose="choose" />
       </Transition>
 
+      <p v-if="hint && !searching" class="hint">
+        {{ hint }}
+      </p>
+
       <SearchInput
         v-if="isOnline" ref="searchInput" v-model="query" class="search-field"
         :placeholder="role === 'start' || role === 'end' ? t('tours.picker.search.placeholderAccess') : t('tours.picker.search.placeholder')" :label="t('tours.picker.search.label')"
@@ -342,6 +348,21 @@ function handleConfirm() {
   align-self: center;
   display: flex;
   gap: var(--spacing-md);
+}
+
+/* A frosted note in the same glass as the search pill, so it reads on bright terrain. */
+.hint {
+  flex-shrink: 0;
+  align-self: center;
+  margin: 0;
+  padding: var(--spacing-xxs) var(--spacing-md);
+  border-radius: var(--radius-pill);
+  background-color: color-mix(in srgb, var(--color-background) 86%, transparent);
+  backdrop-filter: blur(16px) saturate(1.6);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  box-shadow: var(--shadow-md);
+  font-size: var(--font-size-sm);
+  text-align: center;
 }
 
 /* Tonal secondary needs a lift to stand off bright terrain */

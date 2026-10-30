@@ -649,7 +649,8 @@
           "address": "Adresse",
           "stop": "ÖV-Haltestelle"
         }
-      }
+      },
+      "routeHint": "Oder tippe auf eine markierte Skitour, um sie samt Track zu planen."
     },
     "attachments": {
       "add": "Datei hinzufügen",
@@ -863,9 +864,7 @@
         "ski": "Die Linie folgt den Skitouren.",
         "byActivity": "(passend zur Aktivität der Tour)",
         "straight": "Gerade Linien: Schalte Wanderwege oder Skitouren ein, um ihnen zu folgen.",
-        "unavailable": "Die Wege konnten nicht geladen werden (offline?), dieser Abschnitt ist deshalb gerade.",
-        "tooFar": "Zu weit auseinander, um den Wegen zu folgen, dieser Abschnitt ist deshalb gerade. Setze die Punkte näher zueinander.",
-        "offNetwork": "Kein Weg in Reichweite dieses Punkts, dieser Abschnitt ist deshalb gerade."
+        "unavailable": "Die Wege konnten nicht geladen werden (offline?), dieser Abschnitt ist deshalb gerade."
       },
       "hint": {
         "start": "Tippe auf die Karte, um den Start zu setzen.",
@@ -878,7 +877,9 @@
       "hours": "{h} h {m} min",
       "undo": "Rückgängig",
       "redo": "Wiederholen",
-      "done": "Fertig"
+      "done": "Fertig",
+      "returnToStart": "Zum Start",
+      "returnToStartHint": "Auf demselben Weg zurück zum Start"
     }
   },
   "i18n": {
@@ -1041,7 +1042,7 @@
       },
       "mapLayers": {
         "title": "Kartenebenen",
-        "body": "Wähle eine Grundkarte und blende Wanderwege oder Skitouren darüber ein, in beliebiger Kombination. Mit Skitouren zoomst du hinein, bis die Routen Schwierigkeits-Badges zeigen, und tippst dann für Details auf eine Route – oder planst sie gleich als Tour. Die Legende unten erklärt die Farben und Symbole der Tourenmarker."
+        "body": "Wähle eine Grundkarte und blende Wanderwege oder Skitouren darüber ein, in beliebiger Kombination. Mit Skitouren zoomst du hinein, bis die Routen Schwierigkeits-Badges zeigen, und tippst dann für Details auf eine Route – oder planst sie gleich als Tour. Der ⓘ-Knopf unten links erklärt die Farben und Symbole der Tourenmarker."
       },
       "welcome": {
         "title": "Willkommen bei TourenBuddy",

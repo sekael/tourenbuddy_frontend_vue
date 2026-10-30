@@ -920,13 +920,42 @@ watch(mapInstance, m => m?.on('error', (e) => {
     trailLookup.onMapError(e)
 }))
 
+/**
+ * A new tour's goal pick (not a segment's, not an edit's): there a tap on a marked ski route opens
+ * its card, to plan it as the tour with its line as track (#323) — closing the card picks on.
+ */
+const routesTappableInPick = computed(() => isPickingLocation.value && !isDrawingTrack.value && !isPickingForEdit.value
+  && pendingPickType.value === 'goal' && pendingLocation.value === null && segmentSeed.value === null
+  && activeOverlays.value.includes('ski') && isOnline.value)
+const trailCardFromPick = ref(false)
+
+async function openRouteFromPick(point: Point) {
+  const hits = await trailLookup.lookup(point)
+  if (!hits?.candidates.length || !routesTappableInPick.value)
+    return
+  mapStore.setPickingLocation(false)
+  trailCardFromPick.value = true
+  mapStore.showTrails(hits.candidates, hits.more)
+  openOverlay('trail-info')
+}
+
+function handleTrailCardClose() {
+  const backToPick = trailCardFromPick.value
+  closeOverlay()
+  if (backToPick)
+    mapStore.setPickingLocation(true)
+}
+
 // The trail card is the one sheet *about* the map, so a tap re-looks-up; every
 // other sheet keeps "tap map = close".
 async function handleMapBackgroundClick({ point }: { point: Point }) {
   // Suppress while location picker or region-draw is active — map panning passes
   // through the overlay and would otherwise deselect the current tour.
-  if (isPickingLocation.value || isDrawingRegion.value)
+  if (isPickingLocation.value || isDrawingRegion.value) {
+    if (routesTappableInPick.value && (mapInstance.value?.getZoom() ?? 0) >= TRAIL_LOOKUP_MIN_ZOOM)
+      await openRouteFromPick(point)
     return
+  }
   const map = mapInstance.value
   const otherSheet = activeOverlay.value !== null && activeOverlay.value !== 'trail-info'
   // Below the marking zoom nothing looks tappable, so a tap is a plain map tap.
@@ -955,8 +984,10 @@ async function handleMapBackgroundClick({ point }: { point: Point }) {
 
 // One rule for every way out of the card: close, tour selection, any other sheet.
 watch(activeOverlay, (name) => {
-  if (name !== 'trail-info')
+  if (name !== 'trail-info') {
     mapStore.clearTrails()
+    trailCardFromPick.value = false
+  }
 })
 
 // Frame what the card highlights (all candidates, or the chosen route) beside the
@@ -1171,6 +1202,7 @@ function handleDialogClose() {
     <LocationPicker
       v-if="isPickingLocation && !isDrawingTrack" :map="mapInstance" :role="pendingPickType"
       :actions-bottom="!isDesktop && (isPickingForEdit || showTourCreationDialog) ? 80 : undefined"
+      :hint="routesTappableInPick ? t('tours.picker.routeHint') : undefined"
       @confirm="handleLocationConfirmed" @cancel="handleLocationCancelled" @searching="pickerSearching = $event"
     />
 
@@ -1254,7 +1286,7 @@ function handleDialogClose() {
         />
       </div>
       <div v-else-if="activeOverlay === 'trail-info' && trailCard" key="trail-info" class="sheet-host">
-        <TrailCard @close="closeOverlay" @plan="handlePlanFromRoute" />
+        <TrailCard @close="handleTrailCardClose" @plan="handlePlanFromRoute" />
       </div>
       <div v-else-if="showTourCreationDialog" key="tour-creation" class="sheet-host">
         <TourCreationDialog

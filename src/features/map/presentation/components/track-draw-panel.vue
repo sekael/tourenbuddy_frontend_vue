@@ -17,9 +17,9 @@ import ElevationProfile from './elevation-profile.vue'
 
 /**
  * The drawing's panel, laid out like the swisstopo app's: what the line follows (the map's trail
- * layers, switchable right here), the numbers — distance, time, climb, descent — the elevation
- * profile, and undo / redo beside Cancel / Done. Every row keeps its height from the first tap
- * on, so the panel never jumps as the numbers arrive.
+ * layers, switchable right here) beside the close button, the numbers — distance, time, climb,
+ * descent — the elevation profile, and undo / redo / back to start beside Done. Every row keeps
+ * its height from the first tap on, so the panel never jumps as the numbers arrive.
  */
 const props = defineProps<{
   overlays: readonly TrailOverlayId[]
@@ -34,9 +34,11 @@ const props = defineProps<{
   busy: boolean
   canUndo: boolean
   canRedo: boolean
+  /** The line already ends at its start: nothing to return. */
+  closed: boolean
 }>()
 
-const emit = defineEmits<{ toggleOverlay: [id: TrailOverlayId], undo: [], redo: [], cancel: [], done: [] }>()
+const emit = defineEmits<{ toggleOverlay: [id: TrailOverlayId], undo: [], redo: [], returnToStart: [], cancel: [], done: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 const { formatElevation, formatDistance } = useFormatter()
@@ -44,10 +46,6 @@ const { formatElevation, formatDistance } = useFormatter()
 const status = computed(() => {
   if (props.issue === 'unavailable')
     return t('map.draw.status.unavailable')
-  if (props.issue === 'too-far')
-    return t('map.draw.status.tooFar')
-  if (props.issue === 'off-network')
-    return t('map.draw.status.offNetwork')
   if (!props.network)
     return t('map.draw.status.straight')
   const follows = t(`map.draw.status.${props.network}`)
@@ -83,6 +81,8 @@ const line = computed(() => props.profile?.line ?? ([] as LngLat[]))
         <BaseIcon :name="o.icon" size="sm" />
         {{ t(o.labelKey) }}
       </button>
+      <span class="spacer" />
+      <BaseIconButton name="close" variant="tonal" :label="t('tours.picker.cancelBtn')" data-testid="draw-cancel" @click="emit('cancel')" />
     </div>
     <p class="status" :class="{ 'status--warn': issue || !network }" role="status">
       {{ status }}
@@ -117,10 +117,14 @@ const line = computed(() => props.profile?.line ?? ([] as LngLat[]))
     <div class="actions">
       <BaseIconButton name="undo" size="lg" variant="tonal" :label="t('map.draw.undo')" :disabled="!canUndo" data-testid="draw-undo" @click="emit('undo')" />
       <BaseIconButton name="redo" size="lg" variant="tonal" :label="t('map.draw.redo')" :disabled="!canRedo" data-testid="draw-redo" @click="emit('redo')" />
-      <span class="spacer" />
-      <BaseButton variant="secondary" @click="emit('cancel')">
-        {{ t('tours.picker.cancelBtn') }}
+      <BaseButton
+        variant="secondary" class="return" :disabled="points < 2 || closed || busy" :title="t('map.draw.returnToStartHint')"
+        data-testid="draw-return" @click="emit('returnToStart')"
+      >
+        <BaseIcon name="u_turn_left" />
+        {{ t('map.draw.returnToStart') }}
       </BaseButton>
+      <span class="spacer" />
       <BaseButton variant="primary" :disabled="points < 2 || busy" data-testid="draw-done" @click="emit('done')">
         {{ t('map.draw.done') }}
       </BaseButton>
@@ -145,13 +149,13 @@ const line = computed(() => props.profile?.line ?? ([] as LngLat[]))
   box-shadow: var(--shadow-lg);
 }
 
+/* Docked left: the middle of the map, where the tour is drawn, stays clear. */
 @media (min-width: 600px) {
   .draw-panel {
-    left: 50%;
+    left: var(--spacing-lg);
     right: auto;
     bottom: var(--spacing-lg);
     width: 420px;
-    transform: translateX(-50%);
     border-radius: var(--radius-lg);
     padding-bottom: var(--spacing-md);
   }
@@ -159,6 +163,7 @@ const line = computed(() => props.profile?.line ?? ([] as LngLat[]))
 
 .snap {
   display: flex;
+  align-items: center;
   gap: var(--spacing-xs);
 }
 
@@ -247,10 +252,18 @@ const line = computed(() => props.profile?.line ?? ([] as LngLat[]))
 .actions {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
+  /* Four controls on a 360 px phone. */
+  gap: var(--spacing-xxs);
 }
 
 .spacer {
   flex: 1;
+}
+
+/* Tight on a 360 px phone beside undo, redo and Done: the label carries it, not padding. */
+.actions .return {
+  min-height: var(--icon-button-size-lg);
+  padding-inline: var(--spacing-sm) var(--spacing-md);
+  white-space: nowrap;
 }
 </style>

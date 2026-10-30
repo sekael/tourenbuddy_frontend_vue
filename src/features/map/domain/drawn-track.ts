@@ -22,6 +22,21 @@ export function lineLength(line: readonly LngLat[]): number {
   return line.reduce((sum, p, i) => (i > 0 ? sum + haversineMeters(line[i - 1]!, p) : sum), 0)
 }
 
+/** The point `share` (0–1) of the way along `line`. */
+export function pointAlong(line: readonly LngLat[], share: number): LngLat {
+  let left = lineLength(line) * share
+  for (let i = 1; i < line.length; i++) {
+    const [a, b] = [line[i - 1]!, line[i]!]
+    const step = haversineMeters(a, b)
+    if (step >= left && step > 0) {
+      const t = left / step
+      return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
+    }
+    left -= step
+  }
+  return line.at(-1)!
+}
+
 /** Distance in metres from `p` to the segment `a`–`b`, on a local flat projection. */
 function offset(p: LngLat, a: LngLat, b: LngLat): number {
   const k = Math.cos(p[1] * Math.PI / 180)

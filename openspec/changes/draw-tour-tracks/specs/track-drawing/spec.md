@@ -33,8 +33,8 @@ with the drawing as the tour's track.
 A tap on the map SHALL set a point and the line SHALL run to it from the previous point. A point
 SHALL land on a way of the followed network within about 32 screen pixels (16 with a mouse, never
 more than 250 m): of the ways about as near as the nearest, the one cheapest to reach, so the line
-never runs past the point and back. Farther off it SHALL stay where it was set, its leg SHALL be
-straight and the panel SHALL say no trail is within reach.
+never runs past the point and back. Farther off it SHALL stay where it was set and its leg SHALL be
+straight, without a notice: a straight line reads as one, as on any map.
 
 #### Scenario: Tap on a trail
 
@@ -44,18 +44,24 @@ straight and the panel SHALL say no trail is within reach.
 #### Scenario: Tap in open terrain
 
 - **WHEN** the user taps where no way lies within reach
-- **THEN** the point SHALL stay there, its leg SHALL be straight and the panel SHALL say why
+- **THEN** the point SHALL stay there and its leg SHALL be straight, with no notice
 
 #### Scenario: Tap between a road and a side path
 
 - **WHEN** the tap lies between the road the line comes along and a side path joining it farther on
 - **THEN** the point SHALL land on the road, without the line running to the side path's end and back
 
+#### Scenario: A street stopping short of the trail
+
+- **WHEN** a way's loose end stops within 30 m of a trail in the map data (a street ending at the
+  square the trail crosses) and the next point lies along that way
+- **THEN** the line SHALL cross the gap, not run round by the next junction and back
+
 ### Requirement: Moving points, loops and undo
 
 A point SHALL be draggable with a finger or the mouse, showing straight legs while held and
 following the network again when let go. A tap on the start of a line with two or more points SHALL
-close a loop back to it. Undo and redo SHALL step through every set, move and loop.
+close a loop back to it. Undo and redo SHALL step through every set, move, split and loop.
 
 #### Scenario: Drag a point
 
@@ -66,6 +72,29 @@ close a loop back to it. Undo and redo SHALL step through every set, move and lo
 
 - **WHEN** the line has three points and the user taps its start
 - **THEN** a last leg SHALL run back to the start
+
+### Requirement: Leg handles split a leg
+
+Every leg at least about 40 screen pixels long SHALL show a small handle halfway along it, as the
+swisstopo app does. Pulling a handle SHALL show a new point on straight legs while held; let go, the
+point SHALL land like a tap and the leg SHALL become two, each following the network. A tap on a
+handle SHALL set no point.
+
+#### Scenario: Pull the line onto another path
+
+- **WHEN** the user pulls the handle of a leg onto a parallel path and lets go
+- **THEN** a new point SHALL sit on that path and both new legs SHALL follow the ways through it
+
+### Requirement: Back to the start
+
+The panel SHALL offer "To start": the line SHALL run back to its start the same way, exactly
+reversed, in one undoable step — an out-and-back in one tap. It SHALL be disabled before the first
+leg and once the line ends at its start.
+
+#### Scenario: Out-and-back
+
+- **WHEN** the user draws up to a summit and taps "To start"
+- **THEN** the line SHALL return along the drawn way, the distance double and the descent the climb's
 
 ### Requirement: Map taps while drawing
 
@@ -90,8 +119,13 @@ marked trails and use other paths and small roads only to reach a point.
 
 #### Scenario: Trails can't load
 
-- **WHEN** the network's tiles can't be had (offline, never cached) or the points lie too far apart
-- **THEN** the leg SHALL be straight and the panel SHALL say why
+- **WHEN** the network's tiles can't be had (offline, never cached)
+- **THEN** the leg SHALL be straight and the panel SHALL say the trails couldn't load
+
+#### Scenario: Far jump
+
+- **WHEN** two points lie too far apart to search the ways between them
+- **THEN** the leg SHALL be straight, with no notice
 
 ### Requirement: The activity decides with both layers
 

@@ -8,23 +8,26 @@ import { computed, ref, shallowRef } from 'vue'
 import { useLogger } from '@/core/logging/use-logger'
 import { haversineMeters } from '@/core/utils/haversine'
 import { loadNetworkLines, TooFarError } from '@/features/map/data/services/trail-network-service'
-import { EMPTY_TRACK, lineLength, trackLine } from '@/features/map/domain/drawn-track'
+import { EMPTY_TRACK, lineLength, pointAlong, trackLine } from '@/features/map/domain/drawn-track'
 import { buildNetwork, metersPerUnit, routeToTap, snapTo, toLngLat, toUnits } from '@/features/map/domain/track-routing'
 import { getTrackProfile } from '@/features/tours/data/services/swisstopo-profile-service'
 import { trackMetrics } from '@/features/tours/domain/route-metrics'
 
 /** How far apart two ways may lie and still meet: tile-cut trails touch, ski routes run side by side. */
 const JOIN_M: Record<SnapNetwork, number> = { hiking: 3, ski: 20 }
+/** How far a way's loose end reaches across to another: the hiking tiles stop streets short of the trail. */
+const BRIDGE_M: Record<SnapNetwork, number> = { hiking: 30, ski: 20 }
 /** A leg looks this far around its two points (plus half their distance) for a way between them. */
 const MARGIN_M = 400
 /** Ways about as near a tap as the nearest one: this share of the snap reach farther still counts. */
 const SLACK = 0.4
 
 /**
- * Why the last leg is straight though a network is followed: no way within reach of the point (or
- * none leading there), none to load (offline, never cached), or a jump too far to search.
+ * Why the last leg is straight though a network is followed, where the map doesn't show it: no
+ * ways to load (offline, never cached). A tap off the ways or a far jump draws straight, as on
+ * any map — that needs no word.
  */
-export type NetworkIssue = 'off-network' | 'unavailable' | 'too-far' | null
+export type NetworkIssue = 'unavailable' | null
 
 interface Options {
   seed: DrawnTrack | null
@@ -49,8 +52,13 @@ export function useTrackDrawing(options: Options) {
   const queued = shallowRef<LngLat[]>([])
   const running = ref(0)
   const issue = ref<NetworkIssue>(null)
-  /** A point under the finger: shown with straight legs until it is let go. */
-  const dragging = shallowRef<{ index: number, point: LngLat } | null>(null)
+  /**
+   * A point under the finger, shown with straight legs until it is let go: an existing point
+   * (`index`), or a new one pulled out of leg `index` by its middle handle (`insert`).
+   */
+  const dragging = shallowRef<{ index: number, point: LngLat, insert: boolean } | null>(null)
+
+  const busy = computed(() => running.value > 0)
 
   let chain = Promise.resolve()
   function enqueue(step: () => Promise<void>) {
@@ -80,12 +88,12 @@ export function useTrackDrawing(options: Options) {
     try {
       const { key, lines } = await loadNetworkLines(network, bbox, network === 'ski' ? await options.skiTemplate() : null)
       if (built?.key !== key)
-        built = { key, net: buildNetwork(lines, JOIN_M[network] / mpu) }
+        built = { key, net: buildNetwork(lines, JOIN_M[network] / mpu, BRIDGE_M[network] / mpu) }
       issue.value = null
       return { net: built.net, mpu }
     }
     catch (err) {
-      issue.value = err instanceof TooFarError ? 'too-far' : 'unavailable'
+      issue.value = err instanceof TooFarError ? null : 'unavailable'
       return null
     }
   }
@@ -106,7 +114,6 @@ export function useTrackDrawing(options: Options) {
     const nearest = snapTo(net, toUnits(to), radius)
     const start = from && snapTo(net, toUnits(from), radius)
     const route = start && routeToTap(net, start, toUnits(to), radius, radius * SLACK)
-    issue.value = (from ? route : nearest) ? null : 'off-network'
     if (!route) {
       const landed = nearest ? toLngLat(nearest.point) : to
       return { to: landed, line: from && [from, landed] }
@@ -131,8 +138,8 @@ export function useTrackDrawing(options: Options) {
     })
   }
 
-  function drag(index: number, point: LngLat | null) {
-    dragging.value = point && { index, point }
+  function drag(index: number, point: LngLat | null, insert = false) {
+    dragging.value = point && { index, point, insert }
   }
 
   /** Let go of a dragged point: it lands on the ways, and both its legs follow them again. */
@@ -155,7 +162,33 @@ export function useTrackDrawing(options: Options) {
     })
   }
 
-  const busy = computed(() => running.value > 0)
+  /** Let go of a point pulled out of leg `leg`: it becomes a point between the leg's two, both new legs following the ways. */
+  function dropInsert(leg: number, point: LngLat, radiusM: number) {
+    enqueue(async () => {
+      const { points, legs } = track.value
+      const [a, b] = [points[leg]!, points[leg + 1]!]
+      const first = await resolve(a, point, radiusM)
+      const second = await resolve(first.to, b, radiusM)
+      dragging.value = null
+      commit({
+        points: [...points.slice(0, leg + 1), first.to, ...points.slice(leg + 1)],
+        // The far end stays where it was set.
+        legs: [...legs.slice(0, leg), first.line!, [...second.line!.slice(0, -1), b], ...legs.slice(leg + 1)],
+      })
+    })
+  }
+
+  /** The same way back to the start, exactly: an out-and-back in one step. */
+  function returnToStart() {
+    const { points, legs } = track.value
+    if (busy.value || legs.length === 0)
+      return
+    commit({
+      points: [...points, ...points.slice(0, -1).reverse()],
+      legs: [...legs, ...[...legs].reverse().map(leg => [...leg].reverse())],
+    })
+  }
+
   const canUndo = computed(() => !busy.value && past.value.length > 0)
   const canRedo = computed(() => !busy.value && future.value.length > 0)
 
@@ -181,6 +214,12 @@ export function useTrackDrawing(options: Options) {
     const { points, legs } = track.value
     if (!d)
       return track.value
+    if (d.insert) {
+      return {
+        points: [...points.slice(0, d.index + 1), d.point, ...points.slice(d.index + 1)],
+        legs: [...legs.slice(0, d.index), [points[d.index]!, d.point], [d.point, points[d.index + 1]!], ...legs.slice(d.index + 1)],
+      }
+    }
     return {
       points: points.map((p, i) => (i === d.index ? d.point : p)),
       legs: legs.map((leg, i) => (i === d.index - 1 ? [points[i]!, d.point] : i === d.index ? [d.point, points[i + 1]!] : leg)),
@@ -208,5 +247,13 @@ export function useTrackDrawing(options: Options) {
     return { distance, ascent, descent }
   })
 
-  return { track, shown, queued, busy, issue, add, drag, drop, undo, redo, canUndo, canRedo, profile: currentProfile, metrics }
+  /** Where each leg's middle handle sits: halfway along it. None while a point is held. */
+  const handles = computed(() => (dragging.value ? [] : shown.value.legs.map(leg => pointAlong(leg, 0.5))))
+  /** The line already ends where it started. */
+  const closed = computed(() => {
+    const { points } = track.value
+    return points.length > 1 && haversineMeters(points[0]!, points.at(-1)!) < 1
+  })
+
+  return { track, shown, queued, handles, closed, busy, issue, add, drag, drop, dropInsert, returnToStart, undo, redo, canUndo, canRedo, profile: currentProfile, metrics }
 }

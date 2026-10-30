@@ -17,3 +17,21 @@ route's longest part, run from the end nearer the start. The track SHALL stay ed
 
 - **WHEN** a route has a variant part branching to another top
 - **THEN** the track SHALL run to the goal and leave the variant out
+
+### Requirement: Plan a ski route from the goal pick
+
+While picking a new tour's goal (not a segment's, not an edit's) with ski routes shown and online, a
+tap on a marked ski route SHALL open its card as on the map, and the picker SHALL say so in a line
+above its search. "Plan as tour" SHALL plan it with its line as track; closing the card SHALL return
+to the goal pick.
+
+#### Scenario: Tap a route while picking the goal
+
+- **WHEN** the user taps "+", sees ski routes, and taps a marked route instead of confirming the crosshair
+- **THEN** the route's card SHALL open, and "Plan as tour" SHALL open the form with goal, start and track from the route
+
+#### Scenario: Back to picking
+
+- **WHEN** the user closes that card
+- **THEN** the goal pick SHALL be active again
+

@@ -66,7 +66,7 @@ describe('useTrackDrawing', () => {
     expect(d.track.value.legs).toHaveLength(1)
   })
 
-  it('should say a leg is straight because no trail lies within reach of the tap', async () => {
+  it('should draw straight to a tap far from any route, without a notice — straight reads as straight', async () => {
     mockLoad.mockResolvedValue({ key: 'k2', lines: [{ points: [A, BEND, B].map(toUnits), cost: 1 }] })
     const d = drawing('ski')
     d.add(A, 30)
@@ -74,6 +74,35 @@ describe('useTrackDrawing', () => {
     d.add([B[0], B[1] - 0.01], 30)
     await flushPromises()
     expect(d.track.value.legs[0]).toHaveLength(2)
-    expect(d.issue.value).toBe('off-network')
+    expect(d.issue.value).toBeNull()
+  })
+
+  it('should go back to the start the same way in one undoable step, and not twice', async () => {
+    const d = drawing(null)
+    d.add(A, 30)
+    d.add(BEND, 30)
+    d.add(B, 30)
+    await flushPromises()
+    d.returnToStart()
+    expect(d.track.value.points).toEqual([A, BEND, B, BEND, A])
+    expect(d.track.value.legs.at(-1)).toEqual([BEND, A])
+    expect(d.closed.value).toBe(true)
+    d.undo()
+    expect(d.track.value.points).toEqual([A, BEND, B])
+  })
+
+  it('should split a leg at a point pulled out of its middle handle, both halves following the trail', async () => {
+    mockLoad.mockResolvedValue({ key: 'k3', lines: [{ points: [A, BEND, B].map(toUnits), cost: 1 }] })
+    const d = drawing('hiking')
+    d.add(A, 30)
+    d.add(B, 30)
+    await flushPromises()
+    // Pulled onto the bend: the new point lands there and both legs keep to the trail.
+    d.dropInsert(0, [BEND[0], BEND[1] + 0.00005], 30)
+    await flushPromises()
+    expect(d.track.value.points).toHaveLength(3)
+    expect(d.track.value.points[1]![1]).toBeCloseTo(BEND[1], 5)
+    expect(d.track.value.legs).toHaveLength(2)
+    expect(d.track.value.legs[1]!.at(-1)).toEqual(d.track.value.points[2])
   })
 })

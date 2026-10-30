@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { buildNetwork, routeBetween, routeToTap, snapTo, toLngLat, toUnits } from '@/features/map/domain/track-routing'
 
 const line = (points: Pt[], cost = 1): NetworkLine => ({ points, cost })
-function route(lines: NetworkLine[], from: Pt, to: Pt, join = 3) {
-  const net = buildNetwork(lines, join)
+function route(lines: NetworkLine[], from: Pt, to: Pt, join = 3, bridge = join) {
+  const net = buildNetwork(lines, join, bridge)
   const [a, b] = [snapTo(net, from, 10), snapTo(net, to, 10)]
   return a && b ? routeBetween(net, a, b)?.points ?? null : null
 }
@@ -37,6 +37,20 @@ describe('trackRouting', () => {
 
   it('should give no way between networks farther apart than the join distance', () => {
     expect(route([line([[0, 0], [100, 0]]), line([[0, 20], [100, 20]])], [0, 0], [100, 20])).toBeNull()
+  })
+
+  it('should cross the gap from a street\'s loose end to the trail instead of going round by the far junction', () => {
+    const trail = line([[0, 0], [0, 300]])
+    // Stops 20 short of the trail; meets it again only at (0, 300).
+    const street = line([[20, 50], [100, 50], [100, 300], [0, 300]], 1.5)
+    const path = route([trail, street], [0, 40], [100, 60], 3, 30)
+    expect(path).toContainEqual([20, 50])
+    expect(path).not.toContainEqual([0, 300])
+  })
+
+  it('should not bridge to a way that only passes near, with both its ends far off', () => {
+    // Its middle dips to 20 above the other's; every end stays over 40 off.
+    expect(route([line([[0, 0], [100, 0]]), line([[-50, 80], [50, 20], [150, 80]])], [0, 0], [150, 80], 3, 30)).toBeNull()
   })
 
   it('should keep to the trail over a shorter unmarked way, unless the detour costs more', () => {

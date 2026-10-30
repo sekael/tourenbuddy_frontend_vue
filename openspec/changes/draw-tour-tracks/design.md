@@ -21,7 +21,10 @@ through `fetch`, so the service worker's caches and downloaded offline regions s
 Each leg loads the tiles around its two points (400 m plus half their distance), builds a graph and
 runs A*. Lines meet where they share a vertex, and a vertex within a join distance of another line
 (3 m hiking, 20 m ski) meets it at its closest point — that joins tile-cut lines, simplified
-T-junctions and ski routes running side by side. Unmarked ways cost 1.5× a marked trail, so a route
+T-junctions and ski routes running side by side. A loose line end (no other line meets it) reaches
+across to a way within 30 m hiking at 3× its length: the base tiles stop some streets short of the
+trail they meet on the ground, and the line would otherwise run round by the next junction and back.
+Unmarked ways cost 1.5× a marked trail, so a route
 keeps to trails and leaves them only to reach a point. A leg over more than 30 tiles, or one the
 network does not connect, is drawn straight.
 

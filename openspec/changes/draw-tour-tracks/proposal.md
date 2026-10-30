@@ -13,7 +13,9 @@ its line: the planned tour shows no track, and its climb and descent come from p
 
 - **Draw a track on the map** from the tour form, when creating or editing a tour (and when
   suggesting on a friend's tour): a tap sets a point, the line runs to it along the trails the map
-  shows; points can be dragged; a tap on the start closes a loop; undo / redo; Cancel / Done.
+  shows; points can be dragged; a handle halfway along each leg pulls a new point out of it; a tap
+  on the start closes a loop; "To start" returns the same way (out-and-back in one tap); undo /
+  redo; close / Done.
 - **Snapping follows the map's trail layers**: hiking trails shown → the hiking network (marked
   trails preferred, paths and small roads as fallback); ski routes shown → the ski routes; both →
   the tour's activity decides (ski touring → ski routes, hiking wins when both are picked or
@@ -24,7 +26,11 @@ its line: the planned tour shows no track, and its climb and descent come from p
   existing GPX upload / offline staging path; an existing track (drawn, uploaded or saved) can be
   edited on the map.
 - **Plan as tour carries the route's line** (#352): the ski route's own line, from the start up to
-  the summit, becomes the planned tour's track, with heights, so its route numbers work.
+  the summit and back down, becomes the planned tour's track, with heights, so its route numbers
+  match the route's. A marked ski route can also be tapped while picking a new tour's goal.
+- **Route numbers from the track only**: nothing shows while a track loads (no start-goal estimate
+  first), and a track without heights takes the terrain's.
+- **Legend out of the layers panel**: it keeps its own button, so the layer tiles stay in reach.
 - The track section moves up the form, after the activity, and is labelled "Track".
 
 ## Capabilities
@@ -35,7 +41,11 @@ its line: the planned tour shows no track, and its climb and descent come from p
 
 ### Modified Capabilities
 
-- `trail-lookup`: "Plan a tour from a ski route" also takes the route's line as the track.
+- `trail-lookup`: "Plan a tour from a ski route" also takes the route's line as the track; routes
+  are tappable during the new-tour goal pick.
+- `tour-info-extended`: route numbers come from the track (terrain heights when it has none),
+  never from point heights while it loads.
+- `map-legend`: the legend leaves the layers panel and opens from its own button only.
 - `gpx-tracks`: a track may come from a drawing; an unsaved track shows on the map in place of the
   saved one; the section offers drawing and editing on the map.
 
