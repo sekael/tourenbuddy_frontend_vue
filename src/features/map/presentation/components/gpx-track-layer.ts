@@ -62,7 +62,7 @@ export function trackGradient(colors: readonly string[], split?: LegSplit): Expr
 }
 
 const ARROW_SOURCE_ID = 'tour-connector'
-const ARROW_LAYER_ID = 'tour-connector-arrow'
+export const ARROW_LAYER_ID = 'tour-connector-arrow'
 const CONNECTOR_WIDTH = 2
 const CONNECTOR_OPACITY = 0.7
 /** Screen distance between arrows along a leg; a shorter leg gets one in its middle. */

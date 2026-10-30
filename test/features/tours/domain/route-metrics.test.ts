@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { pointMetrics, progressNearest, routeMetrics, totalMetrics, trackEnds, trackMetrics } from '@/features/tours/domain/route-metrics'
+import { estimatedMinutes, pointMetrics, progressNearest, routeMetrics, totalMetrics, trackEnds, trackMetrics } from '@/features/tours/domain/route-metrics'
 
 const HUT = { lng: 9.86, lat: 46.64 }
 const VALLEY = { lng: 9.81, lat: 46.64 }
@@ -171,5 +171,20 @@ describe('trackEnds', () => {
     const multi = { type: 'Feature' as const, properties: {}, geometry: { type: 'MultiLineString' as const, coordinates: [[[3, 3, 900]], [[4, 4], [5, 5]]] } }
     expect(trackEnds({ type: 'FeatureCollection', features: [line([[1, 1], [2, 2]]), multi] }))
       .toEqual({ first: { lng: 1, lat: 1 }, last: { lng: 5, lat: 5 } })
+  })
+})
+
+describe('estimatedMinutes', () => {
+  it('should know no time without a distance', () => {
+    expect(estimatedMinutes({ ascent: 500, descent: 0, distance: null })).toBeNull()
+  })
+
+  it('should count the shorter of flat and vertical time half (SAC rule), slower up on foot than on skis', () => {
+    // 4 km flat = 60 min; 600 m up = 120 min on foot → 120 + 30.
+    expect(estimatedMinutes({ ascent: 600, descent: 0, distance: 4000 })).toBe(150)
+    // On skis 600 m up = 90 min → 90 + 30.
+    expect(estimatedMinutes({ ascent: 600, descent: 0, distance: 4000 }, true)).toBe(120)
+    // Unknown heights: the flat time alone.
+    expect(estimatedMinutes({ ascent: null, descent: null, distance: 4000 })).toBe(60)
   })
 })

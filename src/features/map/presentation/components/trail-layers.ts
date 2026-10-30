@@ -22,6 +22,8 @@ const SELECTED_LAYER_ID = 'trail-highlight-selected'
 // Mirrors --orange-500 (MapLibre paint needs literal colors). Not blue: Swisstopo
 // draws ski routes blue, so a blue highlight would vanish into the overlay.
 const HIGHLIGHT_COLOR = '#f97316'
+/** Trail overlays behind a drawing. */
+const DIMMED_OPACITY = 0.4
 
 const layerId = (id: TrailOverlayId) => `trail-overlay-${id}`
 // Swisstopo's exact string (base map + Classic use it too): MapLibre merges identical
@@ -143,6 +145,19 @@ export function useTrailLayers(map: MapLibreMap) {
     }
   }
 
+  /**
+   * While a track is drawn the trails step back: still there to aim at, but the drawn red line
+   * must not drown in the red hiking trails.
+   */
+  function setDimmed(dimmed: boolean) {
+    for (const overlay of TRAIL_OVERLAYS) {
+      if (map.getLayer(layerId(overlay.id)))
+        map.setPaintProperty(layerId(overlay.id), 'raster-opacity', dimmed ? DIMMED_OPACITY : 1)
+    }
+    if (map.getLayer(CLICKABLE_HALO_LAYER_ID))
+      map.setPaintProperty(CLICKABLE_HALO_LAYER_ID, 'line-opacity', dimmed ? 0.2 : 0.5)
+  }
+
   function setLang(lang: string) {
     if (map.getLayer(CLICKABLE_MARKER_LAYER_ID))
       map.setLayoutProperty(CLICKABLE_MARKER_LAYER_ID, 'icon-image', skiBadgeImage(lang))
@@ -152,7 +167,7 @@ export function useTrailLayers(map: MapLibreMap) {
     map.getSource<GeoJSONSource>(HIGHLIGHT_SOURCE_ID)?.setData(highlightGeoJson(card))
   }
 
-  return { setup, setVisible, setLang, setHighlight }
+  return { setup, setVisible, setDimmed, setLang, setHighlight }
 }
 
 /** List view: every candidate faint. Detail view: only the chosen route, fully highlighted. */

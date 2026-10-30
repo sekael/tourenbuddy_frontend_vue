@@ -16,6 +16,7 @@ import { outingDetailMarkers, tourDetailMarkers } from '@/features/tours/domain/
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import { useGpxTrackLayer } from './gpx-track-layer'
 import { DETAIL_CIRCLE_LAYER_ID, TOUR_LAYER_IDS, useToursMarkerLayer } from './tours-marker-layer'
+import { useTrackDrawLayer } from './track-draw-layer'
 import { useTrailLayers } from './trail-layers'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
@@ -49,6 +50,8 @@ const {
   previewTourTypes,
   previewStart,
   previewEnd,
+  previewTrack,
+  isDrawingTrack,
   activeOverlays,
   trailCard,
 } = storeToRefs(mapStore)
@@ -62,6 +65,8 @@ defineExpose({ map })
 
 let markerLayer: ReturnType<typeof useToursMarkerLayer> | null = null
 let gpxLayer: ReturnType<typeof useGpxTrackLayer> | null = null
+/** The open form's unsaved track, drawn like the drawing it came from. */
+let draftTrackLayer: ReturnType<typeof useTrackDrawLayer> | null = null
 let trailLayers: ReturnType<typeof useTrailLayers> | null = null
 
 // Map-layers panel previews: fetched + decoded once the first tiles are in, and held
@@ -237,6 +242,10 @@ onMounted(() => {
     gpxLayer = useGpxTrackLayer(mapInstance!)
     gpxLayer.setup()
     drawScene()
+    // After the scene: the line goes under the connector arrows the scene adds.
+    draftTrackLayer = useTrackDrawLayer(mapInstance!, 'track-draft', { withPoints: false })
+    draftTrackLayer.setup()
+    showDraftTrack()
 
     mapInstance!.on('click', (e) => {
       // Include the detail circle so tapping a start/end marker is swallowed
@@ -296,6 +305,15 @@ watch(outingChains, (chains) => {
     markerLayer?.updateOutingChains(chains)
 })
 
+// A drawing, or a track drawn or picked but not saved yet, stands in for the tour's saved one.
+function showDraftTrack() {
+  const line = isDrawingTrack.value ? null : previewTrack.value
+  draftTrackLayer?.update({ points: [], legs: line?.length ? [line] : [] })
+  gpxLayer?.setVisible(!isDrawingTrack.value && previewTrack.value === null)
+  trailLayers?.setDimmed(isDrawingTrack.value)
+}
+watch([previewTrack, isDrawingTrack], showDraftTrack)
+
 watch(activeOverlays, ids => trailLayers?.setVisible(ids))
 watch(trailCard, card => trailLayers?.setHighlight(card))
 /** Swisstopo's difficulty fields are per language: `de-CH` → `de`. */
@@ -321,6 +339,8 @@ watch(currentStyleIndex, (index) => {
       markerLayer?.updatePreview(previewGoal.value, previewTourTypes.value ?? [])
       gpxLayer?.setup()
       drawScene()
+      draftTrackLayer?.setup()
+      showDraftTrack()
     })
   }
 })

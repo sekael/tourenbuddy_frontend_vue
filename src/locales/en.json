@@ -502,7 +502,7 @@
       "equipmentPlaceholder": "Gear list...",
       "notesLabel": "Notes",
       "notesPlaceholder": "Any other info...",
-      "gpxLabel": "GPX Track",
+      "gpxLabel": "Track",
       "gpxUploadBtn": "Upload GPX track",
       "gpxReplaceBtn": "Replace",
       "gpxReplaceTooltip": "Replace GPX track",
@@ -542,12 +542,18 @@
       "landingLabel": "Landing",
       "fromGoal": "{distance} from the goal",
       "farFromGoal": "{distance} from the goal – right place?",
-      "addLandingBtn": "Add landing"
+      "addLandingBtn": "Add landing",
+      "gpxDrawBtn": "Draw on map",
+      "gpxEditBtn": "Edit on map",
+      "gpxDrawn": "Drawn track",
+      "gpxDrawnFile": "Drawn track · {distance}",
+      "gpxPreparing": "Adding heights to the track…"
     },
     "creation": {
       "title": "New Tour",
       "pickingTitle": "New Tour: {name}",
-      "saveBtn": "Save Tour"
+      "saveBtn": "Save Tour",
+      "alreadyThere": "You already have this tour planned."
     },
     "infoSheet": {
       "editTitlePrefix": "Edit",
@@ -644,7 +650,8 @@
           "address": "Address",
           "stop": "Public transport stop"
         }
-      }
+      },
+      "routeHint": "Or tap a marked ski route to plan it with its track."
     },
     "attachments": {
       "add": "Add file",
@@ -849,6 +856,31 @@
       "cluster": "Several tours — tap to zoom in or list them",
       "chain": "Segments of a multi-day tour",
       "open": "Show legend"
+    },
+    "draw": {
+      "title": "Draw track",
+      "followLabel": "The line follows",
+      "status": {
+        "hiking": "The line follows the hiking trails.",
+        "ski": "The line follows the ski routes.",
+        "byActivity": "(matches the tour’s activity)",
+        "straight": "Straight lines: turn on hiking trails or ski routes to follow them.",
+        "unavailable": "Couldn’t load the trails (offline?), so this part is drawn straight."
+      },
+      "hint": {
+        "start": "Tap the map to set the start.",
+        "next": "Tap along the way to add points. Drag a point to move it.",
+        "profileLoading": "Loading the elevation profile…",
+        "profileOffline": "The elevation profile needs a connection."
+      },
+      "time": "Time",
+      "minutes": "{m} min",
+      "hours": "{h} h {m} min",
+      "undo": "Undo",
+      "redo": "Redo",
+      "done": "Done",
+      "returnToStart": "To start",
+      "returnToStartHint": "Back to the start the same way"
     }
   },
   "i18n": {
@@ -1011,7 +1043,7 @@
       },
       "mapLayers": {
         "title": "Map layers",
-        "body": "Pick a base map and add hiking trails or ski routes on top, in any combination. With ski routes on, zoom in until the routes show difficulty badges, then tap one for its details — or plan it as a tour right away. The legend at the bottom explains the marker colours and symbols."
+        "body": "Pick a base map and add hiking trails or ski routes on top, in any combination. With ski routes on, zoom in until the routes show difficulty badges, then tap one for its details — or plan it as a tour right away. The ⓘ button at the bottom left explains the marker colours and symbols."
       },
       "welcome": {
         "title": "Welcome to TourenBuddy",

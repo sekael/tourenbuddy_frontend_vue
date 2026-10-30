@@ -502,7 +502,7 @@
       "equipmentPlaceholder": "Materialliste...",
       "notesLabel": "Notizen",
       "notesPlaceholder": "Andere Informationen...",
-      "gpxLabel": "GPX-Track",
+      "gpxLabel": "Track",
       "gpxUploadBtn": "GPX-Track hochladen",
       "gpxReplaceBtn": "Ersetzen",
       "gpxReplaceTooltip": "GPX-Track ersetzen",
@@ -542,12 +542,18 @@
       "landingLabel": "Landeplatz",
       "fromGoal": "{distance} vom Ziel",
       "farFromGoal": "{distance} vom Ziel – stimmt der Ort?",
-      "addLandingBtn": "Landeplatz hinzufügen"
+      "addLandingBtn": "Landeplatz hinzufügen",
+      "gpxDrawBtn": "Auf Karte zeichnen",
+      "gpxEditBtn": "Auf Karte bearbeiten",
+      "gpxDrawn": "Gezeichneter Track",
+      "gpxDrawnFile": "Gezeichneter Track · {distance}",
+      "gpxPreparing": "Höhen werden ergänzt …"
     },
     "creation": {
       "title": "Neue Tour",
       "pickingTitle": "Neue Tour: {name}",
-      "saveBtn": "Tour speichern"
+      "saveBtn": "Tour speichern",
+      "alreadyThere": "Diese Tour hast du schon schon geplant."
     },
     "infoSheet": {
       "editTitlePrefix": "Bearbeiten",
@@ -644,7 +650,8 @@
           "address": "Adresse",
           "stop": "ÖV-Haltestelle"
         }
-      }
+      },
+      "routeHint": "Oder tippe auf eine markierte Skitour, um sie samt Track zu planen."
     },
     "attachments": {
       "add": "Datei hinzufügen",
@@ -849,6 +856,31 @@
       "cluster": "Mehrere Touren – tippen zum Hineinzoomen oder Auflisten",
       "chain": "Etappen einer Etappentour",
       "open": "Legende anzeigen"
+    },
+    "draw": {
+      "title": "Track zeichnen",
+      "followLabel": "Die Linie folgt",
+      "status": {
+        "hiking": "Die Linie folgt den Wanderwegen.",
+        "ski": "Die Linie folgt den Skitouren.",
+        "byActivity": "(passend zur Aktivität der Tour)",
+        "straight": "Gerade Linien: Schalte Wanderwege oder Skitouren ein, um ihnen zu folgen.",
+        "unavailable": "Die Wege konnten nicht geladen werden (offline?), dieser Abschnitt ist deshalb gerade."
+      },
+      "hint": {
+        "start": "Tippe auf die Karte, um den Start zu setzen.",
+        "next": "Tippe entlang des Wegs, um Punkte zu setzen. Ziehe einen Punkt, um ihn zu verschieben.",
+        "profileLoading": "Höhenprofil wird geladen …",
+        "profileOffline": "Das Höhenprofil braucht eine Verbindung."
+      },
+      "time": "Zeit",
+      "minutes": "{m} min",
+      "hours": "{h} h {m} min",
+      "undo": "Rückgängig",
+      "redo": "Wiederholen",
+      "done": "Fertig",
+      "returnToStart": "Zum Start",
+      "returnToStartHint": "Auf demselben Weg zurück zum Start"
     }
   },
   "i18n": {
@@ -1011,7 +1043,7 @@
       },
       "mapLayers": {
         "title": "Kartenebenen",
-        "body": "Wähle eine Grundkarte und blende Wanderwege oder Skitouren darüber ein, in beliebiger Kombination. Mit Skitouren zoomst du hinein, bis die Routen Schwierigkeits-Badges zeigen, und tippst dann für Details auf eine Route – oder planst sie gleich als Tour. Die Legende unten erklärt die Farben und Symbole der Tourenmarker."
+        "body": "Wähle eine Grundkarte und blende Wanderwege oder Skitouren darüber ein, in beliebiger Kombination. Mit Skitouren zoomst du hinein, bis die Routen Schwierigkeits-Badges zeigen, und tippst dann für Details auf eine Route – oder planst sie gleich als Tour. Der ⓘ-Knopf unten links erklärt die Farben und Symbole der Tourenmarker."
       },
       "welcome": {
         "title": "Willkommen bei TourenBuddy",

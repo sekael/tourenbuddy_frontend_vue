@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { DrawnTrack } from '@/features/map/domain/drawn-track'
+import type { LngLat } from '@/features/map/domain/entities/trail'
 import type { Season } from '@/features/tours/data/models/season'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Visibility } from '@/features/tours/data/models/visibility'
@@ -8,17 +10,19 @@ import type { LegDirection, TourLegs } from '@/features/tours/domain/legs'
 import type { PointPick, SwisstopoFill } from '@/features/tours/presentation/composables/use-swisstopo-fill'
 import { storeToRefs } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
-import { computed, ref, watch } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
+import { useFormatter } from '@/core/composables/use-formatter'
 import { cacheBlob, clearPendingUpload, evictCachedBlob, markPendingUpload } from '@/core/offline/blob-cache'
 import { isOnline } from '@/core/offline/use-online-status'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
+import { lineLength, trackFromLine, trackLine } from '@/features/map/domain/drawn-track'
 import { dropScales, GRADE_MAX_LENGTH, gradeScales, normalizeGrade } from '@/features/tours/data/models/grade'
 import { SEASON_VALUES, seasonsForDates } from '@/features/tours/data/models/season'
 import { MAX_ATTACHMENTS_PER_TOUR } from '@/features/tours/data/models/tour-attachment'
@@ -35,11 +39,14 @@ import {
   parseGpxFile,
 } from '@/features/tours/data/services/gpx-parser'
 import { gpxStorageKey, removeGpx, uploadGpx, uploadGpxToKey } from '@/features/tours/data/services/gpx-storage-service'
+import { loadGpxTrack } from '@/features/tours/data/services/gpx-track-service'
+import { gpxFromLine } from '@/features/tours/data/services/gpx-writer'
 import { getElevation } from '@/features/tours/data/services/swisstopo-elevation-service'
 import { suggestTourName } from '@/features/tours/data/services/swisstopo-name-service'
+import { densify, getTrackProfile } from '@/features/tours/data/services/swisstopo-profile-service'
 import { isSameGoal } from '@/features/tours/domain/distance'
 import { defaultDirection, directionOf, landsByAir, legsFrom, waysCovered } from '@/features/tours/domain/legs'
-import { trackEnds } from '@/features/tours/domain/route-metrics'
+import { trackEnds, trackLines } from '@/features/tours/domain/route-metrics'
 import ActivityLegs from '@/features/tours/presentation/components/activity-legs.vue'
 import GradeChips from '@/features/tours/presentation/components/grade-chips.vue'
 import PointDistance from '@/features/tours/presentation/components/point-distance.vue'
@@ -63,6 +70,11 @@ const props = defineProps<{
    * (the goal comes in through `currentGoal`) and looks up that point's name and elevation.
    */
   pick?: PointPick | null
+  /**
+   * The latest finished drawing (a new object per drawing), or a planned ski route's line: the
+   * form makes it the tour's GPX track, with heights from the terrain profile.
+   */
+  drawnTrack?: DrawnTrack | null
   /** When true, disable all inputs and buttons — used while location picker is active. */
   disabled?: boolean
   /** Tour ID — only required in edit mode; used by the attachments picker. */
@@ -98,12 +110,17 @@ const emit = defineEmits<{
   ]
   cancel: []
   pickPoint: [type: 'start' | 'end' | 'goal']
+  /** Draw the track on the map, going on from the current one (null: none yet). */
+  drawTrack: [seed: DrawnTrack | null]
+  /** The unsaved track for the map: null = the saved one stands, [] = removed. */
+  trackChange: [line: LngLat[] | null]
   tourTypesChange: [tourTypes: TourType[]]
   startPointChange: [point: { lng: number, lat: number } | null]
   endPointChange: [point: { lng: number, lat: number } | null]
 }>()
 
 const { t } = useI18n({ useScope: 'global' })
+const { formatDistance } = useFormatter()
 
 /** Fixed for the lifetime of a form instance — the host mounts a fresh one per mode. */
 const isSuggest = props.mode === 'suggest'
@@ -172,7 +189,14 @@ const endPointElevation = ref(
 )
 const equipment = ref(props.initialDraft?.equipment ?? '')
 const notes = ref(props.initialDraft?.notes ?? '')
-const gpxFile = ref<File | null>(null)
+const gpxFile = shallowRef<File | null>(null)
+/** Each picked or drawn file's line, and a drawn one's drawing — so the map and a redraw read the file. */
+const fileLines = new WeakMap<File, LngLat[]>()
+const fileDrawings = new WeakMap<File, DrawnTrack>()
+/** A drawing on its way to a GPX file: heights load from the terrain profile first. */
+const preparingTrack = ref(false)
+/** The saved track loading to draw on from it. */
+const loadingSeed = ref(false)
 const gpxFilepath = ref<string | null>(props.initialDraft?.gpxFilepath ?? null)
 const gpxRemoved = ref(false)
 const gpxError = ref<string | null>(null)
@@ -502,12 +526,18 @@ async function handleGpxUpload(event: Event) {
   const file = input.files?.[0]
   if (!file)
     return
-
-  gpxError.value = null
   input.value = ''
+  await acceptGpxFile(file)
+}
+
+/** A picked or drawn GPX file: it names the empty ends, then uploads (or stages offline) at once. */
+async function acceptGpxFile(file: File) {
+  gpxError.value = null
 
   try {
-    fillPointsFromTrack(await parseGpxFile(file))
+    const track = await parseGpxFile(file)
+    fileLines.set(file, trackLines(track).flat().map(([lng, lat]) => [lng!, lat!] as LngLat))
+    fillPointsFromTrack(track)
   }
   catch (err) {
     if (err instanceof GpxFileTooLargeError) {
@@ -654,6 +684,50 @@ function handleRemoveGpx() {
   gpxError.value = null
 }
 
+/**
+ * Draw the track on the map, going on from the current one: a drawing exactly as drawn, any other
+ * track (picked, or saved — loaded first) with its turning points to drag.
+ */
+async function startDrawing() {
+  const file = gpxFile.value
+  let seed = file ? fileDrawings.get(file) ?? null : null
+  const line = file && fileLines.get(file)
+  if (!seed && line)
+    seed = trackFromLine(line)
+  if (!file && !gpxRemoved.value && gpxFilepath.value && props.tourId) {
+    loadingSeed.value = true
+    const saved = await loadGpxTrack({ id: props.tourId, gpxFilepath: gpxFilepath.value })
+    loadingSeed.value = false
+    seed = saved && trackFromLine(trackLines(saved).flat().map(([lng, lat]) => [lng!, lat!] as LngLat))
+  }
+  emit('drawTrack', seed)
+}
+
+/**
+ * A finished drawing becomes the tour's GPX file, with the terrain's heights when online. Its
+ * points are the same either way, so a route planned twice is one track (`dropIfDuplicate`).
+ */
+async function acceptDrawnTrack(track: DrawnTrack) {
+  preparingTrack.value = true
+  try {
+    const line = trackLine(track)
+    const profiled = isOnline.value ? await getTrackProfile(line) : null
+    const gpx = gpxFromLine(profiled?.line ?? densify(line), profiled?.heights ?? null, tourName.value.trim() || t('tours.form.gpxDrawn'))
+    const file = new File([gpx], t('tours.form.gpxDrawnFile', { distance: formatDistance.value(lineLength(line)) }), { type: 'application/gpx+xml' })
+    fileDrawings.set(file, track)
+    await acceptGpxFile(file)
+  }
+  finally {
+    preparingTrack.value = false
+  }
+}
+watch(() => props.drawnTrack, track => track && void acceptDrawnTrack(track), { immediate: true })
+
+watch(
+  () => (gpxRemoved.value ? [] : gpxFile.value ? fileLines.get(gpxFile.value) ?? null : null),
+  line => emit('trackChange', line),
+)
+
 // A <button> can't open a file dialog the way a <label> does — forward the click
 // to a single hidden <input> shared by the upload + replace buttons.
 const gpxInputRef = ref<HTMLInputElement | null>(null)
@@ -697,7 +771,7 @@ function formatPoint(point: { lng: number, lat: number }) {
 // Overflow is in here too: an unacceptable batch must not be sendable, the owner would
 // only meet it as a cap error on accept with no way to fix it from their side.
 const submitBlocked = computed(
-  () => isUploadingGpx.value || attachmentsStore.uploading || attachmentOverflow.value > 0,
+  () => isUploadingGpx.value || preparingTrack.value || attachmentsStore.uploading || attachmentOverflow.value > 0,
 )
 
 function handleSubmit() {
@@ -1022,6 +1096,102 @@ defineExpose({ cancel: handleCancel, submitBlocked })
           </div>
         </div>
 
+        <!-- SECTION: GPX Track -->
+        <div class="section">
+          <p class="section-label">
+            {{ t('tours.form.gpxLabel') }}
+          </p>
+          <!-- Single hidden picker shared by the upload + replace buttons. -->
+          <input
+            ref="gpxInputRef"
+            type="file"
+            accept=".gpx,application/gpx+xml,application/xml,text/xml,application/octet-stream"
+            class="hidden-input"
+            tabindex="-1"
+            :aria-label="t('tours.form.gpxLabel')"
+            @change="handleGpxUpload"
+          >
+          <!-- Same tile as the attachment upload rows below it. `gpxProgress` is null unless
+               an upload is actually in flight: picking a GPX offline is allowed (it stages
+               and uploads on replay), and staging transfers nothing, so no bar appears. -->
+          <UploadTile
+            v-if="preparingTrack"
+            class="gpx-filled-row"
+            icon="route"
+            :filename="t('tours.form.gpxPreparing')"
+          />
+          <UploadTile
+            v-else-if="gpxFile || gpxFilepath"
+            class="gpx-filled-row"
+            :icon="isUploadingGpx ? 'upload_file' : 'route'"
+            :filename="gpxFile ? gpxFile.name : t('tours.form.gpxExistingTrack')"
+            :progress="isUploadingGpx ? gpxProgress : null"
+            :progress-label="t('tours.form.gpxUploading')"
+          >
+            <!-- Replace turns into Cancel for the duration of an upload — same swap the
+                 attachment rows make. Offline staging never sets `isUploadingGpx`, so the
+                 replace button stays put while a queued track syncs in the background. -->
+            <BaseTooltip
+              :text="isUploadingGpx ? t('tours.attachments.cancelUpload') : t('tours.form.gpxReplaceTooltip')"
+            >
+              <BaseIconButton
+                v-if="isUploadingGpx"
+                name="close"
+                :label="t('tours.attachments.cancelUpload')"
+                shape="square"
+                size="sm"
+                data-testid="gpx-cancel-btn"
+                @click="cancelGpxUpload"
+              />
+              <BaseIconButton
+                v-else
+                name="upload_file"
+                :label="t('tours.form.gpxReplaceTooltip')"
+                shape="square"
+                size="sm"
+                @click="openGpxPicker"
+              />
+            </BaseTooltip>
+            <BaseTooltip :text="t('tours.form.gpxRemoveTooltip')">
+              <BaseIconButton
+                name="delete"
+                :label="t('tours.form.gpxRemoveTooltip')"
+                shape="square"
+                size="sm"
+                tone="danger"
+                data-testid="gpx-remove-btn"
+                @click="handleRemoveGpx"
+              />
+            </BaseTooltip>
+          </UploadTile>
+          <div v-else class="gpx-empty-row">
+            <BaseButton type="button" variant="secondary" size="sm" data-testid="gpx-draw-btn" @click="startDrawing">
+              <BaseIcon name="draw" />
+              {{ t('tours.form.gpxDrawBtn') }}
+            </BaseButton>
+            <BaseButton
+              type="button"
+              variant="secondary"
+              size="sm"
+              data-testid="gpx-upload-btn"
+              @click="openGpxPicker"
+            >
+              <BaseIcon name="upload_file" />
+              {{ t('tours.form.gpxUploadBtn') }}
+            </BaseButton>
+          </div>
+          <BaseButton
+            v-if="(gpxFile || gpxFilepath) && !preparingTrack && !isUploadingGpx" type="button" variant="secondary" size="sm"
+            class="gpx-edit-btn" :disabled="loadingSeed" data-testid="gpx-edit-btn" @click="startDrawing"
+          >
+            <BaseIcon name="draw" />
+            {{ t('tours.form.gpxEditBtn') }}
+          </BaseButton>
+          <p v-if="gpxError" class="gpx-error">
+            {{ gpxError }}
+          </p>
+        </div>
+
         <!-- SECTION: When — the seasons follow the dates (design D6) -->
         <div class="section">
           <p class="section-label">
@@ -1168,85 +1338,6 @@ defineExpose({ cancel: handleCancel, submitBlocked })
               :placeholder="t('tours.form.notesPlaceholder')"
             />
           </div>
-        </div>
-
-        <!-- SECTION: GPX Track -->
-        <div class="section">
-          <p class="section-label">
-            {{ t('tours.form.gpxLabel') }}
-          </p>
-          <!-- Single hidden picker shared by the upload + replace buttons. -->
-          <input
-            ref="gpxInputRef"
-            type="file"
-            accept=".gpx,application/gpx+xml,application/xml,text/xml,application/octet-stream"
-            class="hidden-input"
-            tabindex="-1"
-            :aria-label="t('tours.form.gpxLabel')"
-            @change="handleGpxUpload"
-          >
-          <!-- Same tile as the attachment upload rows below it. `gpxProgress` is null unless
-               an upload is actually in flight: picking a GPX offline is allowed (it stages
-               and uploads on replay), and staging transfers nothing, so no bar appears. -->
-          <UploadTile
-            v-if="gpxFile || gpxFilepath"
-            class="gpx-filled-row"
-            :icon="isUploadingGpx ? 'upload_file' : 'route'"
-            :filename="gpxFile ? gpxFile.name : t('tours.form.gpxExistingTrack')"
-            :progress="isUploadingGpx ? gpxProgress : null"
-            :progress-label="t('tours.form.gpxUploading')"
-          >
-            <!-- Replace turns into Cancel for the duration of an upload — same swap the
-                 attachment rows make. Offline staging never sets `isUploadingGpx`, so the
-                 replace button stays put while a queued track syncs in the background. -->
-            <BaseTooltip
-              :text="isUploadingGpx ? t('tours.attachments.cancelUpload') : t('tours.form.gpxReplaceTooltip')"
-            >
-              <BaseIconButton
-                v-if="isUploadingGpx"
-                name="close"
-                :label="t('tours.attachments.cancelUpload')"
-                shape="square"
-                size="sm"
-                data-testid="gpx-cancel-btn"
-                @click="cancelGpxUpload"
-              />
-              <BaseIconButton
-                v-else
-                name="upload_file"
-                :label="t('tours.form.gpxReplaceTooltip')"
-                shape="square"
-                size="sm"
-                @click="openGpxPicker"
-              />
-            </BaseTooltip>
-            <BaseTooltip :text="t('tours.form.gpxRemoveTooltip')">
-              <BaseIconButton
-                name="delete"
-                :label="t('tours.form.gpxRemoveTooltip')"
-                shape="square"
-                size="sm"
-                tone="danger"
-                data-testid="gpx-remove-btn"
-                @click="handleRemoveGpx"
-              />
-            </BaseTooltip>
-          </UploadTile>
-          <div v-else class="gpx-empty-row">
-            <BaseButton
-              type="button"
-              variant="secondary"
-              size="sm"
-              data-testid="gpx-upload-btn"
-              @click="openGpxPicker"
-            >
-              <BaseIcon name="upload_file" />
-              {{ t('tours.form.gpxUploadBtn') }}
-            </BaseButton>
-          </div>
-          <p v-if="gpxError" class="gpx-error">
-            {{ gpxError }}
-          </p>
         </div>
 
         <!-- SECTION: Attachments -->
@@ -1660,8 +1751,13 @@ defineExpose({ cancel: handleCancel, submitBlocked })
 /* GPX */
 .gpx-empty-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--spacing-sm);
+}
+
+.gpx-edit-btn {
+  align-self: flex-start;
 }
 
 .hidden-input {

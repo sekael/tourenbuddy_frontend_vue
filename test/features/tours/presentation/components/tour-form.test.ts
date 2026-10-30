@@ -31,6 +31,13 @@ const { mockGetElevation, mockSuggestTourName } = vi.hoisted(() => ({
 vi.mock('@/features/tours/data/services/swisstopo-elevation-service', () => ({ getElevation: mockGetElevation }))
 vi.mock('@/features/tours/data/services/swisstopo-name-service', () => ({ suggestTourName: mockSuggestTourName }))
 
+const { mockGetTrackProfile, mockLoadGpxTrack } = vi.hoisted(() => ({ mockGetTrackProfile: vi.fn(), mockLoadGpxTrack: vi.fn() }))
+vi.mock('@/features/tours/data/services/swisstopo-profile-service', async importOriginal => ({
+  ...await importOriginal<typeof import('@/features/tours/data/services/swisstopo-profile-service')>(),
+  getTrackProfile: mockGetTrackProfile,
+}))
+vi.mock('@/features/tours/data/services/gpx-track-service', () => ({ loadGpxTrack: mockLoadGpxTrack }))
+
 const { mockFindStopsNear } = vi.hoisted(() => ({ mockFindStopsNear: vi.fn() }))
 vi.mock('@/features/tours/data/services/swisstopo-stop-service', () => ({ findStopsNear: mockFindStopsNear }))
 mockFindStopsNear.mockResolvedValue([])
@@ -997,6 +1004,59 @@ describe('tourForm — creation that knows more (smarter-tour-creation)', () => 
         startPointName: 'Tierberglihütte SAC',
         endPoint: { lng: 8.50, lat: 46.75 },
       })
+    })
+  })
+
+  describe('a track drawn on the map (#323)', () => {
+    const LINE: [number, number][] = [[8.40, 46.73], [8.42, 46.72], [8.4551, 46.6989]]
+    const DRAWN = { points: [LINE[0]!, LINE[2]!], legs: [LINE] }
+    const asTrack = (coordinates: number[][]): GeoJSON.FeatureCollection =>
+      ({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates } }] })
+
+    beforeEach(() => {
+      mockUploadGpx.mockReset().mockResolvedValue('user-abc/new-tour-id.gpx')
+      vi.mocked(parseGpxFile).mockResolvedValue(asTrack(LINE))
+    })
+
+    it('should hold Save while the drawing gets its heights, then upload it with them', async () => {
+      let answer!: (p: unknown) => void
+      mockGetTrackProfile.mockReturnValue(new Promise((resolve) => {
+        answer = resolve
+      }))
+      const wrapper = mountForm({ currentGoal: GOAL, drawnTrack: DRAWN })
+      await flushPromises()
+      await wrapper.find('#tf-tourName').setValue('Sustenhorn')
+      await wrapper.find('form').trigger('submit.prevent')
+      expect(wrapper.emitted('submit')).toBeUndefined()
+
+      answer({ line: LINE, heights: [1900, 2400, 3500] })
+      await flushPromises()
+      const file = mockUploadGpx.mock.calls[0]![2] as File
+      expect(await file.text()).toContain('<ele>3500</ele>')
+      expect(wrapper.emitted('trackChange')!.at(-1)).toEqual([LINE])
+    })
+
+    it('should still take the drawing without heights when the profile is out of reach, through the same points', async () => {
+      mockGetTrackProfile.mockResolvedValue(null)
+      const wrapper = mountForm({ currentGoal: GOAL, drawnTrack: DRAWN })
+      await flushPromises()
+      const file = mockUploadGpx.mock.calls[0]![2] as File
+      const gpx = await file.text()
+      expect(gpx).not.toContain('<ele>')
+      // Densified as with heights: a route planned twice stays one track, whatever the profile did.
+      expect(gpx.match(/<trkpt/g)!.length).toBeGreaterThan(100)
+      expect((await submitted(wrapper)).gpxFilepath).toBe('user-abc/new-tour-id.gpx')
+    })
+
+    it('should go on from the saved track, loaded first, when editing', async () => {
+      mockLoadGpxTrack.mockResolvedValue(asTrack(LINE))
+      const wrapper = mountForm({ tourId: 't1', initialDraft: { name: 'X', gpxFilepath: 'user-abc/t1.gpx', tourTypes: [], partnerIds: [] } })
+      await wrapper.find('[data-testid="gpx-edit-btn"]').trigger('click')
+      await flushPromises()
+      expect(mockLoadGpxTrack).toHaveBeenCalledWith({ id: 't1', gpxFilepath: 'user-abc/t1.gpx' })
+      const [seed] = wrapper.emitted('drawTrack')![0] as [{ points: unknown[], legs: unknown[][] }]
+      expect(seed.points[0]).toEqual(LINE[0])
+      expect(seed.legs.flat().at(-1)).toEqual(LINE[2])
     })
   })
 })

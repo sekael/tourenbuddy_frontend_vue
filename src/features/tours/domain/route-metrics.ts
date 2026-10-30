@@ -48,7 +48,7 @@ export function pointMetrics(tour: HeightPoints): RouteMetrics {
   }
 }
 
-function trackLines(track: GeoJSON.FeatureCollection): GeoJSON.Position[][] {
+export function trackLines(track: GeoJSON.FeatureCollection): GeoJSON.Position[][] {
   return track.features.flatMap(({ geometry: g }) => {
     if (g?.type === 'LineString')
       return [g.coordinates]
@@ -187,4 +187,18 @@ export function totalMetrics(routes: readonly RouteMetrics[]): RouteMetrics {
     return known.length > 0 ? known.reduce((sum, v) => sum + v, 0) : null
   }
   return { ascent: total('ascent'), descent: total('descent'), distance: total('distance') }
+}
+
+/**
+ * Time on the way in minutes, by the Swiss rule of thumb (SAC, DIN 33466): 4 km/h on the flat,
+ * 300 m an hour up and 500 m down; the shorter of horizontal and vertical time counts half. On skis
+ * the climb goes at 400 m an hour and the run down is quick. Null without a distance.
+ * ponytail: one pace for everyone; a personal pace (the swisstopo app's tortoise→hare) can scale it.
+ */
+export function estimatedMinutes({ distance, ascent, descent }: RouteMetrics, onSkis = false): number | null {
+  if (!distance)
+    return null
+  const flat = distance / 4000
+  const vertical = (ascent ?? 0) / (onSkis ? 400 : 300) + (descent ?? 0) / (onSkis ? 1500 : 500)
+  return Math.round((Math.max(flat, vertical) + Math.min(flat, vertical) / 2) * 60)
 }
