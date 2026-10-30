@@ -4,8 +4,8 @@
 
 "Plan as tour" SHALL also take the route's own line as the new tour's track: from the plan's start
 along the route's parts up to the route point nearest the goal and, when the route states a
-descent, back down the same way — saved as GPX with terrain heights so the tour's climb, descent and
-distance come from it and match the route's. Parts that do not connect SHALL fall back to the
+descent, down to the plan's end — saved as GPX with terrain heights so the tour's climb, descent
+and distance come from it and match the route's. Parts that do not connect SHALL fall back to the
 route's longest part, run from the end nearer the start. The track SHALL stay editable on the map.
 
 #### Scenario: Planning a ski route
@@ -17,6 +17,24 @@ route's longest part, run from the end nearer the start. The track SHALL stay ed
 
 - **WHEN** a route has a variant part branching to another top
 - **THEN** the track SHALL run to the goal and leave the variant out
+
+### Requirement: A planned route starts and ends where its figures say
+
+A planned route's start and end SHALL be loose ends of the route (where no other part meets it):
+the start the one whose terrain height lies the route's climb below its summit, the end the one its
+descent below — another end for a traverse, the start again (back the same way) for most routes.
+Without those heights or figures, the start SHALL be the loose end farthest from the goal and the
+way down the way up.
+
+#### Scenario: A traverse
+
+- **WHEN** the user plans "Eggerhorn, von Binn über Äbnimatt mit Abfahrt nach Ausserbinn" (1100 m up, 1200 m down) as a tour
+- **THEN** the track SHALL start at Binn, run up to the summit and down to Ausserbinn, and the form SHALL take Binn as start and Ausserbinn as end
+
+#### Scenario: Offline
+
+- **WHEN** the terrain heights can't be had
+- **THEN** the start SHALL be the loose end farthest from the summit and the track SHALL return to it
 
 ### Requirement: Plan a ski route from the goal pick
 

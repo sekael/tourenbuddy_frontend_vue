@@ -62,8 +62,25 @@ until ≤ 10).
 ### D6 Plan as tour (#352)
 
 The route's parts become a network of their own (20 m join); the track runs from the plan's start
-to the point nearest the summit. Parts that don't connect fall back to the longest part, run from
-the end nearer the start.
+to the point nearest the summit and on to the plan's end. SAC's route data marks no way up or down,
+only the route's climb and descent: the start is the loose end whose terrain height (height service,
+one call per end) lies the climb below the summit, the end the one the descent below. A traverse
+(Eggerhorn: from Binn, down to Ausserbinn) gets two ends; most routes one, so the way down is the
+way up. On 150 random routes stating a different descent, 79 became traverses: 75 closer to SAC's
+figures, 1 farther (mean deviation 1567 m → 187 m). Routes starting at a lift above the summit or
+descending off the drawn line stay up-and-back. Without heights (offline) the start is the loose end
+farthest from the goal. Parts that don't connect fall back to the longest part, run from the end
+nearer the start.
+
+### D8 A route planned twice
+
+Saving a new tour that matches an own tour in every field the owner sets, track points included,
+opens that tour with a notice instead of inserting a copy (and removes the copy's upload, unless a
+tour holds that file). The fields compare client-side against the loaded tours; the tracks only when
+the fields match, by points to 6 decimals (heights aside). The form writes a drawn track densified
+whether or not the profile service answered, so a failed height lookup doesn't make the second plan
+a different track. No schema change: an exact copy is a client concern, and a duplicate row would
+be harmless to the database. Segments and tours with attachments are never copies.
 
 ### D7 On the map
 

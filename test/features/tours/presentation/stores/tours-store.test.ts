@@ -38,6 +38,9 @@ vi.mock('@/features/tours/data/services/gpx-storage-service', () => ({
   downloadOriginal: vi.fn(),
 }))
 
+const { mockLoadTrack } = vi.hoisted(() => ({ mockLoadTrack: vi.fn() }))
+vi.mock('@/features/tours/data/services/gpx-track-service', () => ({ loadGpxTrack: mockLoadTrack }))
+
 vi.mock('@/features/contacts/data/repositories/contacts-repository-impl', () => ({
   ContactsRepositoryImpl: vi.fn().mockImplementation(() => ({
     fetchContacts: vi.fn().mockResolvedValue([]),
@@ -622,5 +625,41 @@ describe('useToursStore: outings (#338)', () => {
     store.tours = [{ ...seg('a', 0), outing: { ...outing, name: 'Route' } }, seg('b', 1)]
     await store.renameOuting(store.tours, '  Route ')
     expect(sentOutings()).toEqual({ b: { ...outing, name: 'Route', position: 1 } })
+  })
+
+  describe('dropIfDuplicate', () => {
+    const line = (lng: number): GeoJSON.FeatureCollection => ({
+      type: 'FeatureCollection',
+      features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [[8.1, 46.3, 1400], [lng, 46.38, 2500]] } }],
+    })
+    const planned = { ...mockTours[0]!, id: 'planned', name: 'Eggerhorn', tourTypes: ['skitour' as const], gpxFilepath: 'user-123/planned.gpx' }
+    const draft = (changes: object = {}) => ({ ...DRAFT_FILL, ...planned, gpxFilepath: 'user-123/copy.gpx', ...changes })
+
+    it('should hand back the tour planned before and drop only the copy\'s upload, never a file a tour holds', async () => {
+      mockListTours.mockResolvedValue([planned])
+      mockLoadTrack.mockResolvedValue(line(8.1835))
+      const { removeGpx } = await import('@/features/tours/data/services/gpx-storage-service')
+      const store = useToursStore()
+      await store.loadTours()
+
+      expect((await store.dropIfDuplicate(draft(), planned.goal))?.id).toBe('planned')
+      expect(removeGpx).toHaveBeenCalledWith('user-123/copy.gpx')
+      vi.mocked(removeGpx).mockClear()
+      // A form seeded with the tour's own file.
+      expect((await store.dropIfDuplicate(draft({ gpxFilepath: 'user-123/planned.gpx' }), planned.goal))?.id).toBe('planned')
+      expect(removeGpx).not.toHaveBeenCalled()
+    })
+
+    it('should let the copy be saved when one field or one track point differs, or a track can\'t load', async () => {
+      mockListTours.mockResolvedValue([planned])
+      const store = useToursStore()
+      await store.loadTours()
+
+      expect(await store.dropIfDuplicate(draft({ plannedDate: new Date('2027-02-14') }), planned.goal)).toBeNull()
+      mockLoadTrack.mockImplementation(async ({ gpxFilepath }) => line(gpxFilepath.includes('copy') ? 8.18351 : 8.1835))
+      expect(await store.dropIfDuplicate(draft(), planned.goal)).toBeNull()
+      mockLoadTrack.mockResolvedValue(null)
+      expect(await store.dropIfDuplicate(draft(), planned.goal)).toBeNull()
+    })
   })
 })

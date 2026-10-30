@@ -44,4 +44,7 @@
 - [x] 7.6 Route numbers from the track only: nothing while it loads, terrain heights for a height-less track; tests in `use-route-metrics.test.ts`
 - [x] 7.7 Persona review round on the follow-ups
 - [x] 7.8 Round 3 findings: loose way ends bridge data gaps ≤ 30 m (test in `track-routing.test.ts`); desktop drawing panel docked left
-
+- [x] 7.9 Plan as tour: start and end from the route's loose ends by terrain height vs SAC's climb and descent (traverses keep their descent); test in `plan-from-route.test.ts`; checked on 150 real routes
+- [x] 7.10 Toasts and chips rise above the location picker's dock (`--dock-inset`)
+- [x] 7.11 An exact copy of an own tour opens the existing one with a notice (`dropIfDuplicate`); drawn tracks densified with or without heights; tests in `tours-store.test.ts`, `tour-form.test.ts`
+- [x] 7.12 Headless walk: route error while picking (above the dock), Eggerhorn planned twice (Binn → Ausserbinn, one tour)

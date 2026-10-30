@@ -26,8 +26,12 @@ its line: the planned tour shows no track, and its climb and descent come from p
   existing GPX upload / offline staging path; an existing track (drawn, uploaded or saved) can be
   edited on the map.
 - **Plan as tour carries the route's line** (#352): the ski route's own line, from the start up to
-  the summit and back down, becomes the planned tour's track, with heights, so its route numbers
-  match the route's. A marked ski route can also be tapped while picking a new tour's goal.
+  the summit and down to its end (back the same way, or on to another valley for a traverse),
+  becomes the planned tour's track, with heights, so its route numbers match the route's. A marked
+  ski route can also be tapped while picking a new tour's goal.
+- **No exact copies**: saving a tour identical to one the user already has (a route planned twice)
+  opens that tour instead of saving a second.
+- **Messages clear the location picker**: toasts sit above its search and buttons.
 - **Route numbers from the track only**: nothing shows while a track loads (no start-goal estimate
   first), and a track without heights takes the terrain's.
 - **Legend out of the layers panel**: it keeps its own button, so the layer tiles stay in reach.
@@ -48,6 +52,8 @@ its line: the planned tour shows no track, and its climb and descent come from p
 - `map-legend`: the legend leaves the layers panel and opens from its own button only.
 - `gpx-tracks`: a track may come from a drawing; an unsaved track shows on the map in place of the
   saved one; the section offers drawing and editing on the map.
+- `tours`: an exact copy of an own tour is not saved twice.
+- `design-system`: floating toasts also clear the location picker's dock.
 
 ## Impact
 

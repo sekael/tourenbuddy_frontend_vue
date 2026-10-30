@@ -2,8 +2,9 @@ import type { LngLat, SkiRouteInfo } from '@/features/map/domain/entities/trail'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { planFromRoute, routeLine } from '@/features/map/presentation/composables/plan-from-route'
 
-const { mockSearch } = vi.hoisted(() => ({ mockSearch: vi.fn() }))
+const { mockSearch, mockElevation } = vi.hoisted(() => ({ mockSearch: vi.fn(), mockElevation: vi.fn() }))
 vi.mock('@/features/map/data/services/swisstopo-search-service', () => ({ searchLocations: mockSearch }))
+vi.mock('@/features/tours/data/services/swisstopo-elevation-service', () => ({ getElevation: mockElevation }))
 
 const ROUTE: SkiRouteInfo = {
   name: 'Von Habkern',
@@ -22,6 +23,7 @@ const place = (name: string, lng: number, lat: number) => ({ name, lng, lat, kin
 describe('planFromRoute', () => {
   beforeEach(() => {
     mockSearch.mockReset()
+    mockElevation.mockReset().mockResolvedValue(null)
   })
 
   it('should put the goal on the summit found by name near the route, not on the route\'s last point', async () => {
@@ -46,7 +48,8 @@ describe('planFromRoute', () => {
     mockSearch.mockRejectedValue(new TypeError('offline'))
     const offline = await planFromRoute(ROUTE, LINES, 'en')
     expect(offline!.goal).toEqual({ lng: 7.83, lat: 46.74 })
-    expect(offline!.seed.startPoint).toEqual({ lng: 7.88, lat: 46.78 })
+    // A loose end, never the joint between the parts.
+    expect(offline!.seed.startPoint).toEqual({ lng: 7.85, lat: 46.76 })
   })
 
   it('should plan nothing from a route without points', async () => {
@@ -58,7 +61,7 @@ describe('routeLine (#352)', () => {
   it('should run the route from the start up to the summit across its parts, leaving out a variant', () => {
     // Main line in two parts meeting at the col; a variant branches off the col to a second top.
     const parts: LngLat[][] = [[[7.83, 46.74], [7.85, 46.76]], [[7.85, 46.76], [7.88, 46.78]], [[7.85, 46.76], [7.86, 46.79]]]
-    const line = routeLine(parts, [7.83, 46.74], [7.8801, 46.7801])
+    const line = routeLine(parts, [7.83, 46.74], [7.8801, 46.7801], null)
     expect(line[0]![0]).toBeCloseTo(7.83, 6)
     expect(line.at(-1)![0]).toBeCloseTo(7.88, 6)
     expect(line.some(([lng]) => Math.abs(lng - 7.86) < 1e-6)).toBe(false)
@@ -66,13 +69,14 @@ describe('routeLine (#352)', () => {
 
   it('should fall back to the longest part, run from the start, when the parts do not meet', () => {
     const parts: LngLat[][] = [[[7.88, 46.78], [7.86, 46.77], [7.83, 46.74]], [[8.5, 46.5], [8.51, 46.5]]]
-    expect(routeLine(parts, [7.83, 46.74], [9.5, 47.5])).toEqual([[7.83, 46.74], [7.86, 46.77], [7.88, 46.78]])
+    expect(routeLine(parts, [7.83, 46.74], [9.5, 47.5], null)).toEqual([[7.83, 46.74], [7.86, 46.77], [7.88, 46.78]])
   })
 })
 
 describe('planFromRoute track (#352)', () => {
   beforeEach(() => {
     mockSearch.mockReset().mockResolvedValue([])
+    mockElevation.mockReset().mockResolvedValue(null)
   })
 
   it('should go up and back down the route when SAC states a descent, so its numbers are the route\'s', async () => {
@@ -87,5 +91,19 @@ describe('planFromRoute track (#352)', () => {
     const plan = await planFromRoute({ ...ROUTE, descentM: 0 }, LINES, 'en')
     const line = plan!.track.legs.flat()
     expect(line.at(-1)).not.toEqual(line[0])
+  })
+
+  it('should run a traverse up from the end its climb lies below the summit and down to the one its descent does', async () => {
+    // Eggerhorn: from Binn (1400) and from Ausserbinn (1300) to a junction, on to the top (2500).
+    const parts: LngLat[][] = [[[8.184, 46.364], [8.178, 46.377]], [[8.151, 46.377], [8.178, 46.377]], [[8.178, 46.377], [8.1835, 46.3833]]]
+    const heights: Record<string, number> = { 8.184: 1400, 8.151: 1300, 8.1835: 2500 }
+    mockElevation.mockImplementation(async ({ lng }) => heights[String(lng)] ?? null)
+    const eggerhorn = { ...ROUTE, targetName: 'Eggerhorn', targetAltitude: 2500, ascentM: 1100, descentM: 1200 }
+    const plan = await planFromRoute(eggerhorn, parts, 'en')
+    const line = plan!.track.legs.flat()
+    expect(plan!.seed.startPoint).toEqual({ lng: 8.184, lat: 46.364 })
+    expect(line[0]![0]).toBeCloseTo(8.184, 6)
+    expect(line.at(-1)![0]).toBeCloseTo(8.151, 6)
+    expect(line.some(([lng]) => Math.abs(lng - 8.1835) < 1e-6)).toBe(true)
   })
 })

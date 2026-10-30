@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { FlyToOptions, Map as MapLibreMap } from 'maplibre-gl'
 import type { LocationResult, PickRole } from '@/features/map/data/services/swisstopo-search-service'
-import { useFocusWithin, usePreferredReducedMotion, watchDebounced } from '@vueuse/core'
+import { useElementSize, useFocusWithin, usePreferredReducedMotion, watchDebounced } from '@vueuse/core'
 import { LngLat } from 'maplibre-gl'
-import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, useTemplateRef, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
@@ -60,10 +60,24 @@ const { focused } = useFocusWithin(computed(() => searchInput.value?.$el as HTML
 const searching = computed(() => isTouch.value && (focused.value || listOpen.value))
 watch(searching, active => emit('searching', active), { immediate: true })
 const viewportTop = useVisualViewportTop()
+const dockBottom = computed(() => props.actionsBottom != null ? `${props.actionsBottom}px` : 'calc(var(--spacing-lg) + var(--safe-bottom))')
 const dockStyle = computed(() => ({
-  '--dock-bottom': props.actionsBottom != null ? `${props.actionsBottom}px` : undefined,
+  '--dock-bottom': dockBottom.value,
   '--viewport-top': `${viewportTop.value}px`,
 }))
+
+// Bottom toasts and chips (`--float-bottom`, global.css) rise above the hint, search and actions,
+// as above an open sheet — not behind the buttons. Searching on a touch screen, the dock is at the top.
+const stack = useTemplateRef<HTMLElement>('stack')
+const { height: stackHeight } = useElementSize(stack, undefined, { box: 'border-box' })
+watchEffect(() => {
+  const root = document.documentElement.style
+  if (searching.value)
+    root.removeProperty('--dock-inset')
+  else
+    root.setProperty('--dock-inset', `calc(${stackHeight.value}px + ${dockBottom.value})`)
+})
+onBeforeUnmount(() => document.documentElement.style.removeProperty('--dock-inset'))
 
 /**
  * Returns the geographic coordinates at the visual center of the map canvas —
@@ -212,26 +226,28 @@ function handleConfirm() {
         <LocationSearchResults v-if="isOnline && listOpen" :results="results" :failed="searchFailed" @choose="choose" />
       </Transition>
 
-      <p v-if="hint && !searching" class="hint">
-        {{ hint }}
-      </p>
+      <div ref="stack" class="stack">
+        <p v-if="hint && !searching" class="hint">
+          {{ hint }}
+        </p>
 
-      <SearchInput
-        v-if="isOnline" ref="searchInput" v-model="query" class="search-field"
-        :placeholder="role === 'start' || role === 'end' ? t('tours.picker.search.placeholderAccess') : t('tours.picker.search.placeholder')" :label="t('tours.picker.search.label')"
-        @enter="choose(results[0])" @escape="closeList"
-      >
-        <!-- mousedown.prevent: the tap must not blur the field, or the dock would flip under the finger. -->
-        <BaseIconButton v-if="query" name="close" size="sm" :label="t('tours.picker.search.clear')" @mousedown.prevent @click="clearQuery" />
-      </SearchInput>
+        <SearchInput
+          v-if="isOnline" ref="searchInput" v-model="query" class="search-field"
+          :placeholder="role === 'start' || role === 'end' ? t('tours.picker.search.placeholderAccess') : t('tours.picker.search.placeholder')" :label="t('tours.picker.search.label')"
+          @enter="choose(results[0])" @escape="closeList"
+        >
+          <!-- mousedown.prevent: the tap must not blur the field, or the dock would flip under the finger. -->
+          <BaseIconButton v-if="query" name="close" size="sm" :label="t('tours.picker.search.clear')" @mousedown.prevent @click="clearQuery" />
+        </SearchInput>
 
-      <div v-show="!searching" class="actions">
-        <BaseButton variant="secondary" class="on-map" @click="emit('cancel')">
-          {{ t('tours.picker.cancelBtn') }}
-        </BaseButton>
-        <BaseButton variant="primary" data-testid="picker-confirm" @click="handleConfirm">
-          {{ t('tours.picker.confirmBtn') }}
-        </BaseButton>
+        <div v-show="!searching" class="actions">
+          <BaseButton variant="secondary" class="on-map" @click="emit('cancel')">
+            {{ t('tours.picker.cancelBtn') }}
+          </BaseButton>
+          <BaseButton variant="primary" data-testid="picker-confirm" @click="handleConfirm">
+            {{ t('tours.picker.confirmBtn') }}
+          </BaseButton>
+        </div>
       </div>
     </div>
   </div>
@@ -252,7 +268,7 @@ function handleConfirm() {
 .dock {
   position: fixed;
   top: calc(var(--viewport-top) + var(--safe-top) + var(--spacing-md));
-  bottom: var(--dock-bottom, calc(var(--spacing-lg) + var(--safe-bottom)));
+  bottom: var(--dock-bottom);
   left: 0;
   right: 0;
   width: min(440px, calc(100% - 2 * var(--spacing-md)));
@@ -267,7 +283,16 @@ function handleConfirm() {
   transition: bottom var(--motion-duration-medium) var(--motion-ease-emphasized);
 }
 
-.dock > * {
+/* The hint, the search field and the actions: what toasts rise above. */
+.stack {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.dock > :not(.stack),
+.stack > * {
   pointer-events: auto;
 }
 

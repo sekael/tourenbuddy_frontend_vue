@@ -901,17 +901,19 @@ function handleEndPointChange(point: { lng: number, lat: number } | null) {
   mapStore.setPreviewEnd(draftIfChanged(point, selectedTour.value?.endPoint ?? null))
 }
 
-// --- Ski route lookup --------------------------------------------------------
-const trailSnackbar = useSnackbar()
-const trailSnackbarInfo = ref(false)
-function showTrailSnackbar(message: string, info: boolean) {
-  trailSnackbarInfo.value = info
-  trailSnackbar.show(message)
+// The map's own bottom messages: ski route lookups, a tour saved twice.
+const notice = useSnackbar()
+const noticeInfo = ref(false)
+function showNotice(message: string, info: boolean) {
+  noticeInfo.value = info
+  notice.show(message)
 }
+
+// --- Ski route lookup --------------------------------------------------------
 const trailLookup = useTrailLookup({
   map: () => mapInstance.value,
   locale: () => locale.value,
-  onError: () => showTrailSnackbar(t('map.trail.lookupError'), false),
+  onError: () => showNotice(t('map.trail.lookupError'), false),
 })
 
 // A ski tile failing without HTTP status while online = the dataset moved on (see useTrailLookup).
@@ -966,7 +968,7 @@ async function handleMapBackgroundClick({ point }: { point: Point }) {
   // Offline the routes still render (downloaded or cached tiles) but their details can't load.
   if (!isOnline.value) {
     if (trailLookup.hitTest(point).ids.length > 0)
-      showTrailSnackbar(t('map.trail.offline'), true)
+      showNotice(t('map.trail.offline'), true)
     closeOverlay()
     return
   }
@@ -1106,6 +1108,16 @@ async function performCreate(
   // Keep the re-asserted draft marker on screen through the round-trip; clear it in
   // `finally` so the real marker replaces it on success and no draft lingers on failure.
   try {
+    // The same tour again (a ski route planned twice, every field left as it came): open the one
+    // there is instead of a copy. A segment or attachments make it another tour.
+    const twin = !anchorId && !attachmentsStore.preUploadedByDraft[draftId]?.length
+      ? await toursStore.dropIfDuplicate(draft, goal)
+      : null
+    if (twin) {
+      mapStore.selectTour(twin.id)
+      showNotice(t('tours.creation.alreadyThere'), true)
+      return
+    }
     // A new segment: the anchor joins (or mints) the outing first, then the tour is created
     // into it after the last segment — so a cancelled form never leaves a one-segment outing.
     const outing = anchorId ? await toursStore.ensureOuting(anchorId) : null
@@ -1175,8 +1187,8 @@ function handleDialogClose() {
 
     <ErrorSnackbar :message="inboxSnackbar.snackbar.value.message" :visible="inboxSnackbar.snackbar.value.visible" @dismiss="inboxSnackbar.dismiss" />
     <ErrorSnackbar
-      :message="trailSnackbar.snackbar.value.message" :visible="trailSnackbar.snackbar.value.visible"
-      :info="trailSnackbarInfo" @dismiss="trailSnackbar.dismiss"
+      :message="notice.snackbar.value.message" :visible="notice.snackbar.value.visible"
+      :info="noticeInfo" @dismiss="notice.dismiss"
     />
 
     <TourenbuddyMap

@@ -179,9 +179,9 @@ and the descent at 1500 m/h.
 
 ### Requirement: Drawn track saved as GPX
 
-On Done the drawing SHALL become a one-segment GPX track with a terrain height per point when the
-profile service answers (straight stretches densified to at most 25 m), and without heights
-otherwise. It SHALL take the same path as a picked GPX file: uploaded at once (staged offline),
+On Done the drawing SHALL become a one-segment GPX track, straight stretches densified to at most
+25 m, with a terrain height per point when the profile service answers and without heights
+otherwise — through the same points either way. It SHALL take the same path as a picked GPX file: uploaded at once (staged offline),
 filling an empty start and end from its ends, Save waiting until it is ready.
 
 #### Scenario: Offline drawing

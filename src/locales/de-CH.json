@@ -552,7 +552,8 @@
     "creation": {
       "title": "Neue Tour",
       "pickingTitle": "Neue Tour: {name}",
-      "saveBtn": "Tour speichern"
+      "saveBtn": "Tour speichern",
+      "alreadyThere": "Diese Tour hast du schon schon geplant."
     },
     "infoSheet": {
       "editTitlePrefix": "Bearbeiten",

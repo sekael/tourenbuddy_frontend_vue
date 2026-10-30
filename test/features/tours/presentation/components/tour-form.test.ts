@@ -32,7 +32,10 @@ vi.mock('@/features/tours/data/services/swisstopo-elevation-service', () => ({ g
 vi.mock('@/features/tours/data/services/swisstopo-name-service', () => ({ suggestTourName: mockSuggestTourName }))
 
 const { mockGetTrackProfile, mockLoadGpxTrack } = vi.hoisted(() => ({ mockGetTrackProfile: vi.fn(), mockLoadGpxTrack: vi.fn() }))
-vi.mock('@/features/tours/data/services/swisstopo-profile-service', () => ({ getTrackProfile: mockGetTrackProfile }))
+vi.mock('@/features/tours/data/services/swisstopo-profile-service', async importOriginal => ({
+  ...await importOriginal<typeof import('@/features/tours/data/services/swisstopo-profile-service')>(),
+  getTrackProfile: mockGetTrackProfile,
+}))
 vi.mock('@/features/tours/data/services/gpx-track-service', () => ({ loadGpxTrack: mockLoadGpxTrack }))
 
 const { mockFindStopsNear } = vi.hoisted(() => ({ mockFindStopsNear: vi.fn() }))
@@ -1033,12 +1036,15 @@ describe('tourForm — creation that knows more (smarter-tour-creation)', () => 
       expect(wrapper.emitted('trackChange')!.at(-1)).toEqual([LINE])
     })
 
-    it('should still take the drawing without heights when the profile is out of reach', async () => {
+    it('should still take the drawing without heights when the profile is out of reach, through the same points', async () => {
       mockGetTrackProfile.mockResolvedValue(null)
       const wrapper = mountForm({ currentGoal: GOAL, drawnTrack: DRAWN })
       await flushPromises()
       const file = mockUploadGpx.mock.calls[0]![2] as File
-      expect(await file.text()).not.toContain('<ele>')
+      const gpx = await file.text()
+      expect(gpx).not.toContain('<ele>')
+      // Densified as with heights: a route planned twice stays one track, whatever the profile did.
+      expect(gpx.match(/<trkpt/g)!.length).toBeGreaterThan(100)
       expect((await submitted(wrapper)).gpxFilepath).toBe('user-abc/new-tour-id.gpx')
     })
 

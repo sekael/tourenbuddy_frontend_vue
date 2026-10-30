@@ -552,7 +552,8 @@
     "creation": {
       "title": "New Tour",
       "pickingTitle": "New Tour: {name}",
-      "saveBtn": "Save Tour"
+      "saveBtn": "Save Tour",
+      "alreadyThere": "You already have this tour planned."
     },
     "infoSheet": {
       "editTitlePrefix": "Edit",

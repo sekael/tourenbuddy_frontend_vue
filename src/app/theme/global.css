@@ -253,12 +253,18 @@ html.scroll-locked {
 
 /* Bottom-anchored toasts and status chips rise above an open sheet instead of
    covering its actions. `--sheet-inset` is the sheet's on-screen height, published
-   by `bottom-sheet.vue` while it is up (unset otherwise → 0). */
+   by `bottom-sheet.vue` while it is up (unset otherwise → 0); `--dock-inset` the
+   same for the location picker's search and buttons (`location-picker.vue`). */
 :root {
-  --float-bottom: max(calc(var(--spacing-xl) + var(--safe-bottom)), calc(var(--sheet-inset, 0px) + var(--spacing-md)));
+  --float-bottom: max(
+    calc(var(--spacing-xl) + var(--safe-bottom)),
+    calc(var(--sheet-inset, 0px) + var(--spacing-md)),
+    calc(var(--dock-inset, 0px) + var(--spacing-md))
+  );
   --float-corner-bottom: max(
     calc(var(--spacing-md) + var(--safe-bottom)),
-    calc(var(--sheet-inset, 0px) + var(--spacing-md))
+    calc(var(--sheet-inset, 0px) + var(--spacing-md)),
+    calc(var(--dock-inset, 0px) + var(--spacing-md))
   );
 }
 

@@ -43,7 +43,7 @@ import { loadGpxTrack } from '@/features/tours/data/services/gpx-track-service'
 import { gpxFromLine } from '@/features/tours/data/services/gpx-writer'
 import { getElevation } from '@/features/tours/data/services/swisstopo-elevation-service'
 import { suggestTourName } from '@/features/tours/data/services/swisstopo-name-service'
-import { getTrackProfile } from '@/features/tours/data/services/swisstopo-profile-service'
+import { densify, getTrackProfile } from '@/features/tours/data/services/swisstopo-profile-service'
 import { isSameGoal } from '@/features/tours/domain/distance'
 import { defaultDirection, directionOf, landsByAir, legsFrom, waysCovered } from '@/features/tours/domain/legs'
 import { trackEnds, trackLines } from '@/features/tours/domain/route-metrics'
@@ -703,13 +703,16 @@ async function startDrawing() {
   emit('drawTrack', seed)
 }
 
-/** A finished drawing becomes the tour's GPX file, with the terrain's heights when online. */
+/**
+ * A finished drawing becomes the tour's GPX file, with the terrain's heights when online. Its
+ * points are the same either way, so a route planned twice is one track (`dropIfDuplicate`).
+ */
 async function acceptDrawnTrack(track: DrawnTrack) {
   preparingTrack.value = true
   try {
     const line = trackLine(track)
     const profiled = isOnline.value ? await getTrackProfile(line) : null
-    const gpx = gpxFromLine(profiled?.line ?? line, profiled?.heights ?? null, tourName.value.trim() || t('tours.form.gpxDrawn'))
+    const gpx = gpxFromLine(profiled?.line ?? densify(line), profiled?.heights ?? null, tourName.value.trim() || t('tours.form.gpxDrawn'))
     const file = new File([gpx], t('tours.form.gpxDrawnFile', { distance: formatDistance.value(lineLength(line)) }), { type: 'application/gpx+xml' })
     fileDrawings.set(file, track)
     await acceptGpxFile(file)

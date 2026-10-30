@@ -6,7 +6,7 @@ import { defineStore } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
 import { computed, ref, watch } from 'vue'
 import { useLogger } from '@/core/logging/use-logger'
-import { clearPendingUpload, isPendingUpload, peekCachedBlob } from '@/core/offline/blob-cache'
+import { clearPendingUpload, evictCachedBlob, isPendingUpload, peekCachedBlob } from '@/core/offline/blob-cache'
 import { cachedLoad } from '@/core/offline/cached-load'
 import { mutate } from '@/core/offline/mutate'
 import { flushThenRefetch } from '@/core/offline/reconnect'
@@ -19,8 +19,11 @@ import { useContactsStore } from '@/features/contacts/presentation/stores/contac
 import { useFriendshipsStore } from '@/features/friendships/presentation/stores/friendships-store'
 import { ToursRepositoryImpl } from '@/features/tours/data/repositories/tours-repository-impl'
 import { removeGpx, uploadGpxToKey } from '@/features/tours/data/services/gpx-storage-service'
+import { loadGpxTrack } from '@/features/tours/data/services/gpx-track-service'
 import { withTourTypes } from '@/features/tours/domain/entities/tour'
 import { appendedOuting, movedSegment } from '@/features/tours/domain/outing'
+import { trackLines } from '@/features/tours/domain/route-metrics'
+import { sameLine, sameTour } from '@/features/tours/domain/same-tour'
 
 const repository = new ToursRepositoryImpl()
 
@@ -366,6 +369,30 @@ export const useToursStore = defineStore('tours', () => {
     return result.queued ? id : id
   }
 
+  /**
+   * The owner's tour that a new one from `draft` would copy exactly — every field and every track
+   * point alike, a ski route planned twice — or null. The copy's freshly uploaded track is then
+   * dropped, as no row will hold it. A track that can't be had (offline, never cached) differs.
+   */
+  async function dropIfDuplicate(draft: TourDraft, goal: { lng: number, lat: number }): Promise<Tour | null> {
+    const copy = tourFromDraft('', draft, goal, null)
+    for (const tour of tours.value.filter(t => sameTour(t, copy))) {
+      const tracks = tour.gpxFilepath && copy.gpxFilepath
+        ? await Promise.all([loadGpxTrack({ id: tour.id, gpxFilepath: tour.gpxFilepath }), loadGpxTrack({ id: '', gpxFilepath: copy.gpxFilepath })])
+        : null
+      if (tracks && !(tracks[0] && tracks[1] && sameLine(trackLines(tracks[0]).flat(), trackLines(tracks[1]).flat())))
+        continue
+      const upload = copy.gpxFilepath
+      if (upload && !tours.value.some(t => t.gpxFilepath === upload)) {
+        removeGpx(upload).catch(() => {})
+        evictCachedBlob(upload).catch(() => {})
+        clearPendingUpload(upload).catch(() => {})
+      }
+      return tour
+    }
+    return null
+  }
+
   async function updateTour(
     id: string,
     draft: TourDraft,
@@ -584,6 +611,7 @@ export const useToursStore = defineStore('tours', () => {
     loadTours,
     loadFriendTours,
     createTourFromDraft,
+    dropIfDuplicate,
     updateTour,
     setCompleted,
     setVisibility,
