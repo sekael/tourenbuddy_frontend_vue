@@ -490,7 +490,6 @@
       "gpxInvalid": "Ungültige GPX-Datei",
       "gpxReadError": "Datei konnte nicht gelesen werden",
       "cancelBtn": "Abbrechen",
-      "locationSectionLabel": "Ort",
       "detailSectionLabel": "Details",
       "gpxSectionLabel": "GPS Track",
       "plannedDateLabel": "Startdatum",
@@ -546,6 +545,10 @@
       "gpxDrawBtn": "Auf Karte zeichnen",
       "gpxEditBtn": "Auf Karte bearbeiten",
       "gpxDrawn": "Gezeichneter Track",
+      "routeSectionLabel": "Route",
+      "pointsFromTrack": "Start und Ende kommen aus dem Track.",
+      "pointsByHandBtn": "Selbst setzen",
+      "fromTrack": "aus dem Track",
       "gpxDrawnFile": "Gezeichneter Track · {distance}",
       "gpxPreparing": "Höhen werden ergänzt …"
     },
@@ -861,10 +864,10 @@
       "title": "Track zeichnen",
       "followLabel": "Die Linie folgt",
       "status": {
-        "hiking": "Die Linie folgt den Wanderwegen.",
-        "ski": "Die Linie folgt den Skitouren.",
+        "hiking": "Die Linie folgt den Wanderwegen, dann Strassen und Wegen.",
+        "ski": "Die Linie folgt den Skitouren, dann Strassen und Wegen.",
         "byActivity": "(passend zur Aktivität der Tour)",
-        "straight": "Gerade Linien: Schalte Wanderwege oder Skitouren ein, um ihnen zu folgen.",
+        "ways": "Die Linie folgt Strassen und Wegen.",
         "unavailable": "Die Wege konnten nicht geladen werden (offline?), dieser Abschnitt ist deshalb gerade."
       },
       "hint": {
@@ -1039,7 +1042,7 @@
       },
       "addLocation": {
         "title": "Tour planen",
-        "body": "Tippe hier und setze eine Markierung auf dein Ziel – Gipfel, Kletterfels oder Hütte. TourenBuddy schlägt Namen, Höhe und passende Startpunkte vor."
+        "body": "Tippe hier und setze eine Markierung auf dein Ziel – Gipfel, Kletterfels oder Hütte. TourenBuddy schlägt Namen und Höhe vor; danach zeichnest du die Route auf der Karte, Start und Ende kommen mit."
       },
       "mapLayers": {
         "title": "Kartenebenen",

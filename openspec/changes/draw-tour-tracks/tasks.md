@@ -48,3 +48,14 @@
 - [x] 7.10 Toasts and chips rise above the location picker's dock (`--dock-inset`)
 - [x] 7.11 An exact copy of an own tour opens the existing one with a notice (`dropIfDuplicate`); drawn tracks densified with or without heights; tests in `tours-store.test.ts`, `tour-form.test.ts`
 - [x] 7.12 Headless walk: route error while picking (above the dock), Eggerhorn planned twice (Binn → Ausserbinn, one tour)
+
+## 8. Owner round 4
+
+- [x] 8.1 Snapping on every way: `trail-network-service.ts` caches base lines with a "marked" flag and costs them per mode (D2 table); ski mode loads base and ski tiles; per-line join (`NetworkLine.join`) in `buildNetwork`; no layer → base ways; panel status texts; tests in `trail-network-service.test.ts` (new), `track-routing.test.ts`, `use-track-drawing.test.ts`
+- [x] 8.2 Form order: activities, then the route — track ("Draw on map" primary), start, end, grade (D9); start/end fold into a "Set by hand" row while both are empty; tests in `tour-form.test.ts`
+- [x] 8.3 Points the track set follow a redrawn or replaced track; hand-set and saved points never move; tests in `tour-form.test.ts`
+- [x] 8.4 Ski route card in the tour sheet's layout (D10): disc, altitude headline, `GradeBadge`, ascent time, `RouteNumbers`, full buttons; grade badge in the list rows; test in `trail-card.test.ts`
+- [x] 8.5 Locale keys (en, de-CH) and `check:locales`; onboarding "Plan a tour" copy mentions drawing the route after the goal
+- [x] 8.6 `npx eslint . --fix`, `npx eslint`, `npm run type-check`, `npm run test`; `openspec validate --strict`
+- [x] 8.7 Headless walk at 360 px de-CH (ski route down a forest road, no layer on roads, form fold and redraw, route card); persona review loop on the form and the card until it passes
+- [x] 8.8 Review round 2 (owner decisions): legs along the ways far round go straight (2.5×, +500 m; test in `use-track-drawing.test.ts`); a point's name and height wait under one skeleton and show together (tests in `tour-form.test.ts`)

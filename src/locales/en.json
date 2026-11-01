@@ -490,7 +490,6 @@
       "gpxInvalid": "Invalid GPX file",
       "gpxReadError": "Failed to read file",
       "cancelBtn": "Cancel",
-      "locationSectionLabel": "Location",
       "detailSectionLabel": "Details",
       "gpxSectionLabel": "GPX track",
       "plannedDateLabel": "Start date",
@@ -546,6 +545,10 @@
       "gpxDrawBtn": "Draw on map",
       "gpxEditBtn": "Edit on map",
       "gpxDrawn": "Drawn track",
+      "routeSectionLabel": "Route",
+      "pointsFromTrack": "Start and end come from the track.",
+      "pointsByHandBtn": "Set by hand",
+      "fromTrack": "from the track",
       "gpxDrawnFile": "Drawn track · {distance}",
       "gpxPreparing": "Adding heights to the track…"
     },
@@ -861,10 +864,10 @@
       "title": "Draw track",
       "followLabel": "The line follows",
       "status": {
-        "hiking": "The line follows the hiking trails.",
-        "ski": "The line follows the ski routes.",
+        "hiking": "The line follows hiking trails, then roads and paths.",
+        "ski": "The line follows ski routes, then roads and paths.",
         "byActivity": "(matches the tour’s activity)",
-        "straight": "Straight lines: turn on hiking trails or ski routes to follow them.",
+        "ways": "The line follows roads and paths.",
         "unavailable": "Couldn’t load the trails (offline?), so this part is drawn straight."
       },
       "hint": {
@@ -1039,7 +1042,7 @@
       },
       "addLocation": {
         "title": "Plan a tour",
-        "body": "Tap here and drop a pin on your objective — summit, crag or hut. TourenBuddy suggests the name, the elevation and nearby starting points."
+        "body": "Tap here and drop a pin on your objective — summit, crag or hut. TourenBuddy suggests the name and elevation; then draw your route on the map, and the start and end come with it."
       },
       "mapLayers": {
         "title": "Map layers",

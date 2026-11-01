@@ -34,10 +34,28 @@ current zoom, absent on the Classic base map).
 
 ### D2 What the line follows
 
-The map's trail layers decide, as the owner asked: hiking only → hiking network; ski only → ski
-routes; both → the activity (a ski-touring type without hiking/trail running → ski routes, else
-hiking); none → straight lines with a hint. The map's layer menu is hidden while drawing, so the
-panel carries the two layer toggles.
+The map's trail layers set what the line follows first, as the owner asked: hiking only → marked
+trails; ski only → ski routes; both → the activity (a ski-touring type without hiking/trail running
+→ ski routes, else hiking). Every mode also follows the base map's roads, forest roads and paths
+(the `WALKABLE` classes), so a ski route runs on along the forest road to the car park; with no
+layer shown those ways are the network. A leg is straight only off every way, over a far jump, or
+where no tile loads. The map's layer menu is hidden while drawing, so the panel carries the two
+layer toggles; they choose what comes first and no longer switch snapping off (owner, round 4).
+
+| Mode | cost 1 | cost 1.5 |
+|------|--------|----------|
+| hiking | marked trails (`sac_scale`) | other ways |
+| ski | ski routes | every base way, trails included |
+| none | every base way | — |
+
+The base tiles are cached as lines with a "marked" flag, and the cost is set per mode, so switching
+a layer reuses them. Ski lines keep their 20 m join (routes running side by side, a route's end at
+a road), base ways their 3 m; the join is the line's own, so two paths 10 m apart don't merge.
+
+A way that only connects far round is no way to follow (owner, after review round 2: a 1 km hop
+became a 4.6 km detour round a dead end). A leg along the ways longer than 2.5× the straight
+distance and over 500 m more is drawn straight, as off the ways; the user steers it with another
+tap. The 500 m floor keeps a few switchbacks on their path.
 
 ### D3 Steps run in order
 
@@ -81,6 +99,44 @@ the fields match, by points to 6 decimals (heights aside). The form writes a dra
 whether or not the profile service answered, so a failed height lookup doesn't make the second plan
 a different track. No schema change: an exact copy is a client concern, and a duplicate row would
 be harmless to the database. Segments and tours with attachments are never copies.
+
+### D9 The form leads with the route
+
+Creation starts at the goal, as before: the user sets it deliberately (owner, round 4 — a track's
+highest point is no goal: huts, lakes, passes). The form then asks name, goal, activities, and
+the route: track, start, end and grade. The activity sits above the route because, with both
+layers shown, it decides what the line follows; the grade moves below it (it is the route's
+difficulty) so the track follows the activity chips directly — on a 360 px phone the grade field
+pushed "Draw on map" a screen further down. The route section offers "Draw on map" as its main
+action, "Upload GPX" beside it.
+
+Start and end fold into one row ("Start and end · Set by hand") while both are empty, so a
+drawing user skips them; a pick, a suggestion or a track opens them. A point the track set follows
+the track: redrawn or replaced, the track moves it to its new end; a point set or changed by hand,
+or a tour's saved point, never moves (the "GPX fills empty points" rules still apply to which
+end is set); an end the new track keeps keeps its name, unlooked-up. A drawing's ends are set (and
+named) when Done is tapped, while its heights still load. A planned ski route sends no start pick
+any more: its track sets start and end like any other. Removing the track leaves the points.
+
+Round 1 of the review measured the phone's first screen: at 360×740 "Draw on map" fell 90 px
+below it. The goal card now holds title, coordinates and "Change" on one line and its height
+beside its label, and the name and goal go without a "Location" heading (the dialog's title heads
+them); replacing the GPX moved from a bare icon on the track's tile to a labelled button beside
+"Edit on map".
+
+Round 2 still saw names fill in late (owner: no blank, a skeleton until settled). A point's name
+and height now show together: while either lookup runs, both fields hold a quiet pulsing bar in
+place of their text — no spinner, no "Loading" hint — and their values appear at once when both
+have answered or failed. A field being typed in drops its bar. The value under the bar is
+cleared as before, so a save mid-lookup never keeps the previous point's name.
+
+### D10 The ski route card
+
+The card reads like a tour's details: the ski-tour disc and the target's altitude as headline, the
+route name, then a meta line with the grade badge, the ascent time and the route numbers (↑ ↓) —
+the same `GradeBadge` and `RouteNumbers` the tour sheet uses. "Plan as tour" and "Open in the SAC
+portal" are full buttons side by side (stacked when they don't fit), the swisstopo credit under
+them. The list's rows take the grade badge too.
 
 ### D7 On the map
 

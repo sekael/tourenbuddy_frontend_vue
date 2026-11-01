@@ -86,8 +86,9 @@ function startAndEnd(ends: LngLat[], heights: (number | null)[], route: SkiRoute
 
 /**
  * A ski route as a tour to plan (design D7 of smarter-tour-creation): the goal on the route's
- * target summit, the start at the route end its climb lies below it (`startAndEnd`), activity ski
- * tour, the route's grade, and its name and SAC link as description.
+ * target summit, the track from the route end its climb lies below it (`startAndEnd`) — the form
+ * takes start and end from it — activity ski tour, the route's grade, and its name and SAC link as
+ * description.
  *
  * The summit comes from the place search (the target by name, nearest the route): a route's ends
  * don't reliably hold it — a multi-part route can end on a variant. Without the search (offline,
@@ -116,7 +117,6 @@ export async function planFromRoute(
   const [lng, lat] = ends.at(-1)!
   const goal = summit ?? { lng, lat }
   const { start, end } = startAndEnd(candidates, heights, route, goal)
-  const [startLng, startLat] = start
 
   return {
     goal,
@@ -131,9 +131,9 @@ export async function planFromRoute(
       gpxFilepath: null,
       description: [route.name, route.sacUrl].filter(Boolean).join('\n') || null,
       seasons: null,
-      startPoint: { lng: startLng, lat: startLat },
+      // The track sets start and end, as any track does, and the form names and measures them.
+      startPoint: null,
       endPoint: null,
-      // Named and measured by the form's own lookup (the host sends it as a start pick).
       startPointName: null,
       startPointElevation: null,
       endPointName: null,

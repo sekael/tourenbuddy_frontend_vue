@@ -31,4 +31,15 @@ describe('trailCard', () => {
   it('should not offer it for a line without route information', () => {
     expect(mountCard(null).wrapper.find('[data-testid=trail-plan-tour]').exists()).toBe(false)
   })
+
+  it('should lead with the summit like a tour, leaving out what the route doesn\'t state', () => {
+    const { wrapper } = mountCard({ ...ROUTE, name: '', ascentTime: '', descentM: null as unknown as number })
+    expect(wrapper.find('.hero-headline').text()).toMatch(/2.?756/)
+    expect(wrapper.find('[data-testid=tour-grade]').text()).toContain('WS+')
+    expect(wrapper.find('[data-testid=route-ascent]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid=route-descent]').exists()).toBe(false)
+    expect(wrapper.find('.hero-name').exists()).toBe(false)
+    expect(wrapper.find('.fact').exists()).toBe(false)
+    expect(wrapper.find('[data-testid=trail-sac]').exists()).toBe(false)
+  })
 })

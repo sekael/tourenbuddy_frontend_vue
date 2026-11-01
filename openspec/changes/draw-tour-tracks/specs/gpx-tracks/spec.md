@@ -2,14 +2,15 @@
 
 ### Requirement: Track section offers drawing
 
-The form's track section SHALL be titled "Track" and sit after the activity. Without a track it
-SHALL offer "Draw on map" beside "Upload GPX track"; with one it SHALL keep replace and remove and
-add "Edit on map". While a drawing's heights load, the section SHALL say so and Save SHALL wait.
+The form's route section SHALL be titled "Route", sit after the activities and open with the track.
+Without a track it SHALL offer "Draw on map" as its main action beside "Upload GPX track"; with one
+it SHALL keep replace and remove and add "Edit on map". While a drawing's heights load, the section
+SHALL say so and Save SHALL wait.
 
 #### Scenario: Empty track section
 
 - **WHEN** the user opens a new tour's form
-- **THEN** the track section SHALL offer "Draw on map" and "Upload GPX track"
+- **THEN** the track section SHALL offer "Draw on map" as its main action and "Upload GPX track"
 
 ### Requirement: Unsaved track on the map
 

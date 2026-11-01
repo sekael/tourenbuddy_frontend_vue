@@ -531,7 +531,7 @@ function handleAddSegment(anchorId: string) {
 
 /**
  * "Plan as tour" on a ski route (smarter-tour-creation D7): open the creation form on the route's
- * summit, seeded with its facts; the start is sent as a pick so the form names and measures it.
+ * summit, seeded with its facts and its line as the track, which sets start and end (design D9).
  */
 async function handlePlanFromRoute(trail: Trail) {
   const plan = trail.route && await planFromRoute(trail.route, trail.lines, locale.value)
@@ -542,7 +542,6 @@ async function handlePlanFromRoute(trail: Trail) {
   segmentSeed.value = seed
   pendingLocation.value = goal
   mapStore.setPreviewGoal(goal)
-  dialogPick.value = { type: 'start', location: seed.startPoint! }
   dialogDrawnTrack.value = track
   openOverlay('tour-creation')
 }

@@ -53,3 +53,30 @@ to the goal pick.
 - **WHEN** the user closes that card
 - **THEN** the goal pick SHALL be active again
 
+
+## MODIFIED Requirements
+
+### Requirement: Ski route details
+
+The card SHALL show, where present: route name, target and its altitude, difficulty, ascent time,
+ascent and descent in metres, and a link to the route in the SAC tour portal, laid out like a
+tour's details: the ski-tour disc, the altitude as headline, the difficulty as grade badge with the
+ascent time and climb/descent beside it, "Plan as tour" and the SAC link as full buttons. Text and
+link SHALL use the UI language when Swisstopo provides it, else the original. Missing fields SHALL
+be omitted.
+
+#### Scenario: Route with full information
+
+- **WHEN** the selected ski route has a name, target, difficulty, ascent time, ascent/descent and an SAC link
+- **THEN** the card SHALL show all of them, and the SAC link SHALL open in a new tab
+
+#### Scenario: Name missing in UI language
+
+- **WHEN** the UI language is English and the route has only a German name
+- **THEN** the card SHALL show the German name
+
+#### Scenario: Narrow phone
+
+- **WHEN** the card shows a route with every field on a 360 px wide phone in German
+- **THEN** the facts SHALL wrap between items, never inside one, and both buttons SHALL show their
+  full label

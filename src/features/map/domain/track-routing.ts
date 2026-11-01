@@ -30,6 +30,8 @@ export interface NetworkLine {
   points: Pt[]
   /** Cost per unit of length: 1 on the network the user snaps to, more on ways it only falls back on. */
   cost: number
+  /** How far this line's vertices reach to meet another line, when not the network's `join`. */
+  join?: number
 }
 
 interface Edge { to: number, w: number }
@@ -112,10 +114,10 @@ function within(
 const OFF_WAY_WEIGHT = 3
 
 /**
- * The routable graph of `lines`. Lines sharing a vertex meet there. A vertex within `join` of
- * another line also meets it, at its closest point: a path ending on a way it was not split at
- * (simplified tiles), a line cut at a tile edge and its continuation in the next tile, and ski
- * routes running side by side up a shared approach all become one network. A loose line end (no
+ * The routable graph of `lines`. Lines sharing a vertex meet there. A vertex within `join` (its
+ * line's own, if set) of another line also meets it, at its closest point: a path ending on a way
+ * it was not split at (simplified tiles), a line cut at a tile edge and its continuation in the
+ * next tile, and ski routes running side by side up a shared approach all become one network. A loose line end (no
  * other line meets it) reaches across to a way within `bridge`, at `OFF_WAY_WEIGHT`: the tiles
  * leave such gaps where people walk on, a street ending at the square a trail crosses.
  */
@@ -153,7 +155,7 @@ export function buildNetwork(lines: readonly NetworkLine[], join: number, bridge
   const links: [number, number, number][] = []
   for (const { node, line, end } of vertices) {
     const other = (i: number) => raw[i]!.line !== line && raw[i]!.a !== node && raw[i]!.b !== node
-    let [hit] = within(raw, nodes, rawGrid, nodes[node]!, join, other)
+    let [hit] = within(raw, nodes, rawGrid, nodes[node]!, lines[line]!.join ?? join, other)
     let weight = 1
     if (!hit && end && linesAt.get(node)!.size === 1) {
       [hit] = within(raw, nodes, rawGrid, nodes[node]!, bridge, other)

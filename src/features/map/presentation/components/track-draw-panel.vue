@@ -16,8 +16,8 @@ import { TRAIL_OVERLAYS } from '@/features/map/data/trail-overlays'
 import ElevationProfile from './elevation-profile.vue'
 
 /**
- * The drawing's panel, laid out like the swisstopo app's: what the line follows (the map's trail
- * layers, switchable right here) beside the close button, the numbers — distance, time, climb,
+ * The drawing's panel, laid out like the swisstopo app's: what the line follows first (the map's
+ * trail layers, switchable right here; the roads and paths after them) beside the close button, the numbers — distance, time, climb,
  * descent — the elevation profile, and undo / redo / back to start beside Done. Every row keeps
  * its height from the first tap on, so the panel never jumps as the numbers arrive.
  */
@@ -47,7 +47,7 @@ const status = computed(() => {
   if (props.issue === 'unavailable')
     return t('map.draw.status.unavailable')
   if (!props.network)
-    return t('map.draw.status.straight')
+    return t('map.draw.status.ways')
   const follows = t(`map.draw.status.${props.network}`)
   return props.byActivity ? `${follows} ${t('map.draw.status.byActivity')}` : follows
 })
@@ -84,7 +84,7 @@ const line = computed(() => props.profile?.line ?? ([] as LngLat[]))
       <span class="spacer" />
       <BaseIconButton name="close" variant="tonal" :label="t('tours.picker.cancelBtn')" data-testid="draw-cancel" @click="emit('cancel')" />
     </div>
-    <p class="status" :class="{ 'status--warn': issue || !network }" role="status">
+    <p class="status" :class="{ 'status--warn': issue }" role="status">
       {{ status }}
     </p>
 

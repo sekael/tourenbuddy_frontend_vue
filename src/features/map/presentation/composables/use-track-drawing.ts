@@ -13,14 +13,21 @@ import { buildNetwork, metersPerUnit, routeToTap, snapTo, toLngLat, toUnits } fr
 import { getTrackProfile } from '@/features/tours/data/services/swisstopo-profile-service'
 import { trackMetrics } from '@/features/tours/domain/route-metrics'
 
-/** How far apart two ways may lie and still meet: tile-cut trails touch, ski routes run side by side. */
-const JOIN_M: Record<SnapNetwork, number> = { hiking: 3, ski: 20 }
-/** How far a way's loose end reaches across to another: the hiking tiles stop streets short of the trail. */
-const BRIDGE_M: Record<SnapNetwork, number> = { hiking: 30, ski: 20 }
+/** How far apart two ways may lie and still meet: tile-cut trails touch (ski routes reach farther, their own). */
+const JOIN_M = 3
+/** How far a way's loose end reaches across to another: the base tiles stop streets short of the trail. */
+const BRIDGE_M = 30
 /** A leg looks this far around its two points (plus half their distance) for a way between them. */
 const MARGIN_M = 400
 /** Ways about as near a tap as the nearest one: this share of the snap reach farther still counts. */
 const SLACK = 0.4
+/**
+ * A way this many times the straight distance, and this much longer, goes too far round (a dead
+ * end, the next junction kilometres off): the leg goes straight, as off the ways. The floor keeps
+ * a few switchbacks on their path.
+ */
+const DETOUR = 2.5
+const DETOUR_MIN_M = 500
 
 /**
  * Why the last leg is straight though a network is followed, where the map doesn't show it: no
@@ -31,7 +38,7 @@ export type NetworkIssue = 'unavailable' | null
 
 interface Options {
   seed: DrawnTrack | null
-  /** The ways to follow right now; null = straight lines. */
+  /** What the line follows first, then the base map's ways; null = those ways alone. */
   network: () => SnapNetwork | null
   /** URL template of the current ski-route tiles. */
   skiTemplate: () => Promise<string | null>
@@ -73,7 +80,7 @@ export function useTrackDrawing(options: Options) {
   }
 
   let built: { key: string, net: Network } | null = null
-  async function networkAround(network: SnapNetwork, a: LngLat, b: LngLat) {
+  async function networkAround(network: SnapNetwork | null, a: LngLat, b: LngLat) {
     const lat = (a[1] + b[1]) / 2
     const margin = MARGIN_M + haversineMeters(a, b) / 2
     const dLat = margin / 111_320
@@ -88,7 +95,7 @@ export function useTrackDrawing(options: Options) {
     try {
       const { key, lines } = await loadNetworkLines(network, bbox, network === 'ski' ? await options.skiTemplate() : null)
       if (built?.key !== key)
-        built = { key, net: buildNetwork(lines, JOIN_M[network] / mpu, BRIDGE_M[network] / mpu) }
+        built = { key, net: buildNetwork(lines, JOIN_M / mpu, BRIDGE_M / mpu) }
       issue.value = null
       return { net: built.net, mpu }
     }
@@ -101,25 +108,20 @@ export function useTrackDrawing(options: Options) {
   /** Where a point lands (on the nearest way within `radiusM`) and the leg to it from `from`. */
   async function resolve(from: LngLat | null, to: LngLat, radiusM: number): Promise<{ to: LngLat, line: LngLat[] | null }> {
     const straight = { to, line: from && [from, to] }
-    const network = options.network()
-    if (!network) {
-      issue.value = null
-      return straight
-    }
-    const found = await networkAround(network, from ?? to, to)
+    const found = await networkAround(options.network(), from ?? to, to)
     if (!found)
       return straight
     const { net, mpu } = found
     const radius = radiusM / mpu
     const nearest = snapTo(net, toUnits(to), radius)
     const start = from && snapTo(net, toUnits(from), radius)
-    const route = start && routeToTap(net, start, toUnits(to), radius, radius * SLACK)
-    if (!route) {
+    const line = start && routeToTap(net, start, toUnits(to), radius, radius * SLACK)?.points.map(toLngLat)
+    const direct = from ? haversineMeters(from, to) : 0
+    if (!line || lineLength(line) > Math.max(DETOUR * direct, direct + DETOUR_MIN_M)) {
       const landed = nearest ? toLngLat(nearest.point) : to
       return { to: landed, line: from && [from, landed] }
     }
     // The leg starts on its point exactly, even one set off the ways.
-    const line = route.points.map(toLngLat)
     const landed = line.at(-1)!
     if (haversineMeters(from!, line[0]!) > 1)
       line.unshift(from!)

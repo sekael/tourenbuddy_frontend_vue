@@ -39,6 +39,13 @@ describe('trackRouting', () => {
     expect(route([line([[0, 0], [100, 0]]), line([[0, 20], [100, 20]])], [0, 0], [100, 20])).toBeNull()
   })
 
+  it('should let a line reach its own join across, never stretching the others\' (ski route down to a road)', () => {
+    // The ski route stops 15 units above the road: its own 20 reach it, the network's 3 don't.
+    const ski = { ...line([[50, 100], [50, 15]]), join: 20 }
+    expect(route([line([[0, 0], [100, 0]]), ski], [50, 100], [100, 0], 3, 3)).not.toBeNull()
+    expect(route([line([[0, 0], [100, 0]]), line([[50, 100], [50, 15]])], [50, 100], [100, 0], 3, 3)).toBeNull()
+  })
+
   it('should cross the gap from a street\'s loose end to the trail instead of going round by the far junction', () => {
     const trail = line([[0, 0], [0, 300]])
     // Stops 20 short of the trail; meets it again only at (0, 300).

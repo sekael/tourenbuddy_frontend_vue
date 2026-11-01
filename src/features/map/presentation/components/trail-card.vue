@@ -7,7 +7,11 @@ import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
+import { useFormatter } from '@/core/composables/use-formatter'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
+import GradeBadge from '@/features/tours/presentation/components/grade-badge.vue'
+import RouteNumbers from '@/features/tours/presentation/components/route-numbers.vue'
+import TourTypeBadge from '@/features/tours/presentation/components/tour-type-badge.vue'
 import { trailTitle } from '../composables/trail-title'
 import { useMapStore } from '../stores/map-store'
 import TrailCandidateList from './trail-candidate-list.vue'
@@ -19,6 +23,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n({ useScope: 'global' })
+const { formatElevation } = useFormatter()
 const isDesktop = useIsDesktop()
 const mapStore = useMapStore()
 const { trailCard } = storeToRefs(mapStore)
@@ -27,9 +32,17 @@ const selected = computed(() => trailCard.value?.candidates.find(c => c.id === t
 const route = computed(() => selected.value?.route ?? null)
 /** Back to the list only when the details were opened from one. */
 const fromList = computed(() => selected.value !== null && (trailCard.value?.candidates.length ?? 0) > 1)
-const title = computed(() => selected.value
-  ? trailTitle(selected.value, t)
-  : t('map.trail.listTitle', { count: (trailCard.value?.candidates.length ?? 0) + (trailCard.value?.more ?? 0) }))
+/** Details read like a tour's (design D10): the summit as title, its altitude leads the hero. */
+const title = computed(() => {
+  if (!selected.value)
+    return t('map.trail.listTitle', { count: (trailCard.value?.candidates.length ?? 0) + (trailCard.value?.more ?? 0) })
+  return route.value?.targetName || trailTitle(selected.value, t)
+})
+const numbers = computed(() => ({ ascent: route.value?.ascentM ?? null, descent: route.value?.descentM ?? null, distance: null }))
+
+function openSac() {
+  window.open(route.value!.sacUrl!, '_blank', 'noopener')
+}
 </script>
 
 <template>
@@ -44,25 +57,34 @@ const title = computed(() => selected.value
         @select="mapStore.selectTrail"
       />
       <template v-else-if="route">
-        <p v-if="route.name" class="name">
-          {{ route.name }}
-        </p>
-        <div class="facts">
-          <span v-if="route.difficulty" class="chip">{{ route.difficulty }}</span>
-          <span v-if="route.ascentTime" class="fact">
-            <BaseIcon name="schedule" size="sm" />{{ route.ascentTime }}
-          </span>
-          <span v-if="route.ascentM != null" class="fact">↑ {{ t('map.trail.metres', { value: route.ascentM }) }}</span>
-          <span v-if="route.descentM != null" class="fact">↓ {{ t('map.trail.metres', { value: route.descentM }) }}</span>
+        <div class="hero">
+          <TourTypeBadge :types="['skitour']" class="hero-badge" />
+          <div class="hero-text">
+            <span v-if="route.targetAltitude != null" class="hero-headline">
+              <BaseIcon name="landscape" size="sm" class="hero-headline-icon" />
+              {{ formatElevation(route.targetAltitude) }}
+            </span>
+            <span v-if="route.name" class="hero-name">{{ route.name }}</span>
+            <!-- Separate items: a wrap falls between them, never inside one. -->
+            <span class="hero-meta">
+              <GradeBadge v-if="route.difficulty" :grade="route.difficulty" />
+              <span v-if="route.ascentTime" class="fact">
+                <BaseIcon name="schedule" size="sm" />{{ route.ascentTime }}
+              </span>
+              <RouteNumbers :metrics="numbers" />
+            </span>
+          </div>
         </div>
-        <BaseButton variant="primary" size="sm" class="plan" data-testid="trail-plan-tour" @click="emit('plan', selected!)">
-          <BaseIcon name="add_location_alt" />
-          {{ t('map.trail.planTour') }}
-        </BaseButton>
-        <a v-if="route.sacUrl" class="sac" :href="route.sacUrl" target="_blank" rel="noopener">
-          {{ t('map.trail.openSac') }}
-          <BaseIcon name="open_in_new" size="sm" />
-        </a>
+        <div class="actions">
+          <BaseButton variant="primary" data-testid="trail-plan-tour" @click="emit('plan', selected!)">
+            <BaseIcon name="add_location_alt" />
+            {{ t('map.trail.planTour') }}
+          </BaseButton>
+          <BaseButton v-if="route.sacUrl" variant="secondary" data-testid="trail-sac" @click="openSac">
+            <BaseIcon name="open_in_new" />
+            {{ t('map.trail.openSac') }}
+          </BaseButton>
+        </div>
       </template>
       <p v-else class="no-info">
         {{ t('map.trail.noInfo') }}
@@ -78,55 +100,84 @@ const title = computed(() => selected.value
 .body {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-md);
   padding-bottom: var(--spacing-md);
 }
 
-.name,
-.facts,
-.sac,
+.hero,
+.actions,
 .no-info,
 .credit {
   margin: 0;
   padding: 0 var(--spacing-md);
 }
 
-.name {
+/* The tour sheet's hero, in small: disc, then altitude, route name and facts. */
+.hero {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+}
+
+.hero-badge {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+}
+
+.hero-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-xxs);
+  min-width: 0;
+}
+
+.hero-headline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xxs);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-on-surface);
+}
+
+.hero-headline-icon {
   color: var(--color-on-surface-variant);
 }
 
-.facts {
+.hero-name {
+  color: var(--color-on-surface);
+}
+
+.hero-meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--spacing-sm) var(--spacing-md);
+  gap: var(--spacing-xxs) var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
 }
 
 .fact {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-xxs);
+  white-space: nowrap;
 }
 
-.chip {
-  padding: var(--spacing-xxs) var(--spacing-xs);
-  border-radius: var(--radius-pill);
-  background-color: var(--color-secondary-container);
-  color: var(--color-on-secondary-container);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
+/* Side by side when both labels fit, else stacked full width — the plan first. */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
 }
 
-.plan {
-  align-self: flex-start;
-}
-
-.sac {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xxs);
-  color: var(--color-primary);
-  font-weight: var(--font-weight-medium);
+.actions > * {
+  flex: 1 1 auto;
 }
 
 .no-info {

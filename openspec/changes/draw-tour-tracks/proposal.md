@@ -16,10 +16,11 @@ its line: the planned tour shows no track, and its climb and descent come from p
   shows; points can be dragged; a handle halfway along each leg pulls a new point out of it; a tap
   on the start closes a loop; "To start" returns the same way (out-and-back in one tap); undo /
   redo; close / Done.
-- **Snapping follows the map's trail layers**: hiking trails shown → the hiking network (marked
-  trails preferred, paths and small roads as fallback); ski routes shown → the ski routes; both →
-  the tour's activity decides (ski touring → ski routes, hiking wins when both are picked or
-  neither); none → straight lines, with a hint. The layers can be switched in the drawing panel.
+- **Snapping follows the map's trail layers, then its ways**: hiking trails shown → marked trails
+  first; ski routes shown → the ski routes first; both → the tour's activity decides (ski touring →
+  ski routes, hiking wins when both are picked or neither). Every mode goes on along the base map's
+  roads, forest roads and paths, and with no layer shown follows those; a line is straight only off
+  every way. The layers can be switched in the drawing panel.
 - **Live numbers like the swisstopo app**: distance, time (SAC rule), climb, descent and an
   elevation profile from swisstopo's terrain profile service.
 - **The drawing becomes the tour's GPX track** (with terrain heights when online), through the
@@ -35,7 +36,12 @@ its line: the planned tour shows no track, and its climb and descent come from p
 - **Route numbers from the track only**: nothing shows while a track loads (no start-goal estimate
   first), and a track without heights takes the terrain's.
 - **Legend out of the layers panel**: it keeps its own button, so the layer tiles stay in reach.
-- The track section moves up the form, after the activity, and is labelled "Track".
+- **The form leads with the route**: after the goal and activity comes the route, with "Draw on
+  map" as its main action; start and end fold into one "Set by hand" row until a pick, a suggestion
+  or the track sets them, and points the track set follow it when it is redrawn.
+- **Ski route card in the app's design**: led by the summit's altitude like a tour's details, with
+  the grade badge, ascent time and route numbers, and "Plan as tour" and the SAC link as full
+  buttons.
 
 ## Capabilities
 
@@ -46,7 +52,10 @@ its line: the planned tour shows no track, and its climb and descent come from p
 ### Modified Capabilities
 
 - `trail-lookup`: "Plan a tour from a ski route" also takes the route's line as the track; routes
-  are tappable during the new-tour goal pick.
+  are tappable during the new-tour goal pick; the route card's details follow the tour sheet's
+  layout.
+- `tour-form-extended`: the route comes before start and end, which fold away until set; points
+  the track set follow it.
 - `tour-info-extended`: route numbers come from the track (terrain heights when it has none),
   never from point heights while it loads.
 - `map-legend`: the legend leaves the layers panel and opens from its own button only.
@@ -54,6 +63,8 @@ its line: the planned tour shows no track, and its climb and descent come from p
   saved one; the section offers drawing and editing on the map.
 - `tours`: an exact copy of an own tour is not saved twice.
 - `design-system`: floating toasts also clear the location picker's dock.
+- `name-suggestion`, `elevation-lookup`: a point's name and height wait under one skeleton and
+  show together, no spinner.
 
 ## Impact
 

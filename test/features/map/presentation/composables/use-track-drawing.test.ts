@@ -26,16 +26,19 @@ function drawing(network: 'hiking' | 'ski' | null) {
 
 describe('useTrackDrawing', () => {
   beforeEach(() => {
-    mockLoad.mockReset()
+    // No ways around unless a test lays some.
+    mockLoad.mockReset().mockResolvedValue({ key: 'none', lines: [] })
   })
 
-  it('should draw straight between points with no trail layer shown, without loading any trails', async () => {
+  it('should follow the base map\'s ways with no trail layer shown, not draw straight', async () => {
+    mockLoad.mockResolvedValue({ key: 'ways', lines: [{ points: [A, BEND, B].map(toUnits), cost: 1 }] })
     const d = drawing(null)
     d.add(A, 30)
     d.add(B, 30)
     await flushPromises()
-    expect(d.track.value.legs).toEqual([[A, B]])
-    expect(mockLoad).not.toHaveBeenCalled()
+    expect(mockLoad).toHaveBeenCalledWith(null, expect.any(Array), null)
+    expect(d.track.value.legs[0]).toHaveLength(3)
+    expect(d.issue.value).toBeNull()
   })
 
   it('should draw straight and say why when the trails cannot load (offline, never cached)', async () => {
@@ -75,6 +78,18 @@ describe('useTrackDrawing', () => {
     await flushPromises()
     expect(d.track.value.legs[0]).toHaveLength(2)
     expect(d.issue.value).toBeNull()
+  })
+
+  it('should draw straight between two points on a way that only meets itself kilometres round', async () => {
+    // A loop out ~2 km north and back between points ~760 m apart.
+    const far = toLngLat([toUnits(A)[0], toUnits(A)[1] - 3000])
+    const farB = toLngLat([toUnits(B)[0], toUnits(B)[1] - 3000])
+    mockLoad.mockResolvedValue({ key: 'loop', lines: [{ points: [A, far, farB, B].map(toUnits), cost: 1 }] })
+    const d = drawing(null)
+    d.add(A, 30)
+    d.add(B, 30)
+    await flushPromises()
+    expect(d.track.value.legs[0]).toHaveLength(2)
   })
 
   it('should go back to the start the same way in one undoable step, and not twice', async () => {

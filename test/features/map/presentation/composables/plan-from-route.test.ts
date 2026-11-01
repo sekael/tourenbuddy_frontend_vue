@@ -31,15 +31,17 @@ describe('planFromRoute', () => {
     const plan = await planFromRoute(ROUTE, LINES, 'de-CH')
     expect(mockSearch).toHaveBeenCalledWith('Furggegütsch', 'de-CH', expect.any(AbortSignal))
     expect(plan!.goal).toEqual({ lng: 7.8801, lat: 46.7801 })
-    // The start is the route end farthest from the summit.
+    // The track starts at the route end farthest from the summit; it sets the tour's start.
     expect(plan!.seed).toMatchObject({
       name: 'Furggegütsch (Hohgant)',
       elevation: 2197,
       tourTypes: ['skitour'],
       grade: 'WS',
-      startPoint: { lng: 7.83, lat: 46.74 },
+      startPoint: null,
       description: 'Von Habkern\nhttps://www.sac-cas.ch/x',
     })
+    expect(plan!.track.points[0]![0]).toBeCloseTo(7.83, 9)
+    expect(plan!.track.points[0]![1]).toBeCloseTo(46.74, 9)
   })
 
   it('should fall back to the route\'s last point without a match nearby or without the search', async () => {
@@ -49,7 +51,8 @@ describe('planFromRoute', () => {
     const offline = await planFromRoute(ROUTE, LINES, 'en')
     expect(offline!.goal).toEqual({ lng: 7.83, lat: 46.74 })
     // A loose end, never the joint between the parts.
-    expect(offline!.seed.startPoint).toEqual({ lng: 7.85, lat: 46.76 })
+    expect(offline!.track.points[0]![0]).toBeCloseTo(7.85, 9)
+    expect(offline!.track.points[0]![1]).toBeCloseTo(46.76, 9)
   })
 
   it('should plan nothing from a route without points', async () => {
@@ -101,7 +104,6 @@ describe('planFromRoute track (#352)', () => {
     const eggerhorn = { ...ROUTE, targetName: 'Eggerhorn', targetAltitude: 2500, ascentM: 1100, descentM: 1200 }
     const plan = await planFromRoute(eggerhorn, parts, 'en')
     const line = plan!.track.legs.flat()
-    expect(plan!.seed.startPoint).toEqual({ lng: 8.184, lat: 46.364 })
     expect(line[0]![0]).toBeCloseTo(8.184, 6)
     expect(line.at(-1)![0]).toBeCloseTo(8.151, 6)
     expect(line.some(([lng]) => Math.abs(lng - 8.1835) < 1e-6)).toBe(true)

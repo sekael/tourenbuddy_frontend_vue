@@ -106,16 +106,34 @@ zoom SHALL be off; panning and pinch zoom SHALL work as usual.
 - **WHEN** the user taps a tour's marker while drawing
 - **THEN** a point SHALL be set there and no tour SHALL open
 
-### Requirement: The line follows the shown trail layer
+### Requirement: The line follows the shown trail layer, then the map's ways
 
-The line SHALL follow the hiking network when only hiking trails are shown, the ski routes when only
-ski routes are shown, and straight lines when neither is shown. The hiking network SHALL prefer
-marked trails and use other paths and small roads only to reach a point.
+The line SHALL follow the marked hiking trails first when only hiking trails are shown, the ski
+routes first when only ski routes are shown, and in every case go on along the base map's roads,
+forest roads and paths; with neither layer shown it SHALL follow those ways alone. A leg SHALL be
+straight only where no way lies within reach, over a far jump, where no ways load, or where the
+ways connect only far round (over 2.5× the straight distance and over 500 m more).
 
 #### Scenario: No layer shown
 
-- **WHEN** neither layer is shown
-- **THEN** legs SHALL be straight and the panel SHALL say to turn on hiking trails or ski routes
+- **WHEN** neither layer is shown and the user taps beside a forest road
+- **THEN** the point SHALL land on the road, the leg SHALL follow the ways, and the panel SHALL say
+  the line follows roads and paths
+
+#### Scenario: Ski route down to the road
+
+- **WHEN** only ski routes are shown and the next point lies on the forest road below a route's end
+- **THEN** the line SHALL follow the ski route to its end and go on along the road
+
+#### Scenario: Ways meet only far round
+
+- **WHEN** two points 1 km apart lie on paths that meet only by a 4.6 km detour
+- **THEN** the leg SHALL be straight
+
+#### Scenario: Switchbacks
+
+- **WHEN** two points lie on one zig-zag path, 50 m apart straight and 300 m along it
+- **THEN** the leg SHALL follow the path
 
 #### Scenario: Trails can't load
 
