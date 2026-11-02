@@ -781,7 +781,11 @@
       "flight": "Flug",
       "flightUp": "Flug hinauf",
       "ascentPartFlown": "Aufstieg, teils geflogen",
-      "descentPartFlown": "Abstieg, teils geflogen"
+      "descentPartFlown": "Abstieg, teils geflogen",
+      "time": "Geschätzte Zeit",
+      "minutes": "{m} min",
+      "hours": "{h}:{m} h",
+      "pace": "Tempo"
     }
   },
   "map": {
@@ -876,9 +880,9 @@
         "profileLoading": "Höhenprofil wird geladen …",
         "profileOffline": "Das Höhenprofil braucht eine Verbindung."
       },
-      "time": "Zeit",
-      "minutes": "{m} min",
-      "hours": "{h} h {m} min",
+      "pace": {
+        "open": "Tempo einstellen"
+      },
       "undo": "Rückgängig",
       "redo": "Wiederholen",
       "done": "Fertig",

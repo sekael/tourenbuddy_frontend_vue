@@ -61,7 +61,9 @@ to the goal pick.
 The card SHALL show, where present: route name, target and its altitude, difficulty, ascent time,
 ascent and descent in metres, and a link to the route in the SAC tour portal, laid out like a
 tour's details: the ski-tour disc, the altitude as headline, the difficulty as grade badge with the
-ascent time and climb/descent beside it, "Plan as tour" and the SAC link as full buttons. Text and
+ascent time — labelled as the ascent's and taken at the user's pace, the pace beside it when off
+100 %, an unusual wording as SAC gives it — and climb/descent beside it, "Plan as tour" and the SAC
+link as full buttons. Text and
 link SHALL use the UI language when Swisstopo provides it, else the original. Missing fields SHALL
 be omitted.
 
@@ -69,6 +71,11 @@ be omitted.
 
 - **WHEN** the selected ski route has a name, target, difficulty, ascent time, ascent/descent and an SAC link
 - **THEN** the card SHALL show all of them, and the SAC link SHALL open in a new tab
+
+#### Scenario: Ascent time at the user's pace
+
+- **WHEN** SAC states an ascent time of "05:00 h" and the user's pace is 125 %
+- **THEN** the card SHALL show "Ascent 4:00 h" with the hare and "125 %" beside it
 
 #### Scenario: Name missing in UI language
 

@@ -138,6 +138,33 @@ the same `GradeBadge` and `RouteNumbers` the tour sheet uses. "Plan as tour" and
 portal" are full buttons side by side (stacked when they don't fit), the swisstopo credit under
 them. The list's rows take the grade badge too.
 
+### D11 The user's pace
+
+The owner asked for the swisstopo app's personal pace (a tortoise → hare slider in its tour
+settings, kept for later tours): the time is the rule's time divided by the pace, 50–150 % in
+10 % steps. The panel's time is its button — a tap opens the slider row under the numbers, another
+closes it; the closed time's icon turns tortoise or hare for a pace off 100 %, so a changed setting
+never hides (a "120 %" beside it wrapped the numbers on a 360 px phone).
+The pace is kept per device, as the map's layers are (`core/composables/use-pace.ts`, one ref for
+the map and the tours features), and applies to every time the app shows.
+
+This revises multi-activity-tours D19 ("no walking time: pace differs too much between hiking, ski
+touring and flying"): a saved track now shows its time in the form's track tile and the tour
+detail — the number the drawing showed. The objection is met by the activity and the pace: on skis
+for ski touring (the rule's 400 m/h up), none for lifts, bikes or climbing alone, and none where a
+way is flown (a flight's drop is no legwork). Without a track distance there is still no time.
+
+Review round 1 (persona) asked three things of it. A time that follows today's pace must say so:
+wherever a time shows outside the panel (form, detail, ski route card) a pace off 100 % sits beside
+it as tortoise or hare and percent. The ski route card's time is SAC's ascent time; it now says so
+("Ascent 4:30 h") and takes the pace too, so it reads next to the planned tour's whole-day time. The
+slider opens in the status line's place (both rows 44 px), so the panel never grows over the track;
+times read as SAC writes them ("2:05 h"), which keeps the four figures on one 360 px line while the
+time changes under the finger; the time button is a 44 px target around a 32 px pill.
+
+*Alternative:* a profile column, the pace on every device — a migration for a setting the swisstopo
+app keeps per device too; added when users ask for it.
+
 ### D7 On the map
 
 The drawing and an unsaved track behind the form use the same style; the line sits with the tracks

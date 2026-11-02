@@ -781,7 +781,11 @@
       "flight": "Flight",
       "flightUp": "Flight up",
       "ascentPartFlown": "Ascent, partly flown",
-      "descentPartFlown": "Descent, partly flown"
+      "descentPartFlown": "Descent, partly flown",
+      "time": "Estimated time",
+      "minutes": "{m} min",
+      "hours": "{h}:{m} h",
+      "pace": "Pace"
     }
   },
   "map": {
@@ -876,9 +880,9 @@
         "profileLoading": "Loading the elevation profile…",
         "profileOffline": "The elevation profile needs a connection."
       },
-      "time": "Time",
-      "minutes": "{m} min",
-      "hours": "{h} h {m} min",
+      "pace": {
+        "open": "Set your pace"
+      },
       "undo": "Undo",
       "redo": "Redo",
       "done": "Done",

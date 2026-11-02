@@ -18,6 +18,7 @@ import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
 import { useFormatter } from '@/core/composables/use-formatter'
+import { pace } from '@/core/composables/use-pace'
 import { cacheBlob, clearPendingUpload, evictCachedBlob, markPendingUpload } from '@/core/offline/blob-cache'
 import { isOnline } from '@/core/offline/use-online-status'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
@@ -47,7 +48,7 @@ import { suggestTourName } from '@/features/tours/data/services/swisstopo-name-s
 import { densify, getTrackProfile } from '@/features/tours/data/services/swisstopo-profile-service'
 import { isSameGoal } from '@/features/tours/domain/distance'
 import { defaultDirection, directionOf, landsByAir, legsFrom, waysCovered } from '@/features/tours/domain/legs'
-import { trackEnds, trackLines, trackMetrics } from '@/features/tours/domain/route-metrics'
+import { tourMinutes, trackEnds, trackLines, trackMetrics } from '@/features/tours/domain/route-metrics'
 import ActivityLegs from '@/features/tours/presentation/components/activity-legs.vue'
 import GradeChips from '@/features/tours/presentation/components/grade-chips.vue'
 import PointDistance from '@/features/tours/presentation/components/point-distance.vue'
@@ -514,6 +515,8 @@ function setLegDirection(type: TourType, direction: LegDirection) {
 const legRows = computed(() => [...selectedTourTypes.value].sort((a, b) => Number(a === 'paragliding') - Number(b === 'paragliding')))
 /** A flown way down ends where the glider lands. */
 const endIsLanding = computed(() => landsByAir({ tourTypes: selectedTourTypes.value, legs: legs.value }))
+/** The track's time, as the drawing showed it and the tour will: its activities at the user's pace. */
+const fileMinutes = computed(() => fileNumbers.value && tourMinutes(fileNumbers.value, { tourTypes: selectedTourTypes.value, legs: legs.value }, pace.value))
 
 // ── Seasons follow the dates (design D6) ────────────────────────────────────
 // Automatic while the chips hold nothing or exactly what the dates say; a tap makes them the
@@ -1002,7 +1005,7 @@ defineExpose({ cancel: handleCancel, submitBlocked })
             :progress-label="t('tours.form.gpxUploading')"
           >
             <template v-if="fileNumbers && !isUploadingGpx" #status>
-              <RouteNumbers :metrics="fileNumbers" class="gpx-numbers" data-testid="gpx-numbers" />
+              <RouteNumbers :metrics="fileNumbers" :minutes="fileMinutes" class="gpx-numbers" data-testid="gpx-numbers" />
             </template>
             <!-- Cancel for the duration of an upload, as the attachment rows have; replacing sits
                  with the edit as a labelled button below. -->

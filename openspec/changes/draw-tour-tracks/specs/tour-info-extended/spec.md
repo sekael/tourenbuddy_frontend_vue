@@ -2,12 +2,17 @@
 
 ### Requirement: Route numbers
 
-The tour detail SHALL show the route's climb, descent and, when known, distance from the most accurate data, never typed: a tour with a GPX track counts the track — its distance, and climb and descent from its heights (past a 5 m swing from the last turning point), a track without heights taking the terrain's along its line when online. Only a tour without a track, or whose track can't be had, counts the point heights over the legs start → goal and goal → end, every rise as climb and every drop as descent. A leg that is missing or lacks a height adds nothing; the other still counts. While the track loads no numbers SHALL show. A 0 SHALL NOT show. No walking time SHALL be estimated.
+The tour detail SHALL show the route's climb, descent and, when known, distance from the most accurate data, never typed: a tour with a GPX track counts the track — its distance, and climb and descent from its heights (past a 5 m swing from the last turning point), a track without heights taking the terrain's along its line when online. Only a tour without a track, or whose track can't be had, counts the point heights over the legs start → goal and goal → end, every rise as climb and every drop as descent. A leg that is missing or lacks a height adds nothing; the other still counts. While the track loads no numbers SHALL show. A 0 SHALL NOT show. A tour with a track distance SHALL also show its estimated time at the user's pace, by the rule the drawing panel uses (track-drawing: Time estimate) — the same time the drawing and the form's track showed; a tour on lifts, bike or climbing alone, or with a flown way, SHALL show none, and without a distance no time SHALL be estimated.
 
 #### Scenario: Hut to summit to valley without a track
 
 - **WHEN** a tour starts at a hut at 2632 m, has its goal at 3079 m and ends in the valley at 1822 m
 - **THEN** the detail SHALL show a climb of 447 m and a descent of 1257 m and no distance
+
+#### Scenario: Time at the user's pace
+
+- **WHEN** a hiking tour's track is 4 km long with 600 m of climb and the user's pace is 120 %
+- **THEN** the detail SHALL show 2:05 h beside the climb, descent and distance, with the hare and "120 %" beside the time
 
 #### Scenario: Track with heights
 

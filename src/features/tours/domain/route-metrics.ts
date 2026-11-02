@@ -189,16 +189,46 @@ export function totalMetrics(routes: readonly RouteMetrics[]): RouteMetrics {
   return { ascent: total('ascent'), descent: total('descent'), distance: total('distance') }
 }
 
+/** Ski touring: the climb on skins, the run down on skis. */
+const SKI_TOURING = new Set<string>(['skitour', 'splitboarding', 'ski-mountaineering'])
+const ON_TRAILS = new Set<string>(['hiking', 'trailrunning'])
+/** What the rule of thumb times: legwork, on foot or on touring skis — not a day by lift, bike or air. */
+const TIMED = new Set<string>([...SKI_TOURING, ...ON_TRAILS, 'mountaineering'])
+
+/** On skis: a ski-touring activity, and none on the trails (hiking wins a mixed day). */
+export function onSkis(tourTypes: readonly string[]): boolean {
+  return tourTypes.some(t => SKI_TOURING.has(t)) && !tourTypes.some(t => ON_TRAILS.has(t))
+}
+
 /**
  * Time on the way in minutes, by the Swiss rule of thumb (SAC, DIN 33466): 4 km/h on the flat,
  * 300 m an hour up and 500 m down; the shorter of horizontal and vertical time counts half. On skis
- * the climb goes at 400 m an hour and the run down is quick. Null without a distance.
- * ponytail: one pace for everyone; a personal pace (the swisstopo app's tortoise→hare) can scale it.
+ * the climb goes at 400 m an hour and the run down is quick. `pace` is the user's speed in percent
+ * of the rule's (the swisstopo app's tortoise → hare): 125 takes 4/5 of the time. Null without a
+ * distance.
  */
-export function estimatedMinutes({ distance, ascent, descent }: RouteMetrics, onSkis = false): number | null {
+export function estimatedMinutes({ distance, ascent, descent }: RouteMetrics, skis = false, pace = 100): number | null {
   if (!distance)
     return null
   const flat = distance / 4000
-  const vertical = (ascent ?? 0) / (onSkis ? 400 : 300) + (descent ?? 0) / (onSkis ? 1500 : 500)
-  return Math.round((Math.max(flat, vertical) + Math.min(flat, vertical) / 2) * 60)
+  const vertical = (ascent ?? 0) / (skis ? 400 : 300) + (descent ?? 0) / (skis ? 1500 : 500)
+  return Math.round((Math.max(flat, vertical) + Math.min(flat, vertical) / 2) * 60 * 100 / pace)
+}
+
+/** SAC's time label ("04:30 h") in minutes at the standard pace; null for any other wording. */
+export function labelMinutes(label: string): number | null {
+  const hm = /^(\d+):(\d{2}) h$/.exec(label)
+  return hm ? Number(hm[1]) * 60 + Number(hm[2]) : null
+}
+
+/**
+ * A tour's time at the user's pace: on skis for a ski tour; none for a day of lifts, bikes or
+ * climbing alone, and none where a way is flown — the rule times legwork, and a flight's drop is none.
+ */
+export function tourMinutes(metrics: RouteMetrics, tour: Parameters<typeof flight>[0], pace: number): number | null {
+  const { up, down } = flight(tour)
+  const types = tour.tourTypes
+  if (up || down || (types.length > 0 && !types.some(t => TIMED.has(t))))
+    return null
+  return estimatedMinutes(metrics, onSkis(types), pace)
 }

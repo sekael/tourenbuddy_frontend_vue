@@ -59,3 +59,12 @@
 - [x] 8.6 `npx eslint . --fix`, `npx eslint`, `npm run type-check`, `npm run test`; `openspec validate --strict`
 - [x] 8.7 Headless walk at 360 px de-CH (ski route down a forest road, no layer on roads, form fold and redraw, route card); persona review loop on the form and the card until it passes
 - [x] 8.8 Review round 2 (owner decisions): legs along the ways far round go straight (2.5×, +500 m; test in `use-track-drawing.test.ts`); a point's name and height wait under one skeleton and show together (tests in `tour-form.test.ts`)
+
+## 9. The user's pace
+
+- [x] 9.1 `estimatedMinutes` takes the pace; `tourMinutes` times a tour by its activities (on skis, none for lifts/bikes/climbing alone or a flown way); `onSkis` shared with `snapNetworkFor`; tests in `route-metrics.test.ts`
+- [x] 9.2 `core/composables/use-pace.ts`: the pace per device (`tb.pace`, 50–150 %); test in `use-pace.test.ts`
+- [x] 9.3 Panel: the time opens the tortoise → hare slider; the closed time's icon turns tortoise or hare off 100 %; test in `track-draw-panel.test.ts`
+- [x] 9.4 The time in the form's track tile and the tour detail (`RouteNumbers` `minutes`); `formatDuration` in `use-formatter`; locale keys (en, de-CH)
+- [x] 9.6 Review round 1: the pace beside every time off 100 % (`PaceNote`); SAC's ascent time on the ski route card labelled and at the pace (`labelMinutes`); slider in the status line's place; "2:05 h" times; 44 px time button; route numbers on one baseline; tests in `route-numbers.test.ts`, `trail-card.test.ts`, `route-metrics.test.ts`, `track-draw-panel.test.ts`
+- [x] 9.5 Checks (`eslint`, `type-check`, `test`, `openspec validate --strict`); persona review loop until it passes

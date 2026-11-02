@@ -2,17 +2,19 @@
 import type { Map as MapLibreMap, MapMouseEvent, MapTouchEvent, Point, VectorTileSource } from 'maplibre-gl'
 import type { DrawnTrack } from '@/features/map/domain/drawn-track'
 import type { LngLat } from '@/features/map/domain/entities/trail'
+import type { TourType } from '@/features/tours/data/models/tour-type'
 import { LngLatBounds } from 'maplibre-gl'
 import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { z } from 'zod'
+import { pace } from '@/core/composables/use-pace'
 import { SKI_ROUTES_TILEJSON } from '@/features/map/data/trail-overlays'
 import { lineLength } from '@/features/map/domain/drawn-track'
 import { snapNetworkFor } from '@/features/map/domain/snap-network'
 import { isBoundsVisible } from '@/features/map/presentation/composables/frame-tour'
 import { useTrackDrawing } from '@/features/map/presentation/composables/use-track-drawing'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
-import { estimatedMinutes } from '@/features/tours/domain/route-metrics'
+import { tourMinutes } from '@/features/tours/domain/route-metrics'
 import { useTrackDrawLayer } from './track-draw-layer'
 import TrackDrawPanel from './track-draw-panel.vue'
 import { SKI_ROUTES_SOURCE_ID } from './trail-layers'
@@ -27,7 +29,7 @@ const props = defineProps<{
   /** The track to go on from (the form's current one), or null for a new one. */
   seed: DrawnTrack | null
   /** The form's activities: with both trail layers shown they pick which one the line follows. */
-  tourTypes: readonly string[]
+  tourTypes: readonly TourType[]
 }>()
 
 const emit = defineEmits<{ done: [track: DrawnTrack], cancel: [] }>()
@@ -54,8 +56,8 @@ async function skiTemplate(): Promise<string | null> {
 const drawing = useTrackDrawing({ seed: props.seed, network: () => network.value, skiTemplate })
 const { track, shown, queued } = drawing
 
-// The pace is the activity's: on skis when ski touring would pick the ski routes.
-const minutes = computed(() => estimatedMinutes(drawing.metrics.value, snapNetworkFor(['hiking', 'ski'], props.tourTypes) === 'ski'))
+// The time as the saved tour will show it: the activity's way of moving at the user's pace.
+const minutes = computed(() => tourMinutes(drawing.metrics.value, { tourTypes: props.tourTypes }, pace.value))
 
 // ── Gestures ────────────────────────────────────────────────────────────────
 const coarse = () => window.matchMedia?.('(pointer: coarse)').matches ?? false

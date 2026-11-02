@@ -9,7 +9,10 @@ import BottomSheet from '@/core/components/bottom-sheet.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
 import { useFormatter } from '@/core/composables/use-formatter'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
+import { pace } from '@/core/composables/use-pace'
+import { labelMinutes } from '@/features/tours/domain/route-metrics'
 import GradeBadge from '@/features/tours/presentation/components/grade-badge.vue'
+import PaceNote from '@/features/tours/presentation/components/pace-note.vue'
 import RouteNumbers from '@/features/tours/presentation/components/route-numbers.vue'
 import TourTypeBadge from '@/features/tours/presentation/components/tour-type-badge.vue'
 import { trailTitle } from '../composables/trail-title'
@@ -23,7 +26,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n({ useScope: 'global' })
-const { formatElevation } = useFormatter()
+const { formatElevation, formatDuration } = useFormatter()
 const isDesktop = useIsDesktop()
 const mapStore = useMapStore()
 const { trailCard } = storeToRefs(mapStore)
@@ -37,6 +40,12 @@ const title = computed(() => {
   if (!selected.value)
     return t('map.trail.listTitle', { count: (trailCard.value?.candidates.length ?? 0) + (trailCard.value?.more ?? 0) })
   return route.value?.targetName || trailTitle(selected.value, t)
+})
+/** SAC's ascent time at the user's pace, as every time the app shows; an odd label as it is. */
+const ascentTime = computed(() => {
+  const label = route.value?.ascentTime
+  const minutes = label ? labelMinutes(label) : null
+  return minutes == null ? label : formatDuration.value(Math.round(minutes * 100 / pace.value))
 })
 const numbers = computed(() => ({ ascent: route.value?.ascentM ?? null, descent: route.value?.descentM ?? null, distance: null }))
 
@@ -68,8 +77,9 @@ function openSac() {
             <!-- Separate items: a wrap falls between them, never inside one. -->
             <span class="hero-meta">
               <GradeBadge v-if="route.difficulty" :grade="route.difficulty" />
-              <span v-if="route.ascentTime" class="fact">
-                <BaseIcon name="schedule" size="sm" />{{ route.ascentTime }}
+              <span v-if="ascentTime" class="fact" data-testid="trail-ascent-time">
+                <BaseIcon name="schedule" size="sm" />{{ t('tours.route.ascent') }} {{ ascentTime }}
+                <PaceNote />
               </span>
               <RouteNumbers :metrics="numbers" />
             </span>

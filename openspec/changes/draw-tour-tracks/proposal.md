@@ -47,7 +47,8 @@ its line: the planned tour shows no track, and its climb and descent come from p
 
 ### New Capabilities
 
-- `track-drawing`: drawing a tour's track on the map — gestures, snapping, numbers, result.
+- `track-drawing`: drawing a tour's track on the map — gestures, snapping, numbers, the user's
+  pace (tortoise to hare) for the time, result.
 
 ### Modified Capabilities
 
@@ -57,7 +58,8 @@ its line: the planned tour shows no track, and its climb and descent come from p
 - `tour-form-extended`: the route comes before start and end, which fold away until set; points
   the track set follow it.
 - `tour-info-extended`: route numbers come from the track (terrain heights when it has none),
-  never from point heights while it loads.
+  never from point heights while it loads; a tour with a track shows its estimated time at the
+  user's pace.
 - `map-legend`: the legend leaves the layers panel and opens from its own button only.
 - `gpx-tracks`: a track may come from a drawing; an unsaved track shows on the map in place of the
   saved one; the section offers drawing and editing on the map.

@@ -5,11 +5,12 @@ import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/core/components/base-icon.vue'
 import { useFormatter } from '@/core/composables/use-formatter'
 import { TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
+import PaceNote from './pace-note.vue'
 
 /**
- * Climb · descent · distance as a guide reads them — "↑ 447 m  ↓ 1257 m  8.4 km" — each only
- * when known (design D19); a 0 — nothing climbed, nothing descended (e.g. it ends at its goal), no
- * length walked — says nothing and stays out. The arrows are spelled out for assistive tech.
+ * Climb · descent · distance · time as a guide reads them — "↑ 447 m  ↓ 1257 m  8.4 km  3:20 h" —
+ * each only when known (design D19); a 0 — nothing climbed, nothing descended (e.g. it ends at its
+ * goal), no length walked — says nothing and stays out. The arrows are spelled out for assistive tech.
  */
 defineProps<{
   metrics: RouteMetrics
@@ -18,10 +19,12 @@ defineProps<{
    * a pure flight (a flown descent is the flight's drop), the others before it on a shared way.
    */
   flight?: Flight
+  /** The estimated time at the user's pace; only where the caller knows one. */
+  minutes?: number | null
 }>()
 
 const { t } = useI18n({ useScope: 'global' })
-const { formatElevation, formatDistance } = useFormatter()
+const { formatElevation, formatDistance, formatDuration } = useFormatter()
 const LABELS = {
   ascent: ['tours.route.ascent', 'tours.route.flightUp', 'tours.route.ascentPartFlown'],
   descent: ['tours.route.descent', 'tours.route.flight', 'tours.route.descentPartFlown'],
@@ -30,7 +33,7 @@ const label = (way: keyof typeof LABELS, flown: FlownWay | undefined) => t(LABEL
 </script>
 
 <template>
-  <span v-if="metrics.ascent || metrics.descent || metrics.distance" class="route-numbers">
+  <span v-if="metrics.ascent || metrics.descent || metrics.distance || minutes" class="route-numbers">
     <span v-if="metrics.ascent" data-testid="route-ascent">
       <span aria-hidden="true">↑</span>
       <BaseIcon v-for="type in flight?.up" :key="type" :name="TOUR_TYPE_ICONS[type]" size="xs" class="flown" />
@@ -47,6 +50,12 @@ const label = (way: keyof typeof LABELS, flown: FlownWay | undefined) => t(LABEL
       <span class="visually-hidden">{{ t('tours.route.distance') }}</span>
       {{ formatDistance(metrics.distance) }}
     </span>
+    <span v-if="minutes" data-testid="route-time">
+      <BaseIcon name="schedule" size="xs" class="flown" />
+      <span class="visually-hidden">{{ t('tours.route.time') }}</span>
+      {{ formatDuration(minutes) }}
+      <PaceNote />
+    </span>
   </span>
 </template>
 
@@ -61,5 +70,7 @@ const label = (way: keyof typeof LABELS, flown: FlownWay | undefined) => t(LABEL
   column-gap: var(--spacing-sm);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  /* Figures on one line, whichever item carries an icon. */
+  align-items: baseline;
 }
 </style>

@@ -188,12 +188,58 @@ profile area SHALL say so. The panel SHALL keep its height from the first tap on
 
 The time SHALL follow the SAC rule: 4 km/h on the flat, 300 m/h up and 500 m/h down, the shorter of
 horizontal and vertical time counting half; for a ski-touring activity the climb SHALL go at 400 m/h
-and the descent at 1500 m/h.
+and the descent at 1500 m/h. Times SHALL read as SAC writes them: minutes under an hour ("45 min"),
+else hours and minutes ("2:05 h").
 
 #### Scenario: A climb on foot
 
 - **WHEN** the line is 4 km long with 600 m of climb on a hiking tour
-- **THEN** the panel SHALL show 2 h 30 min
+- **THEN** the panel SHALL show 2:30 h
+
+### Requirement: Time at the user's pace
+
+Every time SHALL be taken at the user's pace, a percentage of the rule's speed from 50 % (tortoise)
+to 150 % (hare) in steps of 10 %, 100 % by default: the time divided by the pace. A tour on lifts,
+bike or climbing alone, or with a flown way, SHALL show no time.
+
+#### Scenario: A faster team
+
+- **WHEN** the user has set the pace to 120 % and the line is 4 km long with 600 m of climb on a hiking tour
+- **THEN** the panel SHALL show 2:05 h
+
+#### Scenario: A flown way down
+
+- **WHEN** the tour hikes up and flies down by paraglider
+- **THEN** the panel SHALL show no time
+
+### Requirement: Pace slider
+
+Tapping the panel's time (a 44 px target) SHALL open and close a slider between a tortoise and a
+hare with the pace in percent beside it, in the status line's place, so the panel keeps its height
+and the track stays in view. Moving it SHALL update the time at once, the figures staying on one
+line on a 360 px phone. While closed, the time SHALL show a slower pace by the tortoise and a
+faster one by the hare in place of its pace icon.
+
+#### Scenario: Setting the pace before drawing
+
+- **WHEN** the user opens the pace before the first tap and moves it to 80 %
+- **THEN** the slider SHALL show 80 %, and the time of the line drawn next SHALL be the rule's time divided by 0.8
+
+#### Scenario: Pace open while drawing
+
+- **WHEN** the user has drawn a track on a 360 px phone and opens the pace
+- **THEN** the panel SHALL keep its height, the status line SHALL give way to the slider, and distance, time, climb and descent SHALL stay on one line and unchanged but for the time
+
+### Requirement: Pace kept and shown
+
+The pace SHALL be kept on the device for every later drawing and after a reload. Wherever a time
+shows outside the panel, a pace other than 100 % SHALL show beside it as the tortoise or hare and
+its percent.
+
+#### Scenario: Pace kept
+
+- **WHEN** the user has set the pace to 120 % and reloads the app
+- **THEN** the next drawing SHALL time its line at 120 %, its time SHALL show the hare, and the slider SHALL open at 120 %
 
 ### Requirement: Drawn track saved as GPX
 

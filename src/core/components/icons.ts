@@ -25,6 +25,7 @@ import IconClose from '~icons/material-symbols/close'
 import IconCloudOffOutline from '~icons/material-symbols/cloud-off-outline'
 import IconContactsOutline from '~icons/material-symbols/contacts-outline'
 import IconContentCopyOutline from '~icons/material-symbols/content-copy-outline'
+import IconCrueltyFree from '~icons/material-symbols/cruelty-free'
 import IconDeleteOutline from '~icons/material-symbols/delete-outline'
 import IconDescriptionOutline from '~icons/material-symbols/description-outline'
 import IconDirectionsBike from '~icons/material-symbols/directions-bike'
@@ -81,7 +82,9 @@ import IconRouteOutline from '~icons/material-symbols/route-outline'
 import IconScheduleOutline from '~icons/material-symbols/schedule-outline'
 import IconSearch from '~icons/material-symbols/search'
 import IconSearchOff from '~icons/material-symbols/search-off'
+import IconSnailOutline from '~icons/material-symbols/snail-outline'
 import IconSnowboarding from '~icons/material-symbols/snowboarding'
+import IconSpeedOutline from '~icons/material-symbols/speed-outline'
 import IconSportsScore from '~icons/material-symbols/sports-score'
 import IconSprint from '~icons/material-symbols/sprint'
 import IconStar from '~icons/material-symbols/star'
@@ -160,6 +163,7 @@ export const iconRegistry: Record<string, Component> = {
   cloud_off: IconCloudOffOutline,
   contacts: IconContactsOutline,
   content_copy: IconContentCopyOutline,
+  cruelty_free: IconCrueltyFree,
   delete: IconDeleteOutline,
   description: IconDescriptionOutline,
   directions: IconDirectionsOutline,
@@ -220,7 +224,9 @@ export const iconRegistry: Record<string, Component> = {
   search_off: IconSearchOff,
   ski_mountaineering: IconSkiMountaineering,
   ski_touring: IconSkiTouring,
+  snail: IconSnailOutline,
   snowboarding: IconSnowboarding,
+  speed: IconSpeedOutline,
   splitboarding: IconSplitboarding,
   sports_score: IconSportsScore,
   sprint: IconSprint,

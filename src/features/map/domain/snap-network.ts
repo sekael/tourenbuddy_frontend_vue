@@ -1,10 +1,8 @@
 import type { TrailOverlayId } from '@/features/map/data/trail-overlays'
+import { onSkis } from '@/features/tours/domain/route-metrics'
 
 /** What a drawn line follows first, before the base map's roads and paths; null = those ways alone. */
 export type SnapNetwork = TrailOverlayId
-
-const SKI_TOURING = new Set(['skitour', 'splitboarding', 'ski-mountaineering'])
-const ON_TRAILS = new Set(['hiking', 'trailrunning'])
 
 /**
  * A drawing follows what the map shows first: the hiking trails, the ski routes, or — both shown —
@@ -15,6 +13,6 @@ export function snapNetworkFor(overlays: readonly TrailOverlayId[], tourTypes: r
   const hiking = overlays.includes('hiking')
   const ski = overlays.includes('ski')
   if (hiking && ski)
-    return tourTypes.some(t => SKI_TOURING.has(t)) && !tourTypes.some(t => ON_TRAILS.has(t)) ? 'ski' : 'hiking'
+    return onSkis(tourTypes) ? 'ski' : 'hiking'
   return hiking ? 'hiking' : ski ? 'ski' : null
 }

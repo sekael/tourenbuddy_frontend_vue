@@ -16,6 +16,7 @@ import FullScreenPage from '@/core/components/full-screen-page.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
 import { useFormatter } from '@/core/composables/use-formatter'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
+import { pace } from '@/core/composables/use-pace'
 import { useLogger } from '@/core/logging/use-logger'
 import { clearOfflineWriteError } from '@/core/offline/mutate'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
@@ -36,6 +37,7 @@ import { downloadOriginal } from '@/features/tours/data/services/gpx-storage-ser
 import { COLLISION_RADIUS_M, sharesActivity } from '@/features/tours/domain/collision'
 import { isSameGoal } from '@/features/tours/domain/distance'
 import { flight, routeOrder } from '@/features/tours/domain/legs'
+import { tourMinutes } from '@/features/tours/domain/route-metrics'
 import OutingNavigator from '@/features/tours/presentation/components/outing-navigator.vue'
 import RouteNumbers from '@/features/tours/presentation/components/route-numbers.vue'
 import SegmentAddView from '@/features/tours/presentation/components/segment-add-view.vue'
@@ -748,6 +750,8 @@ const coordinates = computed(
 // numbers a pilot plans by read in the sheet's opening height (activity-legs).
 const routeMetrics = useRouteMetrics(() => [props.tour])
 const metrics = computed(() => routeMetrics.value.get(props.tour.id)!)
+/** The time the drawing showed: the track at the user's pace (owner, pace round). */
+const minutes = computed(() => tourMinutes(metrics.value, props.tour, pace.value))
 
 const formattedElevation = computed(() =>
   props.tour.elevation == null ? null : formatElevation.value(props.tour.elevation),
@@ -855,7 +859,7 @@ const formattedElevation = computed(() =>
             <!-- Date, route numbers and coordinates as separate items: a wrap leaves no dangling separator. -->
             <span class="hero-meta">
               <span v-if="formattedElevation && formattedDate">{{ formattedDate }}</span>
-              <RouteNumbers :metrics="metrics" :flight="flight(tour)" data-testid="hero-route" />
+              <RouteNumbers :metrics="metrics" :flight="flight(tour)" :minutes="minutes" data-testid="hero-route" />
               <span class="coords">{{ coordinates }}</span>
             </span>
             <span v-if="tour.isFriendTour" class="hero-meta">
