@@ -18,6 +18,16 @@
   initial-value: 0px;
 }
 
+/* iOS 26 colors a Home Screen app's opaque status bar from the full-width fixed element at the top
+   of the page (theme-color is ignored) and keeps that color once the element is gone. Installed,
+   the bar never closes all the way, so the status bar is its dark color from launch on and never
+   flips. Over 10px tall, iOS reads its background color instead of sampling pixels. */
+@media (display-mode: standalone) {
+  :root {
+    --offline-bar-height: 0.75rem;
+  }
+}
+
 :root:has(.offline-bar--on) {
   --offline-bar-height: 1.75rem;
 }

@@ -111,8 +111,9 @@ watch(offlineWriteError, (key) => {
   z-index: 190;
 }
 
-/* Hidden (also from screen readers) once the band has closed. */
-.offline-bar:not(.offline-bar--on) {
+/* Its words hide (also from screen readers) once the band has closed; the bar itself stays visible,
+   as the strip iOS colors the status bar from (safe-area.css). */
+.offline-bar:not(.offline-bar--on) > * {
   visibility: hidden;
   transition: visibility 0s var(--motion-duration-medium);
 }
