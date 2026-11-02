@@ -1,7 +1,7 @@
 ## 1. iOS status bar
 
 - [x] 1.1 Drop `apple-mobile-web-app-status-bar-style` from `index.html`, with the reason
-- [ ] 1.2 Owner: re-add the app to the Home Screen and check the top edge and the form's Save button
+- [x] 1.2 Owner: re-add the app to the Home Screen and check the top edge and the form's Save button
 
 ## 2. Offline bar
 
