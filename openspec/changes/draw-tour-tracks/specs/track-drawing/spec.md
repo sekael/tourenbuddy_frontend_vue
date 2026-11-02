@@ -198,13 +198,14 @@ else hours and minutes ("2:05 h").
 
 ### Requirement: Time at the user's pace
 
-Every time SHALL be taken at the user's pace, a percentage of the rule's speed from 50 % (tortoise)
-to 150 % (hare) in steps of 10 %, 100 % by default: the time divided by the pace. A tour on lifts,
-bike or climbing alone, or with a flown way, SHALL show no time.
+Every time SHALL be taken at the user's pace, a factor on the rule's speed from 0.5 (tortoise) to
+1.5 (hare) in steps of 0.1, 1.0 by default: the time divided by the pace. A pace SHALL always read
+as a factor with one decimal and a times sign ("1.2×"), never as a percentage. A tour on lifts, bike or climbing
+alone, or with a flown way, SHALL show no time.
 
 #### Scenario: A faster team
 
-- **WHEN** the user has set the pace to 120 % and the line is 4 km long with 600 m of climb on a hiking tour
+- **WHEN** the user has set the pace to 1.2 and the line is 4 km long with 600 m of climb on a hiking tour
 - **THEN** the panel SHALL show 2:05 h
 
 #### Scenario: A flown way down
@@ -215,15 +216,15 @@ bike or climbing alone, or with a flown way, SHALL show no time.
 ### Requirement: Pace slider
 
 Tapping the panel's time (a 44 px target) SHALL open and close a slider between a tortoise and a
-hare with the pace in percent beside it, in the status line's place, so the panel keeps its height
-and the track stays in view. Moving it SHALL update the time at once, the figures staying on one
-line on a 360 px phone. While closed, the time SHALL show a slower pace by the tortoise and a
-faster one by the hare in place of its pace icon.
+hare with the factor beside it, in the status line's place, so the panel keeps its height and the
+track stays in view. Moving it SHALL update the time at once, the figures staying on one line on a
+360 px phone. Only the open slider SHALL show the tortoise and the hare; while closed, a pace off
+1.0 SHALL show as its factor badge in place of the time's pace icon.
 
 #### Scenario: Setting the pace before drawing
 
-- **WHEN** the user opens the pace before the first tap and moves it to 80 %
-- **THEN** the slider SHALL show 80 %, and the time of the line drawn next SHALL be the rule's time divided by 0.8
+- **WHEN** the user opens the pace before the first tap and moves it to 0.8
+- **THEN** the slider SHALL show "0.8×", and the time of the line drawn next SHALL be the rule's time divided by 0.8
 
 #### Scenario: Pace open while drawing
 
@@ -232,14 +233,20 @@ faster one by the hare in place of its pace icon.
 
 ### Requirement: Pace kept and shown
 
-The pace SHALL be kept on the device for every later drawing and after a reload. Wherever a time
-shows outside the panel, a pace other than 100 % SHALL show beside it as the tortoise or hare and
-its percent.
+The pace SHALL be kept on the user's account, for every later drawing, after a reload and on every
+device the user signs in on; set offline, it SHALL be saved once back online. The form's track, the
+tour detail and the ski route card SHALL show a pace other than 1.0 as a small badge with its
+factor beside the time, without tortoise or hare.
 
 #### Scenario: Pace kept
 
-- **WHEN** the user has set the pace to 120 % and reloads the app
-- **THEN** the next drawing SHALL time its line at 120 %, its time SHALL show the hare, and the slider SHALL open at 120 %
+- **WHEN** the user has set the pace to 1.2 and reloads the app
+- **THEN** the next drawing SHALL time its line at 1.2, its time SHALL show the badge "1.2×", and the slider SHALL open at 1.2
+
+#### Scenario: Another device
+
+- **WHEN** the user has set the pace to 0.8 on the phone and opens the app on a laptop
+- **THEN** the laptop SHALL time every tour at 0.8
 
 ### Requirement: Drawn track saved as GPX
 

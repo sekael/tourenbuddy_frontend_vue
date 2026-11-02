@@ -44,11 +44,11 @@ describe('trailCard', () => {
     expect(wrapper.find('[data-testid=trail-sac]').exists()).toBe(false)
   })
 
-  it('should keep an ascent time SAC words otherwise as it is, and name a pace off the standard beside it', async () => {
+  it('should keep an ascent time SAC words otherwise as it is, and badge a pace off the standard beside it', async () => {
     const { wrapper } = mountCard({ ...ROUTE, ascentTime: '4-5 h' })
-    pace.value = 80
+    pace.value = 0.8
     await nextTick()
-    expect(wrapper.find('[data-testid=trail-ascent-time]').text()).toMatch(/tours\.route\.ascent 4-5 h.*80/s)
-    pace.value = 100
+    expect(wrapper.find('[data-testid=trail-ascent-time]').text()).toMatch(/tours\.route\.ascent 4-5 h.*0\.8×/s)
+    pace.value = 1
   })
 })

@@ -4,6 +4,7 @@ import type { FullUserProfile } from '@/features/user/domain/entities/full-user-
 import type { UserProfile } from '@/features/user/domain/entities/user-profile'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { pace } from '@/core/composables/use-pace'
 import { InvalidPhoneNumberError, PhoneAlreadyRegisteredError } from '@/core/exceptions'
 import { useLogger } from '@/core/logging/use-logger'
 import { cachedLoad } from '@/core/offline/cached-load'
@@ -69,6 +70,7 @@ export const useUserProfileStore = defineStore('userProfile', () => {
             onboardingTourLastStep: 0,
             calendarTourShowOnFirstOpen: true,
             calendarFeatureNoticeShowAtSignIn: false,
+            pace: 1,
             updatedAt: null,
           })]
         },
@@ -181,6 +183,22 @@ export const useUserProfileStore = defineStore('userProfile', () => {
       // updateProfile already logs; swallow to keep setLocale non-throwing
     }
   }
+
+  // The pace lives in core for the map and the tours; the profile carries it to every device. A
+  // profile cached before the column has none and leaves the pace alone.
+  watch(() => profile.value?.pace, (value) => {
+    if (value != null)
+      pace.value = value
+  })
+  let paceTimer: ReturnType<typeof setTimeout> | undefined
+  watch(pace, (value) => {
+    clearTimeout(paceTimer)
+    // One write once the slider rests, not one per step.
+    paceTimer = setTimeout(() => {
+      if (profile.value && profile.value.pace !== value)
+        updateProfile({ pace: value }).catch(() => {}) // updateProfile logs
+    }, 600)
+  })
 
   async function checkPhoneAvailability(phone: string) {
     const normalizeResult = normalizePhone(phone)

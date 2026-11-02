@@ -11,8 +11,8 @@ The tour detail SHALL show the route's climb, descent and, when known, distance 
 
 #### Scenario: Time at the user's pace
 
-- **WHEN** a hiking tour's track is 4 km long with 600 m of climb and the user's pace is 120 %
-- **THEN** the detail SHALL show 2:05 h beside the climb, descent and distance, with the hare and "120 %" beside the time
+- **WHEN** a hiking tour's track is 4 km long with 600 m of climb and the user's pace is 1.2
+- **THEN** the detail SHALL show 2:05 h beside the climb, descent and distance, with the badge "1.2×" and no tortoise or hare beside the time
 
 #### Scenario: Track with heights
 

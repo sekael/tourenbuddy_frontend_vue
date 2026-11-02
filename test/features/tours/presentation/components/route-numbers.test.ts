@@ -8,13 +8,14 @@ import RouteNumbers from '@/features/tours/presentation/components/route-numbers
 const icons = (w: ReturnType<typeof mount>, id: string) => w.find(`[data-testid="${id}"]`).findAllComponents(BaseIcon).map(i => i.props('name'))
 
 describe('routeNumbers', () => {
-  it('should name a pace off the standard beside the time, and none at the standard', async () => {
+  it('should badge a pace off the standard beside the time with its factor alone, and none at the standard', async () => {
     const w = mount(RouteNumbers, { props: { metrics: { ascent: 600, descent: 600, distance: 8000 }, minutes: 300 } })
-    expect(w.find('[data-testid="pace-note"]').exists()).toBe(false)
-    pace.value = 70
+    expect(w.find('[data-testid="pace-badge"]').exists()).toBe(false)
+    pace.value = 0.7
     await w.vm.$nextTick()
-    expect(w.find('[data-testid="route-time"] [data-testid="pace-note"]').text()).toContain('70')
-    pace.value = 100
+    expect(w.find('[data-testid="route-time"] [data-testid="pace-badge"]').text()).toContain('0.7×')
+    expect(icons(w, 'route-time')).toEqual(['schedule'])
+    pace.value = 1
   })
 
   it('should leave out the zero descent of a tour that ends at its goal, and a zero distance', () => {

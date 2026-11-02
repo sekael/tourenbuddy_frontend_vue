@@ -3,9 +3,9 @@ import type { Flight, FlownWay } from '@/features/tours/domain/legs'
 import type { RouteMetrics } from '@/features/tours/domain/route-metrics'
 import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/core/components/base-icon.vue'
+import PaceBadge from '@/core/components/pace-badge.vue'
 import { useFormatter } from '@/core/composables/use-formatter'
 import { TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
-import PaceNote from './pace-note.vue'
 
 /**
  * Climb · descent · distance · time as a guide reads them — "↑ 447 m  ↓ 1257 m  8.4 km  3:20 h" —
@@ -54,7 +54,7 @@ const label = (way: keyof typeof LABELS, flown: FlownWay | undefined) => t(LABEL
       <BaseIcon name="schedule" size="xs" class="flown" />
       <span class="visually-hidden">{{ t('tours.route.time') }}</span>
       {{ formatDuration(minutes) }}
-      <PaceNote />
+      <PaceBadge />
     </span>
   </span>
 </template>

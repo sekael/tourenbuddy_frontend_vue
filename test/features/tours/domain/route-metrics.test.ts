@@ -190,7 +190,7 @@ describe('estimatedMinutes', () => {
 
   it('should take the time at the user\'s pace: twice as long at the slowest, 2/3 at the fastest', () => {
     const climb = { ascent: 600, descent: 0, distance: 4000 }
-    expect([estimatedMinutes(climb, false, 50), estimatedMinutes(climb, false, 150)]).toEqual([300, 100])
+    expect([estimatedMinutes(climb, false, 0.5), estimatedMinutes(climb, false, 1.5)]).toEqual([300, 100])
   })
 })
 
@@ -204,13 +204,13 @@ describe('tourMinutes', () => {
   const climb = { ascent: 600, descent: 0, distance: 4000 }
 
   it('should time no flown way and no day on a bike alone, and time a tour without activity on foot', () => {
-    expect(tourMinutes(climb, { tourTypes: ['hiking', 'paragliding'], legs: { ascent: ['hiking'], descent: ['paragliding'] } }, 100)).toBeNull()
-    expect(tourMinutes(climb, { tourTypes: ['mountain-biking'] }, 100)).toBeNull()
-    expect(tourMinutes(climb, { tourTypes: [] }, 120)).toBe(125)
+    expect(tourMinutes(climb, { tourTypes: ['hiking', 'paragliding'], legs: { ascent: ['hiking'], descent: ['paragliding'] } }, 1)).toBeNull()
+    expect(tourMinutes(climb, { tourTypes: ['mountain-biking'] }, 1)).toBeNull()
+    expect(tourMinutes(climb, { tourTypes: [] }, 1.2)).toBe(125)
   })
 
   it('should go on skis for a ski tour, and on foot once hiking joins it', () => {
-    expect(tourMinutes(climb, { tourTypes: ['skitour', 'mountaineering'] }, 100)).toBe(120)
-    expect(tourMinutes(climb, { tourTypes: ['skitour', 'hiking'] }, 100)).toBe(150)
+    expect(tourMinutes(climb, { tourTypes: ['skitour', 'mountaineering'] }, 1)).toBe(120)
+    expect(tourMinutes(climb, { tourTypes: ['skitour', 'hiking'] }, 1)).toBe(150)
   })
 })

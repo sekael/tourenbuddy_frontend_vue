@@ -10,8 +10,9 @@ import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
+import PaceBadge from '@/core/components/pace-badge.vue'
 import { useFormatter } from '@/core/composables/use-formatter'
-import { pace, PACE_MAX, PACE_MIN, PACE_STEP } from '@/core/composables/use-pace'
+import { formatPace, pace, PACE_MAX, PACE_MIN, PACE_STEP } from '@/core/composables/use-pace'
 import { isOnline } from '@/core/offline/use-online-status'
 import { TRAIL_OVERLAYS } from '@/features/map/data/trail-overlays'
 import ElevationProfile from './elevation-profile.vue'
@@ -21,8 +22,8 @@ import ElevationProfile from './elevation-profile.vue'
  * trail layers, switchable right here; the roads and paths after them) beside the close button, the numbers — distance, time, climb,
  * descent — the elevation profile, and undo / redo / back to start beside Done. Every row keeps
  * its height from the first tap on, so the panel never jumps as the numbers arrive. The time opens
- * the pace, tortoise to hare, in the status line's place; its icon tells a pace off the standard
- * while closed.
+ * the pace, tortoise to hare, in the status line's place; closed, a pace off the standard shows as
+ * its factor badge.
  */
 const props = defineProps<{
   overlays: readonly TrailOverlayId[]
@@ -65,8 +66,6 @@ const hint = computed(() => {
 
 const duration = computed(() => (props.minutes == null ? '–' : formatDuration.value(props.minutes)))
 const paceOpen = ref(false)
-/** The closed time says a pace off the standard by its end of the slider, at the time's own width. */
-const paceIcon = computed(() => (pace.value < 100 ? 'snail' : pace.value > 100 ? 'cruelty_free' : 'speed'))
 
 const line = computed(() => props.profile?.line ?? ([] as LngLat[]))
 </script>
@@ -94,10 +93,10 @@ const line = computed(() => props.profile?.line ?? ([] as LngLat[]))
       <BaseIcon name="snail" />
       <input
         id="draw-pace-input" v-model.number="pace" type="range" :min="PACE_MIN" :max="PACE_MAX" :step="PACE_STEP"
-        :aria-valuetext="`${pace} %`"
+        :aria-valuetext="formatPace(pace)"
       >
       <BaseIcon name="cruelty_free" />
-      <output for="draw-pace-input" class="pace-value">{{ pace }}&nbsp;%</output>
+      <output for="draw-pace-input" class="pace-value">{{ formatPace(pace) }}</output>
     </div>
 
     <dl class="stats" :class="{ 'stats--empty': points < 2 }">
@@ -116,8 +115,12 @@ const line = computed(() => props.profile?.line ?? ([] as LngLat[]))
             :title="t('map.draw.pace.open')" data-testid="draw-pace-toggle" @click="paceOpen = !paceOpen"
           >
             {{ duration }}
-            <BaseIcon :name="paceIcon" size="sm" />
-            <span class="visually-hidden">{{ t('map.draw.pace.open') }} ({{ pace }}&nbsp;%)</span>
+            <!-- One width for either: the figures never move as the pace leaves 1.0. Open, the slider shows the factor. -->
+            <span class="pace-slot">
+              <PaceBadge v-if="!paceOpen && pace !== 1" />
+              <BaseIcon v-else name="speed" size="sm" />
+            </span>
+            <span class="visually-hidden">{{ t('map.draw.pace.open') }} ({{ formatPace(pace) }})</span>
           </button>
         </dd>
       </div>
@@ -238,14 +241,21 @@ const line = computed(() => props.profile?.line ?? ([] as LngLat[]))
 .stats {
   display: flex;
   flex-wrap: wrap;
-  /* Spread over the row: four figures fit a 360 px phone with the compact time ("3:25 h"). */
+  /* Spread over the row: four figures — 17.0 km, 10:40 h 1.3×, 2120 m up and down — fit a 360 px phone. */
   justify-content: space-between;
   align-items: center;
-  gap: var(--spacing-xxs) var(--spacing-sm);
+  gap: var(--spacing-xxs);
   margin: 0;
   font-size: var(--font-size-base);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+/* The longest figures need 16 px more than a 360 px phone has at full size. */
+@media (max-width: 380px) {
+  .stats {
+    font-size: 0.9375rem;
+  }
 }
 
 .stats div {
@@ -264,13 +274,12 @@ const line = computed(() => props.profile?.line ?? ([] as LngLat[]))
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-xxs);
-  /* A thumb's height to tap, a 32 px pill to see: the row keeps its height. */
+  /* A thumb's height, filled like the panel's other buttons so it reads as one. */
   min-height: 44px;
-  margin-block: -10px;
-  padding: 0 var(--spacing-xs) 0 var(--spacing-sm);
+  padding: 0 var(--spacing-xxs) 0 6px;
   border: none;
   background: none;
-  color: inherit;
+  color: var(--color-on-secondary-container);
   font: inherit;
   cursor: pointer;
 }
@@ -278,15 +287,27 @@ const line = computed(() => props.profile?.line ?? ([] as LngLat[]))
 .pace-toggle::before {
   content: '';
   position: absolute;
-  inset: 6px 0;
+  inset: 2px 0;
   z-index: -1;
-  border: 1px solid var(--color-outline-variant);
   border-radius: var(--radius-pill);
+  background: var(--color-secondary-container);
 }
 
+.pace-toggle:hover::before,
 .pace-toggle[aria-expanded='true']::before {
-  border-color: transparent;
-  background: var(--color-surface-variant);
+  background: var(--color-secondary-container-hover);
+}
+
+.pace-slot {
+  display: inline-flex;
+  justify-content: center;
+  /* The widest badge ("1.5×"). */
+  width: 2.15em;
+}
+
+.pace-slot .pace-badge {
+  padding-inline: 0.3em;
+  background: var(--color-background);
 }
 
 .pace {
@@ -314,7 +335,7 @@ const line = computed(() => props.profile?.line ?? ([] as LngLat[]))
 }
 
 .pace-value {
-  min-width: 5ch;
+  min-width: 4ch;
   text-align: end;
   font-size: var(--font-size-sm);
   font-weight: 600;

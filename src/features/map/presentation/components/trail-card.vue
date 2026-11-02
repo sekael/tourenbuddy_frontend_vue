@@ -6,13 +6,13 @@ import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import BottomSheet from '@/core/components/bottom-sheet.vue'
+import PaceBadge from '@/core/components/pace-badge.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
 import { useFormatter } from '@/core/composables/use-formatter'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { pace } from '@/core/composables/use-pace'
 import { labelMinutes } from '@/features/tours/domain/route-metrics'
 import GradeBadge from '@/features/tours/presentation/components/grade-badge.vue'
-import PaceNote from '@/features/tours/presentation/components/pace-note.vue'
 import RouteNumbers from '@/features/tours/presentation/components/route-numbers.vue'
 import TourTypeBadge from '@/features/tours/presentation/components/tour-type-badge.vue'
 import { trailTitle } from '../composables/trail-title'
@@ -45,7 +45,7 @@ const title = computed(() => {
 const ascentTime = computed(() => {
   const label = route.value?.ascentTime
   const minutes = label ? labelMinutes(label) : null
-  return minutes == null ? label : formatDuration.value(Math.round(minutes * 100 / pace.value))
+  return minutes == null ? label : formatDuration.value(Math.round(minutes / pace.value))
 })
 const numbers = computed(() => ({ ascent: route.value?.ascentM ?? null, descent: route.value?.descentM ?? null, distance: null }))
 
@@ -79,7 +79,7 @@ function openSac() {
               <GradeBadge v-if="route.difficulty" :grade="route.difficulty" />
               <span v-if="ascentTime" class="fact" data-testid="trail-ascent-time">
                 <BaseIcon name="schedule" size="sm" />{{ t('tours.route.ascent') }} {{ ascentTime }}
-                <PaceNote />
+                <PaceBadge />
               </span>
               <RouteNumbers :metrics="numbers" />
             </span>

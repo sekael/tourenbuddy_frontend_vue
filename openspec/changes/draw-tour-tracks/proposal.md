@@ -70,7 +70,9 @@ its line: the planned tour shows no track, and its climb and descent come from p
 
 ## Impact
 
-- Frontend only: no schema, RLS or Worker change. Tracks are stored as GPX like uploads.
+- One schema change: `user_profile.pace` (numeric 0.5–1.5, default 1.0), so the pace follows the
+  account (migration `20261102062850_user_profile_pace.sql`; existing grants and own-row policies
+  cover it). No RLS or Worker change. Tracks are stored as GPX like uploads.
 - New direct dependencies `@mapbox/vector-tile` and `pbf` (already installed as MapLibre's own).
 - New network reads: swisstopo base vector tiles at zoom 13 and the self-hosted ski-route tiles
   (both already cached by the service worker), and `api3.geo.admin.ch/rest/services/profile.json`.

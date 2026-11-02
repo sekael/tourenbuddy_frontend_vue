@@ -203,16 +203,16 @@ export function onSkis(tourTypes: readonly string[]): boolean {
 /**
  * Time on the way in minutes, by the Swiss rule of thumb (SAC, DIN 33466): 4 km/h on the flat,
  * 300 m an hour up and 500 m down; the shorter of horizontal and vertical time counts half. On skis
- * the climb goes at 400 m an hour and the run down is quick. `pace` is the user's speed in percent
- * of the rule's (the swisstopo app's tortoise → hare): 125 takes 4/5 of the time. Null without a
+ * the climb goes at 400 m an hour and the run down is quick. `pace` is the user's speed as a factor
+ * on the rule's (the swisstopo app's tortoise → hare): 1.25 takes 4/5 of the time. Null without a
  * distance.
  */
-export function estimatedMinutes({ distance, ascent, descent }: RouteMetrics, skis = false, pace = 100): number | null {
+export function estimatedMinutes({ distance, ascent, descent }: RouteMetrics, skis = false, pace = 1): number | null {
   if (!distance)
     return null
   const flat = distance / 4000
   const vertical = (ascent ?? 0) / (skis ? 400 : 300) + (descent ?? 0) / (skis ? 1500 : 500)
-  return Math.round((Math.max(flat, vertical) + Math.min(flat, vertical) / 2) * 60 * 100 / pace)
+  return Math.round((Math.max(flat, vertical) + Math.min(flat, vertical) / 2) * 60 / pace)
 }
 
 /** SAC's time label ("04:30 h") in minutes at the standard pace; null for any other wording. */

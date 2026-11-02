@@ -141,12 +141,9 @@ them. The list's rows take the grade badge too.
 ### D11 The user's pace
 
 The owner asked for the swisstopo app's personal pace (a tortoise → hare slider in its tour
-settings, kept for later tours): the time is the rule's time divided by the pace, 50–150 % in
-10 % steps. The panel's time is its button — a tap opens the slider row under the numbers, another
-closes it; the closed time's icon turns tortoise or hare for a pace off 100 %, so a changed setting
-never hides (a "120 %" beside it wrapped the numbers on a 360 px phone).
-The pace is kept per device, as the map's layers are (`core/composables/use-pace.ts`, one ref for
-the map and the tours features), and applies to every time the app shows.
+settings, kept for later tours): the time is the rule's time divided by the pace, a factor from 0.5
+to 1.5 in steps of 0.1, written as a factor ("1.2×", never "120 %"; the swisstopo app speaks of a factor too). The panel's
+time is its button — a tap opens the slider row under the numbers, another closes it.
 
 This revises multi-activity-tours D19 ("no walking time: pace differs too much between hiking, ski
 touring and flying"): a saved track now shows its time in the form's track tile and the tour
@@ -154,16 +151,34 @@ detail — the number the drawing showed. The objection is met by the activity a
 for ski touring (the rule's 400 m/h up), none for lifts, bikes or climbing alone, and none where a
 way is flown (a flight's drop is no legwork). Without a track distance there is still no time.
 
-Review round 1 (persona) asked three things of it. A time that follows today's pace must say so:
-wherever a time shows outside the panel (form, detail, ski route card) a pace off 100 % sits beside
-it as tortoise or hare and percent. The ski route card's time is SAC's ascent time; it now says so
-("Ascent 4:30 h") and takes the pace too, so it reads next to the planned tour's whole-day time. The
-slider opens in the status line's place (both rows 44 px), so the panel never grows over the track;
-times read as SAC writes them ("2:05 h"), which keeps the four figures on one 360 px line while the
-time changes under the finger; the time button is a 44 px target around a 32 px pill.
+Review round 1 (persona) asked three things of it. The ski route card's time is SAC's ascent time;
+it now says so ("Ascent 4:30 h") and takes the pace too, so it reads next to the planned tour's
+whole-day time. The slider opens in the status line's place (both rows 44 px), so the panel never
+grows over the track; times read as SAC writes them ("2:05 h"), which keeps the four figures on one
+360 px line while the time changes under the finger. The time button is a filled 40 px pill in a
+44 px target, like the panel's other buttons; its gauge icon and the factor badge share one slot of
+the widest badge's width, so the figures never move as the pace leaves 1.0, and under 380 px the
+figures go to 15 px, so the longest (17.0 km, 10:40 h 1.3×, 2120 m up and down) keep one row.
 
-*Alternative:* a profile column, the pace on every device — a migration for a setting the swisstopo
-app keeps per device too; added when users ask for it.
+**What a time shows of the pace** (owner, after the first version): the tortoise and the hare only
+on the open slider, where the pace is being set. Every other time — the panel's closed time, the
+form's track, the tour detail, the ski route card — carries a small badge with the factor when it is
+off 1.0 (`core/components/pace-badge.vue`, in `core` because the map and the tours both show it), so
+a time never changes unexplained. The first version put tortoise or hare and percent beside every
+time, which read as clutter.
+
+**On the account** (owner): the pace is a `user_profile` column (`numeric(2,1)`, checked 0.5–1.5,
+default 1.0), so it follows the user to every device. `core/composables/use-pace.ts` keeps one ref
+for the map and the tours features; the user feature's profile store fills it from the profile
+(load, cache hydrate, realtime) and writes a change back through its `updateProfile` seam once the
+slider has rested 600 ms — one write per drag, queued offline like any profile edit, last write
+wins. Core never imports the feature, the way the locale store and the profile already share the
+locale. A profile cached before the column has no pace and leaves the ref alone until the refetch.
+Stale clients upsert the profile without the column, which keeps it. Deploy: the migration before
+the frontend, which sends `pace` on every profile write.
+
+*Alternative:* per device in localStorage (the first version, as the map's layers): no migration,
+but a phone and a laptop would time the same tour differently.
 
 ### D7 On the map
 
