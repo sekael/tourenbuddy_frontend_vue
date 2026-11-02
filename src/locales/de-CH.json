@@ -1287,6 +1287,28 @@
           "body": "Gib die Schwierigkeit auf der Skala der Aktivität an – T1–T6, L–EX, S0–S5 – und wann ihr losgeht. Wähle jede Aktivität, als die eine Tour möglich ist: Marker und GPX-Track zeigen alle ihre Farben, und der Aktivitätsfilter findet die Tour unter jeder davon."
         }
       }
+    },
+    "2026-11-track-drawing": {
+      "title": "Track auf der Karte zeichnen, in deinem Tempo",
+      "intro": "Keine GPX-Datei zur Hand? Zeichne den Weg, den du gehst, und sieh, wie lange du dafür brauchst.",
+      "features": {
+        "draw": {
+          "title": "Track auf der Karte zeichnen",
+          "body": "Tippe im Tourformular auf «Auf Karte zeichnen» und setze Punkte entlang des Wegs: Die Linie folgt Wanderwegen oder Skirouten, dann Strassen und Wegen. Distanz, Zeit, Auf- und Abstieg und das Höhenprofil laufen beim Zeichnen mit, und «Fertig» speichert die Linie als GPX-Track der Tour – auch offline. «Auf Karte bearbeiten» ändert ihn später."
+        },
+        "pace": {
+          "title": "Zeiten in deinem Tempo",
+          "body": "Tippe beim Zeichnen auf die Zeit und stelle dein Tempo von langsam bis schnell ein. Jede geschätzte Zeit – gezeichnete Tracks, Tourdetails, Skirouten – richtet sich danach, gespeichert in deinem Konto für jedes Gerät."
+        },
+        "filters": {
+          "title": "Nach Schwierigkeit und Freunden filtern",
+          "body": "Filtere Touren nach Schwierigkeit – T1–T6, L–EX, S0–S5, ein Bereich mit zwei Tipps – und Touren von Freunden danach, wer sie erfasst hat. Solange die Liste offen ist, zeigt die Karte nur deren Touren. Im Kontakt eines Freundes öffnet «Touren» dessen Touren."
+        },
+        "markers": {
+          "title": "Eine Karte, die sich lesen lässt",
+          "body": "Zoome hinein, und Marker zeigen Name, Höhe und Datum der Tour, innen ihre Aktivität. Ein Tipp auf einen Cluster zeigt alle seine Touren, ein Ort mit mehreren Touren listet sie auf. Etappen sind der Reihe nach verbunden, und das ⓘ auf der Karte erklärt jede Farbe und jedes Symbol."
+        }
+      }
     }
   }
 }
