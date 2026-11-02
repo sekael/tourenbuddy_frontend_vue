@@ -10,15 +10,12 @@
 
 /* The offline bar (offline-indicator.vue) takes its own band at the top while it shows: whatever
    clears the top through --safe-top clears the bar too, so it never covers a control. Registered
-   so the band opens and closes smoothly instead of shifting the page in one jump. */
+   so the band opens and closes smoothly instead of shifting the page in one jump (its transition
+   sits with the other insets' in global.css). */
 @property --offline-bar-height {
   syntax: '<length>';
   inherits: true;
   initial-value: 0px;
-}
-
-:root {
-  transition: --offline-bar-height var(--motion-duration-medium) var(--motion-ease-emphasized);
 }
 
 :root:has(.offline-bar--on) {

@@ -11,6 +11,8 @@
 - [x] 2.4 Side drawer and collapsed dialog start below the bar
 - [x] 2.5 Locales (en, de-CH); unit test for the bar's states
 - [x] 2.6 "N changes synced" toast after a clean drain online (review round 1)
+- [x] 2.7 Pending toast in the shared toast spot (no `3rem` lift for the gone "saved offline" toast)
+- [x] 2.8 Toasts clear the track-drawing panel (phone) and the map's bottom bar; insets glide (review rounds 3–4)
 
 ## 3. Review
 

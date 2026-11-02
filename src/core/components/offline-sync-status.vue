@@ -29,9 +29,11 @@ watch([savedOfflineAt, drainedAt], refreshQueueStatus)
 // change (queue 0 → >0); once something is already queued, later changes just bump the
 // count in the offline bar. This keeps the text from re-firing on every single edit.
 const pendingText = ref(false)
+const claimPending = useSnackbarSlot(() => pendingText.value = false)
 let pendingTimer: ReturnType<typeof setTimeout> | null = null
 watch(pendingCount, (n, prev) => {
   if (prev === 0 && n > 0) {
+    claimPending()
     pendingText.value = true
     if (pendingTimer)
       clearTimeout(pendingTimer)
@@ -128,7 +130,7 @@ function reasonText(entry: WriteQueueEntry): string | null {
 <template>
   <!-- Transient pending text, shown briefly whenever the pending count grows. -->
   <Transition name="sync-toast">
-    <div v-if="pendingText" class="sync-toast sync-toast--pending" role="status">
+    <div v-if="pendingText" class="sync-toast" role="status">
       <BaseIcon name="sync_alt" size="sm" />
       <span>{{ t('offlineSync.pendingCount', { count: pendingCount }) }}</span>
     </div>
@@ -222,11 +224,6 @@ function reasonText(entry: WriteQueueEntry): string | null {
   /* Centred from `left: 50%`, it would shrink to half the screen and wrap. */
   width: max-content;
   max-width: 90vw;
-}
-
-/* Pending-text snackbar sits just above the saved toast slot so both can show at once. */
-.sync-toast--pending {
-  bottom: calc(var(--float-bottom) + 3rem);
 }
 
 /* Collapsed = a warning icon anchored in the bottom-left corner. Expanding raises it

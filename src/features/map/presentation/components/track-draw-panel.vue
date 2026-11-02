@@ -5,14 +5,17 @@ import type { SnapNetwork } from '@/features/map/domain/snap-network'
 import type { NetworkIssue } from '@/features/map/presentation/composables/use-track-drawing'
 import type { ProfiledLine } from '@/features/tours/data/services/swisstopo-profile-service'
 import type { RouteMetrics } from '@/features/tours/domain/route-metrics'
-import { computed, ref } from 'vue'
+import { useElementSize } from '@vueuse/core'
+import { computed, ref, useTemplateRef, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import PaceBadge from '@/core/components/pace-badge.vue'
 import { useFormatter } from '@/core/composables/use-formatter'
+import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { formatPace, pace, PACE_MAX, PACE_MIN, PACE_STEP } from '@/core/composables/use-pace'
+import { useSheetInset } from '@/core/composables/use-sheet-inset'
 import { isOnline } from '@/core/offline/use-online-status'
 import { TRAIL_OVERLAYS } from '@/features/map/data/trail-overlays'
 import ElevationProfile from './elevation-profile.vue'
@@ -68,10 +71,18 @@ const duration = computed(() => (props.minutes == null ? '–' : formatDuration.
 const paceOpen = ref(false)
 
 const line = computed(() => props.profile?.line ?? ([] as LngLat[]))
+
+// On a phone the panel is a bottom sheet: bottom toasts (`--sheet-inset`) rise above its buttons.
+// Docked left on desktop, it leaves the centred toasts clear.
+const panel = useTemplateRef<HTMLElement>('panel')
+const { height } = useElementSize(panel, undefined, { box: 'border-box' })
+const isDesktop = useIsDesktop()
+const publishInset = useSheetInset()
+watchEffect(() => publishInset(isDesktop.value ? 0 : height.value))
 </script>
 
 <template>
-  <section class="draw-panel" :aria-label="t('map.draw.title')" data-testid="track-draw-panel">
+  <section ref="panel" class="draw-panel" :aria-label="t('map.draw.title')" data-testid="track-draw-panel">
     <div class="snap" role="group" :aria-label="t('map.draw.followLabel')">
       <button
         v-for="o in TRAIL_OVERLAYS" :key="o.id" type="button" class="chip"

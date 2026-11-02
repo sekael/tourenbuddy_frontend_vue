@@ -1155,7 +1155,6 @@
     }
   },
   "offlineSync": {
-    "savedOffline": "Offline gespeichert — wird synchronisiert, sobald du wieder online bist",
     "pendingCount": "{count} Änderung wartet auf Synchronisierung | {count} Änderungen warten auf Synchronisierung",
     "synced": "{count} Änderung synchronisiert | {count} Änderungen synchronisiert",
     "conflictLost": "Auf einem anderen Gerät geändert — deine Offline-Änderung wurde nicht übernommen",

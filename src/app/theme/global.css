@@ -254,18 +254,42 @@ html.scroll-locked {
 /* Bottom-anchored toasts and status chips rise above an open sheet instead of
    covering its actions. `--sheet-inset` is the sheet's on-screen height, published
    by `bottom-sheet.vue` while it is up (unset otherwise → 0); `--dock-inset` the
-   same for the location picker's search and buttons (`location-picker.vue`). */
+   same for the location picker's search and buttons (`location-picker.vue`), `--bar-inset`
+   for the map's bottom control row (`tour-action-bar.vue`). */
 :root {
   --float-bottom: max(
     calc(var(--spacing-xl) + var(--safe-bottom)),
     calc(var(--sheet-inset, 0px) + var(--spacing-md)),
-    calc(var(--dock-inset, 0px) + var(--spacing-md))
+    calc(var(--dock-inset, 0px) + var(--spacing-md)),
+    calc(var(--bar-inset, 0px) + var(--spacing-md))
   );
   --float-corner-bottom: max(
     calc(var(--spacing-md) + var(--safe-bottom)),
     calc(var(--sheet-inset, 0px) + var(--spacing-md)),
     calc(var(--dock-inset, 0px) + var(--spacing-md))
   );
+}
+
+/* Registered so the insets glide: a toast travels up with a rising sheet instead of jumping
+   ahead of it. One `transition` for every :root inset, the offline band's (safe-area.css)
+   too — a second one would replace it. */
+@property --sheet-inset {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+
+@property --dock-inset {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+
+:root {
+  transition:
+    --offline-bar-height var(--motion-duration-medium) var(--motion-ease-emphasized),
+    --sheet-inset var(--motion-duration-long) var(--motion-ease-emphasized),
+    --dock-inset var(--motion-duration-long) var(--motion-ease-emphasized);
 }
 
 /* Touch: no grey tap flash (controls give their own press feedback via
