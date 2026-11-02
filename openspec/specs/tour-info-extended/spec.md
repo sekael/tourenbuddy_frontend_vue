@@ -304,7 +304,11 @@ A GPX track with heights SHALL count every rise and drop, a split tour's too, ex
 
 ### Requirement: Route numbers
 
-The tour detail SHALL show the route's climb, descent and, when known, distance from the most accurate data, never typed: the distance from a GPX track; climb and descent from a track with heights (past a 5 m swing from the last turning point), else from the point heights over the legs start → goal and goal → end, every rise as climb and every drop as descent. A leg that is missing or lacks a height adds nothing; the other still counts. A 0 SHALL NOT show. No walking time SHALL be estimated.
+The tour detail SHALL show the route's climb, descent and, when known, distance from the most
+accurate data, never typed. A tour with a GPX track SHALL count the track: its distance, and climb
+and descent from its heights (past a 5 m swing) or, without heights and online, the terrain's along
+its line. Only without a usable track SHALL the point heights count over start → goal → end, every rise as climb and every drop as descent. While the
+track loads no numbers SHALL show. A 0 SHALL NOT show.
 
 #### Scenario: Hut to summit to valley without a track
 
@@ -335,6 +339,28 @@ The tour detail SHALL show the route's climb, descent and, when known, distance 
 
 - **WHEN** the owner marks a tour with a GPX track completed or toggles its visibility
 - **THEN** the detail SHALL keep showing the track's numbers throughout, never falling back to the point heights' numbers while the tour reloads
+
+#### Scenario: Track without heights
+
+- **WHEN** a tour's track was drawn offline or uploaded without heights, and the app is online
+- **THEN** the detail SHALL show climb and descent from the terrain's heights along the track, not from the point heights
+
+#### Scenario: Track still loading
+
+- **WHEN** the tour detail opens before its track has loaded
+- **THEN** no route numbers SHALL show until the track's are known
+
+### Requirement: Estimated time
+
+A tour with a track distance SHALL show its estimated time at the user's pace by the drawing panel's
+rule (track-drawing: Time estimate) — the time the drawing and the form's track showed — with a pace
+off 1.0 as its factor badge. A tour on lifts, bike or climbing alone, or with a flown way, SHALL show
+none; without a distance no time SHALL be estimated.
+
+#### Scenario: Time at the user's pace
+
+- **WHEN** a hiking tour's track is 4 km long with 600 m of climb and the user's pace is 1.2
+- **THEN** the detail SHALL show 2:05 h beside the climb, descent and distance, with the badge "1.2×" and no tortoise or hare beside the time
 
 ### Requirement: Point icons match the form
 

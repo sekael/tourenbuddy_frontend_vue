@@ -30,12 +30,13 @@ A service (`suggestTourName` in `swisstopo-name-service.ts`) SHALL query the Swi
 
 ### Requirement: Name auto-suggestion on location confirm
 
-After the user confirms a map location, the tour form SHALL open at once and look up a name for that point's name field on its own, independently of the elevation lookup. A name chosen in the picker's search SHALL be used instead of the lookup.
+After the user confirms a map location, the tour form SHALL open at once and look up a name for that point's name field on its own, independently of the elevation lookup. A name chosen in the picker's search SHALL be used instead of the lookup. The point's name and elevation SHALL show together, once both lookups have answered or failed.
 
 #### Scenario: Name loading
 
-- **WHEN** the name lookup for a picked point is still running
-- **THEN** the name field SHALL be empty, show a spinner inside the field, and read "Loading from Swisstopo…" (or its localized equivalent) as its placeholder
+- **WHEN** the name or elevation lookup for a picked point is still running
+- **THEN** the name field SHALL show a quiet pulsing bar in place of its text, with no spinner and no loading hint
+- **AND** a name already answered SHALL appear only together with the elevation
 
 #### Scenario: Name suggested and accepted
 
@@ -55,7 +56,7 @@ After the user confirms a map location, the tour form SHALL open at once and loo
 #### Scenario: User types while the lookup runs
 
 - **WHEN** the user types in the name field before the lookup answers
-- **THEN** the spinner SHALL disappear, the request SHALL be aborted, and no later answer SHALL replace the typed name
+- **THEN** the field SHALL show what is typed, the request SHALL be aborted, and no later answer SHALL replace the typed name
 
 #### Scenario: Re-pick keeps a typed name
 

@@ -71,4 +71,4 @@
 - [x] 9.7 Owner decisions: the pace as a factor (0.5–1.5, "1.2×"); tortoise and hare only on the open slider; a small factor badge beside every other time — panel, form's track, tour detail, ski route card (`core/components/pace-badge.vue`); tests in `route-numbers.test.ts`, `trail-card.test.ts`, `track-draw-panel.test.ts`, `route-metrics.test.ts`
 - [x] 9.8 The pace on the account: migration `user_profile_pace` (applied locally); `UserProfile.pace`, the profile store takes it into the core `pace` and writes a change once the slider rests (offline through the write queue); tests in `user-profile-store.test.ts`
 - [x] 9.9 Checks; persona review loop until it passes (2 rounds; round 1: one slot for gauge and badge, no badge on the open time, filled 44 px time button, 15 px figures under 380 px)
-- [ ] 9.10 Deploy: `supabase db push` before the frontend (old frontends never send `pace`)
+- [x] 9.10 Deploy: `supabase db push` before the frontend (old frontends never send `pace`)
