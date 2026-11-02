@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.51.0...tourenbuddy-frontend-v0.51.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* **notifications:** Release note for track drawing, filters, and map markers ([#376](https://github.com/sekael/tourenbuddy_frontend_vue/issues/376)) ([587ab23](https://github.com/sekael/tourenbuddy_frontend_vue/commit/587ab23b5cf2927ef019e2baff6cc41582fd4c91))
+
 ## [0.51.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.50.0...tourenbuddy-frontend-v0.51.0) (2026-11-02)
 
 
