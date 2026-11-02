@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { DrawnTrack } from '@/features/map/domain/drawn-track'
+import type { LngLat } from '@/features/map/domain/entities/trail'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Tour, TourDraft } from '@/features/tours/domain/entities/tour'
 import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
@@ -14,6 +16,7 @@ import FullScreenPage from '@/core/components/full-screen-page.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
 import { useFormatter } from '@/core/composables/use-formatter'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
+import { pace } from '@/core/composables/use-pace'
 import { useLogger } from '@/core/logging/use-logger'
 import { clearOfflineWriteError } from '@/core/offline/mutate'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
@@ -34,6 +37,7 @@ import { downloadOriginal } from '@/features/tours/data/services/gpx-storage-ser
 import { COLLISION_RADIUS_M, sharesActivity } from '@/features/tours/domain/collision'
 import { isSameGoal } from '@/features/tours/domain/distance'
 import { flight, routeOrder } from '@/features/tours/domain/legs'
+import { tourMinutes } from '@/features/tours/domain/route-metrics'
 import OutingNavigator from '@/features/tours/presentation/components/outing-navigator.vue'
 import RouteNumbers from '@/features/tours/presentation/components/route-numbers.vue'
 import SegmentAddView from '@/features/tours/presentation/components/segment-add-view.vue'
@@ -64,11 +68,15 @@ const props = defineProps<{
   backText?: string
   /** Which pick type is active — drives the collapsed header label in edit mode. */
   activePickType?: 'goal' | 'start' | 'end' | null
+  /** Set by map-page after a track drawing started from this sheet. Reset via pointConsumed. */
+  editDrawnTrack?: DrawnTrack | null
 }>()
 const emit = defineEmits<{
   close: []
   back: []
   pickPoint: [type: 'start' | 'end' | 'goal']
+  drawTrack: [seed: DrawnTrack | null]
+  trackChange: [line: LngLat[] | null]
   pointConsumed: []
   /** Fired when the sheet enters (true) or exits (false) edit mode. */
   editModeChange: [editing: boolean]
@@ -96,7 +104,7 @@ const friendshipsStore = useFriendshipsStore()
 const { siblingsByTourId, requestsByTourId, groupIdByTourId } = storeToRefs(tourLinksStore)
 const { tours, friendTours } = storeToRefs(toursStore)
 const { contacts } = storeToRefs(contactsStore)
-const { isPickingLocation } = storeToRefs(mapStore)
+const { isPickingLocation, isDrawingTrack } = storeToRefs(mapStore)
 const { currentUser } = storeToRefs(authStore)
 const isDesktop = useIsDesktop()
 const log = useLogger('tour-info-sheet')
@@ -116,6 +124,7 @@ const editBaseAttachmentIds = ref<Set<string>>(new Set())
 // Pending goal during edit, and the latest pick for the form (it looks up name + elevation)
 const pendingGoal = ref<{ lng: number, lat: number }>({ ...props.tour.goal })
 const pendingPick = ref<PointPick | null>(null)
+const pendingTrack = ref<DrawnTrack | null>(null)
 
 function enterEditMode() {
   // Clean slate: any prior offline-write error is dismissed so it never resurfaces on the
@@ -123,6 +132,7 @@ function enterEditMode() {
   clearOfflineWriteError()
   pendingGoal.value = { ...props.tour.goal }
   pendingPick.value = null
+  pendingTrack.value = null
   // Snapshot attachment IDs before edit so cancel can rollback newly added ones
   editBaseAttachmentIds.value = new Set(
     (attachmentsStore.attachmentsByTour[props.tour.id] ?? []).map(a => a.id),
@@ -159,6 +169,15 @@ watch(
     if (pick.type === 'goal')
       pendingGoal.value = pick.location
     pendingPick.value = pick
+    emit('pointConsumed')
+  },
+)
+watch(
+  () => props.editDrawnTrack,
+  (track) => {
+    if (!track)
+      return
+    pendingTrack.value = track
     emit('pointConsumed')
   },
 )
@@ -234,6 +253,7 @@ function enterSuggestMode(batchId?: string) {
   suggestSeedDraft.value = { ...seed, elevation: seed.elevation ?? goal?.elevation ?? null }
   pendingGoal.value = goal ? { lng: goal.lng, lat: goal.lat } : { ...props.tour.goal }
   pendingPick.value = null
+  pendingTrack.value = null
 
   // The partner needs the owner's attachments loaded to propose a removal against them.
   void attachmentsStore.load(props.tour.id)
@@ -562,6 +582,8 @@ function handleSheetClose() {
 }
 const sheetTitle = computed(() => {
   if (sheetCollapsed.value) {
+    if (isDrawingTrack.value)
+      return t('map.draw.title')
     if (props.activePickType === 'start')
       return t('tours.picker.startTitle')
     if (props.activePickType === 'end')
@@ -728,6 +750,8 @@ const coordinates = computed(
 // numbers a pilot plans by read in the sheet's opening height (activity-legs).
 const routeMetrics = useRouteMetrics(() => [props.tour])
 const metrics = computed(() => routeMetrics.value.get(props.tour.id)!)
+/** The time the drawing showed: the track at the user's pace (owner, pace round). */
+const minutes = computed(() => tourMinutes(metrics.value, props.tour, pace.value))
 
 const formattedElevation = computed(() =>
   props.tour.elevation == null ? null : formatElevation.value(props.tour.elevation),
@@ -748,8 +772,9 @@ const formattedElevation = computed(() =>
       <TourForm
         ref="editFormRef" form-id="tour-edit-form" :embedded="editAsPage"
         :submit-label="t('tours.infoSheet.saveLabel')" :allow-goal-edit="true" :current-goal="pendingGoal"
-        :initial-draft="tour" :tour-id="tour.id" :pick="pendingPick" :disabled="isPicking"
+        :initial-draft="tour" :tour-id="tour.id" :pick="pendingPick" :drawn-track="pendingTrack" :disabled="isPicking"
         @submit="(d, r) => handleEditSubmit(d, r)" @cancel="cancelEdit" @pick-point="emit('pickPoint', $event)"
+        @draw-track="emit('drawTrack', $event)" @track-change="emit('trackChange', $event)"
         @tour-types-change="emit('tourTypesChange', $event)"
         @start-point-change="emit('startPointChange', $event)"
         @end-point-change="emit('endPointChange', $event)"
@@ -764,8 +789,9 @@ const formattedElevation = computed(() =>
       <TourForm
         ref="editFormRef" form-id="tour-suggest-form" mode="suggest" :embedded="editAsPage"
         :submit-label="t('tours.suggestions.submitBtn')" :allow-goal-edit="true" :current-goal="pendingGoal"
-        :initial-draft="suggestSeedDraft" :tour-id="tour.id" :pick="pendingPick" :disabled="isPicking"
+        :initial-draft="suggestSeedDraft" :tour-id="tour.id" :pick="pendingPick" :drawn-track="pendingTrack" :disabled="isPicking"
         @submit="handleSuggestSubmit" @cancel="cancelSuggest" @pick-point="emit('pickPoint', $event)"
+        @draw-track="emit('drawTrack', $event)" @track-change="emit('trackChange', $event)"
         @tour-types-change="emit('tourTypesChange', $event)"
         @start-point-change="emit('startPointChange', $event)"
         @end-point-change="emit('endPointChange', $event)"
@@ -833,7 +859,7 @@ const formattedElevation = computed(() =>
             <!-- Date, route numbers and coordinates as separate items: a wrap leaves no dangling separator. -->
             <span class="hero-meta">
               <span v-if="formattedElevation && formattedDate">{{ formattedDate }}</span>
-              <RouteNumbers :metrics="metrics" :flight="flight(tour)" data-testid="hero-route" />
+              <RouteNumbers :metrics="metrics" :flight="flight(tour)" :minutes="minutes" data-testid="hero-route" />
               <span class="coords">{{ coordinates }}</span>
             </span>
             <span v-if="tour.isFriendTour" class="hero-meta">

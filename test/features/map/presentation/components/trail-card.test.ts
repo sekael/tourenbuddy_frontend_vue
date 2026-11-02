@@ -1,7 +1,8 @@
 import { createTestingPinia } from '@pinia/testing'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
+import { pace } from '@/core/composables/use-pace'
 import TrailCard from '@/features/map/presentation/components/trail-card.vue'
 
 vi.mock('@/core/composables/use-is-desktop', () => ({ useIsDesktop: () => ref(true) }))
@@ -30,5 +31,24 @@ describe('trailCard', () => {
 
   it('should not offer it for a line without route information', () => {
     expect(mountCard(null).wrapper.find('[data-testid=trail-plan-tour]').exists()).toBe(false)
+  })
+
+  it('should lead with the summit like a tour, leaving out what the route doesn\'t state', () => {
+    const { wrapper } = mountCard({ ...ROUTE, name: '', ascentTime: '', descentM: null as unknown as number })
+    expect(wrapper.find('.hero-headline').text()).toMatch(/2.?756/)
+    expect(wrapper.find('[data-testid=tour-grade]').text()).toContain('WS+')
+    expect(wrapper.find('[data-testid=route-ascent]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid=route-descent]').exists()).toBe(false)
+    expect(wrapper.find('.hero-name').exists()).toBe(false)
+    expect(wrapper.find('.fact').exists()).toBe(false)
+    expect(wrapper.find('[data-testid=trail-sac]').exists()).toBe(false)
+  })
+
+  it('should keep an ascent time SAC words otherwise as it is, and badge a pace off the standard beside it', async () => {
+    const { wrapper } = mountCard({ ...ROUTE, ascentTime: '4-5 h' })
+    pace.value = 0.8
+    await nextTick()
+    expect(wrapper.find('[data-testid=trail-ascent-time]').text()).toMatch(/tours\.route\.ascent 4-5 h.*0\.8×/s)
+    pace.value = 1
   })
 })

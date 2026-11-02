@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { pointMetrics, progressNearest, routeMetrics, totalMetrics, trackEnds, trackMetrics } from '@/features/tours/domain/route-metrics'
+import { estimatedMinutes, labelMinutes, pointMetrics, progressNearest, routeMetrics, totalMetrics, tourMinutes, trackEnds, trackMetrics } from '@/features/tours/domain/route-metrics'
 
 const HUT = { lng: 9.86, lat: 46.64 }
 const VALLEY = { lng: 9.81, lat: 46.64 }
@@ -171,5 +171,46 @@ describe('trackEnds', () => {
     const multi = { type: 'Feature' as const, properties: {}, geometry: { type: 'MultiLineString' as const, coordinates: [[[3, 3, 900]], [[4, 4], [5, 5]]] } }
     expect(trackEnds({ type: 'FeatureCollection', features: [line([[1, 1], [2, 2]]), multi] }))
       .toEqual({ first: { lng: 1, lat: 1 }, last: { lng: 5, lat: 5 } })
+  })
+})
+
+describe('estimatedMinutes', () => {
+  it('should know no time without a distance', () => {
+    expect(estimatedMinutes({ ascent: 500, descent: 0, distance: null })).toBeNull()
+  })
+
+  it('should count the shorter of flat and vertical time half (SAC rule), slower up on foot than on skis', () => {
+    // 4 km flat = 60 min; 600 m up = 120 min on foot → 120 + 30.
+    expect(estimatedMinutes({ ascent: 600, descent: 0, distance: 4000 })).toBe(150)
+    // On skis 600 m up = 90 min → 90 + 30.
+    expect(estimatedMinutes({ ascent: 600, descent: 0, distance: 4000 }, true)).toBe(120)
+    // Unknown heights: the flat time alone.
+    expect(estimatedMinutes({ ascent: null, descent: null, distance: 4000 })).toBe(60)
+  })
+
+  it('should take the time at the user\'s pace: twice as long at the slowest, 2/3 at the fastest', () => {
+    const climb = { ascent: 600, descent: 0, distance: 4000 }
+    expect([estimatedMinutes(climb, false, 0.5), estimatedMinutes(climb, false, 1.5)]).toEqual([300, 100])
+  })
+})
+
+describe('labelMinutes', () => {
+  it('should read SAC\'s "04:30 h" and know no time in any other wording', () => {
+    expect([labelMinutes('04:30 h'), labelMinutes('3-4 h'), labelMinutes('')]).toEqual([270, null, null])
+  })
+})
+
+describe('tourMinutes', () => {
+  const climb = { ascent: 600, descent: 0, distance: 4000 }
+
+  it('should time no flown way and no day on a bike alone, and time a tour without activity on foot', () => {
+    expect(tourMinutes(climb, { tourTypes: ['hiking', 'paragliding'], legs: { ascent: ['hiking'], descent: ['paragliding'] } }, 1)).toBeNull()
+    expect(tourMinutes(climb, { tourTypes: ['mountain-biking'] }, 1)).toBeNull()
+    expect(tourMinutes(climb, { tourTypes: [] }, 1.2)).toBe(125)
+  })
+
+  it('should go on skis for a ski tour, and on foot once hiking joins it', () => {
+    expect(tourMinutes(climb, { tourTypes: ['skitour', 'mountaineering'] }, 1)).toBe(120)
+    expect(tourMinutes(climb, { tourTypes: ['skitour', 'hiking'] }, 1)).toBe(150)
   })
 })

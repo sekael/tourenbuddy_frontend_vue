@@ -1,24 +1,30 @@
 <script setup lang="ts">
+import type { DrawnTrack } from '@/features/map/domain/drawn-track'
+import type { LngLat } from '@/features/map/domain/entities/trail'
 import type { Season } from '@/features/tours/data/models/season'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { Visibility } from '@/features/tours/data/models/visibility'
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
 import type { LegDirection, TourLegs } from '@/features/tours/domain/legs'
+import type { RouteMetrics } from '@/features/tours/domain/route-metrics'
 import type { PointPick, SwisstopoFill } from '@/features/tours/presentation/composables/use-swisstopo-fill'
 import { storeToRefs } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import BaseTooltip from '@/core/components/base-tooltip.vue'
+import { useFormatter } from '@/core/composables/use-formatter'
+import { pace } from '@/core/composables/use-pace'
 import { cacheBlob, clearPendingUpload, evictCachedBlob, markPendingUpload } from '@/core/offline/blob-cache'
 import { isOnline } from '@/core/offline/use-online-status'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
+import { lineLength, trackFromLine, trackLine } from '@/features/map/domain/drawn-track'
 import { dropScales, GRADE_MAX_LENGTH, gradeScales, normalizeGrade } from '@/features/tours/data/models/grade'
 import { SEASON_VALUES, seasonsForDates } from '@/features/tours/data/models/season'
 import { MAX_ATTACHMENTS_PER_TOUR } from '@/features/tours/data/models/tour-attachment'
@@ -35,15 +41,19 @@ import {
   parseGpxFile,
 } from '@/features/tours/data/services/gpx-parser'
 import { gpxStorageKey, removeGpx, uploadGpx, uploadGpxToKey } from '@/features/tours/data/services/gpx-storage-service'
+import { loadGpxTrack } from '@/features/tours/data/services/gpx-track-service'
+import { gpxFromLine } from '@/features/tours/data/services/gpx-writer'
 import { getElevation } from '@/features/tours/data/services/swisstopo-elevation-service'
 import { suggestTourName } from '@/features/tours/data/services/swisstopo-name-service'
+import { densify, getTrackProfile } from '@/features/tours/data/services/swisstopo-profile-service'
 import { isSameGoal } from '@/features/tours/domain/distance'
 import { defaultDirection, directionOf, landsByAir, legsFrom, waysCovered } from '@/features/tours/domain/legs'
-import { trackEnds } from '@/features/tours/domain/route-metrics'
+import { tourMinutes, trackEnds, trackLines, trackMetrics } from '@/features/tours/domain/route-metrics'
 import ActivityLegs from '@/features/tours/presentation/components/activity-legs.vue'
 import GradeChips from '@/features/tours/presentation/components/grade-chips.vue'
 import PointDistance from '@/features/tours/presentation/components/point-distance.vue'
 import PointSuggestions from '@/features/tours/presentation/components/point-suggestions.vue'
+import RouteNumbers from '@/features/tours/presentation/components/route-numbers.vue'
 import TourAttachmentsPicker from '@/features/tours/presentation/components/tour-attachments-picker.vue'
 import UploadTile from '@/features/tours/presentation/components/upload-tile.vue'
 import { useSwisstopoFill } from '@/features/tours/presentation/composables/use-swisstopo-fill'
@@ -63,6 +73,11 @@ const props = defineProps<{
    * (the goal comes in through `currentGoal`) and looks up that point's name and elevation.
    */
   pick?: PointPick | null
+  /**
+   * The latest finished drawing (a new object per drawing), or a planned ski route's line: the
+   * form makes it the tour's GPX track, with heights from the terrain profile.
+   */
+  drawnTrack?: DrawnTrack | null
   /** When true, disable all inputs and buttons — used while location picker is active. */
   disabled?: boolean
   /** Tour ID — only required in edit mode; used by the attachments picker. */
@@ -98,12 +113,17 @@ const emit = defineEmits<{
   ]
   cancel: []
   pickPoint: [type: 'start' | 'end' | 'goal']
+  /** Draw the track on the map, going on from the current one (null: none yet). */
+  drawTrack: [seed: DrawnTrack | null]
+  /** The unsaved track for the map: null = the saved one stands, [] = removed. */
+  trackChange: [line: LngLat[] | null]
   tourTypesChange: [tourTypes: TourType[]]
   startPointChange: [point: { lng: number, lat: number } | null]
   endPointChange: [point: { lng: number, lat: number } | null]
 }>()
 
 const { t } = useI18n({ useScope: 'global' })
+const { formatDistance } = useFormatter()
 
 /** Fixed for the lifetime of a form instance — the host mounts a fresh one per mode. */
 const isSuggest = props.mode === 'suggest'
@@ -170,9 +190,24 @@ const endPointName = ref(props.initialDraft?.endPointName ?? '')
 const endPointElevation = ref(
   props.initialDraft?.endPointElevation != null ? String(props.initialDraft.endPointElevation) : '',
 )
+/** The start / end a track set (design D9): a new track moves them; one set or edited by hand stays. */
+const fromTrack = reactive({ start: false, end: false })
+/** "Set by hand" opened start and end while both are empty; a point opens them on its own. */
+const pointsByHand = ref(false)
+const pointsOpen = computed(() => pointsByHand.value || !!startPoint.value || !!endPoint.value)
 const equipment = ref(props.initialDraft?.equipment ?? '')
 const notes = ref(props.initialDraft?.notes ?? '')
-const gpxFile = ref<File | null>(null)
+const gpxFile = shallowRef<File | null>(null)
+/** Each picked or drawn file's line, and a drawn one's drawing — so the map and a redraw read the file. */
+const fileLines = new WeakMap<File, LngLat[]>()
+const fileDrawings = new WeakMap<File, DrawnTrack>()
+/** Each picked or drawn file's climb, descent and length, for its tile. */
+const fileMetrics = new WeakMap<File, RouteMetrics>()
+const fileNumbers = computed(() => (gpxFile.value && fileMetrics.get(gpxFile.value)) ?? null)
+/** A drawing on its way to a GPX file: heights load from the terrain profile first. */
+const preparingTrack = ref(false)
+/** The saved track loading to draw on from it. */
+const loadingSeed = ref(false)
 const gpxFilepath = ref<string | null>(props.initialDraft?.gpxFilepath ?? null)
 const gpxRemoved = ref(false)
 const gpxError = ref<string | null>(null)
@@ -362,6 +397,8 @@ const fills = {
   start: [startName, startElevation],
   end: [endName, endElevation],
 } as const
+/** A point's name and height show together, once both lookups have answered or failed. */
+const settling = (point: keyof typeof fills) => fills[point].some(fill => fill.status === 'loading')
 
 /** A map pick, a suggestion chip or a GPX end: set the point, then name it and look up its height. */
 function applyPick(pick: PointPick) {
@@ -369,6 +406,8 @@ function applyPick(pick: PointPick) {
     startPoint.value = pick.location
   else if (pick.type === 'end')
     endPoint.value = pick.location
+  if (pick.type !== 'goal')
+    fromTrack[pick.type] = false
   const [nameFill, elevationFill] = fills[pick.type]
   // A place chosen in the picker's search names the point; otherwise look one up nearby.
   void nameFill.fill(async signal => pick.name ?? suggestTourName(pick.location, signal))
@@ -380,19 +419,28 @@ watch(() => props.pick, pick => pick && applyPick(pick), { immediate: true })
 /**
  * A GPX names the empty ends (design D6): its first point, its last — or the start again for a
  * loop. A track end at the goal names nothing: a flight from the goal has no start, a walk up no end.
+ * Ends an earlier track set give way when this track's lie elsewhere (design D9), so a redrawn
+ * track moves them; where they stay, so do their names (no lookup again).
  */
 const NEAR_M = 200
-function fillPointsFromTrack(track: GeoJSON.FeatureCollection) {
-  const ends = trackEnds(track)
+function fillPointsFromTrack(ends: { first: { lng: number, lat: number }, last: { lng: number, lat: number } } | null) {
   if (!ends)
     return
+  const loop = isSameGoal(ends.first, ends.last, NEAR_M)
+  if (fromTrack.start && !isSameGoal(startPoint.value!, ends.first))
+    handleRemoveStart()
+  if (fromTrack.end && !isSameGoal(endPoint.value!, loop && startPoint.value ? startPoint.value : ends.last))
+    handleRemoveEnd()
   const atGoal = (p: { lng: number, lat: number }) => !!props.currentGoal && isSameGoal(p, props.currentGoal, NEAR_M)
-  if (!startPoint.value && !atGoal(ends.first))
+  if (!startPoint.value && !atGoal(ends.first)) {
     applyPick({ type: 'start', location: ends.first })
+    fromTrack.start = true
+  }
   if (!endPoint.value && !atGoal(ends.last)) {
-    const loop = !!startPoint.value && isSameGoal(ends.first, ends.last, NEAR_M)
-    const at = loop ? startPoint.value! : ends.last
-    applyPick({ type: 'end', location: { ...at }, name: loop ? startPointName.value.trim() || undefined : undefined })
+    const round = loop && !!startPoint.value
+    const at = round ? startPoint.value! : ends.last
+    applyPick({ type: 'end', location: { ...at }, name: round ? startPointName.value.trim() || undefined : undefined })
+    fromTrack.end = true
   }
 }
 
@@ -467,6 +515,8 @@ function setLegDirection(type: TourType, direction: LegDirection) {
 const legRows = computed(() => [...selectedTourTypes.value].sort((a, b) => Number(a === 'paragliding') - Number(b === 'paragliding')))
 /** A flown way down ends where the glider lands. */
 const endIsLanding = computed(() => landsByAir({ tourTypes: selectedTourTypes.value, legs: legs.value }))
+/** The track's time, as the drawing showed it and the tour will: its activities at the user's pace. */
+const fileMinutes = computed(() => fileNumbers.value && tourMinutes(fileNumbers.value, { tourTypes: selectedTourTypes.value, legs: legs.value }, pace.value))
 
 // ── Seasons follow the dates (design D6) ────────────────────────────────────
 // Automatic while the chips hold nothing or exactly what the dates say; a tap makes them the
@@ -502,12 +552,19 @@ async function handleGpxUpload(event: Event) {
   const file = input.files?.[0]
   if (!file)
     return
-
-  gpxError.value = null
   input.value = ''
+  await acceptGpxFile(file)
+}
+
+/** A picked or drawn GPX file: it names the empty ends, then uploads (or stages offline) at once. */
+async function acceptGpxFile(file: File) {
+  gpxError.value = null
 
   try {
-    fillPointsFromTrack(await parseGpxFile(file))
+    const track = await parseGpxFile(file)
+    fileLines.set(file, trackLines(track).flat().map(([lng, lat]) => [lng!, lat!] as LngLat))
+    fileMetrics.set(file, trackMetrics(track))
+    fillPointsFromTrack(trackEnds(track))
   }
   catch (err) {
     if (err instanceof GpxFileTooLargeError) {
@@ -654,6 +711,54 @@ function handleRemoveGpx() {
   gpxError.value = null
 }
 
+/**
+ * Draw the track on the map, going on from the current one: a drawing exactly as drawn, any other
+ * track (picked, or saved — loaded first) with its turning points to drag.
+ */
+async function startDrawing() {
+  const file = gpxFile.value
+  let seed = file ? fileDrawings.get(file) ?? null : null
+  const line = file && fileLines.get(file)
+  if (!seed && line)
+    seed = trackFromLine(line)
+  if (!file && !gpxRemoved.value && gpxFilepath.value && props.tourId) {
+    loadingSeed.value = true
+    const saved = await loadGpxTrack({ id: props.tourId, gpxFilepath: gpxFilepath.value })
+    loadingSeed.value = false
+    seed = saved && trackFromLine(trackLines(saved).flat().map(([lng, lat]) => [lng!, lat!] as LngLat))
+  }
+  emit('drawTrack', seed)
+}
+
+/**
+ * A finished drawing becomes the tour's GPX file, with the terrain's heights when online. Its
+ * points are the same either way, so a route planned twice is one track (`dropIfDuplicate`).
+ */
+async function acceptDrawnTrack(track: DrawnTrack) {
+  preparingTrack.value = true
+  try {
+    const line = trackLine(track)
+    // Its ends are known now: name them while the heights load, not after.
+    const [first, last] = [line[0], line.at(-1)]
+    if (first && last)
+      fillPointsFromTrack({ first: { lng: first[0], lat: first[1] }, last: { lng: last[0], lat: last[1] } })
+    const profiled = isOnline.value ? await getTrackProfile(line) : null
+    const gpx = gpxFromLine(profiled?.line ?? densify(line), profiled?.heights ?? null, tourName.value.trim() || t('tours.form.gpxDrawn'))
+    const file = new File([gpx], t('tours.form.gpxDrawnFile', { distance: formatDistance.value(lineLength(line)) }), { type: 'application/gpx+xml' })
+    fileDrawings.set(file, track)
+    await acceptGpxFile(file)
+  }
+  finally {
+    preparingTrack.value = false
+  }
+}
+watch(() => props.drawnTrack, track => track && void acceptDrawnTrack(track), { immediate: true })
+
+watch(
+  () => (gpxRemoved.value ? [] : gpxFile.value ? fileLines.get(gpxFile.value) ?? null : null),
+  line => emit('trackChange', line),
+)
+
 // A <button> can't open a file dialog the way a <label> does — forward the click
 // to a single hidden <input> shared by the upload + replace buttons.
 const gpxInputRef = ref<HTMLInputElement | null>(null)
@@ -668,6 +773,8 @@ function handleRemoveStart() {
   startPoint.value = null
   startPointName.value = ''
   startPointElevation.value = ''
+  fromTrack.start = false
+  pointsByHand.value &&= !!endPoint.value
 }
 
 function handleRemoveEnd() {
@@ -676,11 +783,14 @@ function handleRemoveEnd() {
   endPoint.value = null
   endPointName.value = ''
   endPointElevation.value = ''
+  fromTrack.end = false
+  pointsByHand.value &&= !!startPoint.value
 }
 
 function handleRoundTrip() {
   if (!startPoint.value)
     return
+  fromTrack.end = false
   endPoint.value = { lng: startPoint.value.lng, lat: startPoint.value.lat }
   endPointName.value = startPointName.value
   endPointElevation.value = startPointElevation.value
@@ -697,7 +807,7 @@ function formatPoint(point: { lng: number, lat: number }) {
 // Overflow is in here too: an unacceptable batch must not be sendable, the owner would
 // only meet it as a cap error on accept with no way to fix it from their side.
 const submitBlocked = computed(
-  () => isUploadingGpx.value || attachmentsStore.uploading || attachmentOverflow.value > 0,
+  () => isUploadingGpx.value || preparingTrack.value || attachmentsStore.uploading || attachmentOverflow.value > 0,
 )
 
 function handleSubmit() {
@@ -768,12 +878,9 @@ defineExpose({ cancel: handleCancel, submitBlocked })
   <form :id="props.formId" class="form" @submit.prevent="handleSubmit">
     <fieldset class="form-fieldset" :disabled="props.disabled">
       <div class="scroll-body">
-        <!-- SECTION: Location Details -->
+        <!-- SECTION: Location Details — the dialog's title heads it, no label of its own: the
+             route has to fit a phone's first screen after the activities (D9). -->
         <div class="section">
-          <p class="section-label">
-            {{ t('tours.form.locationSectionLabel') }}
-          </p>
-
           <div class="field">
             <label class="label" for="tf-tourName">{{ t('tours.form.nameLabel') }} <span class="required-mark">*</span></label>
             <div class="lookup">
@@ -787,24 +894,25 @@ defineExpose({ cancel: handleCancel, submitBlocked })
                 :placeholder="lookupPlaceholder(goalName, t('tours.form.namePlaceholder'))"
                 aria-required="true"
                 :aria-invalid="nameError"
-                :aria-busy="goalName.status === 'loading'"
+                :aria-busy="settling('goal')"
                 @input="nameError = false; goalName.input()"
               >
-              <span v-if="goalName.status === 'loading'" class="lookup-spinner" aria-hidden="true" />
+              <span v-if="settling('goal')" class="lookup-skeleton" aria-hidden="true" />
             </div>
             <p v-if="nameError" class="field-error">
               {{ t('tours.form.nameRequired') }}
             </p>
           </div>
 
-          <!-- Goal (read-only display, with optional change button) -->
+          <!-- Goal: title, coordinates and change on one line, its height beside its label — kept
+               short so the route follows the activities within a phone's first screen (D9). -->
           <div v-if="currentGoal" class="point-section point-section--goal">
-            <div class="point-section-header">
+            <div class="goal-head">
               <BaseIcon name="flag" class="point-section-icon" />
-              <span class="point-section-title">{{ t('tours.form.goalLabel') }}</span>
-            </div>
-            <div class="point-row">
-              <span class="point-coords">{{ formatPoint(currentGoal) }}</span>
+              <span class="goal-text">
+                <span class="point-section-title">{{ t('tours.form.goalLabel') }}</span>
+                <span class="point-coords">{{ formatPoint(currentGoal) }}</span>
+              </span>
               <BaseButton
                 v-if="allowGoalEdit"
                 type="button"
@@ -816,173 +924,23 @@ defineExpose({ cancel: handleCancel, submitBlocked })
                 {{ t('tours.form.changeGoalBtn') }}
               </BaseButton>
             </div>
-            <div class="field">
+            <div class="field field--inline">
               <label class="label" for="tf-elevation">{{ t('tours.form.elevationLabel') }}</label>
               <div class="lookup">
                 <input
                   id="tf-elevation"
                   v-model="elevation"
-                  class="input"
+                  class="input input--compact"
                   type="number"
                   min="0"
                   max="9000"
                   :placeholder="lookupPlaceholder(goalElevation, t('tours.form.elevationPlaceholder'))"
-                  :aria-busy="goalElevation.status === 'loading'"
+                  :aria-busy="settling('goal')"
                   @input="goalElevation.input()"
                 >
-                <span v-if="goalElevation.status === 'loading'" class="lookup-spinner" aria-hidden="true" />
+                <span v-if="settling('goal')" class="lookup-skeleton" aria-hidden="true" />
               </div>
             </div>
-          </div>
-
-          <!-- Start point -->
-          <div class="point-section point-section--start">
-            <div class="point-section-header">
-              <BaseIcon name="trip_origin" class="point-section-icon" />
-              <span class="point-section-title">{{ t('tours.form.startPointLabel') }}</span>
-            </div>
-            <div class="point-row">
-              <span class="point-coords">
-                {{ startPoint ? formatPoint(startPoint) : t('tours.form.pointNotSet') }}
-                <PointDistance v-if="startPoint && currentGoal" :goal="currentGoal" :point="startPoint" />
-              </span>
-              <BaseButton type="button" variant="secondary" size="sm" @click="emit('pickPoint', 'start')">
-                <BaseIcon name="my_location" />
-                {{ startPoint ? t('tours.form.changeGoalBtn') : t('tours.form.pickBtn') }}
-              </BaseButton>
-              <BaseIconButton
-                v-if="startPoint"
-                name="delete"
-                :label="t('tours.form.removeStartBtn')"
-                size="sm"
-                tone="danger"
-                data-testid="remove-start-btn"
-                @click="handleRemoveStart"
-              />
-            </div>
-            <PointSuggestions
-              v-if="!startPoint && currentGoal" role="start" :around="currentGoal" :tour-id="tourId"
-              @pick="applyPick({ type: 'start', ...$event })"
-            />
-            <template v-if="startPoint">
-              <div class="field">
-                <label class="label" for="tf-start-name">{{
-                  t('tours.form.pointNameLabel')
-                }}</label>
-                <div class="lookup">
-                  <input
-                    id="tf-start-name"
-                    v-model="startPointName"
-                    class="input"
-                    type="text"
-                    maxlength="100"
-                    :placeholder="lookupPlaceholder(startName, t('tours.form.namePlaceholder'))"
-                    :aria-busy="startName.status === 'loading'"
-                    @input="startName.input()"
-                  >
-                  <span v-if="startName.status === 'loading'" class="lookup-spinner" aria-hidden="true" />
-                </div>
-              </div>
-              <div class="field">
-                <label class="label" for="tf-start-elevation">{{
-                  t('tours.form.elevationLabel')
-                }}</label>
-                <div class="lookup">
-                  <input
-                    id="tf-start-elevation"
-                    v-model="startPointElevation"
-                    class="input"
-                    type="number"
-                    min="0"
-                    max="9000"
-                    :placeholder="lookupPlaceholder(startElevation, t('tours.form.elevationPlaceholder'))"
-                    :aria-busy="startElevation.status === 'loading'"
-                    @input="startElevation.input()"
-                  >
-                  <span v-if="startElevation.status === 'loading'" class="lookup-spinner" aria-hidden="true" />
-                </div>
-              </div>
-            </template>
-          </div>
-
-          <!-- End point: always offered, start or not — a flight from the goal needs only the
-               landing, a connected stage (design D8) only its end. -->
-          <div class="point-section point-section--end">
-            <div class="point-section-header">
-              <BaseIcon name="sports_score" class="point-section-icon" />
-              <span class="point-section-title">{{ endIsLanding ? t('tours.form.landingLabel') : t('tours.form.endPointLabel') }}</span>
-            </div>
-            <template v-if="endPoint">
-              <div class="point-row">
-                <span class="point-coords">
-                  {{ formatPoint(endPoint) }}
-                  <PointDistance v-if="currentGoal" :goal="currentGoal" :point="endPoint" />
-                </span>
-                <BaseButton type="button" variant="secondary" size="sm" @click="emit('pickPoint', 'end')">
-                  <BaseIcon name="my_location" />
-                  {{ t('tours.form.changeGoalBtn') }}
-                </BaseButton>
-                <BaseIconButton
-                  name="delete"
-                  :label="t('tours.form.removeEndBtn')"
-                  size="sm"
-                  data-testid="remove-end-btn"
-                  tone="danger"
-                  @click="handleRemoveEnd"
-                />
-              </div>
-              <div class="field">
-                <label class="label" for="tf-end-name">{{ t('tours.form.pointNameLabel') }}</label>
-                <div class="lookup">
-                  <input
-                    id="tf-end-name"
-                    v-model="endPointName"
-                    class="input"
-                    type="text"
-                    maxlength="100"
-                    :placeholder="lookupPlaceholder(endName, t('tours.form.namePlaceholder'))"
-                    :aria-busy="endName.status === 'loading'"
-                    @input="endName.input()"
-                  >
-                  <span v-if="endName.status === 'loading'" class="lookup-spinner" aria-hidden="true" />
-                </div>
-              </div>
-              <div class="field">
-                <label class="label" for="tf-end-elevation">{{
-                  t('tours.form.elevationLabel')
-                }}</label>
-                <div class="lookup">
-                  <input
-                    id="tf-end-elevation"
-                    v-model="endPointElevation"
-                    class="input"
-                    type="number"
-                    min="0"
-                    max="9000"
-                    :placeholder="lookupPlaceholder(endElevation, t('tours.form.elevationPlaceholder'))"
-                    :aria-busy="endElevation.status === 'loading'"
-                    @input="endElevation.input()"
-                  >
-                  <span v-if="endElevation.status === 'loading'" class="lookup-spinner" aria-hidden="true" />
-                </div>
-              </div>
-            </template>
-            <template v-else>
-              <div class="point-row">
-                <BaseButton type="button" variant="secondary" size="sm" @click="emit('pickPoint', 'end')">
-                  <BaseIcon name="add" />
-                  {{ endIsLanding ? t('tours.form.addLandingBtn') : t('tours.form.addEndPointBtn') }}
-                </BaseButton>
-                <BaseButton v-if="startPoint && !endIsLanding" type="button" variant="secondary" size="sm" @click="handleRoundTrip">
-                  <BaseIcon name="replay" />
-                  {{ t('tours.form.roundTripBtn') }}
-                </BaseButton>
-              </div>
-              <PointSuggestions
-                v-if="currentGoal" role="end" :around="currentGoal" :exclude="startPoint" :tour-id="tourId"
-                :landing="endIsLanding" @pick="applyPick({ type: 'end', ...$event })"
-              />
-            </template>
           </div>
         </div>
 
@@ -1012,6 +970,262 @@ defineExpose({ cancel: handleCancel, submitBlocked })
             v-if="selectedTourTypes.length > 1 || soloFlight" :types="legRows" :direction="legDirection"
             :allowed="legAllowed" :solo="soloFlight" @set="setLegDirection"
           />
+        </div>
+
+        <!-- SECTION: Route — the track first, start and end after it, then its grade (design D9) -->
+        <div class="section">
+          <p class="section-label">
+            {{ t('tours.form.routeSectionLabel') }}
+          </p>
+          <!-- Single hidden picker shared by the upload + replace buttons. -->
+          <input
+            ref="gpxInputRef"
+            type="file"
+            accept=".gpx,application/gpx+xml,application/xml,text/xml,application/octet-stream"
+            class="hidden-input"
+            tabindex="-1"
+            :aria-label="t('tours.form.gpxLabel')"
+            @change="handleGpxUpload"
+          >
+          <!-- Same tile as the attachment upload rows below it. `gpxProgress` is null unless
+               an upload is actually in flight: picking a GPX offline is allowed (it stages
+               and uploads on replay), and staging transfers nothing, so no bar appears. -->
+          <UploadTile
+            v-if="preparingTrack"
+            class="gpx-filled-row"
+            icon="route"
+            :filename="t('tours.form.gpxPreparing')"
+          />
+          <UploadTile
+            v-else-if="gpxFile || gpxFilepath"
+            class="gpx-filled-row"
+            :icon="isUploadingGpx ? 'upload_file' : 'route'"
+            :filename="gpxFile ? (fileDrawings.has(gpxFile) ? t('tours.form.gpxDrawn') : gpxFile.name) : t('tours.form.gpxExistingTrack')"
+            :progress="isUploadingGpx ? gpxProgress : null"
+            :progress-label="t('tours.form.gpxUploading')"
+          >
+            <template v-if="fileNumbers && !isUploadingGpx" #status>
+              <RouteNumbers :metrics="fileNumbers" :minutes="fileMinutes" class="gpx-numbers" data-testid="gpx-numbers" />
+            </template>
+            <!-- Cancel for the duration of an upload, as the attachment rows have; replacing sits
+                 with the edit as a labelled button below. -->
+            <BaseTooltip v-if="isUploadingGpx" :text="t('tours.attachments.cancelUpload')">
+              <BaseIconButton
+                name="close"
+                :label="t('tours.attachments.cancelUpload')"
+                shape="square"
+                size="sm"
+                data-testid="gpx-cancel-btn"
+                @click="cancelGpxUpload"
+              />
+            </BaseTooltip>
+            <BaseTooltip :text="t('tours.form.gpxRemoveTooltip')">
+              <BaseIconButton
+                name="delete"
+                :label="t('tours.form.gpxRemoveTooltip')"
+                shape="square"
+                size="sm"
+                tone="danger"
+                data-testid="gpx-remove-btn"
+                @click="handleRemoveGpx"
+              />
+            </BaseTooltip>
+          </UploadTile>
+          <div v-else class="gpx-empty-row">
+            <BaseButton type="button" variant="primary" size="sm" data-testid="gpx-draw-btn" @click="startDrawing">
+              <BaseIcon name="draw" />
+              {{ t('tours.form.gpxDrawBtn') }}
+            </BaseButton>
+            <BaseButton
+              type="button"
+              variant="secondary"
+              size="sm"
+              data-testid="gpx-upload-btn"
+              @click="openGpxPicker"
+            >
+              <BaseIcon name="upload_file" />
+              {{ t('tours.form.gpxUploadBtn') }}
+            </BaseButton>
+          </div>
+          <div v-if="(gpxFile || gpxFilepath) && !preparingTrack && !isUploadingGpx" class="gpx-empty-row">
+            <BaseButton type="button" variant="secondary" size="sm" :disabled="loadingSeed" data-testid="gpx-edit-btn" @click="startDrawing">
+              <BaseIcon name="draw" />
+              {{ t('tours.form.gpxEditBtn') }}
+            </BaseButton>
+            <BaseButton type="button" variant="secondary" size="sm" data-testid="gpx-replace-btn" @click="openGpxPicker">
+              <BaseIcon name="upload_file" />
+              {{ t('tours.form.gpxReplaceTooltip') }}
+            </BaseButton>
+          </div>
+          <p v-if="gpxError" class="gpx-error">
+            {{ gpxError }}
+          </p>
+
+          <!-- Start and end fold into one row while both are empty: a track sets them (design D9),
+               "Set by hand" opens the pickers and suggestions. -->
+          <div v-if="!pointsOpen" class="points-fold" data-testid="points-fold">
+            <span class="points-fold-icons" aria-hidden="true">
+              <BaseIcon name="trip_origin" size="sm" />
+              <BaseIcon name="sports_score" size="sm" />
+            </span>
+            <span class="points-fold-text">{{ t('tours.form.pointsFromTrack') }}</span>
+            <BaseButton type="button" variant="secondary" size="sm" data-testid="points-by-hand-btn" @click="pointsByHand = true">
+              {{ t('tours.form.pointsByHandBtn') }}
+            </BaseButton>
+          </div>
+          <template v-else>
+            <!-- Start point -->
+            <div class="point-section point-section--start">
+              <div class="point-section-header">
+                <BaseIcon name="trip_origin" class="point-section-icon" />
+                <span class="point-section-title">{{ t('tours.form.startPointLabel') }}</span>
+                <span v-if="startPoint && fromTrack.start" class="point-source" data-testid="start-from-track">{{ t('tours.form.fromTrack') }}</span>
+              </div>
+              <div class="point-row">
+                <span class="point-coords">
+                  {{ startPoint ? formatPoint(startPoint) : t('tours.form.pointNotSet') }}
+                  <PointDistance v-if="startPoint && currentGoal" :goal="currentGoal" :point="startPoint" />
+                </span>
+                <BaseButton type="button" variant="secondary" size="sm" @click="emit('pickPoint', 'start')">
+                  <BaseIcon name="my_location" />
+                  {{ startPoint ? t('tours.form.changeGoalBtn') : t('tours.form.pickBtn') }}
+                </BaseButton>
+                <BaseIconButton
+                  v-if="startPoint"
+                  name="delete"
+                  :label="t('tours.form.removeStartBtn')"
+                  size="sm"
+                  tone="danger"
+                  data-testid="remove-start-btn"
+                  @click="handleRemoveStart"
+                />
+              </div>
+              <PointSuggestions
+                v-if="!startPoint && currentGoal" role="start" :around="currentGoal" :tour-id="tourId"
+                @pick="applyPick({ type: 'start', ...$event })"
+              />
+              <template v-if="startPoint">
+                <div class="field">
+                  <label class="label" for="tf-start-name">{{
+                    t('tours.form.pointNameLabel')
+                  }}</label>
+                  <div class="lookup">
+                    <input
+                      id="tf-start-name"
+                      v-model="startPointName"
+                      class="input"
+                      type="text"
+                      maxlength="100"
+                      :placeholder="lookupPlaceholder(startName, t('tours.form.namePlaceholder'))"
+                      :aria-busy="settling('start')"
+                      @input="startName.input(); fromTrack.start = false"
+                    >
+                    <span v-if="settling('start')" class="lookup-skeleton" aria-hidden="true" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="label" for="tf-start-elevation">{{
+                    t('tours.form.elevationLabel')
+                  }}</label>
+                  <div class="lookup">
+                    <input
+                      id="tf-start-elevation"
+                      v-model="startPointElevation"
+                      class="input"
+                      type="number"
+                      min="0"
+                      max="9000"
+                      :placeholder="lookupPlaceholder(startElevation, t('tours.form.elevationPlaceholder'))"
+                      :aria-busy="settling('start')"
+                      @input="startElevation.input(); fromTrack.start = false"
+                    >
+                    <span v-if="settling('start')" class="lookup-skeleton" aria-hidden="true" />
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <!-- End point: always offered, start or not — a flight from the goal needs only the
+                 landing, a connected stage (design D8) only its end. -->
+            <div class="point-section point-section--end">
+              <div class="point-section-header">
+                <BaseIcon name="sports_score" class="point-section-icon" />
+                <span class="point-section-title">{{ endIsLanding ? t('tours.form.landingLabel') : t('tours.form.endPointLabel') }}</span>
+                <span v-if="endPoint && fromTrack.end" class="point-source" data-testid="end-from-track">{{ t('tours.form.fromTrack') }}</span>
+              </div>
+              <template v-if="endPoint">
+                <div class="point-row">
+                  <span class="point-coords">
+                    {{ formatPoint(endPoint) }}
+                    <PointDistance v-if="currentGoal" :goal="currentGoal" :point="endPoint" />
+                  </span>
+                  <BaseButton type="button" variant="secondary" size="sm" @click="emit('pickPoint', 'end')">
+                    <BaseIcon name="my_location" />
+                    {{ t('tours.form.changeGoalBtn') }}
+                  </BaseButton>
+                  <BaseIconButton
+                    name="delete"
+                    :label="t('tours.form.removeEndBtn')"
+                    size="sm"
+                    data-testid="remove-end-btn"
+                    tone="danger"
+                    @click="handleRemoveEnd"
+                  />
+                </div>
+                <div class="field">
+                  <label class="label" for="tf-end-name">{{ t('tours.form.pointNameLabel') }}</label>
+                  <div class="lookup">
+                    <input
+                      id="tf-end-name"
+                      v-model="endPointName"
+                      class="input"
+                      type="text"
+                      maxlength="100"
+                      :placeholder="lookupPlaceholder(endName, t('tours.form.namePlaceholder'))"
+                      :aria-busy="settling('end')"
+                      @input="endName.input(); fromTrack.end = false"
+                    >
+                    <span v-if="settling('end')" class="lookup-skeleton" aria-hidden="true" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="label" for="tf-end-elevation">{{
+                    t('tours.form.elevationLabel')
+                  }}</label>
+                  <div class="lookup">
+                    <input
+                      id="tf-end-elevation"
+                      v-model="endPointElevation"
+                      class="input"
+                      type="number"
+                      min="0"
+                      max="9000"
+                      :placeholder="lookupPlaceholder(endElevation, t('tours.form.elevationPlaceholder'))"
+                      :aria-busy="settling('end')"
+                      @input="endElevation.input(); fromTrack.end = false"
+                    >
+                    <span v-if="settling('end')" class="lookup-skeleton" aria-hidden="true" />
+                  </div>
+                </div>
+              </template>
+              <template v-else>
+                <div class="point-row">
+                  <BaseButton type="button" variant="secondary" size="sm" @click="emit('pickPoint', 'end')">
+                    <BaseIcon name="add" />
+                    {{ endIsLanding ? t('tours.form.addLandingBtn') : t('tours.form.addEndPointBtn') }}
+                  </BaseButton>
+                  <BaseButton v-if="startPoint && !endIsLanding" type="button" variant="secondary" size="sm" @click="handleRoundTrip">
+                    <BaseIcon name="replay" />
+                    {{ t('tours.form.roundTripBtn') }}
+                  </BaseButton>
+                </div>
+                <PointSuggestions
+                  v-if="currentGoal" role="end" :around="currentGoal" :exclude="startPoint" :tour-id="tourId"
+                  :landing="endIsLanding" @pick="applyPick({ type: 'end', ...$event })"
+                />
+              </template>
+            </div>
+          </template>
           <div class="field">
             <label class="label" for="tf-grade">{{ t('tours.form.gradeLabel') }}</label>
             <input
@@ -1168,85 +1382,6 @@ defineExpose({ cancel: handleCancel, submitBlocked })
               :placeholder="t('tours.form.notesPlaceholder')"
             />
           </div>
-        </div>
-
-        <!-- SECTION: GPX Track -->
-        <div class="section">
-          <p class="section-label">
-            {{ t('tours.form.gpxLabel') }}
-          </p>
-          <!-- Single hidden picker shared by the upload + replace buttons. -->
-          <input
-            ref="gpxInputRef"
-            type="file"
-            accept=".gpx,application/gpx+xml,application/xml,text/xml,application/octet-stream"
-            class="hidden-input"
-            tabindex="-1"
-            :aria-label="t('tours.form.gpxLabel')"
-            @change="handleGpxUpload"
-          >
-          <!-- Same tile as the attachment upload rows below it. `gpxProgress` is null unless
-               an upload is actually in flight: picking a GPX offline is allowed (it stages
-               and uploads on replay), and staging transfers nothing, so no bar appears. -->
-          <UploadTile
-            v-if="gpxFile || gpxFilepath"
-            class="gpx-filled-row"
-            :icon="isUploadingGpx ? 'upload_file' : 'route'"
-            :filename="gpxFile ? gpxFile.name : t('tours.form.gpxExistingTrack')"
-            :progress="isUploadingGpx ? gpxProgress : null"
-            :progress-label="t('tours.form.gpxUploading')"
-          >
-            <!-- Replace turns into Cancel for the duration of an upload — same swap the
-                 attachment rows make. Offline staging never sets `isUploadingGpx`, so the
-                 replace button stays put while a queued track syncs in the background. -->
-            <BaseTooltip
-              :text="isUploadingGpx ? t('tours.attachments.cancelUpload') : t('tours.form.gpxReplaceTooltip')"
-            >
-              <BaseIconButton
-                v-if="isUploadingGpx"
-                name="close"
-                :label="t('tours.attachments.cancelUpload')"
-                shape="square"
-                size="sm"
-                data-testid="gpx-cancel-btn"
-                @click="cancelGpxUpload"
-              />
-              <BaseIconButton
-                v-else
-                name="upload_file"
-                :label="t('tours.form.gpxReplaceTooltip')"
-                shape="square"
-                size="sm"
-                @click="openGpxPicker"
-              />
-            </BaseTooltip>
-            <BaseTooltip :text="t('tours.form.gpxRemoveTooltip')">
-              <BaseIconButton
-                name="delete"
-                :label="t('tours.form.gpxRemoveTooltip')"
-                shape="square"
-                size="sm"
-                tone="danger"
-                data-testid="gpx-remove-btn"
-                @click="handleRemoveGpx"
-              />
-            </BaseTooltip>
-          </UploadTile>
-          <div v-else class="gpx-empty-row">
-            <BaseButton
-              type="button"
-              variant="secondary"
-              size="sm"
-              data-testid="gpx-upload-btn"
-              @click="openGpxPicker"
-            >
-              <BaseIcon name="upload_file" />
-              {{ t('tours.form.gpxUploadBtn') }}
-            </BaseButton>
-          </div>
-          <p v-if="gpxError" class="gpx-error">
-            {{ gpxError }}
-          </p>
         </div>
 
         <!-- SECTION: Attachments -->
@@ -1446,14 +1581,16 @@ defineExpose({ cancel: handleCancel, submitBlocked })
 }
 
 /* Season chips */
+/* Four equal seasons on one row from 360 px (narrow sides, centred labels); narrower, they wrap. */
 .season-chips {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(4.25rem, 1fr));
   gap: var(--spacing-xs);
 }
 
 .season-chip {
-  flex: 1;
   padding: var(--chip-padding);
+  padding-inline: var(--spacing-xxs);
   border: 1.5px solid var(--color-outline-variant);
   border-radius: var(--chip-radius);
   font-size: var(--chip-font-size);
@@ -1543,34 +1680,50 @@ defineExpose({ cancel: handleCancel, submitBlocked })
   border-color: var(--color-error);
 }
 
-/* A field Swisstopo is filling: spinner inside its end edge, placeholder says why it is empty. */
+/* A point Swisstopo is still naming: name and height wait under a quiet bar each and show
+   together once both answers are in or failed — never a blank field filling in late. A field
+   being typed in shows what is typed. */
 .lookup {
   position: relative;
   display: flex;
   flex-direction: column;
 }
 
-.lookup:has(.lookup-spinner) .input {
-  padding-inline-end: calc(var(--spacing-md) * 2 + 16px);
-}
-
-.lookup-spinner {
+.lookup-skeleton {
   position: absolute;
-  inset-inline-end: var(--spacing-md);
+  inset-inline-start: var(--spacing-md);
   top: 50%;
-  width: 16px;
-  height: 16px;
-  margin-top: -8px;
-  border: 2px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
-  border-top-color: var(--color-primary);
-  border-radius: 50%;
-  animation: lookup-spin 0.8s linear infinite;
+  width: min(12ch, 50%);
+  height: 0.9em;
+  margin-top: -0.45em;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-on-surface) 10%, transparent);
+  animation: lookup-pulse 1.6s ease-in-out infinite;
   pointer-events: none;
 }
 
-@keyframes lookup-spin {
-  to {
-    transform: rotate(360deg);
+.lookup:has(.lookup-skeleton) .input:not(:focus),
+.lookup:has(.lookup-skeleton) .input:not(:focus)::placeholder {
+  color: transparent;
+}
+
+.input:focus + .lookup-skeleton {
+  display: none;
+}
+
+@keyframes lookup-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lookup-skeleton {
+    animation: none;
   }
 }
 
@@ -1641,6 +1794,42 @@ defineExpose({ cancel: handleCancel, submitBlocked })
   letter-spacing: 0.02em;
 }
 
+.goal-head {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.goal-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-on-surface);
+}
+
+.goal-text .point-coords {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Label and a short number input on one line. */
+.field--inline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 9rem);
+  align-items: center;
+}
+
+.input--compact {
+  width: 100%;
+  padding-block: var(--spacing-sm);
+}
+
 /* Point pickers */
 .point-row {
   display: flex;
@@ -1660,8 +1849,51 @@ defineExpose({ cancel: handleCancel, submitBlocked })
 /* GPX */
 .gpx-empty-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--spacing-sm);
+}
+
+.gpx-numbers {
+  font-size: var(--font-size-xs);
+  color: var(--color-on-surface-variant);
+}
+
+/* Start and end, folded: one quiet card in the point sections' tone. */
+.points-fold {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs) var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--card-radius);
+  background-color: var(--color-surface-variant);
+}
+
+.points-fold-icons {
+  display: inline-flex;
+  gap: var(--spacing-xxs);
+}
+
+.points-fold-icons > :first-child {
+  color: var(--color-route-start);
+}
+
+.points-fold-icons > :last-child {
+  color: var(--color-route-end);
+}
+
+.points-fold-text {
+  flex: 1 1 12em;
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
+}
+
+.point-source {
+  margin-left: auto;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-on-surface-variant);
 }
 
 .hidden-input {

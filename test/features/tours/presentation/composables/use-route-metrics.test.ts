@@ -8,6 +8,8 @@ import { useRouteMetrics } from '@/features/tours/presentation/composables/use-r
 vi.mock('@/core/offline/blob-cache', () => ({ loadCachedBlob: vi.fn() }))
 vi.mock('@/features/tours/data/services/gpx-storage-service', () => ({ getSignedUrl: vi.fn() }))
 vi.mock('@/features/tours/data/services/gpx-parser', () => ({ parseGpxFile: vi.fn() }))
+const { mockProfile } = vi.hoisted(() => ({ mockProfile: vi.fn() }))
+vi.mock('@/features/tours/data/services/swisstopo-profile-service', () => ({ getTrackProfile: mockProfile }))
 
 const line: GeoJSON.FeatureCollection = {
   type: 'FeatureCollection',
@@ -21,7 +23,8 @@ function tour(updatedAt: string) {
     goal: { lng: 8.01, lat: 46 },
     startPoint: null,
     endPoint: null,
-    elevation: null,
+    elevation: 1500,
+    startPointElevation: null,
     tourTypes: ['hiking'],
   }) as unknown as Tour
 }
@@ -52,5 +55,28 @@ describe('useRouteMetrics', () => {
 
     tours.value = [flaky('2')]
     await vi.waitFor(() => expect(metrics.value.get('flaky')!.distance).toBeGreaterThan(0))
+  })
+
+  it('should show no numbers while the track loads, never the start-goal estimate first', async () => {
+    let answer!: (b: Blob) => void
+    vi.mocked(loadCachedBlob).mockReturnValueOnce(new Promise((resolve) => {
+      answer = resolve
+    }))
+    vi.mocked(parseGpxFile).mockResolvedValueOnce(line)
+    const slow = { ...tour('1'), id: 'slow', gpxFilepath: 'u/slow.gpx', startPoint: { lng: 8, lat: 46 }, startPointElevation: 900 } as Tour
+    const metrics = useRouteMetrics(ref([slow]))
+    expect(metrics.value.get('slow')).toEqual({ ascent: null, descent: null, distance: null })
+    answer(new Blob(['<gpx/>']))
+    await vi.waitFor(() => expect(metrics.value.get('slow')!.ascent).toBe(100))
+  })
+
+  it('should count a track without heights with the terrain\'s heights along it', async () => {
+    const flat: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [[8, 46], [8.01, 46]] } }] }
+    vi.mocked(loadCachedBlob).mockResolvedValueOnce(new Blob(['<gpx/>']))
+    vi.mocked(parseGpxFile).mockResolvedValueOnce(flat)
+    mockProfile.mockResolvedValueOnce({ line: [[8, 46], [8.005, 46], [8.01, 46]], heights: [1000, 1200, 1100] })
+    const drawn = { ...tour('1'), id: 'drawn', gpxFilepath: 'u/drawn.gpx' } as Tour
+    const metrics = useRouteMetrics(ref([drawn]))
+    await vi.waitFor(() => expect(metrics.value.get('drawn')).toMatchObject({ ascent: 200, descent: 100 }))
   })
 })

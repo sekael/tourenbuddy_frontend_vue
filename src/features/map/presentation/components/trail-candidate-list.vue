@@ -2,6 +2,7 @@
 import type { Trail } from '@/features/map/domain/entities/trail'
 import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/core/components/base-icon.vue'
+import GradeBadge from '@/features/tours/presentation/components/grade-badge.vue'
 import { trailTitle } from '../composables/trail-title'
 
 const props = defineProps<{ candidates: Trail[], more: number }>()
@@ -18,7 +19,7 @@ const { t } = useI18n({ useScope: 'global' })
           <span class="title">{{ trailTitle(trail, t) }}</span>
           <span v-if="trail.route?.name" class="sub">{{ trail.route.name }}</span>
         </span>
-        <span v-if="trail.route?.difficulty" class="chip">{{ trail.route.difficulty }}</span>
+        <GradeBadge v-if="trail.route?.difficulty" :grade="trail.route.difficulty" />
         <BaseIcon name="chevron_right" class="chevron" />
       </button>
     </li>
@@ -78,16 +79,6 @@ const { t } = useI18n({ useScope: 'global' })
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.chip {
-  flex-shrink: 0;
-  padding: var(--spacing-xxs) var(--spacing-xs);
-  border-radius: var(--radius-pill);
-  background-color: var(--color-secondary-container);
-  color: var(--color-on-secondary-container);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
 }
 
 .more {

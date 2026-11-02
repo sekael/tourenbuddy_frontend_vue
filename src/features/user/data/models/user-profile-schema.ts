@@ -16,6 +16,8 @@ export const userProfileSchema = z.object({
   calendarTourShowOnFirstOpen: z.boolean(),
   // One-time sign-in notice for legacy users who missed the calendar step.
   calendarFeatureNoticeShowAtSignIn: z.boolean(),
+  /** The user's pace, a speed factor on every estimated time (0.5–1.5; see migration user_profile_pace). */
+  pace: z.number(),
   /** Server-stamped `updated_at` — the LWW baseline for offline write replay (DC5). Null offline-optimistic. */
   updatedAt: z.string().nullable().default(null),
 })
@@ -33,6 +35,7 @@ export const userProfileRowSchema = z
     onboarding_tour_last_step: z.number().int().default(0),
     calendar_tour_show_on_first_open: z.boolean().default(true),
     calendar_feature_notice_show_at_sign_in: z.boolean().default(false),
+    pace: z.coerce.number().default(1),
     updated_at: z.string().nullable().default(null),
   })
   .transform(row => ({
@@ -44,5 +47,6 @@ export const userProfileRowSchema = z
     onboardingTourLastStep: row.onboarding_tour_last_step,
     calendarTourShowOnFirstOpen: row.calendar_tour_show_on_first_open,
     calendarFeatureNoticeShowAtSignIn: row.calendar_feature_notice_show_at_sign_in,
+    pace: row.pace,
     updatedAt: row.updated_at,
   }))

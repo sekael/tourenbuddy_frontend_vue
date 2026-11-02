@@ -2,7 +2,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 export function useFormatter() {
-  const { locale } = useI18n({ useScope: 'global' })
+  const { locale, t } = useI18n({ useScope: 'global' })
 
   const formatDate = computed(
     () =>
@@ -39,5 +39,14 @@ export function useFormatter() {
         `${new Intl.NumberFormat(locale.value, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(metres / 1000)}\u00A0km`,
   )
 
-  return { formatDate, formatDateRange, formatNumber, formatElevation, formatDistance }
+  /** A time on the way, to the minute, as SAC writes it — "45 min", "2:05 h". */
+  const formatDuration = computed(
+    () =>
+      (minutes: number): string =>
+        minutes < 60
+          ? t('tours.route.minutes', { m: minutes })
+          : t('tours.route.hours', { h: Math.floor(minutes / 60), m: String(minutes % 60).padStart(2, '0') }),
+  )
+
+  return { formatDate, formatDateRange, formatNumber, formatElevation, formatDistance, formatDuration }
 }

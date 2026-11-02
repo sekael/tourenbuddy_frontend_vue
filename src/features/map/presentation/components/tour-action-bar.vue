@@ -21,7 +21,7 @@ const { t } = useI18n({ useScope: 'global' })
 
 <template>
   <Transition name="pill">
-    <div v-if="visible" class="pill fab-glass" role="group">
+    <div v-if="visible" class="pill tour-action-pill fab-glass" role="group">
       <BaseTooltip :text="t('map.actionBar.myTours')" :disabled="dismissMode">
         <button
           class="segment segment--tours"
@@ -75,6 +75,12 @@ const { t } = useI18n({ useScope: 'global' })
   overflow: hidden;
   pointer-events: auto;
   white-space: nowrap;
+}
+
+/* While the pill shows, bottom toasts (`--float-bottom`, global.css) rise above the map's control
+   row — pill, speed dial and info button, all docked at this height — instead of covering it. */
+:global(:root:has(.tour-action-pill)) {
+  --bar-inset: calc(52px + var(--spacing-lg) + var(--safe-bottom));
 }
 
 .segment {

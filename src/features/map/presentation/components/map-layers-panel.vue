@@ -7,7 +7,6 @@ import { focusForKeyboard } from '@/core/utils/keyboard-focus'
 import { SWISSTOPO_STYLES } from '@/features/map/data/swisstopo-styles'
 import { TRAIL_OVERLAYS } from '@/features/map/data/trail-overlays'
 import LayerTile from './layer-tile.vue'
-import MapLegend from './map-legend.vue'
 
 const props = defineProps<{ currentStyleIndex: number, activeOverlays: TrailOverlayId[] }>()
 const emit = defineEmits<{ selectStyle: [index: number], toggleOverlay: [id: TrailOverlayId] }>()
@@ -61,12 +60,6 @@ function onBaseKeydown(e: KeyboardEvent) {
         />
       </div>
     </section>
-    <section>
-      <h3 class="heading">
-        {{ t('map.legend.title') }}
-      </h3>
-      <MapLegend />
-    </section>
   </div>
 </template>
 
@@ -81,7 +74,8 @@ function onBaseKeydown(e: KeyboardEvent) {
      so a tap between tiles doesn't close the menu. */
   pointer-events: auto;
   max-width: calc(100vw - 2 * var(--spacing-lg));
-  /* With the legend the panel can outgrow a phone's height: it scrolls instead (D11). */
+  /* A short phone may still not fit it: it scrolls instead (D11). The legend has its own button,
+     so it stays out of here and the layer tiles in thumb reach. */
   max-height: calc(100dvh - 160px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   overflow-y: auto;
   overscroll-behavior: contain;

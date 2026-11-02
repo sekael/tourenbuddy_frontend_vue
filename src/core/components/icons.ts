@@ -22,9 +22,11 @@ import IconCheckCircleOutline from '~icons/material-symbols/check-circle-outline
 import IconChevronLeft from '~icons/material-symbols/chevron-left'
 import IconChevronRight from '~icons/material-symbols/chevron-right'
 import IconClose from '~icons/material-symbols/close'
+import IconCloudDoneOutline from '~icons/material-symbols/cloud-done-outline'
 import IconCloudOffOutline from '~icons/material-symbols/cloud-off-outline'
 import IconContactsOutline from '~icons/material-symbols/contacts-outline'
 import IconContentCopyOutline from '~icons/material-symbols/content-copy-outline'
+import IconCrueltyFree from '~icons/material-symbols/cruelty-free'
 import IconDeleteOutline from '~icons/material-symbols/delete-outline'
 import IconDescriptionOutline from '~icons/material-symbols/description-outline'
 import IconDirectionsBike from '~icons/material-symbols/directions-bike'
@@ -35,6 +37,7 @@ import IconDownhillSkiing from '~icons/material-symbols/downhill-skiing'
 import IconDownload from '~icons/material-symbols/download'
 import IconDownloadForOfflineOutline from '~icons/material-symbols/download-for-offline-outline'
 import IconDragIndicator from '~icons/material-symbols/drag-indicator'
+import IconDrawOutline from '~icons/material-symbols/draw-outline'
 import IconEcoOutline from '~icons/material-symbols/eco-outline'
 import IconEditOutline from '~icons/material-symbols/edit-outline'
 import IconElevationOutline from '~icons/material-symbols/elevation-outline'
@@ -74,12 +77,15 @@ import IconPhoneEnabledOutline from '~icons/material-symbols/phone-enabled-outli
 import IconPictureAsPdfOutline from '~icons/material-symbols/picture-as-pdf-outline'
 import IconPrivacyTipOutline from '~icons/material-symbols/privacy-tip-outline'
 import IconRadioButtonUnchecked from '~icons/material-symbols/radio-button-unchecked'
+import IconRedo from '~icons/material-symbols/redo'
 import IconReplay from '~icons/material-symbols/replay'
 import IconRouteOutline from '~icons/material-symbols/route-outline'
 import IconScheduleOutline from '~icons/material-symbols/schedule-outline'
 import IconSearch from '~icons/material-symbols/search'
 import IconSearchOff from '~icons/material-symbols/search-off'
+import IconSnailOutline from '~icons/material-symbols/snail-outline'
 import IconSnowboarding from '~icons/material-symbols/snowboarding'
+import IconSpeedOutline from '~icons/material-symbols/speed-outline'
 import IconSportsScore from '~icons/material-symbols/sports-score'
 import IconSprint from '~icons/material-symbols/sprint'
 import IconStar from '~icons/material-symbols/star'
@@ -91,6 +97,8 @@ import IconTimeline from '~icons/material-symbols/timeline'
 import IconTourOutline from '~icons/material-symbols/tour-outline'
 import IconTripOrigin from '~icons/material-symbols/trip-origin'
 import IconTune from '~icons/material-symbols/tune'
+import IconUTurnLeft from '~icons/material-symbols/u-turn-left'
+import IconUndo from '~icons/material-symbols/undo'
 import IconUploadFileOutline from '~icons/material-symbols/upload-file-outline'
 import IconVerifiedOutline from '~icons/material-symbols/verified-outline'
 import IconWarningOutline from '~icons/material-symbols/warning-outline'
@@ -153,9 +161,11 @@ export const iconRegistry: Record<string, Component> = {
   chevron_right: IconChevronRight,
   climbing: IconClimbing,
   close: IconClose,
+  cloud_done: IconCloudDoneOutline,
   cloud_off: IconCloudOffOutline,
   contacts: IconContactsOutline,
   content_copy: IconContentCopyOutline,
+  cruelty_free: IconCrueltyFree,
   delete: IconDeleteOutline,
   description: IconDescriptionOutline,
   directions: IconDirectionsOutline,
@@ -165,6 +175,7 @@ export const iconRegistry: Record<string, Component> = {
   download: IconDownload,
   download_for_offline: IconDownloadForOfflineOutline,
   drag_indicator: IconDragIndicator,
+  draw: IconDrawOutline,
   eco: IconEcoOutline,
   edit: IconEditOutline,
   elevation: IconElevationOutline,
@@ -206,6 +217,7 @@ export const iconRegistry: Record<string, Component> = {
   picture_as_pdf: IconPictureAsPdfOutline,
   privacy_tip: IconPrivacyTipOutline,
   radio_button_unchecked: IconRadioButtonUnchecked,
+  redo: IconRedo,
   remove_circle_outline: IconDoNotDisturbOnOutline,
   replay: IconReplay,
   route: IconRouteOutline,
@@ -214,7 +226,9 @@ export const iconRegistry: Record<string, Component> = {
   search_off: IconSearchOff,
   ski_mountaineering: IconSkiMountaineering,
   ski_touring: IconSkiTouring,
+  snail: IconSnailOutline,
   snowboarding: IconSnowboarding,
+  speed: IconSpeedOutline,
   splitboarding: IconSplitboarding,
   sports_score: IconSportsScore,
   sprint: IconSprint,
@@ -227,6 +241,8 @@ export const iconRegistry: Record<string, Component> = {
   tour: IconTourOutline,
   trip_origin: IconTripOrigin,
   tune: IconTune,
+  u_turn_left: IconUTurnLeft,
+  undo: IconUndo,
   upload_file: IconUploadFileOutline,
   verified: IconVerifiedOutline,
   warning: IconWarningOutline,

@@ -1,5 +1,5 @@
 import type { TrailOverlayId } from '@/features/map/data/trail-overlays'
-import type { Trail } from '@/features/map/domain/entities/trail'
+import type { LngLat, Trail } from '@/features/map/domain/entities/trail'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
@@ -54,7 +54,10 @@ export interface PendingIntent {
 }
 
 export const useMapStore = defineStore('map', () => {
+  /** A form needs the map: a point pick, or a track drawing (`isDrawingTrack`). */
   const isPickingLocation = ref(false)
+  /** Drawing a track on the map for the open form (#323); always a kind of pick. */
+  const isDrawingTrack = ref(false)
   /** On-canvas rectangle-draw mode for selecting an offline map region. */
   const isDrawingRegion = ref(false)
   const currentStyleIndex = ref(0)
@@ -74,6 +77,8 @@ export const useMapStore = defineStore('map', () => {
   /** Re-picked, not-yet-saved start/end coordinates shown as lighter-tone draft detail markers. */
   const previewStart = ref<{ lng: number, lat: number } | null>(null)
   const previewEnd = ref<{ lng: number, lat: number } | null>(null)
+  /** The open form's not-yet-saved track: null = unchanged (the saved one shows), [] = removed. */
+  const previewTrack = ref<LngLat[] | null>(null)
   /** One-shot cross-route intent from the calendar (see PendingIntent). */
   const pendingIntent = ref<PendingIntent | null>(null)
   /** Visible trail overlays, kept in draw order; persisted per device. */
@@ -123,6 +128,13 @@ export const useMapStore = defineStore('map', () => {
 
   function setPickingLocation(picking: boolean) {
     isPickingLocation.value = picking
+    if (!picking)
+      isDrawingTrack.value = false
+  }
+
+  function setDrawingTrack(drawing: boolean) {
+    isDrawingTrack.value = drawing
+    isPickingLocation.value = drawing
   }
 
   function setDrawingRegion(drawing: boolean) {
@@ -161,8 +173,13 @@ export const useMapStore = defineStore('map', () => {
     previewEnd.value = end
   }
 
+  function setPreviewTrack(line: LngLat[] | null) {
+    previewTrack.value = line
+  }
+
   return {
     isPickingLocation,
+    isDrawingTrack,
     isDrawingRegion,
     currentStyleIndex,
     selectedTourId,
@@ -171,6 +188,7 @@ export const useMapStore = defineStore('map', () => {
     previewTourTypes,
     previewStart,
     previewEnd,
+    previewTrack,
     pendingIntent,
     activeOverlays,
     trailCard,
@@ -181,6 +199,7 @@ export const useMapStore = defineStore('map', () => {
     setPendingIntent,
     consumePendingIntent,
     setPickingLocation,
+    setDrawingTrack,
     setDrawingRegion,
     setStyleIndex,
     selectTour,
@@ -189,5 +208,6 @@ export const useMapStore = defineStore('map', () => {
     setPreviewTourTypes,
     setPreviewStart,
     setPreviewEnd,
+    setPreviewTrack,
   }
 })

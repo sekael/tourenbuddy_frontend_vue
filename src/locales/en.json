@@ -490,7 +490,6 @@
       "gpxInvalid": "Invalid GPX file",
       "gpxReadError": "Failed to read file",
       "cancelBtn": "Cancel",
-      "locationSectionLabel": "Location",
       "detailSectionLabel": "Details",
       "gpxSectionLabel": "GPX track",
       "plannedDateLabel": "Start date",
@@ -502,7 +501,7 @@
       "equipmentPlaceholder": "Gear list...",
       "notesLabel": "Notes",
       "notesPlaceholder": "Any other info...",
-      "gpxLabel": "GPX Track",
+      "gpxLabel": "Track",
       "gpxUploadBtn": "Upload GPX track",
       "gpxReplaceBtn": "Replace",
       "gpxReplaceTooltip": "Replace GPX track",
@@ -542,12 +541,22 @@
       "landingLabel": "Landing",
       "fromGoal": "{distance} from the goal",
       "farFromGoal": "{distance} from the goal – right place?",
-      "addLandingBtn": "Add landing"
+      "addLandingBtn": "Add landing",
+      "gpxDrawBtn": "Draw on map",
+      "gpxEditBtn": "Edit on map",
+      "gpxDrawn": "Drawn track",
+      "routeSectionLabel": "Route",
+      "pointsFromTrack": "Start and end come from the track.",
+      "pointsByHandBtn": "Set by hand",
+      "fromTrack": "from the track",
+      "gpxDrawnFile": "Drawn track · {distance}",
+      "gpxPreparing": "Adding heights to the track…"
     },
     "creation": {
       "title": "New Tour",
       "pickingTitle": "New Tour: {name}",
-      "saveBtn": "Save Tour"
+      "saveBtn": "Save Tour",
+      "alreadyThere": "You already have this tour planned."
     },
     "infoSheet": {
       "editTitlePrefix": "Edit",
@@ -644,7 +653,8 @@
           "address": "Address",
           "stop": "Public transport stop"
         }
-      }
+      },
+      "routeHint": "Or tap a marked ski route to plan it with its track."
     },
     "attachments": {
       "add": "Add file",
@@ -771,7 +781,11 @@
       "flight": "Flight",
       "flightUp": "Flight up",
       "ascentPartFlown": "Ascent, partly flown",
-      "descentPartFlown": "Descent, partly flown"
+      "descentPartFlown": "Descent, partly flown",
+      "time": "Estimated time",
+      "minutes": "{m} min",
+      "hours": "{h}:{m} h",
+      "pace": "Pace"
     }
   },
   "map": {
@@ -849,6 +863,31 @@
       "cluster": "Several tours — tap to zoom in or list them",
       "chain": "Segments of a multi-day tour",
       "open": "Show legend"
+    },
+    "draw": {
+      "title": "Draw track",
+      "followLabel": "The line follows",
+      "status": {
+        "hiking": "The line follows hiking trails, then roads and paths.",
+        "ski": "The line follows ski routes, then roads and paths.",
+        "byActivity": "(matches the tour’s activity)",
+        "ways": "The line follows roads and paths.",
+        "unavailable": "Couldn’t load the trails (offline?), so this part is drawn straight."
+      },
+      "hint": {
+        "start": "Tap the map to set the start.",
+        "next": "Tap along the way to add points. Drag a point to move it.",
+        "profileLoading": "Loading the elevation profile…",
+        "profileOffline": "The elevation profile needs a connection."
+      },
+      "pace": {
+        "open": "Set your pace"
+      },
+      "undo": "Undo",
+      "redo": "Redo",
+      "done": "Done",
+      "returnToStart": "To start",
+      "returnToStartHint": "Back to the start the same way"
     }
   },
   "i18n": {
@@ -1007,11 +1046,11 @@
       },
       "addLocation": {
         "title": "Plan a tour",
-        "body": "Tap here and drop a pin on your objective — summit, crag or hut. TourenBuddy suggests the name, the elevation and nearby starting points."
+        "body": "Tap here and drop a pin on your objective — summit, crag or hut. TourenBuddy suggests the name and elevation; then draw your route on the map, and the start and end come with it."
       },
       "mapLayers": {
         "title": "Map layers",
-        "body": "Pick a base map and add hiking trails or ski routes on top, in any combination. With ski routes on, zoom in until the routes show difficulty badges, then tap one for its details — or plan it as a tour right away. The legend at the bottom explains the marker colours and symbols."
+        "body": "Pick a base map and add hiking trails or ski routes on top, in any combination. With ski routes on, zoom in until the routes show difficulty badges, then tap one for its details — or plan it as a tour right away. The ⓘ button at the bottom left explains the marker colours and symbols."
       },
       "welcome": {
         "title": "Welcome to TourenBuddy",
@@ -1104,17 +1143,20 @@
     }
   },
   "offline": {
-    "indicator": "You're offline — showing saved data",
+    "bar": {
+      "offline": "Offline · showing saved data",
+      "unverified": "Signed in offline · data may be out of date",
+      "waiting": "Offline · {count} change waiting to sync | Offline · {count} changes waiting to sync"
+    },
     "actionUnavailable": "This action isn't available offline",
-    "unverifiedSession": "You're signed in offline — your data may be out of date",
     "writeError": {
       "generic": "Couldn't save your change offline — please try again",
       "storageFull": "Couldn't save offline — device storage is full. Free up space and try again"
     }
   },
   "offlineSync": {
-    "savedOffline": "Saved offline — will sync when you're back online",
     "pendingCount": "{count} change waiting to sync | {count} changes waiting to sync",
+    "synced": "{count} change synced | {count} changes synced",
     "conflictLost": "Changed on another device — your offline edit was not applied",
     "attachmentsOnlineOnly": "Attachments are available online only",
     "friendshipsOnlineOnly": "Friend requests are available online only",

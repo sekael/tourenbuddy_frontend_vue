@@ -1,5 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
+import { pace } from '@/core/composables/use-pace'
 import { InvalidPhoneNumberError, PhoneAlreadyRegisteredError } from '@/core/exceptions'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
@@ -81,6 +83,8 @@ describe('useUserProfileStore', () => {
     }
     mockLocaleStoreLocale.value = 'en'
   })
+  // The pace is module state: a store left alive would answer the next test's pace changes.
+  afterEach(() => useUserProfileStore().$dispose())
 
   describe('loadProfile', () => {
     it('should load existing profile', async () => {
@@ -112,6 +116,7 @@ describe('useUserProfileStore', () => {
         onboardingTourLastStep: 0,
         calendarTourShowOnFirstOpen: true,
         calendarFeatureNoticeShowAtSignIn: false,
+        pace: 1,
         updatedAt: null,
       })
       expect(store.profile).toEqual(newProfile)
@@ -235,6 +240,41 @@ describe('useUserProfileStore', () => {
         lastName: 'Doe',
         locale: 'en',
       })
+    })
+  })
+
+  describe('pace', () => {
+    const existing = { id: 'user-123', firstName: 'Max', lastName: null, locale: 'en' as const }
+    beforeEach(() => {
+      pace.value = 1
+      vi.useFakeTimers()
+    })
+    afterEach(() => vi.useRealTimers())
+
+    it('should write a slider drag once, where it came to rest', async () => {
+      mockGetUserById.mockResolvedValue({ ...existing, pace: 1 })
+      mockUpsertProfile.mockImplementation(async p => p)
+      const store = useUserProfileStore()
+      await store.loadProfile()
+
+      for (const step of [1.1, 1.2, 1.3]) {
+        pace.value = step
+        await nextTick()
+      }
+      await vi.advanceTimersByTimeAsync(600)
+
+      expect(mockUpsertProfile).toHaveBeenCalledOnce()
+      expect(mockUpsertProfile).toHaveBeenCalledWith(expect.objectContaining({ pace: 1.3 }))
+    })
+
+    it('should take the account\'s pace without writing it back', async () => {
+      mockGetUserById.mockResolvedValue({ ...existing, pace: 0.8 })
+      const store = useUserProfileStore()
+      await store.loadProfile()
+      await vi.advanceTimersByTimeAsync(600)
+
+      expect(pace.value).toBe(0.8)
+      expect(mockUpsertProfile).not.toHaveBeenCalled()
     })
   })
 

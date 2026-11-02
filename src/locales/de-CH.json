@@ -490,7 +490,6 @@
       "gpxInvalid": "Ungültige GPX-Datei",
       "gpxReadError": "Datei konnte nicht gelesen werden",
       "cancelBtn": "Abbrechen",
-      "locationSectionLabel": "Ort",
       "detailSectionLabel": "Details",
       "gpxSectionLabel": "GPS Track",
       "plannedDateLabel": "Startdatum",
@@ -502,7 +501,7 @@
       "equipmentPlaceholder": "Materialliste...",
       "notesLabel": "Notizen",
       "notesPlaceholder": "Andere Informationen...",
-      "gpxLabel": "GPX-Track",
+      "gpxLabel": "Track",
       "gpxUploadBtn": "GPX-Track hochladen",
       "gpxReplaceBtn": "Ersetzen",
       "gpxReplaceTooltip": "GPX-Track ersetzen",
@@ -542,12 +541,22 @@
       "landingLabel": "Landeplatz",
       "fromGoal": "{distance} vom Ziel",
       "farFromGoal": "{distance} vom Ziel – stimmt der Ort?",
-      "addLandingBtn": "Landeplatz hinzufügen"
+      "addLandingBtn": "Landeplatz hinzufügen",
+      "gpxDrawBtn": "Auf Karte zeichnen",
+      "gpxEditBtn": "Auf Karte bearbeiten",
+      "gpxDrawn": "Gezeichneter Track",
+      "routeSectionLabel": "Route",
+      "pointsFromTrack": "Start und Ende kommen aus dem Track.",
+      "pointsByHandBtn": "Selbst setzen",
+      "fromTrack": "aus dem Track",
+      "gpxDrawnFile": "Gezeichneter Track · {distance}",
+      "gpxPreparing": "Höhen werden ergänzt …"
     },
     "creation": {
       "title": "Neue Tour",
       "pickingTitle": "Neue Tour: {name}",
-      "saveBtn": "Tour speichern"
+      "saveBtn": "Tour speichern",
+      "alreadyThere": "Diese Tour hast du schon schon geplant."
     },
     "infoSheet": {
       "editTitlePrefix": "Bearbeiten",
@@ -644,7 +653,8 @@
           "address": "Adresse",
           "stop": "ÖV-Haltestelle"
         }
-      }
+      },
+      "routeHint": "Oder tippe auf eine markierte Skitour, um sie samt Track zu planen."
     },
     "attachments": {
       "add": "Datei hinzufügen",
@@ -771,7 +781,11 @@
       "flight": "Flug",
       "flightUp": "Flug hinauf",
       "ascentPartFlown": "Aufstieg, teils geflogen",
-      "descentPartFlown": "Abstieg, teils geflogen"
+      "descentPartFlown": "Abstieg, teils geflogen",
+      "time": "Geschätzte Zeit",
+      "minutes": "{m} min",
+      "hours": "{h}:{m} h",
+      "pace": "Tempo"
     }
   },
   "map": {
@@ -849,6 +863,31 @@
       "cluster": "Mehrere Touren – tippen zum Hineinzoomen oder Auflisten",
       "chain": "Etappen einer Etappentour",
       "open": "Legende anzeigen"
+    },
+    "draw": {
+      "title": "Track zeichnen",
+      "followLabel": "Die Linie folgt",
+      "status": {
+        "hiking": "Die Linie folgt den Wanderwegen, dann Strassen und Wegen.",
+        "ski": "Die Linie folgt den Skitouren, dann Strassen und Wegen.",
+        "byActivity": "(passend zur Aktivität der Tour)",
+        "ways": "Die Linie folgt Strassen und Wegen.",
+        "unavailable": "Die Wege konnten nicht geladen werden (offline?), dieser Abschnitt ist deshalb gerade."
+      },
+      "hint": {
+        "start": "Tippe auf die Karte, um den Start zu setzen.",
+        "next": "Tippe entlang des Wegs, um Punkte zu setzen. Ziehe einen Punkt, um ihn zu verschieben.",
+        "profileLoading": "Höhenprofil wird geladen …",
+        "profileOffline": "Das Höhenprofil braucht eine Verbindung."
+      },
+      "pace": {
+        "open": "Tempo einstellen"
+      },
+      "undo": "Rückgängig",
+      "redo": "Wiederholen",
+      "done": "Fertig",
+      "returnToStart": "Zum Start",
+      "returnToStartHint": "Auf demselben Weg zurück zum Start"
     }
   },
   "i18n": {
@@ -1007,11 +1046,11 @@
       },
       "addLocation": {
         "title": "Tour planen",
-        "body": "Tippe hier und setze eine Markierung auf dein Ziel – Gipfel, Kletterfels oder Hütte. TourenBuddy schlägt Namen, Höhe und passende Startpunkte vor."
+        "body": "Tippe hier und setze eine Markierung auf dein Ziel – Gipfel, Kletterfels oder Hütte. TourenBuddy schlägt Namen und Höhe vor; danach zeichnest du die Route auf der Karte, Start und Ende kommen mit."
       },
       "mapLayers": {
         "title": "Kartenebenen",
-        "body": "Wähle eine Grundkarte und blende Wanderwege oder Skitouren darüber ein, in beliebiger Kombination. Mit Skitouren zoomst du hinein, bis die Routen Schwierigkeits-Badges zeigen, und tippst dann für Details auf eine Route – oder planst sie gleich als Tour. Die Legende unten erklärt die Farben und Symbole der Tourenmarker."
+        "body": "Wähle eine Grundkarte und blende Wanderwege oder Skitouren darüber ein, in beliebiger Kombination. Mit Skitouren zoomst du hinein, bis die Routen Schwierigkeits-Badges zeigen, und tippst dann für Details auf eine Route – oder planst sie gleich als Tour. Der ⓘ-Knopf unten links erklärt die Farben und Symbole der Tourenmarker."
       },
       "welcome": {
         "title": "Willkommen bei TourenBuddy",
@@ -1104,17 +1143,20 @@
     }
   },
   "offline": {
-    "indicator": "Du bist offline — gespeicherte Daten werden angezeigt",
+    "bar": {
+      "offline": "Offline · gespeicherte Daten",
+      "unverified": "Offline angemeldet · Daten evtl. veraltet",
+      "waiting": "Offline · {count} Änderung ausstehend | Offline · {count} Änderungen ausstehend"
+    },
     "actionUnavailable": "Diese Aktion ist offline nicht verfügbar",
-    "unverifiedSession": "Du bist offline angemeldet — deine Daten sind möglicherweise nicht aktuell",
     "writeError": {
       "generic": "Deine Änderung konnte offline nicht gespeichert werden — bitte versuche es erneut",
       "storageFull": "Offline-Speichern fehlgeschlagen — der Gerätespeicher ist voll. Gib Speicher frei und versuche es erneut"
     }
   },
   "offlineSync": {
-    "savedOffline": "Offline gespeichert — wird synchronisiert, sobald du wieder online bist",
     "pendingCount": "{count} Änderung wartet auf Synchronisierung | {count} Änderungen warten auf Synchronisierung",
+    "synced": "{count} Änderung synchronisiert | {count} Änderungen synchronisiert",
     "conflictLost": "Auf einem anderen Gerät geändert — deine Offline-Änderung wurde nicht übernommen",
     "attachmentsOnlineOnly": "Anhänge sind nur online verfügbar",
     "friendshipsOnlineOnly": "Freundschaftsanfragen sind nur online verfügbar",

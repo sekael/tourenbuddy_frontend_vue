@@ -1,12 +1,23 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import BaseIcon from '@/core/components/base-icon.vue'
+import { pace } from '@/core/composables/use-pace'
 import { TOUR_TYPE_ICONS } from '@/features/tours/data/models/tour-type'
 import RouteNumbers from '@/features/tours/presentation/components/route-numbers.vue'
 
 const icons = (w: ReturnType<typeof mount>, id: string) => w.find(`[data-testid="${id}"]`).findAllComponents(BaseIcon).map(i => i.props('name'))
 
 describe('routeNumbers', () => {
+  it('should badge a pace off the standard beside the time with its factor alone, and none at the standard', async () => {
+    const w = mount(RouteNumbers, { props: { metrics: { ascent: 600, descent: 600, distance: 8000 }, minutes: 300 } })
+    expect(w.find('[data-testid="pace-badge"]').exists()).toBe(false)
+    pace.value = 0.7
+    await w.vm.$nextTick()
+    expect(w.find('[data-testid="route-time"] [data-testid="pace-badge"]').text()).toContain('0.7×')
+    expect(icons(w, 'route-time')).toEqual(['schedule'])
+    pace.value = 1
+  })
+
   it('should leave out the zero descent of a tour that ends at its goal, and a zero distance', () => {
     const w = mount(RouteNumbers, { props: { metrics: { ascent: 447, descent: 0, distance: 0 } } })
     expect(w.find('[data-testid="route-ascent"]').text()).toContain('447\u00A0m')
