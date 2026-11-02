@@ -6,39 +6,33 @@ import BaseIcon from '@/core/components/base-icon.vue'
 import ErrorSnackbar from '@/core/components/error-snackbar.vue'
 import { useSnackbarSlot } from '@/core/composables/use-snackbar'
 import { offlineBlockedAt, offlineWriteError } from '@/core/offline/mutate'
+import { pendingCount } from '@/core/offline/queue-status'
 import { isOnline } from '@/core/offline/use-online-status'
 
-// Global offline surface (change: offline-app-cache-sync). The PERSISTENT indicator is
-// now icon-only and pinned bottom-left, so it never covers the tour list / creation pill
-// (the centered pill did). The explanatory text shows once, briefly, as a snackbar each
-// time we drop offline; a blocked mutation still raises its own transient notice.
+// Global offline surface (change: ios-status-bar-offline-bar). The PERSISTENT status is a slim
+// bar at the top that takes its own band (safe-area.css), so it never covers a control the way the
+// floating corner chips did: offline, or changes still waiting to sync, with their count. A
+// blocked mutation or a failed offline write still raises its own transient notice.
 const { t } = useI18n({ useScope: 'global' })
 
 // A session restored from storage without a successful token refresh: we're serving
 // cached data on an unproven session, which reads as "offline" to the user even when the
 // device claims connectivity (change: auth-session-restore-redirect, design D7).
-const statusMessage = computed(() =>
-  sessionUnverified.value ? t('offline.unverifiedSession') : t('offline.indicator'),
-)
 const degraded = computed(() => !isOnline.value || sessionUnverified.value)
 
-// Transient explanatory snackbar, shown each time we drop into a degraded state.
-// `immediate` matters for the unverified session: it's true from the first render on a
-// cold start, so there is no transition to catch.
-const explainVisible = ref(false)
-// These transient messages share the app-wide snackbar spot: a newer one replaces them.
-const claimExplain = useSnackbarSlot(() => explainVisible.value = false)
-let explainTimer: ReturnType<typeof setTimeout> | null = null
-watch(degraded, (isDegraded) => {
-  if (!isDegraded)
-    return
-  claimExplain()
-  explainVisible.value = true
-  if (explainTimer)
-    clearTimeout(explainTimer)
-  explainTimer = setTimeout(() => {
-    explainVisible.value = false
-  }, 4000)
+const barText = computed(() => {
+  const count = pendingCount.value
+  if (degraded.value && count > 0)
+    return t('offline.bar.waiting', { count })
+  if (degraded.value)
+    return sessionUnverified.value ? t('offline.bar.unverified') : t('offline.bar.offline')
+  return count > 0 ? t('offlineSync.pendingCount', { count }) : ''
+})
+// The last text and icon stay while the band closes, so the bar doesn't empty before it shrinks.
+const shown = ref({ text: '', icon: 'cloud_off' })
+watch([barText, degraded], ([text, off]) => {
+  if (text)
+    shown.value = { text, icon: off ? 'cloud_off' : 'sync_alt' }
 }, { immediate: true })
 
 // Blocked-action notice (a mutation attempted while offline).
@@ -76,20 +70,11 @@ watch(offlineWriteError, (key) => {
 </script>
 
 <template>
-  <!-- Persistent, icon-only offline chip (bottom-left) — minimal footprint. -->
-  <Transition name="chip">
-    <div v-if="degraded" class="offline-chip fab-glass" role="status" :aria-label="statusMessage">
-      <BaseIcon name="cloud_off" size="sm" />
-    </div>
-  </Transition>
-
-  <!-- Transient explanatory snackbar, once per offline transition. -->
-  <Transition name="chip">
-    <div v-if="explainVisible" class="offline-snackbar" role="status">
-      <BaseIcon name="cloud_off" size="sm" />
-      <span>{{ statusMessage }}</span>
-    </div>
-  </Transition>
+  <!-- Always in the DOM, so the live region announces each change of its text. -->
+  <div class="offline-bar" :class="{ 'offline-bar--on': barText }" role="status">
+    <BaseIcon :name="shown.icon" size="sm" />
+    <span class="offline-bar-text">{{ shown.text }}</span>
+  </div>
 
   <ErrorSnackbar
     :visible="noticeVisible"
@@ -105,47 +90,37 @@ watch(offlineWriteError, (key) => {
 </template>
 
 <style scoped>
-/* Bottom-left, clear of the top nav and the bottom-right FAB. Sits BELOW the sync
-   chip (offline-sync-status stacks above it) and below the transient snackbar. */
-.offline-chip {
+/* Under the system status bar, full width; its height is the band safe-area.css opens for it, so
+   the bar grows and shrinks with the space the page gives up. */
+.offline-bar {
   position: fixed;
-  left: var(--spacing-md);
-  bottom: var(--float-corner-bottom);
+  top: env(safe-area-inset-top, 0px);
+  left: 0;
+  right: 0;
+  height: var(--offline-bar-height);
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--spacing-xs);
-  border-radius: var(--radius-lg);
-  z-index: 190;
-}
-
-/* Bottom-center snackbar carrying the explanatory text (shown briefly only). */
-.offline-snackbar {
-  position: fixed;
-  left: 50%;
-  bottom: var(--float-bottom);
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
   gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-lg);
+  padding: 0 calc(var(--spacing-md) + var(--safe-right)) 0 calc(var(--spacing-md) + var(--safe-left));
   background: var(--color-inverse-surface);
   color: var(--color-on-inverse-surface);
   font-size: 0.8125rem;
-  font-weight: 500;
-  box-shadow: var(--shadow-md);
-  z-index: 210;
-  max-width: 90vw;
+  font-weight: var(--font-weight-medium);
+  z-index: 190;
 }
 
-.chip-enter-active,
-.chip-leave-active {
-  transition: opacity var(--motion-duration-medium) var(--motion-ease-standard);
+/* Hidden (also from screen readers) once the band has closed. */
+.offline-bar:not(.offline-bar--on) {
+  visibility: hidden;
+  transition: visibility 0s var(--motion-duration-medium);
 }
 
-.chip-enter-from,
-.chip-leave-to {
-  opacity: 0;
+.offline-bar-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

@@ -1104,9 +1104,12 @@
     }
   },
   "offline": {
-    "indicator": "Du bist offline — gespeicherte Daten werden angezeigt",
+    "bar": {
+      "offline": "Offline · gespeicherte Daten",
+      "unverified": "Offline angemeldet · Daten evtl. veraltet",
+      "waiting": "Offline · {count} Änderung ausstehend | Offline · {count} Änderungen ausstehend"
+    },
     "actionUnavailable": "Diese Aktion ist offline nicht verfügbar",
-    "unverifiedSession": "Du bist offline angemeldet — deine Daten sind möglicherweise nicht aktuell",
     "writeError": {
       "generic": "Deine Änderung konnte offline nicht gespeichert werden — bitte versuche es erneut",
       "storageFull": "Offline-Speichern fehlgeschlagen — der Gerätespeicher ist voll. Gib Speicher frei und versuche es erneut"
@@ -1115,6 +1118,7 @@
   "offlineSync": {
     "savedOffline": "Offline gespeichert — wird synchronisiert, sobald du wieder online bist",
     "pendingCount": "{count} Änderung wartet auf Synchronisierung | {count} Änderungen warten auf Synchronisierung",
+    "synced": "{count} Änderung synchronisiert | {count} Änderungen synchronisiert",
     "conflictLost": "Auf einem anderen Gerät geändert — deine Offline-Änderung wurde nicht übernommen",
     "attachmentsOnlineOnly": "Anhänge sind nur online verfügbar",
     "friendshipsOnlineOnly": "Freundschaftsanfragen sind nur online verfügbar",
