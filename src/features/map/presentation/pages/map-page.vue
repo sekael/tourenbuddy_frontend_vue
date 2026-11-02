@@ -1,13 +1,18 @@
 <script setup lang="ts">
 import type { Map as MapLibreMap, Point } from 'maplibre-gl'
 import type { DrawnTrack } from '@/features/map/domain/drawn-track'
-import type { Trail } from '@/features/map/domain/entities/trail'
+import type { LngLat, Trail } from '@/features/map/domain/entities/trail'
+import type { RoutePoints, RouteStep } from '@/features/map/domain/route-plan'
+import type { DraftStage } from '@/features/map/presentation/stores/map-store'
 import type { StageContext } from '@/features/onboarding/presentation/composables/use-onboarding-tour'
 import type { TourSurface } from '@/features/onboarding/presentation/onboarding-steps'
+import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { TourDraft } from '@/features/tours/domain/entities/tour'
-import type { PointPick } from '@/features/tours/presentation/composables/use-swisstopo-fill'
+import type { CreationStage, StagePayload } from '@/features/tours/presentation/composables/creation-stages'
+import type { PointChange, PointPick } from '@/features/tours/presentation/composables/use-swisstopo-fill'
 import { LngLatBounds } from 'maplibre-gl'
 import { storeToRefs } from 'pinia'
+import { v4 as uuidv4 } from 'uuid'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
@@ -25,12 +30,14 @@ import { spanDayKeys } from '@/features/calendar/domain/calendar-dates'
 import ContactsListSheet from '@/features/contacts/presentation/components/contacts-list-sheet.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import FriendRequestsSheet from '@/features/friendships/presentation/components/friend-requests-sheet.vue'
+import { ROUTE_STEPS } from '@/features/map/domain/route-plan'
 import LocationPicker from '@/features/map/presentation/components/location-picker.vue'
 import MapActionOverlay from '@/features/map/presentation/components/map-action-overlay.vue'
 import OfflineDownloadSheet from '@/features/map/presentation/components/offline-download-sheet.vue'
 import OfflineManageSheet from '@/features/map/presentation/components/offline-manage-sheet.vue'
 import OfflineRegionDraw from '@/features/map/presentation/components/offline-region-draw.vue'
 import OfflineRegionOutline from '@/features/map/presentation/components/offline-region-outline.vue'
+import RoutePlanner from '@/features/map/presentation/components/route-planner.vue'
 import TourActionBar from '@/features/map/presentation/components/tour-action-bar.vue'
 import TourenbuddyMap from '@/features/map/presentation/components/tourenbuddy-map.vue'
 import TrackDrawer from '@/features/map/presentation/components/track-drawer.vue'
@@ -51,7 +58,7 @@ import { useOnboardingTour } from '@/features/onboarding/presentation/composable
 import { ONBOARDING_STEPS } from '@/features/onboarding/presentation/onboarding-steps'
 import { useOnboardingTourStore } from '@/features/onboarding/presentation/stores/onboarding-tour-store'
 import { isSameGoal } from '@/features/tours/domain/distance'
-import { nextSegmentSeed, outingKey, outingSegments } from '@/features/tours/domain/outing'
+import { nextSegmentSeed, outingKey, outingSegments, spanDays } from '@/features/tours/domain/outing'
 import OutingOverviewSheet from '@/features/tours/presentation/components/outing-overview-sheet.vue'
 import TourCreationDialog from '@/features/tours/presentation/components/tour-creation-dialog.vue'
 import TourInfoSheet from '@/features/tours/presentation/components/tour-info-sheet.vue'
@@ -105,6 +112,7 @@ const { isAuthenticated } = storeToRefs(authStore)
 const { reopenSignal } = storeToRefs(onboardingTourStore)
 
 const mapRef = ref<InstanceType<typeof TourenbuddyMap> | null>(null)
+const creationRef = ref<InstanceType<typeof TourCreationDialog> | null>(null)
 const mapOverlayRef = ref<InstanceType<typeof MapActionOverlay> | null>(null)
 const mapBearing = ref(0)
 
@@ -121,9 +129,7 @@ const activeOverlay = ref<OverlayName | null>(null)
 // Bounding box confirmed for an offline-map download (drawn region or whole map).
 const offlineBbox = ref<[number, number, number, number] | null>(null)
 
-// Location picking state
-const pendingLocation = ref<{ lng: number, lat: number } | null>(null)
-// 'goal' = main tour objective, 'start' = start point, 'end' = end point
+// The crosshair pick of a saved tour's edit: which point ('goal', 'start' or 'end').
 const pendingPickType = ref<'goal' | 'start' | 'end'>('goal')
 
 // Computed visibility flags for template readability
@@ -131,14 +137,42 @@ const showFeedbackSheet = computed(() => activeOverlay.value === 'feedback')
 const showProfileSheet = computed(() => activeOverlay.value === 'profile')
 const showContactDialog = computed(() => activeOverlay.value === 'contacts')
 const showToursList = computed(() => activeOverlay.value === 'tours')
-const showTourCreationDialog = computed(
-  () =>
-    activeOverlay.value === 'tour-creation'
-    || (isPickingLocation.value
-      && pendingPickType.value === 'goal'
-      && pendingLocation.value === null
-      && activeOverlay.value === null),
-)
+// ── Tour creation (map-first-tour-creation) ─────────────────────────────────
+/** The stages being created, one form each (D4); empty while none is. */
+const stages = ref<CreationStage[]>([])
+const activeStage = ref(0)
+/** What a stage's form shows the map (D7). */
+interface StageLive {
+  tourTypes?: TourType[]
+  start?: { lng: number, lat: number } | null
+  end?: { lng: number, lat: number } | null
+  track?: LngLat[] | null
+}
+const stageLive = ref<Record<string, StageLive>>({})
+/** The outing a new stage joins: a segment added to a tour, or a saved tour split into days. */
+const segmentAnchorId = ref<string | null>(null)
+/** The anchor is a split tour: it keeps its first day on save (D5). */
+const splitAnchor = ref(false)
+/** Day numbers continue after the anchor's outing; `dayCount` is the span a split laid out. */
+const dayOffset = ref(0)
+const dayCount = ref<number | null>(null)
+/** The route step (D1): which stage it plans (`stages.length` = a new one), from what. */
+interface PlannerState {
+  initial: RoutePoints
+  step: RouteStep
+  stage: number
+  /** A new stage's form seed (the next day's, an added segment's). */
+  seed: TourDraft | null
+}
+const planner = ref<PlannerState | null>(null)
+/** Bumped per opening, so each one starts fresh. */
+const plannerRun = ref(0)
+const plannerPoints = ref<RoutePoints | null>(null)
+const NO_ROUTE: RoutePoints = { start: null, goal: null, end: null }
+/** The route step left for a ski route's card, to come back to when the card closes. */
+const pausedPlanner = ref<PlannerState | null>(null)
+
+const showTourCreationDialog = computed(() => activeOverlay.value === 'tour-creation' && stages.value.length > 0)
 const showFriendRequests = computed(() => activeOverlay.value === 'friend-requests')
 
 // One sheet replacing another (e.g. tour list → tour) uses `sheet-swap`, a quick
@@ -167,12 +201,9 @@ const addTourTooltip = computed(() =>
   isAuthenticated.value ? undefined : t('map.overlay.signInToAddToursTooltip'),
 )
 
-// The latest pick for the creation form, which looks up the point's name and elevation itself.
-const dialogPick = ref<PointPick | null>(null)
 // Track drawing (#323): the form's current track to go on from, and the finished drawing for the
-// creation form (a planned ski route's line arrives the same way, #352) or the edit form.
+// edit form (the creation form's goes onto its stage, a planned ski route's line too, #352).
 const trackSeed = ref<DrawnTrack | null>(null)
-const dialogDrawnTrack = ref<DrawnTrack | null>(null)
 const editDrawnTrack = ref<DrawnTrack | null>(null)
 
 // Derived reactively from store so it updates immediately when tours are mutated.
@@ -191,9 +222,6 @@ const allTours = computed(() => [...tours.value, ...friendTours.value])
 const selectedOutingSegments = computed(() => outingSegments(allTours.value, selectedOutingKey.value))
 /** Where the open overview was entered from — `list` offers a back to the tour list. */
 const outingOrigin = ref<'list' | null>(null)
-/** A new segment being created: the creation form's seed and the tour it continues (D17). */
-const segmentSeed = ref<TourDraft | null>(null)
-const segmentAnchorId = ref<string | null>(null)
 
 // Whether the current location pick was triggered from the info sheet edit mode
 const isPickingForEdit = ref(false)
@@ -215,14 +243,18 @@ const editContactId = ref<string | null>(null)
 const editPickedPoint = ref<PointPick | null>(null)
 
 function resetTourCreationState() {
-  pendingLocation.value = null
-  dialogPick.value = null
-  dialogDrawnTrack.value = null
-  pendingPickType.value = 'goal'
-  segmentSeed.value = null
+  stages.value = []
+  activeStage.value = 0
+  stageLive.value = {}
   segmentAnchorId.value = null
-  // Drop the draft marker on every cancel/dismiss path (closeOverlay, openOverlay
-  // switching away). The save path re-asserts it afterwards so it survives the round-trip.
+  splitAnchor.value = false
+  dayOffset.value = 0
+  dayCount.value = null
+  pausedPlanner.value = null
+  if (planner.value)
+    closePlanner()
+  // Drop the draft markers on every cancel/dismiss path (closeOverlay, openOverlay
+  // switching away). The save path holds them through the round-trip (`heldPreview`).
   mapStore.setPreviewGoal(null)
   mapStore.setPreviewTourTypes(null)
   mapStore.setPreviewStart(null)
@@ -515,18 +547,37 @@ function handleOutingBack() {
 }
 
 /**
- * "New segment on the map" (D17): pick the goal like a new tour, with the form seeded from the
- * outing's last segment (or the standalone anchor). The outing itself is minted on save.
+ * "New segment on the map" (D17): the route step for its goal, starting where the outing's last
+ * segment (or the standalone anchor) finishes, with the form seeded from it. The outing itself is
+ * minted on save.
  */
 function handleAddSegment(anchorId: string) {
   const anchor = tours.value.find(t => t.id === anchorId)
   if (!anchor)
     return
-  const prev = outingSegments(tours.value, outingKey(anchor)).at(-1) ?? anchor
+  const segments = outingSegments(tours.value, outingKey(anchor))
+  const prev = segments.at(-1) ?? anchor
   closeOverlay()
-  segmentSeed.value = nextSegmentSeed(prev)
   segmentAnchorId.value = anchorId
-  mapStore.setPickingLocation(true)
+  dayOffset.value = Math.max(segments.length, 1)
+  planStage(nextSegmentSeed(prev), !prev.endPoint)
+}
+
+/**
+ * "Split into daily stages" on a saved tour (map-first-tour-creation D5): it keeps its first day,
+ * and the route step opens for the next one — the span's days numbered on.
+ */
+function handleSplitTour(anchorId: string) {
+  const anchor = tours.value.find(t => t.id === anchorId)
+  if (!anchor?.plannedDate || !anchor.endDate)
+    return
+  const segments = outingSegments(tours.value, outingKey(anchor))
+  closeOverlay()
+  segmentAnchorId.value = anchorId
+  splitAnchor.value = true
+  dayOffset.value = Math.max(segments.length, 1)
+  dayCount.value = dayOffset.value - 1 + spanDays({ start: anchor.plannedDate, end: anchor.endDate })
+  planStage(nextSegmentSeed({ ...anchor, endDate: null }), !anchor.endPoint)
 }
 
 /**
@@ -539,10 +590,7 @@ async function handlePlanFromRoute(trail: Trail) {
     return
   const { goal, seed, track } = plan
   closeOverlay()
-  segmentSeed.value = seed
-  pendingLocation.value = goal
-  mapStore.setPreviewGoal(goal)
-  dialogDrawnTrack.value = track
+  stages.value = [{ key: uuidv4(), goal, seed, picks: null, drawnTrack: track }]
   openOverlay('tour-creation')
 }
 
@@ -725,8 +773,9 @@ function handleResetBearing() {
 }
 
 function handleTourClicked(tourId: string) {
-  // A tap while drawing sets a point there instead.
-  if (isDrawingTrack.value)
+  // A tap while drawing or planning sets a point there instead; beside the creation form (desktop)
+  // it must not swap the unsaved tour for another.
+  if (isDrawingTrack.value || planner.value || activeOverlay.value === 'tour-creation')
     return
   const tour = allTours.value.find(t => t.id === tourId)
   const key = tour ? outingKey(tour) : null
@@ -743,85 +792,213 @@ function handleTourClicked(tourId: string) {
   openOverlay('tour')
 }
 
+/** The crosshair pick of a saved tour's edit; the form names the point and looks up its height. */
 function handleLocationConfirmed({ name, ...location }: { lng: number, lat: number, name?: string }) {
   mapStore.setPickingLocation(false)
-  // The form fills in the point's name and elevation as Swisstopo answers — nothing waits here.
-  // A place chosen in the picker's search brings its own name.
-  const pick = (type: PickPointType): PointPick => ({ type, location, name })
-
-  // Pick triggered from the info sheet edit mode — route result back via prop
-  if (isPickingForEdit.value) {
-    const pickType = pendingPickType.value as PickPointType
-    isPickingForEdit.value = false
-    pendingPickType.value = 'goal'
-    // Tentative goal as a lighter-tone preview marker until edit mode closes,
-    // color is already held by previewTourTypes, so no changes needed here.
-    if (pickType === 'goal')
-      mapStore.setPreviewGoal(location)
-    editPickedPoint.value = pick(pickType)
-    return
-  }
-
-  // Hide the pill bar for the entire tour-creation flow, without `openOverlay`'s teardown
-  // of whatever was open before.
-  activeOverlay.value = 'tour-creation'
-
-  if (pendingPickType.value === 'start' || pendingPickType.value === 'end') {
-    dialogPick.value = pick(pendingPickType.value)
-    openOverlay('tour-creation')
-    return
-  }
-
-  // Change-goal during creation: pendingLocation is already set from the initial pick
-  if (pendingPickType.value === 'goal' && pendingLocation.value !== null) {
-    if (!isSameGoal(pendingLocation.value, location)) {
-      pendingLocation.value = location
-      // Move the single draft marker to the re-picked goal (no second marker).
-      mapStore.setPreviewGoal(location)
-      dialogPick.value = pick('goal')
-    }
-    pendingPickType.value = 'goal'
-    openOverlay('tour-creation')
-    return
-  }
-
-  // Initial goal pick
-  pendingLocation.value = location
-  // Show the draft marker immediately; type is neutral until the form picks one.
-  mapStore.setPreviewGoal(location)
-  dialogPick.value = pick('goal')
-  openOverlay('tour-creation')
+  const pickType = pendingPickType.value as PickPointType
+  isPickingForEdit.value = false
+  pendingPickType.value = 'goal'
+  // Tentative goal as a lighter-tone preview marker until edit mode closes,
+  // color is already held by previewTourTypes, so no changes needed here.
+  if (pickType === 'goal')
+    mapStore.setPreviewGoal(location)
+  editPickedPoint.value = { type: pickType, location, name }
 }
 
 function handleLocationCancelled() {
   mapStore.setPickingLocation(false)
-  if (isPickingForEdit.value) {
-    // Sheet stays visible; just reset the pick context
-    isPickingForEdit.value = false
-    pendingPickType.value = 'goal'
-    return
-  }
-  // An abandoned new segment's goal pick drops its seed with it.
-  if (pendingLocation.value === null) {
-    segmentSeed.value = null
-    segmentAnchorId.value = null
-  }
-  // Re-open dialog if we were picking a secondary point for creation
-  if (
-    pendingPickType.value === 'start'
-    || pendingPickType.value === 'end'
-    || (pendingPickType.value === 'goal' && pendingLocation.value !== null)
-  ) {
-    openOverlay('tour-creation')
-  }
+  isPickingForEdit.value = false
   pendingPickType.value = 'goal'
 }
 
-function handlePickPoint(type: 'start' | 'end' | 'goal') {
-  // Keep creation dialog mounted so TourForm state is preserved; it collapses
-  // itself based on isPickingLocation.
-  pendingPickType.value = type
+// ── Route step (map-first-tour-creation D1–D3) ──────────────────────────────
+function openPlanner(state: PlannerState) {
+  planner.value = state
+  plannerRun.value++
   mapStore.setPickingLocation(true)
+}
+
+function closePlanner() {
+  planner.value = null
+  plannerPoints.value = null
+  mapStore.setPickingLocation(false)
+}
+
+function pointOf(location: { lng: number, lat: number } | null, name: string | null, elevation: number | null) {
+  return location && { location, name: name || null, elevation, loading: false }
+}
+
+/**
+ * The route step for a new stage: its seed's start set, its goal next. A start at the previous
+ * stage's goal (`lookupStart`) carries that tour's name, not the place's: the step names it.
+ */
+function planStage(seed: TourDraft | null, lookupStart = false) {
+  const start = seed && pointOf(seed.startPoint, lookupStart ? null : seed.startPointName, seed.startPointElevation)
+  if (start && lookupStart)
+    start.loading = true
+  openPlanner({ initial: { ...NO_ROUTE, start }, step: start ? 'goal' : 'start', stage: stages.value.length, seed: seed && lookupStart ? { ...seed, startPointName: null } : seed })
+}
+
+/** "+" (bar or list): a new tour starts on the map, with its start. */
+function startNewTour() {
+  closeOverlay()
+  mapStore.selectTour(null)
+  resetTourCreationState()
+  planStage(null)
+}
+
+/** The form's Pick / Change: back to the route step on that point, with the stage's points (D3). */
+function handlePickPoint(type: RouteStep) {
+  const route = creationRef.value?.route()
+  const stage = stages.value[activeStage.value]
+  if (!route || !stage)
+    return
+  openPlanner({
+    initial: {
+      goal: pointOf(stage.goal, route.goal.name, route.goal.elevation),
+      start: route.start && pointOf(route.start.location, route.start.name, route.start.elevation),
+      end: route.end && pointOf(route.end.location, route.end.name, route.end.elevation),
+    },
+    step: type,
+    stage: activeStage.value,
+    seed: null,
+  })
+}
+
+/** What moved in the route step, for the form: a found name and height go along (D2). */
+function changedPoints(before: RoutePoints, after: RoutePoints): PointChange[] {
+  return ROUTE_STEPS.flatMap((type): PointChange[] => {
+    const [was, now] = [before[type], after[type]]
+    if (!now)
+      return was && type !== 'goal' ? [{ type, location: null }] : []
+    if (was && !was.loading && was.location.lng === now.location.lng && was.location.lat === now.location.lat)
+      return []
+    const found = now.loading ? {} : { name: now.name ?? undefined, elevation: now.elevation }
+    return [{ type, location: now.location, ...found }]
+  })
+}
+
+function handlePlannerDone(points: RoutePoints) {
+  const state = planner.value
+  const goal = points.goal?.location
+  if (!state || !goal)
+    return
+  closePlanner()
+  const picks = changedPoints(state.initial, points)
+  if (state.stage >= stages.value.length) {
+    stages.value = [...stages.value, { key: uuidv4(), goal, seed: state.seed, picks, drawnTrack: null }]
+    activeStage.value = stages.value.length - 1
+    openOverlay('tour-creation')
+    // A split span (D5) goes on day by day: the next day's route step follows at once, from here.
+    if (state.seed && dayCount.value && dayOffset.value + stages.value.length < dayCount.value) {
+      const { goal: at, end } = points
+      planStage(nextSegmentSeed({
+        ...state.seed,
+        name: at!.name ?? '',
+        elevation: at!.elevation,
+        endPoint: end?.location ?? null,
+        endPointName: end?.name ?? null,
+        endPointElevation: end?.elevation ?? null,
+        goal,
+      }), !end)
+      return
+    }
+  }
+  else {
+    stages.value = stages.value.map((s, i) => (i === state.stage ? { ...s, goal, picks } : s))
+  }
+  void frameDraft()
+}
+
+/** Leaving the route step: back to the form as it was — or, before there is one, no tour at all. */
+function handlePlannerCancel() {
+  closePlanner()
+  if (stages.value.length === 0)
+    resetTourCreationState()
+}
+
+/** "+ Next day" (D4) — or a span split into days (D5): the route step of the day after the last stage. */
+function handleNextDay(split?: number) {
+  const last = stages.value.length - 1
+  const draft = creationRef.value?.snapshotOf(last)
+  const stage = stages.value[last]
+  if (!draft || !stage)
+    return
+  if (split)
+    dayCount.value = dayOffset.value + last + split
+  planStage(nextSegmentSeed({ ...draft, goal: stage.goal }), !draft.endPoint)
+}
+
+/** A later stage dropped (its form already discarded its uploads): the one before it shows. */
+function handleRemoveStage(index: number) {
+  const key = stages.value[index]?.key
+  stages.value = stages.value.filter((_, i) => i !== index)
+  if (key) {
+    const { [key]: _gone, ...rest } = stageLive.value
+    stageLive.value = rest
+  }
+  activeStage.value = Math.max(0, index - 1)
+}
+
+function handleStageChange(index: number, change: StageLive) {
+  const key = stages.value[index]?.key
+  if (key)
+    stageLive.value = { ...stageLive.value, [key]: { ...stageLive.value[key], ...change } }
+}
+
+const creationTitle = computed(() => {
+  if (splitAnchor.value)
+    return t('tours.creation.splitTitle')
+  return segmentAnchorId.value ? t('tours.outing.addTitle') : t('tours.creation.title')
+})
+
+/** "Day 2" past the first stage (or the anchor's); "Day 2 of 3" while laying out a split span. */
+function dayTitle(stage: number) {
+  const n = dayOffset.value + stage + 1
+  return dayCount.value && n <= dayCount.value ? t('tours.creation.dayOf', { n, count: dayCount.value }) : t('tours.creation.day', { n })
+}
+const plannerTitle = computed(() => {
+  const state = planner.value
+  if (!state)
+    return ''
+  return state.stage > 0 || segmentAnchorId.value ? dayTitle(state.stage) : t('tours.creation.title')
+})
+
+/** The map's draft: every stage, the planned one as the route step has it (D7). */
+const draftStages = computed<DraftStage[]>(() => {
+  const out: DraftStage[] = stages.value.map((s) => {
+    const live = stageLive.value[s.key]
+    return { goal: s.goal, startPoint: live?.start ?? null, endPoint: live?.end ?? null, tourTypes: live?.tourTypes ?? s.seed?.tourTypes ?? [], legs: null, track: live?.track ?? null }
+  })
+  const state = planner.value
+  const points = plannerPoints.value
+  if (state && points) {
+    const base = out[state.stage] ?? { tourTypes: state.seed?.tourTypes ?? [], legs: null, track: null }
+    out[state.stage] = { ...base, goal: points.goal?.location ?? null, startPoint: points.start?.location ?? null, endPoint: points.end?.location ?? null }
+  }
+  return out
+})
+/** The draft held on the map while a save is under way, until the real markers replace it. */
+const heldPreview = ref<DraftStage[] | null>(null)
+watch(() => heldPreview.value ?? draftStages.value, shown => mapStore.setPreviewStages(shown), { immediate: true })
+// The active stage's activities pick what a drawing follows (#323).
+watch(() => stageLive.value[stages.value[activeStage.value]?.key ?? '']?.tourTypes, (types) => {
+  if (stages.value.length > 0)
+    mapStore.setPreviewTourTypes(types ?? [])
+})
+
+/** On desktop the drawer opens over the map's right side: keep the draft in view beside it. */
+async function frameDraft() {
+  if (!isDesktop.value)
+    return
+  await nextTick()
+  const map = mapInstance.value
+  const points = draftStages.value.flatMap(s => [s.goal, s.startPoint, s.endPoint].filter(p => p !== null))
+  if (!map || points.length === 0)
+    return
+  const bounds = points.reduce((b, p) => b.extend([p.lng, p.lat]), new LngLatBounds())
+  if (!isBoundsVisible(map, bounds, mapCovered.value))
+    frameBounds(map, bounds, mapCovered.value)
 }
 
 function handleInfoSheetPickPoint(type: 'start' | 'end' | 'goal') {
@@ -848,7 +1025,7 @@ function handleTrackDrawn(track: DrawnTrack) {
   if (isPickingForEdit.value)
     editDrawnTrack.value = track
   else
-    dialogDrawnTrack.value = track
+    stages.value = stages.value.map((s, i) => (i === activeStage.value ? { ...s, drawnTrack: track } : s))
   isPickingForEdit.value = false
 }
 
@@ -922,29 +1099,35 @@ watch(mapInstance, m => m?.on('error', (e) => {
 }))
 
 /**
- * A new tour's goal pick (not a segment's, not an edit's): there a tap on a marked ski route opens
- * its card, to plan it as the tour with its line as track (#323) — closing the card picks on.
+ * A new tour's route step (not a segment's, not a next day's): there a tap on a marked ski route
+ * opens its card, to plan it as the tour with its line as track (#323) — closing the card goes back.
  */
-const routesTappableInPick = computed(() => isPickingLocation.value && !isDrawingTrack.value && !isPickingForEdit.value
-  && pendingPickType.value === 'goal' && pendingLocation.value === null && segmentSeed.value === null
+const routesTappableInPick = computed(() => !!planner.value && stages.value.length === 0 && !segmentAnchorId.value
   && activeOverlays.value.includes('ski') && isOnline.value)
-const trailCardFromPick = ref(false)
+
+/** A tap the route step leaves to the page: one on a marked ski route, where the card opens. */
+function plannerRouteHit(point: Point) {
+  return routesTappableInPick.value && (mapInstance.value?.getZoom() ?? 0) >= TRAIL_LOOKUP_MIN_ZOOM
+    && trailLookup.hitTest(point).ids.length > 0
+}
 
 async function openRouteFromPick(point: Point) {
   const hits = await trailLookup.lookup(point)
-  if (!hits?.candidates.length || !routesTappableInPick.value)
+  const state = planner.value
+  if (!hits?.candidates.length || !routesTappableInPick.value || !state)
     return
-  mapStore.setPickingLocation(false)
-  trailCardFromPick.value = true
+  const points = plannerPoints.value ?? state.initial
+  pausedPlanner.value = { ...state, initial: points, step: points.goal ? 'end' : points.start ? 'goal' : 'start' }
+  closePlanner()
   mapStore.showTrails(hits.candidates, hits.more)
   openOverlay('trail-info')
 }
 
 function handleTrailCardClose() {
-  const backToPick = trailCardFromPick.value
+  const resume = pausedPlanner.value
   closeOverlay()
-  if (backToPick)
-    mapStore.setPickingLocation(true)
+  if (resume)
+    openPlanner(resume)
 }
 
 // The trail card is the one sheet *about* the map, so a tap re-looks-up; every
@@ -953,10 +1136,13 @@ async function handleMapBackgroundClick({ point }: { point: Point }) {
   // Suppress while location picker or region-draw is active — map panning passes
   // through the overlay and would otherwise deselect the current tour.
   if (isPickingLocation.value || isDrawingRegion.value) {
-    if (routesTappableInPick.value && (mapInstance.value?.getZoom() ?? 0) >= TRAIL_LOOKUP_MIN_ZOOM)
+    if (plannerRouteHit(point))
       await openRouteFromPick(point)
     return
   }
+  // The creation form beside the map (desktop) keeps its unsaved tour: a stray map click is no cancel.
+  if (activeOverlay.value === 'tour-creation')
+    return
   const map = mapInstance.value
   const otherSheet = activeOverlay.value !== null && activeOverlay.value !== 'trail-info'
   // Below the marking zoom nothing looks tappable, so a tap is a plain map tap.
@@ -987,7 +1173,7 @@ async function handleMapBackgroundClick({ point }: { point: Point }) {
 watch(activeOverlay, (name) => {
   if (name !== 'trail-info') {
     mapStore.clearTrails()
-    trailCardFromPick.value = false
+    pausedPlanner.value = null
   }
 })
 
@@ -1067,75 +1253,76 @@ function handleBarAddTour() {
     dismissActive()
     return
   }
-  if (barState.value.addTourAction === 'pick') {
-    mapStore.selectTour(null)
-    mapStore.setPickingLocation(true)
+  if (barState.value.addTourAction === 'pick')
+    startNewTour()
+}
+
+async function handleTourCreated(payloads: StagePayload[]) {
+  // Capture the anchor before closeOverlay resets state; the draft stays on the map through the
+  // save until the real markers replace it, and goes on failure too.
+  const anchorId = segmentAnchorId.value
+  const keepFirstDay = splitAnchor.value
+  const days = (anchorId ? dayOffset.value : 0) + payloads.length
+  const shown = draftStages.value
+  closeOverlay()
+  heldPreview.value = shown
+  try {
+    await performCreate(payloads, anchorId, keepFirstDay, days)
+  }
+  finally {
+    heldPreview.value = null
   }
 }
 
-function handleListSheetAddTour() {
-  closeOverlay()
-  mapStore.setPickingLocation(true)
-}
-
-async function handleTourCreated(
-  draft: TourDraft,
-  _gpxRemoved: boolean,
-  preUploadedTourId: string | null = null,
-  draftId: string = '',
-) {
-  if (!pendingLocation.value)
-    return
-  // Capture goal (and a new segment's anchor) before closeOverlay resets state
-  const goal = pendingLocation.value
-  const anchorId = segmentAnchorId.value
-  closeOverlay()
-  // closeOverlay() cleared the draft via resetTourCreationState; re-assert it so the
-  // colored draft survives the create round-trip until performCreate swaps in the real marker.
-  mapStore.setPreviewGoal(goal)
-  mapStore.setPreviewTourTypes(draft.tourTypes)
-  await performCreate(draft, goal, preUploadedTourId, draftId, anchorId)
-}
-
-async function performCreate(
-  draft: TourDraft,
-  goal: { lng: number, lat: number },
-  preUploadedTourId: string | null,
-  draftId: string,
-  anchorId: string | null,
-) {
-  // Keep the re-asserted draft marker on screen through the round-trip; clear it in
-  // `finally` so the real marker replaces it on success and no draft lingers on failure.
-  try {
+async function performCreate(payloads: StagePayload[], anchorId: string | null, keepFirstDay: boolean, days: number) {
+  const [only] = payloads
+  if (payloads.length === 1 && only && !anchorId) {
     // The same tour again (a ski route planned twice, every field left as it came): open the one
-    // there is instead of a copy. A segment or attachments make it another tour.
-    const twin = !anchorId && !attachmentsStore.preUploadedByDraft[draftId]?.length
-      ? await toursStore.dropIfDuplicate(draft, goal)
+    // there is instead of a copy. Attachments make it another tour.
+    const twin = !attachmentsStore.preUploadedByDraft[only.draftId]?.length
+      ? await toursStore.dropIfDuplicate(only.draft, only.goal)
       : null
     if (twin) {
       mapStore.selectTour(twin.id)
       showNotice(t('tours.creation.alreadyThere'), true)
       return
     }
-    // A new segment: the anchor joins (or mints) the outing first, then the tour is created
-    // into it after the last segment — so a cancelled form never leaves a one-segment outing.
-    const outing = anchorId ? await toursStore.ensureOuting(anchorId) : null
-    const newId = await toursStore.createTourFromDraft(
-      outing ? { ...draft, outing: toursStore.nextInOuting(outing) } : draft,
-      goal,
-      preUploadedTourId,
-    )
-    if (newId) {
-      mapStore.selectTour(newId)
-      // The bytes are already in Storage (pre-uploaded on pick, design D5) — this only
-      // inserts the rows, which need the tour row to exist for their FK.
-      if (draftId)
-        await attachmentsStore.commitStaged(draftId, newId)
-    }
+    await createStage(only, undefined)
+    return
   }
-  finally {
-    clearTourPreview()
+  // Stages (D4): a split tour keeps its first day (D5), the anchor joins (or mints) the outing,
+  // then each stage is created after the last segment, in order — so a cancelled layout never
+  // leaves an outing behind.
+  if (anchorId && keepFirstDay)
+    await toursStore.keepFirstDay(anchorId)
+  const outing = anchorId ? await toursStore.ensureOuting(anchorId) : { id: uuidv4(), name: null, position: 0 }
+  if (!outing)
+    return
+  const first = anchorId ? toursStore.nextInOuting(outing).position : 0
+  let lastId: string | null = null
+  for (const [i, stage] of payloads.entries())
+    lastId = await createStage(stage, { ...outing, position: first + i }, false) ?? lastId
+  // One new segment opens as itself; a laid-out trip opens on its overview.
+  const userId = authStore.currentUser?.id
+  if ((payloads.length > 1 || keepFirstDay) && userId) {
+    openOuting(outingKey({ userId, outing })!, null)
+    showNotice(t('tours.creation.savedDays', { count: days }), true)
   }
+  else if (lastId) {
+    mapStore.selectTour(lastId)
+  }
+}
+
+/** Create one stage; its attachments' rows follow (the bytes are already in Storage, design D5). */
+async function createStage(stage: StagePayload, outing: TourDraft['outing'], select = true) {
+  const id = await toursStore.createTourFromDraft(outing ? { ...stage.draft, outing } : stage.draft, stage.goal, stage.preUploadedTourId)
+  if (!id)
+    return null
+  if (select)
+    mapStore.selectTour(id)
+  if (stage.draftId)
+    await attachmentsStore.commitStaged(stage.draftId, id)
+  return id
 }
 
 function handleDialogClose() {
@@ -1211,10 +1398,16 @@ function handleDialogClose() {
     />
 
     <LocationPicker
-      v-if="isPickingLocation && !isDrawingTrack" :map="mapInstance" :role="pendingPickType"
-      :actions-bottom="!isDesktop && (isPickingForEdit || showTourCreationDialog) ? 80 : undefined"
-      :hint="routesTappableInPick ? t('tours.picker.routeHint') : undefined"
+      v-if="isPickingLocation && !isDrawingTrack && !planner" :map="mapInstance" :role="pendingPickType"
+      :actions-bottom="!isDesktop && isPickingForEdit ? 80 : undefined"
       @confirm="handleLocationConfirmed" @cancel="handleLocationCancelled" @searching="pickerSearching = $event"
+    />
+
+    <RoutePlanner
+      v-if="planner && mapInstance" :key="plannerRun" :map="mapInstance" :initial="planner.initial" :step="planner.step"
+      :title="plannerTitle" :done-label="planner.stage < stages.length ? t('map.plan.done') : t('map.plan.continue')"
+      :route-hit="plannerRouteHit" :hint="routesTappableInPick ? t('tours.picker.routeHint') : undefined" :covered="mapCovered"
+      @change="plannerPoints = $event" @done="handlePlannerDone" @cancel="handlePlannerCancel"
     />
 
     <TrackDrawer
@@ -1249,7 +1442,7 @@ function handleDialogClose() {
           @point-consumed="handlePointConsumed" @edit-mode-change="handleEditModeChange"
           @edit-contact="handleEditContact" @tour-types-change="mapStore.setPreviewTourTypes($event)"
           @start-point-change="handleStartPointChange" @end-point-change="handleEndPointChange"
-          @open-outing="handleInfoSheetOpenOuting" @add-segment="handleAddSegment"
+          @open-outing="handleInfoSheetOpenOuting" @add-segment="handleAddSegment" @split-days="handleSplitTour"
         />
       </div>
       <div
@@ -1283,7 +1476,7 @@ function handleDialogClose() {
         <TourListSheet
           @close="closeOverlay" @select-tour="handleTourSelectedFromList"
           @select-outing="openOuting($event, 'list')"
-          @add-tour="handleListSheetAddTour"
+          @add-tour="startNewTour"
         />
       </div>
       <div v-else-if="activeOverlay === 'offline-manage'" key="offline-manage" class="sheet-host">
@@ -1301,11 +1494,10 @@ function handleDialogClose() {
       </div>
       <div v-else-if="showTourCreationDialog" key="tour-creation" class="sheet-host">
         <TourCreationDialog
-          :pick="dialogPick" :initial-goal="pendingLocation" :active-pick-type="pendingPickType" :seed="segmentSeed"
-          :segment="segmentAnchorId !== null" :drawn-track="dialogDrawnTrack"
-          @confirm="(d, r, tid, did) => handleTourCreated(d, r, tid, did)" @close="handleDialogClose"
-          @pick-point="handlePickPoint" @draw-track="handleDrawTrack($event)" @track-change="mapStore.setPreviewTrack($event)" @tour-types-change="mapStore.setPreviewTourTypes($event)"
-          @start-point-change="handleStartPointChange" @end-point-change="handleEndPointChange"
+          ref="creationRef" :stages="stages" :active="activeStage" :title="creationTitle" :day-offset="dayOffset"
+          :day-count="dayCount" @confirm="handleTourCreated" @close="handleDialogClose" @select="activeStage = $event"
+          @remove="handleRemoveStage" @pick-point="handlePickPoint" @draw-track="handleDrawTrack($event)"
+          @next-day="handleNextDay" @stage-change="handleStageChange"
         />
       </div>
     </Transition>

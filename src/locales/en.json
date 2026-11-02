@@ -518,7 +518,7 @@
       },
       "whenSectionLabel": "When",
       "startTimeLabel": "Start time (optional)",
-      "multiDayHint": "Staying overnight? Plan each day as its own segment – after saving, with “Add segment”.",
+      "multiDayHint": "Staying overnight? After saving, split it into daily stages from the tour details.",
       "gradeLabel": "Grade (optional)",
       "gradePlaceholder": "e.g. {example}",
       "gradePlaceholderClimbing": "e.g. 5c or V+",
@@ -550,13 +550,29 @@
       "pointsByHandBtn": "Set by hand",
       "fromTrack": "from the track",
       "gpxDrawnFile": "Drawn track · {distance}",
-      "gpxPreparing": "Adding heights to the track…"
+      "gpxPreparing": "Adding heights to the track…",
+      "nextDayBtn": "Next day",
+      "nextDayHint": "Staying overnight? The next stage starts where this one ends.",
+      "splitDaysBtn": "Split into daily stages",
+      "splitDaysHint": "{count} days: plan each day as its own stage – this one keeps the first."
     },
     "creation": {
       "title": "New Tour",
       "pickingTitle": "New Tour: {name}",
       "saveBtn": "Save Tour",
-      "alreadyThere": "You already have this tour planned."
+      "alreadyThere": "You already have this tour planned.",
+      "day": "Day {n}",
+      "dayOf": "Day {n} of {count}",
+      "daysLabel": "Days of the tour",
+      "saveDays": "Save {count} days",
+      "removeDay": "Remove {day}",
+      "splitTitle": "Stages",
+      "savedDays": "Saved: {count} days as one outing.",
+      "discard": "Discard this tour? The route you planned will be lost.",
+      "discardDays": "Discard all {count} days? The routes you planned will be lost.",
+      "keepEditing": "Keep editing",
+      "dayMissing": "{day} isn’t planned yet.",
+      "planDay": "Plan {day}"
     },
     "infoSheet": {
       "editTitlePrefix": "Edit",
@@ -888,6 +904,28 @@
       "done": "Done",
       "returnToStart": "To start",
       "returnToStartHint": "Back to the start the same way"
+    },
+    "plan": {
+      "stepsLabel": "Route points",
+      "hint": {
+        "start": "Where do you set off? Tap the map or search.",
+        "goal": "Where to? Tap your goal on the map or search.",
+        "end": "Where do you finish? Tap the map – or continue without.",
+        "move": "Tap the map to move this point there, or drag it."
+      },
+      "required": "Required",
+      "optional": "Optional",
+      "unnamed": "No name",
+      "skip": "Skip",
+      "roundTrip": "Round trip",
+      "remove": "Remove",
+      "continue": "Continue",
+      "done": "Done",
+      "step": {
+        "start": "Start",
+        "goal": "Goal",
+        "end": "End"
+      }
     }
   },
   "i18n": {
@@ -1046,7 +1084,7 @@
       },
       "addLocation": {
         "title": "Plan a tour",
-        "body": "Tap here and drop a pin on your objective — summit, crag or hut. TourenBuddy suggests the name and elevation; then draw your route on the map, and the start and end come with it."
+        "body": "Tap here, then tap your start, goal and end on the map — or search for them. TourenBuddy names each point and shows the climb; staying overnight, add the next day before you save."
       },
       "mapLayers": {
         "title": "Map layers",

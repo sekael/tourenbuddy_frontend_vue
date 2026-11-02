@@ -518,7 +518,7 @@
       },
       "whenSectionLabel": "Wann",
       "startTimeLabel": "Startzeit (optional)",
-      "multiDayHint": "Mit Übernachtung unterwegs? Plane jeden Tag als eigene Etappe – nach dem Speichern mit «Etappe hinzufügen».",
+      "multiDayHint": "Mit Übernachtung unterwegs? Teile die Tour nach dem Speichern in den Details in Tagesetappen auf.",
       "gradeLabel": "Schwierigkeit (optional)",
       "gradePlaceholder": "z. B. {example}",
       "gradePlaceholderClimbing": "z. B. 5c oder V+",
@@ -550,13 +550,29 @@
       "pointsByHandBtn": "Selbst setzen",
       "fromTrack": "aus dem Track",
       "gpxDrawnFile": "Gezeichneter Track · {distance}",
-      "gpxPreparing": "Höhen werden ergänzt …"
+      "gpxPreparing": "Höhen werden ergänzt …",
+      "nextDayBtn": "Nächster Tag",
+      "nextDayHint": "Mit Übernachtung? Die nächste Etappe beginnt, wo diese endet.",
+      "splitDaysBtn": "In Tagesetappen aufteilen",
+      "splitDaysHint": "{count} Tage: Plane jeden Tag als eigene Etappe – diese behält den ersten."
     },
     "creation": {
       "title": "Neue Tour",
       "pickingTitle": "Neue Tour: {name}",
       "saveBtn": "Tour speichern",
-      "alreadyThere": "Diese Tour hast du schon schon geplant."
+      "alreadyThere": "Diese Tour hast du schon schon geplant.",
+      "day": "Tag {n}",
+      "dayOf": "Tag {n} von {count}",
+      "daysLabel": "Tage der Tour",
+      "saveDays": "{count} Tage speichern",
+      "removeDay": "{day} entfernen",
+      "splitTitle": "Etappen",
+      "savedDays": "Gespeichert: {count} Tage als eine Etappentour.",
+      "discard": "Tour verwerfen? Die geplante Route geht verloren.",
+      "discardDays": "Alle {count} Tage verwerfen? Die geplanten Routen gehen verloren.",
+      "keepEditing": "Weiter bearbeiten",
+      "dayMissing": "{day} ist noch nicht geplant.",
+      "planDay": "{day} planen"
     },
     "infoSheet": {
       "editTitlePrefix": "Bearbeiten",
@@ -888,6 +904,28 @@
       "done": "Fertig",
       "returnToStart": "Zum Start",
       "returnToStartHint": "Auf demselben Weg zurück zum Start"
+    },
+    "plan": {
+      "stepsLabel": "Routenpunkte",
+      "hint": {
+        "start": "Wo gehst du los? Auf die Karte tippen oder suchen.",
+        "goal": "Wohin? Ziel auf der Karte antippen oder suchen.",
+        "end": "Wo endest du? Auf die Karte tippen – oder ohne Endpunkt weiter.",
+        "move": "Auf die Karte tippen, um den Punkt dorthin zu setzen, oder ihn ziehen."
+      },
+      "required": "Pflicht",
+      "optional": "Optional",
+      "unnamed": "Ohne Namen",
+      "skip": "Überspringen",
+      "roundTrip": "Rundtour",
+      "remove": "Entfernen",
+      "continue": "Weiter",
+      "done": "Fertig",
+      "step": {
+        "start": "Start",
+        "goal": "Ziel",
+        "end": "Ende"
+      }
     }
   },
   "i18n": {
@@ -1046,7 +1084,7 @@
       },
       "addLocation": {
         "title": "Tour planen",
-        "body": "Tippe hier und setze eine Markierung auf dein Ziel – Gipfel, Kletterfels oder Hütte. TourenBuddy schlägt Namen und Höhe vor; danach zeichnest du die Route auf der Karte, Start und Ende kommen mit."
+        "body": "Tippe hier und dann auf der Karte auf Start, Ziel und Ende – oder suche sie. TourenBuddy benennt jeden Punkt und zeigt die Höhenmeter; mit Übernachtung fügst du vor dem Speichern den nächsten Tag hinzu."
       },
       "mapLayers": {
         "title": "Kartenebenen",

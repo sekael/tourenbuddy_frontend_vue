@@ -37,6 +37,7 @@ import { downloadOriginal } from '@/features/tours/data/services/gpx-storage-ser
 import { COLLISION_RADIUS_M, sharesActivity } from '@/features/tours/domain/collision'
 import { isSameGoal } from '@/features/tours/domain/distance'
 import { flight, routeOrder } from '@/features/tours/domain/legs'
+import { outingKey, outingSegments } from '@/features/tours/domain/outing'
 import { tourMinutes } from '@/features/tours/domain/route-metrics'
 import OutingNavigator from '@/features/tours/presentation/components/outing-navigator.vue'
 import RouteNumbers from '@/features/tours/presentation/components/route-numbers.vue'
@@ -89,6 +90,8 @@ const emit = defineEmits<{
   openOuting: [outingKey: string]
   /** Pick a new segment's goal on the map, after this tour's outing (#338). */
   addSegment: [anchorId: string]
+  /** Keep this multi-day tour's first day and lay out the next days (map-first-tour-creation D5). */
+  splitDays: [anchorId: string]
 }>()
 
 const { t, locale } = useI18n({ useScope: 'global' })
@@ -112,6 +115,15 @@ const log = useLogger('tour-info-sheet')
 const isPicking = computed(() => isPickingLocation.value)
 
 const isOwner = computed(() => !!currentUser.value && currentUser.value.id === props.tour.userId)
+
+/** A span of days, standalone or last in its outing: its days can follow as stages (D5). */
+const canSplit = computed(() => {
+  const { plannedDate, endDate } = props.tour
+  if (!isOwner.value || !plannedDate || !endDate || endDate.getTime() - plannedDate.getTime() < 43_200_000)
+    return false
+  const segments = outingSegments(toursStore.tours, outingKey(props.tour))
+  return segments.length === 0 || segments.at(-1)?.id === props.tour.id
+})
 
 // ── View/edit mode ───────────────────────────────────────────────────────────
 // `suggest` composes a proposal on a friend's tour; `review` adjudicates (owner) or shows
@@ -1001,9 +1013,17 @@ const formattedElevation = computed(() =>
 
     <template v-if="mode === 'view' && isOwner && !linksView && !addSegmentView" #footer>
       <div class="view-actions">
+        <!-- A row of its own, full width like the toggles above: three labels never fit one row. -->
+        <BaseButton
+          v-if="deleteState === 'idle' && canSplit" variant="secondary" size="sm" class="split-btn"
+          data-testid="split-days-btn" @click="emit('splitDays', tour.id)"
+        >
+          <BaseIcon name="calendar_view_day" />
+          {{ t('tours.form.splitDaysBtn') }}
+        </BaseButton>
         <div class="edit-delete-row">
           <BaseButton
-            v-if="deleteState === 'idle'" variant="secondary" size="sm" data-testid="add-segment-btn"
+            v-if="deleteState === 'idle' && !canSplit" variant="secondary" size="sm" data-testid="add-segment-btn"
             @click="addSegmentView = true"
           >
             <BaseIcon name="add_road" />
@@ -1088,6 +1108,10 @@ const formattedElevation = computed(() =>
   flex-direction: column;
   align-items: flex-end;
   gap: var(--spacing-sm);
+}
+
+.split-btn {
+  align-self: stretch;
 }
 
 .edit-delete-row {

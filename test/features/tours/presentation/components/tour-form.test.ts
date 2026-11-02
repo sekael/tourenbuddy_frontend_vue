@@ -1139,3 +1139,62 @@ describe('tourForm — creation that knows more (smarter-tour-creation)', () => 
     })
   })
 })
+
+describe('tourForm — map-first creation (map-first-tour-creation)', () => {
+  beforeEach(() => {
+    mockGetElevation.mockReset().mockResolvedValue(999)
+    mockSuggestTourName.mockReset().mockResolvedValue('Looked up')
+  })
+
+  it('should take the route step\'s name and height without asking Swisstopo again, and look up only what it lacks', async () => {
+    const wrapper = mountForm({
+      currentGoal: { lng: 8.4, lat: 46.8 },
+      pick: [
+        { type: 'start', location: { lng: 8.3, lat: 46.7 }, name: 'Engelberg', elevation: 1002 },
+        { type: 'end', location: { lng: 8.5, lat: 46.9 } },
+      ],
+    })
+    await flushPromises()
+
+    expect((wrapper.find('#tf-start-name').element as HTMLInputElement).value).toBe('Engelberg')
+    expect((wrapper.find('#tf-start-elevation').element as HTMLInputElement).value).toBe('1002')
+    expect((wrapper.find('#tf-end-name').element as HTMLInputElement).value).toBe('Looked up')
+    expect(mockGetElevation).toHaveBeenCalledTimes(1)
+  })
+
+  it('should show a height the route step couldn\'t find as failed, not look it up again', async () => {
+    const wrapper = mountForm({ currentGoal: { lng: 8.4, lat: 46.8 }, pick: [{ type: 'start', location: { lng: 8.3, lat: 46.7 }, name: 'Erlen', elevation: null }] })
+    await flushPromises()
+    expect(mockGetElevation).not.toHaveBeenCalled()
+    expect((wrapper.find('#tf-start-elevation').element as HTMLInputElement).value).toBe('')
+  })
+
+  it('should drop the end the route step removed, keeping the start', async () => {
+    const seed = { tourTypes: [], startPoint: { lng: 8.3, lat: 46.7 }, startPointName: 'A', endPoint: { lng: 8.5, lat: 46.9 }, endPointName: 'B' }
+    const wrapper = mountForm({ currentGoal: { lng: 8.4, lat: 46.8 }, initialDraft: seed })
+    await wrapper.setProps({ pick: [{ type: 'end', location: null }] })
+    expect(wrapper.find('#tf-end-name').exists()).toBe(false)
+    expect((wrapper.find('#tf-start-name').element as HTMLInputElement).value).toBe('A')
+  })
+
+  it('should offer the next day only where the stages are laid out', () => {
+    expect(mountForm().find('[data-testid=next-day-btn]').exists()).toBe(false)
+    expect(mountForm({ stages: true }).find('[data-testid=next-day-btn]').exists()).toBe(true)
+  })
+
+  it('should keep the first day of a split span and ask for the next with the day count', async () => {
+    const wrapper = mountForm({ stages: true, initialDraft: { tourTypes: [], plannedDate: new Date('2027-03-12'), endDate: new Date('2027-03-14') } })
+    await wrapper.find('[data-testid=split-days-btn]').trigger('click')
+
+    expect(wrapper.emitted('nextDay')).toEqual([[3]])
+    expect((wrapper.find('#tf-endDate').element as HTMLInputElement).value).toBe('')
+  })
+
+  it('should not collect a stage without a name, and not move the focus when asked not to', async () => {
+    const wrapper = mountForm({ stages: true })
+    const form = wrapper.vm as unknown as { collect: (focus?: boolean) => unknown }
+    expect(form.collect(false)).toBeNull()
+    await nextTick()
+    expect(wrapper.find('#tf-tourName').classes()).toContain('input--error')
+  })
+})

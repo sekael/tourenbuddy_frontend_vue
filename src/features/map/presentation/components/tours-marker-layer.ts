@@ -74,6 +74,7 @@ const SPLIT_LAYER_ID = 'tours-split'
 const SELECTED_SPLIT_LAYER_ID = 'tours-split-selected'
 const DETAIL_SPLIT_LAYER_ID = 'tour-detail-split'
 const PREVIEW_SPLIT_LAYER_ID = 'tours-preview-split'
+const PREVIEW_LABEL_LAYER_ID = 'tours-preview-label'
 // Number badges on the focused outing's segments (design D16).
 const SEGMENT_BADGE_LAYER_ID = 'tours-segment-badge'
 // Invisible footprints of the DOM clusters and the start/end points, placed before the names so
@@ -1014,6 +1015,22 @@ export function useToursMarkerLayer(
       },
     })
     addSplitLayer(map, PREVIEW_SPLIT_LAYER_ID, PREVIEW_SOURCE_ID, PREVIEW_CIRCLE_RADIUS, 0.9)
+    // "Ziel" under a tour-in-creation's goal, like "Startpunkt" under its start (map-first-tour-creation).
+    map.addLayer({
+      id: PREVIEW_LABEL_LAYER_ID,
+      type: 'symbol',
+      source: PREVIEW_SOURCE_ID,
+      filter: ['has', 'label'],
+      layout: {
+        'text-field': ['get', 'label'],
+        'text-font': ['literal', LABEL_FONT],
+        'text-size': 11,
+        'text-anchor': 'top',
+        'text-offset': [0, 1.8],
+        'text-allow-overlap': true,
+      },
+      paint: { 'text-color': '#1c1917', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
+    })
 
     // The primary activity's white glyph, centred in the goal circle (D5). The symbol also claims
     // the circle's footprint in label placement, so a base-map summit pictogram or label under a
@@ -1201,25 +1218,23 @@ export function useToursMarkerLayer(
     commitFrame(currentTree, map.getZoom())
   }
 
-  function updatePreview(goal: { lng: number, lat: number } | null, tourTypes: TourType[]) {
+  /** The tentative goals: an edited tour's re-picked one, or every stage's of a tour being created (labelled). */
+  function updatePreview(goals: { goal: { lng: number, lat: number }, tourTypes: TourType[], label?: string }[]) {
     const source = map.getSource<GeoJSONSource>(PREVIEW_SOURCE_ID)
     if (!source)
       return
 
     source.setData({
       type: 'FeatureCollection',
-      features: goal
-        ? [
-            {
-              type: 'Feature',
-              geometry: { type: 'Point', coordinates: [goal.lng, goal.lat] },
-              properties: {
-                tourType: tourTypes[0] ?? null,
-                pieImage: pieImageId(tourColors(tourTypes, TOUR_TYPE_PREVIEW_COLORS)),
-              },
-            },
-          ]
-        : [],
+      features: goals.map(({ goal, tourTypes, label }) => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [goal.lng, goal.lat] },
+        properties: {
+          tourType: tourTypes[0] ?? null,
+          pieImage: pieImageId(tourColors(tourTypes, TOUR_TYPE_PREVIEW_COLORS)),
+          ...(label ? { label } : {}),
+        },
+      })),
     })
   }
 

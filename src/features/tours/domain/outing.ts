@@ -118,10 +118,16 @@ export function outingDateConflicts(segments: readonly Pick<Tour, 'plannedDate'>
   }))
 }
 
-/** The named place a segment finishes at, with its height: its end, else its goal. */
-export function segmentFinishPlace(segment: Tour): { name: string | null, elevation: number | null } {
-  return segment.endPoint
-    ? { name: segment.endPointName, elevation: segment.endPointElevation }
+/**
+ * The named place a segment finishes at, with its height: its end, else its goal — named by the
+ * `next` segment's start when that starts there (a goal's name is its tour's, maybe a title).
+ */
+export function segmentFinishPlace(segment: Tour, next?: Tour): { name: string | null, elevation: number | null } {
+  if (segment.endPoint)
+    return { name: segment.endPointName, elevation: segment.endPointElevation }
+  const handover = next?.startPoint && next.startPointName && isSameGoal(next.startPoint, segment.goal)
+  return handover
+    ? { name: next.startPointName, elevation: next.startPointElevation ?? segment.elevation }
     : { name: segment.name, elevation: segment.elevation }
 }
 
@@ -144,11 +150,11 @@ function nextDay(date: Date | null): Date | null {
 }
 
 /**
- * The creation form's seed for the segment after `prev` (D17): same activities, partners,
- * visibility and seasons, the day after its last day, starting where it ended (its end point,
- * else its goal).
+ * The creation form's seed for the segment after `prev` (D17) — a saved segment, or a stage still
+ * in the form (map-first-tour-creation D4): same activities, partners, visibility and seasons, the
+ * day after its last day, starting where it ended (its end point, else its goal).
  */
-export function nextSegmentSeed(prev: Tour): TourDraft {
+export function nextSegmentSeed(prev: TourDraft & { goal: LngLat }): TourDraft {
   const fromEnd = prev.endPoint != null
   const startElevation = fromEnd ? prev.endPointElevation : prev.elevation
   return {
@@ -165,7 +171,7 @@ export function nextSegmentSeed(prev: Tour): TourDraft {
     seasons: prev.seasons,
     startPoint: fromEnd ? prev.endPoint : prev.goal,
     endPoint: null,
-    startPointName: fromEnd ? prev.endPointName : prev.name,
+    startPointName: (fromEnd ? prev.endPointName : prev.name) || null,
     // The goal's elevation may carry decimals; a point elevation is whole metres.
     startPointElevation: startElevation == null ? null : Math.round(startElevation),
     endPointName: null,

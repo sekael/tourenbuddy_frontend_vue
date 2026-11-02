@@ -1,12 +1,19 @@
 import type { Ref } from 'vue'
 import { onScopeDispose, reactive, ref } from 'vue'
 
-/** A point confirmed in the location picker; `name` when it came from the picker's search. */
+/**
+ * A point confirmed in the location picker or the route planner; `name` when it came from a
+ * search or the planner's lookup, `elevation` when the planner looked it up (null: it couldn't).
+ */
 export interface PointPick {
   type: 'goal' | 'start' | 'end'
   location: { lng: number, lat: number }
   name?: string
+  elevation?: number | null
 }
+
+/** The route planner's Done: a moved point, or a start / end it removed (map-first-tour-creation D3). */
+export type PointChange = PointPick | { type: 'start' | 'end', location: null }
 
 export type SwisstopoFillStatus = 'idle' | 'loading' | 'failed'
 
