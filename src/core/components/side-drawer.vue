@@ -105,11 +105,12 @@ onKeyStroke('Escape', (e) => {
 <style scoped>
 .side-drawer {
   position: fixed;
-  top: 0;
+  /* Below the offline bar while it shows (--safe-top, safe-area.css). */
+  top: var(--safe-top);
   right: 0;
   width: 400px;
-  height: 100vh;
-  max-height: 100vh;
+  height: calc(100vh - var(--safe-top));
+  max-height: calc(100vh - var(--safe-top));
   z-index: 50;
   display: flex;
   flex-direction: column;

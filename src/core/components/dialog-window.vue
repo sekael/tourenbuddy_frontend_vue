@@ -130,7 +130,7 @@ const contentStyle = computed(() => bodyHeight.value === null || props.collapsed
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   pointer-events: none;
-  padding-top: 0;
+  padding-top: var(--safe-top);
 }
 
 .dialog-card {

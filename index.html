@@ -7,7 +7,11 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="theme-color" content="#ffffff" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- No apple-mobile-web-app-status-bar-style: since iOS 26.1 a Home Screen app with
+         `black-translucent` gets a system blur over its top edge that CSS cannot remove. The
+         default style is an opaque status bar in the theme color, with the page below it. iOS
+         reads the tag when the app is added to the Home Screen, so an installed copy changes
+         only once it is re-added. -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>TourenBuddy</title>
   </head>

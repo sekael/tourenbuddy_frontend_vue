@@ -4,6 +4,7 @@ import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdaptiveOverlay from '@/core/components/adaptive-overlay.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
+import { useSnackbarSlot } from '@/core/composables/use-snackbar'
 import { savedOfflineAt } from '@/core/offline/mutate'
 import {
   deadLetters,
@@ -13,20 +14,20 @@ import {
   retryDeadLettered,
 } from '@/core/offline/queue-status'
 import { drainedAt } from '@/core/offline/replay'
+import { isOnline } from '@/core/offline/use-online-status'
 
-// Section 8 UI: a DURABLE pending-sync indicator (reads the queue on every launch, even
-// offline, so unsynced work is always visible — DC7) and a dead-letter review surface
-// (retry / discard). The enqueue itself surfaces via the transient pending-count snackbar.
+// Section 8 UI: keeps the pending count current (read from the queue on every launch, even
+// offline, so unsynced work is always visible — DC7; the offline bar shows it) and a dead-letter
+// review surface (retry / discard). The enqueue itself surfaces via the transient pending text.
 const { t, te } = useI18n({ useScope: 'global' })
 
 // Refresh on launch and whenever an enqueue or a drain changes the queue.
 onMounted(refreshQueueStatus)
 watch([savedOfflineAt, drainedAt], refreshQueueStatus)
 
-// The persistent pill is icon+count only (bottom-left) so it never covers the tour list.
 // The "N waiting to be synced" text shows briefly as a snackbar only on the FIRST pending
 // change (queue 0 → >0); once something is already queued, later changes just bump the
-// icon+count chip. This keeps the text from re-firing on every single edit.
+// count in the offline bar. This keeps the text from re-firing on every single edit.
 const pendingText = ref(false)
 let pendingTimer: ReturnType<typeof setTimeout> | null = null
 watch(pendingCount, (n, prev) => {
@@ -41,6 +42,20 @@ watch(pendingCount, (n, prev) => {
   else if (n === 0) {
     pendingText.value = false
   }
+})
+
+// "N changes synced" once the queue drained online with nothing newly failed: the bar closing on
+// its own doesn't say the changes went through. A partial drain leaves it to the dead-letter banner.
+const synced = ref(0)
+const claimSynced = useSnackbarSlot(() => synced.value = 0)
+let syncedTimer: ReturnType<typeof setTimeout> | undefined
+watch([pendingCount, () => deadLetters.value.length], ([n, dead], [prev, deadPrev]) => {
+  if (n > 0 || prev === 0 || dead > deadPrev || !isOnline.value)
+    return
+  claimSynced()
+  synced.value = prev
+  clearTimeout(syncedTimer)
+  syncedTimer = setTimeout(() => synced.value = 0, 3000)
 })
 
 const reviewOpen = ref(false)
@@ -111,24 +126,18 @@ function reasonText(entry: WriteQueueEntry): string | null {
 </script>
 
 <template>
-  <!-- Durable pending-sync chip: icon + count only (bottom-left, above the offline chip). -->
-  <Transition name="sync-toast">
-    <div
-      v-if="pendingCount > 0"
-      class="sync-chip fab-glass"
-      role="status"
-      :aria-label="t('offlineSync.pendingCount', { count: pendingCount })"
-    >
-      <BaseIcon name="sync_alt" size="sm" />
-      <span class="sync-count">{{ pendingCount }}</span>
-    </div>
-  </Transition>
-
   <!-- Transient pending text, shown briefly whenever the pending count grows. -->
   <Transition name="sync-toast">
     <div v-if="pendingText" class="sync-toast sync-toast--pending" role="status">
       <BaseIcon name="sync_alt" size="sm" />
       <span>{{ t('offlineSync.pendingCount', { count: pendingCount }) }}</span>
+    </div>
+  </Transition>
+
+  <Transition name="sync-toast">
+    <div v-if="synced" class="sync-toast" role="status" data-testid="synced-toast">
+      <BaseIcon name="cloud_done" size="sm" />
+      <span>{{ t('offlineSync.synced', { count: synced }) }}</span>
     </div>
   </Transition>
 
@@ -210,6 +219,8 @@ function reasonText(entry: WriteQueueEntry): string | null {
   font-weight: 500;
   box-shadow: var(--shadow-md);
   z-index: 210;
+  /* Centred from `left: 50%`, it would shrink to half the screen and wrap. */
+  width: max-content;
   max-width: 90vw;
 }
 
@@ -218,31 +229,8 @@ function reasonText(entry: WriteQueueEntry): string | null {
   bottom: calc(var(--float-bottom) + 3rem);
 }
 
-/* Persistent icon+count chip, bottom-left, stacked just above the offline chip
-   (offline-indicator anchors at --spacing-md; +3rem clears it). */
-.sync-chip {
-  position: fixed;
-  left: var(--spacing-md);
-  bottom: calc(var(--float-corner-bottom) + 3rem);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xxs);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-lg);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  z-index: 191;
-}
-
-.sync-count {
-  font-variant-numeric: tabular-nums;
-}
-
-/* Collapsed = a warning icon anchored in the bottom-left corner (the offline-chip slot,
-   z-index above it so it wins the rare offline+dead-letter overlap). Expanding raises it
-   above the bottom action pill AND reveals the text/button — both animate together.
-   // ponytail: corner overlap with the offline/pending chips is left as-is — after the
-   // drain-connectivity fix, being offline WITH a dead letter is rare and transient. */
+/* Collapsed = a warning icon anchored in the bottom-left corner. Expanding raises it
+   above the bottom action pill AND reveals the text/button — both animate together. */
 .sync-deadletter {
   position: fixed;
   bottom: var(--float-corner-bottom);
@@ -301,7 +289,7 @@ function reasonText(entry: WriteQueueEntry): string | null {
 }
 
 /* Fixed, bottom-anchored scrim host for the mobile bottom sheet. Above every route
-   surface (offline chips sit at ~210; routes/sheets well below 400). On desktop it
+   surface (status toasts sit at ~210; routes/sheets well below 400). On desktop it
    collapses to `display: contents` so DialogWindow self-centers with its own backdrop. */
 .review-host {
   position: fixed;
@@ -390,9 +378,7 @@ function reasonText(entry: WriteQueueEntry): string | null {
   transform: translate(-50%, 100%);
 }
 
-/* Left-anchored chips/banner have no translateX base — slide straight up instead. */
-.sync-chip.sync-toast-enter-from,
-.sync-chip.sync-toast-leave-to,
+/* The left-anchored banner has no translateX base — slide straight up instead. */
 .sync-deadletter.sync-toast-enter-from,
 .sync-deadletter.sync-toast-leave-to {
   opacity: 0;

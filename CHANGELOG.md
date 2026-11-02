@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.49.0...tourenbuddy-frontend-v0.50.0) (2026-10-29)
+
+
+### Features
+
+* **tours:** Grade and friend filters, map follows the tour list ([#364](https://github.com/sekael/tourenbuddy_frontend_vue/issues/364)) ([bd9bea2](https://github.com/sekael/tourenbuddy_frontend_vue/commit/bd9bea24104b1d258fadf254e924adb3bcd2e1c9))
+
 ## [0.49.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.48.0...tourenbuddy-frontend-v0.49.0) (2026-10-27)
 
 

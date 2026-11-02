@@ -1143,9 +1143,12 @@
     }
   },
   "offline": {
-    "indicator": "You're offline — showing saved data",
+    "bar": {
+      "offline": "Offline · showing saved data",
+      "unverified": "Signed in offline · data may be out of date",
+      "waiting": "Offline · {count} change waiting to sync | Offline · {count} changes waiting to sync"
+    },
     "actionUnavailable": "This action isn't available offline",
-    "unverifiedSession": "You're signed in offline — your data may be out of date",
     "writeError": {
       "generic": "Couldn't save your change offline — please try again",
       "storageFull": "Couldn't save offline — device storage is full. Free up space and try again"
@@ -1154,6 +1157,7 @@
   "offlineSync": {
     "savedOffline": "Saved offline — will sync when you're back online",
     "pendingCount": "{count} change waiting to sync | {count} changes waiting to sync",
+    "synced": "{count} change synced | {count} changes synced",
     "conflictLost": "Changed on another device — your offline edit was not applied",
     "attachmentsOnlineOnly": "Attachments are available online only",
     "friendshipsOnlineOnly": "Friend requests are available online only",
