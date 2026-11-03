@@ -554,7 +554,8 @@
       "nextDayBtn": "Next day",
       "nextDayHint": "Staying overnight? The next stage starts where this one ends.",
       "splitDaysBtn": "Split into daily stages",
-      "splitDaysHint": "{count} days: plan each day as its own stage – this one keeps the first."
+      "splitDaysHint": "{count} days: plan each day as its own stage – this one keeps the first.",
+      "trackFromGoal": "At the goal, where the track begins"
     },
     "creation": {
       "title": "New Tour",
@@ -572,7 +573,8 @@
       "discardDays": "Discard all {count} days? The routes you planned will be lost.",
       "keepEditing": "Keep editing",
       "dayMissing": "{day} isn’t planned yet.",
-      "planDay": "Plan {day}"
+      "planDay": "Plan {day}",
+      "dayGoal": "Day {n} goal"
     },
     "infoSheet": {
       "editTitlePrefix": "Edit",
@@ -925,7 +927,21 @@
         "start": "Start",
         "goal": "Goal",
         "end": "End"
-      }
+      },
+      "removeStep": "Remove {step}",
+      "measuring": "Working out the route…",
+      "nextDay": "Next day",
+      "follow": {
+        "label": "Follow the trails",
+        "hiking": "Follows the hiking trails",
+        "ski": "Follows the ski routes",
+        "ways": "Follows roads and paths",
+        "straight": "Straight lines between the points",
+        "unavailable": "Trails couldn’t load (offline?), so it’s straight",
+        "fixed": "Your uploaded track stays as it is",
+        "gap": "No path for part of it – a straight line there"
+      },
+      "back": "Back to the details, without these changes"
     }
   },
   "i18n": {
@@ -1084,7 +1100,7 @@
       },
       "addLocation": {
         "title": "Plan a tour",
-        "body": "Tap here, then tap your start, goal and end on the map — or search for them. TourenBuddy names each point and shows the climb; staying overnight, add the next day before you save."
+        "body": "Tap here, then tap your start, goal and end on the map — or search for them. The route follows the trails and becomes your track; staying overnight, tap “Next day” to plan the next stage right away."
       },
       "mapLayers": {
         "title": "Map layers",

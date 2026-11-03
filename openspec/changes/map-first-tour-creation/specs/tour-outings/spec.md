@@ -23,6 +23,23 @@ create every stage as a segment of one new outing in order; cancelling SHALL cre
 - **WHEN** the user cancels after laying out two stages
 - **THEN** no tour and no outing SHALL be created
 
+### Requirement: Days in the route step
+
+The route step of a multi-day layout SHALL show the days and SHALL offer "Next day", which keeps the
+current day and plans the next from its end without leaving the step. Activities, partners and
+visibility set on a day SHALL carry to the later days that had the same value; moving a day's date
+SHALL move the later days that followed it.
+
+#### Scenario: Next day from the map
+
+- **WHEN** the user sets day 1's goal and end and taps "Next day"
+- **THEN** day 2 SHALL be planned in the same step, starting at day 1's end, dated the day after
+
+#### Scenario: Partner added on day 1
+
+- **WHEN** the user adds a partner on day 1 of three
+- **THEN** days 2 and 3 SHALL have the partner too, unless their partners were changed on their own
+
 ### Requirement: Split into daily stages
 
 A creation form whose dates span several days, and a saved standalone tour (or an outing's last segment)

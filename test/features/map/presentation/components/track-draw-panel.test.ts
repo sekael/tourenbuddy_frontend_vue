@@ -34,4 +34,10 @@ describe('trackDrawPanel', () => {
     expect(w.find('[data-testid="draw-pace-toggle"] [data-testid="pace-badge"]').text()).toContain('1.2×')
     pace.value = 1
   })
+
+  it('should say a part goes straight, though the line follows the ways, as a warning', () => {
+    const status = mount(TrackDrawPanel, { props: { ...props, points: 2, gap: true } }).find('[role="status"]')
+    expect(status.text()).toBe('map.plan.follow.gap')
+    expect(status.classes()).toContain('status--warn')
+  })
 })

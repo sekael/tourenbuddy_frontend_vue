@@ -4,7 +4,7 @@ import type { LngLat } from '@/features/map/domain/entities/trail'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { CreationStage, StagePayload } from '@/features/tours/presentation/composables/creation-stages'
 import { storeToRefs } from 'pinia'
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
@@ -13,12 +13,15 @@ import SideDrawer from '@/core/components/side-drawer.vue'
 import { useFormatter } from '@/core/composables/use-formatter'
 import { useIsDesktop } from '@/core/composables/use-is-desktop'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
+import { isSameGoal } from '@/features/tours/domain/distance'
 import TourForm from '@/features/tours/presentation/components/tour-form.vue'
 
 /**
  * Creating a tour (map-first-tour-creation): a full-screen page on phones, the side drawer beside
  * the map on desktop. One form per stage, all kept mounted so each keeps its edits and uploads; the
- * strip on top switches between them, and one save sends them all (D4).
+ * day tabs on top switch between them, and one save sends them all (D4). What a trip's days share —
+ * activities, partners, who sees it, the dates one after another — follows from a day to the later
+ * days that still held what it held (D11).
  */
 const props = defineProps<{
   stages: CreationStage[]
@@ -40,6 +43,8 @@ const emit = defineEmits<{
   pickPoint: [type: 'start' | 'end' | 'goal']
   drawTrack: [seed: DrawnTrack | null]
   nextDay: [split?: number]
+  /** The day before stage `index` now ends elsewhere, and the stage still starts where it ended. */
+  handoverMoved: [index: number, point: { location: { lng: number, lat: number }, name: string, elevation: number | null }]
   /** A stage's form changed what the map draws. */
   stageChange: [index: number, change: { tourTypes?: TourType[], start?: { lng: number, lat: number } | null, end?: { lng: number, lat: number } | null, track?: LngLat[] | null }]
 }>()
@@ -113,14 +118,68 @@ function removeStage(i: number) {
   emit('remove', i)
 }
 
-/** Which day the form shows as dated (for the strip). */
+/** Which day the form shows as dated (for the tabs). */
 function stageDate(i: number) {
   const date = formAt(i)?.plannedDate
   return date ? formatDate.value(new Date(date), { weekday: 'short', day: 'numeric', month: 'numeric' }) : null
 }
 
+// ── Shared fields follow (D11) ──────────────────────────────────────────────
+/** Each day's value of `read`, by stage key (JSON: compared by value). */
+function byStage(read: (form: FormApi) => unknown) {
+  return () =>
+    Object.fromEntries(props.stages.map(s => [s.key, forms[s.key] ? JSON.stringify(read(forms[s.key]!)) : null]))
+}
+/** A change on one day, handed to every later day for which `take` holds. */
+function onDayChange(now: Record<string, string | null>, before: Record<string, string | null>, take: (j: number, was: unknown, next: unknown, i: number) => void) {
+  props.stages.forEach((stage, i) => {
+    const [next, was] = [now[stage.key], before[stage.key]]
+    if (next == null || was == null || next === was)
+      return
+    for (let j = i + 1; j < props.stages.length; j++)
+      take(j, JSON.parse(was), JSON.parse(next), i)
+  })
+}
+watch(byStage(form => form.shared), (now, before) => onDayChange(now, before, (j, was, next) => {
+  const form = formAt(j)
+  if (!form)
+    return
+  const [old, value] = [was as Record<string, unknown>, next as Record<string, unknown>]
+  const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
+  const mine = form.shared as Record<string, unknown>
+  const taken = Object.keys(value).filter(k => !same(value[k], old[k]) && same(mine[k], old[k]))
+  if (taken.length)
+    form.adopt(Object.fromEntries(taken.map(k => [k, value[k]])))
+}))
+/** `date` ("YYYY-MM-DD") `n` days on. */
+function daysOn(date: string, n: number) {
+  const day = new Date(`${date}T00:00:00Z`)
+  day.setUTCDate(day.getUTCDate() + n)
+  return day.toISOString().slice(0, 10)
+}
+// The dates go on day by day: a later day undated, or still the day after the day after, moves along.
+watch(byStage(form => form.plannedDate), (now, before) => onDayChange(now, before, (j, was, next, i) => {
+  const form = formAt(j)
+  const theirs = form?.plannedDate
+  if (form && (theirs === '' || (was && theirs === daysOn(was as string, j - i))))
+    form.adopt({ plannedDate: next ? daysOn(next as string, j - i) : '' })
+}))
+
+// The next day starts where a day ends: when that end moves (or the day gains or loses its end), a
+// next day still starting at the old spot moves along (the page moves its start and track) — and
+// takes the height once it is looked up there. Not the name: an unnamed goal's is the tour's, typed.
+watch(byStage(form => form.handover && { location: form.handover.location, elevation: form.handover.elevation }), (now, before) => props.stages.forEach((stage, i) => {
+  const [next, was] = [now[stage.key], before[stage.key]]
+  const handover = formAt(i)?.handover
+  const start = formAt(i + 1)?.route().start?.location
+  const old = was == null ? null : (JSON.parse(was) as { location: { lng: number, lat: number } } | null)?.location
+  if (handover && start && old && next !== was && isSameGoal(start, old, 1))
+    emit('handoverMoved', i + 1, { ...handover, location: { ...handover.location } })
+}))
+
 defineExpose({
   route: () => formAt(props.active)?.route() ?? null,
+  routeOf: (i: number) => formAt(i)?.route() ?? null,
   snapshotOf: (i: number) => formAt(i)?.snapshot() ?? null,
 })
 </script>
@@ -150,8 +209,19 @@ defineExpose({
         v-for="(stage, i) in stages" :key="stage.key" type="button" class="stage" :class="{ 'stage--active': i === active }"
         :aria-current="i === active ? 'step' : undefined" :data-testid="`stage-${i}`" @click="emit('select', i)"
       >
-        <span class="stage-day">{{ dayLabel(i) }}<template v-if="stageDate(i)"> · {{ stageDate(i) }}</template></span>
-        <span class="stage-name">{{ formAt(i)?.tourName || t('tours.infoSheet.unnamedTour') }}</span>
+        <span class="stage-day">{{ dayLabel(i) }}<span v-if="stageDate(i)" class="stage-date">{{ stageDate(i) }}</span></span>
+        <!-- Word by word: a name wraps at its spaces only, a word too long for the tab ends in "…". -->
+        <span class="stage-name">
+          <template v-for="(word, w) in (formAt(i)?.tourName || t('tours.infoSheet.unnamedTour')).split(/\s+/)" :key="w">
+            <span class="stage-word">{{ word }}</span>{{ ' ' }}
+          </template>
+        </span>
+      </button>
+      <button
+        v-if="!missingDay" type="button" class="stage-add" :aria-label="t('tours.form.nextDayBtn')"
+        data-testid="stage-add" @click="emit('nextDay')"
+      >
+        <BaseIcon name="add" />
       </button>
     </nav>
     <div v-if="missingDay" class="missing-day" data-testid="missing-day">
@@ -159,12 +229,6 @@ defineExpose({
       <BaseButton type="button" variant="primary" size="sm" data-testid="plan-missing-day" @click="emit('nextDay')">
         <BaseIcon name="add_location_alt" />
         {{ t('tours.creation.planDay', { day: t('tours.creation.day', { n: missingDay }) }) }}
-      </BaseButton>
-    </div>
-    <div v-if="stages.length > 1 && active > 0" class="stage-tools">
-      <BaseButton type="button" variant="secondary" size="sm" data-testid="stage-remove" @click="removeStage(active)">
-        <BaseIcon name="delete" />
-        {{ t('tours.creation.removeDay', { day: dayLabel(active) }) }}
       </BaseButton>
     </div>
 
@@ -179,7 +243,7 @@ defineExpose({
       :pick="stage.picks"
       :drawn-track="stage.drawnTrack"
       :disabled="isPickingLocation"
-      stages
+      :stages="i === stages.length - 1"
       @submit="handleSubmit"
       @cancel="handleClose"
       @pick-point="emit('pickPoint', $event)"
@@ -189,7 +253,16 @@ defineExpose({
       @tour-types-change="emit('stageChange', i, { tourTypes: $event })"
       @start-point-change="emit('stageChange', i, { start: $event })"
       @end-point-change="emit('stageChange', i, { end: $event })"
-    />
+    >
+      <template v-if="i > 0" #end>
+        <div class="stage-tools">
+          <BaseButton type="button" variant="text" size="sm" data-testid="stage-remove" @click="removeStage(i)">
+            <BaseIcon name="delete" />
+            {{ t('tours.creation.removeDay', { day: dayLabel(i) }) }}
+          </BaseButton>
+        </div>
+      </template>
+    </TourForm>
 
     <template #page-action>
       <BaseButton
@@ -203,26 +276,31 @@ defineExpose({
 </template>
 
 <style scoped>
+/* The trip's days as tabs: equal widths while they fit, sideways past that; "+" adds the next. */
 .stage-strip {
   display: flex;
-  gap: var(--spacing-xs);
+  /* Three days and "+" side by side at 360px. */
+  gap: 6px;
   overflow-x: auto;
-  margin: 0 calc(-1 * var(--spacing-xs)) var(--spacing-sm);
+  margin: 0 calc(-1 * var(--spacing-xs)) var(--spacing-md);
   padding: 2px var(--spacing-xs) var(--spacing-xs);
   scrollbar-width: none;
 }
 
 .stage {
   display: flex;
-  flex: 0 0 auto;
+  /* Three days side by side on a phone; more scroll. */
+  flex: 1 1 0;
+  min-width: 5.25rem;
   flex-direction: column;
   align-items: flex-start;
-  max-width: 11rem;
-  min-height: 48px;
-  padding: var(--spacing-xxs) var(--spacing-sm);
-  border: 1.5px solid var(--color-outline-variant);
+  gap: 1px;
+  max-width: 12rem;
+  min-height: 52px;
+  padding: var(--spacing-xs);
+  border: 0;
   border-radius: var(--radius-md);
-  background: var(--color-background);
+  background: var(--color-surface-variant);
   color: var(--color-on-surface);
   text-align: left;
   font: inherit;
@@ -230,29 +308,59 @@ defineExpose({
 }
 
 .stage--active {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 1px var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-background));
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  box-shadow: var(--shadow-sm);
 }
 
 .stage-day {
+  display: flex;
+  gap: var(--spacing-xs);
+  max-width: 100%;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-on-surface-variant);
   white-space: nowrap;
 }
 
-.stage--active .stage-day {
-  color: var(--color-primary);
+.stage-date {
+  overflow: hidden;
+  font-weight: 400;
+  opacity: 0.8;
+  text-overflow: ellipsis;
 }
 
 .stage-name {
+  display: -webkit-box;
   max-width: 100%;
   overflow: hidden;
-  font-size: var(--font-size-sm);
+  font-size: 0.8125rem;
   font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.stage-word {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: top;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.stage-add {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  min-height: 52px;
+  border: 1.5px dashed var(--color-outline-variant);
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-primary);
+  cursor: pointer;
 }
 
 .discard,
@@ -296,7 +404,13 @@ defineExpose({
 
 .stage-tools {
   display: flex;
-  justify-content: flex-end;
-  margin-bottom: var(--spacing-sm);
+  justify-content: center;
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-outline-variant);
+}
+
+.stage-tools :deep(.base-button) {
+  color: var(--color-error);
 }
 </style>

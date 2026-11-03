@@ -60,3 +60,56 @@ The map store carries `previewStages` (goal, start, end, activities, legs, drawn
 tour or outing open, the map draws them like an outing: goals in the preview tone, start / end / handover
 rings via `outingDetailMarkers` (draft tone), straight legs via the connector layer, drawn lines via the
 draft track layer.
+
+## D8 — The route step follows the ways
+
+The planner joins its points the way the track drawer joins taps: `useLegRouter` (A* over the ways in the
+tiles around each leg, shared with the drawer) on the shown trail layer, else the activities' network,
+else the base map's ways. A stop (hut, summit) stays exactly where it was set and joins a way up to
+`STOP_SNAP_M` away; farther, or a detour, its leg goes straight. A "Den Wegen folgen" switch turns it off
+(straight lines, climb from the points' heights). A leg shows straight while it loads or a point is held;
+Continue / Next day wait for pending legs. Offline (no ways) the legs go straight and the step says why.
+A stop with no way that near (a summit above the trail's end) tries again out to 1 km: the leg follows
+the way to its nearest point and goes straight only for the last bit. A leg that still finds no way
+shows straight and the switch's row turns to a warning ("no path for part of it"); the track drawer's
+status line says the same for a leg of its own that found no way.
+
+## D9 — The route is the track
+
+The planned route is the stage's track: Continue hands `{ points, track }`, the track being the routed
+legs with `goal` = the goal's point index. The form takes it as a drawn GPX (same as a drawing), so the
+form's start / goal / end and the line never disagree. "Draw track" opens the drawer seeded with the
+route's stops (or its track), the goal kept as the same point through every edit; finishing hands the
+track back and the form's points follow its stops — a stop moved less than 200 m keeps its name and
+height, farther it is looked up again. Reopening the planner on a stage with a drawing routes from that
+drawing (its legs kept unless their points move). Going straight drops a drawn track; an uploaded GPX is
+fixed: the planner shows it as is and moving points never touches it. While a drawing is the track
+the form offers no start / end suggestions (they would leave the track behind): "Choose" goes through the
+route step, which moves the track with the point. A drawing begun at the goal says so for the start
+("at the goal, where the track begins").
+
+## D10 — Days inside the route step
+
+With more than one day the planner's title becomes day pills; "Next day" commits the current day and
+plans the next from its end (else goal) without closing — no flicker, no form between days. A pill
+switches days the same way. Done closes on the first day of this planning run, framed on the outing.
+The planner opens framed on its day (at least zoom 14). With a form behind it, its leading button is a
+back arrow ("back to the details, without these changes"), never an X that might drop a day; with
+none, its × asks before it drops points already set (keep editing / discard), like the form's ×. While
+several days are drafted the day being planned is drawn full, the others dimmed, each goal labelled
+"Day n goal".
+
+## D11 — Shared fields follow the first day
+
+Activities, partners and visibility are the outing's, set once: a change on a day is copied to each
+later day that still had the old value (a day changed on its own keeps its own). Dates chain: a later
+day that is empty or was n days after this one moves with it. The next day's start follows this day's
+handover (its end, else its goal) while it still sat on the old one — and a drawn track's first leg is
+routed again from there; a start set elsewhere stays. The goal is named by its place (the planner's
+name or lookup), apart from a tour name typed in the form.
+
+## D12 — Stage tabs
+
+The stage strip is a row of equal tabs (day, date, name), the active one filled; a dashed "+" adds a
+day — three days and "+" side by side at 360 px. A name wraps at its spaces only, two lines at most; a
+word too long for its tab, or a third line, ends in "…". Removing a later day moves to the bottom of its form, away from the tabs.

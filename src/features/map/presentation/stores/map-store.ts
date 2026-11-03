@@ -40,6 +40,10 @@ export interface DraftStage {
   legs: TourLegs | null
   /** The stage's drawn or picked track; null = its straight legs show. */
   track: LngLat[] | null
+  /** False for a trip's other days while one is at hand: drawn fainter. */
+  active?: boolean
+  /** The goal's label ("Day 2 goal" on a trip; else the plain goal label). */
+  label?: string
 }
 
 /**

@@ -58,3 +58,46 @@ while points are set on the map beside it.
 
 - **WHEN** the creation form is open on a desktop screen
 - **THEN** the map SHALL stay visible beside the drawer with the draft route on it
+
+### Requirement: The route follows the ways
+
+The route step SHALL join its points along the trails and ways (the shown trail layer, else the tour's
+activities, else the base map's ways), keeping each point where it was set, and SHALL show the route's
+length, climb, descent and time. It SHALL offer to draw straight lines instead, and SHALL say so when
+the ways can't be loaded.
+
+#### Scenario: Hut to pass
+
+- **WHEN** the start is set at a hut and the goal at a pass with a hiking trail between them
+- **THEN** the line SHALL follow the trail and both points SHALL stay where they were set
+
+#### Scenario: Offline
+
+- **WHEN** the ways can't be loaded
+- **THEN** the legs SHALL go straight and the step SHALL say the ways aren't loaded
+
+### Requirement: The route is the track
+
+The routed line SHALL become the stage's track, anchored at its start, goal and end. Drawing the track
+SHALL start from those points; changing points SHALL change the track, and changing the track's points
+SHALL change the stage's points. An uploaded GPX SHALL stay as it is.
+
+#### Scenario: Draw from the route
+
+- **WHEN** the user has set a start and a goal and taps "Draw track"
+- **THEN** the drawer SHALL open with the line from the start to the goal along the ways
+
+#### Scenario: Track moves the start
+
+- **WHEN** the user drags the track's first point 50 m and finishes
+- **THEN** the start SHALL move there and keep its name
+
+#### Scenario: Straight drops a drawn track
+
+- **WHEN** the user turns off following the ways on a stage with a drawn track and continues
+- **THEN** the stage SHALL have no track and show straight legs
+
+#### Scenario: Uploaded track stays
+
+- **WHEN** the user moves the end of a stage with an uploaded GPX
+- **THEN** the GPX SHALL stay unchanged

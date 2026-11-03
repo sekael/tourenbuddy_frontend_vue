@@ -1,38 +1,38 @@
 <script setup lang="ts">
-import type { Map as MapLibreMap, MapMouseEvent, MapTouchEvent, Point, VectorTileSource } from 'maplibre-gl'
+import type { Map as MapLibreMap, MapMouseEvent, MapTouchEvent, Point } from 'maplibre-gl'
 import type { DrawnTrack } from '@/features/map/domain/drawn-track'
 import type { LngLat } from '@/features/map/domain/entities/trail'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import { LngLatBounds } from 'maplibre-gl'
 import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { z } from 'zod'
 import { pace } from '@/core/composables/use-pace'
-import { SKI_ROUTES_TILEJSON } from '@/features/map/data/trail-overlays'
 import { lineLength } from '@/features/map/domain/drawn-track'
 import { snapNetworkFor } from '@/features/map/domain/snap-network'
 import { isBoundsVisible } from '@/features/map/presentation/composables/frame-tour'
+import { isGap, skiTilesTemplate } from '@/features/map/presentation/composables/use-leg-router'
 import { useTrackDrawing } from '@/features/map/presentation/composables/use-track-drawing'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { tourMinutes } from '@/features/tours/domain/route-metrics'
 import { useTrackDrawLayer } from './track-draw-layer'
 import TrackDrawPanel from './track-draw-panel.vue'
-import { SKI_ROUTES_SOURCE_ID } from './trail-layers'
 
 /**
  * Draw a track on the map the way the swisstopo app does: a tap sets a point and the line runs
  * there along the trails the map shows; a point can be dragged, a tap on the start closes a loop.
- * The map stays free to pan and zoom between taps.
+ * The map stays free to pan and zoom between taps. A tour's route (a seed with its `goal`) opens
+ * with its start, goal and end as the drawing's first points; the page draws their markers from
+ * `live`, so they move with the drawing.
  */
 const props = defineProps<{
   map: MapLibreMap | null
-  /** The track to go on from (the form's current one), or null for a new one. */
+  /** The track to go on from (the form's current one, or the route's stops to join), or null for a new one. */
   seed: DrawnTrack | null
   /** The form's activities: with both trail layers shown they pick which one the line follows. */
   tourTypes: readonly TourType[]
 }>()
 
-const emit = defineEmits<{ done: [track: DrawnTrack], cancel: [] }>()
+const emit = defineEmits<{ done: [track: DrawnTrack], cancel: [], live: [track: DrawnTrack] }>()
 
 const mapStore = useMapStore()
 const { activeOverlays } = storeToRefs(mapStore)
@@ -40,21 +40,11 @@ const { activeOverlays } = storeToRefs(mapStore)
 const network = computed(() => snapNetworkFor(activeOverlays.value, props.tourTypes))
 const byActivity = computed(() => activeOverlays.value.length > 1)
 
-const skiManifest = z.object({ tiles: z.array(z.string()).min(1) })
-async function skiTemplate(): Promise<string | null> {
-  const fromMap = props.map?.getSource<VectorTileSource>(SKI_ROUTES_SOURCE_ID)?.tiles?.[0]
-  if (fromMap)
-    return fromMap
-  try {
-    return skiManifest.parse(await (await fetch(SKI_ROUTES_TILEJSON)).json()).tiles[0]!
-  }
-  catch {
-    return null
-  }
-}
-
-const drawing = useTrackDrawing({ seed: props.seed, network: () => network.value, skiTemplate })
+const drawing = useTrackDrawing({ seed: props.seed, network: () => network.value, skiTemplate: () => skiTilesTemplate(props.map) })
 const { track, shown, queued } = drawing
+/** A leg that found no way goes straight: the panel says so, as the route step does. */
+const gap = computed(() => track.value.legs.some(isGap))
+watch(shown, t => emit('live', t), { immediate: true })
 
 // The time as the saved tour will show it: the activity's way of moving at the user's pace.
 const minutes = computed(() => tourMinutes(drawing.metrics.value, { tourTypes: props.tourTypes }, pace.value))
@@ -207,7 +197,7 @@ onBeforeUnmount(() => {
 <template>
   <Teleport to="body">
     <TrackDrawPanel
-      :overlays="activeOverlays" :network="network" :by-activity="byActivity" :issue="drawing.issue.value"
+      :overlays="activeOverlays" :network="network" :by-activity="byActivity" :issue="drawing.issue.value" :gap="gap"
       :points="track.points.length" :metrics="drawing.metrics.value" :minutes="minutes"
       :profile="drawing.profile.value" :busy="drawing.busy.value" :can-undo="drawing.canUndo.value"
       :can-redo="drawing.canRedo.value" :closed="drawing.closed.value" @toggle-overlay="mapStore.toggleOverlay($event)"

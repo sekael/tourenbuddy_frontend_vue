@@ -2,7 +2,7 @@
 import type { Map as MapLibreMap, Point } from 'maplibre-gl'
 import type { DrawnTrack } from '@/features/map/domain/drawn-track'
 import type { LngLat, Trail } from '@/features/map/domain/entities/trail'
-import type { RoutePoints, RouteStep } from '@/features/map/domain/route-plan'
+import type { RoutePlan, RoutePoints, RouteStep } from '@/features/map/domain/route-plan'
 import type { DraftStage } from '@/features/map/presentation/stores/map-store'
 import type { StageContext } from '@/features/onboarding/presentation/composables/use-onboarding-tour'
 import type { TourSurface } from '@/features/onboarding/presentation/onboarding-steps'
@@ -13,7 +13,7 @@ import type { PointChange, PointPick } from '@/features/tours/presentation/compo
 import { LngLatBounds } from 'maplibre-gl'
 import { storeToRefs } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import BaseButton from '@/core/components/base-button.vue'
@@ -30,7 +30,9 @@ import { spanDayKeys } from '@/features/calendar/domain/calendar-dates'
 import ContactsListSheet from '@/features/contacts/presentation/components/contacts-list-sheet.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
 import FriendRequestsSheet from '@/features/friendships/presentation/components/friend-requests-sheet.vue'
+import { routeStops, sameTrack, trackLine, withGoal } from '@/features/map/domain/drawn-track'
 import { ROUTE_STEPS } from '@/features/map/domain/route-plan'
+import { snapNetworkFor } from '@/features/map/domain/snap-network'
 import LocationPicker from '@/features/map/presentation/components/location-picker.vue'
 import MapActionOverlay from '@/features/map/presentation/components/map-action-overlay.vue'
 import OfflineDownloadSheet from '@/features/map/presentation/components/offline-download-sheet.vue'
@@ -47,6 +49,7 @@ import { computeBarState } from '@/features/map/presentation/composables/compute
 import { frameBounds, frameTours, isBoundsVisible, ROUTE_ZOOM } from '@/features/map/presentation/composables/frame-tour'
 import { planFromRoute } from '@/features/map/presentation/composables/plan-from-route'
 import { useInboxNavigation } from '@/features/map/presentation/composables/use-inbox-navigation'
+import { skiTilesTemplate, STOP_SNAP_M, useLegRouter } from '@/features/map/presentation/composables/use-leg-router'
 import { useTrailLookup } from '@/features/map/presentation/composables/use-trail-lookup'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import InboxOverlay from '@/features/notifications/presentation/components/inbox-overlay.vue'
@@ -163,11 +166,23 @@ interface PlannerState {
   stage: number
   /** A new stage's form seed (the next day's, an added segment's). */
   seed: TourDraft | null
+  /** The stage's drawing, its goal marked: the route goes on from it (D9). */
+  track: DrawnTrack | null
+  /** The stage's uploaded track, which the route keeps as it is. */
+  fixedLine: LngLat[] | null
+  /** The first stage this round of planning made (or the one it edits): "Continue" opens its details. */
+  first: number
 }
 const planner = ref<PlannerState | null>(null)
 /** Bumped per opening, so each one starts fresh. */
 const plannerRun = ref(0)
 const plannerPoints = ref<RoutePoints | null>(null)
+/** The planned stage's line as the route step draws it (null: straight legs). */
+const plannerLine = shallowRef<LngLat[] | null>(null)
+/** The route step's legs follow the ways, for every day of the trip until switched off (D8). */
+const followWays = ref(true)
+/** The drawing under way, so the stage's start, goal and end markers move with it (D9). */
+const drawingLive = shallowRef<DrawnTrack | null>(null)
 const NO_ROUTE: RoutePoints = { start: null, goal: null, end: null }
 /** The route step left for a ski route's card, to come back to when the card closes. */
 const pausedPlanner = ref<PlannerState | null>(null)
@@ -251,6 +266,7 @@ function resetTourCreationState() {
   dayOffset.value = 0
   dayCount.value = null
   pausedPlanner.value = null
+  followWays.value = true
   if (planner.value)
     closePlanner()
   // Drop the draft markers on every cancel/dismiss path (closeOverlay, openOverlay
@@ -814,6 +830,7 @@ function handleLocationCancelled() {
 // ── Route step (map-first-tour-creation D1–D3) ──────────────────────────────
 function openPlanner(state: PlannerState) {
   planner.value = state
+  plannerLine.value = null
   plannerRun.value++
   mapStore.setPickingLocation(true)
 }
@@ -821,6 +838,7 @@ function openPlanner(state: PlannerState) {
 function closePlanner() {
   planner.value = null
   plannerPoints.value = null
+  plannerLine.value = null
   mapStore.setPickingLocation(false)
 }
 
@@ -832,11 +850,19 @@ function pointOf(location: { lng: number, lat: number } | null, name: string | n
  * The route step for a new stage: its seed's start set, its goal next. A start at the previous
  * stage's goal (`lookupStart`) carries that tour's name, not the place's: the step names it.
  */
-function planStage(seed: TourDraft | null, lookupStart = false) {
+function planStage(seed: TourDraft | null, lookupStart = false, first = stages.value.length) {
   const start = seed && pointOf(seed.startPoint, lookupStart ? null : seed.startPointName, seed.startPointElevation)
   if (start && lookupStart)
     start.loading = true
-  openPlanner({ initial: { ...NO_ROUTE, start }, step: start ? 'goal' : 'start', stage: stages.value.length, seed: seed && lookupStart ? { ...seed, startPointName: null } : seed })
+  openPlanner({
+    initial: { ...NO_ROUTE, start },
+    step: start ? 'goal' : 'start',
+    stage: stages.value.length,
+    seed: seed && lookupStart ? { ...seed, startPointName: null } : seed,
+    track: null,
+    fixedLine: null,
+    first,
+  })
 }
 
 /** "+" (bar or list): a new tour starts on the map, with its start. */
@@ -849,19 +875,31 @@ function startNewTour() {
 
 /** The form's Pick / Change: back to the route step on that point, with the stage's points (D3). */
 function handlePickPoint(type: RouteStep) {
-  const route = creationRef.value?.route()
-  const stage = stages.value[activeStage.value]
+  planSavedStage(activeStage.value, type, activeStage.value)
+}
+
+/**
+ * The route step for a stage there is: its form's points, and its track to go on from — a drawing
+ * (or a planned ski route's line) made the route through its goal, an uploaded track kept (D9).
+ */
+function planSavedStage(index: number, step: RouteStep, first: number) {
+  const route = creationRef.value?.routeOf(index)
+  const stage = stages.value[index]
   if (!route || !stage)
     return
+  const track = route.drawing && withGoal(route.drawing, [stage.goal.lng, stage.goal.lat])
   openPlanner({
     initial: {
       goal: pointOf(stage.goal, route.goal.name, route.goal.elevation),
       start: route.start && pointOf(route.start.location, route.start.name, route.start.elevation),
       end: route.end && pointOf(route.end.location, route.end.name, route.end.elevation),
     },
-    step: type,
-    stage: activeStage.value,
+    step,
+    stage: index,
     seed: null,
+    track,
+    fixedLine: route.fixedLine ?? (route.drawing && !track ? trackLine(route.drawing) : null),
+    first,
   })
 }
 
@@ -878,36 +916,84 @@ function changedPoints(before: RoutePoints, after: RoutePoints): PointChange[] {
   })
 }
 
-function handlePlannerDone(points: RoutePoints) {
-  const state = planner.value
+/**
+ * What the route step planned goes onto its stage — a new one is added — with the line along the
+ * ways as its track (D9): a straight route takes a drawn track away, an uploaded one stays. False
+ * when there is nothing to keep (no goal yet).
+ */
+function commitPlan(state: PlannerState, { points, track }: RoutePlan): boolean {
   const goal = points.goal?.location
-  if (!state || !goal)
-    return
-  closePlanner()
+  if (!goal)
+    return false
   const picks = changedPoints(state.initial, points)
-  if (state.stage >= stages.value.length) {
-    stages.value = [...stages.value, { key: uuidv4(), goal, seed: state.seed, picks, drawnTrack: null }]
-    activeStage.value = stages.value.length - 1
-    openOverlay('tour-creation')
-    // A split span (D5) goes on day by day: the next day's route step follows at once, from here.
-    if (state.seed && dayCount.value && dayOffset.value + stages.value.length < dayCount.value) {
-      const { goal: at, end } = points
-      planStage(nextSegmentSeed({
-        ...state.seed,
-        name: at!.name ?? '',
-        elevation: at!.elevation,
-        endPoint: end?.location ?? null,
-        endPointName: end?.name ?? null,
-        endPointElevation: end?.elevation ?? null,
-        goal,
-      }), !end)
-      return
-    }
+  let drawnTrack: DrawnTrack | null = null
+  if (track && !(state.track && sameTrack(track, state.track)))
+    drawnTrack = track
+  else if (!track && state.track && !state.fixedLine)
+    drawnTrack = { points: [], legs: [] }
+  if (state.stage >= stages.value.length)
+    stages.value = [...stages.value, { key: uuidv4(), goal, seed: state.seed, picks, drawnTrack }]
+  else
+    stages.value = stages.value.map((s, i) => (i === state.stage ? { ...s, goal, picks, drawnTrack: drawnTrack ?? s.drawnTrack } : s))
+  openOverlay('tour-creation')
+  return true
+}
+
+function handlePlannerDone(plan: RoutePlan) {
+  const state = planner.value
+  if (!state || !commitPlan(state, plan))
+    return
+  // A split span (D5) goes on day by day: the next day's route step follows at once, from here.
+  if (state.seed && state.stage === stages.value.length - 1 && dayCount.value && dayOffset.value + stages.value.length < dayCount.value) {
+    void planNextDay(state, plan.points)
+    return
   }
-  else {
-    stages.value = stages.value.map((s, i) => (i === state.stage ? { ...s, goal, picks } : s))
-  }
+  closePlanner()
+  activeStage.value = Math.min(state.first, stages.value.length - 1)
   void frameDraft()
+}
+
+/** "+ Next day" in the route step (D10): this day kept, the next one planned from where it ends. */
+function handlePlannerNextDay(plan: RoutePlan) {
+  const state = planner.value
+  if (state && commitPlan(state, plan))
+    void planNextDay(state, plan.points)
+}
+
+async function planNextDay(state: PlannerState, { goal, end }: RoutePoints) {
+  const index = state.stage
+  activeStage.value = index
+  // The day's form is there from the next render on: the next day is seeded from it.
+  await nextTick()
+  const draft = creationRef.value?.snapshotOf(index) ?? state.seed
+  if (!draft || !goal) {
+    closePlanner()
+    return
+  }
+  planStage(nextSegmentSeed({
+    ...draft,
+    name: goal.name ?? draft.name ?? '',
+    elevation: goal.elevation,
+    endPoint: end?.location ?? null,
+    endPointName: end?.name ?? null,
+    endPointElevation: end?.elevation ?? null,
+    goal: goal.location,
+  }), !end && !goal.name, state.first)
+}
+
+/** A day's pill in the route step: this day kept (or, never given a goal, dropped), that one opened. */
+async function handlePlannerSelectDay(index: number, plan: RoutePlan) {
+  const state = planner.value
+  if (!state)
+    return
+  // The route step stays up meanwhile: the details page never shows in between.
+  commitPlan(state, plan)
+  activeStage.value = index
+  await nextTick()
+  if (planner.value === state)
+    planSavedStage(index, 'goal', Math.min(state.first, index))
+  if (planner.value === state)
+    closePlanner()
 }
 
 /** Leaving the route step: back to the form as it was — or, before there is one, no tour at all. */
@@ -926,7 +1012,35 @@ function handleNextDay(split?: number) {
     return
   if (split)
     dayCount.value = dayOffset.value + last + split
-  planStage(nextSegmentSeed({ ...draft, goal: stage.goal }), !draft.endPoint)
+  // Starting at the goal, the day takes the goal's place name, not the tour's.
+  const place = creationRef.value?.routeOf(last)?.goal.place
+  planStage(nextSegmentSeed({ ...draft, name: place ?? draft.name, goal: stage.goal }), !draft.endPoint && !place, stages.value.length)
+}
+
+/** The ways a moved start's leg follows: the stage's own activities and the shown trail layers. */
+let handoverTypes: readonly TourType[] = []
+const handoverRouter = useLegRouter({ network: () => snapNetworkFor(activeOverlays.value, handoverTypes), skiTemplate: () => skiTilesTemplate(mapInstance.value), maxTiles: 64 })
+
+/**
+ * The day before now ends elsewhere (D11): this day, which started where it ended, starts there
+ * too, and its drawn track's first leg runs from there along the ways.
+ */
+async function handleHandoverMoved(index: number, { location, name, elevation }: { location: { lng: number, lat: number }, name: string, elevation: number | null }) {
+  const key = stages.value[index]?.key
+  const drawing = creationRef.value?.routeOf(index)?.drawing
+  stages.value = stages.value.map(s => (s.key === key ? { ...s, picks: [{ type: 'start', location, name: name || undefined, elevation }] } : s))
+  const from: LngLat = [location.lng, location.lat]
+  // Only its height came: the drawing starts there already.
+  if (!key || !drawing || drawing.points.length < 2 || drawing.goal === 0 || isSameGoal(location, { lng: drawing.points[0]![0], lat: drawing.points[0]![1] }, 1))
+    return
+  handoverTypes = stageLive.value[key]?.tourTypes ?? []
+  const leg = await handoverRouter.between(from, drawing.points[1]!, STOP_SNAP_M).catch(() => [from, drawing.points[1]!])
+  const at = stages.value.findIndex(s => s.key === key)
+  // Drawn anew meanwhile: that drawing stands.
+  if (at < 0 || creationRef.value?.routeOf(at)?.drawing !== drawing)
+    return
+  const track: DrawnTrack = { ...drawing, points: [from, ...drawing.points.slice(1)], legs: [leg, ...drawing.legs.slice(1)] }
+  stages.value = stages.value.map(s => (s.key === key ? { ...s, drawnTrack: track } : s))
 }
 
 /** A later stage dropped (its form already discarded its uploads): the one before it shows. */
@@ -963,6 +1077,18 @@ const plannerTitle = computed(() => {
     return ''
   return state.stage > 0 || segmentAnchorId.value ? dayTitle(state.stage) : t('tours.creation.title')
 })
+/** The trip's days for the route step's switch: every stage, and the one being added. */
+const plannerDays = computed(() => {
+  const state = planner.value
+  const count = state ? Math.max(stages.value.length, state.stage + 1) : 0
+  return Array.from({ length: count }, (_, i) => t('tours.creation.day', { n: dayOffset.value + i + 1 }))
+})
+/** The planned stage's activities: what its legs follow. */
+const plannerTourTypes = computed(() => {
+  const state = planner.value
+  const key = state && stages.value[state.stage]?.key
+  return (key && stageLive.value[key]?.tourTypes) || state?.seed?.tourTypes || []
+})
 
 /** The map's draft: every stage, the planned one as the route step has it (D7). */
 const draftStages = computed<DraftStage[]>(() => {
@@ -974,10 +1100,31 @@ const draftStages = computed<DraftStage[]>(() => {
   const points = plannerPoints.value
   if (state && points) {
     const base = out[state.stage] ?? { tourTypes: state.seed?.tourTypes ?? [], legs: null, track: null }
-    out[state.stage] = { ...base, goal: points.goal?.location ?? null, startPoint: points.start?.location ?? null, endPoint: points.end?.location ?? null }
+    out[state.stage] = { ...base, goal: points.goal?.location ?? null, startPoint: points.start?.location ?? null, endPoint: points.end?.location ?? null, track: plannerLine.value }
+    // The next day starting where this one ends shows its start moving along (it moves on Done, D11).
+    const next = out[state.stage + 1]
+    const [was, now] = [state.initial.end ?? state.initial.goal, points.end ?? points.goal]
+    if (next?.startPoint && was && now && isSameGoal(next.startPoint, was.location, 1))
+      out[state.stage + 1] = { ...next, startPoint: now.location }
   }
-  return out
+  // A drawing moves its stage's start, goal and end as it goes; the drawer draws the line itself.
+  const live = drawingLive.value
+  const drawn = out[activeStage.value]
+  if (live && drawn) {
+    const ll = (p: LngLat | null) => p && { lng: p[0], lat: p[1] }
+    const stops = live.goal != null && live.points.length > live.goal ? routeStops({ ...live, goal: live.goal }) : null
+    out[activeStage.value] = stops
+      ? { ...drawn, goal: ll(stops.goal), startPoint: ll(stops.start), endPoint: ll(stops.end), track: null }
+      : { ...drawn, track: null }
+  }
+  // A trip's days: each goal says its day, and the day at hand stands out.
+  if (out.length < 2)
+    return out
+  const current = state?.stage ?? activeStage.value
+  return out.map((s, i) => ({ ...s, active: i === current, label: t('tours.creation.dayGoal', { n: dayOffset.value + i + 1 }) }))
 })
+/** The draft framed this close at most: a short day out still fills the map. */
+const DRAFT_ZOOM = 14
 /** The draft held on the map while a save is under way, until the real markers replace it. */
 const heldPreview = ref<DraftStage[] | null>(null)
 watch(() => heldPreview.value ?? draftStages.value, shown => mapStore.setPreviewStages(shown), { immediate: true })
@@ -987,18 +1134,20 @@ watch(() => stageLive.value[stages.value[activeStage.value]?.key ?? '']?.tourTyp
     mapStore.setPreviewTourTypes(types ?? [])
 })
 
-/** On desktop the drawer opens over the map's right side: keep the draft in view beside it. */
+/** On desktop the drawer opens over the map's right side: the draft, lines and all, fills the map beside it. */
 async function frameDraft() {
   if (!isDesktop.value)
     return
   await nextTick()
   const map = mapInstance.value
-  const points = draftStages.value.flatMap(s => [s.goal, s.startPoint, s.endPoint].filter(p => p !== null))
+  const points: LngLat[] = draftStages.value.flatMap(s => [
+    ...[s.goal, s.startPoint, s.endPoint].flatMap(p => (p ? [[p.lng, p.lat] as LngLat] : [])),
+    ...(s.track ?? []),
+  ])
   if (!map || points.length === 0)
     return
-  const bounds = points.reduce((b, p) => b.extend([p.lng, p.lat]), new LngLatBounds())
-  if (!isBoundsVisible(map, bounds, mapCovered.value))
-    frameBounds(map, bounds, mapCovered.value)
+  const bounds = points.reduce((b, p) => b.extend(p), new LngLatBounds())
+  frameBounds(map, bounds, mapCovered.value, { maxZoom: DRAFT_ZOOM })
 }
 
 function handleInfoSheetPickPoint(type: 'start' | 'end' | 'goal') {
@@ -1022,16 +1171,28 @@ function handleDrawTrack(seed: DrawnTrack | null, forEdit = false) {
 function handleTrackDrawn(track: DrawnTrack) {
   mapStore.setDrawingTrack(false)
   trackSeed.value = null
-  if (isPickingForEdit.value)
+  drawingLive.value = null
+  if (isPickingForEdit.value) {
     editDrawnTrack.value = track
-  else
-    stages.value = stages.value.map((s, i) => (i === activeStage.value ? { ...s, drawnTrack: track } : s))
+  }
+  else {
+    // The route's goal dragged elsewhere in the drawing moves the stage's goal: named there anew.
+    const at = track.goal == null ? null : track.points[track.goal]
+    const goal = at && { lng: at[0], lat: at[1] }
+    stages.value = stages.value.map((s, i) => {
+      if (i !== activeStage.value)
+        return s
+      const moved = goal && !isSameGoal(goal, s.goal, 1)
+      return moved ? { ...s, goal, picks: [{ type: 'goal', location: goal }], drawnTrack: track } : { ...s, drawnTrack: track }
+    })
+  }
   isPickingForEdit.value = false
 }
 
 function handleTrackCancelled() {
   mapStore.setDrawingTrack(false)
   trackSeed.value = null
+  drawingLive.value = null
   isPickingForEdit.value = false
 }
 
@@ -1404,15 +1565,18 @@ function handleDialogClose() {
     />
 
     <RoutePlanner
-      v-if="planner && mapInstance" :key="plannerRun" :map="mapInstance" :initial="planner.initial" :step="planner.step"
-      :title="plannerTitle" :done-label="planner.stage < stages.length ? t('map.plan.done') : t('map.plan.continue')"
+      v-if="planner && mapInstance" :key="plannerRun" v-model:follow="followWays" :map="mapInstance" :initial="planner.initial"
+      :step="planner.step" :title="plannerTitle" :done-label="planner.stage < stages.length ? t('map.plan.done') : t('map.plan.continue')"
       :route-hit="plannerRouteHit" :hint="routesTappableInPick ? t('tours.picker.routeHint') : undefined" :covered="mapCovered"
-      @change="plannerPoints = $event" @done="handlePlannerDone" @cancel="handlePlannerCancel"
+      :track="planner.track" :fixed-line="planner.fixedLine" :tour-types="plannerTourTypes" :days="plannerDays"
+      :day="planner.stage" :can-add-day="planner.stage >= stages.length - 1" :back="stages.length > 0"
+      @change="plannerPoints = $event" @line="plannerLine = $event" @done="handlePlannerDone"
+      @next-day="handlePlannerNextDay" @select-day="handlePlannerSelectDay" @cancel="handlePlannerCancel"
     />
 
     <TrackDrawer
       v-if="isDrawingTrack && mapInstance" :map="mapInstance" :seed="trackSeed" :tour-types="previewTourTypes ?? []"
-      @done="handleTrackDrawn" @cancel="handleTrackCancelled"
+      @done="handleTrackDrawn" @cancel="handleTrackCancelled" @live="drawingLive = isPickingForEdit ? null : $event"
     />
 
     <OfflineRegionDraw
@@ -1497,7 +1661,7 @@ function handleDialogClose() {
           ref="creationRef" :stages="stages" :active="activeStage" :title="creationTitle" :day-offset="dayOffset"
           :day-count="dayCount" @confirm="handleTourCreated" @close="handleDialogClose" @select="activeStage = $event"
           @remove="handleRemoveStage" @pick-point="handlePickPoint" @draw-track="handleDrawTrack($event)"
-          @next-day="handleNextDay" @stage-change="handleStageChange"
+          @next-day="handleNextDay" @stage-change="handleStageChange" @handover-moved="handleHandoverMoved"
         />
       </div>
     </Transition>

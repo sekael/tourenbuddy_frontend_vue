@@ -34,6 +34,8 @@ const props = defineProps<{
   /** Both layers are shown, so the activity decided what the line follows. */
   byActivity: boolean
   issue: NetworkIssue
+  /** A leg found no way and goes straight. */
+  gap?: boolean
   points: number
   metrics: RouteMetrics
   minutes: number | null
@@ -53,6 +55,8 @@ const { formatElevation, formatDistance, formatDuration } = useFormatter()
 const status = computed(() => {
   if (props.issue === 'unavailable')
     return t('map.draw.status.unavailable')
+  if (props.gap)
+    return t('map.plan.follow.gap')
   if (!props.network)
     return t('map.draw.status.ways')
   const follows = t(`map.draw.status.${props.network}`)
@@ -96,7 +100,7 @@ watchEffect(() => publishInset(isDesktop.value ? 0 : height.value))
       <BaseIconButton name="close" variant="tonal" :label="t('tours.picker.cancelBtn')" data-testid="draw-cancel" @click="emit('cancel')" />
     </div>
     <!-- The pace takes the status line's place while open: the panel keeps its height, the map its track. -->
-    <p v-if="!paceOpen" class="status" :class="{ 'status--warn': issue }" role="status">
+    <p v-if="!paceOpen" class="status" :class="{ 'status--warn': issue || gap }" role="status">
       {{ status }}
     </p>
     <div v-else id="draw-pace" class="pace" data-testid="draw-pace">
@@ -245,8 +249,10 @@ watchEffect(() => publishInset(isDesktop.value ? 0 : height.value))
   color: var(--color-on-surface-variant);
 }
 
+/* No ways loaded, or a part with none: the line goes straight there — said in the route step's warning colour. */
 .status--warn {
-  color: var(--color-on-surface);
+  color: var(--color-warning-text);
+  font-weight: var(--font-weight-medium);
 }
 
 .stats {

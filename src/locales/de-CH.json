@@ -554,13 +554,14 @@
       "nextDayBtn": "Nächster Tag",
       "nextDayHint": "Mit Übernachtung? Die nächste Etappe beginnt, wo diese endet.",
       "splitDaysBtn": "In Tagesetappen aufteilen",
-      "splitDaysHint": "{count} Tage: Plane jeden Tag als eigene Etappe – diese behält den ersten."
+      "splitDaysHint": "{count} Tage: Plane jeden Tag als eigene Etappe – diese behält den ersten.",
+      "trackFromGoal": "Am Ziel, wo der Track beginnt"
     },
     "creation": {
       "title": "Neue Tour",
       "pickingTitle": "Neue Tour: {name}",
       "saveBtn": "Tour speichern",
-      "alreadyThere": "Diese Tour hast du schon schon geplant.",
+      "alreadyThere": "Diese Tour hast du schon geplant.",
       "day": "Tag {n}",
       "dayOf": "Tag {n} von {count}",
       "daysLabel": "Tage der Tour",
@@ -572,7 +573,8 @@
       "discardDays": "Alle {count} Tage verwerfen? Die geplanten Routen gehen verloren.",
       "keepEditing": "Weiter bearbeiten",
       "dayMissing": "{day} ist noch nicht geplant.",
-      "planDay": "{day} planen"
+      "planDay": "{day} planen",
+      "dayGoal": "Ziel Tag {n}"
     },
     "infoSheet": {
       "editTitlePrefix": "Bearbeiten",
@@ -925,7 +927,21 @@
         "start": "Start",
         "goal": "Ziel",
         "end": "Ende"
-      }
+      },
+      "removeStep": "{step} entfernen",
+      "measuring": "Route wird berechnet …",
+      "nextDay": "Nächster Tag",
+      "follow": {
+        "label": "Den Wegen folgen",
+        "hiking": "Folgt den Wanderwegen",
+        "ski": "Folgt den Skitouren",
+        "ways": "Folgt Strassen und Wegen",
+        "straight": "Luftlinie zwischen den Punkten",
+        "unavailable": "Wege nicht geladen (offline?), darum Luftlinie",
+        "fixed": "Dein hochgeladener Track bleibt, wie er ist",
+        "gap": "Kein Weg für einen Abschnitt – dort Luftlinie"
+      },
+      "back": "Zurück zu den Details, ohne diese Änderungen"
     }
   },
   "i18n": {
@@ -1084,7 +1100,7 @@
       },
       "addLocation": {
         "title": "Tour planen",
-        "body": "Tippe hier und dann auf der Karte auf Start, Ziel und Ende – oder suche sie. TourenBuddy benennt jeden Punkt und zeigt die Höhenmeter; mit Übernachtung fügst du vor dem Speichern den nächsten Tag hinzu."
+        "body": "Tippe hier und dann auf der Karte auf Start, Ziel und Ende – oder suche sie. Die Route folgt den Wegen und wird dein Track; mit Übernachtung planst du mit «Nächster Tag» gleich die nächste Etappe."
       },
       "mapLayers": {
         "title": "Kartenebenen",

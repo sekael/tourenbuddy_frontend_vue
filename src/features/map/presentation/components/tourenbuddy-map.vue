@@ -115,7 +115,7 @@ const trackTours = computed(() => {
 
 /** The tentative goals: the edited tour's re-picked one, or every draft stage's. */
 const previewGoals = computed(() => creating.value
-  ? previewStages.value.flatMap(s => (s.goal ? [{ goal: s.goal, tourTypes: s.tourTypes, label: t('tours.form.goalLabel') }] : []))
+  ? previewStages.value.flatMap(s => (s.goal ? [{ goal: s.goal, tourTypes: s.tourTypes, label: s.label ?? t('tours.form.goalLabel') }] : []))
   : previewGoal.value ? [{ goal: previewGoal.value, tourTypes: previewTourTypes.value ?? [] }] : [])
 
 // Tours as fed to the marker layer. Identical to `mapTours`, except while a
@@ -325,12 +325,15 @@ watch(outingChains, (chains) => {
 })
 
 // A drawing, or a track drawn or picked but not saved yet, stands in for the tour's saved one.
-// A tour being created has no saved one: its stages' tracks show, the other stages' legs stay.
+// A tour being created has no saved one: its stages' tracks show, the other stages' legs stay —
+// while one stage is drawn too (the page leaves its track out, the drawing is it).
 function showDraftTrack() {
-  const lines = isDrawingTrack.value
-    ? []
-    : creating.value ? previewStages.value.flatMap(s => (s.track?.length ? [s.track] : [])) : previewTrack.value?.length ? [previewTrack.value] : []
-  draftTrackLayer?.update({ points: [], legs: lines })
+  // A trip's other days show fainter than the one at hand.
+  const stageTracks = (active: boolean) => previewStages.value.flatMap(s => (s.track?.length && (s.active ?? true) === active ? [s.track] : []))
+  const lines = creating.value
+    ? stageTracks(true)
+    : isDrawingTrack.value ? [] : previewTrack.value?.length ? [previewTrack.value] : []
+  draftTrackLayer?.update({ points: [], legs: lines }, [], [], creating.value ? stageTracks(false) : [])
   gpxLayer?.setVisible(!isDrawingTrack.value && (creating.value || previewTrack.value === null))
   trailLayers?.setDimmed(isDrawingTrack.value)
 }

@@ -1,3 +1,4 @@
+import type { DrawnTrack } from '@/features/map/domain/drawn-track'
 import { pointMetrics } from '@/features/tours/domain/route-metrics'
 
 /** The route step's points, in the order they are set (map-first-tour-creation D1). */
@@ -13,6 +14,15 @@ export interface PlannedPoint {
 }
 
 export type RoutePoints = Record<RouteStep, PlannedPoint | null>
+
+/**
+ * What the route step hands on (map-first-tour-creation D9): its points, and the line along the
+ * ways between them as the tour's track — its goal marked — or null where the route goes straight.
+ */
+export interface RoutePlan {
+  points: RoutePoints
+  track: DrawnTrack | null
+}
 
 /** The step after `from` still open, in order; `from` itself once every later one is set. */
 export function nextStep(points: RoutePoints, from: RouteStep): RouteStep {

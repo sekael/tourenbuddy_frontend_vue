@@ -36,7 +36,7 @@ describe('useTrackDrawing', () => {
     d.add(A, 30)
     d.add(B, 30)
     await flushPromises()
-    expect(mockLoad).toHaveBeenCalledWith(null, expect.any(Array), null)
+    expect(mockLoad).toHaveBeenCalledWith(null, expect.any(Array), null, undefined)
     expect(d.track.value.legs[0]).toHaveLength(3)
     expect(d.issue.value).toBeNull()
   })
@@ -69,7 +69,7 @@ describe('useTrackDrawing', () => {
     expect(d.track.value.legs).toHaveLength(1)
   })
 
-  it('should draw straight to a tap far from any route, without a notice — straight reads as straight', async () => {
+  it('should draw straight to a tap far from any route, the ways loaded all the same (no network issue)', async () => {
     mockLoad.mockResolvedValue({ key: 'k2', lines: [{ points: [A, BEND, B].map(toUnits), cost: 1 }] })
     const d = drawing('ski')
     d.add(A, 30)
@@ -119,5 +119,24 @@ describe('useTrackDrawing', () => {
     expect(d.track.value.points[1]![1]).toBeCloseTo(BEND[1], 5)
     expect(d.track.value.legs).toHaveLength(2)
     expect(d.track.value.legs[1]!.at(-1)).toEqual(d.track.value.points[2])
+  })
+
+  it('should open a route\'s stops joined along the ways, as where the drawing starts rather than a step to undo', async () => {
+    mockLoad.mockResolvedValue({ key: 'stops', lines: [{ points: [A, BEND, B].map(toUnits), cost: 1 }] })
+    const d = useTrackDrawing({ seed: { points: [A, B], legs: [], goal: 1 }, network: () => 'hiking', skiTemplate: async () => null })
+    await flushPromises()
+    // Both stops stay exactly where they were set; the leg between them takes the bend.
+    expect(d.track.value.points).toEqual([A, B])
+    expect(d.track.value.legs[0]!.length).toBeGreaterThan(2)
+    expect(d.track.value.goal).toBe(1)
+    expect(d.canUndo.value).toBe(false)
+  })
+
+  it('should keep the goal the same point when a point is pulled out of the leg before it', async () => {
+    const d = useTrackDrawing({ seed: { points: [A, B], legs: [[A, B]], goal: 1 }, network: () => null, skiTemplate: async () => null })
+    d.dropInsert(0, BEND, 30)
+    await flushPromises()
+    expect(d.track.value.goal).toBe(2)
+    expect(d.track.value.points[2]).toEqual(B)
   })
 })

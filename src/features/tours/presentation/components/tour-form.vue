@@ -24,7 +24,7 @@ import { isOnline } from '@/core/offline/use-online-status'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
-import { lineLength, trackFromLine, trackLine } from '@/features/map/domain/drawn-track'
+import { lineLength, routeStops, trackFromLine, trackLine } from '@/features/map/domain/drawn-track'
 import { dropScales, GRADE_MAX_LENGTH, gradeScales, normalizeGrade } from '@/features/tours/data/models/grade'
 import { SEASON_VALUES, seasonsForDates } from '@/features/tours/data/models/season'
 import { MAX_ATTACHMENTS_PER_TOUR } from '@/features/tours/data/models/tour-attachment'
@@ -218,6 +218,15 @@ const preparingTrack = ref(false)
 const loadingSeed = ref(false)
 const gpxFilepath = ref<string | null>(props.initialDraft?.gpxFilepath ?? null)
 const gpxRemoved = ref(false)
+/**
+ * A drawn route is the track (D9): its points move through the route step, which moves the track
+ * with them — not through the suggestions here, which would leave it behind. Started at the goal,
+ * the start is the goal.
+ */
+const drawn = computed(() => {
+  const drawing = !gpxRemoved.value && gpxFile.value ? fileDrawings.get(gpxFile.value) : undefined
+  return drawing ? { fromGoal: drawing.goal === 0 } : null
+})
 const gpxError = ref<string | null>(null)
 const nameError = ref(false)
 const pendingGpxKey = ref<string | null>(null)
@@ -408,6 +417,9 @@ const fills = {
 /** A point's name and height show together, once both lookups have answered or failed. */
 const settling = (point: keyof typeof fills) => fills[point].some(fill => fill.status === 'loading')
 
+/** The goal's place, apart from the tour's name (which may be typed): the route step names the goal by it. */
+const goalPlace = ref('')
+
 /** A map pick, a suggestion chip or a GPX end: set the point, then name it and look up its height. */
 function applyPick(pick: PointPick) {
   if (pick.type === 'start')
@@ -416,10 +428,16 @@ function applyPick(pick: PointPick) {
     endPoint.value = pick.location
   if (pick.type !== 'goal')
     fromTrack[pick.type] = false
+  else
+    goalPlace.value = pick.name ?? ''
   const [nameFill, elevationFill] = fills[pick.type]
   // A place chosen in the picker's search names the point; otherwise look one up nearby.
-  void nameFill.fill(async signal => pick.name ?? suggestTourName(pick.location, signal))
-  void elevationFill.fill(async signal => pick.elevation !== undefined ? pick.elevation : getElevation(pick.location, signal))
+  void nameFill.fill(signal => pick.name ?? suggestTourName(pick.location, signal).then((name) => {
+    if (pick.type === 'goal' && !signal.aborted)
+      goalPlace.value = name ?? ''
+    return name
+  }))
+  void elevationFill.fill(signal => pick.elevation !== undefined ? pick.elevation : getElevation(pick.location, signal))
 }
 
 function applyChange(change: PointChange) {
@@ -458,6 +476,30 @@ function fillPointsFromTrack(ends: { first: { lng: number, lat: number }, last: 
     const at = round ? startPoint.value! : ends.last
     applyPick({ type: 'end', location: { ...at }, name: round ? startPointName.value.trim() || undefined : undefined })
     fromTrack.end = true
+  }
+}
+
+/**
+ * A route's track (a drawing with its goal marked, map-first-tour-creation D9) carries the start and
+ * end themselves: they follow it. A stop moved a little keeps its name; farther, it is named anew.
+ */
+function followStops(track: DrawnTrack & { goal: number }) {
+  const stops = routeStops(track)
+  for (const type of ['start', 'end'] as const) {
+    const stop = stops[type]
+    if (!stop)
+      continue
+    const at = { lng: stop[0], lat: stop[1] }
+    const point = type === 'start' ? startPoint : endPoint
+    if (point.value && isSameGoal(point.value, at, NEAR_M)) {
+      point.value = at
+      continue
+    }
+    // Back at the start: a round trip, its end named as its start.
+    const round = type === 'end' && !!startPoint.value && isSameGoal(startPoint.value, at, 1)
+    applyPick(round
+      ? { type, location: at, name: startPointName.value.trim() || undefined, elevation: startPointElevation.value ? Number(startPointElevation.value) : undefined }
+      : { type, location: at })
   }
 }
 
@@ -749,20 +791,35 @@ async function startDrawing() {
     loadingSeed.value = false
     seed = saved && trackFromLine(trackLines(saved).flat().map(([lng, lat]) => [lng!, lat!] as LngLat))
   }
-  emit('drawTrack', seed)
+  emit('drawTrack', seed ?? routeSeed())
+}
+
+/** No track yet: the drawing starts as the route's start, goal and end, joined along the ways (D9). */
+function routeSeed(): DrawnTrack | null {
+  const goal = props.currentGoal
+  if (!goal)
+    return null
+  const ll = (p: { lng: number, lat: number }): LngLat => [p.lng, p.lat]
+  const points = [startPoint.value, goal, endPoint.value].filter(p => p !== null).map(ll)
+  return { points, legs: [], goal: startPoint.value ? 1 : 0 }
 }
 
 /**
  * A finished drawing becomes the tour's GPX file, with the terrain's heights when online. Its
  * points are the same either way, so a route planned twice is one track (`dropIfDuplicate`).
  */
+/** The drawing on its way to a file, for the route step to go on from meanwhile. */
+let pendingDrawing: DrawnTrack | null = null
 async function acceptDrawnTrack(track: DrawnTrack) {
   preparingTrack.value = true
+  pendingDrawing = track
   try {
     const line = trackLine(track)
     // Its ends are known now: name them while the heights load, not after.
     const [first, last] = [line[0], line.at(-1)]
-    if (first && last)
+    if (track.goal != null)
+      followStops({ ...track, goal: track.goal })
+    else if (first && last)
       fillPointsFromTrack({ first: { lng: first[0], lat: first[1] }, last: { lng: last[0], lat: last[1] } })
     const profiled = isOnline.value ? await getTrackProfile(line) : null
     const gpx = gpxFromLine(profiled?.line ?? densify(line), profiled?.heights ?? null, tourName.value.trim() || t('tours.form.gpxDrawn'))
@@ -771,10 +828,19 @@ async function acceptDrawnTrack(track: DrawnTrack) {
     await acceptGpxFile(file)
   }
   finally {
-    preparingTrack.value = false
+    if (pendingDrawing === track) {
+      preparingTrack.value = false
+      pendingDrawing = null
+    }
   }
 }
-watch(() => props.drawnTrack, track => track && void acceptDrawnTrack(track), { immediate: true })
+// A drawing of no points (a route gone straight) takes the drawn track away; an upload stays.
+watch(() => props.drawnTrack, (track) => {
+  if (track && track.points.length > 1)
+    void acceptDrawnTrack(track)
+  else if (track && gpxFile.value && fileDrawings.has(gpxFile.value))
+    handleRemoveGpx()
+}, { immediate: true })
 
 watch(
   () => (gpxRemoved.value ? [] : gpxFile.value ? fileLines.get(gpxFile.value) ?? null : null),
@@ -898,14 +964,46 @@ function handleSubmit() {
     emit('submit', out.draft, out.gpxRemoved, out.preUploadedTourId, out.draftId, out.proposedRemovals)
 }
 
+const height = (value: string) => (value ? Number(value) : null)
+
 /** The stage's points as the form holds them, for the route planner (map-first-tour-creation D3). */
 function route() {
-  const height = (value: string) => (value ? Number(value) : null)
+  const file = gpxRemoved.value ? null : gpxFile.value
+  const drawing = pendingDrawing ?? (file && fileDrawings.get(file)) ?? null
   return {
-    goal: { name: tourName.value.trim(), elevation: height(elevation.value) },
+    /** Named by its place where the form knows it (`place`), else by the tour. */
+    goal: { name: goalPlace.value || tourName.value.trim(), place: goalPlace.value || null, elevation: height(elevation.value) },
     start: startPoint.value && { location: startPoint.value, name: startPointName.value.trim(), elevation: height(startPointElevation.value) },
     end: endPoint.value && { location: endPoint.value, name: endPointName.value.trim(), elevation: height(endPointElevation.value) },
+    /** The drawn track (or a planned route's line), to go on from. */
+    drawing,
+    /** An uploaded track, which stays as it is. */
+    fixedLine: !drawing && file ? fileLines.get(file) ?? null : null,
   }
+}
+
+/** Where the day ends — its end, else its goal: the next day of a trip starts there (D11). */
+const handover = computed(() => {
+  if (endPoint.value)
+    return { location: endPoint.value, name: endPointName.value.trim(), elevation: height(endPointElevation.value) }
+  return props.currentGoal && { location: props.currentGoal, name: goalPlace.value || tourName.value.trim(), elevation: height(elevation.value) }
+})
+
+/** What the later days of a trip take over from this one while they hold the same (D11). */
+const shared = computed(() => ({
+  tourTypes: selectedTourTypes.value,
+  partnerIds: [...selectedPartnerIds.value].sort(),
+  visibility: visibility.value,
+}))
+function adopt(values: Partial<typeof shared.value & { plannedDate: string }>) {
+  if (values.tourTypes)
+    selectedTourTypes.value = values.tourTypes
+  if (values.partnerIds)
+    selectedPartnerIds.value = new Set(values.partnerIds)
+  if (values.visibility)
+    visibility.value = values.visibility
+  if (values.plannedDate !== undefined)
+    plannedDate.value = values.plannedDate
 }
 
 /** "Split into daily stages" (D5): this form keeps the first day, the next day's stage follows. */
@@ -919,7 +1017,7 @@ function splitDays() {
 // Let a full-screen page's top-bar cancel run the same cleanup as the in-form
 // Cancel button (orphaned GPX upload + staged attachments), and its Save mirror the
 // in-form button's disabled state.
-defineExpose({ cancel: handleCancel, discard, submitBlocked, collect, snapshot, route, tourName, plannedDate })
+defineExpose({ cancel: handleCancel, discard, submitBlocked, collect, snapshot, route, tourName, plannedDate, shared, adopt, handover })
 </script>
 
 <template>
@@ -1131,7 +1229,7 @@ defineExpose({ cancel: handleCancel, discard, submitBlocked, collect, snapshot, 
               </div>
               <div class="point-row">
                 <span class="point-coords">
-                  {{ startPoint ? formatPoint(startPoint) : t('tours.form.pointNotSet') }}
+                  {{ startPoint ? formatPoint(startPoint) : drawn?.fromGoal ? t('tours.form.trackFromGoal') : t('tours.form.pointNotSet') }}
                   <PointDistance v-if="startPoint && currentGoal" :goal="currentGoal" :point="startPoint" />
                 </span>
                 <BaseButton type="button" variant="secondary" size="sm" @click="emit('pickPoint', 'start')">
@@ -1149,7 +1247,7 @@ defineExpose({ cancel: handleCancel, discard, submitBlocked, collect, snapshot, 
                 />
               </div>
               <PointSuggestions
-                v-if="!startPoint && currentGoal" role="start" :around="currentGoal" :tour-id="tourId"
+                v-if="!startPoint && currentGoal && !drawn" role="start" :around="currentGoal" :tour-id="tourId"
                 @pick="applyPick({ type: 'start', ...$event })"
               />
               <template v-if="startPoint">
@@ -1268,7 +1366,7 @@ defineExpose({ cancel: handleCancel, discard, submitBlocked, collect, snapshot, 
                   </BaseButton>
                 </div>
                 <PointSuggestions
-                  v-if="currentGoal" role="end" :around="currentGoal" :exclude="startPoint" :tour-id="tourId"
+                  v-if="currentGoal && !drawn" role="end" :around="currentGoal" :exclude="startPoint" :tour-id="tourId"
                   :landing="endIsLanding" @pick="applyPick({ type: 'end', ...$event })"
                 />
               </template>
@@ -1488,6 +1586,8 @@ defineExpose({ cancel: handleCancel, discard, submitBlocked, collect, snapshot, 
             {{ t('tours.suggestions.capOverflow', { count: attachmentOverflow }) }}
           </p>
         </div>
+        <!-- The host's last word on this form, e.g. a trip's "Remove day 2". -->
+        <slot name="end" />
       </div>
       <!-- end scroll-body -->
 

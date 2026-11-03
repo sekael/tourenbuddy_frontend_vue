@@ -94,14 +94,14 @@ const TourCreationDialogStub = {
   name: 'TourCreationDialog',
   template: '<div data-testid="tour-creation-dialog" />',
   props: ['stages', 'active', 'title', 'dayOffset', 'dayCount'],
-  emits: ['confirm', 'close', 'pick-point', 'next-day', 'select', 'remove', 'stage-change', 'draw-track'],
+  emits: ['confirm', 'close', 'pick-point', 'next-day', 'select', 'remove', 'stage-change', 'draw-track', 'handover-moved'],
 }
 
 const RoutePlannerStub = {
   name: 'RoutePlanner',
   template: '<div data-testid="route-planner" />',
-  props: ['map', 'initial', 'step', 'title', 'doneLabel', 'routeHit', 'hint'],
-  emits: ['change', 'done', 'cancel'],
+  props: ['map', 'initial', 'step', 'title', 'doneLabel', 'routeHit', 'hint', 'track', 'fixedLine', 'tourTypes', 'days', 'day', 'canAddDay', 'follow', 'back'],
+  emits: ['change', 'line', 'done', 'nextDay', 'selectDay', 'cancel', 'update:follow'],
 }
 
 const STUB_TOUR = {
@@ -641,6 +641,19 @@ describe('mapPage', () => {
       expect(useMapStore().setPickingLocation).toHaveBeenLastCalledWith(true)
     })
 
+    it('should show the next day\'s start moving along with the end being set, before it is kept', async () => {
+      const wrapper = mountMapPage({}, { RoutePlanner: RoutePlannerStub })
+      const hut = { lng: 8.35, lat: 46.77 }
+      wrapper.vm.stages = [{ key: 'a', goal: { lng: 8.4, lat: 46.78 }, seed: null, picks: null, drawnTrack: null }, { key: 'b', goal: { lng: 8.3, lat: 46.77 }, seed: null, picks: null, drawnTrack: null }]
+      wrapper.vm.stageLive = { b: { start: hut } }
+      wrapper.vm.planner = { initial: { start: null, goal: at(8.4, 46.78), end: at(hut.lng, hut.lat) }, step: 'end', stage: 0, seed: null, track: null, fixedLine: null, first: 0 }
+      await nextTick()
+      planner(wrapper).vm.$emit('change', { start: null, goal: at(8.4, 46.78), end: at(8.36, 46.76) })
+      await nextTick()
+      const shown = vi.mocked(useMapStore().setPreviewStages).mock.lastCall![0]
+      expect(shown[1]!.startPoint).toEqual({ lng: 8.36, lat: 46.76 })
+    })
+
     it('should leave no draft behind when the route step is cancelled before any form', async () => {
       const wrapper = await startNew()
       planner(wrapper).vm.$emit('change', { start: at(8.1, 46.7), goal: null, end: null })
@@ -656,7 +669,7 @@ describe('mapPage', () => {
 
     it('should hand the form the names and heights it found, and leave a point still loading to the form', async () => {
       const wrapper = await startNew()
-      planner(wrapper).vm.$emit('done', { start: at(8.1, 46.7, 'Engelberg', 1002), goal: at(8.3, 46.8, null, null, true), end: null })
+      planner(wrapper).vm.$emit('done', { points: { start: at(8.1, 46.7, 'Engelberg', 1002), goal: at(8.3, 46.8, null, null, true), end: null }, track: null })
       await nextTick()
 
       expect(wrapper.vm.activeOverlay).toBe('tour-creation')
@@ -674,7 +687,7 @@ describe('mapPage', () => {
       const route = { goal: { name: 'Titlis', elevation: 3238 }, start: { location: { lng: 8.1, lat: 46.7 }, name: 'Engelberg', elevation: 1002 }, end: { location: { lng: 8.5, lat: 46.9 }, name: 'Meiringen', elevation: 595 } }
       const wrapper = mountMapPage({}, {
         RoutePlanner: RoutePlannerStub,
-        TourCreationDialog: { ...TourCreationDialogStub, expose: ['route'], setup: () => ({ route: () => route }) },
+        TourCreationDialog: { ...TourCreationDialogStub, expose: ['routeOf'], setup: () => ({ routeOf: () => route }) },
       })
       wrapper.vm.stages = [{ key: 's1', goal: { lng: 8.4, lat: 46.8 }, seed: null, picks: null, drawnTrack: null }]
       wrapper.vm.activeOverlay = 'tour-creation'
@@ -684,7 +697,7 @@ describe('mapPage', () => {
       await nextTick()
       expect(planner(wrapper).props('initial')).toMatchObject({ goal: at(8.4, 46.8, 'Titlis', 3238), start: at(8.1, 46.7, 'Engelberg', 1002) })
 
-      planner(wrapper).vm.$emit('done', { goal: at(8.4, 46.8, 'Titlis', 3238), start: at(8.15, 46.72, 'Grafenort', 570), end: null })
+      planner(wrapper).vm.$emit('done', { points: { goal: at(8.4, 46.8, 'Titlis', 3238), start: at(8.15, 46.72, 'Grafenort', 570), end: null }, track: null })
       await nextTick()
 
       expect(wrapper.vm.stages[0]!.picks).toEqual([
@@ -697,7 +710,7 @@ describe('mapPage', () => {
       const draft = { name: 'Day 1', plannedDate: new Date('2027-03-12'), endDate: null, endPoint: { lng: 8.5, lat: 46.9 }, endPointName: 'Hut', endPointElevation: 2300 }
       const wrapper = mountMapPage({}, {
         RoutePlanner: RoutePlannerStub,
-        TourCreationDialog: { ...TourCreationDialogStub, expose: ['snapshotOf'], setup: () => ({ snapshotOf: () => draft }) },
+        TourCreationDialog: { ...TourCreationDialogStub, expose: ['snapshotOf', 'routeOf'], setup: () => ({ snapshotOf: () => draft, routeOf: () => null }) },
       })
       wrapper.vm.stages = [{ key: 's1', goal: { lng: 8.4, lat: 46.8 }, seed: null, picks: null, drawnTrack: null }]
       wrapper.vm.activeOverlay = 'tour-creation'
@@ -718,7 +731,7 @@ describe('mapPage', () => {
       const draft = { name: 'Trek', plannedDate: new Date('2027-03-12'), endDate: null, endPoint: null }
       const wrapper = mountMapPage({}, {
         RoutePlanner: RoutePlannerStub,
-        TourCreationDialog: { ...TourCreationDialogStub, expose: ['snapshotOf'], setup: () => ({ snapshotOf: () => draft }) },
+        TourCreationDialog: { ...TourCreationDialogStub, expose: ['snapshotOf', 'routeOf'], setup: () => ({ snapshotOf: () => draft, routeOf: () => null }) },
       })
       wrapper.vm.stages = [{ key: 's1', goal: { lng: 8.4, lat: 46.8 }, seed: null, picks: null, drawnTrack: null }]
       wrapper.vm.activeOverlay = 'tour-creation'
@@ -753,7 +766,10 @@ describe('mapPage', () => {
 
     it('should keep a split tour\'s first day and put the next day after it', async () => {
       const anchor = { ...STUB_TOUR, id: 'anchor', userId: 'me', outing: null, plannedDate: new Date('2027-03-12'), endDate: new Date('2027-03-14') }
-      const wrapper = mountMapPage({ tours: { tours: [anchor] }, auth: { currentUser: { id: 'me' } } }, { RoutePlanner: RoutePlannerStub })
+      const wrapper = mountMapPage({ tours: { tours: [anchor] }, auth: { currentUser: { id: 'me' } } }, {
+        RoutePlanner: RoutePlannerStub,
+        TourCreationDialog: { ...TourCreationDialogStub, expose: ['snapshotOf', 'routeOf'], setup: () => ({ snapshotOf: () => null, routeOf: () => null }) },
+      })
       const toursStore = useToursStore()
       const outing = { id: 'o', name: null, position: 0 }
       vi.mocked(toursStore.ensureOuting).mockResolvedValue(outing)
@@ -765,11 +781,11 @@ describe('mapPage', () => {
       expect(wrapper.findComponent(RoutePlannerStub).props('title')).toBe('tours.creation.dayOf')
       expect(wrapper.vm.dayCount).toBe(3)
 
-      wrapper.findComponent(RoutePlannerStub).vm.$emit('done', { start: null, goal: { location: goal, name: 'Hut', elevation: 2400, loading: false }, end: null })
-      await nextTick()
+      wrapper.findComponent(RoutePlannerStub).vm.$emit('done', { points: { start: null, goal: { location: goal, name: 'Hut', elevation: 2400, loading: false }, end: null }, track: null })
+      await flushPromises()
       expect(wrapper.vm.stages[0]!.seed).toMatchObject({ plannedDate: new Date('2027-03-13'), startPoint: anchor.goal })
-      // Day 3 of 3 follows at once, from the hut, the day after.
-      expect(wrapper.findComponent(RoutePlannerStub).props()).toMatchObject({ step: 'goal', initial: { start: { location: goal, loading: true } } })
+      // Day 3 of 3 follows at once, from the hut (named as it was set), the day after.
+      expect(wrapper.findComponent(RoutePlannerStub).props()).toMatchObject({ step: 'goal', initial: { start: { location: goal, name: 'Hut', loading: false } } })
       wrapper.findComponent(RoutePlannerStub).vm.$emit('cancel')
       await nextTick()
       expect(wrapper.vm.stages).toHaveLength(1)
@@ -981,7 +997,7 @@ describe('mapPage — outings (#338)', () => {
     // The new segment starts where the anchor ends (its goal), its goal next.
     expect(wrapper.findComponent(RoutePlannerStub).props()).toMatchObject({ step: 'goal', initial: { start: { location: STUB_TOUR.goal, name: null, loading: true } } })
 
-    wrapper.findComponent(RoutePlannerStub).vm.$emit('done', { start: { location: STUB_TOUR.goal, name: 'Test Tour', elevation: null, loading: false }, goal: { location: { lng: 8.3, lat: 46.9 }, name: null, elevation: null, loading: false }, end: null })
+    wrapper.findComponent(RoutePlannerStub).vm.$emit('done', { points: { start: { location: STUB_TOUR.goal, name: 'Test Tour', elevation: null, loading: false }, goal: { location: { lng: 8.3, lat: 46.9 }, name: null, elevation: null, loading: false }, end: null }, track: null })
     await nextTick()
     expect(wrapper.vm.stages[0]!.seed).toMatchObject({ startPoint: STUB_TOUR.goal })
     // The start sits on the anchor's goal, whose name is the tour's title: the route step names
