@@ -113,3 +113,28 @@ name or lookup), apart from a tour name typed in the form.
 The stage strip is a row of equal tabs (day, date, name), the active one filled; a dashed "+" adds a
 day — three days and "+" side by side at 360 px. A name wraps at its spaces only, two lines at most; a
 word too long for its tab, or a third line, ends in "…". Removing a later day moves to the bottom of its form, away from the tabs.
+
+## D13 — The route step shapes its line
+
+Following the ways, each routed leg in the route step gets the drawer's handle halfway along (none on a leg
+under 40 px on screen, none while a point is held); dragging it pulls out a point between the stops,
+dragged on like any point. Let go, a point between lands where the leg before it reaches along the ways
+(`useLegRouter.resolve` from the stop before, as the drawer's `dropInsert`) — a stop is a place and stays
+exactly where it was set, a point between only says which way — and that leg is the one it came by; the
+leg on is routed from there. A tap on a point between removes it. They are the route's `vias` (up before
+the goal, down after it), so the track handed on carries them as drawing points: "Edit on map" and a
+reopened route step show them, the drawer's handles and undo working on as before. The points between and
+the handles are drawn by the drawer's layer (`useTrackDrawLayer`, points only); the page draws the line
+and the stops. While a leg is on its way the follow row turns its icon and says "finding the way…", and
+the numbers stand fainter until the new ones come; the next-step line explains the handles ("drag a line's
+middle dot…", then "tap a point you pulled out to remove it").
+
+## D14 — The route step's sheet folds
+
+On a phone the panel gets a grip: dragging it (or the head, not its buttons; sideways scrolls the days)
+folds the points' rows, the route hint and the follow row away, gliding with the finger, a flick going
+all the way; a tap on the grip toggles it. Folded, the panel keeps the day pills or title, the numbers with
+the next step, and the buttons, about half its height; the summary line then says a leg is on its way or
+found no way, as the folded follow row would. The page holds the fold across the trip's days (like the
+follow switch) and drops it with the creation. Desktop docks the panel beside the map and has no grip.
+

@@ -33,3 +33,11 @@
 - [x] 5.5 Stage tabs and remove-day at the form's end (D12)
 - [x] 5.6 Locales, tests, lint, type-check
 - [x] 5.7 Athlete review loop until PASS
+
+## 6. Shaping the line, folding the sheet
+
+- [x] 6.1 Route step: handles on routed legs, points between pulled out / dragged / removed, landed along the ways; "finding the way…" status (D13)
+- [x] 6.2 Phone sheet folds by grip / head drag or grip tap, held across days (D14)
+- [x] 6.3 Locales, tests, lint, type-check
+- [x] 6.4 Athlete review loop until PASS
+

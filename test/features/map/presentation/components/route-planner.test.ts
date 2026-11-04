@@ -8,14 +8,30 @@ vi.mock('@/features/tours/data/services/swisstopo-elevation-service', () => ({ g
 vi.mock('@/features/tours/data/services/swisstopo-name-service', () => ({ suggestTourName: mockSuggestTourName }))
 vi.mock('@/features/tours/data/services/swisstopo-profile-service', () => ({ getTrackProfile: vi.fn().mockResolvedValue(null) }))
 vi.mock('@/features/map/data/services/trail-network-service', () => ({ loadNetworkLines: mockLoad, TooFarError: class extends Error {} }))
+// A phone: the panel is a sheet that folds.
+vi.mock('@/core/composables/use-is-desktop', async () => {
+  const { ref } = await import('vue')
+  return { useIsDesktop: () => ref(false) }
+})
+
+const pt = (x: number, y: number) => ({ x, y, dist: (o: { x: number, y: number }) => Math.hypot(o.x - x, o.y - y) })
+/** On screen at 10 000 px a degree: the points and handles lie far apart. */
+const px = (p: readonly number[] | { lng: number, lat: number }) => ('lng' in p ? pt(p.lng * 1e4, p.lat * 1e4) : pt(p[0]! * 1e4, p[1]! * 1e4))
 
 function fakeMap() {
   const handlers: Record<string, (e: unknown) => void> = {}
+  const sources = new Set<string>()
   return {
     handlers,
     on: (event: string, fn: (e: unknown) => void) => (handlers[event] = fn),
     off: vi.fn(),
-    project: () => ({ x: 0, y: 0, dist: () => 1000 }),
+    project: px,
+    getSource: (id: string) => (sources.has(id) ? { setData: vi.fn() } : undefined),
+    addSource: (id: string) => sources.add(id),
+    removeSource: (id: string) => sources.delete(id),
+    getLayer: () => undefined,
+    addLayer: vi.fn(),
+    removeLayer: vi.fn(),
     getBearing: () => 0,
     cameraForBounds: () => undefined,
     easeTo: vi.fn(),
@@ -35,8 +51,15 @@ function mountPlanner(props: Record<string, unknown> = {}) {
     props: { map, initial: { start: null, goal: null, end: null }, step: 'start', title: 'New tour', doneLabel: 'Continue', ...props },
     global: { plugins: [createTestingPinia({ createSpy: vi.fn })], stubs: { Teleport: true } },
   })
-  const tap = (lng: number, lat: number) => map.handlers.click!({ point: { x: 0, y: 0 }, lngLat: { lng, lat } })
-  return { wrapper, map, tap }
+  const tap = (lng: number, lat: number, point = { x: 0, y: 0 }) => map.handlers.click!({ point, lngLat: { lng, lat } })
+  /** A press at `from` dragged to `to` and let go, as a mouse does it. */
+  const drag = (from: [number, number], to: [number, number]) => {
+    const event = (at: [number, number]) => ({ point: px(at), lngLat: { lng: at[0], lat: at[1] }, originalEvent: {}, preventDefault: vi.fn() })
+    map.handlers.mousedown!(event(from))
+    map.handlers.mousemove!(event(to))
+    map.handlers.mouseup!({})
+  }
+  return { wrapper, map, tap, drag }
 }
 
 const lastPoints = (wrapper: ReturnType<typeof mountPlanner>['wrapper']) => (wrapper.emitted('change')!.at(-1) as [Record<string, { name: string | null } | null>])[0]
@@ -182,5 +205,41 @@ describe('routePlanner — the route is the track', () => {
     expect(back.attributes('aria-label')).toBe('map.plan.back')
     await back.trigger('click')
     expect(wrapper.emitted('cancel')).toHaveLength(1)
+  })
+})
+
+describe('routePlanner — shaping the line (D13)', () => {
+  const S = { location: { lng: 8.1, lat: 46.7 }, name: 'Engelberg', elevation: 1000, loading: false }
+  const G = { location: { lng: 8.2, lat: 46.8 }, name: 'Jochpass', elevation: 2200, loading: false }
+  const [s, g]: [number, number][] = [[8.1, 46.7], [8.2, 46.8]]
+  const V: [number, number] = [8.13, 46.78]
+  const plan = (wrapper: ReturnType<typeof mountPlanner>['wrapper']) => (wrapper.emitted('done')!.at(-1) as [{ track: { points: unknown } }])[0]
+
+  it('should hand on a point pulled out of a leg by its handle, between start and goal', async () => {
+    const { wrapper, drag } = mountPlanner({ initial: { start: S, goal: G, end: null }, step: 'end' })
+    await flushPromises()
+    drag([8.15, 46.75], V)
+    await flushPromises()
+    await wrapper.find('[data-testid=planner-done]').trigger('click')
+    expect(plan(wrapper).track).toMatchObject({ points: [s, V, g], goal: 2 })
+  })
+
+  it('should take a point between out again on a tap, the leg running on from the start', async () => {
+    const track = { points: [s, V, g], legs: [[s, V], [V, g]], goal: 2 }
+    const { wrapper, tap } = mountPlanner({ initial: { start: S, goal: G, end: null }, step: 'end', track })
+    tap(V[0], V[1], px(V))
+    await flushPromises()
+    await wrapper.find('[data-testid=planner-done]').trigger('click')
+    expect(plan(wrapper).track).toEqual({ points: [s, g], legs: [[s, g]], goal: 1 })
+  })
+
+  it('should fold the rows away from the grip, and still say there that a leg found no way', async () => {
+    const { wrapper } = mountPlanner({ initial: { start: S, goal: G, end: null }, step: 'end' })
+    await flushPromises()
+    await wrapper.find('[data-testid=planner-grip]').trigger('click')
+    expect(wrapper.emitted('update:compact')).toEqual([[true]])
+
+    await wrapper.setProps({ compact: true })
+    expect(wrapper.find('[data-testid=planner-note]').text()).toBe('map.plan.follow.gap')
   })
 })

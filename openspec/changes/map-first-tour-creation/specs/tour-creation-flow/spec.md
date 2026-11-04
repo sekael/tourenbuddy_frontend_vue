@@ -101,3 +101,39 @@ SHALL change the stage's points. An uploaded GPX SHALL stay as it is.
 
 - **WHEN** the user moves the end of a stage with an uploaded GPX
 - **THEN** the GPX SHALL stay unchanged
+
+### Requirement: The route's line is shaped in the route step
+
+While following the ways, each leg of the route step SHALL show a handle halfway along it; dragging the
+handle SHALL add a point between the stops there, landed on the way the leg reaches, and both legs on
+either side SHALL follow the ways again. Points between SHALL be draggable and SHALL be removed by a
+tap. The track handed on SHALL keep them, so the track drawer and a reopened route step show them as
+the drawing's points. While a leg is on its way, the step SHALL say so.
+
+#### Scenario: Pull the line over a pass
+
+- **WHEN** the user drags the handle of the start–goal leg onto another path and lets go
+- **THEN** the line SHALL run from the start along the ways through that point to the goal
+
+#### Scenario: Edit on map after Continue
+
+- **WHEN** the user has shaped the line with a point between, continues, and taps "Edit on map"
+- **THEN** the drawer SHALL open with that point among the drawing's points
+
+#### Scenario: Remove a point between
+
+- **WHEN** the user taps a point between
+- **THEN** it SHALL be removed and its two legs SHALL become one, along the ways
+
+### Requirement: The route step's sheet folds on a phone
+
+On a phone the route step's panel SHALL fold down — by dragging its grip or head, or tapping the grip —
+to its summary (the day or title, the numbers and next step, the buttons), leaving the rest of the
+screen to the map, and SHALL unfold the same way. The fold SHALL hold across the trip's days. Folded, the
+summary SHALL say when a leg is on its way or found no way.
+
+#### Scenario: More map while setting points
+
+- **WHEN** the user drags the sheet's grip down
+- **THEN** the points' rows and the follow switch SHALL fold away and the map SHALL show above the summary
+

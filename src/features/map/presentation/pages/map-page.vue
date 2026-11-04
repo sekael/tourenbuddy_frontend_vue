@@ -181,6 +181,8 @@ const plannerPoints = ref<RoutePoints | null>(null)
 const plannerLine = shallowRef<LngLat[] | null>(null)
 /** The route step's legs follow the ways, for every day of the trip until switched off (D8). */
 const followWays = ref(true)
+/** The route step's sheet folded down for more map (phone, D14), likewise for every day. */
+const plannerCompact = ref(false)
 /** The drawing under way, so the stage's start, goal and end markers move with it (D9). */
 const drawingLive = shallowRef<DrawnTrack | null>(null)
 const NO_ROUTE: RoutePoints = { start: null, goal: null, end: null }
@@ -267,6 +269,7 @@ function resetTourCreationState() {
   dayCount.value = null
   pausedPlanner.value = null
   followWays.value = true
+  plannerCompact.value = false
   if (planner.value)
     closePlanner()
   // Drop the draft markers on every cancel/dismiss path (closeOverlay, openOverlay
@@ -1565,7 +1568,7 @@ function handleDialogClose() {
     />
 
     <RoutePlanner
-      v-if="planner && mapInstance" :key="plannerRun" v-model:follow="followWays" :map="mapInstance" :initial="planner.initial"
+      v-if="planner && mapInstance" :key="plannerRun" v-model:follow="followWays" v-model:compact="plannerCompact" :map="mapInstance" :initial="planner.initial"
       :step="planner.step" :title="plannerTitle" :done-label="planner.stage < stages.length ? t('map.plan.done') : t('map.plan.continue')"
       :route-hit="plannerRouteHit" :hint="routesTappableInPick ? t('tours.picker.routeHint') : undefined" :covered="mapCovered"
       :track="planner.track" :fixed-line="planner.fixedLine" :tour-types="plannerTourTypes" :days="plannerDays"

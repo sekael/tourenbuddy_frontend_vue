@@ -7,7 +7,7 @@ import { z } from 'zod'
 import { haversineMeters } from '@/core/utils/haversine'
 import { loadNetworkLines, TooFarError } from '@/features/map/data/services/trail-network-service'
 import { SKI_ROUTES_TILEJSON } from '@/features/map/data/trail-overlays'
-import { lineLength } from '@/features/map/domain/drawn-track'
+import { lineLength, pointAlong } from '@/features/map/domain/drawn-track'
 import { buildNetwork, metersPerUnit, routeToTap, snapTo, toLngLat, toUnits } from '@/features/map/domain/track-routing'
 import { SKI_ROUTES_SOURCE_ID } from '@/features/map/presentation/components/trail-layers'
 
@@ -41,6 +41,21 @@ export type NetworkIssue = 'unavailable' | null
 const GAP_M = 50
 /** A leg that found no way: straight, and longer than the last bit to a point — the line says so. */
 export const isGap = (leg: readonly LngLat[]) => leg.length === 2 && haversineMeters(leg[0]!, leg[1]!) > GAP_M
+
+export const metersPerPixel = (lat: number, zoom: number) => 78271.517 * Math.cos(lat * Math.PI / 180) / 2 ** zoom
+
+/** Never farther than this, however far out the map is zoomed: a point lands near where it was set. */
+const MAX_TAP_SNAP_M = 250
+/** A tap (or a point let go) snaps to a way this many screen pixels away: generous, a finger covers a trail. */
+export const tapSnapM = (lat: number, zoom: number, coarse: boolean) => Math.min(MAX_TAP_SNAP_M, (coarse ? 32 : 16) * metersPerPixel(lat, zoom))
+
+/** A leg shorter than this on screen has no handle: it would hide its own points. */
+const HANDLE_MIN_PX = 40
+/** Where a leg's handle sits, to pull a new point out of it: halfway along, or none on a leg too short. */
+export function legHandle(leg: readonly LngLat[], zoom: number): LngLat | null {
+  const mid = pointAlong(leg, 0.5)
+  return lineLength(leg) / metersPerPixel(mid[1], zoom) >= HANDLE_MIN_PX ? mid : null
+}
 
 interface Options {
   /** What the line follows first, then the base map's ways; null = those ways alone. */

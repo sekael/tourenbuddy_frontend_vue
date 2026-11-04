@@ -913,7 +913,9 @@
         "start": "Wo gehst du los? Auf die Karte tippen oder suchen.",
         "goal": "Wohin? Ziel auf der Karte antippen oder suchen.",
         "end": "Wo endest du? Auf die Karte tippen – oder ohne Endpunkt weiter.",
-        "move": "Auf die Karte tippen, um den Punkt dorthin zu setzen, oder ihn ziehen."
+        "move": "Setze oder ziehe den Punkt auf der Karte.",
+        "shape": "Ziehe den Punkt in der Mitte einer Linie, um den Weg zu ändern.",
+        "via": "Tippe einen herausgezogenen Punkt an, um ihn wieder zu entfernen."
       },
       "required": "Pflicht",
       "optional": "Optional",
@@ -939,9 +941,12 @@
         "straight": "Luftlinie zwischen den Punkten",
         "unavailable": "Wege nicht geladen (offline?), darum Luftlinie",
         "fixed": "Dein hochgeladener Track bleibt, wie er ist",
-        "gap": "Kein Weg für einen Abschnitt – dort Luftlinie"
+        "gap": "Kein Weg für einen Abschnitt – dort Luftlinie",
+        "finding": "Weg wird gesucht …"
       },
-      "back": "Zurück zu den Details, ohne diese Änderungen"
+      "back": "Zurück zu den Details, ohne diese Änderungen",
+      "fold": "Routenpunkte einklappen",
+      "unfold": "Routenpunkte zeigen"
     }
   },
   "i18n": {

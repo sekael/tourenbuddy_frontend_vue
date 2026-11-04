@@ -7,10 +7,9 @@ import { LngLatBounds } from 'maplibre-gl'
 import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { pace } from '@/core/composables/use-pace'
-import { lineLength } from '@/features/map/domain/drawn-track'
 import { snapNetworkFor } from '@/features/map/domain/snap-network'
 import { isBoundsVisible } from '@/features/map/presentation/composables/frame-tour'
-import { isGap, skiTilesTemplate } from '@/features/map/presentation/composables/use-leg-router'
+import { isGap, legHandle, skiTilesTemplate, tapSnapM } from '@/features/map/presentation/composables/use-leg-router'
 import { useTrackDrawing } from '@/features/map/presentation/composables/use-track-drawing'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { tourMinutes } from '@/features/tours/domain/route-metrics'
@@ -52,24 +51,12 @@ const minutes = computed(() => tourMinutes(drawing.metrics.value, { tourTypes: p
 // ── Gestures ────────────────────────────────────────────────────────────────
 const coarse = () => window.matchMedia?.('(pointer: coarse)').matches ?? false
 
-/** Never farther than this, however far out the map is zoomed: a point lands near where it was set. */
-const MAX_SNAP_M = 250
-
-const metersPerPixel = (lat: number, zoom: number) => 78271.517 * Math.cos(lat * Math.PI / 180) / 2 ** zoom
-
-/** A tap snaps to a way this many screen pixels away: generous, a finger covers a trail. */
-function snapRadiusM(lat: number): number {
-  return Math.min(MAX_SNAP_M, (coarse() ? 32 : 16) * metersPerPixel(lat, props.map!.getZoom()))
-}
+const snapRadiusM = (lat: number) => tapSnapM(lat, props.map!.getZoom(), coarse())
 
 /** The map's zoom, for the handles: a leg too short on screen has none, it would hide its points. */
 const zoom = ref(props.map?.getZoom() ?? 0)
 const onZoom = () => (zoom.value = props.map!.getZoom())
-const HANDLE_MIN_PX = 40
-const handles = computed(() => drawing.handles.value.map((h, i) => {
-  const leg = shown.value.legs[i]!
-  return lineLength(leg) / metersPerPixel(h[1], zoom.value) >= HANDLE_MIN_PX ? h : null
-}))
+const handles = computed(() => drawing.handles.value.map((_, i) => legHandle(shown.value.legs[i]!, zoom.value)))
 
 /** The point (or else the leg handle) under `at`, within fingertip reach. */
 function grabAt(at: Point): { index: number, insert: boolean } | null {

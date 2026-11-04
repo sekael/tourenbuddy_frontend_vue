@@ -913,7 +913,9 @@
         "start": "Where do you set off? Tap the map or search.",
         "goal": "Where to? Tap your goal on the map or search.",
         "end": "Where do you finish? Tap the map – or continue without.",
-        "move": "Tap the map to move this point there, or drag it."
+        "move": "Tap or drag point on the map.",
+        "shape": "Drag a line’s middle dot to change the way.",
+        "via": "Tap a point you pulled out to remove it again."
       },
       "required": "Required",
       "optional": "Optional",
@@ -939,9 +941,12 @@
         "straight": "Straight lines between the points",
         "unavailable": "Trails couldn’t load (offline?), so it’s straight",
         "fixed": "Your uploaded track stays as it is",
-        "gap": "No path for part of it – a straight line there"
+        "gap": "No path for part of it – a straight line there",
+        "finding": "Finding the way…"
       },
-      "back": "Back to the details, without these changes"
+      "back": "Back to the details, without these changes",
+      "fold": "Fold the route points away",
+      "unfold": "Show the route points"
     }
   },
   "i18n": {
