@@ -15,6 +15,7 @@ import IconBedOutline from '~icons/material-symbols/bed-outline'
 import IconBlockOutline from '~icons/material-symbols/block-outline'
 import IconBrokenImageOutline from '~icons/material-symbols/broken-image-outline'
 import IconCalendarTodayOutline from '~icons/material-symbols/calendar-today-outline'
+import IconCalendarViewDayOutline from '~icons/material-symbols/calendar-view-day-outline'
 import IconCallOutline from '~icons/material-symbols/call-outline'
 import IconChatOutline from '~icons/material-symbols/chat-outline'
 import IconCheck from '~icons/material-symbols/check'
@@ -153,6 +154,7 @@ export const iconRegistry: Record<string, Component> = {
   block: IconBlockOutline,
   broken_image: IconBrokenImageOutline,
   calendar_today: IconCalendarTodayOutline,
+  calendar_view_day: IconCalendarViewDayOutline,
   call: IconCallOutline,
   chat: IconChatOutline,
   check: IconCheck,

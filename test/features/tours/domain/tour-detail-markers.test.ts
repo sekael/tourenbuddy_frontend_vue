@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { outingDetailMarkers, tourDetailMarkers } from '@/features/tours/domain/tour-detail-markers'
+import { draftStageMarkers, outingDetailMarkers, tourDetailMarkers } from '@/features/tours/domain/tour-detail-markers'
 
 const START = { lng: 7.0, lat: 46.0 }
 // ~well over 10m from START, so treated as a distinct end point
@@ -133,5 +133,20 @@ describe('outingDetailMarkers', () => {
   it('should drop an end back at the start or on the last goal', () => {
     expect(outingDetailMarkers([seg({ startPoint: A }), seg({ goal: P, endPoint: { ...A } })])).toHaveLength(1)
     expect(outingDetailMarkers([seg({ startPoint: A }), seg({ goal: P, endPoint: { ...P } })])).toHaveLength(1)
+  })
+})
+
+describe('draftStageMarkers', () => {
+  const A = { lng: 8.0, lat: 46.0 }
+  const B = { lng: 8.1, lat: 46.1 }
+  const C = { lng: 8.2, lat: 46.2 }
+
+  it('should draw the next day\'s start once, not on the goal it starts from', () => {
+    const markers = draftStageMarkers([
+      { tourTypes: [], goal: B, startPoint: A, endPoint: null },
+      { tourTypes: [], goal: null, startPoint: B, endPoint: C },
+    ])
+    expect(markers.map(m => [m.pointKind, m.lngLat])).toEqual([['start', A], ['end', C]])
+    expect(markers.every(m => m.draft)).toBe(true)
   })
 })

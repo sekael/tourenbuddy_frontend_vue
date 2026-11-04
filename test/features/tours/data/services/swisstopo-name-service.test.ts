@@ -56,6 +56,47 @@ describe('suggestTourName', () => {
     expect(result).toBe('Rigi Kulm')
   })
 
+  it('should name a pin inside a whole valley by the nearest named spot, not the valley', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(makeIdentifyResponse([{ attributes: { name: 'Griessental', objektart: 'Tal' } }]))
+      .mockResolvedValueOnce(makeIdentifyResponse([
+        { attributes: { name: 'Griessental', objektart: 'Tal' }, geometry: { rings: [] } },
+        { attributes: { name: 'Hinter Griessbänder', objektart: 'Lokalname swisstopo' }, geometry: { points: [[2600250, 1200000]] } },
+        { attributes: { name: 'Schärpfi', objektart: 'Lokalname swisstopo' }, geometry: { points: [[2600090, 1200000]] } },
+      ]))
+    vi.spyOn(await import('@/core/utils/wgs84-to-lv95'), 'wgs84ToLv95').mockReturnValue({ easting: 2600000, northing: 1200000 })
+
+    expect(await suggestTourName({ lng: 8.45, lat: 46.84 })).toBe('Schärpfi')
+  })
+
+  it('should keep the valley\'s name when no named spot lies near the pin', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(makeIdentifyResponse([{ attributes: { name: 'Griessental', objektart: 'Tal' } }]))
+      .mockResolvedValueOnce(makeIdentifyResponse([]))
+
+    expect(await suggestTourName({ lng: 8.45, lat: 46.84 })).toBe('Griessental')
+  })
+
+  it('should name a main summit by the summit, not the station building on it', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(makeIdentifyResponse([
+      { attributes: { name: 'Bergstation Titlis', objektart: 'Gebaeude' } },
+      { attributes: { name: 'Titlis', objektart: 'Hauptgipfel' } },
+    ]))
+    expect(await suggestTourName({ lng: 8.4378, lat: 46.7724 })).toBe('Titlis')
+  })
+
+  it('should not name a pin on a summit\'s flank after the summit 400 m away', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(makeIdentifyResponse([]))
+      .mockResolvedValueOnce(makeIdentifyResponse([
+        { attributes: { name: 'Tschudi', objektart: 'Hauptgipfel' }, geometry: { points: [[2600400, 1200000]] } },
+        { attributes: { name: 'Wiss Tritt', objektart: 'Lokalname swisstopo' }, geometry: { points: [[2600300, 1200000]] } },
+      ]))
+    vi.spyOn(await import('@/core/utils/wgs84-to-lv95'), 'wgs84ToLv95').mockReturnValue({ easting: 2600000, northing: 1200000 })
+
+    expect(await suggestTourName({ lng: 8.42, lat: 46.85 })).toBe('Wiss Tritt')
+  })
+
   it('should rank Gipfel above Pass above Gletscher', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       makeIdentifyResponse([

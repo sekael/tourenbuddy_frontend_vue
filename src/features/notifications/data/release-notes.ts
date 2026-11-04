@@ -59,6 +59,15 @@ export const RELEASE_NOTES: readonly ReleaseNote[] = [
       { key: 'markers', icon: 'location_on' },
     ],
   },
+  {
+    id: '2026-11-map-first-planning',
+    since: '2026-11-04',
+    features: [
+      { key: 'route', icon: 'map' },
+      { key: 'shape', icon: 'route' },
+      { key: 'days', icon: 'calendar_view_day' },
+    ],
+  },
 ]
 
 export function currentReleaseNote(notes: readonly ReleaseNote[] = RELEASE_NOTES): ReleaseNote | null {

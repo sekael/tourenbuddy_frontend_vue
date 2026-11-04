@@ -8,7 +8,7 @@ import type { TourDraft } from '@/features/tours/domain/entities/tour'
 import type { TourAttachment } from '@/features/tours/domain/entities/tour-attachment'
 import type { LegDirection, TourLegs } from '@/features/tours/domain/legs'
 import type { RouteMetrics } from '@/features/tours/domain/route-metrics'
-import type { PointPick, SwisstopoFill } from '@/features/tours/presentation/composables/use-swisstopo-fill'
+import type { PointChange, PointPick, SwisstopoFill } from '@/features/tours/presentation/composables/use-swisstopo-fill'
 import { storeToRefs } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
 import { computed, reactive, ref, shallowRef, watch } from 'vue'
@@ -24,7 +24,7 @@ import { isOnline } from '@/core/offline/use-online-status'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
-import { lineLength, trackFromLine, trackLine } from '@/features/map/domain/drawn-track'
+import { lineLength, routeStops, trackFromLine, trackLine, withWayBack } from '@/features/map/domain/drawn-track'
 import { dropScales, GRADE_MAX_LENGTH, gradeScales, normalizeGrade } from '@/features/tours/data/models/grade'
 import { SEASON_VALUES, seasonsForDates } from '@/features/tours/data/models/season'
 import { MAX_ATTACHMENTS_PER_TOUR } from '@/features/tours/data/models/tour-attachment'
@@ -69,10 +69,11 @@ const props = defineProps<{
   /** Seeds all editable fields (edit mode, or a new outing segment's create). */
   initialDraft?: TourDraft | null
   /**
-   * The latest confirmed location pick — a new object per pick. Sets the start/end point
-   * (the goal comes in through `currentGoal`) and looks up that point's name and elevation.
+   * The latest confirmed location pick — a new object per pick, or a list from the route planner.
+   * Sets the start/end point (the goal comes in through `currentGoal`) and names it and gives it a
+   * height: the pick's own when it brings them, else looked up. A null location removes the point.
    */
-  pick?: PointPick | null
+  pick?: PointChange | PointChange[] | null
   /**
    * The latest finished drawing (a new object per drawing), or a planned ski route's line: the
    * form makes it the tour's GPX track, with heights from the terrain profile.
@@ -100,6 +101,10 @@ const props = defineProps<{
    * the parent diffs the submitted draft into suggestion items rather than saving it.
    */
   mode?: 'edit' | 'suggest'
+  /** Prefix of the field ids, unique per form on screen (a multi-day creation shows one form per stage). */
+  idPrefix?: string
+  /** Create mode: offer "+ Next day" and "Split into daily stages" (map-first-tour-creation D4, D5). */
+  stages?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -120,9 +125,12 @@ const emit = defineEmits<{
   tourTypesChange: [tourTypes: TourType[]]
   startPointChange: [point: { lng: number, lat: number } | null]
   endPointChange: [point: { lng: number, lat: number } | null]
+  /** Plan the next day's stage from here; `split`: the days a span covered, now day 1 of them. */
+  nextDay: [split?: number]
 }>()
 
 const { t } = useI18n({ useScope: 'global' })
+const idPrefix = props.idPrefix ?? 'tf'
 const { formatDistance } = useFormatter()
 
 /** Fixed for the lifetime of a form instance — the host mounts a fresh one per mode. */
@@ -210,6 +218,15 @@ const preparingTrack = ref(false)
 const loadingSeed = ref(false)
 const gpxFilepath = ref<string | null>(props.initialDraft?.gpxFilepath ?? null)
 const gpxRemoved = ref(false)
+/**
+ * A drawn route is the track (D9): its points move through the route step, which moves the track
+ * with them — not through the suggestions here, which would leave it behind. Started at the goal,
+ * the start is the goal.
+ */
+const drawn = computed(() => {
+  const drawing = !gpxRemoved.value && gpxFile.value ? fileDrawings.get(gpxFile.value) : undefined
+  return drawing ? { fromGoal: drawing.goal === 0 } : null
+})
 const gpxError = ref<string | null>(null)
 const nameError = ref(false)
 const pendingGpxKey = ref<string | null>(null)
@@ -400,6 +417,9 @@ const fills = {
 /** A point's name and height show together, once both lookups have answered or failed. */
 const settling = (point: keyof typeof fills) => fills[point].some(fill => fill.status === 'loading')
 
+/** The goal's place, apart from the tour's name (which may be typed): the route step names the goal by it. */
+const goalPlace = ref('')
+
 /** A map pick, a suggestion chip or a GPX end: set the point, then name it and look up its height. */
 function applyPick(pick: PointPick) {
   if (pick.type === 'start')
@@ -408,13 +428,28 @@ function applyPick(pick: PointPick) {
     endPoint.value = pick.location
   if (pick.type !== 'goal')
     fromTrack[pick.type] = false
+  else
+    goalPlace.value = pick.name ?? ''
   const [nameFill, elevationFill] = fills[pick.type]
   // A place chosen in the picker's search names the point; otherwise look one up nearby.
-  void nameFill.fill(async signal => pick.name ?? suggestTourName(pick.location, signal))
-  void elevationFill.fill(signal => getElevation(pick.location, signal))
+  void nameFill.fill(signal => pick.name ?? suggestTourName(pick.location, signal).then((name) => {
+    if (pick.type === 'goal' && !signal.aborted)
+      goalPlace.value = name ?? ''
+    return name
+  }))
+  void elevationFill.fill(signal => pick.elevation !== undefined ? pick.elevation : getElevation(pick.location, signal))
 }
 
-watch(() => props.pick, pick => pick && applyPick(pick), { immediate: true })
+function applyChange(change: PointChange) {
+  if (change.location)
+    applyPick(change)
+  else if (change.type === 'start')
+    handleRemoveStart()
+  else
+    handleRemoveEnd()
+}
+
+watch(() => props.pick, pick => pick && [pick].flat().forEach(applyChange), { immediate: true })
 
 /**
  * A GPX names the empty ends (design D6): its first point, its last — or the start again for a
@@ -441,6 +476,30 @@ function fillPointsFromTrack(ends: { first: { lng: number, lat: number }, last: 
     const at = round ? startPoint.value! : ends.last
     applyPick({ type: 'end', location: { ...at }, name: round ? startPointName.value.trim() || undefined : undefined })
     fromTrack.end = true
+  }
+}
+
+/**
+ * A route's track (a drawing with its goal marked, map-first-tour-creation D9) carries the start and
+ * end themselves: they follow it. A stop moved a little keeps its name; farther, it is named anew.
+ */
+function followStops(track: DrawnTrack & { goal: number }) {
+  const stops = routeStops(track)
+  for (const type of ['start', 'end'] as const) {
+    const stop = stops[type]
+    if (!stop)
+      continue
+    const at = { lng: stop[0], lat: stop[1] }
+    const point = type === 'start' ? startPoint : endPoint
+    if (point.value && isSameGoal(point.value, at, NEAR_M)) {
+      point.value = at
+      continue
+    }
+    // Back at the start: a round trip, its end named as its start.
+    const round = type === 'end' && !!startPoint.value && isSameGoal(startPoint.value, at, 1)
+    applyPick(round
+      ? { type, location: at, name: startPointName.value.trim() || undefined, elevation: startPointElevation.value ? Number(startPointElevation.value) : undefined }
+      : { type, location: at })
   }
 }
 
@@ -668,7 +727,8 @@ async function acceptGpxFile(file: File) {
   }
 }
 
-function handleCancel() {
+/** Abandon the draft: abort and delete what it uploaded (also a removed day's stage, D4). */
+function discard() {
   if (isUploadingGpx.value) {
     // Abort kills the transfer now; the flag still matters for the race where the upload
     // resolved a tick before this ran, so `abort()` is a no-op and the success branch has
@@ -691,6 +751,10 @@ function handleCancel() {
     void attachmentsStore.discardDraft(draftId, attachmentTourId)
   else if (draftId)
     attachmentsStore.clearStaged(draftId)
+}
+
+function handleCancel() {
+  discard()
   emit('cancel')
 }
 
@@ -727,20 +791,35 @@ async function startDrawing() {
     loadingSeed.value = false
     seed = saved && trackFromLine(trackLines(saved).flat().map(([lng, lat]) => [lng!, lat!] as LngLat))
   }
-  emit('drawTrack', seed)
+  emit('drawTrack', seed ?? routeSeed())
+}
+
+/** No track yet: the drawing starts as the route's start, goal and end, joined along the ways (D9). */
+function routeSeed(): DrawnTrack | null {
+  const goal = props.currentGoal
+  if (!goal)
+    return null
+  const ll = (p: { lng: number, lat: number }): LngLat => [p.lng, p.lat]
+  const points = [startPoint.value, goal, endPoint.value].filter(p => p !== null).map(ll)
+  return { points, legs: [], goal: startPoint.value ? 1 : 0 }
 }
 
 /**
  * A finished drawing becomes the tour's GPX file, with the terrain's heights when online. Its
  * points are the same either way, so a route planned twice is one track (`dropIfDuplicate`).
  */
+/** The drawing on its way to a file, for the route step to go on from meanwhile. */
+let pendingDrawing: DrawnTrack | null = null
 async function acceptDrawnTrack(track: DrawnTrack) {
   preparingTrack.value = true
+  pendingDrawing = track
   try {
     const line = trackLine(track)
     // Its ends are known now: name them while the heights load, not after.
     const [first, last] = [line[0], line.at(-1)]
-    if (first && last)
+    if (track.goal != null)
+      followStops({ ...track, goal: track.goal })
+    else if (first && last)
       fillPointsFromTrack({ first: { lng: first[0], lat: first[1] }, last: { lng: last[0], lat: last[1] } })
     const profiled = isOnline.value ? await getTrackProfile(line) : null
     const gpx = gpxFromLine(profiled?.line ?? densify(line), profiled?.heights ?? null, tourName.value.trim() || t('tours.form.gpxDrawn'))
@@ -749,10 +828,19 @@ async function acceptDrawnTrack(track: DrawnTrack) {
     await acceptGpxFile(file)
   }
   finally {
-    preparingTrack.value = false
+    if (pendingDrawing === track) {
+      preparingTrack.value = false
+      pendingDrawing = null
+    }
   }
 }
-watch(() => props.drawnTrack, track => track && void acceptDrawnTrack(track), { immediate: true })
+// A drawing of no points (a route gone straight) takes the drawn track away; an upload stays.
+watch(() => props.drawnTrack, (track) => {
+  if (track && track.points.length > 1)
+    void acceptDrawnTrack(track)
+  else if (track && gpxFile.value && fileDrawings.has(gpxFile.value))
+    handleRemoveGpx()
+}, { immediate: true })
 
 watch(
   () => (gpxRemoved.value ? [] : gpxFile.value ? fileLines.get(gpxFile.value) ?? null : null),
@@ -787,9 +875,15 @@ function handleRemoveEnd() {
   pointsByHand.value &&= !!startPoint.value
 }
 
+/** Back to the start: a drawn route that ends at its goal goes back the way it came (its stops name the end). */
 function handleRoundTrip() {
   if (!startPoint.value)
     return
+  const drawing = !gpxRemoved.value && gpxFile.value ? fileDrawings.get(gpxFile.value) : undefined
+  if (drawing?.goal && drawing.goal === drawing.points.length - 1) {
+    void acceptDrawnTrack(withWayBack(drawing))
+    return
+  }
   fromTrack.end = false
   endPoint.value = { lng: startPoint.value.lng, lat: startPoint.value.lat }
   endPointName.value = startPointName.value
@@ -810,32 +904,10 @@ const submitBlocked = computed(
   () => isUploadingGpx.value || preparingTrack.value || attachmentsStore.uploading || attachmentOverflow.value > 0,
 )
 
-function handleSubmit() {
-  // `disabled` covers the location-picker; `submitBlocked` is guarded here too since an
-  // external (top-bar) Save button bypasses the `disabled` attribute.
-  if (props.disabled || submitBlocked.value)
-    return
-  if (!tourName.value.trim()) {
-    nameError.value = true
-    document.getElementById('tf-tourName')?.focus()
-    return
-  }
-  // `min` on the input is bypassable by typing; the DB CHECK is the backstop.
-  if (plannedDate.value && endDate.value && endDate.value < plannedDate.value) {
-    endDateError.value = true
-    document.getElementById('tf-endDate')?.focus()
-    return
-  }
-
+/** The form as a draft, unchecked — what the next day's stage is seeded from. */
+function snapshot(): TourDraft {
   const effectiveGpxFilepath = gpxRemoved.value ? null : (pendingGpxKey.value ?? gpxFilepath.value)
-  // Attachments pre-uploaded under `attachmentTourId` want the created tour to carry that
-  // id, so the storage folder matches the row. GPX wins when both minted one.
-  const hasPreUploadedAttachments
-    = !!draftId && (attachmentsStore.preUploadedByDraft[draftId]?.length ?? 0) > 0
-  const preUploadedTourId
-    = pendingTourId.value ?? (hasPreUploadedAttachments ? attachmentTourId : null)
-
-  const draft: TourDraft = {
+  return {
     name: tourName.value.trim(),
     plannedDate: plannedDate.value ? new Date(plannedDate.value) : null,
     endDate: plannedDate.value && endDate.value ? new Date(endDate.value) : null,
@@ -858,20 +930,100 @@ function handleSubmit() {
     legs: legs.value,
     startTime: plannedDate.value && startTime.value ? startTime.value : null,
   }
-  emit(
-    'submit',
-    draft,
-    gpxRemoved.value,
-    preUploadedTourId,
-    draftId ?? '',
-    Array.from(proposedRemovals.value),
-  )
+}
+
+/** What saving would send, or null after showing what stops it (`focus`: move there). */
+function collect(focus = true) {
+  if (!tourName.value.trim()) {
+    nameError.value = true
+    if (focus)
+      document.getElementById(`${idPrefix}-tourName`)?.focus()
+    return null
+  }
+  // `min` on the input is bypassable by typing; the DB CHECK is the backstop.
+  if (plannedDate.value && endDate.value && endDate.value < plannedDate.value) {
+    endDateError.value = true
+    if (focus)
+      document.getElementById(`${idPrefix}-endDate`)?.focus()
+    return null
+  }
+  // Attachments pre-uploaded under `attachmentTourId` want the created tour to carry that
+  // id, so the storage folder matches the row. GPX wins when both minted one.
+  const hasPreUploadedAttachments
+    = !!draftId && (attachmentsStore.preUploadedByDraft[draftId]?.length ?? 0) > 0
+  return {
+    draft: snapshot(),
+    gpxRemoved: gpxRemoved.value,
+    preUploadedTourId: pendingTourId.value ?? (hasPreUploadedAttachments ? attachmentTourId : null),
+    draftId: draftId ?? '',
+    proposedRemovals: Array.from(proposedRemovals.value),
+  }
+}
+
+function handleSubmit() {
+  // `disabled` covers the location-picker; `submitBlocked` is guarded here too since an
+  // external (top-bar) Save button bypasses the `disabled` attribute.
+  if (props.disabled || submitBlocked.value)
+    return
+  const out = collect()
+  if (out)
+    emit('submit', out.draft, out.gpxRemoved, out.preUploadedTourId, out.draftId, out.proposedRemovals)
+}
+
+const height = (value: string) => (value ? Number(value) : null)
+
+/** The stage's points as the form holds them, for the route planner (map-first-tour-creation D3). */
+function route() {
+  const file = gpxRemoved.value ? null : gpxFile.value
+  const drawing = pendingDrawing ?? (file && fileDrawings.get(file)) ?? null
+  return {
+    /** Named by its place where the form knows it (`place`), else by the tour. */
+    goal: { name: goalPlace.value || tourName.value.trim(), place: goalPlace.value || null, elevation: height(elevation.value) },
+    start: startPoint.value && { location: startPoint.value, name: startPointName.value.trim(), elevation: height(startPointElevation.value) },
+    end: endPoint.value && { location: endPoint.value, name: endPointName.value.trim(), elevation: height(endPointElevation.value) },
+    /** The drawn track (or a planned route's line), to go on from. */
+    drawing,
+    /** An uploaded track, which stays as it is. */
+    fixedLine: !drawing && file ? fileLines.get(file) ?? null : null,
+  }
+}
+
+/** Where the day ends — its end, else its goal: the next day of a trip starts there (D11). */
+const handover = computed(() => {
+  if (endPoint.value)
+    return { location: endPoint.value, name: endPointName.value.trim(), elevation: height(endPointElevation.value) }
+  return props.currentGoal && { location: props.currentGoal, name: goalPlace.value || tourName.value.trim(), elevation: height(elevation.value) }
+})
+
+/** What the later days of a trip take over from this one while they hold the same (D11). */
+const shared = computed(() => ({
+  tourTypes: selectedTourTypes.value,
+  partnerIds: [...selectedPartnerIds.value].sort(),
+  visibility: visibility.value,
+}))
+function adopt(values: Partial<typeof shared.value & { plannedDate: string }>) {
+  if (values.tourTypes)
+    selectedTourTypes.value = values.tourTypes
+  if (values.partnerIds)
+    selectedPartnerIds.value = new Set(values.partnerIds)
+  if (values.visibility)
+    visibility.value = values.visibility
+  if (values.plannedDate !== undefined)
+    plannedDate.value = values.plannedDate
+}
+
+/** "Split into daily stages" (D5): this form keeps the first day, the next day's stage follows. */
+const spanDayCount = computed(() => spansDays.value ? Math.round((Date.parse(endDate.value) - Date.parse(plannedDate.value)) / 86_400_000) + 1 : 0)
+function splitDays() {
+  const days = spanDayCount.value
+  endDate.value = ''
+  emit('nextDay', days)
 }
 
 // Let a full-screen page's top-bar cancel run the same cleanup as the in-form
 // Cancel button (orphaned GPX upload + staged attachments), and its Save mirror the
 // in-form button's disabled state.
-defineExpose({ cancel: handleCancel, submitBlocked })
+defineExpose({ cancel: handleCancel, discard, submitBlocked, collect, snapshot, route, tourName, plannedDate, shared, adopt, handover })
 </script>
 
 <template>
@@ -882,10 +1034,10 @@ defineExpose({ cancel: handleCancel, submitBlocked })
              route has to fit a phone's first screen after the activities (D9). -->
         <div class="section">
           <div class="field">
-            <label class="label" for="tf-tourName">{{ t('tours.form.nameLabel') }} <span class="required-mark">*</span></label>
+            <label class="label" :for="`${idPrefix}-tourName`">{{ t('tours.form.nameLabel') }} <span class="required-mark">*</span></label>
             <div class="lookup">
               <input
-                id="tf-tourName"
+                :id="`${idPrefix}-tourName`"
                 v-model="tourName"
                 class="input"
                 :class="{ 'input--error': nameError }"
@@ -925,10 +1077,10 @@ defineExpose({ cancel: handleCancel, submitBlocked })
               </BaseButton>
             </div>
             <div class="field field--inline">
-              <label class="label" for="tf-elevation">{{ t('tours.form.elevationLabel') }}</label>
+              <label class="label" :for="`${idPrefix}-elevation`">{{ t('tours.form.elevationLabel') }}</label>
               <div class="lookup">
                 <input
-                  id="tf-elevation"
+                  :id="`${idPrefix}-elevation`"
                   v-model="elevation"
                   class="input input--compact"
                   type="number"
@@ -1083,7 +1235,7 @@ defineExpose({ cancel: handleCancel, submitBlocked })
               </div>
               <div class="point-row">
                 <span class="point-coords">
-                  {{ startPoint ? formatPoint(startPoint) : t('tours.form.pointNotSet') }}
+                  {{ startPoint ? formatPoint(startPoint) : drawn?.fromGoal ? t('tours.form.trackFromGoal') : t('tours.form.pointNotSet') }}
                   <PointDistance v-if="startPoint && currentGoal" :goal="currentGoal" :point="startPoint" />
                 </span>
                 <BaseButton type="button" variant="secondary" size="sm" @click="emit('pickPoint', 'start')">
@@ -1101,17 +1253,17 @@ defineExpose({ cancel: handleCancel, submitBlocked })
                 />
               </div>
               <PointSuggestions
-                v-if="!startPoint && currentGoal" role="start" :around="currentGoal" :tour-id="tourId"
+                v-if="!startPoint && currentGoal && !drawn" role="start" :around="currentGoal" :tour-id="tourId"
                 @pick="applyPick({ type: 'start', ...$event })"
               />
               <template v-if="startPoint">
                 <div class="field">
-                  <label class="label" for="tf-start-name">{{
+                  <label class="label" :for="`${idPrefix}-start-name`">{{
                     t('tours.form.pointNameLabel')
                   }}</label>
                   <div class="lookup">
                     <input
-                      id="tf-start-name"
+                      :id="`${idPrefix}-start-name`"
                       v-model="startPointName"
                       class="input"
                       type="text"
@@ -1124,12 +1276,12 @@ defineExpose({ cancel: handleCancel, submitBlocked })
                   </div>
                 </div>
                 <div class="field">
-                  <label class="label" for="tf-start-elevation">{{
+                  <label class="label" :for="`${idPrefix}-start-elevation`">{{
                     t('tours.form.elevationLabel')
                   }}</label>
                   <div class="lookup">
                     <input
-                      id="tf-start-elevation"
+                      :id="`${idPrefix}-start-elevation`"
                       v-model="startPointElevation"
                       class="input"
                       type="number"
@@ -1173,10 +1325,10 @@ defineExpose({ cancel: handleCancel, submitBlocked })
                   />
                 </div>
                 <div class="field">
-                  <label class="label" for="tf-end-name">{{ t('tours.form.pointNameLabel') }}</label>
+                  <label class="label" :for="`${idPrefix}-end-name`">{{ t('tours.form.pointNameLabel') }}</label>
                   <div class="lookup">
                     <input
-                      id="tf-end-name"
+                      :id="`${idPrefix}-end-name`"
                       v-model="endPointName"
                       class="input"
                       type="text"
@@ -1189,12 +1341,12 @@ defineExpose({ cancel: handleCancel, submitBlocked })
                   </div>
                 </div>
                 <div class="field">
-                  <label class="label" for="tf-end-elevation">{{
+                  <label class="label" :for="`${idPrefix}-end-elevation`">{{
                     t('tours.form.elevationLabel')
                   }}</label>
                   <div class="lookup">
                     <input
-                      id="tf-end-elevation"
+                      :id="`${idPrefix}-end-elevation`"
                       v-model="endPointElevation"
                       class="input"
                       type="number"
@@ -1215,21 +1367,29 @@ defineExpose({ cancel: handleCancel, submitBlocked })
                     {{ endIsLanding ? t('tours.form.addLandingBtn') : t('tours.form.addEndPointBtn') }}
                   </BaseButton>
                   <BaseButton v-if="startPoint && !endIsLanding" type="button" variant="secondary" size="sm" @click="handleRoundTrip">
-                    <BaseIcon name="replay" />
+                    <BaseIcon name="u_turn_left" />
                     {{ t('tours.form.roundTripBtn') }}
                   </BaseButton>
                 </div>
                 <PointSuggestions
-                  v-if="currentGoal" role="end" :around="currentGoal" :exclude="startPoint" :tour-id="tourId"
+                  v-if="currentGoal && !drawn" role="end" :around="currentGoal" :exclude="startPoint" :tour-id="tourId"
                   :landing="endIsLanding" @pick="applyPick({ type: 'end', ...$event })"
                 />
               </template>
             </div>
           </template>
+          <!-- After the end: the next day's stage starts where this one finishes (D4). -->
+          <button v-if="stages" type="button" class="next-day" data-testid="next-day-btn" @click="emit('nextDay')">
+            <BaseIcon name="add" class="next-day-icon" />
+            <span class="next-day-text">
+              <span class="next-day-title">{{ t('tours.form.nextDayBtn') }}</span>
+              <span class="next-day-hint">{{ t('tours.form.nextDayHint') }}</span>
+            </span>
+          </button>
           <div class="field">
-            <label class="label" for="tf-grade">{{ t('tours.form.gradeLabel') }}</label>
+            <label class="label" :for="`${idPrefix}-grade`">{{ t('tours.form.gradeLabel') }}</label>
             <input
-              id="tf-grade" v-model="grade" class="input" type="text" :maxlength="GRADE_MAX_LENGTH"
+              :id="`${idPrefix}-grade`" v-model="grade" class="input" type="text" :maxlength="GRADE_MAX_LENGTH"
               :placeholder="gradePlaceholder" autocomplete="off" data-testid="grade-input"
             >
             <GradeChips v-model="grade" :tour-types="selectedTourTypes" />
@@ -1244,13 +1404,13 @@ defineExpose({ cancel: handleCancel, submitBlocked })
 
           <div class="date-time">
             <div class="field">
-              <label class="label" for="tf-plannedDate">{{ t('tours.form.plannedDateLabel') }}</label>
-              <input id="tf-plannedDate" v-model="plannedDate" class="input" type="date">
+              <label class="label" :for="`${idPrefix}-plannedDate`">{{ t('tours.form.plannedDateLabel') }}</label>
+              <input :id="`${idPrefix}-plannedDate`" v-model="plannedDate" class="input" type="date">
             </div>
             <div class="field">
-              <label class="label" for="tf-startTime">{{ t('tours.form.startTimeLabel') }}</label>
+              <label class="label" :for="`${idPrefix}-startTime`">{{ t('tours.form.startTimeLabel') }}</label>
               <input
-                id="tf-startTime" v-model="startTime" class="input" type="time" :disabled="!plannedDate"
+                :id="`${idPrefix}-startTime`" v-model="startTime" class="input" type="time" :disabled="!plannedDate"
                 data-testid="start-time-input"
               >
             </div>
@@ -1259,9 +1419,9 @@ defineExpose({ cancel: handleCancel, submitBlocked })
           <!-- Always rendered, labelled optional: two adjacent date inputs read as a range
                with no toggle to discover. Empty = single-day tour. -->
           <div class="field">
-            <label class="label" for="tf-endDate">{{ t('tours.form.endDateLabel') }}</label>
+            <label class="label" :for="`${idPrefix}-endDate`">{{ t('tours.form.endDateLabel') }}</label>
             <input
-              id="tf-endDate"
+              :id="`${idPrefix}-endDate`"
               v-model="endDate"
               class="input"
               :class="{ 'input--error': endDateError }"
@@ -1274,6 +1434,15 @@ defineExpose({ cancel: handleCancel, submitBlocked })
             <p v-if="endDateError" class="field-error">
               {{ t('tours.form.endDateBeforeStartError') }}
             </p>
+            <div v-else-if="spansDays && stages" class="split-days" data-testid="multi-day-hint">
+              <p class="field-hint">
+                {{ t('tours.form.splitDaysHint', { count: spanDayCount }) }}
+              </p>
+              <BaseButton type="button" variant="secondary" size="sm" data-testid="split-days-btn" @click="splitDays">
+                <BaseIcon name="calendar_view_day" />
+                {{ t('tours.form.splitDaysBtn') }}
+              </BaseButton>
+            </div>
             <p v-else-if="spansDays" class="field-hint" data-testid="multi-day-hint">
               {{ t('tours.form.multiDayHint') }}
             </p>
@@ -1351,9 +1520,9 @@ defineExpose({ cancel: handleCancel, submitBlocked })
           </p>
 
           <div class="field">
-            <label class="label" for="tf-description">{{ t('tours.form.descriptionLabel') }}</label>
+            <label class="label" :for="`${idPrefix}-description`">{{ t('tours.form.descriptionLabel') }}</label>
             <textarea
-              id="tf-description"
+              :id="`${idPrefix}-description`"
               v-model="description"
               class="input textarea"
               rows="3"
@@ -1362,9 +1531,9 @@ defineExpose({ cancel: handleCancel, submitBlocked })
           </div>
 
           <div class="field">
-            <label class="label" for="tf-equipment">{{ t('tours.form.equipmentLabel') }}</label>
+            <label class="label" :for="`${idPrefix}-equipment`">{{ t('tours.form.equipmentLabel') }}</label>
             <textarea
-              id="tf-equipment"
+              :id="`${idPrefix}-equipment`"
               v-model="equipment"
               class="input textarea"
               rows="2"
@@ -1373,9 +1542,9 @@ defineExpose({ cancel: handleCancel, submitBlocked })
           </div>
 
           <div class="field">
-            <label class="label" for="tf-notes">{{ t('tours.form.notesLabel') }}</label>
+            <label class="label" :for="`${idPrefix}-notes`">{{ t('tours.form.notesLabel') }}</label>
             <textarea
-              id="tf-notes"
+              :id="`${idPrefix}-notes`"
               v-model="notes"
               class="input textarea"
               rows="2"
@@ -1423,6 +1592,8 @@ defineExpose({ cancel: handleCancel, submitBlocked })
             {{ t('tours.suggestions.capOverflow', { count: attachmentOverflow }) }}
           </p>
         </div>
+        <!-- The host's last word on this form, e.g. a trip's "Remove day 2". -->
+        <slot name="end" />
       </div>
       <!-- end scroll-body -->
 
@@ -1564,6 +1735,52 @@ defineExpose({ cancel: handleCancel, submitBlocked })
   border-color: var(--chip-type);
   /* Darkened for the label: amber at full strength is under 4.5:1 on its own tint. */
   color: color-mix(in srgb, var(--chip-type) 75%, black);
+}
+
+.next-day {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  min-height: 56px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px dashed var(--color-outline);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-on-surface);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--color-neutral-container);
+  }
+}
+
+.next-day-icon {
+  flex: none;
+  color: var(--color-primary);
+}
+
+.next-day-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.next-day-title {
+  font-weight: var(--font-weight-semibold);
+}
+
+.next-day-hint {
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
+}
+
+.split-days {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-xs);
 }
 
 .field-hint {

@@ -305,13 +305,14 @@ export function useGpxTrackLayer(map: MapLibreMap) {
 
   /**
    * One slot per entry with something to draw: its GPX track, else its connector legs (same
-   * activity gradient, thinner, lighter). Every other slot is emptied.
+   * activity gradient, thinner, lighter). Every other slot is emptied. `gaps: false` for entries
+   * that aren't a run of segments (a draft's stages without their drawn tracks).
    */
-  async function updateTracks(tours: Tour[]) {
+  async function updateTracks(tours: Tour[], { gaps = true } = {}) {
     const gen = ++generation
     ensureArrows()
     map.getSource<GeoJSONSource>(ARROW_SOURCE_ID)?.setData(tourConnectors(tours))
-    map.getSource<GeoJSONSource>(GAP_SOURCE_ID)?.setData(outingGapLines(tours))
+    map.getSource<GeoJSONSource>(GAP_SOURCE_ID)?.setData(outingGapLines(gaps ? tours : []))
     // A split tour's connector legs take a slot each, so each wears its own leg's gradient.
     const shown = tours.flatMap((tour): TrackSlot[] => {
       if (tour.gpxFilepath)

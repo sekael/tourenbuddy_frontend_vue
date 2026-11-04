@@ -86,7 +86,7 @@ function loadTile(url: string, ski: boolean, tx: number, ty: number): Promise<Ti
 
 /**
  * The network's ways in `bbox` ([west, south, east, north]), with a key naming the tile set (equal
- * keys → equal lines). What the shown layer marks costs 1 — the hiking trails, the ski routes —
+ * keys → equal lines), over at most `maxTiles` tiles. What the shown layer marks costs 1 — the hiking trails, the ski routes —
  * every other way `OFF_TRAIL_COST`; with no layer (`null`) every way costs 1. `skiTemplate` is the
  * ski tiles' URL template of the current dataset (none: the ways alone). Rejects with
  * `TooFarError` for a box over too many tiles, `NetworkUnavailableError` when no tile could be had
@@ -96,10 +96,11 @@ export async function loadNetworkLines(
   network: SnapNetwork | null,
   bbox: [number, number, number, number],
   skiTemplate: string | null,
+  maxTiles = MAX_TILES,
 ): Promise<{ key: string, lines: NetworkLine[] }> {
   const [west, south, east, north] = bbox
   const [x0, x1, y0, y1] = [lonToTile(west), lonToTile(east), latToTile(north), latToTile(south)]
-  if ((x1 - x0 + 1) * (y1 - y0 + 1) > MAX_TILES)
+  if ((x1 - x0 + 1) * (y1 - y0 + 1) > maxTiles)
     throw new TooFarError()
   const sets = network === 'ski' && skiTemplate ? [BASE_TILES, skiTemplate] : [BASE_TILES]
   const requests: Promise<TileLine[]>[] = []

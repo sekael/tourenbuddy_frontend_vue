@@ -12,7 +12,7 @@ import { toursOnMap } from '@/features/map/domain/tours-on-map'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { useTourLinksStore } from '@/features/tour-links/presentation/stores/tour-links-store'
 import { outingChains as outingChainsOf, outingKey, outingSegments } from '@/features/tours/domain/outing'
-import { outingDetailMarkers, tourDetailMarkers } from '@/features/tours/domain/tour-detail-markers'
+import { draftStageMarkers, outingDetailMarkers, tourDetailMarkers } from '@/features/tours/domain/tour-detail-markers'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import { useGpxTrackLayer } from './gpx-track-layer'
 import { DETAIL_CIRCLE_LAYER_ID, TOUR_LAYER_IDS, useToursMarkerLayer } from './tours-marker-layer'
@@ -51,6 +51,7 @@ const {
   previewStart,
   previewEnd,
   previewTrack,
+  previewStages,
   isDrawingTrack,
   activeOverlays,
   trailCard,
@@ -94,10 +95,28 @@ const selectedTour = computed(
 const focusSegments = computed(() => outingSegments(mapTours.value, selectedOutingKey.value))
 const focusSegmentIds = computed(() => focusSegments.value.map(t => t.id))
 
-// Every overview segment's track or connector; else just the selected tour's.
-const trackTours = computed(() =>
-  focusSegments.value.length > 0 ? focusSegments.value : selectedTour.value ? [selectedTour.value] : [],
-)
+/** A tour being created, with nothing open: the map shows its stages (map-first-tour-creation D7). */
+const creating = computed(() => !selectedTour.value && focusSegments.value.length === 0 && previewStages.value.length > 0)
+
+/** The draft's stages without a track of their own, as tours: their straight legs show. */
+const draftTours = computed(() => previewStages.value
+  .filter(s => s.goal && !s.track?.length)
+  // The track layer reads points, activities and legs only.
+  .map((s, i) => ({ ...s, id: `draft-${i}`, gpxFilepath: null }) as unknown as Tour))
+
+// Every overview segment's track or connector; else just the selected tour's, or the draft's.
+const trackTours = computed(() => {
+  if (focusSegments.value.length > 0)
+    return focusSegments.value
+  if (selectedTour.value)
+    return [selectedTour.value]
+  return creating.value ? draftTours.value : []
+})
+
+/** The tentative goals: the edited tour's re-picked one, or every draft stage's. */
+const previewGoals = computed(() => creating.value
+  ? previewStages.value.flatMap(s => (s.goal ? [{ goal: s.goal, tourTypes: s.tourTypes, label: s.label ?? t('tours.form.goalLabel') }] : []))
+  : previewGoal.value ? [{ goal: previewGoal.value, tourTypes: previewTourTypes.value ?? [] }] : [])
 
 // Tours as fed to the marker layer. Identical to `mapTours`, except while a
 // selected tour's types are being edited: the goal's color is data-driven off its
@@ -117,6 +136,8 @@ const renderedTours = computed(() => {
 // selected tour) the preview refs alone drive them. Empty on the bare map.
 const detailMarkers = computed(() => {
   const tour = selectedTour.value
+  if (creating.value)
+    return draftStageMarkers(previewStages.value)
   // The outing overview (no segment open): the whole outing's start and end.
   if (!tour && focusSegments.value.length > 0 && !previewStart.value && !previewEnd.value)
     return outingDetailMarkers(focusSegments.value)
@@ -179,7 +200,7 @@ function drawScene() {
   markerLayer?.updateTours(renderedTours.value, selectedTourId.value, linkedTourIds.value, focusSegmentIds.value)
   markerLayer?.updateDetailMarkers(detailMarkers.value, detailLabels.value)
   markerLayer?.updateOutingChains(outingChains.value)
-  void gpxLayer?.updateTracks(trackTours.value)
+  void gpxLayer?.updateTracks(trackTours.value, { gaps: !creating.value })
 }
 
 /**
@@ -238,7 +259,7 @@ onMounted(() => {
       () => props.covered ?? {},
     )
     await markerLayer.setup()
-    markerLayer.updatePreview(previewGoal.value, previewTourTypes.value ?? [])
+    markerLayer.updatePreview(previewGoals.value)
     gpxLayer = useGpxTrackLayer(mapInstance!)
     gpxLayer.setup()
     drawScene()
@@ -287,13 +308,11 @@ watch([renderedTours, selectedTourId, linkedTourIds, focusSegmentIds, locale], (
 })
 watch(trackTours, (entries) => {
   if (inDrawnScene())
-    void gpxLayer?.updateTracks(entries)
+    void gpxLayer?.updateTracks(entries, { gaps: !creating.value })
 })
 
 // Watch for preview goal/type changes (edit or creation) and update the preview marker
-watch([previewGoal, previewTourTypes], ([goal, tourTypes]) => {
-  markerLayer?.updatePreview(goal, tourTypes ?? [])
-})
+watch(previewGoals, goals => markerLayer?.updatePreview(goals))
 
 // Re-render start/end detail markers whenever the open tour or its draft points change
 watch([detailMarkers, detailLabels], ([markers, labels]) => {
@@ -306,13 +325,19 @@ watch(outingChains, (chains) => {
 })
 
 // A drawing, or a track drawn or picked but not saved yet, stands in for the tour's saved one.
+// A tour being created has no saved one: its stages' tracks show, the other stages' legs stay —
+// while one stage is drawn too (the page leaves its track out, the drawing is it).
 function showDraftTrack() {
-  const line = isDrawingTrack.value ? null : previewTrack.value
-  draftTrackLayer?.update({ points: [], legs: line?.length ? [line] : [] })
-  gpxLayer?.setVisible(!isDrawingTrack.value && previewTrack.value === null)
+  // A trip's other days show fainter than the one at hand.
+  const stageTracks = (active: boolean) => previewStages.value.flatMap(s => (s.track?.length && (s.active ?? true) === active ? [s.track] : []))
+  const lines = creating.value
+    ? stageTracks(true)
+    : isDrawingTrack.value ? [] : previewTrack.value?.length ? [previewTrack.value] : []
+  draftTrackLayer?.update({ points: [], legs: lines }, [], [], creating.value ? stageTracks(false) : [])
+  gpxLayer?.setVisible(!isDrawingTrack.value && (creating.value || previewTrack.value === null))
   trailLayers?.setDimmed(isDrawingTrack.value)
 }
-watch([previewTrack, isDrawingTrack], showDraftTrack)
+watch([previewTrack, previewStages, creating, isDrawingTrack], showDraftTrack)
 
 watch(activeOverlays, ids => trailLayers?.setVisible(ids))
 watch(trailCard, card => trailLayers?.setHighlight(card))
@@ -336,7 +361,7 @@ watch(currentStyleIndex, (index) => {
       calmLandmarkPeaks(mapInstance!)
       trailLayers?.setup(trailLayerState())
       await markerLayer?.setup()
-      markerLayer?.updatePreview(previewGoal.value, previewTourTypes.value ?? [])
+      markerLayer?.updatePreview(previewGoals.value)
       gpxLayer?.setup()
       drawScene()
       draftTrackLayer?.setup()

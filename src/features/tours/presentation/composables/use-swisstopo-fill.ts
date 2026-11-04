@@ -1,12 +1,19 @@
 import type { Ref } from 'vue'
 import { onScopeDispose, reactive, ref } from 'vue'
 
-/** A point confirmed in the location picker; `name` when it came from the picker's search. */
+/**
+ * A point confirmed in the location picker or the route planner; `name` when it came from a
+ * search or the planner's lookup, `elevation` when the planner looked it up (null: it couldn't).
+ */
 export interface PointPick {
   type: 'goal' | 'start' | 'end'
   location: { lng: number, lat: number }
   name?: string
+  elevation?: number | null
 }
+
+/** The route planner's Done: a moved point, or a start / end it removed (map-first-tour-creation D3). */
+export type PointChange = PointPick | { type: 'start' | 'end', location: null }
 
 export type SwisstopoFillStatus = 'idle' | 'loading' | 'failed'
 
@@ -33,17 +40,21 @@ export function useSwisstopoFill(field: Ref<string>) {
     cancel()
   }
 
-  async function fill(lookup: (signal: AbortSignal) => Promise<string | number | null>) {
+  /** A value already known (the planner looked it up) lands at once: nothing in between to wait for. */
+  async function fill(lookup: (signal: AbortSignal) => Promise<string | number | null> | string | number | null) {
     if (typed && field.value.trim())
       return
     cancel()
     const own = new AbortController()
     controller = own
     typed = false
-    // The old value described the previous point — show the wait, not a stale answer.
-    field.value = ''
-    status.value = 'loading'
-    const value = await lookup(own.signal)
+    const answer = lookup(own.signal)
+    if (answer instanceof Promise) {
+      // The old value described the previous point — show the wait, not a stale answer.
+      field.value = ''
+      status.value = 'loading'
+    }
+    const value = answer instanceof Promise ? await answer : answer
     if (controller !== own)
       return
     controller = null

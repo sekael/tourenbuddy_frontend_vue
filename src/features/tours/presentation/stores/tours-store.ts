@@ -508,6 +508,13 @@ export const useToursStore = defineStore('tours', () => {
     return outing
   }
 
+  /** A tour split into daily stages keeps its first day (map-first-tour-creation D5). */
+  async function keepFirstDay(tourId: string) {
+    const tour = tours.value.find(t => t.id === tourId)
+    if (tour?.endDate)
+      await updateTour(tourId, { ...tourToDraft(tour), endDate: null }, tour.goal)
+  }
+
   /** Membership for a tour appended to `outing` (after its last own segment). */
   function nextInOuting(outing: TourOuting): TourOuting {
     return appendedOuting(outing, tours.value.filter(t => t.outing?.id === outing.id))
@@ -617,6 +624,7 @@ export const useToursStore = defineStore('tours', () => {
     setVisibility,
     deleteTour,
     ensureOuting,
+    keepFirstDay,
     nextInOuting,
     addToOuting,
     renameOuting,

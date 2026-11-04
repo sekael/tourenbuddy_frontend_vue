@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { GpxParseError, parseGpxFile } from '@/features/tours/data/services/gpx-parser'
+import PointSuggestions from '@/features/tours/presentation/components/point-suggestions.vue'
 import TourForm from '@/features/tours/presentation/components/tour-form.vue'
 
 const { mockUploadGpx, mockRemoveGpx } = vi.hoisted(() => ({
@@ -1137,5 +1138,143 @@ describe('tourForm — creation that knows more (smarter-tour-creation)', () => 
       expect(seed.points[0]).toEqual(LINE[0])
       expect(seed.legs.flat().at(-1)).toEqual(LINE[2])
     })
+  })
+})
+
+describe('tourForm — map-first creation (map-first-tour-creation)', () => {
+  beforeEach(() => {
+    mockGetElevation.mockReset().mockResolvedValue(999)
+    mockSuggestTourName.mockReset().mockResolvedValue('Looked up')
+  })
+
+  it('should take the route step\'s name and height without asking Swisstopo again, and look up only what it lacks', async () => {
+    const wrapper = mountForm({
+      currentGoal: { lng: 8.4, lat: 46.8 },
+      pick: [
+        { type: 'start', location: { lng: 8.3, lat: 46.7 }, name: 'Engelberg', elevation: 1002 },
+        { type: 'end', location: { lng: 8.5, lat: 46.9 } },
+      ],
+    })
+    await flushPromises()
+
+    expect((wrapper.find('#tf-start-name').element as HTMLInputElement).value).toBe('Engelberg')
+    expect((wrapper.find('#tf-start-elevation').element as HTMLInputElement).value).toBe('1002')
+    expect((wrapper.find('#tf-end-name').element as HTMLInputElement).value).toBe('Looked up')
+    expect(mockGetElevation).toHaveBeenCalledTimes(1)
+  })
+
+  it('should show a height the route step couldn\'t find as failed, not look it up again', async () => {
+    const wrapper = mountForm({ currentGoal: { lng: 8.4, lat: 46.8 }, pick: [{ type: 'start', location: { lng: 8.3, lat: 46.7 }, name: 'Erlen', elevation: null }] })
+    await flushPromises()
+    expect(mockGetElevation).not.toHaveBeenCalled()
+    expect((wrapper.find('#tf-start-elevation').element as HTMLInputElement).value).toBe('')
+  })
+
+  it('should drop the end the route step removed, keeping the start', async () => {
+    const seed = { tourTypes: [], startPoint: { lng: 8.3, lat: 46.7 }, startPointName: 'A', endPoint: { lng: 8.5, lat: 46.9 }, endPointName: 'B' }
+    const wrapper = mountForm({ currentGoal: { lng: 8.4, lat: 46.8 }, initialDraft: seed })
+    await wrapper.setProps({ pick: [{ type: 'end', location: null }] })
+    expect(wrapper.find('#tf-end-name').exists()).toBe(false)
+    expect((wrapper.find('#tf-start-name').element as HTMLInputElement).value).toBe('A')
+  })
+
+  it('should offer the next day only where the stages are laid out', () => {
+    expect(mountForm().find('[data-testid=next-day-btn]').exists()).toBe(false)
+    expect(mountForm({ stages: true }).find('[data-testid=next-day-btn]').exists()).toBe(true)
+  })
+
+  it('should keep the first day of a split span and ask for the next with the day count', async () => {
+    const wrapper = mountForm({ stages: true, initialDraft: { tourTypes: [], plannedDate: new Date('2027-03-12'), endDate: new Date('2027-03-14') } })
+    await wrapper.find('[data-testid=split-days-btn]').trigger('click')
+
+    expect(wrapper.emitted('nextDay')).toEqual([[3]])
+    expect((wrapper.find('#tf-endDate').element as HTMLInputElement).value).toBe('')
+  })
+
+  it('should not collect a stage without a name, and not move the focus when asked not to', async () => {
+    const wrapper = mountForm({ stages: true })
+    const form = wrapper.vm as unknown as { collect: (focus?: boolean) => unknown }
+    expect(form.collect(false)).toBeNull()
+    await nextTick()
+    expect(wrapper.find('#tf-tourName').classes()).toContain('input--error')
+  })
+})
+
+describe('tourForm — the route is the track (map-first-tour-creation D9)', () => {
+  const GOAL = { lng: 8.4, lat: 46.8 }
+  const START: [number, number] = [8.3, 46.7]
+  const route = (start: [number, number]) => ({ points: [start, [GOAL.lng, GOAL.lat]], legs: [[start, [GOAL.lng, GOAL.lat]]], goal: 1 })
+  const asTrack = (coordinates: number[][]): GeoJSON.FeatureCollection =>
+    ({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates } }] })
+  const startName = (wrapper: ReturnType<typeof mountForm>) => (wrapper.find('#tf-start-name').element as HTMLInputElement).value
+
+  beforeEach(() => {
+    mockUploadGpx.mockReset().mockResolvedValue('user-abc/new-tour-id.gpx')
+    mockGetTrackProfile.mockReset().mockResolvedValue(null)
+    mockGetElevation.mockReset().mockResolvedValue(1000)
+    mockSuggestTourName.mockReset().mockResolvedValue('Looked up')
+    vi.mocked(parseGpxFile).mockResolvedValue(asTrack([START, [GOAL.lng, GOAL.lat]]))
+  })
+
+  it('should keep the start\'s name when the track moves it a little, and name it anew when far', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL, pick: [{ type: 'start', location: { lng: START[0], lat: START[1] }, name: 'Engelberg', elevation: 1002 }], drawnTrack: route(START) })
+    await flushPromises()
+    await wrapper.setProps({ drawnTrack: route([START[0] + 0.0005, START[1]]) })
+    await flushPromises()
+    expect(startName(wrapper)).toBe('Engelberg')
+
+    await wrapper.setProps({ drawnTrack: route([8.35, 46.72]) })
+    await flushPromises()
+    expect(startName(wrapper)).toBe('Looked up')
+    expect(wrapper.find('[data-testid=start-from-track]').exists()).toBe(false)
+  })
+
+  it('should start a drawing as the route\'s start, goal and end while there is no track', async () => {
+    const seed = { tourTypes: [], startPoint: { lng: 8.3, lat: 46.7 }, endPoint: { lng: 8.5, lat: 46.9 } }
+    const wrapper = mountForm({ currentGoal: GOAL, initialDraft: seed })
+    await wrapper.find('[data-testid=gpx-draw-btn]').trigger('click')
+    await flushPromises()
+    expect(wrapper.emitted('drawTrack')![0]).toEqual([{ points: [[8.3, 46.7], [8.4, 46.8], [8.5, 46.9]], legs: [], goal: 1 }])
+  })
+
+  it('should name the goal by its place for the route step, not by a name typed for the tour', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL, pick: [{ type: 'goal', location: GOAL, name: 'Jochpass', elevation: 2207 }] })
+    await flushPromises()
+    await wrapper.find('#tf-tourName').setValue('Review Tag 1')
+    const form = wrapper.vm as unknown as { route: () => { goal: { name: string, place: string | null } }, handover: { name: string } }
+    expect(form.route().goal).toMatchObject({ name: 'Jochpass', place: 'Jochpass' })
+    expect(form.handover.name).toBe('Jochpass')
+  })
+
+  it('should say the start is the goal for a track drawn from it, and offer no stops that would leave the track behind', async () => {
+    vi.mocked(parseGpxFile).mockResolvedValue(asTrack([[GOAL.lng, GOAL.lat], [8.5, 46.9]]))
+    const wrapper = mountForm({ currentGoal: GOAL, drawnTrack: { points: [[GOAL.lng, GOAL.lat], [8.5, 46.9]], legs: [[[GOAL.lng, GOAL.lat], [8.5, 46.9]]], goal: 0 } })
+    await flushPromises()
+    expect(wrapper.find('.point-section--start').text()).toContain('tours.form.trackFromGoal')
+    expect(wrapper.findAllComponents(PointSuggestions)).toHaveLength(0)
+  })
+
+  it('should go back the way up on a round trip of a drawn route, its end named as its start', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL, pick: [{ type: 'start', location: { lng: START[0], lat: START[1] }, name: 'Engelberg', elevation: 1002 }], drawnTrack: route(START) })
+    await flushPromises()
+    const roundTrip = wrapper.find('.point-section--end').findAll('button').find(b => b.text().includes('tours.form.roundTripBtn'))!
+    await roundTrip.trigger('click')
+    await flushPromises()
+    const form = wrapper.vm as unknown as { route: () => { drawing: unknown, end: { location: unknown, name: string } } }
+    expect(form.route().drawing).toEqual({ points: [START, [GOAL.lng, GOAL.lat], START], legs: [[START, [GOAL.lng, GOAL.lat]], [[GOAL.lng, GOAL.lat], START]], goal: 1 })
+    expect(form.route().end).toMatchObject({ location: { lng: START[0], lat: START[1] }, name: 'Engelberg' })
+  })
+
+  it('should take a drawn track away when its route goes straight, and keep an uploaded one', async () => {
+    const drawn = mountForm({ currentGoal: GOAL, drawnTrack: route(START) })
+    await flushPromises()
+    await drawn.setProps({ drawnTrack: { points: [], legs: [] } })
+    expect(drawn.find('[data-testid=gpx-remove-btn]').exists()).toBe(false)
+
+    const uploaded = mountForm({ currentGoal: GOAL })
+    await pickFile(uploaded, new File(['<gpx/>'], 'mine.gpx'))
+    await flushPromises()
+    await uploaded.setProps({ drawnTrack: { points: [], legs: [] } })
+    expect(uploaded.find('[data-testid=gpx-remove-btn]').exists()).toBe(true)
   })
 })

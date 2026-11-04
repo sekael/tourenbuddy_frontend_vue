@@ -6,9 +6,70 @@ export interface DrawnTrack {
   points: LngLat[]
   /** `legs[i]` runs from `points[i]` to `points[i + 1]`, both ends included. */
   legs: LngLat[][]
+  /**
+   * The tour's route (map-first-tour-creation D9): `points[goal]` is its goal, the first point its
+   * start and the last its end, unless the goal is that point. Absent: a line without its stops.
+   */
+  goal?: number
+}
+
+/** The same way back to the start, exactly: every point and leg again, the other way round. */
+export function withWayBack({ points, legs, goal }: DrawnTrack): DrawnTrack {
+  return {
+    points: [...points, ...points.slice(0, -1).reverse()],
+    legs: [...legs, ...[...legs].reverse().map(leg => [...leg].reverse())],
+    goal,
+  }
+}
+
+/** A route's start, goal and end as its track has them. */
+export function routeStops({ points, goal }: DrawnTrack & { goal: number }) {
+  return {
+    start: goal > 0 ? points[0]! : null,
+    goal: points[goal]!,
+    end: goal < points.length - 1 ? points.at(-1)! : null,
+  }
+}
+
+/**
+ * The track as the route to `goal`: its point nearest the goal becomes the goal — a point of the
+ * line within `near` metres is made one when no point is. Null when the line passes farther off.
+ */
+export function withGoal(track: DrawnTrack, goal: LngLat, near = 200): DrawnTrack | null {
+  if (track.goal != null)
+    return track
+  const nearest = (line: readonly LngLat[]) => line.reduce<{ i: number, d: number }>((best, p, i) => {
+    const d = haversineMeters(p, goal)
+    return d < best.d ? { i, d } : best
+  }, { i: -1, d: near })
+  const point = nearest(track.points)
+  if (point.i >= 0)
+    return { ...track, goal: point.i }
+  let best: { k: number, i: number, d: number } | null = null
+  for (const [k, leg] of track.legs.entries()) {
+    const { i, d } = nearest(leg)
+    if (i > 0 && i < leg.length - 1 && d < (best?.d ?? near))
+      best = { k, i, d }
+  }
+  if (best) {
+    const { k, i } = best
+    const leg = track.legs[k]!
+    return {
+      points: [...track.points.slice(0, k + 1), leg[i]!, ...track.points.slice(k + 1)],
+      legs: [...track.legs.slice(0, k), leg.slice(0, i + 1), leg.slice(i), ...track.legs.slice(k + 1)],
+      goal: k + 1,
+    }
+  }
+  return null
 }
 
 export const EMPTY_TRACK: DrawnTrack = { points: [], legs: [] }
+
+/** The same route: the same points, the same way between them, the same goal. */
+export function sameTrack(a: DrawnTrack, b: DrawnTrack): boolean {
+  const flat = ({ points, legs, goal }: DrawnTrack) => JSON.stringify([points, legs, goal ?? null])
+  return flat(a) === flat(b)
+}
 
 /** The whole line, leg after leg; a lone point is a line of one. */
 export function trackLine({ points, legs }: DrawnTrack): LngLat[] {

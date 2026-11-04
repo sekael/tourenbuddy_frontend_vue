@@ -1,6 +1,7 @@
 import type { TrailOverlayId } from '@/features/map/data/trail-overlays'
 import type { LngLat, Trail } from '@/features/map/domain/entities/trail'
 import type { TourType } from '@/features/tours/data/models/tour-type'
+import type { TourLegs } from '@/features/tours/domain/legs'
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import { z } from 'zod'
@@ -27,6 +28,22 @@ export interface TrailCard {
   /** Hits beyond `candidates` (the "+N more" note). */
   more: number
   selectedId: string | null
+}
+
+/** One stage of the tour being created, as the map draws it (map-first-tour-creation D7). */
+export interface DraftStage {
+  /** Null while the route step has no goal yet. */
+  goal: { lng: number, lat: number } | null
+  startPoint: { lng: number, lat: number } | null
+  endPoint: { lng: number, lat: number } | null
+  tourTypes: TourType[]
+  legs: TourLegs | null
+  /** The stage's drawn or picked track; null = its straight legs show. */
+  track: LngLat[] | null
+  /** False for a trip's other days while one is at hand: drawn fainter. */
+  active?: boolean
+  /** The goal's label ("Day 2 goal" on a trip; else the plain goal label). */
+  label?: string
 }
 
 /**
@@ -79,6 +96,8 @@ export const useMapStore = defineStore('map', () => {
   const previewEnd = ref<{ lng: number, lat: number } | null>(null)
   /** The open form's not-yet-saved track: null = unchanged (the saved one shows), [] = removed. */
   const previewTrack = ref<LngLat[] | null>(null)
+  /** Every stage of the tour being created, in order; empty when none is (D7). */
+  const previewStages = ref<DraftStage[]>([])
   /** One-shot cross-route intent from the calendar (see PendingIntent). */
   const pendingIntent = ref<PendingIntent | null>(null)
   /** Visible trail overlays, kept in draw order; persisted per device. */
@@ -177,6 +196,10 @@ export const useMapStore = defineStore('map', () => {
     previewTrack.value = line
   }
 
+  function setPreviewStages(stages: DraftStage[]) {
+    previewStages.value = stages
+  }
+
   return {
     isPickingLocation,
     isDrawingTrack,
@@ -189,6 +212,7 @@ export const useMapStore = defineStore('map', () => {
     previewStart,
     previewEnd,
     previewTrack,
+    previewStages,
     pendingIntent,
     activeOverlays,
     trailCard,
@@ -209,5 +233,6 @@ export const useMapStore = defineStore('map', () => {
     setPreviewStart,
     setPreviewEnd,
     setPreviewTrack,
+    setPreviewStages,
   }
 })

@@ -13,6 +13,7 @@ import {
   outingSegments,
   outingSpan,
   outingWay,
+  segmentFinishPlace,
   spanDays,
 } from '@/features/tours/domain/outing'
 import { TOUR_FILL } from '../../../fixtures/tour-fill'
@@ -216,5 +217,14 @@ describe('outingChains', () => {
     ]
     expect(outingChains(tours, null)).toEqual([[[7, 46], [8, 46]]])
     expect(outingChains(tours, `me/${OUTING}`)).toEqual([])
+  })
+})
+
+describe('segmentFinishPlace', () => {
+  it('should name a goal-finish by the next stage\'s start there, not by the tour\'s title', () => {
+    const day1 = segment('a', 0, { name: 'Review Trek', elevation: 2928, endPoint: null })
+    const day2 = segment('b', 1, { startPoint: day1.goal, startPointName: 'Cabane des Dix', startPointElevation: null })
+    expect(segmentFinishPlace(day1, day2)).toEqual({ name: 'Cabane des Dix', elevation: 2928 })
+    expect(segmentFinishPlace(day1)).toEqual({ name: 'Review Trek', elevation: 2928 })
   })
 })

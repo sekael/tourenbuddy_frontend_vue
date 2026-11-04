@@ -44,12 +44,12 @@ const links = computed(() => {
   const gaps = new Set(outingGaps(props.segments).map(g => g.index))
   const nights = outingNights(props.segments)
   const early = outingDateConflicts(props.segments)
-  return props.segments.map((_, i) => {
+  return props.segments.map((segment, i) => {
     const prev = props.segments[i - 1]
     if (!prev)
       return null
     const night = nights.has(i)
-    const { name, elevation } = segmentFinishPlace(prev)
+    const { name, elevation } = segmentFinishPlace(prev, segment)
     const place = name && (night || prev.endPoint)
       ? [name, elevation != null ? formatElevation.value(elevation) : null].filter(Boolean).join(' · ')
       : null

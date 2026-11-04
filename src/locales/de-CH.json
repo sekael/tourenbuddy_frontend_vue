@@ -518,7 +518,7 @@
       },
       "whenSectionLabel": "Wann",
       "startTimeLabel": "Startzeit (optional)",
-      "multiDayHint": "Mit Übernachtung unterwegs? Plane jeden Tag als eigene Etappe – nach dem Speichern mit «Etappe hinzufügen».",
+      "multiDayHint": "Mit Übernachtung unterwegs? Teile die Tour nach dem Speichern in den Details in Tagesetappen auf.",
       "gradeLabel": "Schwierigkeit (optional)",
       "gradePlaceholder": "z. B. {example}",
       "gradePlaceholderClimbing": "z. B. 5c oder V+",
@@ -550,13 +550,31 @@
       "pointsByHandBtn": "Selbst setzen",
       "fromTrack": "aus dem Track",
       "gpxDrawnFile": "Gezeichneter Track · {distance}",
-      "gpxPreparing": "Höhen werden ergänzt …"
+      "gpxPreparing": "Höhen werden ergänzt …",
+      "nextDayBtn": "Nächster Tag",
+      "nextDayHint": "Mit Übernachtung? Die nächste Etappe beginnt, wo diese endet.",
+      "splitDaysBtn": "In Tagesetappen aufteilen",
+      "splitDaysHint": "{count} Tage: Plane jeden Tag als eigene Etappe – diese behält den ersten.",
+      "trackFromGoal": "Am Ziel, wo der Track beginnt"
     },
     "creation": {
       "title": "Neue Tour",
       "pickingTitle": "Neue Tour: {name}",
       "saveBtn": "Tour speichern",
-      "alreadyThere": "Diese Tour hast du schon schon geplant."
+      "alreadyThere": "Diese Tour hast du schon geplant.",
+      "day": "Tag {n}",
+      "dayOf": "Tag {n} von {count}",
+      "daysLabel": "Tage der Tour",
+      "saveDays": "{count} Tage speichern",
+      "removeDay": "{day} entfernen",
+      "splitTitle": "Etappen",
+      "savedDays": "Gespeichert: {count} Tage als eine Etappentour.",
+      "discard": "Tour verwerfen? Die geplante Route geht verloren.",
+      "discardDays": "Alle {count} Tage verwerfen? Die geplanten Routen gehen verloren.",
+      "keepEditing": "Weiter bearbeiten",
+      "dayMissing": "{day} ist noch nicht geplant.",
+      "planDay": "{day} planen",
+      "dayGoal": "Ziel Tag {n}"
     },
     "infoSheet": {
       "editTitlePrefix": "Bearbeiten",
@@ -888,6 +906,47 @@
       "done": "Fertig",
       "returnToStart": "Zum Start",
       "returnToStartHint": "Auf demselben Weg zurück zum Start"
+    },
+    "plan": {
+      "stepsLabel": "Routenpunkte",
+      "hint": {
+        "start": "Wo gehst du los? Auf die Karte tippen oder suchen.",
+        "goal": "Wohin? Ziel auf der Karte antippen oder suchen.",
+        "end": "Wo endest du? Auf die Karte tippen – oder ohne Endpunkt weiter.",
+        "move": "Setze oder ziehe den Punkt auf der Karte.",
+        "shape": "Ziehe den Punkt in der Mitte einer Linie, um den Weg zu ändern.",
+        "via": "Tippe einen herausgezogenen Punkt an, um ihn wieder zu entfernen."
+      },
+      "required": "Erforderlich",
+      "optional": "Optional",
+      "unnamed": "Ohne Namen",
+      "skip": "Überspringen",
+      "roundTrip": "Rundtour",
+      "remove": "Entfernen",
+      "continue": "Weiter",
+      "done": "Fertig",
+      "step": {
+        "start": "Start",
+        "goal": "Ziel",
+        "end": "Ende"
+      },
+      "removeStep": "{step} entfernen",
+      "measuring": "Route wird berechnet …",
+      "nextDay": "Nächster Tag",
+      "follow": {
+        "label": "Den Wegen folgen",
+        "hiking": "Folgt den Wanderwegen",
+        "ski": "Folgt den Skitouren",
+        "ways": "Folgt Strassen und Wegen",
+        "straight": "Luftlinie zwischen den Punkten",
+        "unavailable": "Wege nicht geladen (offline?), darum Luftlinie",
+        "fixed": "Dein hochgeladener Track bleibt, wie er ist",
+        "gap": "Kein Weg für einen Abschnitt – dort Luftlinie",
+        "finding": "Weg wird gesucht …"
+      },
+      "back": "Zurück zu den Details, ohne diese Änderungen",
+      "fold": "Routenpunkte einklappen",
+      "unfold": "Routenpunkte zeigen"
     }
   },
   "i18n": {
@@ -1046,7 +1105,7 @@
       },
       "addLocation": {
         "title": "Tour planen",
-        "body": "Tippe hier und setze eine Markierung auf dein Ziel – Gipfel, Kletterfels oder Hütte. TourenBuddy schlägt Namen und Höhe vor; danach zeichnest du die Route auf der Karte, Start und Ende kommen mit."
+        "body": "Tippe hier und dann auf der Karte auf Start, Ziel und Ende – oder suche sie. Die Route folgt den Wegen und wird dein Track; mit Übernachtung planst du mit «Nächster Tag» gleich die nächste Etappe."
       },
       "mapLayers": {
         "title": "Kartenebenen",
@@ -1307,6 +1366,24 @@
         "markers": {
           "title": "Eine Karte, die sich lesen lässt",
           "body": "Zoome hinein, und Marker zeigen Name, Höhe und Datum der Tour, innen ihre Aktivität. Ein Tipp auf einen Cluster zeigt alle seine Touren, ein Ort mit mehreren Touren listet sie auf. Etappen sind der Reihe nach verbunden, und das ⓘ auf der Karte erklärt jede Farbe und jedes Symbol."
+        }
+      }
+    },
+    "2026-11-map-first-planning": {
+      "title": "Neue Touren auf der Karte planen, Tag für Tag",
+      "intro": "Tippe dich vom Start zum Gipfel und zurück: Die Route folgt den Wegen und wird dein Track.",
+      "features": {
+        "route": {
+          "title": "Auf der Karte beginnen",
+          "body": "Tippe auf «+» und setze Start, Ziel und Ende auf der Karte oder per Suche. Die Route folgt den Wegen, sobald die Punkte gesetzt sind, mit Auf- und Abstieg, und wird zum Track der Tour. «Weiter» öffnet das Formular mit Namen und Höhen ausgefüllt – auf dem Desktop direkt neben der Karte."
+        },
+        "shape": {
+          "title": "Route formen",
+          "body": "Ziehe einen Punkt oder den Griff in der Mitte einer Teilstrecke, um einen anderen Weg zu nehmen. «Rundtour» bringt dich auf demselben Weg zurück zum Start."
+        },
+        "days": {
+          "title": "Mehrere Tage in einem Zug",
+          "body": "Mit Übernachtung? «Nächster Tag» plant die nächste Etappe ab dem Ende dieser, direkt auf der Karte. Jeder Tag bekommt seinen Tab im Formular, und alle Tage werden zusammen als eine mehrtägige Tour gespeichert."
         }
       }
     }

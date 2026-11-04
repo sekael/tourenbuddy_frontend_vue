@@ -62,6 +62,27 @@ recorder started and where the goal marker sits.
 | ------------------------- | ----- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `HYSTERESIS_M` (vertical) | 5 m   | `domain/route-metrics.ts` | A GPX height swing counts as climb or descent only past 5 m from the last turning point, so recorder noise on a flat stretch adds nothing. |
 
+## Track routing
+
+How the line along the ways is found, step by step: [track-routing.md](track-routing.md). All in
+`map/…`.
+
+| Limit                     | Value         | Where                      | What it decides                                                                                                                             |
+| ------------------------- | ------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tapSnapM`                | 16 / 32 px    | `use-leg-router.ts`        | A tap, or a point let go, lands on a way this many screen pixels away (mouse / touch).                                                      |
+| `MAX_TAP_SNAP_M`          | 250 m         | `use-leg-router.ts`        | The tap reach is never more than this, however far out the map is zoomed.                                                                   |
+| `STOP_SNAP_M`             | 250 m         | `use-leg-router.ts`        | A route's stop (start, goal, end) joins a way this far off.                                                                                 |
+| `FAR_STOP_M`              | 1 km          | `use-leg-router.ts`        | A stop with no way within 250 m (a summit above the trail's end) tries again this far; the last bit goes straight.                          |
+| `VIA_SNAP_M`              | 10 m          | `use-leg-router.ts`        | A point between joins a way only this close. Farther off, it was set off the ways on purpose and its legs go straight.                      |
+| `OFF_WAY_SHARE`           | ½ of straight | `use-leg-router.ts`        | The bits off the ways (to the first way, from the last) may add up to this share of the straight distance; more, and the leg goes straight. |
+| `DETOUR` / `DETOUR_MIN_M` | 2.5× / +500 m | `use-leg-router.ts`        | A way longer than both goes too far round (a dead end): the leg goes straight. The floor keeps a short leg's switchbacks.                   |
+| `MARGIN_M`                | 400 m         | `use-leg-router.ts`        | A leg loads the ways this far around its two points, plus half their distance.                                                              |
+| `JOIN_M`                  | 3 m           | `use-leg-router.ts`        | Two ways this close meet (lines cut at a tile edge, a path ending beside a road).                                                           |
+| `SKI_JOIN_M`              | 20 m          | `trail-network-service.ts` | Ski routes this close meet (side by side up a shared approach).                                                                             |
+| `BRIDGE_M`                | 30 m          | `use-leg-router.ts`        | A way's loose end reaches across this far to another way, at three times the cost.                                                          |
+| `GAP_M`                   | 50 m          | `use-leg-router.ts`        | A straight leg longer than this found no way: the follow row and the drawer warn.                                                           |
+| `HANDLE_MIN_PX`           | 40 px         | `use-leg-router.ts`        | A leg shorter than this on screen has no handle to pull a point out of.                                                                     |
+
 ## On screen (pixels, not metres)
 
 | Limit            | Value  | Where                      | What it decides                                                                                                    |

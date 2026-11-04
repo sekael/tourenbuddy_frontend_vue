@@ -113,3 +113,29 @@ export function outingDetailMarkers(segments: readonly SegmentPoints[]): DetailM
   })
   return out
 }
+
+interface DraftStagePoints {
+  tourTypes: TourType[]
+  goal: LngLat | null
+  startPoint: LngLat | null
+  endPoint: LngLat | null
+}
+
+/**
+ * The start / end markers of a tour being created, stage by stage (map-first-tour-creation D7):
+ * like an outing's, in the draft tone. A stage the route step has no goal for yet shows its
+ * points as they are.
+ */
+export function draftStageMarkers(stages: readonly DraftStagePoints[]): DetailMarker[] {
+  const placed = stages.filter((s): s is DraftStagePoints & { goal: LngLat } => s.goal !== null)
+  const out = outingDetailMarkers(placed).map(m => ({ ...m, draft: true }))
+  // Not on a goal or a marker already there: the next day starting at the last one's goal.
+  const free = (p: LngLat) => !placed.some(s => isSameGoal(p, s.goal)) && !out.some(m => isSameGoal(p, m.lngLat))
+  for (const s of stages.filter(s => s.goal === null)) {
+    if (s.startPoint && free(s.startPoint))
+      out.push({ pointKind: 'start', lngLat: s.startPoint, tourTypes: s.tourTypes, draft: true })
+    if (s.endPoint && free(s.endPoint))
+      out.push({ pointKind: 'end', lngLat: s.endPoint, tourTypes: s.tourTypes, draft: true })
+  }
+  return out
+}

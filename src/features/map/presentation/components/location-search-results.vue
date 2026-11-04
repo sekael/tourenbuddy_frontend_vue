@@ -35,7 +35,7 @@ const { t } = useI18n({ useScope: 'global' })
       <span class="result-text">
         <span class="result-name">{{ result.name }}</span>
         <span class="result-meta">
-          {{ [result.kind ?? t(`tours.picker.search.origin.${result.origin}` as any), result.region].filter(Boolean).join(' · ') }}
+          {{ [result.kind ?? t(`tours.picker.search.origin.${result.origin}` as any), result.region?.replace(/,(?=\S)/g, ', ')].filter(Boolean).join(' · ') }}
         </span>
       </span>
     </button>
@@ -124,6 +124,8 @@ const { t } = useI18n({ useScope: 'global' })
 }
 
 .result-meta {
+  /* A region of several places ("Engelberg, Hasliberg, …") wraps, never runs out of the card. */
+  overflow-wrap: anywhere;
   font-size: var(--font-size-sm);
   color: var(--color-on-surface-variant);
 }

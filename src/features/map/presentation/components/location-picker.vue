@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { FlyToOptions, Map as MapLibreMap } from 'maplibre-gl'
 import type { LocationResult, PickRole } from '@/features/map/data/services/swisstopo-search-service'
-import { useElementSize, useFocusWithin, usePreferredReducedMotion, watchDebounced } from '@vueuse/core'
+import { useElementSize, useFocusWithin, usePreferredReducedMotion } from '@vueuse/core'
 import { LngLat } from 'maplibre-gl'
-import { computed, onBeforeUnmount, ref, useTemplateRef, watch, watchEffect } from 'vue'
+import { computed, onBeforeUnmount, useTemplateRef, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
 import BaseIconButton from '@/core/components/base-icon-button.vue'
@@ -12,8 +12,8 @@ import SearchInput from '@/core/components/search-input.vue'
 import { useIsTouch } from '@/core/composables/use-is-touch'
 import { useVisualViewportTop } from '@/core/composables/use-visual-viewport-top'
 import { isOnline } from '@/core/offline/use-online-status'
-import { rankResults, searchLocations } from '@/features/map/data/services/swisstopo-search-service'
 import { FLIGHT_SPEED } from '@/features/map/presentation/composables/frame-tour'
+import { useLocationSearch } from '@/features/map/presentation/composables/use-location-search'
 import LocationSearchResults from './location-search-results.vue'
 
 const props = defineProps<{
@@ -41,11 +41,11 @@ const { t, locale } = useI18n({ useScope: 'global' })
 const reducedMotion = usePreferredReducedMotion()
 const searchInput = useTemplateRef<InstanceType<typeof SearchInput>>('searchInput')
 
-const query = ref('')
-const results = ref<LocationResult[]>([])
-const searchFailed = ref(false)
-const listOpen = ref(false)
-const chosen = ref<LocationResult | null>(null)
+const { query, results, failed: searchFailed, listOpen, chosen, take } = useLocationSearch({
+  locale: () => locale.value,
+  role: () => props.role,
+  origin: () => props.map && { center: getCrosshairCoordinates(props.map), zoom: props.map.getZoom() },
+})
 
 /**
  * Results, search field and actions share one bottom dock: in thumb reach on phones, and
@@ -96,51 +96,6 @@ function getCrosshairCoordinates(map: NonNullable<typeof props.map>) {
   return map.unproject([canvas.clientWidth / 2, canvas.clientHeight / 2])
 }
 
-/**
- * Every run replaces `controller` first — even one that returns early — so an older
- * request is aborted, and any answer it still delivers fails the `controller !== own` check.
- */
-let controller: AbortController | null = null
-
-watchDebounced(query, async (q) => {
-  controller?.abort()
-  const own = new AbortController()
-  controller = own
-
-  const trimmed = q.trim()
-  if (trimmed.length < 2) {
-    listOpen.value = false
-    return
-  }
-  // The chosen result's name was written into the field — no need to search it again.
-  if (chosen.value?.name === trimmed)
-    return
-
-  try {
-    const found = await searchLocations(trimmed, locale.value, own.signal, props.role)
-    if (controller !== own || !props.map)
-      return
-    results.value = rankResults(found, getCrosshairCoordinates(props.map), props.map.getZoom(), props.role)
-    searchFailed.value = false
-  }
-  catch (err) {
-    // Superseded or aborted on purpose: stay silent, the newer run owns the list.
-    if (controller !== own || (err instanceof DOMException && err.name === 'AbortError'))
-      return
-    results.value = []
-    searchFailed.value = true
-  }
-  // Not `finally`: that would also run on the silent returns above and open the list.
-  listOpen.value = true
-}, { debounce: 300 })
-onBeforeUnmount(() => controller?.abort())
-
-// Clearing the field also forgets the chosen result (no stale name on confirm).
-watch(query, (q) => {
-  if (!q.trim())
-    chosen.value = null
-})
-
 function closeList() {
   listOpen.value = false
   searchInput.value?.blur()
@@ -172,8 +127,7 @@ function releaseMap() {
 function choose(result: LocationResult | undefined) {
   if (!result || !props.map)
     return
-  chosen.value = result
-  query.value = result.name
+  take(result)
   closeList()
   // Zero padding: a framed tour leaves padding set, which would park the result off-crosshair.
   const camera = { center: [result.lng, result.lat] as [number, number], zoom: result.zoom, padding: { top: 0, right: 0, bottom: 0, left: 0 }, speed: FLIGHT_SPEED }
