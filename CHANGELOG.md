@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.52.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.51.1...tourenbuddy-frontend-v0.52.0) (2026-11-04)
+
+
+### Features
+
+* Map first multi day creation ([#378](https://github.com/sekael/tourenbuddy_frontend_vue/issues/378)) ([9c1deba](https://github.com/sekael/tourenbuddy_frontend_vue/commit/9c1deba161de63dea3ceab1ce443f636042df4a3))
+
 ## [0.51.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.51.0...tourenbuddy-frontend-v0.51.1) (2026-11-02)
 
 
