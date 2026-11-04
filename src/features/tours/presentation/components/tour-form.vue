@@ -24,7 +24,7 @@ import { isOnline } from '@/core/offline/use-online-status'
 import { useAuthStore } from '@/features/auth/presentation/stores/auth-store'
 import ContactChip from '@/features/contacts/presentation/components/contact-chip.vue'
 import { useContactsStore } from '@/features/contacts/presentation/stores/contacts-store'
-import { lineLength, routeStops, trackFromLine, trackLine } from '@/features/map/domain/drawn-track'
+import { lineLength, routeStops, trackFromLine, trackLine, withWayBack } from '@/features/map/domain/drawn-track'
 import { dropScales, GRADE_MAX_LENGTH, gradeScales, normalizeGrade } from '@/features/tours/data/models/grade'
 import { SEASON_VALUES, seasonsForDates } from '@/features/tours/data/models/season'
 import { MAX_ATTACHMENTS_PER_TOUR } from '@/features/tours/data/models/tour-attachment'
@@ -875,9 +875,15 @@ function handleRemoveEnd() {
   pointsByHand.value &&= !!startPoint.value
 }
 
+/** Back to the start: a drawn route that ends at its goal goes back the way it came (its stops name the end). */
 function handleRoundTrip() {
   if (!startPoint.value)
     return
+  const drawing = !gpxRemoved.value && gpxFile.value ? fileDrawings.get(gpxFile.value) : undefined
+  if (drawing?.goal && drawing.goal === drawing.points.length - 1) {
+    void acceptDrawnTrack(withWayBack(drawing))
+    return
+  }
   fromTrack.end = false
   endPoint.value = { lng: startPoint.value.lng, lat: startPoint.value.lat }
   endPointName.value = startPointName.value
@@ -1361,7 +1367,7 @@ defineExpose({ cancel: handleCancel, discard, submitBlocked, collect, snapshot, 
                     {{ endIsLanding ? t('tours.form.addLandingBtn') : t('tours.form.addEndPointBtn') }}
                   </BaseButton>
                   <BaseButton v-if="startPoint && !endIsLanding" type="button" variant="secondary" size="sm" @click="handleRoundTrip">
-                    <BaseIcon name="replay" />
+                    <BaseIcon name="u_turn_left" />
                     {{ t('tours.form.roundTripBtn') }}
                   </BaseButton>
                 </div>

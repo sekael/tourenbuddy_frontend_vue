@@ -23,13 +23,14 @@ import { isOnline } from '@/core/offline/use-online-status'
 import { nextStep, ROUTE_STEPS, routeClimb } from '@/features/map/domain/route-plan'
 import { snapNetworkFor } from '@/features/map/domain/snap-network'
 import { FLIGHT_SPEED, frameBounds, isBoundsVisible, TOUR_ZOOM } from '@/features/map/presentation/composables/frame-tour'
-import { isGap, legHandle, skiTilesTemplate, STOP_SNAP_M, tapSnapM, useLegRouter } from '@/features/map/presentation/composables/use-leg-router'
+import { isGap, legEnd, legHandle, skiTilesTemplate, tapSnapM, useLegRouter } from '@/features/map/presentation/composables/use-leg-router'
 import { useLocationSearch } from '@/features/map/presentation/composables/use-location-search'
 import { profileMetrics } from '@/features/map/presentation/composables/use-track-drawing'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import { getElevation } from '@/features/tours/data/services/swisstopo-elevation-service'
 import { suggestTourName } from '@/features/tours/data/services/swisstopo-name-service'
 import { getTrackProfile } from '@/features/tours/data/services/swisstopo-profile-service'
+import { isSameGoal } from '@/features/tours/domain/distance'
 import { tourMinutes } from '@/features/tours/domain/route-metrics'
 import RouteNumbers from '@/features/tours/presentation/components/route-numbers.vue'
 import LocationSearchResults from './location-search-results.vue'
@@ -167,17 +168,29 @@ function skip() {
   active.value = nextStep(points, active.value)
 }
 
+/** Back to the start, by default the way up: through its points between, its legs reversed (`legOf`). */
 function roundTrip() {
   const start = points.start
   if (!start)
     return
   lookups.end?.abort()
   points.end = { ...start, location: { ...start.location } }
+  vias.value = { ...vias.value, down: [...vias.value.up].reverse() }
 }
+/** The end is back at the start: its row says so with the drawer's "back to the start" mark. */
+const roundTripSet = computed(() => !!points.start && !!points.end && isSameGoal(points.start.location, points.end.location, 1))
 
 // ── Search ──────────────────────────────────────────────────────────────────
 const searchInput = useTemplateRef<InstanceType<typeof SearchInput>>('searchInput')
 const panel = useTemplateRef<HTMLElement>('panel')
+// Past four days the pills scroll: the day being planned scrolls into sight.
+const dayStrip = useTemplateRef<HTMLElement>('dayStrip')
+function showActiveDay(behavior: ScrollBehavior = 'smooth') {
+  const pill = dayStrip.value?.querySelector<HTMLElement>('.day--active')
+  dayStrip.value?.scrollTo?.({ left: pill ? pill.offsetLeft - (dayStrip.value.clientWidth - pill.offsetWidth) / 2 : 0, behavior })
+}
+onMounted(() => showActiveDay('instant'))
+watch(() => props.day, () => showActiveDay(), { flush: 'post' })
 const { height } = useElementSize(panel, undefined, { box: 'border-box' })
 const isDesktop = useIsDesktop()
 const NO_MARGIN = { top: 0, right: 0, bottom: 0, left: 0 }
@@ -243,14 +256,18 @@ const mode = computed<'follow' | 'straight' | 'fixed'>(() => (fixed ? 'fixed' : 
 
 const at = (p: PlannedPoint): LngLat => [p.location.lng, p.location.lat]
 const pairKey = (a: LngLat, b: LngLat) => `${a.join(',')}|${b.join(',')}`
-/** The drawing's legs, kept as drawn while their two points stay; then each leg routed so far, per network. */
+/**
+ * The drawing's legs, kept as drawn while their two points stay; then each leg routed so far, per
+ * network. A leg whose way the other way round is known goes back on it (a round trip's way back).
+ */
 const given = new Map((props.track?.legs ?? []).map((leg, i) => [pairKey(props.track!.points[i]!, props.track!.points[i + 1]!), leg]))
 const routed = shallowReactive(new Map<string, LngLat[]>())
 const routedKey = (a: LngLat, b: LngLat) => `${network.value ?? 'ways'}|${pairKey(a, b)}`
 function legOf(a: LngLat, b: LngLat): LngLat[] | null {
   if (a[0] === b[0] && a[1] === b[1])
     return [a, b]
-  return given.get(pairKey(a, b)) ?? routed.get(routedKey(a, b)) ?? null
+  const back = given.get(pairKey(b, a)) ?? routed.get(routedKey(b, a))
+  return given.get(pairKey(a, b)) ?? routed.get(routedKey(a, b)) ?? (back ? [...back].reverse() : null)
 }
 
 /** The route's stops in order, the goal's place among them; none before there is a goal. */
@@ -279,7 +296,9 @@ async function routeLegs() {
     while (next && !dragging.value) {
       const [a, b] = next
       const key = routedKey(a, b)
-      const leg = await router.between(a, b, STOP_SNAP_M).catch(() => [a, b])
+      const { stops, goal } = route.value!
+      const i = stops.indexOf(a)
+      const leg = await router.between(a, b, [legEnd(i, stops.length, goal), legEnd(i + 1, stops.length, goal)]).catch(() => [a, b])
       if (!alive)
         return
       routed.set(key, leg)
@@ -313,7 +332,7 @@ const viaIndices = computed(() => {
   const r = route.value
   if (!r || mode.value !== 'follow')
     return []
-  return r.stops.flatMap((_, i) => (i > 0 && i < r.stops.length - 1 && i !== r.goal ? [i] : []))
+  return r.stops.flatMap((_, i) => (legEnd(i, r.stops.length, r.goal) === 'via' ? [i] : []))
 })
 
 /** The points between spliced at the route's stop `index`: on the way up before the goal, down after it. */
@@ -725,7 +744,7 @@ const foldStyle = computed(() => {
             v-if="back" name="arrow_back" variant="tonal" :label="t('map.plan.back')" data-testid="planner-cancel"
             @click="emit('cancel')"
           />
-          <nav v-if="days && days.length > 1" class="days" :aria-label="t('tours.creation.daysLabel')" data-testid="planner-days">
+          <nav v-if="days && days.length > 1" ref="dayStrip" class="days" :aria-label="t('tours.creation.daysLabel')" data-testid="planner-days">
             <button
               v-for="(label, i) in days" :key="i" type="button" class="day" :class="{ 'day--active': i === day }"
               :aria-current="i === day ? 'step' : undefined" :data-testid="`planner-day-${i}`"
@@ -767,7 +786,7 @@ const foldStyle = computed(() => {
                 type="button" class="stop-main" :aria-pressed="active === kind" :data-testid="`planner-step-${kind}`"
                 @click="active = kind"
               >
-                <span class="stop-mark" aria-hidden="true"><BaseIcon :name="STEP_ICONS[kind]" size="sm" /></span>
+                <span class="stop-mark" aria-hidden="true"><BaseIcon :name="kind === 'end' && roundTripSet ? 'u_turn_left' : STEP_ICONS[kind]" size="sm" /></span>
                 <span class="stop-label">{{ t(`map.plan.step.${kind}`) }}</span>
                 <span v-if="points[kind]?.loading" class="stop-skeleton" aria-hidden="true" />
                 <span v-else-if="points[kind]" class="stop-name">{{ points[kind]!.name || t('map.plan.unnamed') }}</span>
@@ -781,10 +800,10 @@ const foldStyle = computed(() => {
                 :label="t('map.plan.removeStep', { step: t(`map.plan.step.${kind}`) })" @click="clear(kind)"
               />
               <BaseButton
-                v-else-if="kind === 'end' && points.start" variant="text" size="sm" class="stop-action"
+                v-else-if="kind === 'end' && points.start" variant="secondary" size="sm" class="stop-action"
                 data-testid="planner-roundTrip" @click="roundTrip"
               >
-                <BaseIcon name="replay" size="sm" />
+                <BaseIcon name="u_turn_left" size="sm" />
                 {{ t('map.plan.roundTrip') }}
               </BaseButton>
               <BaseButton
@@ -1002,33 +1021,50 @@ const foldStyle = computed(() => {
 
 /* The trip's days as pills, scrolling sideways past a handful. */
 .days {
+  position: relative;
   display: flex;
   flex: 1;
-  gap: var(--spacing-xs);
+  gap: 6px;
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
 }
 
+/* The app's selectable chips (and the form's day tabs): outlined, the day on screen tinted. */
 .day {
   flex: none;
-  min-height: 36px;
-  padding: 0 var(--spacing-md);
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: var(--color-surface-variant);
+  min-height: var(--chip-min-height);
+  padding: 0 var(--spacing-sm);
+  border: 1.5px solid var(--color-outline-variant);
+  border-radius: var(--chip-radius);
+  background: var(--color-background);
   color: var(--color-on-surface);
   font: inherit;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   white-space: nowrap;
   cursor: pointer;
+  transition:
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    border-color var(--motion-duration-short) var(--motion-ease-standard);
+}
+
+@media (hover: hover) {
+  .day:hover {
+    border-color: var(--color-primary);
+  }
 }
 
 .day--active {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
+  background: var(--chip-selected-bg);
+  border-color: var(--chip-selected-border-color);
+  color: var(--chip-selected-color);
   font-weight: var(--font-weight-semibold);
+}
+
+.day:focus-visible {
+  outline: none;
+  box-shadow: var(--input-focus-ring);
 }
 
 /* Start, goal, end as a route: one row each, their marks joined by a dotted line. */
@@ -1152,6 +1188,12 @@ const foldStyle = computed(() => {
 .stop-action {
   flex: none;
   margin-right: var(--spacing-xxs);
+}
+
+/* Rundtour: a tonal button, as by the form's end, a thumb's height inside its row. */
+.stop-action.base-button--secondary {
+  min-height: 40px;
+  padding: 0 var(--spacing-sm);
 }
 
 .stop > :deep(.base-icon-button) {

@@ -1254,6 +1254,17 @@ describe('tourForm — the route is the track (map-first-tour-creation D9)', () 
     expect(wrapper.findAllComponents(PointSuggestions)).toHaveLength(0)
   })
 
+  it('should go back the way up on a round trip of a drawn route, its end named as its start', async () => {
+    const wrapper = mountForm({ currentGoal: GOAL, pick: [{ type: 'start', location: { lng: START[0], lat: START[1] }, name: 'Engelberg', elevation: 1002 }], drawnTrack: route(START) })
+    await flushPromises()
+    const roundTrip = wrapper.find('.point-section--end').findAll('button').find(b => b.text().includes('tours.form.roundTripBtn'))!
+    await roundTrip.trigger('click')
+    await flushPromises()
+    const form = wrapper.vm as unknown as { route: () => { drawing: unknown, end: { location: unknown, name: string } } }
+    expect(form.route().drawing).toEqual({ points: [START, [GOAL.lng, GOAL.lat], START], legs: [[START, [GOAL.lng, GOAL.lat]], [[GOAL.lng, GOAL.lat], START]], goal: 1 })
+    expect(form.route().end).toMatchObject({ location: { lng: START[0], lat: START[1] }, name: 'Engelberg' })
+  })
+
   it('should take a drawn track away when its route goes straight, and keep an uploaded one', async () => {
     const drawn = mountForm({ currentGoal: GOAL, drawnTrack: route(START) })
     await flushPromises()

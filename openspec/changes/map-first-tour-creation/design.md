@@ -7,7 +7,8 @@ map sets the active point and moves on (start → goal → end); a search result
 point can be dragged (mouse, pen or finger — the same gesture code as the track drawer). Each set point
 looks up its name (unless the search named it) and height at once; the panel shows the three steps
 with name and height, the climb and descent of the legs it knows (`pointMetrics`), and the actions:
-Skip (start), Round trip (end, with a start), Remove (a set start or end), Continue / Done.
+Skip (start), Round trip (end, with a start: a tonal button with the drawer's "back to the start" mark,
+which the end row then wears), Remove (a set start or end), Continue / Done.
 
 Why tap, not the crosshair: three points in a row are three aim-and-confirm cycles with the crosshair;
 a tap sets each in one move, and dragging fixes the aim. The crosshair picker stays for edits, where one
@@ -73,6 +74,10 @@ A stop with no way that near (a summit above the trail's end) tries again out to
 the way to its nearest point and goes straight only for the last bit. A leg that still finds no way
 shows straight and the switch's row turns to a warning ("no path for part of it"); the track drawer's
 status line says the same for a leg of its own that found no way.
+Off the ways for more than half the straight distance (the bits to the first way and from the last
+together), the ways don't lead there and the leg goes straight from point to point, never bent at a way
+on the side: a ridge to its summit doesn't dive to the valley path below. How it all works, step by
+step: `docs/track-routing.md`.
 
 ## D9 — The route is the track
 
@@ -110,9 +115,12 @@ name or lookup), apart from a tour name typed in the form.
 
 ## D12 — Stage tabs
 
-The stage strip is a row of equal tabs (day, date, name), the active one filled; a dashed "+" adds a
-day — three days and "+" side by side at 360 px. A name wraps at its spaces only, two lines at most; a
-word too long for its tab, or a third line, ends in "…". Removing a later day moves to the bottom of its form, away from the tabs.
+The stage strip is a row of tabs (day, date, name) in the app's selectable-chip look: outlined, the
+day on screen tinted with a primary outline, all one size; three days and a round tonal "+" (44 px)
+fit side by side at 360 px. More days scroll under the "+", which stays pinned at the row's end with
+the days fading out beneath it, and the day on screen scrolls into sight (also when the form comes
+back from the route step). A name stands on one line and ends in "…" (the tab's title, and the form
+below, hold it whole). The route step's day pills wear the same chip look. Removing a later day moves to the bottom of its form, away from the tabs.
 
 ## D13 — The route step shapes its line
 
@@ -121,7 +129,13 @@ under 40 px on screen, none while a point is held); dragging it pulls out a poin
 dragged on like any point. Let go, a point between lands where the leg before it reaches along the ways
 (`useLegRouter.resolve` from the stop before, as the drawer's `dropInsert`) — a stop is a place and stays
 exactly where it was set, a point between only says which way — and that leg is the one it came by; the
-leg on is routed from there. A tap on a point between removes it. They are the route's `vias` (up before
+leg on is routed from there. A point between joins a way only right where it lies (`VIA_SNAP_M`, 10 m):
+off the ways it was let go there on purpose, and both its legs go straight to it, as to a tap off the
+ways in the drawer, rather than reaching 250 m like a stop and drawing a spur out and back. Rundtour
+goes back the way up by default: the points between of the way up again in reverse, each leg the
+reverse of the one going up (`legOf` falls back on the reverse leg, so nothing is routed again); its
+handles then shape a different way back. The form's Rundtour gives a drawn route ending at its goal the
+same way back (`withWayBack`, the drawer's "Zum Start"). A tap on a point between removes it. They are the route's `vias` (up before
 the goal, down after it), so the track handed on carries them as drawing points: "Edit on map" and a
 reopened route step show them, the drawer's handles and undo working on as before. The points between and
 the handles are drawn by the drawer's layer (`useTrackDrawLayer`, points only); the page draws the line

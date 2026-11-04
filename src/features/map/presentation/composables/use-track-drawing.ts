@@ -7,10 +7,10 @@ import { watchDebounced } from '@vueuse/core'
 import { computed, ref, shallowRef } from 'vue'
 import { useLogger } from '@/core/logging/use-logger'
 import { haversineMeters } from '@/core/utils/haversine'
-import { EMPTY_TRACK, lineLength, pointAlong, trackLine } from '@/features/map/domain/drawn-track'
+import { EMPTY_TRACK, lineLength, pointAlong, trackLine, withWayBack } from '@/features/map/domain/drawn-track'
 import { getTrackProfile } from '@/features/tours/data/services/swisstopo-profile-service'
 import { trackMetrics } from '@/features/tours/domain/route-metrics'
-import { STOP_SNAP_M, useLegRouter } from './use-leg-router'
+import { legEnd, useLegRouter } from './use-leg-router'
 
 export type { NetworkIssue } from './use-leg-router'
 
@@ -78,7 +78,7 @@ export function useTrackDrawing(options: Options) {
     enqueue(async () => {
       const legs: LngLat[][] = []
       for (let i = 1; i < points.length; i++)
-        legs.push(await between(points[i - 1]!, points[i]!, STOP_SNAP_M))
+        legs.push(await between(points[i - 1]!, points[i]!, [legEnd(i - 1, points.length, goal), legEnd(i, points.length, goal)]))
       track.value = { points, legs, goal }
     })
   }
@@ -137,14 +137,9 @@ export function useTrackDrawing(options: Options) {
 
   /** The same way back to the start, exactly: an out-and-back in one step. */
   function returnToStart() {
-    const { points, legs, goal } = track.value
-    if (busy.value || legs.length === 0)
+    if (busy.value || track.value.legs.length === 0)
       return
-    commit({
-      points: [...points, ...points.slice(0, -1).reverse()],
-      legs: [...legs, ...[...legs].reverse().map(leg => [...leg].reverse())],
-      goal,
-    })
+    commit(withWayBack(track.value))
   }
 
   const canUndo = computed(() => !busy.value && past.value.length > 0)

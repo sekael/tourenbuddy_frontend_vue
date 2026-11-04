@@ -917,7 +917,7 @@
         "shape": "Ziehe den Punkt in der Mitte einer Linie, um den Weg zu ändern.",
         "via": "Tippe einen herausgezogenen Punkt an, um ihn wieder zu entfernen."
       },
-      "required": "Pflicht",
+      "required": "Erforderlich",
       "optional": "Optional",
       "unnamed": "Ohne Namen",
       "skip": "Überspringen",

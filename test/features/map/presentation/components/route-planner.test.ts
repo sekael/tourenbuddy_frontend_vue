@@ -165,6 +165,17 @@ describe('routePlanner — the route is the track', () => {
     expect(mockLoad).not.toHaveBeenCalled()
   })
 
+  it('should go back the way up on a round trip, through its point between, routing nothing', async () => {
+    const up = { points: drawing.points.slice(0, 3), legs: drawing.legs.slice(0, 2), goal: 2 }
+    const { wrapper } = mountPlanner({ initial: { start: S, goal: G, end: null }, step: 'end', track: up })
+    await wrapper.find('[data-testid=planner-roundTrip]').trigger('click')
+    await flushPromises()
+    await wrapper.find('[data-testid=planner-done]').trigger('click')
+    const back = [...up.legs].reverse().map(leg => [...leg].reverse())
+    expect(plan(wrapper).track).toEqual({ points: [ll(S), V, ll(G), V, ll(S)], legs: [...up.legs, ...back], goal: 2 })
+    expect(mockLoad).not.toHaveBeenCalled()
+  })
+
   it('should drop the way up\'s points with the start, and set off at the goal', async () => {
     const { wrapper } = mountPlanner({ initial: { start: S, goal: G, end: E }, step: 'start', track: drawing })
     await wrapper.find('[data-testid=planner-remove-start]').trigger('click')

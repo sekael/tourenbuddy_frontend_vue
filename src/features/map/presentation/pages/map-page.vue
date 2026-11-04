@@ -49,7 +49,7 @@ import { computeBarState } from '@/features/map/presentation/composables/compute
 import { frameBounds, frameTours, isBoundsVisible, ROUTE_ZOOM } from '@/features/map/presentation/composables/frame-tour'
 import { planFromRoute } from '@/features/map/presentation/composables/plan-from-route'
 import { useInboxNavigation } from '@/features/map/presentation/composables/use-inbox-navigation'
-import { skiTilesTemplate, STOP_SNAP_M, useLegRouter } from '@/features/map/presentation/composables/use-leg-router'
+import { legEnd, skiTilesTemplate, useLegRouter } from '@/features/map/presentation/composables/use-leg-router'
 import { useTrailLookup } from '@/features/map/presentation/composables/use-trail-lookup'
 import { useMapStore } from '@/features/map/presentation/stores/map-store'
 import InboxOverlay from '@/features/notifications/presentation/components/inbox-overlay.vue'
@@ -1037,7 +1037,7 @@ async function handleHandoverMoved(index: number, { location, name, elevation }:
   if (!key || !drawing || drawing.points.length < 2 || drawing.goal === 0 || isSameGoal(location, { lng: drawing.points[0]![0], lat: drawing.points[0]![1] }, 1))
     return
   handoverTypes = stageLive.value[key]?.tourTypes ?? []
-  const leg = await handoverRouter.between(from, drawing.points[1]!, STOP_SNAP_M).catch(() => [from, drawing.points[1]!])
+  const leg = await handoverRouter.between(from, drawing.points[1]!, ['stop', legEnd(1, drawing.points.length, drawing.goal)]).catch(() => [from, drawing.points[1]!])
   const at = stages.value.findIndex(s => s.key === key)
   // Drawn anew meanwhile: that drawing stands.
   if (at < 0 || creationRef.value?.routeOf(at)?.drawing !== drawing)

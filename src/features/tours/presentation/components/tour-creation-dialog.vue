@@ -3,10 +3,12 @@ import type { DrawnTrack } from '@/features/map/domain/drawn-track'
 import type { LngLat } from '@/features/map/domain/entities/trail'
 import type { TourType } from '@/features/tours/data/models/tour-type'
 import type { CreationStage, StagePayload } from '@/features/tours/presentation/composables/creation-stages'
+import { useResizeObserver } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '@/core/components/base-button.vue'
+import BaseIconButton from '@/core/components/base-icon-button.vue'
 import BaseIcon from '@/core/components/base-icon.vue'
 import FullScreenPage from '@/core/components/full-screen-page.vue'
 import SideDrawer from '@/core/components/side-drawer.vue'
@@ -118,6 +120,30 @@ function removeStage(i: number) {
   emit('remove', i)
 }
 
+/** A day's tab name: its tour name (one line, the tab's title holds it whole). */
+const stageName = (i: number): string => formAt(i)?.tourName || t('tours.infoSheet.unnamedTour')
+
+// Past three days on a phone the tabs scroll: the day on screen scrolls into sight.
+const strip = useTemplateRef<HTMLElement>('strip')
+function showActiveDay(behavior: ScrollBehavior = 'smooth') {
+  const tab = strip.value?.querySelector<HTMLElement>('.stage--active')
+  // Centred in the room the pinned "+" leaves.
+  const room = (strip.value?.clientWidth ?? 0) - (strip.value?.querySelector<HTMLElement>('.stage-add')?.offsetWidth ?? 0)
+  strip.value?.scrollTo?.({ left: tab ? tab.offsetLeft - (room - tab.offsetWidth) / 2 : 0, behavior })
+}
+/** More days lie past the "+": they fade out under it. */
+const moreDays = ref(false)
+function measureDays() {
+  const el = strip.value
+  moreDays.value = !!el && el.scrollLeft + el.clientWidth < el.scrollWidth - 1
+}
+// On the way in, and back from the route step (the form folded away meanwhile, the strip no size).
+useResizeObserver(strip, () => {
+  showActiveDay('instant')
+  measureDays()
+})
+watch(() => props.active, () => showActiveDay(), { flush: 'post' })
+
 /** Which day the form shows as dated (for the tabs). */
 function stageDate(i: number) {
   const date = formAt(i)?.plannedDate
@@ -204,25 +230,20 @@ defineExpose({
       </div>
     </div>
 
-    <nav v-if="stages.length > 1" class="stage-strip" :aria-label="t('tours.creation.daysLabel')" data-testid="stage-strip">
+    <nav
+      v-if="stages.length > 1" ref="strip" class="stage-strip" :class="{ 'stage-strip--more': moreDays }"
+      :aria-label="t('tours.creation.daysLabel')" data-testid="stage-strip" @scroll.passive="measureDays"
+    >
       <button
         v-for="(stage, i) in stages" :key="stage.key" type="button" class="stage" :class="{ 'stage--active': i === active }"
-        :aria-current="i === active ? 'step' : undefined" :data-testid="`stage-${i}`" @click="emit('select', i)"
+        :aria-current="i === active ? 'step' : undefined" :title="stageName(i)" :data-testid="`stage-${i}`" @click="emit('select', i)"
       >
         <span class="stage-day">{{ dayLabel(i) }}<span v-if="stageDate(i)" class="stage-date">{{ stageDate(i) }}</span></span>
-        <!-- Word by word: a name wraps at its spaces only, a word too long for the tab ends in "…". -->
-        <span class="stage-name">
-          <template v-for="(word, w) in (formAt(i)?.tourName || t('tours.infoSheet.unnamedTour')).split(/\s+/)" :key="w">
-            <span class="stage-word">{{ word }}</span>{{ ' ' }}
-          </template>
-        </span>
+        <span class="stage-name">{{ stageName(i) }}</span>
       </button>
-      <button
-        v-if="!missingDay" type="button" class="stage-add" :aria-label="t('tours.form.nextDayBtn')"
-        data-testid="stage-add" @click="emit('nextDay')"
-      >
-        <BaseIcon name="add" />
-      </button>
+      <span v-if="!missingDay" class="stage-add">
+        <BaseIconButton name="add" variant="tonal" :label="t('tours.form.nextDayBtn')" data-testid="stage-add" @click="emit('nextDay')" />
+      </span>
     </nav>
     <div v-if="missingDay" class="missing-day" data-testid="missing-day">
       <span>{{ t('tours.creation.dayMissing', { day: dayLabel(missingDay - (dayOffset ?? 0) - 1) }) }}</span>
@@ -276,91 +297,117 @@ defineExpose({
 </template>
 
 <style scoped>
-/* The trip's days as tabs: equal widths while they fit, sideways past that; "+" adds the next. */
+/* The trip's days as tabs, the app's selectable chips: outlined, the day on screen tinted, all one
+   size; three and "+" side by side at 360px, more scroll under the "+", which stays in sight. */
 .stage-strip {
+  position: relative;
   display: flex;
-  /* Three days and "+" side by side at 360px. */
+  align-items: center;
   gap: 6px;
   overflow-x: auto;
   margin: 0 calc(-1 * var(--spacing-xs)) var(--spacing-md);
-  padding: 2px var(--spacing-xs) var(--spacing-xs);
+  padding: 2px 0 var(--spacing-xs) var(--spacing-xs);
   scrollbar-width: none;
 }
 
 .stage {
   display: flex;
-  /* Three days side by side on a phone; more scroll. */
   flex: 1 1 0;
-  min-width: 5.25rem;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 1px;
+  justify-content: center;
+  gap: 2px;
+  min-width: 5rem;
   max-width: 12rem;
-  min-height: 52px;
-  padding: var(--spacing-xs);
-  border: 0;
+  height: 56px;
+  padding: 0 var(--spacing-xs);
+  border: 1.5px solid var(--color-outline-variant);
   border-radius: var(--radius-md);
-  background: var(--color-surface-variant);
+  background: var(--color-background);
   color: var(--color-on-surface);
   text-align: left;
   font: inherit;
   cursor: pointer;
+  transition:
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    border-color var(--motion-duration-short) var(--motion-ease-standard);
+}
+
+@media (hover: hover) {
+  .stage:hover {
+    border-color: var(--color-primary);
+  }
+}
+
+.stage:focus-visible {
+  outline: none;
+  box-shadow: var(--input-focus-ring);
 }
 
 .stage--active {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  box-shadow: var(--shadow-sm);
+  background: var(--chip-selected-bg);
+  border-color: var(--chip-selected-border-color);
+  color: var(--chip-selected-color);
 }
 
 .stage-day {
   display: flex;
-  gap: var(--spacing-xs);
+  gap: var(--spacing-xxs);
   max-width: 100%;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
+  color: var(--color-on-surface-variant);
   white-space: nowrap;
+}
+
+.stage--active .stage-day {
+  color: var(--color-primary);
 }
 
 .stage-date {
   overflow: hidden;
   font-weight: 400;
-  opacity: 0.8;
   text-overflow: ellipsis;
 }
 
+/* One line, ending in "…": the tabs stand even; the form below holds the whole name. */
 .stage-name {
-  display: -webkit-box;
   max-width: 100%;
   overflow: hidden;
   font-size: 0.8125rem;
   font-weight: var(--font-weight-medium);
   line-height: 1.25;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-}
-
-.stage-word {
-  display: inline-block;
-  max-width: 100%;
-  vertical-align: top;
-  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* Adding a day is an action, not a day: the app's round tonal button, pinned at the row's end on
+   the sheet's own ground; days past it fade out before they reach it. */
 .stage-add {
-  display: grid;
+  position: sticky;
+  right: 0;
+  display: flex;
   flex: none;
-  place-items: center;
+  align-self: stretch;
+  align-items: center;
+  margin-left: -6px;
+  padding: 0 var(--spacing-xs) 0 var(--spacing-sm);
+  background: var(--color-background);
+}
+
+.stage-strip--more .stage-add::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 100%;
+  bottom: 0;
+  width: var(--spacing-xl);
+  background: linear-gradient(to right, transparent, var(--color-background));
+  pointer-events: none;
+}
+
+.stage-add :deep(.base-icon-button) {
   width: 44px;
-  min-height: 52px;
-  border: 1.5px dashed var(--color-outline-variant);
-  border-radius: var(--radius-md);
-  background: none;
-  color: var(--color-primary);
-  cursor: pointer;
+  height: 44px;
 }
 
 .discard,

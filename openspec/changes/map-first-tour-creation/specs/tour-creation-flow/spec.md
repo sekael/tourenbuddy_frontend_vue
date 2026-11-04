@@ -63,8 +63,8 @@ while points are set on the map beside it.
 
 The route step SHALL join its points along the trails and ways (the shown trail layer, else the tour's
 activities, else the base map's ways), keeping each point where it was set, and SHALL show the route's
-length, climb, descent and time. It SHALL offer to draw straight lines instead, and SHALL say so when
-the ways can't be loaded.
+length, climb, descent and time. A leg SHALL go straight where the ways don't lead to its points. It
+SHALL offer to draw straight lines instead, and SHALL say so when the ways can't be loaded.
 
 #### Scenario: Hut to pass
 
@@ -75,6 +75,11 @@ the ways can't be loaded.
 
 - **WHEN** the ways can't be loaded
 - **THEN** the legs SHALL go straight and the step SHALL say the ways aren't loaded
+
+#### Scenario: Ridge to the summit
+
+- **WHEN** two points are set on a ridge, off the ways, and the nearest ways run down in the valley
+- **THEN** the leg between them SHALL go straight from one to the other, not down to the valley path
 
 ### Requirement: The route is the track
 
@@ -119,6 +124,16 @@ the drawing's points. While a leg is on its way, the step SHALL say so.
 
 - **WHEN** the user has shaped the line with a point between, continues, and taps "Edit on map"
 - **THEN** the drawer SHALL open with that point among the drawing's points
+
+#### Scenario: Round trip back the same way
+
+- **WHEN** the line runs from the start through a point between to the goal and the user taps Rundtour
+- **THEN** the way back SHALL run the same line in reverse, through that point, until the user shapes it
+
+#### Scenario: A point between off the ways
+
+- **WHEN** the user drags a handle onto open ground with no way near and lets go
+- **THEN** the point SHALL stay there and both its legs SHALL go straight to it
 
 #### Scenario: Remove a point between
 

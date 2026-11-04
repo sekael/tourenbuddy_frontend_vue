@@ -13,6 +13,15 @@ export interface DrawnTrack {
   goal?: number
 }
 
+/** The same way back to the start, exactly: every point and leg again, the other way round. */
+export function withWayBack({ points, legs, goal }: DrawnTrack): DrawnTrack {
+  return {
+    points: [...points, ...points.slice(0, -1).reverse()],
+    legs: [...legs, ...[...legs].reverse().map(leg => [...leg].reverse())],
+    goal,
+  }
+}
+
 /** A route's start, goal and end as its track has them. */
 export function routeStops({ points, goal }: DrawnTrack & { goal: number }) {
   return {

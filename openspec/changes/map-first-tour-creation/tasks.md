@@ -40,4 +40,6 @@
 - [x] 6.2 Phone sheet folds by grip / head drag or grip tap, held across days (D14)
 - [x] 6.3 Locales, tests, lint, type-check
 - [x] 6.4 Athlete review loop until PASS
+- [x] 6.5 Off-trail legs: a point between reaches a way only where it lies, a leg off the ways for more than half its straight distance goes straight (no bend), routing documented in `docs/track-routing.md`
+- [x] 6.6 Rundtour goes back the way up by default, in the route step and the form (reversed points between and legs, nothing routed again)
 

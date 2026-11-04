@@ -27,9 +27,21 @@ const SLACK = 0.4
 const DETOUR = 2.5
 const DETOUR_MIN_M = 500
 /** A route's stop (a hut, a summit, a bus stop) joins a way this far off… */
-export const STOP_SNAP_M = 250
+const STOP_SNAP_M = 250
 /** …and, no way that near (a summit above the trail's end), one this far: the last bit goes straight. */
 const FAR_STOP_M = 1000
+/**
+ * A point between landed on its way when it was set (or stands off the ways on purpose): it joins
+ * a way only right where it is, else its legs go straight to it, as to a tap off the ways.
+ */
+const VIA_SNAP_M = 10
+/** The bits off the ways (to the first way, from the last) may add up to this share of the straight distance; more, and the leg goes straight. */
+const OFF_WAY_SHARE = 0.5
+
+/** A leg's end: a stop is a place, it reaches out to the ways; a point between only says which way. */
+export type LegEnd = 'stop' | 'via'
+/** What point `i` of a route's `count` is: its start, goal (`goal`) and end are stops, the rest points between. */
+export const legEnd = (i: number, count: number, goal?: number): LegEnd => (i > 0 && i < count - 1 && i !== goal ? 'via' : 'stop')
 
 /**
  * Why the last leg is straight though a network is followed, where the map doesn't show it: no
@@ -99,46 +111,56 @@ export function useLegRouter({ network, skiTemplate, maxTiles }: Options) {
     }
   }
 
-  /** Where a point lands (on the nearest way within `radiusM`) and the leg to it from `from`. */
-  async function resolve(from: LngLat | null, to: LngLat, radiusM: number): Promise<{ to: LngLat, line: LngLat[] | null }> {
-    const straight = { to, line: from && [from, to] }
+  /**
+   * Where a point lands (on the nearest way within `radiusM`) and the leg to it from `from` (which
+   * joins a way within `fromM`), with how far `from` lies off that way: null when the leg follows
+   * no way and goes straight.
+   */
+  async function resolve(from: LngLat | null, to: LngLat, radiusM: number, fromM = radiusM): Promise<{ to: LngLat, line: LngLat[] | null, off: number | null }> {
+    const straight = { to, line: from && [from, to], off: null }
     const found = await networkAround(network(), from ?? to, to)
     if (!found)
       return straight
     const { net, mpu } = found
     const radius = radiusM / mpu
     const nearest = snapTo(net, toUnits(to), radius)
-    const start = from && snapTo(net, toUnits(from), radius)
+    const start = from && snapTo(net, toUnits(from), fromM / mpu)
     const line = start && routeToTap(net, start, toUnits(to), radius, radius * SLACK)?.points.map(toLngLat)
     const direct = from ? haversineMeters(from, to) : 0
     if (!line || lineLength(line) > Math.max(DETOUR * direct, direct + DETOUR_MIN_M)) {
       const landed = nearest ? toLngLat(nearest.point) : to
-      return { to: landed, line: from && [from, landed] }
+      return { to: landed, line: from && [from, landed], off: null }
     }
     // The leg starts on its point exactly, even one set off the ways.
     const landed = line.at(-1)!
-    if (haversineMeters(from!, line[0]!) > 1)
+    const off = haversineMeters(from!, line[0]!)
+    if (off > 1)
       line.unshift(from!)
     else
       line[0] = from!
-    return { to: landed, line }
+    return { to: landed, line, off }
   }
 
   /**
    * The leg between two set points, both kept exactly where they are (a hut, a summit): along the
-   * ways between them, joined to each by its last straight bit; straight where no way leads. A point
-   * off the ways reaches farther for one before its leg gives up.
+   * ways between them, joined to each by its last straight bit; straight where no way leads. Each
+   * end reaches for a way as far as it is (`ends`): a stop off the ways reaches farther before its
+   * leg gives up, a point between not at all. Off the ways for more than `OFF_WAY_SHARE` of the
+   * straight distance, the ways don't lead there: straight, no bend at a way on the side.
    */
-  async function between(from: LngLat, to: LngLat, radiusM: number): Promise<LngLat[]> {
-    let { line } = await resolve(from, to, radiusM)
-    if ((!line || line.length < 3) && radiusM < FAR_STOP_M)
-      line = (await resolve(from, to, FAR_STOP_M)).line
-    const leg = line ?? [from, to]
-    if (haversineMeters(leg.at(-1)!, to) > 1)
-      leg.push(to)
+  async function between(from: LngLat, to: LngLat, ends: readonly [LegEnd, LegEnd] = ['stop', 'stop']): Promise<LngLat[]> {
+    const reach = (end: LegEnd, far: boolean) => (end === 'via' ? VIA_SNAP_M : far ? FAR_STOP_M : STOP_SNAP_M)
+    let found = await resolve(from, to, reach(ends[1], false), reach(ends[0], false))
+    if (found.off == null && ends.includes('stop'))
+      found = await resolve(from, to, reach(ends[1], true), reach(ends[0], true))
+    const { line, off } = found
+    if (!line || off == null || off + haversineMeters(found.to, to) > OFF_WAY_SHARE * haversineMeters(from, to))
+      return [from, to]
+    if (haversineMeters(line.at(-1)!, to) > 1)
+      line.push(to)
     else
-      leg[leg.length - 1] = to
-    return leg
+      line[line.length - 1] = to
+    return line
   }
 
   return { issue, resolve, between }
