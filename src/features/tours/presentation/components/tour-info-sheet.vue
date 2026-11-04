@@ -845,7 +845,7 @@ const formattedElevation = computed(() =>
 
         <!-- Hero: led by the goal. Line 1 elevation (or date); line 2 date · coordinates,
              wrapping freely; friend tours add the owner. -->
-        <div class="hero">
+        <div class="hero" :class="{ 'hero--sheet': !isDesktop }">
           <TourTypeBadge :types="routeOrder(tour)" class="hero-badge">
             <!-- State stamps on the badge: they pop in when the owner flips a toggle. -->
             <Transition name="stamp">
@@ -1285,6 +1285,12 @@ const formattedElevation = computed(() =>
   display: flex;
   align-items: flex-start;
   gap: var(--spacing-md);
+}
+
+/* The sheet's scroll box starts flush on the hero and clips what pokes out above it: room
+   for the private stamp's overhang (-4px + its 2px ring). The drawer's padding has it already. */
+.hero--sheet {
+  padding-top: 6px;
 }
 
 .hero-badge {
