@@ -1346,6 +1346,46 @@
           "body": "Add a grade on the activity's own scale — T1–T6, L–EX, S0–S5 — and when you leave. Pick every activity a tour can be done as: the marker and the GPX track show all their colours, and the activity filter finds the tour under each of them."
         }
       }
+    },
+    "2026-11-track-drawing": {
+      "title": "Draw your track on the map, timed at your pace",
+      "intro": "No GPX file at hand? Draw the way you'll go and see how long it takes you.",
+      "features": {
+        "draw": {
+          "title": "Draw a track on the map",
+          "body": "In the tour form, tap “Draw on map” and set points along the way: the line follows hiking trails or ski routes, then roads and paths. Distance, time, climb, descent and the elevation profile update as you draw, and “Done” saves the line as the tour's GPX track — offline too. “Edit on map” changes it later."
+        },
+        "pace": {
+          "title": "Times at your pace",
+          "body": "Tap the time while drawing and slide from slow to fast. Every estimated time — drawn tracks, tour details, ski routes — follows your pace, kept on your account for every device."
+        },
+        "filters": {
+          "title": "Filter by grade and friend",
+          "body": "Filter tours by grade — T1–T6, L–EX, S0–S5, a range in two taps — and friends' tours by who recorded them. While the list is open, the map shows only the tours it lists. On a friend's contact, “Tours” opens theirs."
+        },
+        "markers": {
+          "title": "A map you can read",
+          "body": "Zoom in and markers show the tour's name, height and date, with its activity inside. Tap a cluster to fit its tours into view, or a spot with several tours to list them. Multi-day segments are joined in order, and the ⓘ on the map explains every colour and symbol."
+        }
+      }
+    },
+    "2026-11-map-first-planning": {
+      "title": "Plan new tours on the map, day by day",
+      "intro": "Tap your way from start to summit and back: the route follows the trails and becomes your track.",
+      "features": {
+        "route": {
+          "title": "Start on the map",
+          "body": "Tap “+” and set start, goal and end on the map or by search. The route follows the trails as the points land, with climb and descent, and becomes the tour's track. “Continue” opens the form with names and heights filled in — on desktop right beside the map."
+        },
+        "shape": {
+          "title": "Shape the route",
+          "body": "Drag a point, or the handle halfway along a leg to take another way. “Round trip” brings you back to the start the way you came."
+        },
+        "days": {
+          "title": "Several days in one go",
+          "body": "Staying overnight? “Next day” plans the next stage from where this one ends, right on the map. Each day gets its own tab in the form, and all days save together as one multi-day tour."
+        }
+      }
     }
   }
 }
