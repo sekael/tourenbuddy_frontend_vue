@@ -12,5 +12,5 @@
 
 ## 3. Owner
 
-- [ ] 3.1 `supabase db reset && supabase test db` locally; sign in with a code in the PWA (new and seeded address)
-- [ ] 3.2 Hosted, as soon as merged: the audit query (design) and a look at the list, then `supabase db push` and Confirm email on together, then the other dashboard settings (proposal, Impact); a new address can still sign in to the PWA with a code
+- [x] 3.1 `supabase db reset && supabase test db` locally; sign in with a code in the PWA (new and seeded address)
+- [x] 3.2 Hosted, as soon as merged: the audit query (design) and a look at the list, then `supabase db push` and Confirm email on together, then the other dashboard settings (proposal, Impact); a new address can still sign in to the PWA with a code
