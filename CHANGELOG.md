@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.52.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.52.0...tourenbuddy-frontend-v0.52.1) (2026-11-09)
+
+
+### Bug Fixes
+
+* Patch unconfirmed accounts ([#380](https://github.com/sekael/tourenbuddy_frontend_vue/issues/380)) ([d13ae62](https://github.com/sekael/tourenbuddy_frontend_vue/commit/d13ae6242df4c2d9690d2fb14c08df84d254b172))
+
 ## [0.52.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.51.1...tourenbuddy-frontend-v0.52.0) (2026-11-04)
 
 
