@@ -236,8 +236,11 @@ double_confirm_changes = true
 # On: /signup must not hand out a session for an address nobody proved (the native app's password
 # sign-in). Code sign-ins confirm a new address by the code, so the PWA is unaffected.
 enable_confirmations = true
-# If enabled, users will need to reauthenticate or have logged in recently to change their password.
-secure_password_change = false
+# On: a password change needs a code sent by email (reauthenticate → updateUser with the nonce)
+# unless the session is less than a day old. A password is a lasting way in; an unlocked phone or
+# a stolen session must not be enough to set one. The native app asks for the code itself unless
+# the user signed in minutes ago. Hosted: Authentication → Providers → Email → Secure password change.
+secure_password_change = true
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
 max_frequency = "1s"
 # Number of characters used in the email OTP.
@@ -283,6 +286,13 @@ max_frequency = "5s"
 "41790000001" = "123456"
 "41790000002" = "123456"
 "41790000003" = "123456"
+# Free numbers for trying the phone step by hand (Profil → Telefon): no account holds them, so
+# adding one reaches the code step; the code is 123456. +41 79 000 09 01 … 05.
+"41790000901" = "123456"
+"41790000902" = "123456"
+"41790000903" = "123456"
+"41790000904" = "123456"
+"41790000905" = "123456"
 # This hook runs before a new user is created and allows developers to reject the request based on the incoming user object.
 # [auth.hook.before_user_created]
 # enabled = true

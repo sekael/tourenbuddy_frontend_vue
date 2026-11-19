@@ -1,9 +1,11 @@
 import type { Env } from './config'
 import { Webhook } from 'standardwebhooks'
+import { handleAccountDelete } from './account'
 import { verifySupabaseJwt } from './auth'
 import { handleTourFeed } from './calendar/outbound'
 import { purgePastAvailability, syncAllUsers, syncUser } from './calendar/sync'
 import { corsHeaders, jsonResponse, resolveLocale } from './config'
+import { handleModerationReport } from './moderation'
 import { handleEvent } from './notify'
 
 interface SupabaseHookPayload {
@@ -133,9 +135,18 @@ export default {
         return withCors(await handleCalendarSync(request, env), request)
       }
 
+      if (url.pathname === '/account/delete') {
+        return withCors(await handleAccountDelete(request, env), request)
+      }
+
       // Server-to-server from the DB dispatch trigger (pg_net): no CORS.
       if (url.pathname === '/notify/event') {
         return await handleEvent(request, env)
+      }
+
+      // Server-to-server from the abuse report trigger (pg_net): no CORS.
+      if (url.pathname === '/moderation/report') {
+        return await handleModerationReport(request, env)
       }
 
       // Default: Supabase Auth email hook (verifies signature internally, no CORS — server-to-server)

@@ -1,6 +1,7 @@
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { isOnline } from '@/core/offline/use-online-status'
 import { useNotificationsStore } from '@/features/notifications/presentation/stores/notifications-store'
 import UserProfileSheet from '@/features/user/presentation/components/user-profile-sheet.vue'
 
@@ -24,6 +25,8 @@ const { mockUpdateProfile, mockSendPhoneVerification, mockCheckPhoneAvailability
     mockStoreError: { value: null as string | null },
   }),
 )
+
+const { mockDeleteAccount } = vi.hoisted(() => ({ mockDeleteAccount: vi.fn() }))
 
 const { mockSetLocale, mockLocale, mockFeeds } = vi.hoisted(() => ({
   mockSetLocale: vi.fn(),
@@ -52,8 +55,17 @@ vi.mock('@/features/user/presentation/stores/user-profile-store', () => ({
     sendPhoneVerification: mockSendPhoneVerification,
     checkPhoneAvailability: mockCheckPhoneAvailability,
     deletePhone: mockDeletePhone,
+    deleteAccount: mockDeleteAccount,
     clear: vi.fn(),
   }),
+}))
+
+vi.mock('@/features/user/presentation/components/delete-account-dialog.vue', () => ({
+  default: {
+    props: ['deleting', 'error'],
+    emits: ['confirm', 'cancel'],
+    template: '<div class="delete-dialog-stub"><span class="err">{{ error }}</span><button class="confirm" @click="$emit(\'confirm\')" /></div>',
+  },
 }))
 
 vi.mock('@/features/auth/presentation/stores/auth-store', () => ({
@@ -295,6 +307,37 @@ describe('userProfileSheet', () => {
       expect(deBtn).toBeDefined()
       await deBtn!.trigger('click')
       expect(mockSetLocale).toHaveBeenCalledWith('de-CH')
+    })
+  })
+
+  describe('delete account', () => {
+    async function openAndConfirm() {
+      const wrapper = mount(UserProfileSheet)
+      await wrapper.find('[data-testid="delete-account-btn"]').trigger('click')
+      await wrapper.find('.delete-dialog-stub .confirm').trigger('click')
+      await flushPromises()
+      return wrapper
+    }
+
+    it('should keep the user signed in and show an error when deletion fails', async () => {
+      mockDeleteAccount.mockResolvedValue(false)
+      const wrapper = await openAndConfirm()
+      expect(mockSignOut).not.toHaveBeenCalled()
+      expect(wrapper.find('.delete-dialog-stub .err').text()).toBe('user.profile.deleteAccount.failed')
+    })
+
+    it('should not call the server while offline', async () => {
+      isOnline.value = false
+      const wrapper = await openAndConfirm()
+      isOnline.value = true
+      expect(mockDeleteAccount).not.toHaveBeenCalled()
+      expect(wrapper.find('.delete-dialog-stub .err').text()).toBe('user.profile.deleteAccount.offline')
+    })
+
+    it('should sign out once the account is deleted', async () => {
+      mockDeleteAccount.mockResolvedValue(true)
+      await openAndConfirm()
+      expect(mockSignOut).toHaveBeenCalledTimes(1)
     })
   })
 })

@@ -5,9 +5,10 @@ import { pace } from '@/core/composables/use-pace'
 import { InvalidPhoneNumberError, PhoneAlreadyRegisteredError } from '@/core/exceptions'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
 
-const { mockGetUserById, mockUpsertProfile } = vi.hoisted(() => ({
+const { mockGetUserById, mockUpsertProfile, mockDeleteAccount } = vi.hoisted(() => ({
   mockGetUserById: vi.fn(),
   mockUpsertProfile: vi.fn(),
+  mockDeleteAccount: vi.fn(),
 }))
 
 const mockCurrentUser = vi.hoisted(() => ({
@@ -23,6 +24,7 @@ vi.mock('@/features/user/data/repositories/user-profile-repository-impl', () => 
   UserProfileRepositoryImpl: vi.fn().mockImplementation(() => ({
     getUserById: mockGetUserById,
     upsertProfile: mockUpsertProfile,
+    deleteAccount: mockDeleteAccount,
   })),
 }))
 
@@ -450,6 +452,15 @@ describe('useUserProfileStore', () => {
 
       const store = useUserProfileStore()
       await expect(store.sendPhoneVerification('+41791234567')).rejects.toThrow('Rate limit exceeded')
+    })
+  })
+
+  describe('deleteAccount', () => {
+    it('should report failure and keep the error when the Worker refuses', async () => {
+      mockDeleteAccount.mockRejectedValueOnce(new Error('account deletion failed: 502'))
+      const store = useUserProfileStore()
+      expect(await store.deleteAccount()).toBe(false)
+      expect(store.error).toBe('account deletion failed: 502')
     })
   })
 

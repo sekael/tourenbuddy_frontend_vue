@@ -240,6 +240,20 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     })
   }
 
+  /** Deletes the account (online only). True on success; the caller signs out. */
+  async function deleteAccount(): Promise<boolean> {
+    error.value = null
+    try {
+      await repository.deleteAccount()
+      return true
+    }
+    catch (err) {
+      logger.error('Account deletion failed', err)
+      error.value = (err as Error).message
+      return false
+    }
+  }
+
   async function verifyPhone(phone: string, token: string) {
     const result = normalizePhone(phone)
     const e164 = result.ok ? result.e164 : phone
@@ -355,6 +369,7 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     sendPhoneVerification,
     verifyPhone,
     deletePhone,
+    deleteAccount,
     skipOnboarding,
     dismissTourAtSignIn,
     saveTourStep,

@@ -19,7 +19,7 @@ export type ProfileSection = 'edit' | 'notifications' | 'calendar'
 
 // The profile at a glance: who you are, each setting's current state, and one tap
 // to the section that changes it.
-const emit = defineEmits<{ open: [section: ProfileSection], showTour: [], signOut: [] }>()
+const emit = defineEmits<{ open: [section: ProfileSection], showTour: [], signOut: [], deleteAccount: [] }>()
 
 const { t } = useI18n({ useScope: 'global' })
 const isDesktop = useIsDesktop()
@@ -152,6 +152,10 @@ onMounted(() => {
     <BaseButton variant="secondary" class="sign-out" @click="emit('signOut')">
       <BaseIcon name="logout" />
       {{ t('user.profile.signOutBtn') }}
+    </BaseButton>
+
+    <BaseButton variant="text" class="delete-account" data-testid="delete-account-btn" @click="emit('deleteAccount')">
+      {{ t('user.profile.deleteAccount.entryBtn') }}
     </BaseButton>
 
     <AppVersionLine />
@@ -333,5 +337,10 @@ onMounted(() => {
 
 .sign-out {
   width: 100%;
+}
+
+.delete-account {
+  align-self: center;
+  color: var(--color-error);
 }
 </style>

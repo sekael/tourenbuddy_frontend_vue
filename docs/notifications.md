@@ -22,9 +22,15 @@ Single source of truth for every inbox entry, push and email the app emits.
    Vault (`notify_hook_url`, `notify_webhook_secret`). Missing Vault secrets ⇒ silent no-op;
    the inbox row is the record either way. At-most-once, no retry.
 4. **Worker** (`services/email-hook/src/notify.ts`): skips muted types, pushes to every
-   registered device of the recipient (`push_subscriptions` row ⇔ push on for that browser),
+   registered device of the recipient (`push_subscriptions` row ⇔ push on for that browser;
+   `device_push_tokens` row ⇔ push on for that native app install, sent through APNs directly
+   for iOS and FCM HTTP v1 for Android, `src/native-push.ts`; a token the provider reports gone
+   loses its row),
    emails when `notif_email_enabled`, localizes copy from `user_profile.locale`, and deep-links
    to `<APP_URL>/?notification=<id>` — the app resolves the entry's own target and marks it read.
+
+Native apps register their OS token with `register_device_push_token` (last registrant owns a
+token, as with browsers) and delete their own row on sign-out; account deletion cascades it.
 
 Clients can read, mark read and delete their own entries; they can never insert one
 (`record_release_note` is the only self-insert door). Retention: 90 days (`pg_cron`).

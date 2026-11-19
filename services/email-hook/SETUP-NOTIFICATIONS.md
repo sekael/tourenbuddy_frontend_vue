@@ -133,7 +133,27 @@ wrangler secret put APP_URL
 # → paste: https://tourenbuddy.ch         (prod — once live)
 ```
 
-> **CORS allowlist** is hard-coded in `src/config.ts` (`ALLOWED_ORIGINS`): `localhost:5173`, `test.tourenbuddy.ch`, `tourenbuddy.ch`, `www.tourenbuddy.ch`, plus `*.touringbuddy.pages.dev`. Add any new frontend origin there and redeploy the Worker.
+```bash
+# Native push (change: add-native-backend). Each platform is skipped while its secrets are unset.
+# iOS — APNs token auth. Apple Developer → Certificates, Identifiers & Profiles → Keys → "+",
+# enable "Apple Push Notifications service (APNs)", download the .p8 once (keep it out of the repo).
+wrangler secret put APNS_KEY_ID        # → the key's 10-character id
+wrangler secret put APNS_TEAM_ID       # → R26MV7TAH3
+wrangler secret put APNS_PRIVATE_KEY   # → paste the whole .p8 file, BEGIN/END lines included
+# Android — FCM HTTP v1. Firebase console → Project settings → Service accounts →
+# "Generate new private key" (a JSON file). Paste the JSON as one value.
+wrangler secret put FCM_SERVICE_ACCOUNT
+
+# Abuse report alerts (docs/moderation.md). A Brevo-verified sender address; alerts go to it.
+wrangler secret put MODERATION_EMAIL   # → feedback@tourenbuddy.ch
+```
+
+Check native push after deploying: sign in on the iPhone (a development build from Xcode gets
+sandbox tokens, TestFlight production ones), allow notifications, and have a friend send a friend
+request. `wrangler tail` shows `[apns] 4xx <reason>` for any rejection; `BadDeviceToken` on every
+send means the token's environment does not match the build (design D3).
+
+> **CORS allowlist** is hard-coded in `src/config.ts` (`ALLOWED_ORIGINS`): `localhost:5173`, `localhost:8081` (Expo web), `test.tourenbuddy.ch`, `tourenbuddy.ch`, `www.tourenbuddy.ch`, `tourenbuddy-native.pages.dev`, plus previews `*.touringbuddy.pages.dev` and `*.tourenbuddy-native.pages.dev`. Native apps send no `Origin` and need no entry. Add any new web origin there and redeploy the Worker.
 
 ## 4. Apply Supabase migrations + webhook secrets
 

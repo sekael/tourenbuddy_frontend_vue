@@ -36,6 +36,7 @@ topo map (Swisstopo), link contacts, and pick planned dates.
 - Never run `git commit`; prompt the user with a ready-to-copy conventional commit message (`type(scope): description`).
 - IMPORTANT: ALL DB changes (schema/RLS/functions/storage) go through NEW migrations in `supabase/migrations/`, applied to the LOCAL DB first, pushed to prod only after verification. Never edit an existing migration. See `.claude/conventions.md` → Supabase / Database.
 - New DB functions need an explicit `grant execute` (no implicit grants); views must be `security_invoker`. See `docs/supabase-rpc-authorization.md`.
+- IMPORTANT: Store builds of the native apps stay in the field for months. RPCs, tables, views and Worker routes change **expand, then contract**: add the new shape, keep the old one working, remove it only once `app-config.json`'s minimum versions (native repo, `tourenbuddy.ch/app-config.json`) exclude every build that uses it. See `.claude/conventions.md` → Supabase / Database.
 - Do not edit `CHANGELOG.md` or the package version manually (release-please).
 - User-facing text must use `vue-i18n` and all locale files.
 - No `console.log()`; use `useLogger`.

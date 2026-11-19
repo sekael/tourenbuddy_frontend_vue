@@ -1,5 +1,5 @@
 import type { Env } from './config'
-import { jsonResponse, resolveLocale } from './config'
+import { jsonResponse, resolveLocale, secretMatches } from './config'
 import { sendFriendNotificationEmail, sendTourLinkDeletedEmail, sendTourNotificationEmail } from './email'
 import { dispatchPushToUser } from './push'
 
@@ -75,16 +75,6 @@ async function fetchDisplayName(userId: string | undefined, env: Env): Promise<s
     return null
   const rows = (await res.json()) as { first_name: string | null, last_name: string | null }[]
   return [rows[0]?.first_name, rows[0]?.last_name].filter(Boolean).join(' ') || null
-}
-
-/** Constant-time string compare, so the secret can't be recovered by timing the 401. */
-function secretMatches(given: string, expected: string): boolean {
-  const a = new TextEncoder().encode(given)
-  const b = new TextEncoder().encode(expected)
-  let diff = a.length ^ b.length
-  for (let i = 0; i < b.length; i++)
-    diff |= (a[i] ?? 0) ^ b[i]
-  return diff === 0
 }
 
 // ── Push copy, keyed by (type, action) ───────────────────────────────────────

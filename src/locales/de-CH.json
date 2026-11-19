@@ -228,6 +228,16 @@
       "addPhoneBtn": "Telefonnummer hinzufügen",
       "editBtn": "Profil bearbeiten",
       "signOutBtn": "Abmelden",
+      "deleteAccount": {
+        "entryBtn": "Konto löschen",
+        "title": "Konto löschen?",
+        "body": "Damit werden dein Profil, deine Touren, GPX-Dateien und Anhänge, Kontakte, Freundschaften, Verfügbarkeiten, Kalender-Abos und Mitteilungen endgültig gelöscht. Freunde sehen deine geteilten Touren nicht mehr.",
+        "hint": "Das lässt sich nicht rückgängig machen. Du kannst dich später mit derselben E-Mail neu registrieren, als neues Konto.",
+        "confirmBtn": "Endgültig löschen",
+        "deleting": "Wird gelöscht…",
+        "failed": "Dein Konto konnte nicht gelöscht werden. Bitte versuche es nochmals.",
+        "offline": "Du bist offline. Verbinde dich mit dem Internet, um dein Konto zu löschen."
+      },
       "nameRequired": "Vor- und Nachname sind erforderlich",
       "saveFailed": "Profil konnte nicht gespeichert werden",
       "languageLabel": "Sprache",
