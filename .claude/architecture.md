@@ -70,7 +70,7 @@ Background tabs and hidden PWA windows pause Realtime to avoid sustained WebSock
 - Functions get no implicit EXECUTE (default privileges revoked in `20261012144059_security_hardening.sql`): grant `authenticated` (and/or `service_role`) explicitly in the migration that creates the function; internal helpers get no client grant at all.
 - Storage objects live under `<owner uid>/…`; every cross-user read grant also pins the object's first path segment to the owning user.
 - How a client call passes the gates (JWT → role → EXECUTE → definer body), definer semantics and `search_path`: `docs/supabase-rpc-authorization.md`.
-- Known gap: the `tours_select_friend` policy exposes a friends-visible tour's full row (incl. `planned_date`/`end_date`/`gpx_filepath`) to any accepted friend who queries `tours` directly — the partner gating of `friend_tours_view` is presentation-level until that policy is replaced by a definer read path.
+- Known gap: the `tours_select_friend` policy exposes a friends-visible tour's full row (incl. `planned_date`/`end_date`/`gpx_filepath`) to any accepted friend who queries `tours` directly — the partner gating of `friend_tours_view` is presentation-level until that policy is replaced by a definer read path. Reviewed for the store release (#346 B8, change: add-native-backend D7): native clients do not widen it (any HTTP client with a friend's JWT reaches it today), it stays limited to accepted friends and friends-visible tours, and GPX objects keep their own partner-gated Storage policy. Fix as a follow-up, expand-then-contract: a definer `friend_tours(...)` read path returning the partner-gated columns, both clients switched to it, then the policy dropped once the app-config gate excludes older builds.
 
 ## Error Handling
 

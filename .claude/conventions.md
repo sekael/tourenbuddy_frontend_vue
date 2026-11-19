@@ -79,6 +79,12 @@ IMPORTANT: The app ships **all** fonts and icons in its own bundle. There is **n
 - Views MUST be `with (security_invoker = true)` and granted `select` only (`revoke all ... from anon, authenticated; grant select ... to authenticated`). A default (definer) view runs as `postgres`, bypasses RLS, and a simple one is auto-updatable — `tours_view` was readable, updatable and deletable with the anon key until 2026-10-12.
 - Storage read grants that match an object by a path stored in a row MUST also pin the object's owner prefix (`split_part(name, '/', 1) = <owner>::text`).
 - Background for all of the above (gates, roles, definer semantics, search_path, worked example): `docs/supabase-rpc-authorization.md`.
+- IMPORTANT — **expand, then contract** (#346 B5): the native apps' store builds keep calling the backend for months after a newer one ships. Never rename, drop, or change the arguments or result shape of an RPC, table, column, view or Worker route in one step. Instead:
+  1. **Expand:** add the new function / column / route next to the old one; the old one keeps working (a wrapper or a trigger keeps both in step when needed).
+  2. Ship the clients that use the new shape.
+  3. Raise `min_supported_ios` / `min_supported_android` in the native repo's `public/app-config.json` once the old builds are rare enough; those builds then show the forced-update screen.
+  4. **Contract:** drop the old shape in a later migration, only after step 3 is live **and** the old builds' offline queues have drained: the gate blocks only online, so an old build keeps queueing writes in the old shape while offline and replays them once updated (native repo `docs/publishing.md` → "Update gate").
+  The PWA is one deploy and needs no gate, but it is also a client: the same steps apply while it runs.
 
 ## Internationalization
 

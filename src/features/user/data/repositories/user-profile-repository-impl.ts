@@ -1,5 +1,6 @@
 import type { UserProfile } from '@/features/user/domain/entities/user-profile'
 import type { UserProfileRepository } from '@/features/user/domain/repositories/user-profile-repository'
+import { env } from '@/core/constants/env'
 import { UnauthorizedUserException } from '@/core/exceptions'
 import { supabase } from '@/core/utils/supabase'
 import { userProfileRowSchema } from '@/features/user/data/models/user-profile-schema'
@@ -62,5 +63,18 @@ export class UserProfileRepositoryImpl implements UserProfileRepository {
       throw new Error(error.message)
 
     return data?.updated_at ?? null
+  }
+
+  async deleteAccount(): Promise<void> {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!env.VITE_NOTIFY_HOOK_URL || !session)
+      throw new Error('account deletion unavailable')
+    // The Worker deletes the files, then the auth user; every row cascades (design D5).
+    const res = await fetch(`${env.VITE_NOTIFY_HOOK_URL}/account/delete`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+    if (!res.ok)
+      throw new Error(`account deletion failed: ${res.status}`)
   }
 }

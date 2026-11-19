@@ -23,6 +23,7 @@ import { useNotificationsStore } from '@/features/notifications/presentation/sto
 import { useOnboardingTourStore } from '@/features/onboarding/presentation/stores/onboarding-tour-store'
 import { useToursStore } from '@/features/tours/presentation/stores/tours-store'
 import { useUserProfileStore } from '@/features/user/presentation/stores/user-profile-store'
+import DeleteAccountDialog from './delete-account-dialog.vue'
 import PhoneVerificationDialog from './phone-verification-dialog.vue'
 import ProfileOverview from './profile-overview.vue'
 
@@ -221,6 +222,39 @@ async function executeDeletePhone() {
   }
 }
 
+// Account deletion (change: add-native-backend): online only; on success the session is gone
+// with the account, so sign-out skips the device row (it went with the cascade).
+const showDeleteAccount = ref(false)
+const isDeletingAccount = ref(false)
+const deleteAccountError = ref<string | null>(null)
+
+function openDeleteAccount() {
+  deleteAccountError.value = null
+  showDeleteAccount.value = true
+}
+
+async function confirmDeleteAccount() {
+  if (!isOnline.value) {
+    deleteAccountError.value = t('user.profile.deleteAccount.offline')
+    return
+  }
+  isDeletingAccount.value = true
+  deleteAccountError.value = null
+  const deleted = await userProfileStore.deleteAccount()
+  isDeletingAccount.value = false
+  if (!deleted) {
+    deleteAccountError.value = t('user.profile.deleteAccount.failed')
+    return
+  }
+  showDeleteAccount.value = false
+  contactsStore.clear()
+  toursStore.clear()
+  userProfileStore.clear()
+  await authStore.signOut()
+  emit('close')
+  router.push({ name: 'home' })
+}
+
 async function handleSignOut() {
   // Before signOut: the row delete needs the session (#148 — a shared device must stop
   // receiving the previous user's pushes). Bounded + never throws.
@@ -255,6 +289,7 @@ async function handleSignOut() {
         @open="openSection"
         @show-tour="handleShowTour"
         @sign-out="handleSignOut"
+        @delete-account="openDeleteAccount"
       />
       <NotificationPreferencesSection v-else-if="view === 'notifications'" />
       <CalendarSyncSettings v-else-if="view === 'calendar'" />
@@ -370,6 +405,14 @@ async function handleSignOut() {
       </form>
     </Transition>
   </AdaptiveOverlay>
+
+  <DeleteAccountDialog
+    v-if="showDeleteAccount"
+    :deleting="isDeletingAccount"
+    :error="deleteAccountError"
+    @confirm="confirmDeleteAccount"
+    @cancel="showDeleteAccount = false"
+  />
 
   <PhoneVerificationNotice
     v-if="showVerificationNotice"
