@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.53.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.52.1...tourenbuddy-frontend-v0.53.0) (2026-11-19)
+
+
+### Features
+
+* Native backend ([#382](https://github.com/sekael/tourenbuddy_frontend_vue/issues/382)) ([a46eb4b](https://github.com/sekael/tourenbuddy_frontend_vue/commit/a46eb4bf048896561c1a5b34b90eb1a090880a3b))
+
 ## [0.52.1](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.52.0...tourenbuddy-frontend-v0.52.1) (2026-11-09)
 
 
