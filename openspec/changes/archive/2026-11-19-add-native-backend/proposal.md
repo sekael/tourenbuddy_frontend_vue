@@ -61,6 +61,10 @@ there too. B9 is Phase 7.
 - New Worker secrets: `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_PRIVATE_KEY`, `FCM_SERVICE_ACCOUNT`,
   `MODERATION_EMAIL`. Unset secrets switch the channel off, never fail the event.
 - PWA: profile sheet "Delete account" (+ locales, tests).
+- Auth config (`supabase/config.toml`, local stack): `secure_password_change = true`, so a password
+  set on a session older than a day needs a code (the native app's password step relies on it);
+  five free test phone numbers for trying the phone step by hand. Hosted: Authentication →
+  Providers → Email → **Secure password change** on. The PWA sets no passwords: unaffected.
 - Docs: `SETUP-NOTIFICATIONS.md`, `docs/notifications.md`, `docs/moderation.md`, `AGENTS.md`,
   `.claude/conventions.md`, `.claude/architecture.md`.
 - Deploy: `supabase db push` (prompted), then `cd services/email-hook && npx wrangler deploy`

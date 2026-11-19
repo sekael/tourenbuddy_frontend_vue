@@ -35,6 +35,6 @@
 
 - [x] 6.1 Migrations + pgTAP in a rolled-back transaction against the local stack; `cd services/email-hook && npm test`; `npx eslint . --fix`, `npm run test`, `npm run type-check`
 - [x] 6.2 Independent review until satisfied
-- [ ] 6.3 Owner: `supabase db reset && supabase test db`, commit, PR, `supabase db push`, secrets, `npx wrangler deploy`, a push to a real iPhone
+- [x] 6.3 Owner: `supabase db reset && supabase test db`, commit, PR, `supabase db push`, secrets, `npx wrangler deploy`, a push to a real iPhone
 - [ ] 6.4 Owner, later (B4): set the Worker's `APP_URL` to `https://tourenbuddy.ch` once the native web app is live on the apex (Phase 7); until then email links keep opening the PWA on `test.tourenbuddy.ch`
 - [ ] 6.5 Owner (B8): accept or reject the `tours_select_friend` deferral (design D7) before the store release (Phase 6)

@@ -293,9 +293,8 @@ Active `user_blocks` rows MUST NOT be auto-deleted or set inactive by contact de
 - **WHEN** user A blocks user B, then user A invokes `delete_own_phone()`
 - **THEN** `user_blocks(A, B)` remains active
 
-### Requirement: Abuse reporting captured but no moderation pipeline
-
-The system SHALL provide a `report_user(target_user_id uuid, reason text)` SECURITY DEFINER RPC that inserts a row into `public.abuse_reports(reporter_user_id, reported_user_id, reason, created_at)`. The Block UI SHALL offer an optional "Also report this user" toggle / paired action. The RPC explicitly sets `reporter_user_id = auth.uid()` to preserve authorization (writes go only through this RPC; no INSERT policy is granted on `abuse_reports`). There is **no admin tool, no automated action, no notification to moderators** — the table is a capture-only audit log for future moderation work, tracked by a separate GitHub issue.
+### Requirement: Abuse reports alert the operator
+The `report_user(target_user_id uuid, reason text)` SECURITY DEFINER RPC SHALL record reports in `public.abuse_reports` as the caller (`reporter_user_id = auth.uid()`), offered from the Block UI. Every inserted or repeated report SHALL reach the Worker, which SHALL email the moderation address with both accounts and the reason. No automated action SHALL run on the reported user.
 
 #### Scenario: Report inserted
 - **WHEN** user A invokes `report_user(B, "spam")` for the first time
@@ -303,16 +302,20 @@ The system SHALL provide a `report_user(target_user_id uuid, reason text)` SECUR
 
 #### Scenario: Repeat report upserts reason and timestamp
 - **WHEN** user A invokes `report_user(B, <new reason>)` and a prior row `(A, B)` already exists
-- **THEN** the existing row is UPDATEd with the new reason and `created_at = now()`; no duplicate row is inserted (UNIQUE on `(reporter_user_id, reported_user_id)`)
+- **THEN** the existing row is UPDATEd with the new reason and `created_at = now()`; no duplicate row is inserted
 
 #### Scenario: Block-and-report runs both
 - **WHEN** user A confirms Block with the "Also report" option checked
-- **THEN** `block_user(B)` runs followed by `report_user(B, <reason>)` in the same UI flow (separate RPCs acceptable)
+- **THEN** `block_user(B)` runs followed by `report_user(B, <reason>)` in the same UI flow
 
-#### Scenario: No automated action taken on report
-- **WHEN** any `abuse_reports` row is inserted
-- **THEN** no notification is sent, no flag is raised on the reported user, no automated moderation runs
+#### Scenario: Operator alerted
+- **WHEN** an `abuse_reports` row is inserted or updated and the Worker has a moderation address
+- **THEN** the moderation address receives an email naming the reporter, the reported user and the reason, and nothing else happens to either account
+
+#### Scenario: Worker unreachable or unconfigured
+- **WHEN** the Worker cannot be reached or has no moderation address
+- **THEN** the report stays committed and the reporter sees the usual confirmation
 
 #### Scenario: Reporter sees confirmation
 - **WHEN** the report RPC succeeds
-- **THEN** the client shows a localized confirmation snackbar
+- **THEN** the client shows a localized confirmation
