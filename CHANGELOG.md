@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.54.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.53.0...tourenbuddy-frontend-v0.54.0) (2026-11-22)
+
+
+### Features
+
+* **terms:** Record the acceptance of the terms of use, gate the PWA ([#385](https://github.com/sekael/tourenbuddy_frontend_vue/issues/385)) ([327ba6c](https://github.com/sekael/tourenbuddy_frontend_vue/commit/327ba6c472b0733a4d38737045438daff5c94508))
+
 ## [0.53.0](https://github.com/sekael/tourenbuddy_frontend_vue/compare/tourenbuddy-frontend-v0.52.1...tourenbuddy-frontend-v0.53.0) (2026-11-19)
 
 
