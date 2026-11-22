@@ -9,7 +9,8 @@ its change `add-terms-acceptance`.
   foreign key to `auth.users` (rows outlive the account). RLS: select own rows; no client insert,
   update or delete (no policy, no privilege).
 - `terms_current_version()` (sql, immutable): `'2026-11-22'`. A terms change replaces it in a new
-  migration, the same day as the web deploy (native design, Rollout).
+  migration, the same day as the PWA release and the new texts on tourenbuddy.ch (native design,
+  Rollout).
 - `terms_status()` (definer, authenticated): `current_version`, `accepted_version` (latest for
   `auth.uid()`).
 - `accept_terms(p_version)` (definer, authenticated): `p_version` must equal the version in force,
@@ -51,8 +52,8 @@ website's pages (`https://tourenbuddy.ch/terms`, `/privacy`). The offline queue'
 
 ## Rollout
 
-1. Migration `terms_acceptances` (switch off) with this PWA release; the native apps and web app
-   with their gate.
+1. Migration `terms_acceptances` (switch off) with this PWA release; the native iOS app with its
+   gate. The web is this PWA (#346 D21): the native repository releases no web app.
 2. At least a week later, once old PWA shells are replaced: migration `terms_enforcement_on`, in its
    own PR (kept out of `migrations/` until then, or `db push` would turn it on at step 1):
 
