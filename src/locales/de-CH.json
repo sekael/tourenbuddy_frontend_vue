@@ -1397,5 +1397,32 @@
         }
       }
     }
+  },
+  "terms": {
+    "title": "Nutzungsbedingungen",
+    "lead": "Bevor du TourenBuddy nutzt, lies und akzeptiere bitte die Nutzungsbedingungen. Kurz gesagt:",
+    "changedLead": "Wir haben die Nutzungsbedingungen aktualisiert. Geändert: {changes}. Kurz gesagt:",
+    "points": {
+      "plans": "TourenBuddy speichert und teilt nur deine Pläne.",
+      "risk": "Jede Aktivität entscheidest und unternimmst du auf eigene Gefahr und in eigener Verantwortung.",
+      "liability": "Soweit gesetzlich zulässig, übernehmen wir dafür keine Haftung, auch nicht für Personenschäden aus leichter und mittlerer Fahrlässigkeit.",
+      "indemnity": "Du stellst uns von Ansprüchen Dritter frei, die du verursachst."
+    },
+    "read": "Die vollständigen Texte: {terms} und {privacy}.",
+    "update": "Eine neuere Version von TourenBuddy ist verfügbar. Lade die Seite neu, um die aktuellen Bedingungen zu akzeptieren.",
+    "updateBtn": "Neu laden",
+    "unavailable": "Noch nicht verfügbar. Bitte versuche es in Kürze erneut.",
+    "retryBtn": "Erneut versuchen",
+    "offline": "Zum Akzeptieren brauchst du eine Verbindung.",
+    "acceptBtn": "Akzeptieren und weiter",
+    "accepting": "Wird gespeichert…",
+    "failed": "Deine Zustimmung konnte nicht gespeichert werden. Bitte versuche es erneut.",
+    "signOutBtn": "Abmelden",
+    "deleteBtn": "Konto löschen",
+    "termsLink": "Nutzungsbedingungen",
+    "privacyLink": "Datenschutzerklärung",
+    "whatChanged": {
+      "2026-11-22": "der Abschnitt Haftung und wie du die Bedingungen akzeptierst"
+    }
   }
 }

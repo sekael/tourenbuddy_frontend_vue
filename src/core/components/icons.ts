@@ -84,6 +84,7 @@ import IconRouteOutline from '~icons/material-symbols/route-outline'
 import IconScheduleOutline from '~icons/material-symbols/schedule-outline'
 import IconSearch from '~icons/material-symbols/search'
 import IconSearchOff from '~icons/material-symbols/search-off'
+import IconShare from '~icons/material-symbols/share'
 import IconSnailOutline from '~icons/material-symbols/snail-outline'
 import IconSnowboarding from '~icons/material-symbols/snowboarding'
 import IconSpeedOutline from '~icons/material-symbols/speed-outline'
@@ -226,6 +227,7 @@ export const iconRegistry: Record<string, Component> = {
   schedule: IconScheduleOutline,
   search: IconSearch,
   search_off: IconSearchOff,
+  share: IconShare,
   ski_mountaineering: IconSkiMountaineering,
   ski_touring: IconSkiTouring,
   snail: IconSnailOutline,

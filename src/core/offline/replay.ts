@@ -128,6 +128,9 @@ async function runDrain(): Promise<void> {
       await remove(entry.entityId)
     }
     catch (err) {
+      // Every later entry would be refused too: stop here, keep them all.
+      if (isTermsRefusal(err))
+        break
       if (err instanceof PermanentReplayError || entry.attempts + 1 >= MAX_ATTEMPTS) {
         // Three terminal buckets, distinguished so the review surface only offers Retry when it
         // can actually land (a manual retry re-runs the identical call, so only a transient outage
@@ -154,6 +157,16 @@ async function runDrain(): Promise<void> {
     scheduleRetry(nextRetryDelay)
 
   drainedAt.value = Date.now() // nudge the pending-sync / dead-letter UI to re-read (8.1/8.2)
+}
+
+/**
+ * The backend refuses every client write until the terms in force are accepted (change:
+ * add-terms-acceptance). Such a refusal is no verdict on the edit: it waits, uncounted, for the
+ * acceptance, which starts a drain.
+ */
+export function isTermsRefusal(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : (error as { message?: unknown } | null)?.message
+  return typeof message === 'string' && message.includes('terms_not_accepted')
 }
 
 let drain: Promise<void> | null = null

@@ -27,6 +27,13 @@ const router = createRouter({
       meta: { redirectIfAuth: true },
     },
     {
+      // Change: add-terms-acceptance. The only page while the terms in force are not accepted.
+      path: '/terms',
+      name: 'terms',
+      component: () => import('@/features/terms/presentation/pages/terms-page.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/onboarding',
       name: 'onboarding',
       component: () => import('@/features/user/presentation/pages/onboarding-page.vue'),
@@ -63,10 +70,20 @@ export function setupRouterGuards(
     profile: { firstName: string | null, lastName: string | null } | null
     sessionSkipped: boolean
   },
+  termsStore: { gate: string },
 ) {
   router.beforeEach((to) => {
     if (to.meta.requiresAuth && !authStore.isAuthenticated) {
       return { name: 'home' }
+    }
+
+    // Terms first (change: add-terms-acceptance): before any page, onboarding included.
+    if (authStore.isAuthenticated && termsStore.gate !== 'loading') {
+      const accepted = termsStore.gate === 'pass'
+      if (!accepted && to.name !== 'terms')
+        return { name: 'terms' }
+      if (accepted && to.name === 'terms')
+        return { name: 'map' }
     }
 
     if (to.meta.redirectIfAuth && authStore.isAuthenticated) {
@@ -115,15 +132,23 @@ export function setupAuthRedirect(
   authStore: { isAuthenticated: boolean },
   profileStore: { loadProfile: () => Promise<void>, clear: () => void },
   notificationsStore: { ensurePushSubscription: () => void, clear: () => void },
+  termsStore: { gate: string, check: () => Promise<void>, clear: () => void },
 ): void {
   watch(
     () => authStore.isAuthenticated,
     async (isAuth) => {
       if (isAuth) {
+        // Terms first (change: add-terms-acceptance): nothing of the app, and no push
+        // subscription, before the version in force is accepted.
+        await termsStore.check()
         // Order is load-bearing: the `requiresCompleteProfile` guard reads the profile, so
         // navigating first makes it see `null` and bounce a complete profile to onboarding.
         // Offline this awaits a cache read, not a network round trip.
         await profileStore.loadProfile()
+        if (termsStore.gate !== 'pass') {
+          await router.push({ name: 'terms' })
+          return
+        }
         notificationsStore.ensurePushSubscription()
         // Only rescue a user STANDING on a signed-out-only screen. Auth also flips true
         // after an OTP verify and after a mid-session token rotation from deep in the app,
@@ -132,6 +157,7 @@ export function setupAuthRedirect(
           await router.push({ name: 'map' })
       }
       else {
+        termsStore.clear()
         profileStore.clear()
         notificationsStore.clear()
         // Evict stale auth-only views when the session ends (e.g. sign-out in another tab).
@@ -140,6 +166,37 @@ export function setupAuthRedirect(
       }
     },
   )
+}
+
+/**
+ * The terms gate's moves after sign-in (change: add-terms-acceptance): accepting opens the app
+ * and subscribes to push; a newer version found on return to the tab brings the page back.
+ */
+export function setupTermsRedirect(
+  authStore: { isAuthenticated: boolean },
+  notificationsStore: { ensurePushSubscription: () => void },
+  termsStore: { gate: string, check: () => Promise<void> },
+): void {
+  watch(
+    () => termsStore.gate,
+    async (gate, previous) => {
+      if (!authStore.isAuthenticated || gate === 'loading')
+        return
+      const onTerms = router.currentRoute.value.name === 'terms'
+      if (gate === 'pass' && previous !== 'pass' && previous !== 'loading') {
+        notificationsStore.ensurePushSubscription()
+        if (onTerms)
+          await router.push({ name: 'map' })
+      }
+      else if (gate !== 'pass' && !onTerms) {
+        await router.push({ name: 'terms' })
+      }
+    },
+  )
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && authStore.isAuthenticated)
+      void termsStore.check()
+  })
 }
 
 export default router

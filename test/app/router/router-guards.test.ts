@@ -39,6 +39,11 @@ function makeRoute(name: string, meta: Record<string, boolean> = {}) {
   return { name, meta }
 }
 
+/** The terms in force, accepted unless a test says otherwise (change: add-terms-acceptance). */
+function makeTermsStore(gate = 'pass') {
+  return { gate, check: vi.fn(async () => {}), clear: vi.fn() }
+}
+
 describe('setupRouterGuards', () => {
   let capturedGuard: (to: ReturnType<typeof makeRoute>) => unknown
 
@@ -53,8 +58,9 @@ describe('setupRouterGuards', () => {
     to: ReturnType<typeof makeRoute>,
     authStore: ReturnType<typeof makeAuthStore>,
     profileStore: Parameters<typeof setupRouterGuards>[1],
+    termsStore = makeTermsStore(),
   ) {
-    setupRouterGuards(authStore, profileStore)
+    setupRouterGuards(authStore, profileStore, termsStore)
     return capturedGuard(to)
   }
 
@@ -70,6 +76,27 @@ describe('setupRouterGuards', () => {
   it('should redirect authenticated user away from redirectIfAuth route to map', () => {
     const result = runGuard(
       makeRoute('home', { redirectIfAuth: true }),
+      makeAuthStore(true),
+      makeProfileStore('Max', 'Doe'),
+    )
+    expect(result).toEqual({ name: 'map' })
+  })
+
+  it('should send a user who has not accepted the terms to them, even from onboarding', () => {
+    for (const gate of ['accept', 'changed', 'update', 'unavailable']) {
+      const result = runGuard(
+        makeRoute('onboarding', { requiresAuth: true }),
+        makeAuthStore(true),
+        makeProfileStore(null, null),
+        makeTermsStore(gate),
+      )
+      expect(result).toEqual({ name: 'terms' })
+    }
+  })
+
+  it('should send a user who accepted away from the terms page', () => {
+    const result = runGuard(
+      makeRoute('terms', { requiresAuth: true }),
       makeAuthStore(true),
       makeProfileStore('Max', 'Doe'),
     )
@@ -164,7 +191,7 @@ describe('setupAuthRedirect', () => {
     const authStore = reactive({ isAuthenticated: false })
     const profileStore = { loadProfile: vi.fn(async () => {}), clear: vi.fn() }
     const notificationsStore = { ensurePushSubscription: vi.fn(), clear: vi.fn() }
-    setupAuthRedirect(authStore, profileStore, notificationsStore)
+    setupAuthRedirect(authStore, profileStore, notificationsStore, makeTermsStore())
     return { authStore, profileStore, notificationsStore }
   }
 
@@ -182,6 +209,22 @@ describe('setupAuthRedirect', () => {
     expect(mockPush).toHaveBeenCalledWith({ name: 'map' })
   })
 
+  it('should show the terms instead of the app and hold push until they are accepted', async () => {
+    mockCurrentRoute.value = { meta: { redirectIfAuth: true } }
+    const authStore = reactive({ isAuthenticated: false })
+    const profileStore = { loadProfile: vi.fn(async () => {}), clear: vi.fn() }
+    const notificationsStore = { ensurePushSubscription: vi.fn(), clear: vi.fn() }
+    const termsStore = makeTermsStore('accept')
+    setupAuthRedirect(authStore, profileStore, notificationsStore, termsStore)
+
+    authStore.isAuthenticated = true
+    await flush()
+
+    expect(termsStore.check).toHaveBeenCalled()
+    expect(mockPush).toHaveBeenCalledWith({ name: 'terms' })
+    expect(notificationsStore.ensurePushSubscription).not.toHaveBeenCalled()
+  })
+
   it('should load the profile BEFORE navigating, so the guard is not fed a null profile', async () => {
     const order: string[] = []
     mockCurrentRoute.value = { meta: { redirectIfAuth: true } }
@@ -193,7 +236,7 @@ describe('setupAuthRedirect', () => {
     mockPush.mockImplementation(async () => {
       order.push('push')
     })
-    setupAuthRedirect(authStore, profileStore, { ensurePushSubscription: vi.fn(), clear: vi.fn() })
+    setupAuthRedirect(authStore, profileStore, { ensurePushSubscription: vi.fn(), clear: vi.fn() }, makeTermsStore())
 
     authStore.isAuthenticated = true
     await flush()

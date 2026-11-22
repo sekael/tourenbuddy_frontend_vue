@@ -1,12 +1,13 @@
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import App from './App.vue'
-import router, { setupAuthRedirect, setupRouterGuards } from './app/router'
+import router, { setupAuthRedirect, setupRouterGuards, setupTermsRedirect } from './app/router'
 import { i18n, setupI18nLocaleWatcher } from './core/i18n'
 import { installZodErrorMap } from './core/i18n/zod-error-map'
 import { useLogger } from './core/logging/use-logger'
 import { useAuthStore } from './features/auth/presentation/stores/auth-store'
 import { useNotificationsStore } from './features/notifications/presentation/stores/notifications-store'
+import { useTermsStore } from './features/terms/presentation/stores/terms-store'
 import { useUserProfileStore } from './features/user/presentation/stores/user-profile-store'
 // Self-hosted Inter (weights used by --font-family-base). Bundled + precached,
 // no Google Fonts CDN. To add a weight, import its @fontsource/inter/<n>.css
@@ -50,6 +51,7 @@ async function bootstrap() {
   const authStore = useAuthStore()
   const profileStore = useUserProfileStore()
   const notificationsStore = useNotificationsStore()
+  const termsStore = useTermsStore()
 
   // Session + profile are resolved BEFORE the first navigation so the guards read settled
   // state. But none of it may keep the app from rendering: everything here touches the
@@ -60,8 +62,12 @@ async function bootstrap() {
     await authStore.initialize()
 
     if (authStore.isAuthenticated) {
+      // Terms first (change: add-terms-acceptance): the guards read the gate, and push
+      // waits for the acceptance.
+      await termsStore.check()
       await profileStore.loadProfile()
-      notificationsStore.ensurePushSubscription()
+      if (termsStore.gate === 'pass')
+        notificationsStore.ensurePushSubscription()
     }
   }
   catch (err) {
@@ -71,9 +77,10 @@ async function bootstrap() {
   // Reload profile + redirect off the sign-in screen when a session lands mid-session;
   // clear stores and evict auth-only views on sign-out. Router guards only fire on
   // navigation, so this reactive half is what covers a session arriving without one.
-  setupAuthRedirect(authStore, profileStore, notificationsStore)
+  setupAuthRedirect(authStore, profileStore, notificationsStore, termsStore)
+  setupTermsRedirect(authStore, notificationsStore, termsStore)
 
-  setupRouterGuards(authStore, profileStore)
+  setupRouterGuards(authStore, profileStore, termsStore)
 
   // AFTER the guards, deliberately: `app.use(router)` performs the first navigation as
   // part of installing, so registering the router earlier would resolve the entry URL with

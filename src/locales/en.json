@@ -1397,5 +1397,32 @@
         }
       }
     }
+  },
+  "terms": {
+    "title": "Terms of use",
+    "lead": "Before you use TourenBuddy, please read and accept the terms of use. In short:",
+    "changedLead": "We have updated the terms of use. What changed: {changes}. In short:",
+    "points": {
+      "plans": "TourenBuddy only stores and shares your plans.",
+      "risk": "You decide on and carry out every activity at your own risk and on your own responsibility.",
+      "liability": "As far as the law allows, we accept no liability for it, including for personal injury caused by slight or medium negligence.",
+      "indemnity": "You indemnify us against claims by others that you cause."
+    },
+    "read": "The full texts: {terms} and {privacy}.",
+    "update": "A newer version of TourenBuddy is available. Reload the page to accept the current terms.",
+    "updateBtn": "Reload",
+    "unavailable": "Not available yet. Please try again shortly.",
+    "retryBtn": "Try again",
+    "offline": "To accept, you need a connection.",
+    "acceptBtn": "Accept and continue",
+    "accepting": "Saving…",
+    "failed": "Your acceptance couldn’t be saved. Please try again.",
+    "signOutBtn": "Sign out",
+    "deleteBtn": "Delete account",
+    "termsLink": "terms of use",
+    "privacyLink": "privacy policy",
+    "whatChanged": {
+      "2026-11-22": "the liability section and how you accept the terms"
+    }
   }
 }

@@ -43,6 +43,25 @@ afterEach(() => {
 })
 
 describe('replayQueue drain', () => {
+  it('keeps entries refused for unaccepted terms, uncounted, and stops there', async () => {
+    const handler = vi.fn(async () => {
+      // As supabase-js hands over the database's refusal.
+      throw Object.assign(new Error('terms_not_accepted'), { code: 'P0001' })
+    })
+    registerReplay('tour', handler)
+    vi.mocked(peekAllOrdered).mockResolvedValue([
+      entry({ entityId: 'a', seq: 1, attempts: 4 }),
+      entry({ entityId: 'b', seq: 2 }),
+    ])
+
+    await replayQueue()
+
+    expect(handler).toHaveBeenCalledTimes(1)
+    expect(bumpAttempt).not.toHaveBeenCalled()
+    expect(deadLetter).not.toHaveBeenCalled()
+    expect(remove).not.toHaveBeenCalled()
+  })
+
   it('does NOT drain without a session — no attempt is burned while the token refresh is pending', async () => {
     const { supabase } = await import('@/core/utils/supabase')
     vi.mocked(supabase.auth.getSession).mockResolvedValueOnce({ data: { session: null } } as never)
